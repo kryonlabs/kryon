@@ -90,7 +90,8 @@ RenderInfoRows(InfoRowsProps rows)
     InfoRowsMetrics metrics = info_rows_metrics(rows);
     InfoRowsLayout layout;
     int row_h = metrics.row_height;
-    int default_font = ResolveFont(0, (int)(text_style.font_size + 0.5f),
+    int default_font = ResolveFont(0, StyleFontValue(text_style.fields,
+                                                     text_style.font_size),
                                    GetFontSize());
     int font_token;
 

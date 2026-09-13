@@ -1870,7 +1870,8 @@ ui_text_input_default_font(int style_kind, int class_name)
                               ButtonEmphasisSoft, ControlSizeMedium,
                               ButtonStateNormal),
             ButtonStateNormal)));
-    return ResolveFont(0, (int)(resolved.font_size + 0.5f), GetFontSize());
+    return ResolveFont(0, StyleFontValue(resolved.fields,
+                                         resolved.font_size), GetFontSize());
 }
 
 TextInputStyle
@@ -2397,7 +2398,8 @@ RenderLink(LinkProps link)
                                               link.disabled ? ButtonStateDisabled : ButtonStateNormal,
                                               0, 0.0f, 0.0f, 0.0f,
                                               StyleKindLink());
-    font = ResolveFont(0, (int)(style_frame.value.font_size + 0.5f),
+    font = ResolveFont(0, StyleFontValue(style_frame.value.fields,
+                                         style_frame.value.font_size),
                        GetFontSize());
     text_w = TextWidth(text, font);
     bounds = LinkBoundsFor(bounds, text_w, TextHeight(text, font), font);

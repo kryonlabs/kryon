@@ -257,7 +257,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             ButtonToneNeutral, ButtonStateNormal, 0, StyleKindSlider(), 6);
         Style label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
-        label_font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+        label_font = ResolveFont(0, StyleFontValue(label_style.fields,
+                                                   label_style.font_size),
                                  label_font);
         value_font = label_font;
         Color label_color = Fade(label_style.foreground, label_style.opacity);
@@ -567,7 +568,8 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     StyleFrame metric_thumb_frame = ui_toggle_thumb_style_frame_class(
         metric_track_tone, ButtonStateNormal, !enabled, checked_for_metrics,
         class_name);
-    font = ResolveFont(0, (int)(label_style.font_size + 0.5f), font);
+    font = ResolveFont(0, StyleFontValue(label_style.fields,
+                                         label_style.font_size), font);
     int off_w = has_labels ? TextWidth(off_text, font) : 0;
     int on_w = has_labels ? TextWidth(on_text, font) : 0;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -760,7 +762,8 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, checked);
     Style label_style = ui_unpack_style(
         ui_style_apply_effects_frame(label_frame).value);
-    int font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+    int font = ResolveFont(0, StyleFontValue(label_style.fields,
+                                             label_style.font_size),
                            GetFontSize());
     int label_w = TextWidth(label, font);
     CheckboxLayout layout = CheckboxLayoutForText((float)x, (float)y,
@@ -818,7 +821,8 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
         label_frame = ui_checkbox_label_style_frame(state, disabled, checked);
         label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
-        font = ResolveFont(0, (int)(label_style.font_size + 0.5f), font);
+        font = ResolveFont(0, StyleFontValue(label_style.fields,
+                                             label_style.font_size), font);
         layout = CheckboxLayoutForText((float)x, (float)y, (float)label_w,
                                        (float)TextLineHeight(font),
                                        runtime_scale,
