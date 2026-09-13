@@ -2414,12 +2414,12 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		r.registerField(props.ID)
 	}
 	focused := !disabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
-	barFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled
 		}
 		return ButtonStateNormal
-	}(), disabled, false, StyleSheet_StyleKindTabBar())
+	}(), disabled, false, props.ClassName, StyleSheet_StyleKindTabBar(), StyleSheet_StyleAny())
 	tabGap := int32(barFrame.Value.Gap)
 	if tabGap < 0 {
 		tabGap = 0
@@ -2473,13 +2473,13 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	font := props.Font
 	fontID := uint32(0)
 	if font <= 0 {
-		tabStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral,
+		tabStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral,
 			func() ButtonState {
 				if disabled {
 					return ButtonStateDisabled
 				}
 				return ButtonStateNormal
-			}(), disabled, false, StyleSheet_StyleKindTab()).Value)
+			}(), disabled, false, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()).Value)
 		font, fontID = styleTextFace(tabStyle, Text12)
 	}
 	minWidth := float32(props.MinTabWidth)
@@ -2517,6 +2517,9 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		if props.ID > 0 {
 			if r.tabScroll == nil {
 				r.tabScroll = make(map[int32]int32)
+			}
+			if r.tabBarsSeen == nil {
+				r.tabBarsSeen = make(map[int32]bool)
 			}
 			localScroll = r.tabScroll[props.ID]
 			r.tabBarsSeen[props.ID] = true
@@ -2595,12 +2598,12 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		} else if isSelected {
 			tabState = ButtonStateSelected
 		}
-		tabFrame := simpleStyleFrame(func() ButtonTone {
+		tabFrame := simpleStyleFrameWithClassRole(func() ButtonTone {
 			if isSelected {
 				return ButtonToneAccent
 			}
 			return ButtonToneNeutral
-		}(), tabState, itemDisabled, isSelected, StyleSheet_StyleKindTab())
+		}(), tabState, itemDisabled, isSelected, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny())
 		closeState := ButtonStateNormal
 		if itemDisabled {
 			closeState = ButtonStateDisabled
@@ -2608,9 +2611,10 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		if item.Closeable && !itemDisabled && r.pointerCanReach(closeBounds) {
 			closeState = ButtonStateHover
 		}
-		closeFrame := simpleStyleFrame(ButtonToneNeutral, closeState, itemDisabled, false, StyleSheet_StyleKindTabClose())
+		closeFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, closeState, itemDisabled,
+			false, props.ClassName, StyleSheet_StyleKindTabClose(), StyleSheet_StyleAny())
 		paint := TabBar_TabBarPaintFor(barFrame, tabFrame, closeFrame)
-		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
+		r.recordButton(FrameOp{Kind: FrameOpButton, Button: ButtonFrame{Props: ButtonProps{ClassName: props.ClassName}}, Opacity: 1,
 			BorderWidth: paint.BorderWidth, Radius: paint.Radius,
 			AmbientColor: unpackRGBA(paint.BarColor), FocusColor: unpackRGBA(paint.FocusColor), Bounds: tab, Clip: bounds, HasClip: true,
 			Text: fitTabLabelWithFont(item.Label, tab.Width-closeWidth-12, font, fontID), Color: unpackRGBA(paint.TabColor),
@@ -4542,6 +4546,7 @@ type iconActionProps struct {
 	Disabled    bool
 	StyleKind   int32
 	Role        int32
+	ClassName   int32
 }
 
 func (r *runtime) iconAction(props iconActionProps) bool {
@@ -4571,12 +4576,13 @@ func (r *runtime) iconAction(props iconActionProps) bool {
 		role = StyleSheet_StyleAny()
 	}
 	frame, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{
-		Bounds:   props.Bounds,
-		ID:       props.FocusID,
-		Disabled: props.Disabled,
-		Tone:     ButtonToneNeutral,
-		Emphasis: ButtonEmphasisSoft,
-		Size:     ControlSizeMedium,
+		Bounds:    props.Bounds,
+		ID:        props.FocusID,
+		Disabled:  props.Disabled,
+		Tone:      ButtonToneNeutral,
+		Emphasis:  ButtonEmphasisSoft,
+		Size:      ControlSizeMedium,
+		ClassName: props.ClassName,
 	}, Rectangle{}, false, styleKind, role)
 	r.record(frame)
 	iconX := int32(props.Bounds.X) + (int32(props.Bounds.Width)-size)/2
@@ -5010,7 +5016,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		BottomMargin: props.BottomMargin,
 		IconSize:     props.IconSize,
 		Scale:        1,
-		Bar:          simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindNavigationBar()),
+		Bar:          simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBar(), StyleSheet_StyleAny()),
 	})
 	bar := unpackStyle(paint.Bar.Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BarBounds, Color: bar.Background,
@@ -5022,15 +5028,15 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		if item.Active && !item.Disabled {
 			itemState = ButtonStateSelected
 		}
-		baseFrame := simpleStyleFrame(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, StyleSheet_StyleKindNavigationBarItem())
+		baseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
 		baseStyle := unpackStyle(baseFrame.Value)
 		labelFont, labelFontID := styleTextFace(baseStyle, Text14)
-		faceFrame := simpleStyleFrame(func() ButtonTone {
+		faceFrame := simpleStyleFrameWithClassRole(func() ButtonTone {
 			if item.Active {
 				return ButtonToneAccent
 			}
 			return ButtonToneNeutral
-		}(), itemState, item.Disabled, item.Active, StyleSheet_StyleKindNavigationBarItem())
+		}(), itemState, item.Disabled, item.Active, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
 		itemPaint := NavigationBar_NavigationBarItemPaintFor(NavigationBarItemSpec{
 			Bar:         paint,
 			Index:       int32(i),
@@ -5096,11 +5102,11 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 		Scale:             1,
 	})
 	bounds := layout.Bounds
-	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindToolbar(), 1)
+	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindToolbar(), 1)
 	r.record(styleFrameRectOp(bounds, Rectangle{}, surfaceFrame))
-	dividerStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindToolbar(), 18).Value)
+	dividerStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindToolbar(), 18).Value)
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: dividerStyle.Border})
 	for i := int32(0); i < actionCount; i++ {
 		action := props.Actions[i]
@@ -5114,6 +5120,7 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 			Disabled:    action.Disabled,
 			StyleKind:   StyleSheet_StyleKindToolbar(),
 			Role:        17,
+			ClassName:   props.ClassName,
 		}) {
 			result.ClickedAction = int32(i)
 		}

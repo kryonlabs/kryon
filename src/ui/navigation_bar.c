@@ -64,9 +64,10 @@ ui_draw_navigation_bar_icon(Texture2D icon, IconType icon_type, Rectangle dst,
 }
 
 static StyleFrame
-ui_navigation_bar_surface_frame(void)
+ui_navigation_bar_surface_frame(int class_name)
 {
     ButtonProps props = {0};
+    props.class_name = class_name;
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     props.size = ControlSizeLarge;
@@ -76,10 +77,12 @@ ui_navigation_bar_surface_frame(void)
 }
 
 static StyleFrame
-ui_navigation_bar_item_frame(int active, int disabled, int hovered)
+ui_navigation_bar_item_frame(int active, int disabled, int hovered,
+                             int class_name)
 {
     ButtonProps props = {0};
     ButtonState state = ButtonStateNormal;
+    props.class_name = class_name;
     props.tone = active ? ButtonToneAccent : ButtonToneNeutral;
     props.emphasis = active ? ButtonEmphasisFilled : ButtonEmphasisGhost;
     props.size = ControlSizeMedium;
@@ -122,7 +125,7 @@ RenderNavigationBar(NavigationBarProps nav)
         .bottom_margin = nav.bottom_margin,
         .icon_size = nav.icon_size,
         .scale = runtime_scale,
-        .bar = ui_navigation_bar_surface_frame()
+        .bar = ui_navigation_bar_surface_frame(nav.class_name)
     });
     count = paint.count;
     result.y = paint.y;
@@ -145,10 +148,12 @@ RenderNavigationBar(NavigationBarProps nav)
     for(i = 0; i < count; i++) {
         const NavigationBarItem *item = &nav.items[i];
         int hover = 0;
-        StyleFrame base_frame = ui_navigation_bar_item_frame(0, item->disabled, 0);
+        StyleFrame base_frame = ui_navigation_bar_item_frame(0, item->disabled,
+                                                             0, nav.class_name);
         Style base_style = ui_unpack_style(base_frame.value);
         StyleFrame face_frame = ui_navigation_bar_item_frame(item->active,
-                                                             item->disabled, 0);
+                                                             item->disabled, 0,
+                                                             nav.class_name);
         Style text_style = base_style;
         int label_font = base_style.font_size > 0.0f
             ? (int)(base_style.font_size + 0.5f)
@@ -172,7 +177,8 @@ RenderNavigationBar(NavigationBarProps nav)
         }
         if(hover) {
             face_frame = ui_navigation_bar_item_frame(item->active,
-                                                     item->disabled, hover);
+                                                     item->disabled, hover,
+                                                     nav.class_name);
             item_paint = NavigationBarItemPaintFor((NavigationBarItemSpec){
                 .bar = paint,
                 .index = i,

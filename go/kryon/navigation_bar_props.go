@@ -2,7 +2,6 @@
 package kryon
 
 // #import kryon_compat.generated.h
-// #import kryon_compat.generated.h
 type NavigationBarItem struct {
 	Route    int32
 	Label    string
@@ -15,6 +14,7 @@ type NavigationBarItem struct {
 type NavigationBarProps struct {
 	ViewWidth      int32
 	ViewHeight     int32
+	ClassName      int32
 	Count          int32
 	Items          []NavigationBarItem
 	Height         int32

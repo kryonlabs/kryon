@@ -1,6 +1,5 @@
 #module "navigation_bar_props"
 #import "kryon_compat.generated.h"
-#import "kryon_compat.generated.h"
 
 NavigationBarItem :: struct {
     route: i32
@@ -14,6 +13,7 @@ NavigationBarItem :: struct {
 NavigationBarProps :: struct {
     view_width: i32
     view_height: i32
+    class_name: i32
     count: i32
     items: const NavigationBarItem*
     height: i32

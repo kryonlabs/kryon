@@ -57,6 +57,7 @@ typedef struct ToolbarAction {
 
 typedef struct ToolbarProps {
     int32_t id;
+    int32_t class_name;
     int32_t x;
     int32_t y;
     int32_t width;

@@ -33,6 +33,7 @@ typedef struct Tab {
 
 typedef struct TabBarProps {
     Rectangle bounds;
+    int32_t class_name;
     const Tab* tabs;
     int32_t count;
     int32_t selected_index;

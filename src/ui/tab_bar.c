@@ -11,9 +11,10 @@ static const Vector2 kryon_zero_vector2;
 
 static StyleFrame
 ui_tab_bar_style_frame(int style_kind, ButtonState state, int disabled,
-                       int selected)
+                       int selected, int class_name)
 {
     ButtonProps props = {0};
+    props.class_name = class_name;
     props.tone = selected ? ButtonToneAccent : ButtonToneNeutral;
     props.emphasis = selected ? ButtonEmphasisFilled : ButtonEmphasisSoft;
     props.size = ControlSizeMedium;
@@ -31,7 +32,8 @@ ui_tab_bar_font(TabBarProps bar, int disabled)
     if(bar.font > 0)
         return bar.font;
     tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
-        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        bar.class_name);
     return tab_frame.value.font_size > 0.0f
         ? (int)(tab_frame.value.font_size + 0.5f)
         : GetSmallFontSize();
@@ -339,7 +341,8 @@ RenderTabBar(TabBarProps bar)
     int bar_h = (int)bar.bounds.height;
     int disabled = bar.disabled || UIContentDisabled();
     StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
-        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        bar.class_name);
     int font = ui_tab_bar_font(bar, disabled);
     int tab_gap = (int)bar_frame.value.gap;
     if(tab_gap < 0)
@@ -478,9 +481,9 @@ RenderTabBar(TabBarProps bar)
              (is_hovered ? ButtonStateHover :
               (is_selected ? ButtonStateSelected : ButtonStateNormal)));
         StyleFrame tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
-            tab_state, is_disabled, is_selected);
+            tab_state, is_disabled, is_selected, bar.class_name);
         StyleFrame close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
-            ButtonStateNormal, is_disabled, 0);
+            ButtonStateNormal, is_disabled, 0, bar.class_name);
         TabBarPaint paint;
         StyleFrame styled_tab_frame;
         Style tab_style;
@@ -601,7 +604,7 @@ RenderTabBar(TabBarProps bar)
         if(can_draw && tab->closeable) {
             if(close_hovered) {
                 close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
-                    ButtonStateHover, is_disabled, 0);
+                    ButtonStateHover, is_disabled, 0, bar.class_name);
                 paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
                 close_style = ui_unpack_style(
                     ui_style_apply_effects_frame(close_frame).value);

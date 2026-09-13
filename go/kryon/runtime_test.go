@@ -799,6 +799,102 @@ NavigationBarItem:selected { background: selected; foreground: ink; border: sele
 	t.Fatalf("missing navigation label op: %+v", rt.FrameOps())
 }
 
+func TestNavigationWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.navigation.classes;
+tokens {
+  color {
+    shell: #233142;
+    action: #6247aa;
+    ink: #f3f8ff;
+    rule: #7d8da3;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+Toolbar.navkit[role=Bar] { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Toolbar.navkit[role=Divider] { border: rule; }
+Toolbar.navkit[role=Action] { background: action; foreground: ink; border: action; radius: radius; border-width: border; material: flat; }
+NavigationBar.navkit { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+NavigationBarItem.navkit { foreground: ink; font-size: 18; opacity: 0.71; }
+NavigationBarItem.navkit:selected { background: action; foreground: ink; border: action; radius: radius; border-width: border; material: flat; }
+TabBar.navkit { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; gap: 0; material: flat; }
+Tab.navkit { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 17; material: flat; }
+Tab.navkit:selected { background: action; foreground: ink; border: action; radius: radius; border-width: border; font-size: 17; material: flat; }
+TabClose.navkit { foreground: ink; font-size: 17; material: flat; }
+`, "Test Navigation Classes", "") || !SetActiveStylePack("test.navigation.classes") {
+		t.Fatal("navigation class style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	className := StyleClassID("navkit")
+
+	rt.Toolbar(ToolbarProps{
+		ID:          90,
+		ClassName:   className,
+		X:           0,
+		Y:           4,
+		Width:       180,
+		Height:      36,
+		Actions:     []ToolbarAction{{IconType: IconSave}},
+		ActionCount: 1,
+	})
+	rt.NavigationBar(NavigationBarProps{
+		ViewWidth:  260,
+		ViewHeight: 180,
+		ClassName:  className,
+		Items:      []NavigationBarItem{{Label: "Home", Route: 91, Active: true}},
+		Count:      1,
+	})
+	rt.TabBar(TabBarProps{
+		Bounds:        Rectangle{X: 0, Y: 50, Width: 180, Height: 30},
+		ClassName:     className,
+		Tabs:          []Tab{{Label: "Files", Closeable: true}},
+		Count:         1,
+		SelectedIndex: 0,
+		ID:            92,
+	})
+
+	var sawToolbar, sawAction, sawNavLabel, sawTab bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 0, Y: 4, Width: 180, Height: 36}):
+			sawToolbar = true
+			if op.Color != (Color{R: 0x23, G: 0x31, B: 0x42, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x7d, G: 0x8d, B: 0xa3, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("toolbar class bar op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.ID == 9001:
+			sawAction = true
+			style := unpackStyle(op.Button.Material.Value)
+			if style.Background != (Color{R: 0x62, G: 0x47, B: 0xaa, A: 0xff}) ||
+				style.Foreground != (Color{R: 0xf3, G: 0xf8, B: 0xff, A: 0xff}) {
+				t.Fatalf("toolbar action class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.ID == 91 && op.Text == "Home":
+			sawNavLabel = true
+			if op.FontSize != 18 || op.Opacity != 0.71 ||
+				op.Color != (Color{R: 0xf3, G: 0xf8, B: 0xff, A: 0xff}) {
+				t.Fatalf("navigation class label op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.ID == 92 && op.Text == "Files":
+			sawTab = true
+			if op.FontSize != 17 ||
+				op.Color != (Color{R: 0x62, G: 0x47, B: 0xaa, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x62, G: 0x47, B: 0xaa, A: 0xff}) ||
+				op.TextColor != (Color{R: 0xf3, G: 0xf8, B: 0xff, A: 0xff}) {
+				t.Fatalf("tab class op = %+v", op)
+			}
+		}
+	}
+	if !sawToolbar || !sawAction || !sawNavLabel || !sawTab {
+		t.Fatalf("missing classed navigation ops: toolbar=%v action=%v nav=%v tab=%v ops=%+v",
+			sawToolbar, sawAction, sawNavLabel, sawTab, rt.FrameOps())
+	}
+}
+
 func TestProgressAndSeparatorRolesUseStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

@@ -38,6 +38,7 @@ type ToolbarAction struct {
 
 type ToolbarProps struct {
 	ID                int32
+	ClassName         int32
 	X                 int32
 	Y                 int32
 	Width             int32

@@ -13,6 +13,7 @@ Tab :: struct {
 
 TabBarProps :: struct {
     bounds: Rectangle
+    class_name: i32
     tabs: const Tab*
     count: i32
     selected_index: i32

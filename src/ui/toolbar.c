@@ -24,11 +24,13 @@ RenderToolbar(ToolbarProps toolbar)
 
     StyleFrame bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
+                      .size = ControlSizeMedium,
+                      .class_name = toolbar.class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 1);
     StyleFrame divider_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
+                      .size = ControlSizeMedium,
+                      .class_name = toolbar.class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 18);
     Style bar = ui_unpack_style(bar_frame.value);
     Style divider = ui_unpack_style(divider_frame.value);
@@ -51,13 +53,15 @@ RenderToolbar(ToolbarProps toolbar)
                 (ButtonProps){.tone = ButtonToneNeutral,
                               .emphasis = ButtonEmphasisSoft,
                               .size = ControlSizeMedium,
-                              .icon_only = true},
+                              .icon_only = true,
+                              .class_name = toolbar.class_name},
                 ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
             Style action_hover = ui_unpack_style(ui_control_style_frame_role_kind(
                 (ButtonProps){.tone = ButtonToneNeutral,
                               .emphasis = ButtonEmphasisSoft,
                               .size = ControlSizeMedium,
-                              .icon_only = true},
+                              .icon_only = true,
+                              .class_name = toolbar.class_name},
                 ButtonStateHover, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
             button.props.bounds = action_bounds;
             button.props.icon = toolbar.actions[i].icon;
@@ -66,6 +70,7 @@ RenderToolbar(ToolbarProps toolbar)
             button.props.disabled = toolbar.actions[i].disabled;
             button.props.tone = ButtonToneNeutral;
             button.props.emphasis = ButtonEmphasisSoft;
+            button.props.class_name = toolbar.class_name;
             button.props.style.normal = action;
             button.props.style.hover = action_hover;
             button.props.style.normal.fields |= StyleIconSize;
@@ -81,7 +86,8 @@ RenderToolbar(ToolbarProps toolbar)
     if(toolbar.options != NULL && toolbar.option_count > 0 &&
        toolbar.selected_index != NULL) {
         if(Dropdown((DropdownProps){.id = toolbar.id, .bounds = layout.dropdown_bounds,
-            .options = toolbar.options, .option_count = toolbar.option_count, .selected_index = toolbar.selected_index}))
+            .class_name = toolbar.class_name, .options = toolbar.options,
+            .option_count = toolbar.option_count, .selected_index = toolbar.selected_index}))
             result.selected_menu_item = toolbar.selected_index != NULL
                                             ? *toolbar.selected_index
                                             : -1;

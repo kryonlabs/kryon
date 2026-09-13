@@ -14,6 +14,7 @@ type Tab struct {
 
 type TabBarProps struct {
 	Bounds             Rectangle
+	ClassName          int32
 	Tabs               []Tab
 	Count              int32
 	SelectedIndex      int32

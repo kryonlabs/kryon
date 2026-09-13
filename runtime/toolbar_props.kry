@@ -37,6 +37,7 @@ ToolbarAction :: struct {
 
 ToolbarProps :: struct {
     id: i32
+    class_name: i32
     x: i32
     y: i32
     width: i32

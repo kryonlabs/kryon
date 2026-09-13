@@ -20,7 +20,6 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "kryon_compat.generated.h"
-#include "kryon_compat.generated.h"
 
 typedef struct NavigationBarItem {
     int32_t route;
@@ -34,6 +33,7 @@ typedef struct NavigationBarItem {
 typedef struct NavigationBarProps {
     int32_t view_width;
     int32_t view_height;
+    int32_t class_name;
     int32_t count;
     const NavigationBarItem* items;
     int32_t height;
