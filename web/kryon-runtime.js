@@ -1748,12 +1748,26 @@ function widgetNativeAttrs(item, meta, args) {
     setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
       propStringAny(args, ["value", "dom_value", "html_value"]));
     break;
+  case "Link":
+    setWidgetNativeAttr(out, "ping", metaString(meta, "ping") ||
+      propStringAny(args, ["ping", "dom_ping", "html_ping"]));
+    setWidgetNativeAttr(out, "hreflang", metaString(meta, "hrefLang") ||
+      propStringAny(args, ["hreflang", "href_lang", "dom_hreflang", "html_hreflang"]));
+    setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
+      propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
+    break;
   case "OptionGroup":
   case "OptGroup":
     setWidgetNativeAttr(out, "label", metaString(meta, "optionLabel") ||
       propStringAny(args, ["label", "title", "dom_label", "html_label"]));
     break;
   case "Area":
+    setWidgetNativeAttr(out, "ping", metaString(meta, "ping") ||
+      propStringAny(args, ["ping", "dom_ping", "html_ping"]));
+    setWidgetNativeAttr(out, "hreflang", metaString(meta, "hrefLang") ||
+      propStringAny(args, ["hreflang", "href_lang", "dom_hreflang", "html_hreflang"]));
+    setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
+      propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
     setWidgetNativeAttr(out, "shape", metaString(meta, "shape") ||
       propStringAny(args, ["shape", "dom_shape", "html_shape"]));
     setWidgetNativeAttr(out, "coords", metaString(meta, "coords") ||

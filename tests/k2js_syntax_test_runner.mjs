@@ -3056,6 +3056,12 @@ function fakeDocument() {
     runtime.widget(nativeRt, "Area", {
       alt: "Primary region",
       href: "/hero",
+      target: "_self",
+      rel: "bookmark",
+      download: "hero.txt",
+      ping: "/hero-audit",
+      href_lang: "en",
+      referrer_policy: "same-origin",
       shape: "rect",
       coords: "0,0,100,80"
     }, null,
@@ -3414,7 +3420,13 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "ImageMap").tag, "map");
     assert.equal(runtime.webNodeQuery(nativeRt, "Area").tag, "area");
     assert.equal(runtime.webNodeQuery(nativeRt, "Area").href, "/hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").target, "_self");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").rel, "bookmark");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").download, "hero.txt");
     assert.equal(runtime.webNodeQuery(nativeRt, "Area").alt, "Primary region");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.ping, "/hero-audit");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.hreflang, "en");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.referrerpolicy, "same-origin");
     assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.shape, "rect");
     assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.coords, "0,0,100,80");
     assert.equal(runtime.webNodeQuery(nativeRt, "[usemap=heroMap]").path, "Page/hero");
@@ -3935,7 +3947,13 @@ function fakeDocument() {
     assert.equal(heroMap.attributes.name, "hero-map");
     assert.equal(heroArea.tagName, "AREA");
     assert.equal(heroArea.attributes.href, "/hero");
+    assert.equal(heroArea.attributes.target, "_self");
+    assert.equal(heroArea.attributes.rel, "bookmark");
+    assert.equal(heroArea.attributes.download, "hero.txt");
     assert.equal(heroArea.attributes.alt, "Primary region");
+    assert.equal(heroArea.attributes.ping, "/hero-audit");
+    assert.equal(heroArea.attributes.hreflang, "en");
+    assert.equal(heroArea.attributes.referrerpolicy, "same-origin");
     assert.equal(heroArea.attributes.shape, "rect");
     assert.equal(heroArea.attributes.coords, "0,0,100,80");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Image").imageMap.ref,
@@ -4183,6 +4201,9 @@ function fakeDocument() {
       target: "_blank",
       rel: "noopener",
       download: "manual.pdf",
+      ping: "/audit",
+      href_lang: "en",
+      referrer_policy: "origin",
       data_tracking_id: "manual-link",
       attr_itemprop: "url",
       dom_id: "manual-link",
@@ -4225,6 +4246,12 @@ function fakeDocument() {
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[rel=\"noopener\"]").path,
       "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[ping=\"/audit\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[hreflang=en]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[referrerpolicy=origin]").path,
+      "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[data-tracking-id=\"manual-link\"]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[itemprop=\"url\"]").path,
@@ -4252,6 +4279,9 @@ function fakeDocument() {
     assert.equal(manual.attributes.target, "_blank");
     assert.equal(manual.attributes.rel, "noopener");
     assert.equal(manual.attributes.download, "manual.pdf");
+    assert.equal(manual.attributes.ping, "/audit");
+    assert.equal(manual.attributes.hreflang, "en");
+    assert.equal(manual.attributes.referrerpolicy, "origin");
     assert.equal(manual.attributes.id, "manual-link");
     assert.equal(manual.attributes.name, "manual_resource");
     assert.equal(manual.attributes.title, "Manual PDF");

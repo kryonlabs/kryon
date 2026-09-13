@@ -88,6 +88,9 @@ the browser receives normal elements, attributes, CSS, and events.
   title, language, direction, translation, dirname, tab index, hidden,
   draggable, content-editable, part, slot, popover, and table cell relation
   attributes.
+- Direct `.kry` link-like widgets feed native navigation attributes including
+  `href`, `target`, `rel`, `download`, `ping`, `hreflang`, and
+  `referrerpolicy` for browser anchors and image-map areas.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
   selectors and selectable options, segmented controls, status output,

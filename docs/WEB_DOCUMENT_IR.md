@@ -125,6 +125,9 @@ Supported metadata fields:
 | `usemap`, `use_map`, `image_map`, `dom_usemap`, `html_usemap` | `useMap` |
 | `target`, `dom_target`, `html_target` | `target` |
 | `rel`, `dom_rel`, `html_rel` | `rel` |
+| `ping`, `dom_ping`, `html_ping` | `extraAttrs.ping` |
+| `hreflang`, `href_lang`, `dom_hreflang`, `html_hreflang` | `extraAttrs.hreflang` |
+| `referrerpolicy`, `referrer_policy`, `dom_referrerpolicy`, `html_referrerpolicy` | `extraAttrs.referrerpolicy` |
 | `part`, `dom_part`, `html_part` | `part` |
 | `slot`, `dom_slot`, `html_slot` | `slot` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
@@ -472,7 +475,8 @@ such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
 and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[id=...]`, `[name=...]`, `[title=...]`,
 `[tabindex=...]`, `[type=...]`, `[href=...]`,
-`[target=...]`, `[rel=...]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
+`[target=...]`, `[rel=...]`, `[ping=...]`, `[hreflang=...]`,
+`[referrerpolicy=...]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,
 `[draggable=true]`, `[spellcheck=...]`, `[contenteditable=...]`,
 `[inert=true]`, `[autocapitalize=...]`, `[enterkeyhint=...]`,
