@@ -3195,6 +3195,14 @@ function fakeDocument() {
       ["Page/nativeForm/email"]);
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeSelect/one").collectionOwner.path,
       "Page/nativeSelect");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/figure/caption").captionOwner.path,
+      "Page/figure");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/figure").captionItems,
+      ["Page/figure/caption"]);
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeTable/caption").captionOwner.path,
+      "Page/nativeTable");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeTable").captionItems,
+      ["Page/nativeTable/caption"]);
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/aside/related").landmarkOwner.path,
       "Page/aside");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/footer/legal").landmarkOwner.path,
@@ -3564,6 +3572,14 @@ function fakeDocument() {
       ["Page/nativeForm/email"]);
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeSelect/one").collectionOwner.ref,
       "Page/nativeSelect");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/figure/caption").captionOwner.ref,
+      "Page/figure");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/figure").captionItems,
+      ["Page/figure/caption"]);
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeTable/caption").captionOwner.ref,
+      "Page/nativeTable");
+    assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Page/nativeTable").relationRefs.captionItems,
+      ["Page/nativeTable/caption"]);
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");

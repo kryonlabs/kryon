@@ -7251,6 +7251,37 @@ function webNodeCanOwnCollectionMember(owner, member) {
   return !!roles && roles.has(webNodeRoleName(member));
 }
 
+function webNodeCanOwnCaption(owner, caption) {
+  const ownerTag = String(owner?.tag || "").toLowerCase();
+  const captionTag = String(caption?.tag || "").toLowerCase();
+  return (ownerTag === "figure" && captionTag === "figcaption") ||
+    (ownerTag === "table" && captionTag === "caption");
+}
+
+function webNodeCaptionOwner(rt, node) {
+  if (!rt || !node)
+    return null;
+  let parent = webNodeParent(rt, node.path);
+  while (parent) {
+    if (webNodeCanOwnCaption(parent, node))
+      return parent;
+    parent = webNodeParent(rt, parent.path);
+  }
+  return null;
+}
+
+function webNodeCaptionItems(rt, node) {
+  if (!rt || !node)
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node)
+      return false;
+    const owner = webNodeCaptionOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
 function webNodeIsSelectedCollectionMember(node) {
   if (!node)
     return false;
@@ -7389,6 +7420,38 @@ function webDOMCollectionItems(target, node) {
   return out;
 }
 
+function webDOMCaptionOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return null;
+  let parentPath = node.parentPath || "";
+  while (parentPath && parentPath !== node.path) {
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnCaption(parent, node))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMCaptionItems(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node)
+      continue;
+    const owner = webDOMCaptionOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMSelectedCollectionOwner(target, node) {
   return webNodeIsSelectedCollectionMember(node)
     ? webDOMCollectionOwner(target, node)
@@ -7436,6 +7499,8 @@ function webDOMRelationsForNode(target, node) {
     landmarkMembers: webDOMLandmarkMembers(target, node),
     collectionOwner: webDOMCollectionOwner(target, node),
     collectionItems: webDOMCollectionItems(target, node),
+    captionOwner: webDOMCaptionOwner(target, node),
+    captionItems: webDOMCaptionItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
     selectedCollectionItems: webDOMSelectedCollectionItems(target, node),
     activeCollectionOwner: webDOMActiveCollectionOwner(target, node),
@@ -8851,6 +8916,8 @@ function webDOMRelationRefsForRelations(relations) {
     landmarkMembers: (relations?.landmarkMembers || []).map((relation) => relation.ref),
     collectionOwner: relations?.collectionOwner?.ref || "",
     collectionItems: (relations?.collectionItems || []).map((relation) => relation.ref),
+    captionOwner: relations?.captionOwner?.ref || "",
+    captionItems: (relations?.captionItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
     selectedCollectionItems: (relations?.selectedCollectionItems || []).map((relation) => relation.ref),
     activeCollectionOwner: relations?.activeCollectionOwner?.ref || "",
@@ -9751,6 +9818,8 @@ function webNodeRelationsForNode(rt, node) {
     landmarkMembers: webNodeLandmarkMembers(rt, node),
     collectionOwner: webNodeCollectionOwner(rt, node),
     collectionItems: webNodeCollectionItems(rt, node),
+    captionOwner: webNodeCaptionOwner(rt, node),
+    captionItems: webNodeCaptionItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
     selectedCollectionItems: webNodeSelectedCollectionItems(rt, node),
     activeCollectionOwner: webNodeActiveCollectionOwner(rt, node),
@@ -9834,6 +9903,8 @@ function webNodeRelationRefsForNode(rt, node) {
     landmarkMembers: webNodeRefs(webNodeLandmarkMembers(rt, node)),
     collectionOwner: webNodeRef(webNodeCollectionOwner(rt, node)) || "",
     collectionItems: webNodeRefs(webNodeCollectionItems(rt, node)),
+    captionOwner: webNodeRef(webNodeCaptionOwner(rt, node)) || "",
+    captionItems: webNodeRefs(webNodeCaptionItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
     selectedCollectionItems: webNodeRefs(webNodeSelectedCollectionItems(rt, node)),
     activeCollectionOwner: webNodeRef(webNodeActiveCollectionOwner(rt, node)) || "",
