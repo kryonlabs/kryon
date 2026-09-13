@@ -262,6 +262,17 @@ test_checkbox_paint_geometry_is_stable(void)
               (int)custom_layout.bounds.width, 100);
     check_int("checkbox styled label x", (int)custom_layout.label_x, 46);
     check_int("checkbox styled mark width", (int)custom_paint.mark_width, 3);
+    custom.box.value.padding_x = 0.0f;
+    custom.box.value.padding_y = 0.0f;
+    custom.box.value.gap = 0.0f;
+    custom.box.value.icon_size = 0.0f;
+    check_int("checkbox explicit zero slot fallback",
+              CheckboxSlotSize(1.0f, custom.box), 22);
+    custom.label.value.gap = 0.0f;
+    check_int("checkbox explicit zero label gap",
+              (int)CheckboxLabelXFor((Rectangle){10, 20, 22, 22}, 1.0f,
+                                     custom.label),
+              32);
     check_int("checkbox checked keeps box x", (int)checked.box_bounds.x,
               (int)unchecked.box_bounds.x);
     check_int("checkbox checked keeps box y", (int)checked.box_bounds.y,

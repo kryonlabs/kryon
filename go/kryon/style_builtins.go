@@ -1869,6 +1869,10 @@ Checkbox[role=Box] {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -3830,6 +3834,10 @@ Checkbox[role=Box] {
   border: border;
   focus: accent;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -5823,6 +5831,10 @@ Checkbox[role=Box] {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -7905,6 +7917,10 @@ Checkbox[role=Box] {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: glow;
 }
@@ -9943,6 +9959,10 @@ Checkbox[role=Box] {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: premium;
 }

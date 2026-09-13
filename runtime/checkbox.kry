@@ -58,26 +58,31 @@ CheckboxFlagResult :: struct {
     changed: bool
 }
 
-CheckboxSlotSize :: (scale: float, box: StyleFrame) -> i32 #export {
+CheckboxMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> float {
     if scale <= 0.0 { scale = 1.0 }
-    size: float = box.value.padding_x
-    if size <= 0.0 { size = 22.0 }
-    return (i32)(size * scale)
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return value * scale
+}
+
+CheckboxSlotSize :: (scale: float, box: StyleFrame) -> i32 #export {
+    return (i32)CheckboxMetric(box.value.fields, (u32)StylePaddingX,
+        box.value.padding_x, 22.0, scale, false)
 }
 
 CheckboxBoxSize :: (scale: float, box: StyleFrame) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    size: float = box.value.icon_size
-    if size <= 0.0 { size = 20.0 }
-    return (i32)(size * scale)
+    return (i32)CheckboxMetric(box.value.fields, (u32)StyleIconSize,
+        box.value.icon_size, 20.0, scale, false)
 }
 
 CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float,
     label: StyleFrame) -> float #export {
-    if scale <= 0.0 { scale = 1.0 }
-    gap: float = label.value.gap
-    if gap <= 0.0 { gap = 10.0 }
-    return slot_bounds.x + slot_bounds.width + gap * scale
+    gap: float = CheckboxMetric(label.value.fields, (u32)StyleGap,
+        label.value.gap, 10.0, scale, true)
+    return slot_bounds.x + slot_bounds.width + gap
 }
 
 CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float) -> float #export {
@@ -90,11 +95,11 @@ CheckboxLayoutForText :: (x: float, y: float, label_width: float,
     layout: CheckboxLayout
     if scale <= 0.0 { scale = 1.0 }
     slot_size: float = (float)CheckboxSlotSize(scale, box)
-    gap: float = label.value.gap
-    if gap <= 0.0 { gap = 10.0 }
+    gap: float = CheckboxMetric(label.value.fields, (u32)StyleGap,
+        label.value.gap, 10.0, scale, true)
     layout.bounds.x = x
     layout.bounds.y = y
-    layout.bounds.width = slot_size + gap * scale + label_width
+    layout.bounds.width = slot_size + gap + label_width
     layout.bounds.height = slot_size
     if layout.bounds.height < text_line_height {
         layout.bounds.height = text_line_height
@@ -136,18 +141,14 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
 
     slot_size: float = (float)CheckboxSlotSize(scale, spec.box)
     box_size: float = (float)CheckboxBoxSize(scale, spec.box)
-    state_outset: float = spec.box.value.gap
-    focus_outset: float = spec.box.value.padding_y
-    mark_inset: float = spec.active.value.padding_x
-    mark_width: float = spec.active.value.icon_size
-    if state_outset <= 0.0 { state_outset = 4.0 }
-    if focus_outset <= 0.0 { focus_outset = 3.0 }
-    if mark_inset <= 0.0 { mark_inset = 5.0 }
-    if mark_width <= 0.0 { mark_width = 2.4 }
-    state_outset *= scale
-    focus_outset *= scale
-    mark_inset *= scale
-    mark_width *= scale
+    state_outset: float = CheckboxMetric(spec.box.value.fields,
+        (u32)StyleGap, spec.box.value.gap, 4.0, scale, true)
+    focus_outset: float = CheckboxMetric(spec.box.value.fields,
+        (u32)StylePaddingY, spec.box.value.padding_y, 3.0, scale, true)
+    mark_inset: float = CheckboxMetric(spec.active.value.fields,
+        (u32)StylePaddingX, spec.active.value.padding_x, 5.0, scale, true)
+    mark_width: float = CheckboxMetric(spec.active.value.fields,
+        (u32)StyleIconSize, spec.active.value.icon_size, 2.4, scale, false)
     border_width: float = spec.box.value.border_width * scale
 
     paint.bounds = spec.bounds
