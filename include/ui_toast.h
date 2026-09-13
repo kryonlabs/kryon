@@ -1,10 +1,7 @@
 #ifndef KRYON_TOAST_H
 #define KRYON_TOAST_H
 
-typedef struct ToastProps {
-    const char *message;
-    double seconds;
-} ToastProps;
+#include "ui_toast_props.generated.h"
 
 void Toast(ToastProps props);
 

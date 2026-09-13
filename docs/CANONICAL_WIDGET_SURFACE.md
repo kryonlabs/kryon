@@ -108,6 +108,7 @@ surface review:
 | `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar metrics and geometry policy | `.kry canonical` |
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
+| `runtime/toast_props.kry` | Toast props | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | Native support |
 | `runtime/modal.kry` | Modal layout and action policy | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window geometry policy | `.kry canonical` |
@@ -250,7 +251,7 @@ host roles rather than retained nodes.
 | `TabBar` | `.kry canonical` | Tab navigation surface. |
 | `NavigationBar` | `.kry canonical` | App navigation bar. |
 | `Toolbar` | `.kry canonical` | Tool/action strip. |
-| `Toast` | `.kry canonical` | Toast feedback command; message and duration live in `ToastProps`. |
+| `Toast` | `.kry canonical` | Public props live in `runtime/toast_props.kry`; toast feedback command. |
 | `Fieldset` | `.kry canonical` | Titled frame/group. |
 | `PanedView` | `.kry canonical` | Split panes. |
 | `Collapsible` | `.kry canonical` | Collapsible section. |

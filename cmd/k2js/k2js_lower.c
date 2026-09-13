@@ -1151,6 +1151,41 @@ emit_scroll_widget_arguments(FILE *f, const KirModule *m, const char *args)
     fputc('}', f);
 }
 
+static void
+emit_scroll_widget_call(FILE *f, const KirModule *m, const char *args,
+                        const KirStmt *meta)
+{
+    fputs("kryon.widget($rt, \"Scroll\", ", f);
+    emit_scroll_widget_arguments(f, m, args);
+    fputs(", $state, ", f);
+    emit_web_metadata(f, m, meta);
+    fputc(')', f);
+}
+
+static void
+emit_scroll_initializer_with_meta(FILE *f, const KirModule *m,
+                                  const char *args, const KirStmt *meta)
+{
+    char parts[3][K2JS_TEXT_MAX];
+    int count = kir_split_top(args, parts[0], 3, sizeof(parts[0]));
+
+    if(count != 3) {
+        emit_scroll_widget_call(f, m, args, meta);
+        return;
+    }
+    for(int i = 0; i < count; i++)
+        kir_trim_in_place(parts[i]);
+    fputs("(() => { const $bounds = kryon.copyValue(", f);
+    emit_initializer_value(f, m, parts[0]);
+    fputs("); kryon.widget($rt, \"Scroll\", {\"bounds\": $bounds, \"content_height\": ", f);
+    emit_initializer_value(f, m, parts[1]);
+    fputs(", \"scroll_offset\": ", f);
+    emit_initializer_value(f, m, parts[2]);
+    fputs("}, $state, ", f);
+    emit_web_metadata(f, m, meta);
+    fputs("); return $bounds; })()", f);
+}
+
 /* Evaluate initializer leaves in lexical scope, rather than sending source
  * text to a runtime parser that cannot see widget parameters or local values. */
 static void emit_widget_arguments(FILE *f, const KirModule *m,
@@ -1169,11 +1204,7 @@ emit_initializer_value_with_meta(FILE *f, const KirModule *m,
     const KirFunction *declaration = NULL;
     if(meta != NULL && stmt_has_web_metadata(meta) &&
        begin_scroll_call_args(value, arguments, sizeof(arguments))) {
-        fputs("kryon.widget($rt, \"Scroll\", ", f);
-        emit_scroll_widget_arguments(f, m, arguments);
-        fputs(", $state, ", f);
-        emit_web_metadata(f, m, meta);
-        fputc(')', f);
+        emit_scroll_initializer_with_meta(f, m, arguments, meta);
         return;
     }
     if(condition_is_widget_call(value, widget, sizeof(widget),
@@ -2077,6 +2108,13 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_EXPR: {
             char name[K2JS_NAME_MAX], args[K2JS_TEXT_MAX], out[K2JS_TEXT_MAX];
             char widget[K2JS_NAME_MAX];
+            if(stmt_has_web_metadata(st) &&
+               begin_scroll_call_args(raw, args, sizeof(args))) {
+                emit_indent(f, indent);
+                emit_scroll_widget_call(f, m, args, st);
+                fputs(";\n", f);
+                break;
+            }
             if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
                (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
                 emit_indent(f, indent);

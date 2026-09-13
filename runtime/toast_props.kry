@@ -1,0 +1,7 @@
+#module "toast_props"
+#import "kryon_compat.generated.h"
+
+ToastProps :: struct {
+    message: const char*
+    seconds: double
+}

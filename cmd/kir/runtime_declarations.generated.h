@@ -476,6 +476,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    wrap: bool\n"
         "}\n"
     },
+    {"runtime/toast_props.kry",
+        "#module \"toast_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "ToastProps :: struct {\n"
+        "    message: const char*\n"
+        "    seconds: double\n"
+        "}\n"
+    },
     {"runtime/toggle_props.kry",
         "#module \"toggle_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

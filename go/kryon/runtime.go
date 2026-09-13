@@ -428,11 +428,6 @@ type DragDropProps struct {
 	Disabled     bool
 }
 
-type ToastProps struct {
-	Message string
-	Seconds float64
-}
-
 type ArrowDirection int32
 
 const (
