@@ -31,6 +31,7 @@ typedef enum PopupFlags {
 typedef struct PopupProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     bool* open;
     bool disabled;
     Rectangle trigger;

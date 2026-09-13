@@ -31,6 +31,7 @@ typedef struct TableRow {
 typedef struct TableViewProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     const char** columns;
     int32_t column_count;
     const TableRow* rows;

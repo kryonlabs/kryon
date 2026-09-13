@@ -5,6 +5,7 @@ package kryon
 type PanedViewProps struct {
 	Bounds    Rectangle
 	ID        int32
+	ClassName int32
 	Vertical  bool
 	Split     *int32
 	MinFirst  int32

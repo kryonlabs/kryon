@@ -5779,7 +5779,8 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	if changed != 0 {
 		state = ButtonStatePressed
 	}
-	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, false, false, StyleSheet_StyleKindPanedView(), 12)
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, false, false,
+		p.ClassName, StyleSheet_StyleKindPanedView(), 12)
 	op := styleFrameRectOp(h, p.Bounds, frame)
 	op.ID = p.ID
 	op.Pressed = changed != 0
@@ -5901,20 +5902,21 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		state = ButtonStateSelected
 	}
 	buttonProps := ButtonProps{
-		Bounds:   header,
-		ID:       p.ID,
-		Tone:     ButtonToneNeutral,
-		Emphasis: ButtonEmphasisSoft,
-		Size:     ControlSizeMedium,
-		Selected: p.Selected,
-		Disabled: !enabled,
+		Bounds:    header,
+		ID:        p.ID,
+		ClassName: p.ClassName,
+		Tone:      ButtonToneNeutral,
+		Emphasis:  ButtonEmphasisSoft,
+		Size:      ControlSizeMedium,
+		Selected:  p.Selected,
+		Disabled:  !enabled,
 	}
 	headerRole := int32(13)
 	if p.Tree {
 		headerRole = 14
 	}
-	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, !enabled, p.Selected,
-		StyleSheet_StyleKindCollapsible(), headerRole)
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, !enabled, p.Selected,
+		p.ClassName, StyleSheet_StyleKindCollapsible(), headerRole)
 	headerStyle := unpackStyle(frame.Value)
 	headerFont, headerFontID := styleTextFace(headerStyle, Text16)
 	label := elideTextWithFont(mark+"  "+p.Label, body.Width-12, headerFont, headerFontID)
@@ -5937,8 +5939,8 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		} else if closed {
 			closeState = ButtonStatePressed
 		}
-		closeStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, closeState, !enabled,
-			false, StyleSheet_StyleKindCollapsible(), 15).Value)
+		closeStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, closeState, !enabled,
+			false, p.ClassName, StyleSheet_StyleKindCollapsible(), 15).Value)
 		closeFont, closeFontID := styleTextFace(closeStyle, Text16)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: closeFont, FontID: closeFontID, Pressed: closed, Disabled: !enabled})
 	}
@@ -7876,18 +7878,18 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if props.Disabled {
 		tableState = ButtonStateDisabled
 	}
-	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		StyleSheet_StyleKindTableView(), 2)
-	cellStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		StyleSheet_StyleKindTableView(), 22).Value)
-	rowFrame := simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		StyleSheet_StyleKindTableView(), 21)
+	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindTableView(), 2)
+	cellStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindTableView(), 22).Value)
+	rowFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindTableView(), 21)
 	rowStyle := unpackStyle(rowFrame.Value)
-	selectedFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateSelected, props.Disabled, true,
-		StyleSheet_StyleKindTableView(), 23)
+	selectedFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, props.Disabled, true,
+		props.ClassName, StyleSheet_StyleKindTableView(), 23)
 	selectedStyle := unpackStyle(selectedFrame.Value)
-	dividerStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		StyleSheet_StyleKindTableView(), 18).Value)
+	dividerStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindTableView(), 18).Value)
 	tableOp := styleFrameRectOp(props.Bounds, Rectangle{}, surfaceFrame)
 	tableOp.Color = disabledColor(tableOp.Color)
 	tableOp.Disabled = props.Disabled
@@ -7925,7 +7927,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		if selectedRow < 0 && selectedCol == col {
 			selected = true
 		}
-		headerFrame := simpleStyleFrameWithRole(func() ButtonTone {
+		headerFrame := simpleStyleFrameWithClassRole(func() ButtonTone {
 			if selected {
 				return ButtonToneAccent
 			}
@@ -7938,7 +7940,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				return ButtonStateSelected
 			}
 			return ButtonStateNormal
-		}(), props.Disabled, selected, StyleSheet_StyleKindTableView(), 13)
+		}(), props.Disabled, selected, props.ClassName, StyleSheet_StyleKindTableView(), 13)
 		headerStyle := unpackStyle(headerFrame.Value)
 		headerFont, headerFontID := styleTextFace(headerStyle, fallbackFont)
 		shift := tableHeaderShift(props, rect.Y)

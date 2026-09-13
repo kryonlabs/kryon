@@ -3,6 +3,7 @@
 
 CollapsibleProps :: struct {
     bounds: Rectangle
+    class_name: i32
     label: const char*
     open: *bool
     tree: bool

@@ -12,6 +12,7 @@ type TableRow struct {
 type TableViewProps struct {
 	Bounds               Rectangle
 	ID                   int32
+	ClassName            int32
 	Columns              []string
 	ColumnCount          int32
 	Rows                 []TableRow

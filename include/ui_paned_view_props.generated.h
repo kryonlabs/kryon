@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct PanedViewProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     bool vertical;
     int32_t* split;
     int32_t min_first;

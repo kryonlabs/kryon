@@ -27,7 +27,8 @@ static UIComposedPopupScope *popup_scope;
 static int
 enter_popup_scope(int id, bool *open, Rectangle popup,
                   UIPaintLayers *layers, UIPopupInputToken input,
-                  int capture_input, Rectangle input_bounds, int backdrop)
+                  int capture_input, Rectangle input_bounds, int backdrop,
+                  int class_name)
 {
     UIPopupInput *context = capture_input ?
         (layers ? ui_paint_layers_input(layers) : ui_popup_input_bound()) : NULL;
@@ -70,7 +71,8 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
         BeginClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
         Style panel = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){.tone = ButtonToneNeutral,
-                          .emphasis = ButtonEmphasisSoft},
+                          .emphasis = ButtonEmphasisSoft,
+                          .class_name = class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindPopup(), 2).value);
         ui_draw_material(popup, (Rectangle){0}, panel.background, panel.border,
@@ -149,7 +151,8 @@ int BeginPopup(PopupProps popup)
     return enter_popup_scope(popup.id,decision.tooltip ? NULL : popup.open,popup.bounds,
                              layers,
                              (UIPopupInputToken){0},decision.captures_input,
-                             input_bounds,PopupBackdropAlpha(decision) > 0);
+                             input_bounds,PopupBackdropAlpha(decision) > 0,
+                             popup.class_name);
 }
 
 void ClosePopup(void)

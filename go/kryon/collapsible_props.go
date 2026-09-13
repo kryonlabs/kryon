@@ -3,14 +3,15 @@ package kryon
 
 // #import kryon_compat.generated.h
 type CollapsibleProps struct {
-	Bounds   Rectangle
-	Label    string
-	Open     *bool
-	Tree     bool
-	Depth    int32
-	Leaf     bool
-	Selected bool
-	Disabled bool
-	ID       int32
-	Visible  *bool
+	Bounds    Rectangle
+	ClassName int32
+	Label     string
+	Open      *bool
+	Tree      bool
+	Depth     int32
+	Leaf      bool
+	Selected  bool
+	Disabled  bool
+	ID        int32
+	Visible   *bool
 }

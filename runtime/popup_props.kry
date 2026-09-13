@@ -11,6 +11,7 @@ PopupFlags :: enum {
 PopupProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     open: *bool
     disabled: bool
     trigger: Rectangle

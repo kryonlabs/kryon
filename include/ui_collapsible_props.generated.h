@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct CollapsibleProps {
     Rectangle bounds;
+    int32_t class_name;
     const char* label;
     bool* open;
     bool tree;

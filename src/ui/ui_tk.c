@@ -3661,12 +3661,12 @@ RenderTableView(TableViewProps table)
     int header_font;
 
     table.disabled = table.disabled || UIContentDisabled();
-    StyleFrame default_header_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+    StyleFrame default_header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        table.disabled, 0, StyleKindTableView(), 13);
-    StyleFrame default_cell_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        table.disabled, 0, table.class_name, StyleKindTableView(), 13);
+    StyleFrame default_cell_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        table.disabled, 0, StyleKindTableView(), 22);
+        table.disabled, 0, table.class_name, StyleKindTableView(), 22);
     header_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_header_frame).value);
     text_style = ui_unpack_style(
@@ -3774,18 +3774,18 @@ RenderTableView(TableViewProps table)
     first = scroll_layout.first;
     visible = scroll_layout.visible_rows;
     if(paint) {
-        StyleFrame surface_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        StyleFrame surface_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, StyleKindTableView(), 2);
-        StyleFrame text_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            table.disabled, 0, table.class_name, StyleKindTableView(), 2);
+        StyleFrame text_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, StyleKindTableView(), 22);
-        StyleFrame selection_frame = ui_tk_simple_style_frame_role(ButtonToneAccent,
+            table.disabled, 0, table.class_name, StyleKindTableView(), 22);
+        StyleFrame selection_frame = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
             table.disabled ? ButtonStateDisabled : ButtonStateSelected,
-            table.disabled, 1, StyleKindTableView(), 23);
-        StyleFrame divider_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            table.disabled, 1, table.class_name, StyleKindTableView(), 23);
+        StyleFrame divider_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, StyleKindTableView(), 18);
+            table.disabled, 0, table.class_name, StyleKindTableView(), 18);
         text_style = ui_unpack_style(ui_style_apply_effects_frame(text_frame).value);
         selection_style = ui_unpack_style(ui_style_apply_effects_frame(selection_frame).value);
         divider_style = ui_unpack_style(ui_style_apply_effects_frame(divider_frame).value);
@@ -3815,9 +3815,9 @@ RenderTableView(TableViewProps table)
             ButtonState header_state = table.disabled ? ButtonStateDisabled :
                 (header_hot ? ButtonStateHover :
                  (selected_header ? ButtonStateSelected : ButtonStateNormal));
-            StyleFrame header_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            StyleFrame header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
                 header_state, table.disabled, selected_header,
-                StyleKindTableView(), 13);
+                table.class_name, StyleKindTableView(), 13);
             Style header_paint = ui_unpack_style(
                 ui_style_apply_effects_frame(header_frame).value);
             Color header_color = header_paint.background;
@@ -3905,17 +3905,18 @@ RenderTableView(TableViewProps table)
                                                scrolling != 0);
         int hot = !table.disabled && !table.custom_cells && ui_contains(viewport, ui_mouse_world()) && ui_hot(row);
         if(paint && (r % 2) == 1) {
-            StyleFrame row_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            StyleFrame row_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
                 table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-                table.disabled, 0, StyleKindTableView(), 21);
+                table.disabled, 0, table.class_name, StyleKindTableView(), 21);
             ui_tk_draw_style_frame(row, table.bounds, row_frame, 0, 0,
                                    table.disabled, 0);
         }
         if(paint && ((table.selected_row != NULL && *table.selected_row == r) || hot)) {
             int selected = table.selected_row != NULL && *table.selected_row == r;
             ButtonState row_state = hot ? ButtonStateHover : ButtonStateSelected;
-            StyleFrame row_frame = ui_tk_simple_style_frame_role(ButtonToneAccent,
-                row_state, table.disabled, selected, StyleKindTableView(), 23);
+            StyleFrame row_frame = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
+                row_state, table.disabled, selected, table.class_name,
+                StyleKindTableView(), 23);
             selection_style = ui_unpack_style(ui_style_apply_effects_frame(row_frame).value);
             ui_tk_draw_style_frame(row, table.bounds, row_frame, hot, 0,
                                    table.disabled, 0);
@@ -4171,9 +4172,9 @@ RenderPanedView(PanedViewProps panes)
     handle = PanedViewHandleFor(panes.bounds, panes.vertical != 0,
                                 split, metrics);
     if(IsWindowReady()) {
-        StyleFrame frame = ui_tk_simple_style_frame_role(
-            ButtonToneNeutral, ButtonStateNormal, 0, 0, StyleKindPanedView(),
-            12);
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(
+            ButtonToneNeutral, ButtonStateNormal, 0, 0, panes.class_name,
+            StyleKindPanedView(), 12);
         ui_tk_draw_style_frame(handle, (Rectangle){0}, frame, 0, 0, 0, 0);
     }
     return changed;
@@ -4244,9 +4245,9 @@ RenderCollapsible(CollapsibleProps section)
     ButtonState default_state = !enabled ? ButtonStateDisabled
                               : section.selected ? ButtonStateSelected
                               : ButtonStateNormal;
-    StyleFrame default_item_frame = ui_tk_simple_style_frame_role(
+    StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, default_state, !enabled, section.selected,
-        StyleKindCollapsible(), section.tree ? 14 : 13);
+        section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int font = default_item_style.font_size > 0.0f
@@ -4310,17 +4311,17 @@ RenderCollapsible(CollapsibleProps section)
                           : focused ? ButtonStateFocus
                           : section.selected ? ButtonStateSelected
                           : ButtonStateNormal;
-        StyleFrame item_frame = ui_tk_simple_style_frame_role(
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(
             ButtonToneNeutral, state, !enabled, section.selected,
-            StyleKindCollapsible(), section.tree ? 14 : 13);
+            section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         font = item_style.font_size > 0.0f
             ? (int)(item_style.font_size + 0.5f)
             : font;
-        StyleFrame link_frame = ui_tk_simple_style_frame_role(
+        StyleFrame link_frame = ui_tk_simple_style_frame_class_role(
             ButtonToneNeutral, close_hover ? ButtonStateHover : ButtonStateNormal,
-            !enabled, 0, StyleKindCollapsible(), 15);
+            !enabled, 0, section.class_name, StyleKindCollapsible(), 15);
         Style link_style = ui_unpack_style(
             ui_style_apply_effects_frame(link_frame).value);
         int close_font = link_style.font_size > 0.0f

@@ -11,6 +11,7 @@ TableRow :: struct {
 TableViewProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     columns: const char**
     column_count: i32
     rows: const TableRow*

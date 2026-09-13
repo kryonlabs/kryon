@@ -12,10 +12,11 @@ const (
 )
 
 type PopupProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Open     *bool
-	Disabled bool
-	Trigger  Rectangle
-	Flags    PopupFlags
+	Bounds    Rectangle
+	ID        int32
+	ClassName int32
+	Open      *bool
+	Disabled  bool
+	Trigger   Rectangle
+	Flags     PopupFlags
 }

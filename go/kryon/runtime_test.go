@@ -2070,6 +2070,123 @@ Toast.chrome[role=Label] { foreground: toast-ink; font-size: 18; opacity: 0.67; 
 	}
 }
 
+func TestContainerWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.containers.classes;
+tokens {
+  color {
+    panel: #172536;
+    header: #284360;
+    handle: #5d7890;
+    popup: #2f253d;
+    ink: #edf6ff;
+    rule: #91a7ba;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+TableView.shell[role=Panel] { background: panel; border: rule; radius: radius; border-width: border; material: flat; }
+TableView.shell[role=Header] { background: header; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 17; material: flat; }
+TableView.shell[role=Cell] { foreground: ink; font-size: 15; opacity: 0.7; }
+Collapsible.shell[role=Header] { background: header; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 18; material: flat; }
+Collapsible.shell[role=Close] { foreground: ink; font-size: 16; opacity: 0.6; }
+PanedView.shell[role=Handle] { background: handle; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.75; }
+Popup.shell[role=Panel] { background: popup; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Container Classes", "") || !SetActiveStylePack("test.containers.classes") {
+		t.Fatal("container class style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 240}).(*runtime)
+	className := StyleClassID("shell")
+	split := int32(60)
+	openSection := true
+	visibleSection := true
+	openPopup := true
+
+	rt.BeginFrame()
+	rt.PanedView(PanedViewProps{
+		Bounds:    Rectangle{X: 8, Y: 8, Width: 120, Height: 80},
+		ID:        401,
+		ClassName: className,
+		Split:     &split,
+	})
+	rt.Collapsible(CollapsibleProps{
+		Bounds:    Rectangle{X: 8, Y: 96, Width: 180, Height: 32},
+		ClassName: className,
+		Label:     "Section",
+		Open:      &openSection,
+		ID:        402,
+		Visible:   &visibleSection,
+	})
+	rt.TableView(TableViewProps{
+		Bounds:       Rectangle{X: 140, Y: 8, Width: 180, Height: 80},
+		ID:           403,
+		ClassName:    className,
+		Columns:      []string{"Name"},
+		Rows:         []TableRow{{Cells: []string{"Cell"}}},
+		RowHeight:    26,
+		ColumnWidths: []int32{120},
+	})
+	if !rt.BeginPopup(PopupProps{
+		Bounds:    Rectangle{X: 30, Y: 140, Width: 120, Height: 60},
+		ID:        404,
+		ClassName: className,
+		Open:      &openPopup,
+	}) {
+		t.Fatal("open popup returned false")
+	}
+	rt.EndPopup()
+	rt.EndFrame()
+
+	var sawPaned, sawCollapsible, sawClose, sawTable, sawHeader, sawPopup bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.ID == 401:
+			sawPaned = true
+			if op.Color != (Color{R: 0x5d, G: 0x78, B: 0x90, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x91, G: 0xa7, B: 0xba, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 || op.Opacity != 0.75 {
+				t.Fatalf("paned class op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.ID == 402:
+			sawCollapsible = true
+			if op.Color != (Color{R: 0x28, G: 0x43, B: 0x60, A: 0xff}) ||
+				op.TextColor != (Color{R: 0xed, G: 0xf6, B: 0xff, A: 0xff}) ||
+				op.FontSize != 18 {
+				t.Fatalf("collapsible class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "×":
+			sawClose = true
+			if op.Color != (Color{R: 0xed, G: 0xf6, B: 0xff, A: 0xff}) ||
+				op.FontSize != 16 || op.Opacity != 0.6 {
+				t.Fatalf("collapsible close class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 140, Y: 8, Width: 180, Height: 80}):
+			sawTable = true
+			if op.Color != (Color{R: 0x17, G: 0x25, B: 0x36, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("table class panel op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == -1 && op.Column == 0:
+			sawHeader = true
+			if op.FontSize != 17 || op.Color != (Color{R: 0xed, G: 0xf6, B: 0xff, A: 0xff}) {
+				t.Fatalf("table class header op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 404:
+			sawPopup = true
+			if op.Color != (Color{R: 0x2f, G: 0x25, B: 0x3d, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("popup class op = %+v", op)
+			}
+		}
+	}
+	if !sawPaned || !sawCollapsible || !sawClose || !sawTable || !sawHeader || !sawPopup {
+		t.Fatalf("missing container class ops: paned=%v collapsible=%v close=%v table=%v header=%v popup=%v ops=%+v",
+			sawPaned, sawCollapsible, sawClose, sawTable, sawHeader, sawPopup, rt.FrameOps())
+	}
+}
+
 func TestPlotTextUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

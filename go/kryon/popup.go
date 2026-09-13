@@ -75,8 +75,8 @@ func (r *runtime) BeginPopup(p PopupProps) bool {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: NewRectangle(0, 0, float32(r.GetScreenWidth()), float32(r.GetScreenHeight())), Color: Color{A: uint8(alpha)}})
 	}
 	r.scrollClips = append(r.scrollClips, p.Bounds)
-	panelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, StyleSheet_StyleKindPopup(), 2)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, p.ClassName, StyleSheet_StyleKindPopup(), 2)
 	panelOp := styleFrameRectOp(p.Bounds, Rectangle{}, panelFrame)
 	panelOp.ID = p.ID
 	r.record(panelOp)
