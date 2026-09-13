@@ -417,6 +417,9 @@ export interface WebAccessibilityNode {
   description: string;
   text: string;
   value: unknown;
+  min: string;
+  max: string;
+  valueNow: string;
   href: string;
   inputType: string;
   level: number;
@@ -846,6 +849,9 @@ export interface WebDOMSnapshot {
   styleFacts: WebNodeStyleFacts;
   text: string;
   value: unknown;
+  min: string;
+  max: string;
+  valueNow: string;
   state: Record<string, boolean>;
   attrs: Record<string, string>;
   dataset: Record<string, string>;

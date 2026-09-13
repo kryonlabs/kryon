@@ -81,6 +81,11 @@ try {
     path: "Page/article/line",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Progress", { min: 0, max: 100, value: 64, label: "Upload" }, null, {
+    nodeName: "upload",
+    path: "Page/article/upload",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "ListBox", {}, null, {
     nodeName: "choices",
     path: "Page/article/choices",
@@ -261,6 +266,8 @@ try {
   assert(article.kryStyleTrace.resolved.display === "grid", "element style trace missing");
   assert(kryon.webDOMObject(target, "article-ref").styleTrace.resolved.display === "grid",
     "object style trace missing");
+  const uploadSnapshot = kryon.webDOMSnapshot(target, "Page/prices/priceCell");
+  assert(uploadSnapshot.valueNow === "", "non-range snapshot should not expose valueNow");
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
     "root source object map lookup failed");
   assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,
@@ -308,6 +315,7 @@ try {
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");
+  const upload = kryon.findWebElement(target, "upload");
   const choice = kryon.findWebElement(target, "choiceBeta");
   const menuItem = kryon.findWebElement(target, "archiveItem");
   const tab = kryon.findWebElement(target, "overviewTab");
@@ -320,6 +328,13 @@ try {
   assert(line.tagName === "HR", "line native separator not rendered");
   assert(kryon.webDOMSnapshot(target, "line").role === "separator",
     "line separator snapshot role missing");
+  assert(upload.tagName === "PROGRESS", "progress native element missing");
+  assert(kryon.webDOMSnapshot(target, "upload").min === "0",
+    "progress snapshot min missing");
+  assert(kryon.webDOMSnapshot(target, "upload").max === "100",
+    "progress snapshot max missing");
+  assert(kryon.webDOMSnapshot(target, "upload").valueNow === "64",
+    "progress snapshot valueNow missing");
   assert(choice.tagName === "OPTION", "selectable native option not rendered");
   assert(choice.value === "b", "selectable option value missing");
   assert(choice.selected === true, "selectable option selected state missing");

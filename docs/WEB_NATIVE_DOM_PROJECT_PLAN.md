@@ -113,6 +113,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - First-class ARIA structure facts for menus, lists, trees, and grouped
   controls: orientation, level, position in set, set size, popup type, sort
   order, and multiselect state.
+- Accessibility and DOM snapshots expose native value range facts for
+  slider/spinbox/progress controls so inspectors can show `min`, `max`, and
+  current value without scraping browser attributes.
 - Event bridge for click/tap/double-click, form/text/key down/key up,
   focus/blur, scroll, first-class pointer and mouse events, wheel/context menu,
   drag/drop, clipboard, dialog, and popover events.

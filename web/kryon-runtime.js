@@ -1865,33 +1865,51 @@ export function webAccessibilitySnapshot(source) {
   return {
     title: frame.metadata?.title || "",
     description: frame.metadata?.description || "",
-    nodes: (frame.nodes || []).map((node) => ({
-      path: node.path,
-      sourcePath: node.sourcePath,
-      sourceLine: node.sourceLine,
-      sourceColumn: node.sourceColumn,
-      sourceEndLine: node.sourceEndLine,
-      sourceEndColumn: node.sourceEndColumn,
-      name: node.name,
-      kind: node.kind,
-      tag: node.tag,
-      id: node.domId,
-      classes: [...node.classes],
-      role: node.role || implicitRole(node),
-      label: node.ariaLabel || node.text || node.name,
-      description: node.ariaDescription,
-      text: node.text,
-      value: node.tag === "progress" ? node.domValue
-        : node.tag === "input" || node.tag === "textarea" ? node.value : "",
-      href: node.href,
-      inputType: node.inputType,
-      level: node.level || 0,
-      rowIndex: node.ariaRowIndex,
-      colIndex: node.ariaColIndex,
-      rowCount: node.ariaRowCount,
-      colCount: node.ariaColCount,
-      state: { ...node.state }
-    }))
+    nodes: (frame.nodes || []).map((node) => {
+      const range = webNodeValueRange(node);
+      return {
+        path: node.path,
+        sourcePath: node.sourcePath,
+        sourceLine: node.sourceLine,
+        sourceColumn: node.sourceColumn,
+        sourceEndLine: node.sourceEndLine,
+        sourceEndColumn: node.sourceEndColumn,
+        name: node.name,
+        kind: node.kind,
+        tag: node.tag,
+        id: node.domId,
+        classes: [...node.classes],
+        role: node.role || implicitRole(node),
+        label: node.ariaLabel || node.text || node.name,
+        description: node.ariaDescription,
+        text: node.text,
+        value: node.tag === "progress" ? node.domValue
+          : node.tag === "input" || node.tag === "textarea" ? node.value : "",
+        min: range.min,
+        max: range.max,
+        valueNow: range.valueNow,
+        href: node.href,
+        inputType: node.inputType,
+        level: node.level || 0,
+        rowIndex: node.ariaRowIndex,
+        colIndex: node.ariaColIndex,
+        rowCount: node.ariaRowCount,
+        colCount: node.ariaColCount,
+        state: { ...node.state }
+      };
+    })
+  };
+}
+
+function webNodeValueRange(node) {
+  const rangeLike = node?.tag === "progress" ||
+    (node?.tag === "input" && (node?.inputType === "range" || node?.inputType === "number"));
+  if (!rangeLike)
+    return { min: "", max: "", valueNow: "" };
+  return {
+    min: node?.min || "",
+    max: node?.max || "",
+    valueNow: node?.domValue || (node?.value === undefined || node?.value === null ? "" : String(node.value))
   };
 }
 
@@ -8061,6 +8079,7 @@ function webNodeSnapshotForNode(rt, node) {
     return null;
   const identity = webNodeIdentity(node);
   const query = node.path || node.webRef || identity.ref;
+  const range = webNodeValueRange(node);
   return {
     ref: identity.ref,
     aliases: identity.aliases,
@@ -8092,6 +8111,9 @@ function webNodeSnapshotForNode(rt, node) {
     styleFacts: webNodeStyleFacts(node),
     text: node.text ?? "",
     value: node.domValue ?? node.value ?? "",
+    min: range.min,
+    max: range.max,
+    valueNow: range.valueNow,
     state: { ...(node.state || {}) },
     attrs: {},
     dataset: {},
@@ -8118,6 +8140,7 @@ function webDOMObjectSnapshot(target, object) {
   const el = object.element || {};
   const relations = webDOMRelationsForNode(target, node);
   const identity = webNodeIdentity(node);
+  const range = webNodeValueRange(node);
   return {
     ref: object.ref || "",
     aliases: identity.aliases,
@@ -8149,6 +8172,9 @@ function webDOMObjectSnapshot(target, object) {
     styleFacts: webNodeStyleFacts(node),
     text: webDOMGetText(target, node.path) ?? node.text ?? "",
     value: webDOMGetValue(target, node.path),
+    min: range.min,
+    max: range.max,
+    valueNow: range.valueNow,
     state: { ...(node.state || {}) },
     attrs: plainElementMap(el.attributes),
     dataset: plainElementMap(el.dataset),

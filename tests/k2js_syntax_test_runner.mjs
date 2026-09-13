@@ -1827,6 +1827,9 @@ function fakeDocument() {
     assert.equal(snapshot.nodes[2].state.checked, true);
     assert.equal(snapshot.nodes[3].role, "progressbar");
     assert.equal(snapshot.nodes[3].value, "42");
+    assert.equal(snapshot.nodes[3].min, "0");
+    assert.equal(snapshot.nodes[3].max, "100");
+    assert.equal(snapshot.nodes[3].valueNow, "42");
     const target = document.createElement("div");
     runtime.renderWebDocument(ariaRt, target);
     const root = target.children[0];
@@ -2072,6 +2075,9 @@ function fakeDocument() {
         description: "",
         text: "$12",
         value: "",
+        min: "",
+        max: "",
+        valueNow: "",
         href: "",
         inputType: "",
         level: 0,
@@ -2366,6 +2372,11 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").tag, "option");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").state.selected, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/details").role, "tab");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").valueNow, "4");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").min, "0");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").max, "10");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Slider")?.valueNow, "4");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
@@ -2476,6 +2487,9 @@ function fakeDocument() {
     assert.equal(volume.attributes.min, "0");
     assert.equal(volume.attributes.max, "10");
     assert.equal(volume.attributes.value, "4");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").valueNow, "4");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").min, "0");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").max, "10");
     assert.equal(copies.tagName, "INPUT");
     assert.equal(copies.attributes.type, "number");
     assert.equal(choice.tagName, "SELECT");
