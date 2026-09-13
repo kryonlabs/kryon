@@ -15,6 +15,12 @@ FieldsetPaint :: struct {
     show_title: bool
 }
 
+FieldsetMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> float {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return value * scale
+}
+
 FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
     has_title: bool, scale: float, frame: StyleFrame) -> FieldsetPaint #export {
     paint: FieldsetPaint
@@ -22,26 +28,15 @@ FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
         scale = 1.0
     }
 
-    pad: float = frame.value.padding_x
-    if (frame.value.fields & (u32)StylePaddingX) == (u32)0 || pad < 0.0 {
-        pad = 8.0
-    }
-    pad *= scale
-    title_height: float = frame.value.font_size
-    if (frame.value.fields & (u32)StyleFontSize) == (u32)0 || title_height <= 0.0 {
-        title_height = 18.0
-    }
-    title_height *= scale
-    title_offset_y: float = frame.value.padding_y
-    if (frame.value.fields & (u32)StylePaddingY) == (u32)0 || title_offset_y < 0.0 {
-        title_offset_y = 8.0
-    }
-    title_offset_y *= scale
-    text_offset_y: float = frame.value.gap
-    if (frame.value.fields & (u32)StyleGap) == (u32)0 || text_offset_y < 0.0 {
-        text_offset_y = 9.0
-    }
-    text_offset_y *= scale
+    pad: float = FieldsetMetric(frame.value.fields, (u32)StylePaddingX,
+        frame.value.padding_x, 8.0, scale)
+    title_height: float = FieldsetMetric(frame.value.fields,
+        (u32)StyleFontSize, frame.value.font_size, 18.0, scale)
+    if title_height <= 0.0 { title_height = 18.0 * scale }
+    title_offset_y: float = FieldsetMetric(frame.value.fields,
+        (u32)StylePaddingY, frame.value.padding_y, 8.0, scale)
+    text_offset_y: float = FieldsetMetric(frame.value.fields, (u32)StyleGap,
+        frame.value.gap, 9.0, scale)
 
     paint.frame = bounds
     paint.face = frame
