@@ -42,6 +42,10 @@ the browser receives normal elements, attributes, CSS, and events.
   `Figure chart: { ... }`, and `Table grid: { ... }` emit compiler-owned Web
   Document nodes, preserving source names, paths, DOM metadata, and child
   nesting for KSS and browser DOM tooling.
+- Browser-backed coverage now compiles named browser-native alias blocks from
+  `.kry`, mounts the generated JavaScript in Chromium, and verifies native DOM
+  tags, source annotations, KSS selector/style traces, child traversal, and
+  caption relationships on the mounted elements.
 - Browser-backed Web Document smoke coverage now exercises native elements,
   KSS inline and installed CSS styling, selector lookup, event decoration, table
   header relationships, form ownership, numeric input range facts, and source
