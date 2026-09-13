@@ -257,6 +257,10 @@ export interface WebDocumentNode {
     checked: boolean;
     invalid: boolean;
     valid: boolean;
+    indeterminate: boolean;
+    default: boolean;
+    autofill: boolean;
+    "placeholder-shown": boolean;
     expanded: boolean;
     open: boolean;
     hover: boolean;
@@ -287,6 +291,7 @@ export interface WebNodeStyleFacts {
   id: string;
   domName: string;
   title: string;
+  placeholder: string;
   tabIndex: number | null;
   domValue: string;
   href: string;

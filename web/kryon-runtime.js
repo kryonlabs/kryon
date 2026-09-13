@@ -1464,6 +1464,11 @@ function webNodeFromWidget(item, index) {
     checked: isTruthyProp(args, "checked"),
     invalid: isTruthyProp(args, "invalid"),
     valid: isTruthyProp(args, "valid"),
+    indeterminate: isTruthyProp(args, "indeterminate"),
+    default: isTruthyProp(args, "default"),
+    autofill: isTruthyProp(args, "autofill"),
+    "placeholder-shown": isTruthyProp(args, "placeholder_shown") ||
+      isTruthyProp(args, "placeholderShown"),
     expanded: isTruthyProp(args, "expanded"),
     open: isTruthyProp(args, "open"),
     hover: false,
@@ -1745,6 +1750,7 @@ export function webNodeStyleFacts(node) {
     id: node?.domId || "",
     domName: node?.domName || "",
     title: node?.title || "",
+    placeholder: node?.placeholder || "",
     tabIndex: Number.isFinite(Number(node?.tabIndex)) ? Math.trunc(Number(node.tabIndex)) : null,
     domValue: node?.domValue || "",
     href: node?.href || "",
@@ -2345,7 +2351,9 @@ function parseSimpleSelector(text) {
         pseudo === "focus" || pseudo === "focused" || pseudo === "focus-visible" ||
         pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "valid" || pseudo === "expanded" || pseudo === "open" ||
+        pseudo === "invalid" || pseudo === "valid" || pseudo === "indeterminate" ||
+        pseudo === "default" || pseudo === "autofill" || pseudo === "placeholder-shown" ||
+        pseudo === "expanded" || pseudo === "open" ||
         pseudo === "readonly" || pseudo === "read-only" || pseudo === "required" ||
         pseudo === "enabled" || pseudo === "optional")) {
       const state = pseudo === "active" ? "pressed" :
@@ -2721,6 +2729,10 @@ function webStyleStateSelectorToCSS(state) {
     selected: [":checked", "[selected]", "[aria-selected=\"true\"]", "[aria-current]"],
     invalid: [":invalid", "[aria-invalid=\"true\"]"],
     valid: [":valid", "[aria-invalid=\"false\"]"],
+    indeterminate: [":indeterminate", "[aria-checked=\"mixed\"]"],
+    default: [":default"],
+    autofill: [":autofill", ":-webkit-autofill"],
+    "placeholder-shown": [":placeholder-shown"],
     expanded: ["[aria-expanded=\"true\"]"],
     readonly: [":read-only", "[readonly]"],
     required: [":required", "[required]"],
@@ -3374,12 +3386,24 @@ function styleStateMatches(name, state, facts = {}) {
       return true;
     const invalid = !!state?.invalid || facts.ariaAttrs?.invalid === "true" ||
       facts.extraAttrs?.["aria-invalid"] === "true";
-    const formControl = facts.tag === "input" || facts.tag === "select" || facts.tag === "textarea" ||
-      ["TextField", "Input", "TextArea", "ColorPicker", "Slider", "Spinbox", "Dropdown",
-       "ListBox", "Checkbox", "Toggle", "Radio"].includes(facts.kind);
+    const formControl = webStyleFactsDescribeFormControl(facts);
     return formControl && !invalid;
   }
+  if (key === "indeterminate" || key === "default" || key === "autofill")
+    return !!state?.[key];
+  if (key === "placeholder-shown" || key === "placeholder_shown") {
+    if (state?.["placeholder-shown"] || state?.placeholderShown)
+      return true;
+    return webStyleFactsDescribeFormControl(facts) && !!facts.placeholder &&
+      !String(facts.domValue || facts.value || "");
+  }
   return !!state?.[key];
+}
+
+function webStyleFactsDescribeFormControl(facts) {
+  return facts.tag === "input" || facts.tag === "select" || facts.tag === "textarea" ||
+    ["TextField", "Input", "TextArea", "ColorPicker", "Slider", "Spinbox", "Dropdown",
+     "ListBox", "Checkbox", "Toggle", "Radio"].includes(facts.kind);
 }
 
 function selectorDataAttrValue(key, facts) {
@@ -3439,8 +3463,13 @@ function selectorNativeAttrValue(key, facts) {
     case "scrolltop": return facts.scrollTop;
     case "readonly": return facts.readOnly;
     case "required": return facts.required;
+    case "min": return facts.min;
+    case "max": return facts.max;
+    case "step": return facts.step;
     case "minlength": return facts.minLength;
     case "maxlength": return facts.maxLength;
+    case "pattern": return facts.pattern;
+    case "accept": return facts.accept;
     case "inputmode": return facts.inputMode;
     case "headers": return facts.headers;
     case "scope": return facts.scope;
@@ -6852,7 +6881,7 @@ function applyWebNode(el, docNode, rt) {
   }
   setAttr(el, "aria-checked",
     docNode.inputType === "checkbox" || docNode.inputType === "radio"
-      ? (docNode.state.checked ? "true" : "false")
+      ? (docNode.state.indeterminate ? "mixed" : (docNode.state.checked ? "true" : "false"))
       : "");
   setAttr(el, "aria-current",
     docNode.tag === "a" && docNode.state.selected ? "page" : "");
@@ -6934,6 +6963,8 @@ function applyWebNode(el, docNode, rt) {
     if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio")
       el.value = nativeValue;
     el.checked = !!docNode.state.checked;
+    if ("indeterminate" in el)
+      el.indeterminate = !!docNode.state.indeterminate;
   } else if (docNode.tag === "textarea") {
     el.value = docNode.value;
   } else {
@@ -9183,13 +9214,18 @@ export function webDOMHasClass(target, query, className) {
 }
 
 const webDOMStateNames = new Set([
-  "disabled", "loading", "selected", "checked", "invalid", "valid", "expanded",
+  "disabled", "loading", "selected", "checked", "invalid", "valid",
+  "indeterminate", "default", "autofill", "placeholder-shown", "expanded",
   "open", "hover", "pressed", "focus"
 ]);
 
 function cleanDOMStateName(name) {
-  const key = String(name || "").trim().toLowerCase().replace(/-/g, "_");
+  const key = String(name || "").trim().toLowerCase().replace(/_/g, "-");
   if (key === "focused")
+    return "focus";
+  if (key === "active")
+    return "pressed";
+  if (key === "focus-visible")
     return "focus";
   return webDOMStateNames.has(key) ? key : "";
 }

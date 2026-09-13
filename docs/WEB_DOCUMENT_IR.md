@@ -436,7 +436,9 @@ including `data-kry-*`, data/ARIA/native attributes, classes, and
 native browser pseudo/attribute selectors for states such as hover, focus,
 focus-visible, pressed/active, disabled, enabled, loading, checked, selected,
 invalid, valid, expanded, readonly, required, optional, open, focus-within,
-and hash-targeted nodes when the browser has a matching concept.
+hash-targeted nodes, placeholder-shown controls, indeterminate controls,
+default controls, and autofilled controls when the browser has a matching
+concept.
 Selected-state CSS also targets `aria-current` for current-page links. The web
 resolver supports kind selectors, descendant, child, and sibling chains, `[index=...]`,
 `#id`, `.class`, `[ref=...]`, `[webRef=...]`, CSS-style attribute operators

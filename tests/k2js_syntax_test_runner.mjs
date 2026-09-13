@@ -788,6 +788,10 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button:focus-visible { outline-color: #232323; }
   Screen:focus-within { outline-width: 6; }
   Button:target { text-decoration-line: underline; }
+  TextField:placeholder-shown { opacity: 0.61; }
+  Toggle:indeterminate { opacity: 0.62; }
+  Radio:default { opacity: 0.63; }
+  TextField:autofill { opacity: 0.64; }
   Selectable:selected { opacity: 0.6; }
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
@@ -811,6 +815,14 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="Screen"\]:focus-within/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:target/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="TextField"\]:is\(:placeholder-shown,\[data-kry-state~="placeholder-shown"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Toggle"\]:is\(:indeterminate,\[aria-checked="mixed"\],\[data-kry-state~="indeterminate"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Radio"\]:is\(:default,\[data-kry-state~="default"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="TextField"\]:is\(:autofill,:-webkit-autofill,\[data-kry-state~="autofill"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[aria-current\],\[data-kry-state~="selected"\]\)/);
 assert.match(stateSelectorCSS,
@@ -1076,6 +1088,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   id: "tap-button",
   domName: "",
   title: "Tap details",
+  placeholder: "",
   tabIndex: 3,
   domValue: "tap-value",
   href: "",
@@ -1160,6 +1173,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
     checked: false,
     invalid: false,
     valid: false,
+    indeterminate: false,
+    default: false,
+    autofill: false,
+    "placeholder-shown": false,
     expanded: false,
     open: false,
     hover: false,
@@ -1253,6 +1270,44 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], runtime.parseWebStyleSheet
     opacity: 0.66;
   }
 `)).opacity, 0.66);
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[3],
+  domValue: "",
+  value: "",
+  state: { ...webDoc.nodes[3].state, "placeholder-shown": false }
+}, runtime.parseWebStyleSheet(`
+  TextField:placeholder-shown {
+    opacity: 0.61;
+  }
+`)).opacity, 0.61);
+assert.equal(runtime.resolveWebStyle({
+  kind: "Toggle",
+  tag: "input",
+  inputType: "checkbox",
+  state: { indeterminate: true }
+}, runtime.parseWebStyleSheet(`
+  Toggle:indeterminate {
+    opacity: 0.62;
+  }
+`)).opacity, 0.62);
+assert.equal(runtime.resolveWebStyle({
+  kind: "Radio",
+  tag: "input",
+  inputType: "radio",
+  state: { default: true }
+}, runtime.parseWebStyleSheet(`
+  Radio:default {
+    opacity: 0.63;
+  }
+`)).opacity, 0.63);
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[3],
+  state: { ...webDoc.nodes[3].state, autofill: true }
+}, runtime.parseWebStyleSheet(`
+  TextField:autofill {
+    opacity: 0.64;
+  }
+`)).opacity, 0.64);
 const focusWithinRoot = { ...webDoc.nodes[0] };
 const focusWithinButton = {
   ...webDoc.nodes[2],
@@ -1302,6 +1357,7 @@ assert.equal(runtime.webNodeQuery(rt, "Button:enabled").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "Input:optional").path, webDoc.nodes[6].path);
 assert.equal(runtime.webNodeQuery(rt, "TextField:valid").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "Screen:valid"), null);
+assert.equal(runtime.webNodeQuery(rt, "[placeholder=\"Search terms\"]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[min=1]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[max=100]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[step=1]").path, "Scene/root/search");
@@ -1706,6 +1762,7 @@ function fakeDocument() {
       className: "",
       textContent: "",
       checked: false,
+      indeterminate: false,
       open: false,
       inert: false,
       formNoValidate: false,
@@ -2312,6 +2369,10 @@ function fakeDocument() {
           checked: false,
           invalid: false,
           valid: false,
+          indeterminate: false,
+          default: false,
+          autofill: false,
+          "placeholder-shown": false,
           expanded: false,
           open: false,
           hover: false,
@@ -2601,6 +2662,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "[type=email]").path, "Page/email");
     assert.equal(runtime.webNodeQuery(nativeRt, "[autocomplete=email]").path, "Page/email");
     assert.equal(runtime.webNodeQuery(nativeRt, "[inputmode=email]").path, "Page/email");
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Page/email")).placeholder,
+      "Email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").tag, "option");
@@ -2733,6 +2796,11 @@ function fakeDocument() {
     assert.equal(email.attributes.pattern, ".+@.+");
     assert.equal(email.attributes.inputmode, "email");
     assert.equal(email.attributes.enterkeyhint, "send");
+    assert.equal(runtime.webDOMQuery(nativeTarget, "[placeholder=Email]").element, email);
+    assert.equal(runtime.webDOMSetState(nativeTarget, "enabled", "indeterminate", true), true);
+    assert.equal(runtime.webDOMQuery(nativeTarget, "Toggle:indeterminate").node.path, "Page/enabled");
+    assert.equal(enabled.indeterminate, true);
+    assert.equal(enabled.attributes["aria-checked"], "mixed");
     assert.equal(volume.tagName, "INPUT");
     assert.equal(volume.attributes.type, "range");
     assert.equal(volume.attributes.min, "0");
@@ -4144,6 +4212,13 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "Screen:valid"), null);
     assert.equal(runtime.webDOMSetState(target, "q", "valid", true), true);
     assert.equal(runtime.webDOMGetState(target, "q", "valid"), true);
+    assert.equal(runtime.webDOMSetState(target, "q", "placeholder-shown", true), true);
+    assert.equal(runtime.webDOMGetState(target, "q", "placeholder_shown"), true);
+    assert.equal(runtime.webDOMQuery(target, "TextField:placeholder-shown").element,
+      runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMSetState(target, "q", "autofill", true), true);
+    assert.equal(runtime.webDOMQuery(target, "TextField:autofill").element,
+      runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[min=1]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[max=100]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[step=1]").element, runtime.findWebElement(target, "q"));

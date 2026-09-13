@@ -229,6 +229,9 @@ the browser receives normal elements, attributes, CSS, and events.
   Kry form-control facts and native browser pseudo/attribute selectors.
 - KSS state selectors support `:enabled` and `:optional` against Kry state and
   form-control facts with native browser pseudo selector export.
+- KSS form-control state selectors support browser-native
+  `:placeholder-shown`, `:indeterminate`, `:default`, and `:autofill` CSS
+  export plus Kry state/fact matching for pre-mount and mounted DOM queries.
 - KSS structural selectors support browser-native `:empty` in CSS export,
   pre-mount Web Document queries, and mounted DOM object queries.
 - KSS structural selectors support browser-native `:nth-last-child(...)`
