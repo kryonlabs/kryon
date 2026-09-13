@@ -212,8 +212,9 @@ the browser receives normal elements, attributes, CSS, and events.
   and font palette selection.
 - KSS web text decoration styling covers native line, color, style, thickness,
   underline offset, and skip-ink controls; native text alignment, rendering,
-  emphasis, ruby, combine-upright, orientation, size-adjustment, and vertical
-  alignment are accepted for browser CSS export and mounted DOM styling.
+  emphasis, ruby, combine-upright, orientation, size-adjustment, text wrapping,
+  justification, line breaking, hanging punctuation, and vertical alignment are
+  accepted for browser CSS export and mounted DOM styling.
 - KSS web border styling accepts native border-image shorthand and longhands in
   addition to the physical and logical border controls.
 - KSS web sizing supports logical `inline-size`/`block-size` and min/max

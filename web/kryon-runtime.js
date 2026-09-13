@@ -2183,13 +2183,16 @@ const webKssLiteralProperties = new Set([
   "font-variant-position", "font-language-override", "font-palette",
   "text-align", "text-align-last", "text-rendering",
   "text-decoration", "text-decoration-line", "text-decoration-style",
-  "text-decoration-skip-ink", "text-shadow", "text-emphasis",
+  "text-decoration-skip", "text-decoration-skip-ink",
+  "text-underline-position", "text-shadow", "text-emphasis",
   "text-emphasis-style", "text-emphasis-position",
   "text-transform", "text-overflow", "white-space",
   "text-size-adjust", "text-orientation", "text-wrap",
+  "text-wrap-mode", "text-wrap-style", "text-justify", "line-break",
+  "hanging-punctuation",
   "text-combine-upright", "ruby-align", "ruby-position",
   "text-spacing-trim", "text-autospace", "text-box-trim", "text-box-edge",
-  "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "word-break", "overflow-wrap", "word-wrap", "display", "position", "z-index", "overflow",
   "border-top", "border-right", "border-bottom", "border-left",
   "border-inline", "border-block", "border-inline-start",
   "border-inline-end", "border-block-start", "border-block-end",
@@ -3000,9 +3003,11 @@ const webCSSPropertyNames = new Map([
   ["text-decoration-line", "text-decoration-line"],
   ["text-decoration-color", "text-decoration-color"],
   ["text-decoration-style", "text-decoration-style"],
+  ["text-decoration-skip", "text-decoration-skip"],
   ["text-decoration-skip-ink", "text-decoration-skip-ink"],
   ["text-decoration-thickness", "text-decoration-thickness"],
   ["text-underline-offset", "text-underline-offset"],
+  ["text-underline-position", "text-underline-position"],
   ["text-shadow", "text-shadow"],
   ["text-emphasis", "text-emphasis"],
   ["text-emphasis-color", "text-emphasis-color"],
@@ -3014,6 +3019,9 @@ const webCSSPropertyNames = new Map([
   ["text-size-adjust", "text-size-adjust"],
   ["text-orientation", "text-orientation"],
   ["text-wrap", "text-wrap"],
+  ["text-wrap-mode", "text-wrap-mode"],
+  ["text-wrap-style", "text-wrap-style"],
+  ["text-justify", "text-justify"],
   ["text-combine-upright", "text-combine-upright"],
   ["ruby-align", "ruby-align"],
   ["ruby-position", "ruby-position"],
@@ -3023,6 +3031,9 @@ const webCSSPropertyNames = new Map([
   ["text-box-edge", "text-box-edge"],
   ["word-break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
+  ["word-wrap", "word-wrap"],
+  ["line-break", "line-break"],
+  ["hanging-punctuation", "hanging-punctuation"],
   ["vertical-align", "vertical-align"],
   ["display", "display"],
   ["position", "position"],
@@ -4425,9 +4436,11 @@ function applyResolvedWebStyle(el, style) {
   set("textDecorationLine", style["text-decoration-line"]);
   set("textDecorationColor", style["text-decoration-color"]);
   set("textDecorationStyle", style["text-decoration-style"]);
+  set("textDecorationSkip", style["text-decoration-skip"]);
   set("textDecorationSkipInk", style["text-decoration-skip-ink"]);
   set("textDecorationThickness", style["text-decoration-thickness"]);
   set("textUnderlineOffset", style["text-underline-offset"]);
+  set("textUnderlinePosition", style["text-underline-position"]);
   set("textShadow", style["text-shadow"]);
   set("textEmphasis", style["text-emphasis"]);
   set("textEmphasisColor", style["text-emphasis-color"]);
@@ -4439,6 +4452,9 @@ function applyResolvedWebStyle(el, style) {
   set("textSizeAdjust", style["text-size-adjust"]);
   set("textOrientation", style["text-orientation"]);
   set("textWrap", style["text-wrap"]);
+  set("textWrapMode", style["text-wrap-mode"]);
+  set("textWrapStyle", style["text-wrap-style"]);
+  set("textJustify", style["text-justify"]);
   set("textCombineUpright", style["text-combine-upright"]);
   set("rubyAlign", style["ruby-align"]);
   set("rubyPosition", style["ruby-position"]);
@@ -4448,6 +4464,9 @@ function applyResolvedWebStyle(el, style) {
   set("textBoxEdge", style["text-box-edge"]);
   set("wordBreak", style["word-break"]);
   set("overflowWrap", style["overflow-wrap"]);
+  set("wordWrap", style["word-wrap"]);
+  set("lineBreak", style["line-break"]);
+  set("hangingPunctuation", style["hanging-punctuation"]);
   set("verticalAlign", style["vertical-align"]);
   set("display", style.display);
   set("position", style.position);
