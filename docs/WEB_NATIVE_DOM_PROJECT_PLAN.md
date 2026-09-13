@@ -151,6 +151,8 @@ the browser receives normal elements, attributes, CSS, and events.
   previous/next sibling-list variants, `webDOMPreviousSibling(...)`,
   `webDOMNextSibling(...)`, mounted root helpers, element getters, and
   `WebDOMObject` getters.
+- Ancestor traversal APIs expose full parent chains before and after mount for
+  breadcrumb-style inspectors and scoped DOM tooling.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
 - Browser-backed KSS coverage verifies mounted application of native container,

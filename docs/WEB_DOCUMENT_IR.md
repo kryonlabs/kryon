@@ -564,9 +564,10 @@ style resolution.
 `webNodeMatches(rt, query, selector)` tests an unmounted node against the same
 selector facts without requiring callers to repeat query/filter logic.
 
-`webNodeParent(rt, query)`, `webNodeChildren(rt, query)`, and
-`webNodeClosest(rt, query, selector)` expose the same `.kry` tree relationships
-before a frame has been mounted into browser DOM.
+`webNodeParent(rt, query)`, `webNodeAncestors(rt, query)`,
+`webNodeChildren(rt, query)`, and `webNodeClosest(rt, query, selector)` expose
+the same `.kry` tree relationships before a frame has been mounted into
+browser DOM.
 `webNodeDescendants(rt, query)`, `webNodeQueryWithin(rt, query, selector)`, and
 `webNodeQueryAllWithin(rt, query, selector)` provide the pre-mount version of
 scoped subtree selection for compiler tests, static inspectors, and hydration
@@ -664,6 +665,9 @@ Direct sibling traversal is also available before mount through
 `webDOMPreviousSiblings(target, query)`, `webDOMNextSiblings(target, query)`,
 `webDOMSiblings(target, query)`, matching mounted root helpers, element getters,
 and `WebDOMObject` getters.
+Full ancestor traversal is available through `webNodeAncestors(rt, query)`,
+`webDOMAncestors(target, query)`, `root.kryAncestors(query)`,
+`element.kryAncestors`, and `object.ancestors`.
 
 `webDOMSnapshot(target, query)`, `root.krySnapshot(query)`,
 `webDOMSnapshots(target, selector)`, and `root.krySnapshots(selector)` return
@@ -700,11 +704,11 @@ Widget metadata may also expose built-in action hooks such as double-click,
 pointer, wheel, context menu, form, clipboard, dialog, and popover callbacks;
 handled context menu callbacks suppress the browser default menu.
 
-`webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
-`webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as
-DOM objects. This lets inspectors, tests, and host code walk from a native
-element back through Kry parent/child relationships without scraping browser
-markup.
+`webDOMParent(target, query)`, `webDOMAncestors(target, query)`,
+`webDOMChildren(target, query)`, and `webDOMClosest(target, query, selector)`
+expose the mounted `.kry` node tree as DOM objects. This lets inspectors, tests,
+and host code walk from a native element back through Kry tree relationships
+without scraping browser markup.
 `webDOMDescendants(target, query)`, `webDOMQueryWithin(target, query, selector)`,
 and `webDOMQueryAllWithin(target, query, selector)` scope the same KSS-style
 selector facts to one `.kry` subtree. Mount roots expose these as

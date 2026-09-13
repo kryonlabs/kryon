@@ -5310,6 +5310,15 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMParent(root, node.path) : null;
       }
     },
+    kryAncestors: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMAncestors(root, node.path) : [];
+      }
+    },
     kryPreviousSibling: {
       configurable: true,
       enumerable: false,
@@ -5812,6 +5821,14 @@ function makeWebDOMObject(root, node, element, ref = "") {
       get() {
         const target = webDOMObjectRoot(this);
         return target ? webDOMParent(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    ancestors: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMAncestors(target, webDOMObjectQuery(this)) : [];
       }
     },
     previousSibling: {
@@ -6973,6 +6990,13 @@ function bindWebRootProperties(root) {
         return webDOMRelationRefs(this, query);
       }
     },
+    kryAncestors: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMAncestors(this, query);
+      }
+    },
     kryPreviousSibling: {
       configurable: true,
       enumerable: false,
@@ -7552,6 +7576,16 @@ export function webNodeParent(rt, query) {
   if (!node || !parentPath || parentPath === node.path)
     return null;
   return webFrameNodeMap(frame).get(parentPath) || null;
+}
+
+export function webNodeAncestors(rt, query) {
+  const ancestors = [];
+  let node = webNodeParent(rt, query);
+  while (node) {
+    ancestors.push(node);
+    node = webNodeParent(rt, node.path);
+  }
+  return ancestors;
 }
 
 export function webNodePreviousSibling(rt, query) {
@@ -8699,6 +8733,16 @@ export function webDOMParent(target, query) {
   if (!root || !object || !parentPath || parentPath === object.node.path)
     return null;
   return webDOMObjectForNode(root, root.__kryNodes?.get(parentPath));
+}
+
+export function webDOMAncestors(target, query) {
+  const ancestors = [];
+  let object = webDOMParent(target, query);
+  while (object) {
+    ancestors.push(object);
+    object = webDOMParent(target, object.node.path);
+  }
+  return ancestors;
 }
 
 export function webDOMPreviousSibling(target, query) {

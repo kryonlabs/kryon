@@ -444,6 +444,7 @@ export interface WebDOMObject {
   readonly identity: WebNodeIdentity;
   readonly snapshot: WebDOMSnapshot | null;
   readonly parent: WebDOMObject | null;
+  readonly ancestors: WebDOMObject[];
   readonly previousSibling: WebDOMObject | null;
   readonly nextSibling: WebDOMObject | null;
   readonly previousSiblings: WebDOMObject[];
@@ -697,6 +698,7 @@ declare global {
     readonly kryStyleFacts?: WebNodeStyleFacts | null;
     readonly kryStyleTrace?: WebStyleTrace | null;
     readonly kryParent?: WebDOMObject | null;
+    readonly kryAncestors?: WebDOMObject[];
     readonly kryPreviousSibling?: WebDOMObject | null;
     readonly kryNextSibling?: WebDOMObject | null;
     readonly kryPreviousSiblings?: WebDOMObject[];
@@ -723,6 +725,7 @@ declare global {
     kryStyleTrace?(query: string): WebStyleTrace | null;
     kryRelations?(query: string): WebDOMRelations | null;
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
+    kryAncestors?(query: string): WebDOMObject[];
     kryPreviousSibling?(query: string): WebDOMObject | null;
     kryNextSibling?(query: string): WebDOMObject | null;
     kryPreviousSiblings?(query: string): WebDOMObject[];
@@ -1059,6 +1062,7 @@ export function webNodeQuery(rt: Runtime, selector: string): WebDocumentNode | n
 export function webNodeQueryAll(rt: Runtime, selector: string): WebDocumentNode[];
 export function webNodeMatches(rt: Runtime, query: string, selector: string): boolean;
 export function webNodeParent(rt: Runtime, query: string): WebDocumentNode | null;
+export function webNodeAncestors(rt: Runtime, query: string): WebDocumentNode[];
 export function webNodePreviousSibling(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeNextSibling(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodePreviousSiblings(rt: Runtime, query: string): WebDocumentNode[];
@@ -1103,6 +1107,7 @@ export function webDOMAccessibilitySnapshot(target: Element | string | null, sel
 export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;
 export function webDOMSnapshotFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMSnapshot | null;
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;
+export function webDOMAncestors(target: Element | string | null, query: string): WebDOMObject[];
 export function webDOMPreviousSibling(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMNextSibling(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMPreviousSiblings(target: Element | string | null, query: string): WebDOMObject[];
