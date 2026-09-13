@@ -466,7 +466,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_SCREEN` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
 | `WIDGET_BACKGROUND` | `Background` | `.kry-backed`; bounds and app fallback policy live in runtime primitive policy |
 | `WIDGET_TEXT` | `Text` | `.kry canonical` |
-| `WIDGET_RECT` | `Box` | `.kry-backed`; public code uses `Box` |
+| `WIDGET_BOX` | `Box` | `.kry-backed`; retained node kind now matches the public `Box` concept |
 | `WIDGET_CIRCLE` | `Circle` | `.kry-backed`; public code uses `Circle` |
 | `WIDGET_RING` | `Ring` | `.kry-backed`; public code uses `Ring` |
 | `WIDGET_LINE` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |

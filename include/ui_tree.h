@@ -51,7 +51,7 @@ typedef enum WidgetKind {
     WIDGET_SCREEN,
     WIDGET_BACKGROUND,
     WIDGET_TEXT,
-    WIDGET_RECT,
+    WIDGET_BOX,
     WIDGET_CIRCLE,
     WIDGET_RING,
     WIDGET_LINE,

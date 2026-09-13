@@ -391,6 +391,19 @@ if [ -n "$public_rect_matches" ]; then
     exit 1
 fi
 
+retained_rect_kind_matches="$(
+    rg -n '\bWIDGET_RECT\b' \
+        include/ui_tree.h src/ui/ui_tree.c docs/CANONICAL_WIDGET_SURFACE.md docs/PUBLIC_API_SNAPSHOT.txt \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$retained_rect_kind_matches" ]; then
+    echo "Retained rectangle nodes must use WIDGET_BOX so node names match the canonical Box widget:"
+    echo "$retained_rect_kind_matches"
+    exit 1
+fi
+
 public_button_matches="$(
     rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
         include/ui_controls.h \

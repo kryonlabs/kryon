@@ -707,7 +707,7 @@ static const WidgetOps ui_widget_ops[] = {
     [WIDGET_SCREEN] = {ui_measure_bounds_height},
     [WIDGET_BACKGROUND] = {ui_measure_bounds_height},
     [WIDGET_TEXT] = {ui_measure_bounds_height},
-    [WIDGET_RECT] = {ui_measure_bounds_height},
+    [WIDGET_BOX] = {ui_measure_bounds_height},
     [WIDGET_CIRCLE] = {ui_measure_bounds_height},
     [WIDGET_LINE] = {ui_measure_bounds_height},
     [WIDGET_TRIANGLE] = {ui_measure_bounds_height},
@@ -1790,7 +1790,7 @@ DrawTree(void)
                 node->data.primitive.vertical_align,
                 node->data.primitive.font_token, node->data.primitive.letter_spacing);
             break;
-        case WIDGET_RECT:
+        case WIDGET_BOX:
             if(node->data.primitive.styled) {
                 ui_paint_surface(node->bounds, node->data.primitive.style);
                 break;
@@ -2433,7 +2433,7 @@ Surface(Rectangle bounds, Style style)
 {
     Style defaults = ui_surface_style();
     style = MergeStyle(defaults, style);
-    NodeId node = ui_tree_add(0, WIDGET_RECT, bounds, NULL);
+    NodeId node = ui_tree_add(0, WIDGET_BOX, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.styled = 1;
         ui_tree_nodes[node].data.primitive.style = style;
@@ -2452,7 +2452,7 @@ static void
 rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
 {
     Rectangle bounds = PrimitiveRectBounds(x, y, w, h);
-    NodeId node = ui_tree_add(0, WIDGET_RECT, bounds, NULL);
+    NodeId node = ui_tree_add(0, WIDGET_BOX, bounds, NULL);
 
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.color = fill;
@@ -2550,7 +2550,7 @@ Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
 void
 Bevel(int x, int y, int w, int h, Color light, Color dark)
 {
-    ui_tree_add(0, WIDGET_RECT, (Rectangle){x, y, w, h}, NULL);
+    ui_tree_add(0, WIDGET_BOX, (Rectangle){x, y, w, h}, NULL);
     RenderBevel(x, y, w, h, light, dark);
 }
 

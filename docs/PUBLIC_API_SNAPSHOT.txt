@@ -1836,6 +1836,7 @@ include/ui_tree.h enum INVALIDATE_PAINT
 include/ui_tree.h enum INVALIDATE_TREE
 include/ui_tree.h enum ROUTER_NO_ROUTE
 include/ui_tree.h enum WIDGET_BACKGROUND
+include/ui_tree.h enum WIDGET_BOX
 include/ui_tree.h enum WIDGET_BUTTON
 include/ui_tree.h enum WIDGET_CARD
 include/ui_tree.h enum WIDGET_CHECKBOX
@@ -1850,7 +1851,6 @@ include/ui_tree.h enum WIDGET_IMAGE
 include/ui_tree.h enum WIDGET_LINE
 include/ui_tree.h enum WIDGET_NAVIGATION_BAR
 include/ui_tree.h enum WIDGET_PARAGRAPH
-include/ui_tree.h enum WIDGET_RECT
 include/ui_tree.h enum WIDGET_RING
 include/ui_tree.h enum WIDGET_ROUTER
 include/ui_tree.h enum WIDGET_ROW
