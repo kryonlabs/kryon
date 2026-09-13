@@ -1152,8 +1152,7 @@ props_field_at(const KirModule *module, const char *type, int index,
                             "HeaderHeight", "HeaderAngle", "CustomCells",
                             "CopyText", "PastedText", "PastedRow",
                             "PastedColumn"}},
-        {"TableRow", {"Cells", "CellCount", "TextColors",
-                      "BackgroundColors"}},
+        {"TableRow", {"Cells", "CellCount"}},
         {"Canvas", {"Bounds", "ClassName", "ScrollX", "ScrollY", "Zoom"}},
     };
     size_t i;
@@ -1371,9 +1370,7 @@ slice_prop_field(const char *type, const char *field)
         strcmp(field, "ColumnEnabled") == 0 ||
         strcmp(field, "ColumnOrder") == 0))
         return 1;
-    if(strcmp(type, "TableRow") == 0 &&
-       (strcmp(field, "Cells") == 0 || strcmp(field, "TextColors") == 0 ||
-        strcmp(field, "BackgroundColors") == 0))
+    if(strcmp(type, "TableRow") == 0 && strcmp(field, "Cells") == 0)
         return 1;
     return 0;
 }

@@ -3794,16 +3794,14 @@ func TestTableViewSelectionActivationAndSort(t *testing.T) {
 	}
 }
 
-func TestTableViewColumnVisibilityOrderAndCellColors(t *testing.T) {
+func TestTableViewColumnVisibilityOrder(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
 	selectedRow, selectedColumn := int32(-1), int32(-1)
-	textColor := Color{R: 10, G: 20, B: 30, A: 255}
-	background := Color{R: 40, G: 50, B: 60, A: 255}
 	props := TableViewProps{
 		Bounds:         Rectangle{X: 10, Y: 10, Width: 300, Height: 140},
 		ID:             141,
 		Columns:        []string{"A", "hidden", "C"},
-		Rows:           []TableRow{{Cells: []string{"a", "b", "c"}, TextColors: []Color{textColor, {}, {}}, BackgroundColors: []Color{{}, {}, background}}},
+		Rows:           []TableRow{{Cells: []string{"a", "b", "c"}}},
 		ColumnWidths:   []int32{90, 140, 70},
 		ColumnEnabled:  []int32{1, 0, 1},
 		ColumnOrder:    []int32{2, 1, 0},
@@ -3821,16 +3819,9 @@ func TestTableViewColumnVisibilityOrderAndCellColors(t *testing.T) {
 	}
 
 	headerColumns := make([]int32, 0, 2)
-	paintedBackground, paintedText := false, false
 	for _, op := range rt.FrameOps() {
 		if op.Kind == FrameOpText && op.Row == -1 {
 			headerColumns = append(headerColumns, op.Column)
-		}
-		if op.Row == 0 && op.Column == 2 && op.Kind == FrameOpRect && op.Color == background {
-			paintedBackground = true
-		}
-		if op.Row == 0 && op.Column == 0 && op.Kind == FrameOpText && op.Color == textColor {
-			paintedText = true
 		}
 		if op.Column == 1 {
 			t.Fatalf("hidden column emitted frame op: %#v", op)
@@ -3838,9 +3829,6 @@ func TestTableViewColumnVisibilityOrderAndCellColors(t *testing.T) {
 	}
 	if !reflect.DeepEqual(headerColumns, []int32{2, 0}) {
 		t.Fatalf("header display order = %v, want [2 0]", headerColumns)
-	}
-	if !paintedBackground || !paintedText {
-		t.Fatalf("custom cell colors missing: background=%v text=%v", paintedBackground, paintedText)
 	}
 
 	rt.QueueKey(KeyRight)
@@ -3951,20 +3939,43 @@ func TestTableViewResizesDisplayedColumns(t *testing.T) {
 
 func TestTableFrozenRowsClipPartialScroll(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.table.frozen.clip;
+tokens {
+  color {
+    panel: #f5f5f5;
+    row: #0000ff;
+    selected: #ff0000;
+    ink: #000000;
+    transparent: #00000000;
+  }
+  material { flat: Flat; }
+}
+TableView[role=Panel] { background: panel; border: transparent; material: flat; }
+TableView[role=Header] { background: panel; foreground: ink; border: transparent; material: flat; }
+TableView[role=Row] { background: row; border: row; material: flat; opacity: 1; }
+TableView[role=Cell] { foreground: ink; material: flat; opacity: 1; }
+TableView[role=Selection] { background: selected; foreground: ink; border: selected; material: flat; opacity: 1; }`, "Table Frozen Clip", "") {
+		t.Fatal("table frozen clip style pack did not register")
+	}
+	if !SetActiveStylePack("test.table.frozen.clip") {
+		t.Fatal("table frozen clip style pack did not activate")
+	}
 	rows := make([]TableRow, 8)
 	for i := range rows {
-		rows[i] = TableRow{Cells: []string{""}, BackgroundColors: []Color{BLUE}}
+		rows[i] = TableRow{Cells: []string{""}}
 	}
-	rows[0].BackgroundColors = []Color{RED}
+	selectedRow := int32(0)
 	scroll := int32(60)
 	rt.BeginFrame()
-	rt.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 180, 102), Columns: []string{"Name"}, Rows: rows, RowHeight: 24, FreezeRows: 1, ScrollOffset: &scroll})
+	rt.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 180, 102), Columns: []string{"Name"}, Rows: rows, RowHeight: 24, FreezeRows: 1, ScrollOffset: &scroll, SelectedRow: &selectedRow})
 	rt.EndFrame()
 	img := RenderFrame(220, 160, rt.FrameOps())
 	for _, sample := range []struct {
 		y    int
 		want Color
-	}{{60, RED}, {65, BLUE}, {115, RAYWHITE}} {
+	}{{60, Color{R: 255, A: 255}}, {65, Color{B: 255, A: 255}}, {115, RAYWHITE}} {
 		got := color.RGBAModel.Convert(img.At(100, sample.y)).(color.RGBA)
 		want := color.RGBA{sample.want.R, sample.want.G, sample.want.B, sample.want.A}
 		if got != want {
@@ -3975,12 +3986,36 @@ func TestTableFrozenRowsClipPartialScroll(t *testing.T) {
 
 func TestTableRowsRespectParentScrollClip(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.table.parent.clip;
+tokens {
+  color {
+    panel: #f5f5f5;
+    row: #ff0000;
+    selected: #ff0000;
+    ink: #000000;
+    transparent: #00000000;
+  }
+  material { flat: Flat; }
+}
+TableView[role=Panel] { background: panel; border: transparent; material: flat; }
+TableView[role=Header] { background: panel; foreground: ink; border: transparent; material: flat; }
+TableView[role=Row] { background: row; border: row; material: flat; opacity: 1; }
+TableView[role=Cell] { foreground: ink; material: flat; opacity: 1; }
+TableView[role=Selection] { background: selected; foreground: ink; border: selected; material: flat; opacity: 1; }`, "Table Parent Clip", "") {
+		t.Fatal("table parent clip style pack did not register")
+	}
+	if !SetActiveStylePack("test.table.parent.clip") {
+		t.Fatal("table parent clip style pack did not activate")
+	}
+	selectedRow := int32(0)
 	r.BeginFrame()
 	r.BeginScroll(NewRectangle(10, 10, 100, 60), 120, nil)
 	r.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 150, 120), Columns: []string{""}, Rows: []TableRow{
-		{Cells: []string{""}, BackgroundColors: []Color{RED}},
-		{Cells: []string{""}, BackgroundColors: []Color{RED}},
-	}, RowHeight: 24})
+		{Cells: []string{""}},
+		{Cells: []string{""}},
+	}, RowHeight: 24, SelectedRow: &selectedRow})
 	r.EndScroll()
 	r.EndFrame()
 	img := RenderFrame(200, 160, r.FrameOps())

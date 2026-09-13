@@ -24,8 +24,6 @@ static inline bool StringEqual(String a, String b) {
 typedef struct TableRow {
     const char** cells;
     int32_t cell_count;
-    const Color* text_colors;
-    const Color* background_colors;
 } TableRow;
 
 typedef struct TableViewProps {

@@ -3,10 +3,8 @@ package kryon
 
 // #import kryon_compat.generated.h
 type TableRow struct {
-	Cells            []string
-	CellCount        int32
-	TextColors       []Color
-	BackgroundColors []Color
+	Cells     []string
+	CellCount int32
 }
 
 type TableViewProps struct {

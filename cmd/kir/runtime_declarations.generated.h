@@ -1142,8 +1142,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "TableRow :: struct {\n"
         "    cells: const char**\n"
         "    cell_count: i32\n"
-        "    text_colors: const Color*\n"
-        "    background_colors: const Color*\n"
         "}\n"
         "\n"
         "TableViewProps :: struct {\n"

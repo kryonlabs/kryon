@@ -3257,7 +3257,7 @@ test_popup_active_drag_ownership(void)
         .values=&background_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
     const char *columns[] = {"A","B"};
     const char *cells[] = {"a","b"};
-    TableRow rows[] = {{cells,2,NULL,NULL}};
+    TableRow rows[] = {{cells, 2}};
     int widths[] = {70,70};
     TableViewProps table = {0};
     PanedViewProps panes = {
@@ -4180,7 +4180,7 @@ test_table_column_resize(void)
 {
     const char *columns[] = {"A", "B", "C"};
     const char *cells[] = {"a", "b", "c"};
-    TableRow rows[] = {{cells, 3, NULL, NULL}};
+    TableRow rows[] = {{cells, 3}};
     int widths[] = {100, 100, 100};
     TableViewProps table = {0};
 
@@ -4227,9 +4227,9 @@ test_table_frozen_rows_hit_testing(void)
     const char *cells3[] = {"row 3"};
     const char *cells4[] = {"row 4"};
     TableRow rows[] = {
-        {cells0, 1, NULL, NULL}, {cells1, 1, NULL, NULL},
-        {cells2, 1, NULL, NULL}, {cells3, 1, NULL, NULL},
-        {cells4, 1, NULL, NULL}
+        {cells0, 1}, {cells1, 1},
+        {cells2, 1}, {cells3, 1},
+        {cells4, 1}
     };
     int selected_row = -1;
     int selected_column = -1;
@@ -4287,8 +4287,8 @@ test_table_keyboard_navigation(void)
     const char *columns[] = {"A", "B", "C"};
     const char *cells[] = {"a", "b", "c"};
     TableRow rows[] = {
-        {cells,3,NULL,NULL}, {cells,3,NULL,NULL}, {cells,3,NULL,NULL},
-        {cells,3,NULL,NULL}, {cells,3,NULL,NULL}, {cells,3,NULL,NULL}
+        {cells, 3}, {cells, 3}, {cells, 3},
+        {cells, 3}, {cells, 3}, {cells, 3}
     };
     int order[] = {2,0,1};
     int selected_row = 0, selected_column = 2;
@@ -4402,7 +4402,7 @@ test_popup_table_keyboard_ownership(void)
 {
     const char *columns[] = {"A"};
     const char *cells[] = {"a"};
-    TableRow rows[] = {{cells,1,NULL,NULL},{cells,1,NULL,NULL}};
+    TableRow rows[] = {{cells, 1}, {cells, 1}};
 
     for(int inside = 0; inside < 2; inside++) {
         int selected_row = 0, selected_column = 0;

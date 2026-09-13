@@ -4,8 +4,6 @@
 TableRow :: struct {
     cells: const char**
     cell_count: i32
-    text_colors: const Color*
-    background_colors: const Color*
 }
 
 TableViewProps :: struct {

@@ -3923,20 +3923,11 @@ RenderTableView(TableViewProps table)
             if(table.rows != NULL && table.rows[r].cells != NULL && c < table.rows[r].cell_count)
                 text = table.rows[r].cells[c] != NULL ? table.rows[r].cells[c] : "";
             if(paint) {
-                if(table.rows != NULL && table.rows[r].background_colors != NULL &&
-                   c < table.rows[r].cell_count && table.rows[r].background_colors[c].a != 0)
-                    DrawRectangleRec((Rectangle){(float)x, row.y, (float)col_w, row.height},
-                                     table.disabled
-                                         ? DarkenColor(table.rows[r].background_colors[c], 38)
-                                         : table.rows[r].background_colors[c]);
                 BeginClip(x, (int)row.y, col_w, (int)row.height);
                 Color text_color = text_style.foreground;
                 float text_opacity = text_style.opacity;
                 int render_font = cell_font;
-                if(table.rows != NULL && table.rows[r].text_colors != NULL &&
-                   c < table.rows[r].cell_count && table.rows[r].text_colors[c].a != 0)
-                    text_color = table.rows[r].text_colors[c];
-                else if((table.selected_row != NULL && *table.selected_row == r) || hot) {
+                if((table.selected_row != NULL && *table.selected_row == r) || hot) {
                     text_color = selection_style.foreground;
                     text_opacity = selection_style.opacity;
                     if(selection_style.font_size > 0.0f)

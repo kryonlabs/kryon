@@ -8048,15 +8048,6 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				continue
 			}
 			cellTextColor := cellStyle.Foreground
-			if int(row) < len(props.Rows) {
-				tableRow := props.Rows[row]
-				if c < len(tableRow.BackgroundColors) && tableRow.BackgroundColors[c].A != 0 {
-					r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: disabledColor(tableRow.BackgroundColors[c]), Row: row, Column: col, Disabled: props.Disabled})
-				}
-				if c < len(tableRow.TextColors) && tableRow.TextColors[c].A != 0 {
-					cellTextColor = tableRow.TextColors[c]
-				}
-			}
 			selectedCell := tableCellSelected(props, row, col, selectedRow, selectedCol)
 			if selectedCell {
 				op := styleFrameRectOp(rect, props.Bounds, selectedFrame)

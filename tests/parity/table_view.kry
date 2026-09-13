@@ -23,9 +23,7 @@ table_frame :: () #ui {
         columns: [3] const char * = {"Section","Label","Units"}
         cells_a: [3] const char * = {"Banks","Checking","10"}
         cells_b: [3] const char * = {"Cash","Wallet","5"}
-        text_colors: [3] Color = {{230,230,230,255},{220,190,80,255},{120,220,140,255}}
-        background_colors: [3] Color = {{0,0,0,0},{60,45,20,255},{20,55,30,255}}
-        rows: [2] TableRow = {{.cells = cells_a, .cell_count = 3, .text_colors = text_colors, .background_colors = background_colors},{.cells = cells_b, .cell_count = 3}}
+        rows: [2] TableRow = {{.cells = cells_a, .cell_count = 3},{.cells = cells_b, .cell_count = 3}}
         widths: [3] int = {90,140,70}
         enabled: [3] int = {1,1,1}
         order: [3] int = {0,1,2}
