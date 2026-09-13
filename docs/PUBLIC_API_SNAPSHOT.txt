@@ -1705,6 +1705,7 @@ include/ui_style_sheet.h function RegisterStylePackSource
 include/ui_style_sheet.h function ResolveActiveStyle
 include/ui_style_sheet.h function ResolveStyle
 include/ui_style_sheet.h function SetActiveStylePack
+include/ui_style_sheet.h function StyleClassId
 include/ui_style_sheet.h function StylePackVersion
 include/ui_style_sheet.h function StylePicker
 include/ui_style_sheet.h macro STYLE_PACK_MAX
