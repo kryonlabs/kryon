@@ -171,8 +171,13 @@ function updateBrowserRoute(path, replace) {
   const next = normalizeRoute(path);
   const url = next.path + next.hash;
   const history = globalThis.history;
-  if (history && typeof history[replace ? "replaceState" : "pushState"] === "function")
-    history[replace ? "replaceState" : "pushState"](null, "", url);
+  if (history && typeof history[replace ? "replaceState" : "pushState"] === "function") {
+    try {
+      history[replace ? "replaceState" : "pushState"](null, "", url);
+    } catch {
+      /* file:// and locked-down hosts can reject history URLs; Kry route state still updates below. */
+    }
+  }
   setRouteState(next);
   return url;
 }

@@ -121,7 +121,10 @@ try {
     path: "Page/article/choices",
     parentPath: "Page/article"
   });
-  kryon.widget(rt, "TextField", { aria_activedescendant: "Page/article/choices/beta" }, null, {
+  kryon.widget(rt, "TextField", {
+    aria_activedescendant: "Page/article/choices/beta",
+    placeholder: "Find choice"
+  }, null, {
     nodeName: "choiceSearch",
     path: "Page/article/choiceSearch",
     parentPath: "Page/article"
@@ -255,6 +258,9 @@ try {
       view-transition-name: article-view;
     }
     Button.primary { color-scheme: light dark; }
+    Section:has(> Button.primary) { outline-width: 2; }
+    TextField:placeholder-shown { opacity: 0.72; }
+    Checkbox:indeterminate { outline-offset: 7; }
   \`));
 
   const target = document.getElementById("target");
@@ -306,6 +312,21 @@ try {
   assert(article.style.willChange === "transform", "KSS will-change not applied");
   assert(article.style.viewTransitionName === "article-view",
     "KSS view transition name not applied");
+  assert(article.style.outlineWidth === "2px", "KSS :has style not applied");
+  assert(kryon.webDOMQuery(target, "Section:has(> Button.primary)")?.ref === "article-ref",
+    "browser DOM :has query failed");
+  assert(kryon.webDOMQuery(target, "TextField:placeholder-shown")?.ref ===
+    "Page/article/choiceSearch", "browser DOM placeholder-shown query failed");
+  assert(kryon.webDOMSetState(target, "emailOptIn", "indeterminate", true),
+    "browser DOM indeterminate state set failed");
+  assert(kryon.webDOMQuery(target, "Checkbox:indeterminate")?.ref ===
+    "Page/article/options/email", "browser DOM indeterminate query failed");
+  assert(kryon.webDOMQuery(target, "Button:target") === null,
+    "browser DOM target selector matched without hash");
+  globalThis.location.hash = "save";
+  assert(kryon.webDOMQuery(target, "Button:target")?.ref === "Page/article/save",
+    "browser DOM target query failed");
+  globalThis.location.hash = "";
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
   const root = kryon.webDOMRoot(target);
   assert(root.kryIdentity("article-ref").domId === "article-id", "root identity lookup failed");
