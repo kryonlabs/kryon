@@ -3754,28 +3754,14 @@ function nthChildPseudoMatches(pseudo, siblings, node) {
   const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
   if (!match)
     return false;
-  const position = siblings.indexOf(node) + 1;
-  const text = match[1].trim().toLowerCase();
-  if (text === "odd")
-    return position % 2 === 1;
-  if (text === "even")
-    return position > 0 && position % 2 === 0;
-  const number = Number(text);
-  return Number.isInteger(number) && number > 0 && position === number;
+  return nthChildPositionMatches(match[1], siblings, node, false);
 }
 
 function nthLastChildPseudoMatches(pseudo, siblings, node) {
   const match = String(pseudo || "").match(/^nth-last-child\(([^)]*)\)$/);
   if (!match)
     return false;
-  const position = siblings.length - siblings.indexOf(node);
-  const text = match[1].trim().toLowerCase();
-  if (text === "odd")
-    return position % 2 === 1;
-  if (text === "even")
-    return position > 0 && position % 2 === 0;
-  const number = Number(text);
-  return Number.isInteger(number) && number > 0 && position === number;
+  return nthChildPositionMatches(match[1], siblings, node, true);
 }
 
 function webNodeSameTypeSiblingsFromFrame(siblings, node) {
@@ -3809,7 +3795,21 @@ function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
   if (value === "even")
     return position > 0 && position % 2 === 0;
   const number = Number(value);
-  return Number.isInteger(number) && number > 0 && position === number;
+  if (Number.isInteger(number) && number > 0)
+    return position === number;
+  const compact = value.replace(/\s+/g, "");
+  const formula = compact.match(/^([+-]?\d*)n(?:([+-]\d+))?$/);
+  if (!formula)
+    return false;
+  const rawA = formula[1];
+  const a = rawA === "" || rawA === "+" ? 1 : rawA === "-" ? -1 : Number(rawA);
+  const b = formula[2] === undefined ? 0 : Number(formula[2]);
+  if (!Number.isInteger(a) || !Number.isInteger(b))
+    return false;
+  if (a === 0)
+    return position === b;
+  const delta = position - b;
+  return delta / a >= 0 && delta % a === 0;
 }
 
 function selectorStructuralPseudosMatch(selector, node) {

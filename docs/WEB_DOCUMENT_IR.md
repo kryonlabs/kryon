@@ -458,7 +458,7 @@ native attribute aliases such as `[id=...]`, `[name=...]`, `[title=...]`,
 `[aria-rowcount=...]`, `[aria-colcount=...]`,
 data/ARIA/extra attribute selectors, state pseudos, structural pseudos
 `:first-child`, `:last-child`, `:only-child`, `:first-of-type`,
-`:last-of-type`, `:only-of-type`, `:empty`, numeric/odd/even
+`:last-of-type`, `:only-of-type`, `:empty`, CSS `an+b`
 `:nth-child(...)`/`:nth-last-child(...)`, and
 `:nth-of-type(...)`/`:nth-last-of-type(...)`, plus simple `:not(...)`,
 `:is(...)`, and `:where(...)`,

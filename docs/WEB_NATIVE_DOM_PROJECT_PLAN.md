@@ -213,6 +213,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS structural selectors support browser-native of-type selectors against
   Kry kind siblings: `:first-of-type`, `:last-of-type`, `:only-of-type`,
   `:nth-of-type(...)`, and `:nth-last-of-type(...)`.
+- KSS `nth-*` structural selectors support CSS `an+b` formulas such as
+  `2n+1`, `n+2`, and `-n+4` in Web Document and mounted DOM queries.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
