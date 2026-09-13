@@ -1840,17 +1840,6 @@ turned off.
 
 Keyboard navigation and focus management.
 
-### Focus Begin/End
-
-```c
-void BeginFocusScope(void);
-void EndFocusScope(void);
-```
-
-Normal UI code does not need to call these. `BeginInterfaceFrame` and `SetFrameCamera`
-manage the focus pass automatically. Use these only for custom frame lifecycles
-that do not go through Kryon's normal frame entry points.
-
 ### Focus Registration
 
 ```c

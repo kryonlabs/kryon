@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "kryon.h"
 #include "kry_inject.h"
+#include "../src/ui/ui_internal.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

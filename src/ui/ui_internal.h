@@ -560,6 +560,11 @@ void RenderReorderPlaceholder(Rectangle bounds);
 void RenderToast(void);
 void RenderInspectOverlay(void);
 
+/* Internal focus pass hooks. Public frames use BeginInterfaceFrame,
+ * SetFrameCamera, and EndInterfaceFrame to manage focus automatically. */
+void BeginFocusScope(void);
+void EndFocusScope(void);
+
 /* Lowered host scopes for .kry block widgets. These are not public widget
  * names; parser/codegen and native tests use them to implement lexical blocks. */
 void DisabledScope(int disabled);

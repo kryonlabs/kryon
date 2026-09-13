@@ -1372,14 +1372,12 @@ include/ui_controls.h function TextBufferToggleLineComment
 include/ui_controls.h typedef SliderMarkCallback
 include/ui_controls.h typedef TextInputFilter
 include/ui_core.h function ApplyCurrentTheme
-include/ui_core.h function BeginFocusScope
 include/ui_core.h function BeginInterfaceFrame
 include/ui_core.h function BeginModalLayer
 include/ui_core.h function ClearFocus
 include/ui_core.h function ClearInputCaptures
 include/ui_core.h function ConsumePointerRelease
 include/ui_core.h function ConsumeRelease
-include/ui_core.h function EndFocusScope
 include/ui_core.h function EndInterfaceFrame
 include/ui_core.h function FocusFrameOpen
 include/ui_core.h function GetDefaultCamera

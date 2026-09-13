@@ -89,8 +89,6 @@ int HoverEffectsEnabled(void);
 void SetTransitionCuesEnabled(int enabled);
 int TransitionCuesEnabled(void);
 
-void BeginFocusScope(void);
-void EndFocusScope(void);
 int FocusFrameOpen(void);
 int RegisterFocus(int id, Rectangle bounds);
 int IsFocusActive(int id);
