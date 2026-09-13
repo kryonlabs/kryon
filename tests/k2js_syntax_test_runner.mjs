@@ -2261,6 +2261,8 @@ function fakeDocument() {
       { nodeName: "segments", path: "Page/segments" });
     runtime.widget(nativeRt, "TabBar", {}, null,
       { nodeName: "tabs", path: "Page/tabs" });
+    runtime.widget(nativeRt, "Button", { label: "Details" }, null,
+      { nodeName: "detailsTab", path: "Page/tabs/details", parentPath: "Page/tabs" });
     runtime.widget(nativeRt, "TreeView", {}, null,
       { nodeName: "tree", path: "Page/tree" });
     runtime.widget(nativeRt, "Menu", {}, null,
@@ -2337,6 +2339,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").domValue, "a");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").tag, "option");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").state.selected, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/details").role, "tab");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
@@ -2382,12 +2385,15 @@ function fakeDocument() {
     const nav = runtime.findWebElement(nativeTarget, "nav");
     const dropdownOption = runtime.findWebElement(nativeTarget, "Page/choice/alpha");
     const listOption = runtime.findWebElement(nativeTarget, "Page/items/beta");
+    const tabButton = runtime.findWebElement(nativeTarget, "Page/tabs/details");
     assert.equal(dropdownOption.tagName, "OPTION");
     assert.equal(dropdownOption.textContent, "Alpha");
     assert.equal(dropdownOption.attributes.value, "a");
     assert.equal(listOption.tagName, "OPTION");
     assert.equal(listOption.attributes.selected, "");
     assert.equal(listOption.selected, true);
+    assert.equal(tabButton.tagName, "BUTTON");
+    assert.equal(tabButton.attributes.role, "tab");
     const title = runtime.findWebElement(nativeTarget, "title");
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");

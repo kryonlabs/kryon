@@ -4372,6 +4372,8 @@ function normalizeWebDocumentNodes(nodes) {
       node.tag = "option";
     if (!node?.role && parent?.kind === "Menu" && node?.kind === "Button")
       node.role = "menuitem";
+    if (!node?.role && parent?.kind === "TabBar" && node?.kind === "Button")
+      node.role = "tab";
     node.styleFacts = webNodeStyleFacts(node);
   }
 }

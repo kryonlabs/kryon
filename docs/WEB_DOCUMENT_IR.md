@@ -343,6 +343,7 @@ The initial tag mapping is intentionally conservative:
 | `Link` | `a` |
 | `Button` | `button` |
 | `Button` under `Menu` | `button role=menuitem` |
+| `Button` under `TabBar` | `button role=tab` |
 | clickable `Card` | `button` |
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text`, or authored `input_type`/`type` |
