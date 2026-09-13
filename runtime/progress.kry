@@ -1,4 +1,5 @@
 #module "progress"
+#import "control_props"
 #import "drawing_props"
 #import "style"
 
@@ -83,7 +84,9 @@ ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
 ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
     padding: float = label.value.padding_x
-    if padding <= 0.0 { padding = 6.0 }
+    if (label.value.fields & (u32)StylePaddingX) == (u32)0 || padding < 0.0 {
+        padding = 6.0
+    }
     return padding * scale
 }
 
