@@ -205,8 +205,8 @@ the browser receives normal elements, attributes, CSS, and events.
   CSS export and mounted DOM style application.
 - KSS web media/background styling accepts native object fit/position/view-box,
   image rendering/orientation/resolution, and `background-image` alongside
-  size, position, position-axis longhands, repeat, origin, clip, attachment,
-  and blend controls.
+  size, position, position-axis longhands, repeat, repeat-axis longhands,
+  origin, clip, attachment, and blend controls.
 - KSS web type styling accepts native `font` shorthand, Kryon's `typeface`
   alias, the native `font-family` property name, font size adjustment, and font
   synthesis controls, plus native font variant longhands, language override,
