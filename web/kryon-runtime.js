@@ -1733,7 +1733,8 @@ const webKssLiteralProperties = new Set([
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
-  "overscroll-behavior-y", "scroll-snap-type", "scroll-snap-align",
+  "overscroll-behavior-y", "overscroll-behavior-inline",
+  "overscroll-behavior-block", "scroll-snap-type", "scroll-snap-align",
   "scroll-snap-stop", "touch-action",
   "align-items", "justify-content", "align-self", "justify-self",
   "flex-direction", "flex-wrap", "flex", "flex-grow", "flex-shrink",
@@ -2347,6 +2348,8 @@ const webCSSPropertyNames = new Map([
   ["overscroll-behavior", "overscroll-behavior"],
   ["overscroll-behavior-x", "overscroll-behavior-x"],
   ["overscroll-behavior-y", "overscroll-behavior-y"],
+  ["overscroll-behavior-inline", "overscroll-behavior-inline"],
+  ["overscroll-behavior-block", "overscroll-behavior-block"],
   ["scroll-snap-type", "scroll-snap-type"],
   ["scroll-snap-align", "scroll-snap-align"],
   ["scroll-snap-stop", "scroll-snap-stop"],
@@ -3275,6 +3278,8 @@ function applyResolvedWebStyle(el, style) {
   set("overscrollBehavior", style["overscroll-behavior"]);
   set("overscrollBehaviorX", style["overscroll-behavior-x"]);
   set("overscrollBehaviorY", style["overscroll-behavior-y"]);
+  set("overscrollBehaviorInline", style["overscroll-behavior-inline"]);
+  set("overscrollBehaviorBlock", style["overscroll-behavior-block"]);
   set("scrollSnapType", style["scroll-snap-type"]);
   set("scrollSnapAlign", style["scroll-snap-align"]);
   set("scrollSnapStop", style["scroll-snap-stop"]);

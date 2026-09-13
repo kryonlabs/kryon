@@ -179,6 +179,8 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     overscroll-behavior: contain;
     overscroll-behavior-x: none;
     overscroll-behavior-y: auto;
+    overscroll-behavior-inline: contain;
+    overscroll-behavior-block: none;
     scroll-snap-type: x mandatory;
     scroll-snap-align: start center;
     scroll-snap-stop: always;
@@ -456,6 +458,8 @@ assert.match(webStyleCSS, /scroll-behavior: smooth;/);
 assert.match(webStyleCSS, /overscroll-behavior: contain;/);
 assert.match(webStyleCSS, /overscroll-behavior-x: none;/);
 assert.match(webStyleCSS, /overscroll-behavior-y: auto;/);
+assert.match(webStyleCSS, /overscroll-behavior-inline: contain;/);
+assert.match(webStyleCSS, /overscroll-behavior-block: none;/);
 assert.match(webStyleCSS, /scroll-snap-type: x mandatory;/);
 assert.match(webStyleCSS, /scroll-snap-align: start center;/);
 assert.match(webStyleCSS, /scroll-snap-stop: always;/);
@@ -1059,6 +1063,8 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["scroll-beh
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overscroll-behavior"], "contain");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overscroll-behavior-x"], "none");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overscroll-behavior-y"], "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overscroll-behavior-inline"], "contain");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overscroll-behavior-block"], "none");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["scroll-snap-type"], "x mandatory");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["scroll-snap-align"], "start center");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["scroll-snap-stop"], "always");
@@ -3181,6 +3187,8 @@ function fakeDocument() {
     assert.equal(firstField.style.overscrollBehavior, "contain");
     assert.equal(firstField.style.overscrollBehaviorX, "none");
     assert.equal(firstField.style.overscrollBehaviorY, "auto");
+    assert.equal(firstField.style.overscrollBehaviorInline, "contain");
+    assert.equal(firstField.style.overscrollBehaviorBlock, "none");
     assert.equal(firstField.style.scrollSnapType, "x mandatory");
     assert.equal(firstField.style.scrollSnapAlign, "start center");
     assert.equal(firstField.style.scrollSnapStop, "always");
