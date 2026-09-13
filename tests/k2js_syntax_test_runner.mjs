@@ -2610,6 +2610,27 @@ function fakeDocument() {
     assert.equal(manual.attributes.part, "manual-link");
     assert.equal(manual.attributes.slot, "resource-link");
 
+    const tagRt = runtime.createRuntime();
+    runtime.beginFrame(tagRt);
+    runtime.widget(tagRt, "Section", {
+      dom_tag: "article",
+      web_ref: "article-ref",
+      title: "Article region"
+    }, null,
+      {
+        nodeName: "article",
+        path: "Page/article"
+      });
+    runtime.endFrame(tagRt);
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").tag, "article");
+    assert.equal(runtime.findWebNode(tagRt, "article-ref").path, "Page/article");
+    const tagTarget = document.createElement("div");
+    runtime.renderWebDocument(tagRt, tagTarget);
+    const article = runtime.findWebElement(tagTarget, "article-ref");
+    assert.equal(article.tagName, "ARTICLE");
+    assert.equal(article.dataset.kryWebRef, "article-ref");
+    assert.equal(article.attributes.title, "Article region");
+
     const sharedRt = runtime.createRuntime();
     runtime.beginFrame(sharedRt);
     runtime.widget(sharedRt, "Text", { text: "Alpha" }, null,

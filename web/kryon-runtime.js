@@ -1124,6 +1124,9 @@ function widgetTag(item) {
   const args = item.args || {};
   if (item.meta?.tag)
     return String(item.meta.tag).toLowerCase();
+  const authoredTag = propStringAny(args, ["dom", "dom_tag", "html_tag", "tag"]);
+  if (/^[a-z][a-z0-9-]*$/i.test(authoredTag))
+    return authoredTag.toLowerCase();
   switch (item.name) {
   case "Screen":
   case "Page":
@@ -1445,7 +1448,7 @@ function webNodeFromWidget(item, index) {
       ? meta.nodeName || propString(args, "key", propString(args, "id", String(index)))
       : String(meta.key),
     name: meta.nodeName || propString(args, "name", ""),
-    webRef: meta.ref === undefined || meta.ref === null ? "" : String(meta.ref),
+    webRef: metaStringOrProp(meta, "ref", args, ["dom_ref", "web_ref", "kry_ref"]),
     path: meta.path === undefined || meta.path === null ? "" : String(meta.path),
     parentPath: meta.parentPath === undefined || meta.parentPath === null ? "" : String(meta.parentPath),
     sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
