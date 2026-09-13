@@ -619,6 +619,8 @@ DirectWebNodes :: () #ui {
         bounds = (Rectangle){0, 0, 100, 100}
         content_height = 200
         scroll_offset = 0
+        visible_width: float = viewport.width
+        unused visible_width
     }
 }
 EOF
@@ -629,6 +631,8 @@ for widget in Page Section Heading ParagraphText Link Flow Grid Fieldset; do
 done
 grep -q '"nodeName": "viewport"' "$direct_web_out"
 grep -q '"path": "DirectWebNodes/viewport"' "$direct_web_out"
+grep -q 'const \$bounds = kryon.copyValue' "$direct_web_out"
+grep -q 'let visible_width = kryon.copyValue(viewport.width)' "$direct_web_out"
 
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
