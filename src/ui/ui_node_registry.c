@@ -52,8 +52,6 @@ static const KryonNodeType kryon_node_types[] = {
     {"TitleBar", "Title Bar", "UI/Navigation", "Control", "Title", EDITABLE},
 
     {"Focus", "Focus", "UI/Overlays", "Control", "Focus", EDITABLE},
-    {"FocusDebugOverlay", "Focus Debug Overlay", "UI/Overlays", "Control", "Debug", KRYON_NODE_SELECTABLE},
-    {"TransitionFade", "Transition Fade", "UI/Overlays", "Control", "Transition", EDITABLE},
     {"Modal", "Modal", "UI/Overlays", "Control", "Dialog", EDITABLE},
 
 

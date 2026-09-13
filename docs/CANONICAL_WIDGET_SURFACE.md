@@ -93,7 +93,7 @@ surface review:
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar metrics and geometry policy | `.kry canonical` |
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
-| `runtime/transition_fade.kry` | TransitionFade alpha/easing policy | `.kry canonical` |
+| `runtime/transition_fade.kry` | Transition fade alpha/easing policy | Native support |
 | `runtime/modal.kry` | Modal layout and action policy | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window geometry policy | `.kry canonical` |
 | `runtime/table_view.kry` | TableView layout and scroll geometry policy | `.kry canonical` |
@@ -165,8 +165,6 @@ has a single place to land.
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing/scroll policy is `.kry`; host keeps input sampling. |
 | `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
-| `FocusDebugOverlay` | `UI/Overlays` | Debug | `runtime/focus.kry` | Partly `.kry-backed` | Debug overlay bounds and label placement are `.kry`; host keeps accessibility snapshot sampling and drawing. |
-| `TransitionFade` | `UI/Overlays` | Transition | `runtime/transition_fade.kry` | Partly `.kry-backed` | Alpha/easing policy is `.kry`; host keeps state mutation and fade rectangle drawing. |
 | `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout/action sizing policy is `.kry`; host keeps modal input layer, text editing, and drawing. |
 | `Scene` | `Game2D/Core` | Scene root | missing | Game2D native scene | Separate Game2D surface; introduce `.kry` scene declarations later. |
 | `Node2D` | `Game2D/Core` | Transform | missing | Game2D native scene | Separate Game2D surface. |

@@ -99,6 +99,19 @@ if [ -n "$focus_debug_public_matches" ]; then
     exit 1
 fi
 
+internal_overlay_registry_matches="$(
+    rg -n '"(FocusDebugOverlay|TransitionFade)"|^\| `(FocusDebugOverlay|TransitionFade)` \|' \
+        src/ui/ui_node_registry.c docs/CANONICAL_WIDGET_SURFACE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$internal_overlay_registry_matches" ]; then
+    echo "FocusDebugOverlay and TransitionFade are internal host/policy support, not public node registry entries:"
+    echo "$internal_overlay_registry_matches"
+    exit 1
+fi
+
 profile_picture_doc_matches="$(
     rg -n '\bProfilePicture\b|\bprofile_picture\b|\bprofile picture\b|\bUISyncProfileIcon\b|\bUI_SYNC_PROFILE_ICON_' \
         docs/CANONICAL_WIDGET_SURFACE.md \
