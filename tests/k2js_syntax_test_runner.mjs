@@ -314,6 +314,11 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     mask-position: center;
     mask-repeat: no-repeat;
     border-style: dashed;
+    border-color: #101112;
+    border-top-color: #111213;
+    border-right-color: #121314;
+    border-bottom-color: #131415;
+    border-left-color: #141516;
     border-top-width: 22;
     border-right-width: 23;
     border-bottom-width: 24;
@@ -608,6 +613,11 @@ assert.match(webStyleCSS, /mask-size: cover;/);
 assert.match(webStyleCSS, /mask-position: center;/);
 assert.match(webStyleCSS, /mask-repeat: no-repeat;/);
 assert.match(webStyleCSS, /border-style: dashed;/);
+assert.match(webStyleCSS, /border-color: #101112;/);
+assert.match(webStyleCSS, /border-top-color: #111213;/);
+assert.match(webStyleCSS, /border-right-color: #121314;/);
+assert.match(webStyleCSS, /border-bottom-color: #131415;/);
+assert.match(webStyleCSS, /border-left-color: #141516;/);
 assert.match(webStyleCSS, /border-top-width: 22px;/);
 assert.match(webStyleCSS, /border-right-width: 23px;/);
 assert.match(webStyleCSS, /border-bottom-width: 24px;/);
@@ -650,7 +660,7 @@ assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 for (const legacyAlias of [
-  "background-color", "color", "border-color", "focus-color",
+  "background-color", "color", "focus-color",
   "background_end", "border_width", "padding_x", "padding_y",
   "font_size", "icon_size", "offset_x", "offset_y", "font-family",
   "font_family", "text_align", "pointer_events", "outline_width"
@@ -1249,6 +1259,11 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["mask-size"
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["mask-position"], "center");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["mask-repeat"], "no-repeat");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-style"], "dashed");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-color"], "#101112");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-top-color"], "#111213");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-right-color"], "#121314");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-bottom-color"], "#131415");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-left-color"], "#141516");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-top-width"], 22);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-right-width"], 23);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-bottom-width"], 24);
@@ -3467,6 +3482,11 @@ function fakeDocument() {
     assert.equal(firstField.style.maskPosition, "center");
     assert.equal(firstField.style.maskRepeat, "no-repeat");
     assert.equal(firstField.style.borderStyle, "dashed");
+    assert.equal(firstField.style.borderColor, "#101112");
+    assert.equal(firstField.style.borderTopColor, "#111213");
+    assert.equal(firstField.style.borderRightColor, "#121314");
+    assert.equal(firstField.style.borderBottomColor, "#131415");
+    assert.equal(firstField.style.borderLeftColor, "#141516");
     assert.equal(firstField.style.borderTopWidth, "22px");
     assert.equal(firstField.style.borderRightWidth, "23px");
     assert.equal(firstField.style.borderBottomWidth, "24px");

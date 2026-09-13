@@ -1786,7 +1786,9 @@ const webStyleLayers = {
 
 const webKssColorProperties = new Set([
   "background", "foreground", "border", "focus", "background-end",
-  "accent-color", "caret-color", "outline-color", "text-decoration-color"
+  "accent-color", "caret-color", "border-color", "border-top-color",
+  "border-right-color", "border-bottom-color", "border-left-color",
+  "outline-color", "text-decoration-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -2429,11 +2431,16 @@ const webCSSPropertyNames = new Map([
   ["accent-color", "accent-color"],
   ["caret-color", "caret-color"],
   ["border", "border-color"],
+  ["border-color", "border-color"],
   ["border-width", "border-width"],
   ["border-top-width", "border-top-width"],
   ["border-right-width", "border-right-width"],
   ["border-bottom-width", "border-bottom-width"],
   ["border-left-width", "border-left-width"],
+  ["border-top-color", "border-top-color"],
+  ["border-right-color", "border-right-color"],
+  ["border-bottom-color", "border-bottom-color"],
+  ["border-left-color", "border-left-color"],
   ["border-style", "border-style"],
   ["radius", "border-radius"],
   ["border-top-left-radius", "border-top-left-radius"],
@@ -3391,11 +3398,16 @@ function applyResolvedWebStyle(el, style) {
   set("accentColor", style["accent-color"]);
   set("caretColor", style["caret-color"]);
   set("borderColor", style.border);
+  set("borderColor", style["border-color"]);
   set("borderWidth", style["border-width"]);
   set("borderTopWidth", style["border-top-width"]);
   set("borderRightWidth", style["border-right-width"]);
   set("borderBottomWidth", style["border-bottom-width"]);
   set("borderLeftWidth", style["border-left-width"]);
+  set("borderTopColor", style["border-top-color"]);
+  set("borderRightColor", style["border-right-color"]);
+  set("borderBottomColor", style["border-bottom-color"]);
+  set("borderLeftColor", style["border-left-color"]);
   set("borderStyle", style["border-style"]);
   set("borderRadius", style.radius);
   set("borderTopLeftRadius", style["border-top-left-radius"]);
