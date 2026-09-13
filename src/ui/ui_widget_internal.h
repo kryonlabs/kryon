@@ -1,5 +1,5 @@
-#ifndef KRYON_WIDGET_H
-#define KRYON_WIDGET_H
+#ifndef KRYON_WIDGET_INTERNAL_H
+#define KRYON_WIDGET_INTERNAL_H
 
 #include "kryon_compat.generated.h"
 

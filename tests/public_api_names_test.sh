@@ -581,6 +581,21 @@ if [ -n "$public_text_helper_matches" ]; then
     exit 1
 fi
 
+public_widget_registration_matches="$(
+    rg -n '\b(BeginWidget|EndWidget|WidgetSetBounds|WidgetSetAction|WIDGET_MOVABLE|WIDGET_RESIZABLE|WIDGET_READONLY|WIDGET_TEMPORARY_ID)\b|include/ui_widget\.h' \
+        include \
+        docs/PUBLIC_API_SNAPSHOT.txt \
+        docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_widget_registration_matches" ]; then
+    echo "Inspect widget registration is internal host support, not public widget API:"
+    echo "$public_widget_registration_matches"
+    exit 1
+fi
+
 split_text_widget_matches="$(
     # These are forbidden widget functions. A palette's TextDisabled field is
     # a color property, not a second Text implementation.

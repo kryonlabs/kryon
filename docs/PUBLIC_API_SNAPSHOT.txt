@@ -1990,14 +1990,6 @@ include/ui_tree.h function UpdateTree
 include/ui_tree.h typedef AccessibilitySink
 include/ui_tree.h typedef KeyID
 include/ui_tree.h typedef NodeId
-include/ui_widget.h enum WIDGET_MOVABLE
-include/ui_widget.h enum WIDGET_READONLY
-include/ui_widget.h enum WIDGET_RESIZABLE
-include/ui_widget.h enum WIDGET_TEMPORARY_ID
-include/ui_widget.h function BeginWidget
-include/ui_widget.h function EndWidget
-include/ui_widget.h function WidgetSetAction
-include/ui_widget.h function WidgetSetBounds
 include/ui_window.h enum NATIVE_WINDOW_ALWAYS_ON_TOP
 include/ui_window.h enum NATIVE_WINDOW_BORDERLESS
 include/ui_window.h enum NATIVE_WINDOW_CENTER

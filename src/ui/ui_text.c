@@ -3,7 +3,6 @@
 #include "ui_clip.h"
 #include "ui_internal.h"
 #include "ui_tk.h"
-#include "ui_widget.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
 #include "ui_style_internal.h"

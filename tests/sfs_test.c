@@ -11,6 +11,7 @@
 #include "kry_sfs.h"
 #include "kryon_test.h"
 #include "ui_inspect.h"
+#include "../src/ui/ui_widget_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,7 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 #include "dropdown_store.h"
-#include "ui_widget.h"
 #include "runtime/navigation_bar.h"
 
 /* zero constants: the native Plan 9 compiler rejects short

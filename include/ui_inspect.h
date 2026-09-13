@@ -1,7 +1,7 @@
 #ifndef KRYON_INSPECT_H
 #define KRYON_INSPECT_H
 
-#include "ui_widget.h"
+#include "kryon_compat.generated.h"
 
 typedef struct InspectSelection {
     char id[96];
