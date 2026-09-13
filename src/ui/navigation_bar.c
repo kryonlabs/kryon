@@ -112,7 +112,6 @@ RenderNavigationBar(NavigationBarProps nav)
     Style bar_style;
     StyleFrame bar_frame;
     StyleFrame base_icon_frame;
-    Style base_icon_style;
     int icon_size = 0;
     int side_margin = 0;
     int bottom_margin = 0;
@@ -122,16 +121,10 @@ RenderNavigationBar(NavigationBarProps nav)
     if(nav.items == NULL || count <= 0 || nav.view_width <= 0 || nav.view_height <= 0)
         return result;
     base_icon_frame = ui_navigation_bar_item_frame(0, 0, 0, nav.class_name);
-    base_icon_style = ui_unpack_style(base_icon_frame.value);
     icon_size = -1;
-    if((base_icon_frame.value.fields & StyleIconSize) != 0)
-        icon_size = (int)(base_icon_style.icon_size + 0.5f);
     bar_frame = ui_navigation_bar_surface_frame(nav.class_name);
-    bar_style = ui_unpack_style(bar_frame.value);
-    if(bar_style.padding_x > 0.0f)
-        side_margin = (int)(bar_style.padding_x + 0.5f);
-    if(bar_style.padding_y > 0.0f)
-        bottom_margin = (int)(bar_style.padding_y + 0.5f);
+    side_margin = -1;
+    bottom_margin = -1;
     paint = NavigationBarPaintFor((NavigationBarSpec){
         .view_width = nav.view_width,
         .view_height = nav.view_height,
@@ -141,7 +134,8 @@ RenderNavigationBar(NavigationBarProps nav)
         .bottom_margin = bottom_margin,
         .icon_size = icon_size,
         .scale = runtime_scale,
-        .bar = bar_frame
+        .bar = bar_frame,
+        .item = base_icon_frame
     });
     count = paint.count;
     result.y = paint.y;

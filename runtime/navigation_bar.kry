@@ -14,6 +14,7 @@ NavigationBarSpec :: struct {
     icon_size: i32
     scale: float
     bar: StyleFrame
+    item: StyleFrame
 }
 
 NavigationBarPaint :: struct {
@@ -237,11 +238,20 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
             (u32)StyleIconSize, spec.bar.value.icon_size, 86.0, scale, false)
     }
     bottom_margin: i32 = spec.bottom_margin
-    if bottom_margin < 0 { bottom_margin = 0 }
+    if bottom_margin < 0 {
+        bottom_margin = NavigationBarMetric(spec.bar.value.fields,
+            (u32)StylePaddingY, spec.bar.value.padding_y, 0.0, scale, true)
+    }
     side_margin: i32 = spec.side_margin
-    if side_margin < 0 { side_margin = 0 }
+    if side_margin < 0 {
+        side_margin = NavigationBarMetric(spec.bar.value.fields,
+            (u32)StylePaddingX, spec.bar.value.padding_x, 0.0, scale, true)
+    }
     icon_size: i32 = spec.icon_size
-    if icon_size < 0 { icon_size = (i32)(32.0 * scale) }
+    if icon_size < 0 {
+        icon_size = NavigationBarMetric(spec.item.value.fields,
+            (u32)StyleIconSize, spec.item.value.icon_size, 32.0, scale, true)
+    }
 
     y: i32 = spec.view_height - bottom_margin - height
     available_w: i32 = spec.view_width - side_margin * 2

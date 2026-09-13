@@ -233,6 +233,59 @@ main(void)
         check_int("compact navigation bar active badge uses KSS radius",
                   (int)item_paint.face.value.radius, 29);
 
+        bar.value.fields |= StylePaddingX | StylePaddingY;
+        bar.value.padding_x = 24.0f;
+        bar.value.padding_y = 12.0f;
+        item.value.fields |= StyleIconSize;
+        item.value.icon_size = 20.0f;
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 900,
+            .view_height = 720,
+            .count = 4,
+            .side_margin = -1,
+            .bottom_margin = -1,
+            .icon_size = -1,
+            .scale = 1.0f,
+            .bar = bar,
+            .item = item,
+        });
+        check_int("compact navigation bar side margin uses KSS",
+                  (int)paint.bar_bounds.x, 25);
+        check_int("compact navigation bar bottom margin uses KSS",
+                  paint.y, 622);
+        check_int("compact navigation bar item icon size uses KSS",
+                  paint.icon_size, 20);
+        bar.value.padding_x = 0.0f;
+        bar.value.padding_y = 0.0f;
+        item.value.icon_size = 0.0f;
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 900,
+            .view_height = 720,
+            .count = 4,
+            .side_margin = -1,
+            .bottom_margin = -1,
+            .icon_size = -1,
+            .scale = 1.0f,
+            .bar = bar,
+            .item = item,
+        });
+        check_int("compact navigation bar zero side margin uses KSS",
+                  (int)paint.bar_bounds.x, 1);
+        check_int("compact navigation bar zero bottom margin uses KSS",
+                  paint.y, 634);
+        check_int("compact navigation bar zero item icon size uses KSS",
+                  paint.icon_size, 0);
+        bar.value.fields &= ~(StylePaddingX | StylePaddingY);
+        item.value.fields &= ~StyleIconSize;
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 900,
+            .view_height = 720,
+            .count = 4,
+            .icon_size = -1,
+            .scale = 1.0f,
+            .bar = bar,
+        });
+
         item.value.fields |= StylePaddingX | StylePaddingY | StyleGap |
                              StyleContentOffset;
         item.value.padding_x = 10.0f;

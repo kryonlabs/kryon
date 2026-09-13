@@ -4992,31 +4992,18 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		viewH = r.GetScreenHeight()
 	}
 	itemBaseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
-	itemBaseStyle := unpackStyle(itemBaseFrame.Value)
-	iconSize := int32(0)
-	if itemBaseStyle.IconSize > 0 {
-		iconSize = int32(itemBaseStyle.IconSize + 0.5)
-	}
 	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBar(), StyleSheet_StyleAny())
-	barStyle := unpackStyle(barFrame.Value)
-	sideMargin := int32(0)
-	if barStyle.PaddingX > 0 {
-		sideMargin = int32(barStyle.PaddingX + 0.5)
-	}
-	bottomMargin := int32(0)
-	if barStyle.PaddingY > 0 {
-		bottomMargin = int32(barStyle.PaddingY + 0.5)
-	}
 	paint := NavigationBar_NavigationBarPaintFor(NavigationBarSpec{
 		ViewWidth:    w,
 		ViewHeight:   viewH,
 		Count:        int32(count),
 		Height:       props.Height,
-		SideMargin:   sideMargin,
-		BottomMargin: bottomMargin,
-		IconSize:     iconSize,
+		SideMargin:   -1,
+		BottomMargin: -1,
+		IconSize:     -1,
 		Scale:        1,
 		Bar:          barFrame,
+		Item:         itemBaseFrame,
 	})
 	bar := unpackStyle(paint.Bar.Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BarBounds, Color: bar.Background,

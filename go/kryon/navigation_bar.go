@@ -15,6 +15,7 @@ type NavigationBarSpec struct {
 	IconSize     int32
 	Scale        float32
 	Bar          StyleFrame
+	Item         StyleFrame
 }
 
 type NavigationBarPaint struct {
@@ -639,173 +640,191 @@ func NavigationBar_NavigationBarPaintFor(spec NavigationBarSpec) NavigationBarPa
 	var value_28 int32 = 0
 	var value_29 bool = value_27 < value_28
 	if value_29 {
-		var value_30 int32 = 0
-		bottom_margin = value_30
+		var value_30 uint32 = spec.Bar.Value.Fields
+		var value_31 int32 = int32(StylePaddingY)
+		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
+		var value_33 float32 = spec.Bar.Value.PaddingY
+		var value_34 float32 = 0.0
+		var value_35 float32 = scale
+		var value_36 bool = true
+		var value_37 int32 = NavigationBar_NavigationBarMetric(value_30, value_32, value_33, value_34, value_35, value_36)
+		bottom_margin = value_37
 	}
-	var value_31 int32 = spec.SideMargin
-	var side_margin int32 = value_31
-	var value_32 int32 = side_margin
-	var value_33 int32 = 0
-	var value_34 bool = value_32 < value_33
-	if value_34 {
-		var value_35 int32 = 0
-		side_margin = value_35
+	var value_38 int32 = spec.SideMargin
+	var side_margin int32 = value_38
+	var value_39 int32 = side_margin
+	var value_40 int32 = 0
+	var value_41 bool = value_39 < value_40
+	if value_41 {
+		var value_42 uint32 = spec.Bar.Value.Fields
+		var value_43 int32 = int32(StylePaddingX)
+		var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
+		var value_45 float32 = spec.Bar.Value.PaddingX
+		var value_46 float32 = 0.0
+		var value_47 float32 = scale
+		var value_48 bool = true
+		var value_49 int32 = NavigationBar_NavigationBarMetric(value_42, value_44, value_45, value_46, value_47, value_48)
+		side_margin = value_49
 	}
-	var value_36 int32 = spec.IconSize
-	var icon_size int32 = value_36
-	var value_37 int32 = icon_size
-	var value_38 int32 = 0
-	var value_39 bool = value_37 < value_38
-	if value_39 {
-		var value_40 float32 = 32.0
-		var value_41 float32 = scale
-		var value_42 float32 = value_40 * value_41
-		var value_43 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_42), 32, true)), uint64(0), 32, true, 0))
-		icon_size = value_43
+	var value_50 int32 = spec.IconSize
+	var icon_size int32 = value_50
+	var value_51 int32 = icon_size
+	var value_52 int32 = 0
+	var value_53 bool = value_51 < value_52
+	if value_53 {
+		var value_54 uint32 = spec.Item.Value.Fields
+		var value_55 int32 = int32(StyleIconSize)
+		var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
+		var value_57 float32 = spec.Item.Value.IconSize
+		var value_58 float32 = 32.0
+		var value_59 float32 = scale
+		var value_60 bool = true
+		var value_61 int32 = NavigationBar_NavigationBarMetric(value_54, value_56, value_57, value_58, value_59, value_60)
+		icon_size = value_61
 	}
-	var value_44 int32 = spec.ViewHeight
-	var value_45 int32 = bottom_margin
-	var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 2))
-	var value_47 int32 = height
-	var value_48 int32 = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 2))
-	var y int32 = value_48
-	var value_49 int32 = spec.ViewWidth
-	var value_50 int32 = side_margin
-	var value_51 int32 = 2
-	var value_52 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_51), 32, true, 3))
-	var value_53 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_52), 32, true, 2))
-	var available_w int32 = value_53
-	var value_54 uint32 = spec.Bar.Value.Fields
-	var value_55 int32 = int32(StyleContentOffset)
-	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
-	var value_57 float32 = spec.Bar.Value.OffsetX
-	var value_58 float32 = 96.0
-	var value_59 float32 = scale
-	var value_60 bool = false
-	var value_61 int32 = NavigationBar_NavigationBarMetric(value_54, value_56, value_57, value_58, value_59, value_60)
-	var min_available int32 = value_61
-	var value_62 int32 = available_w
-	var value_63 int32 = min_available
-	var value_64 bool = value_62 < value_63
-	if value_64 {
-		var value_65 int32 = min_available
-		available_w = value_65
+	var value_62 int32 = spec.ViewHeight
+	var value_63 int32 = bottom_margin
+	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 2))
+	var value_65 int32 = height
+	var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 2))
+	var y int32 = value_66
+	var value_67 int32 = spec.ViewWidth
+	var value_68 int32 = side_margin
+	var value_69 int32 = 2
+	var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 3))
+	var value_71 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_70), 32, true, 2))
+	var available_w int32 = value_71
+	var value_72 uint32 = spec.Bar.Value.Fields
+	var value_73 int32 = int32(StyleContentOffset)
+	var value_74 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(0), 32, false, 0))
+	var value_75 float32 = spec.Bar.Value.OffsetX
+	var value_76 float32 = 96.0
+	var value_77 float32 = scale
+	var value_78 bool = false
+	var value_79 int32 = NavigationBar_NavigationBarMetric(value_72, value_74, value_75, value_76, value_77, value_78)
+	var min_available int32 = value_79
+	var value_80 int32 = available_w
+	var value_81 int32 = min_available
+	var value_82 bool = value_80 < value_81
+	if value_82 {
+		var value_83 int32 = min_available
+		available_w = value_83
 	}
-	var value_66 int32 = available_w
-	var tab_w int32 = value_66
-	var value_67 int32 = count
-	var value_68 int32 = 0
-	var value_69 bool = value_67 > value_68
-	if value_69 {
-		var value_70 int32 = available_w
-		var value_71 int32 = count
-		var value_72 int32 = int32(number_runtime_bits(uint64(value_70), uint64(value_71), 32, true, 4))
-		tab_w = value_72
+	var value_84 int32 = available_w
+	var tab_w int32 = value_84
+	var value_85 int32 = count
+	var value_86 int32 = 0
+	var value_87 bool = value_85 > value_86
+	if value_87 {
+		var value_88 int32 = available_w
+		var value_89 int32 = count
+		var value_90 int32 = int32(number_runtime_bits(uint64(value_88), uint64(value_89), 32, true, 4))
+		tab_w = value_90
 	}
-	var value_73 uint32 = spec.Bar.Value.Fields
-	var value_74 int32 = int32(StyleContentOffset)
-	var value_75 uint32 = uint32(number_runtime_bits(uint64(value_74), uint64(0), 32, false, 0))
-	var value_76 float32 = spec.Bar.Value.OffsetY
-	var value_77 float32 = 56.0
-	var value_78 float32 = scale
-	var value_79 bool = false
-	var value_80 int32 = NavigationBar_NavigationBarMetric(value_73, value_75, value_76, value_77, value_78, value_79)
-	var min_tab int32 = value_80
-	var value_81 int32 = tab_w
-	var value_82 int32 = min_tab
-	var value_83 bool = value_81 < value_82
-	if value_83 {
-		var value_84 int32 = min_tab
-		tab_w = value_84
+	var value_91 uint32 = spec.Bar.Value.Fields
+	var value_92 int32 = int32(StyleContentOffset)
+	var value_93 uint32 = uint32(number_runtime_bits(uint64(value_92), uint64(0), 32, false, 0))
+	var value_94 float32 = spec.Bar.Value.OffsetY
+	var value_95 float32 = 56.0
+	var value_96 float32 = scale
+	var value_97 bool = false
+	var value_98 int32 = NavigationBar_NavigationBarMetric(value_91, value_93, value_94, value_95, value_96, value_97)
+	var min_tab int32 = value_98
+	var value_99 int32 = tab_w
+	var value_100 int32 = min_tab
+	var value_101 bool = value_99 < value_100
+	if value_101 {
+		var value_102 int32 = min_tab
+		tab_w = value_102
 	}
-	var value_85 int32 = tab_w
-	var value_86 int32 = count
-	var value_87 int32 = int32(number_runtime_bits(uint64(value_85), uint64(value_86), 32, true, 3))
-	var group_w int32 = value_87
-	var value_88 int32 = group_w
-	var value_89 int32 = available_w
-	var value_90 bool = value_88 > value_89
-	if value_90 {
-		var value_91 int32 = available_w
-		group_w = value_91
+	var value_103 int32 = tab_w
+	var value_104 int32 = count
+	var value_105 int32 = int32(number_runtime_bits(uint64(value_103), uint64(value_104), 32, true, 3))
+	var group_w int32 = value_105
+	var value_106 int32 = group_w
+	var value_107 int32 = available_w
+	var value_108 bool = value_106 > value_107
+	if value_108 {
+		var value_109 int32 = available_w
+		group_w = value_109
 	}
-	var value_92 int32 = count
-	var value_93 int32 = 0
-	var value_94 bool = value_92 > value_93
-	if value_94 {
-		var value_95 int32 = group_w
-		var value_96 int32 = count
-		var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 4))
-		tab_w = value_97
+	var value_110 int32 = count
+	var value_111 int32 = 0
+	var value_112 bool = value_110 > value_111
+	if value_112 {
+		var value_113 int32 = group_w
+		var value_114 int32 = count
+		var value_115 int32 = int32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, true, 4))
+		tab_w = value_115
 	}
-	var value_98 float32 = 0.0
-	paint.Bounds.X = value_98
-	var value_99 int32 = y
-	var value_100 float32 = float32(value_99)
-	paint.Bounds.Y = value_100
-	var value_101 int32 = spec.ViewWidth
-	var value_102 float32 = float32(value_101)
-	paint.Bounds.Width = value_102
-	var value_103 int32 = height
-	var value_104 float32 = float32(value_103)
-	paint.Bounds.Height = value_104
-	var value_105 uint32 = spec.Bar.Value.Fields
-	var value_106 int32 = int32(StyleBorderWidth)
-	var value_107 uint32 = uint32(number_runtime_bits(uint64(value_106), uint64(0), 32, false, 0))
-	var value_108 float32 = spec.Bar.Value.BorderWidth
-	var value_109 float32 = 1.0
-	var value_110 float32 = scale
-	var value_111 bool = true
-	var value_112 int32 = NavigationBar_NavigationBarMetric(value_105, value_107, value_108, value_109, value_110, value_111)
-	var inset int32 = value_112
-	var value_113 int32 = side_margin
-	var value_114 int32 = inset
-	var value_115 int32 = int32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, true, 1))
-	var value_116 float32 = float32(value_115)
-	paint.BarBounds.X = value_116
+	var value_116 float32 = 0.0
+	paint.Bounds.X = value_116
 	var value_117 int32 = y
-	var value_118 int32 = inset
-	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 1))
+	var value_118 float32 = float32(value_117)
+	paint.Bounds.Y = value_118
+	var value_119 int32 = spec.ViewWidth
 	var value_120 float32 = float32(value_119)
-	paint.BarBounds.Y = value_120
-	var value_121 int32 = available_w
-	var value_122 int32 = inset
-	var value_123 int32 = 2
-	var value_124 int32 = int32(number_runtime_bits(uint64(value_122), uint64(value_123), 32, true, 3))
-	var value_125 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_124), 32, true, 2))
-	var value_126 float32 = float32(value_125)
-	paint.BarBounds.Width = value_126
-	var value_127 int32 = height
-	var value_128 int32 = inset
-	var value_129 int32 = 2
-	var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 3))
-	var value_131 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_130), 32, true, 2))
-	var value_132 float32 = float32(value_131)
-	paint.BarBounds.Height = value_132
-	var value_133 int32 = side_margin
-	var value_134 int32 = available_w
-	var value_135 int32 = group_w
-	var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 2))
-	var value_137 int32 = 2
-	var value_138 int32 = int32(number_runtime_bits(uint64(value_136), uint64(value_137), 32, true, 4))
-	var value_139 int32 = int32(number_runtime_bits(uint64(value_133), uint64(value_138), 32, true, 1))
-	paint.StartX = value_139
-	var value_140 int32 = tab_w
-	paint.TabWidth = value_140
-	var value_141 int32 = group_w
-	paint.GroupWidth = value_141
-	var value_142 int32 = count
-	paint.Count = value_142
-	var value_143 int32 = icon_size
-	paint.IconSize = value_143
-	var value_144 int32 = height
-	paint.Height = value_144
-	var value_145 int32 = y
-	paint.Y = value_145
-	var value_146 StyleFrame = spec.Bar
-	paint.Bar = value_146
-	var value_147 NavigationBarPaint = paint
-	return value_147
+	paint.Bounds.Width = value_120
+	var value_121 int32 = height
+	var value_122 float32 = float32(value_121)
+	paint.Bounds.Height = value_122
+	var value_123 uint32 = spec.Bar.Value.Fields
+	var value_124 int32 = int32(StyleBorderWidth)
+	var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
+	var value_126 float32 = spec.Bar.Value.BorderWidth
+	var value_127 float32 = 1.0
+	var value_128 float32 = scale
+	var value_129 bool = true
+	var value_130 int32 = NavigationBar_NavigationBarMetric(value_123, value_125, value_126, value_127, value_128, value_129)
+	var inset int32 = value_130
+	var value_131 int32 = side_margin
+	var value_132 int32 = inset
+	var value_133 int32 = int32(number_runtime_bits(uint64(value_131), uint64(value_132), 32, true, 1))
+	var value_134 float32 = float32(value_133)
+	paint.BarBounds.X = value_134
+	var value_135 int32 = y
+	var value_136 int32 = inset
+	var value_137 int32 = int32(number_runtime_bits(uint64(value_135), uint64(value_136), 32, true, 1))
+	var value_138 float32 = float32(value_137)
+	paint.BarBounds.Y = value_138
+	var value_139 int32 = available_w
+	var value_140 int32 = inset
+	var value_141 int32 = 2
+	var value_142 int32 = int32(number_runtime_bits(uint64(value_140), uint64(value_141), 32, true, 3))
+	var value_143 int32 = int32(number_runtime_bits(uint64(value_139), uint64(value_142), 32, true, 2))
+	var value_144 float32 = float32(value_143)
+	paint.BarBounds.Width = value_144
+	var value_145 int32 = height
+	var value_146 int32 = inset
+	var value_147 int32 = 2
+	var value_148 int32 = int32(number_runtime_bits(uint64(value_146), uint64(value_147), 32, true, 3))
+	var value_149 int32 = int32(number_runtime_bits(uint64(value_145), uint64(value_148), 32, true, 2))
+	var value_150 float32 = float32(value_149)
+	paint.BarBounds.Height = value_150
+	var value_151 int32 = side_margin
+	var value_152 int32 = available_w
+	var value_153 int32 = group_w
+	var value_154 int32 = int32(number_runtime_bits(uint64(value_152), uint64(value_153), 32, true, 2))
+	var value_155 int32 = 2
+	var value_156 int32 = int32(number_runtime_bits(uint64(value_154), uint64(value_155), 32, true, 4))
+	var value_157 int32 = int32(number_runtime_bits(uint64(value_151), uint64(value_156), 32, true, 1))
+	paint.StartX = value_157
+	var value_158 int32 = tab_w
+	paint.TabWidth = value_158
+	var value_159 int32 = group_w
+	paint.GroupWidth = value_159
+	var value_160 int32 = count
+	paint.Count = value_160
+	var value_161 int32 = icon_size
+	paint.IconSize = value_161
+	var value_162 int32 = height
+	paint.Height = value_162
+	var value_163 int32 = y
+	paint.Y = value_163
+	var value_164 StyleFrame = spec.Bar
+	paint.Bar = value_164
+	var value_165 NavigationBarPaint = paint
+	return value_165
 }
 
 func NavigationBar_NavigationBarItemPaintFor(spec NavigationBarItemSpec) NavigationBarItemPaint {
