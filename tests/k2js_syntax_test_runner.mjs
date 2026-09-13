@@ -3403,6 +3403,8 @@ function fakeDocument() {
     assert.equal(root.kryStyleTrace("tap-button").resolved.background, "#203040");
     assert.equal(runtime.webDOMStyleTrace(target, "tap-button").resolved.background, "#203040");
     assert.equal(Object.keys(buttonObject).includes("styleTrace"), false);
+    assert.equal(buttonObject.snapshot.relationRefs.previousSibling, webDoc.nodes[1].path);
+    assert.equal(buttonObject.snapshot.relationRefs.nextSibling, "search-box");
     assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
     assert.deepEqual(buttonObject.snapshot.relationRefs.owns, ["search-box"]);
     assert.equal(buttonObject.snapshot.relationRefs.details, "Scene/root/search_label");
@@ -3418,6 +3420,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMEventRefs(target, "tap-button").keyUp, "");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
+    assert.equal(buttonObject.relations.previousSibling.ref, webDoc.nodes[1].path);
+    assert.equal(buttonObject.relations.nextSibling.ref, "search-box");
+    assert.equal(buttonObject.relationRefs.previousSibling, webDoc.nodes[1].path);
+    assert.equal(buttonObject.relationRefs.nextSibling, "search-box");
     assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);
     assert.deepEqual(buttonObject.relations.owns.map((object) => object.ref), ["search-box"]);
     assert.equal(buttonObject.relations.details.ref, "Scene/root/search_label");
@@ -3451,6 +3457,14 @@ function fakeDocument() {
       "Scene/root/search_label");
     assert.deepEqual(runtime.webNodeRelationRefs(rt, "search-box").flowTo,
       ["primary-action"]);
+    assert.equal(runtime.webNodeRelations(rt, "primary-action").previousSibling.path,
+      webDoc.nodes[1].path);
+    assert.equal(runtime.webNodeRelations(rt, "primary-action").nextSibling.path,
+      webDoc.nodes[3].path);
+    assert.equal(runtime.webNodeRelationRefs(rt, "primary-action").previousSibling,
+      webDoc.nodes[1].path);
+    assert.equal(runtime.webNodeRelationRefs(rt, "primary-action").nextSibling,
+      "search-box");
     assert.deepEqual(runtime.webNodeRelations(rt, "search-box").controlledBy
       .map((node) => node.webRef),
       ["primary-action"]);
