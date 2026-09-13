@@ -112,6 +112,19 @@ if [ -n "$profile_picture_doc_matches" ]; then
     exit 1
 fi
 
+app_texture_matches="$(
+    rg -n '\b(Texture|DrawTexture|DrawTexturePro|DrawTextureRec)\s*\(' \
+        docs/API.md docs/CANONICAL_WIDGET_SURFACE.md docs/FEATURE_MATRIX.md docs/RUNTIME_PARITY.md examples tests/parity \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$app_texture_matches" ]; then
+    echo "App-facing .kry image UI must use Image(ImageProps); raw texture drawing is backend/test internals only:"
+    echo "$app_texture_matches"
+    exit 1
+fi
+
 prefixed_scene_matches="$(
     rg -n '\b(Kry[A-Za-z0-9_]*PropsAlloc|KryAudioSourcePlay|KryAudioSourceStop|KryBody2DType|KryShape2DKind|KryAudioKind|KryAnimation|KryAnim[A-Za-z0-9_]*|KryKeyframe|KRY_BODY2D_[A-Z_]+|KRY_SHAPE2D_[A-Z_]+|KRY_AUDIO_(SOUND|MUSIC)|KRY_ANIM_[A-Z_]+|KRY_PLAYER_ANIMS_MAX|KRY_TILEMAP_[WH]_MAX)\b' \
         include/node2d_props.h src/scene docs/PUBLIC_API_SNAPSHOT.txt examples tests \
