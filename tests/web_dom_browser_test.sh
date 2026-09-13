@@ -19,6 +19,45 @@ mkdir -p "$work/profile"
 
 runtime_url=$(node -e 'const {pathToFileURL}=require("node:url"); console.log(pathToFileURL(process.argv[1]).href)' "$root/web/kryon-runtime.js")
 html_url=$(node -e 'const {pathToFileURL}=require("node:url"); console.log(pathToFileURL(process.argv[1]).href)' "$work/index.html")
+compiled_module_url=""
+k2js_bin=${K2JS:-}
+if [ -z "$k2js_bin" ]; then
+    platform=$(uname -s | tr '[:upper:]' '[:lower:]')
+    arch=$(uname -m)
+    if [ -x "$root/build/$platform-$arch/bin/k2js" ]; then
+        k2js_bin="$root/build/$platform-$arch/bin/k2js"
+    else
+        k2js_bin=$(ls "$root"/build/"$platform"-*/bin/k2js \
+            "$root"/build/*/bin/k2js 2>/dev/null | head -1 || true)
+    fi
+fi
+if [ -n "$k2js_bin" ] && [ -x "$k2js_bin" ]; then
+    mkdir -p "$work/compiled/src"
+    cat > "$work/compiled/src/native_blocks.kry" <<'EOF'
+#import "kryon.h"
+NativeBlocks :: () #ui {
+    Article story: {
+        class = "feature"
+        Text((TextProps){.text="Story"})
+    }
+    Figure chart: {
+        Figcaption caption: {
+            Text((TextProps){.text="Chart"})
+        }
+    }
+}
+EOF
+    "$k2js_bin" --no-main --root "$work/compiled" -o "$work/compiled/out" \
+        "$work/compiled/src/native_blocks.kry"
+    sed -i "s#\\.\\./kryon-runtime\\.js#$runtime_url#" \
+        "$work/compiled/out/src/native_blocks.js"
+    compiled_module_url=$(node -e 'const {pathToFileURL}=require("node:url"); console.log(pathToFileURL(process.argv[1]).href)' "$work/compiled/out/src/native_blocks.js")
+else
+    cat > "$work/compiled-noop.js" <<'EOF'
+export const nativeBlocksUnavailable = true;
+EOF
+    compiled_module_url=$(node -e 'const {pathToFileURL}=require("node:url"); console.log(pathToFileURL(process.argv[1]).href)' "$work/compiled-noop.js")
+fi
 
 cat > "$work/index.html" <<EOF
 <!doctype html>
@@ -27,6 +66,7 @@ cat > "$work/index.html" <<EOF
 <div id="target"></div>
 <script type="module">
 import * as kryon from "$runtime_url";
+import * as compiledNativeBlocks from "$compiled_module_url";
 
 function assert(condition, message) {
   if (!condition)
@@ -744,6 +784,48 @@ try {
   removeInstalledStyle();
   assert(!document.querySelector('style[data-kry-style="browser-install"]'),
     "installed CSS cleanup failed");
+
+  if (!compiledNativeBlocks.nativeBlocksUnavailable) {
+    const compiledTarget = document.createElement("div");
+    document.body.appendChild(compiledTarget);
+    const compiledRt = kryon.createRuntime({
+      webStyleSheets: kryon.parseWebStyleSheet(\`
+        Article.feature { display: grid; color: #102030; }
+        Figure:has(> Figcaption) { margin-block: 12; }
+      \`)
+    });
+    kryon.beginFrame(compiledRt);
+    compiledNativeBlocks.NativeBlocks_NativeBlocks(compiledRt,
+      compiledNativeBlocks.createState(), {});
+    kryon.endFrame(compiledRt);
+    kryon.renderWebDocument(compiledRt, compiledTarget);
+    const compiledStory = kryon.findWebElement(compiledTarget, "NativeBlocks/story");
+    const compiledCaption = kryon.findWebElement(compiledTarget, "NativeBlocks/chart/caption");
+    assert(compiledStory?.tagName === "ARTICLE",
+      "compiled named Article did not render native article");
+    assert(compiledStory.dataset.kryName === "story",
+      "compiled Article name metadata missing");
+    assert(compiledStory.dataset.kryPath === "NativeBlocks/story",
+      "compiled Article path metadata missing");
+    assert(compiledStory.dataset.krySourceRef === "src/native_blocks.kry:3",
+      "compiled Article source ref missing");
+    assert(compiledStory.style.display === "grid",
+      "compiled Article KSS style missing");
+    assert(compiledStory.kryMatches("Article.feature"),
+      "compiled Article selector match failed");
+    assert(compiledStory.kryChildren[0]?.node?.text === "Story",
+      "compiled Article child text missing");
+    assert(kryon.webDOMStyleTrace(compiledTarget, "NativeBlocks/story")
+      .resolved.display === "grid",
+      "compiled Article style trace missing");
+    assert(kryon.webDOMQuery(compiledTarget, "Figure:has(> Figcaption)")?.ref ===
+      "NativeBlocks/chart", "compiled Figure :has query failed");
+    assert(compiledCaption?.tagName === "FIGCAPTION",
+      "compiled Figcaption native tag missing");
+    assert(kryon.webDOMRelations(compiledTarget, "NativeBlocks/chart/caption")
+      .captionOwner.ref === "NativeBlocks/chart",
+      "compiled caption relation missing");
+  }
 
   const lifecycleTarget = document.createElement("div");
   document.body.appendChild(lifecycleTarget);
