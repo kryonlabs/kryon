@@ -3751,6 +3751,16 @@ function webNodePreviousSiblingsFromFrame(node) {
   return index <= 0 ? [] : siblings.slice(0, index);
 }
 
+function webNodePreviousSiblingFromFrame(node) {
+  return webNodePreviousSiblingsFromFrame(node).pop() || null;
+}
+
+function webNodeNextSiblingFromFrame(node) {
+  const siblings = webNodeSiblingsFromFrame(node);
+  const index = siblings.indexOf(node);
+  return index < 0 || index >= siblings.length - 1 ? null : siblings[index + 1];
+}
+
 function nthChildPseudoMatches(pseudo, siblings, node) {
   const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
   if (!match)
@@ -6352,10 +6362,24 @@ function webDOMGroupMembers(target, node) {
   return out;
 }
 
+function webDOMSiblingObject(target, node, offset) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return null;
+  const siblings = webDOMChildren(root, node.parentPath || "")
+    .filter((object) => object?.node);
+  const index = siblings.findIndex((object) => object.node === node ||
+    object.node.path === node.path);
+  const sibling = index < 0 ? null : siblings[index + offset] || null;
+  return sibling || null;
+}
+
 function webDOMRelationsForNode(target, node) {
   if (!node)
     return null;
   return {
+    previousSibling: webDOMSiblingObject(target, node, -1),
+    nextSibling: webDOMSiblingObject(target, node, 1),
     groupOwner: webDOMGroupOwner(target, node),
     groupMembers: webDOMGroupMembers(target, node),
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
@@ -7566,6 +7590,8 @@ export function webDOMRelations(target, query) {
 
 function webDOMRelationRefsForRelations(relations) {
   return {
+    previousSibling: relations?.previousSibling?.ref || "",
+    nextSibling: relations?.nextSibling?.ref || "",
     describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
     describes: (relations?.describes || []).map((relation) => relation.ref),
     details: relations?.details?.ref || "",
@@ -8292,6 +8318,8 @@ function webNodeRelationsForNode(rt, node) {
   if (!node)
     return null;
   return {
+    previousSibling: webNodePreviousSiblingFromFrame(node),
+    nextSibling: webNodeNextSiblingFromFrame(node),
     groupOwner: webNodeGroupOwner(rt, node),
     groupMembers: webNodeGroupMembers(rt, node),
     describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
@@ -8336,6 +8364,8 @@ function webNodeRelationRefsForNode(rt, node) {
   if (!node)
     return null;
   return {
+    previousSibling: webNodeRef(webNodePreviousSiblingFromFrame(node)) || "",
+    nextSibling: webNodeRef(webNodeNextSiblingFromFrame(node)) || "",
     describedBy: webNodeRefs(webNodeRelationList(rt, node.ariaDescribedBy)),
     describes: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaDescribedBy")),
     details: webNodeRef(webNodeRelationList(rt, node.ariaDetails)[0]) || "",
