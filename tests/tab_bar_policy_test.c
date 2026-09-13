@@ -40,6 +40,7 @@ main(void)
                                         0x11223344);
     TabBarMetrics metrics;
     TabBarPaint paint;
+    TabBarContentLayout content;
     int label_width;
     int close_width;
     int icon_width;
@@ -93,6 +94,15 @@ main(void)
     assert(paint.reorder_drag_threshold == 7);
     assert(paint.text_color == 0x01020304);
     assert(paint.close_color == 0x01020304);
+    content = TabBarContentLayoutFor((Rectangle){20, 30, 120, 32},
+                                     42, 1, 1, 1, paint);
+    check_rect(content.icon_bounds, 34, 24, 44, 44);
+    check_rect(content.text_bounds, 83, 35, 16, 22);
+    check_rect(content.close_bounds, 108, 34, 24, 24);
+    content = TabBarContentLayoutFor((Rectangle){20, 30, 120, 32},
+                                     0, 0, 1, 0, paint);
+    check_rect(content.icon_bounds, 58, 24, 44, 44);
+    check_rect(content.text_bounds, 107, 35, 25, 22);
 
     metrics = TabBarDefaultMetrics(0, 0, 1.0f,
                                    bar_frame, tab_frame, close_frame);
@@ -118,6 +128,9 @@ main(void)
     assert(paint.icon_gap == 0);
     assert(paint.close_size == 0);
     assert(paint.close_gap == 0);
+    content = TabBarContentLayoutFor((Rectangle){20, 30, 120, 6},
+                                     42, 1, 0, 0, paint);
+    check_rect(content.text_bounds, 20, 33, 120, 0);
     assert(TabBarTabWidth(0, 0, 1, 0, metrics) == 0);
     assert(TabBarTabWidth(42, 1, 0, 1, metrics) == 80);
 

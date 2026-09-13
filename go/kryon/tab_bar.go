@@ -43,6 +43,12 @@ type TabBarPaint struct {
 	ReorderDragThreshold int32
 }
 
+type TabBarContentLayout struct {
+	IconBounds  Rectangle
+	TextBounds  Rectangle
+	CloseBounds Rectangle
+}
+
 func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, scale float32) TabBarPaint {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -349,6 +355,202 @@ func TabBar_TabBarTabWidth(label_width int32, has_label bool, has_icon bool, clo
 	}
 	var value_22 int32 = width
 	return value_22
+}
+
+func TabBar_TabBarContentLayoutFor(tab_bounds Rectangle, label_width int32, has_label bool, has_icon bool, closeable bool, paint TabBarPaint) TabBarContentLayout {
+	var layout TabBarContentLayout = TabBarContentLayout{}
+	var value_0 float32 = tab_bounds.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var tab_x int32 = value_1
+	var value_2 float32 = tab_bounds.Y
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
+	var tab_y int32 = value_3
+	var value_4 float32 = tab_bounds.Width
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	var tab_w int32 = value_5
+	var value_6 float32 = tab_bounds.Height
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var tab_h int32 = value_7
+	var value_8 int32 = paint.TextPadding
+	var text_pad int32 = value_8
+	var value_9 int32 = paint.IconSize
+	var icon_size int32 = value_9
+	var value_10 int32 = paint.CloseSize
+	var close_size int32 = value_10
+	var value_11 int32 = paint.CloseGap
+	var close_gap int32 = value_11
+	var value_12 int32 = tab_h
+	var value_13 int32 = paint.ContentInsetY
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 2))
+	var content_h int32 = value_14
+	var value_15 int32 = content_h
+	var value_16 int32 = 0
+	var value_17 bool = value_15 < value_16
+	if value_17 {
+		var value_18 int32 = 0
+		content_h = value_18
+	}
+	var value_19 int32 = tab_y
+	var value_20 int32 = tab_h
+	var value_21 int32 = content_h
+	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
+	var value_23 int32 = 2
+	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 4))
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_24), 32, true, 1))
+	var content_y int32 = value_25
+	var value_26 int32 = tab_x
+	var value_27 int32 = text_pad
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
+	var icon_x int32 = value_28
+	var value_29 int32 = icon_x
+	var value_30 int32 = icon_size
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
+	var value_32 int32 = paint.IconGap
+	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
+	var text_x int32 = value_33
+	var value_34 int32 = tab_x
+	var value_35 int32 = tab_w
+	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
+	var value_37 int32 = text_pad
+	var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
+	var value_39 int32 = close_size
+	var value_40 int32 = int32(number_runtime_bits(uint64(value_38), uint64(value_39), 32, true, 2))
+	var value_41 float32 = float32(value_40)
+	layout.CloseBounds.X = value_41
+	var value_42 int32 = tab_y
+	var value_43 int32 = tab_h
+	var value_44 int32 = close_size
+	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 2))
+	var value_46 int32 = 2
+	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 4))
+	var value_48 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_47), 32, true, 1))
+	var value_49 float32 = float32(value_48)
+	layout.CloseBounds.Y = value_49
+	var value_50 int32 = close_size
+	var value_51 float32 = float32(value_50)
+	layout.CloseBounds.Width = value_51
+	var value_52 int32 = close_size
+	var value_53 float32 = float32(value_52)
+	layout.CloseBounds.Height = value_53
+	var value_54 bool = has_icon
+	var value_55 bool = value_54
+	if value_55 {
+		var value_56 int32 = icon_size
+		var value_57 int32 = 0
+		var value_58 bool = value_56 > value_57
+		value_55 = value_58
+	}
+	if value_55 {
+		var value_59 bool = has_label
+		var value_60 bool = !value_59
+		if value_60 {
+			var value_61 int32 = tab_x
+			var value_62 int32 = tab_w
+			var value_63 int32 = icon_size
+			var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 2))
+			var value_65 int32 = 2
+			var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 4))
+			var value_67 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_66), 32, true, 1))
+			icon_x = value_67
+		} else {
+			var value_68 int32 = paint.IconGap
+			var gap int32 = value_68
+			var value_69 int32 = icon_size
+			var value_70 int32 = gap
+			var value_71 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_70), 32, true, 1))
+			var value_72 int32 = label_width
+			var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 1))
+			var content_w int32 = value_73
+			var value_74 int32 = tab_w
+			var value_75 int32 = text_pad
+			var value_76 int32 = 2
+			var value_77 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_76), 32, true, 3))
+			var value_78 int32 = int32(number_runtime_bits(uint64(value_74), uint64(value_77), 32, true, 2))
+			var available_w int32 = value_78
+			var value_79 int32 = content_w
+			var value_80 int32 = available_w
+			var value_81 bool = value_79 > value_80
+			if value_81 {
+				var value_82 int32 = available_w
+				content_w = value_82
+			}
+			var value_83 int32 = tab_x
+			var value_84 int32 = tab_w
+			var value_85 int32 = content_w
+			var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 2))
+			var value_87 int32 = 2
+			var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 4))
+			var value_89 int32 = int32(number_runtime_bits(uint64(value_83), uint64(value_88), 32, true, 1))
+			icon_x = value_89
+			var value_90 int32 = icon_x
+			var value_91 int32 = icon_size
+			var value_92 int32 = int32(number_runtime_bits(uint64(value_90), uint64(value_91), 32, true, 1))
+			var value_93 int32 = gap
+			var value_94 int32 = int32(number_runtime_bits(uint64(value_92), uint64(value_93), 32, true, 1))
+			text_x = value_94
+		}
+		var value_95 int32 = icon_x
+		var value_96 float32 = float32(value_95)
+		layout.IconBounds.X = value_96
+		var value_97 int32 = tab_y
+		var value_98 int32 = tab_h
+		var value_99 int32 = icon_size
+		var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 2))
+		var value_101 int32 = 2
+		var value_102 int32 = int32(number_runtime_bits(uint64(value_100), uint64(value_101), 32, true, 4))
+		var value_103 int32 = int32(number_runtime_bits(uint64(value_97), uint64(value_102), 32, true, 1))
+		var value_104 float32 = float32(value_103)
+		layout.IconBounds.Y = value_104
+		var value_105 int32 = icon_size
+		var value_106 float32 = float32(value_105)
+		layout.IconBounds.Width = value_106
+		var value_107 int32 = icon_size
+		var value_108 float32 = float32(value_107)
+		layout.IconBounds.Height = value_108
+		var value_109 int32 = icon_x
+		var value_110 int32 = icon_size
+		var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 1))
+		var value_112 int32 = paint.IconGap
+		var value_113 int32 = int32(number_runtime_bits(uint64(value_111), uint64(value_112), 32, true, 1))
+		text_x = value_113
+	} else {
+		var value_114 int32 = tab_x
+		var value_115 int32 = text_pad
+		var value_116 int32 = int32(number_runtime_bits(uint64(value_114), uint64(value_115), 32, true, 1))
+		text_x = value_116
+	}
+	var value_117 int32 = text_x
+	var value_118 float32 = float32(value_117)
+	layout.TextBounds.X = value_118
+	var value_119 int32 = content_y
+	var value_120 float32 = float32(value_119)
+	layout.TextBounds.Y = value_120
+	var value_121 int32 = tab_x
+	var value_122 int32 = tab_w
+	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 1))
+	var value_124 int32 = text_pad
+	var value_125 int32 = int32(number_runtime_bits(uint64(value_123), uint64(value_124), 32, true, 2))
+	var value_126 int32 = text_x
+	var value_127 int32 = int32(number_runtime_bits(uint64(value_125), uint64(value_126), 32, true, 2))
+	var value_128 bool = closeable
+	var value_129 int32 = 0
+	if value_128 {
+		var value_130 int32 = close_size
+		var value_131 int32 = close_gap
+		var value_132 int32 = int32(number_runtime_bits(uint64(value_130), uint64(value_131), 32, true, 1))
+		value_129 = value_132
+	} else {
+		var value_133 int32 = 0
+		value_129 = value_133
+	}
+	var value_134 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_129), 32, true, 2))
+	var value_135 float32 = float32(value_134)
+	layout.TextBounds.Width = value_135
+	var value_136 int32 = content_h
+	var value_137 float32 = float32(value_136)
+	layout.TextBounds.Height = value_137
+	var value_138 TabBarContentLayout = layout
+	return value_138
 }
 
 func TabBar_TabBarTotalWidth(tab_width_sum int32, count int32, gap int32) int32 {

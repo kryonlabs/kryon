@@ -42,6 +42,12 @@ TabBarPaint :: struct {
     reorder_drag_threshold: i32
 }
 
+TabBarContentLayout :: struct {
+    icon_bounds: Rectangle
+    text_bounds: Rectangle
+    close_bounds: Rectangle
+}
+
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     close: StyleFrame, scale: float) -> TabBarPaint #export {
     if scale <= 0.0 { scale = 1.0 }
@@ -144,6 +150,57 @@ TabBarTabWidth :: (label_width: i32, has_label: bool, has_icon: bool,
         width = metrics.max_width
     }
     return width
+}
+
+TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: i32,
+    has_label: bool, has_icon: bool, closeable: bool,
+    paint: TabBarPaint) -> TabBarContentLayout #export {
+    layout: TabBarContentLayout
+    tab_x: i32 = (i32)tab_bounds.x
+    tab_y: i32 = (i32)tab_bounds.y
+    tab_w: i32 = (i32)tab_bounds.width
+    tab_h: i32 = (i32)tab_bounds.height
+    text_pad: i32 = paint.text_padding
+    icon_size: i32 = paint.icon_size
+    close_size: i32 = paint.close_size
+    close_gap: i32 = paint.close_gap
+    content_h: i32 = tab_h - paint.content_inset_y
+    if content_h < 0 { content_h = 0 }
+    content_y: i32 = tab_y + (tab_h - content_h) / 2
+    icon_x: i32 = tab_x + text_pad
+    text_x: i32 = icon_x + icon_size + paint.icon_gap
+
+    layout.close_bounds.x = (float)(tab_x + tab_w - text_pad - close_size)
+    layout.close_bounds.y = (float)(tab_y + (tab_h - close_size) / 2)
+    layout.close_bounds.width = (float)close_size
+    layout.close_bounds.height = (float)close_size
+
+    if has_icon && icon_size > 0 {
+        if !has_label {
+            icon_x = tab_x + (tab_w - icon_size) / 2
+        } else {
+            gap: i32 = paint.icon_gap
+            content_w: i32 = icon_size + gap + label_width
+            available_w: i32 = tab_w - text_pad * 2
+            if content_w > available_w { content_w = available_w }
+            icon_x = tab_x + (tab_w - content_w) / 2
+            text_x = icon_x + icon_size + gap
+        }
+        layout.icon_bounds.x = (float)icon_x
+        layout.icon_bounds.y = (float)(tab_y + (tab_h - icon_size) / 2)
+        layout.icon_bounds.width = (float)icon_size
+        layout.icon_bounds.height = (float)icon_size
+        text_x = icon_x + icon_size + paint.icon_gap
+    } else {
+        text_x = tab_x + text_pad
+    }
+
+    layout.text_bounds.x = (float)text_x
+    layout.text_bounds.y = (float)content_y
+    layout.text_bounds.width = (float)(tab_x + tab_w - text_pad - text_x -
+        (closeable ? close_size + close_gap : 0))
+    layout.text_bounds.height = (float)content_h
+    return layout
 }
 
 TabBarTotalWidth :: (tab_width_sum: i32, count: i32, gap: i32) -> i32 #export {

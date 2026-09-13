@@ -550,23 +550,15 @@ RenderTabBar(TabBarProps bar)
         }
 
         // Draw tab text and icon
-        int text_pad = paint.text_padding;
         int icon_size = paint.icon_size;
         int has_label = tab->label != NULL && tab->label[0] != '\0';
-        int icon_x = tab_x + text_pad;
-        int text_x = icon_x + icon_size + paint.icon_gap;
-        int content_h = bar_h - paint.content_inset_y;
-        if(content_h < 0)
-            content_h = 0;
-        int content_y = bar_y + (bar_h - content_h) / 2;
         int close_size = paint.close_size;
-        int close_pad = paint.close_gap;
-        Rectangle close_rect = {
-            (float)(tab_x + tab_w - text_pad - close_size),
-            (float)(bar_y + (bar_h - close_size) / 2),
-            (float)close_size,
-            (float)close_size
-        };
+        int label_w = has_label ? TextWidth(tab->label, font) : 0;
+        TabBarContentLayout content_layout =
+            TabBarContentLayoutFor(tab_rect, label_w, has_label,
+                                   tab->icon.id != 0, tab->closeable,
+                                   paint);
+        Rectangle close_rect = content_layout.close_bounds;
         int close_active = tab->closeable && !is_disabled &&
                            CheckCollisionPointRec(mouse_world, close_rect) &&
                            !input_captured;
@@ -577,39 +569,15 @@ RenderTabBar(TabBarProps bar)
 
         // Draw icon if present
         if(tab->icon.id != 0 && icon_size > 0) {
-            if(!has_label)
-                icon_x = tab_x + (tab_w - icon_size) / 2;
-            else {
-                int gap = paint.icon_gap;
-                int label_w = TextWidth(tab->label, font);
-                int content_w = icon_size + gap + label_w;
-                if(content_w > tab_w - text_pad * 2)
-                    content_w = tab_w - text_pad * 2;
-                icon_x = tab_x + (tab_w - content_w) / 2;
-                text_x = icon_x + icon_size + gap;
-            }
-            Rectangle icon_rect = {
-                (float)icon_x,
-                (float)(bar_y + (bar_h - icon_size) / 2),
-                (float)icon_size,
-                (float)icon_size
-            };
+            Rectangle icon_rect = content_layout.icon_bounds;
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
             if(can_draw)
                 DrawTexturePro(tab->icon, icon_src, icon_rect,
                                kryon_zero_vector2, 0, icon_tint);
-            text_x = icon_x + icon_size + paint.icon_gap;
-        } else
-            text_x = tab_x + text_pad;
+        }
 
         // Draw tab label
-        Rectangle text_rect = {
-            (float)text_x,
-            (float)content_y,
-            (float)(tab_x + tab_w - text_pad - text_x -
-                    (tab->closeable ? close_size + close_pad : 0)),
-            (float)content_h
-        };
+        Rectangle text_rect = content_layout.text_bounds;
 
         if(can_draw && text_rect.width > 0 && has_label)
             DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
