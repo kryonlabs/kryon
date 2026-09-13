@@ -4,6 +4,7 @@
 ToggleProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     value: *i32
     off_label: const char*
     on_label: const char*

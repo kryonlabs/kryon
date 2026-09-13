@@ -1472,6 +1472,7 @@ tokens {
   material { flat: Flat; }
 }
 Toggle[role=Track] { background: track; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+Toggle.primary[role=Track] { background: #223344; }
 Toggle[role=Fill] { background: active; foreground: active-ink; border: active; focus: focus-ring; radius: radius; border-width: border; material: flat; }
 Toggle[role=Label] { foreground: label; font-size: 18; opacity: 0.73; }
 `, "Test Toggle", "") || !SetActiveStylePack("test.toggle") {
@@ -1482,11 +1483,12 @@ Toggle[role=Label] { foreground: label; font-size: 18; opacity: 0.73; }
 	rt.SetFocus(89)
 
 	rt.Toggle(ToggleProps{
-		Bounds:   Rectangle{X: 8, Y: 28, Width: 120, Height: 34},
-		ID:       89,
-		Value:    &value,
-		OffLabel: "Off",
-		OnLabel:  "On",
+		Bounds:    Rectangle{X: 8, Y: 28, Width: 120, Height: 34},
+		ID:        89,
+		ClassName: StyleClassID("primary"),
+		Value:     &value,
+		OffLabel:  "Off",
+		OnLabel:   "On",
 	})
 
 	var sawTrack, sawActive, sawOff, sawOn bool
@@ -1497,7 +1499,7 @@ Toggle[role=Label] { foreground: label; font-size: 18; opacity: 0.73; }
 		switch {
 		case op.Kind == FrameOpRect && op.Focused:
 			sawTrack = true
-			if op.Color != (Color{R: 0x10, G: 0x19, B: 0x23, A: 0xff}) || op.BorderColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.FocusColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) || op.BorderColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.FocusColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
 				t.Fatalf("toggle track style op = %+v", op)
 			}
 		case op.Kind == FrameOpRect && op.Selected:

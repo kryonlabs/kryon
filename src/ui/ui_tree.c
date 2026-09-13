@@ -1965,7 +1965,8 @@ DrawTree(void)
                 changed = ToggleSwitch(
                     (int)node->bounds.x, (int)node->bounds.y,
                     (int)node->bounds.width, (int)node->bounds.height,
-                    value, node->data.toggle.off_label,
+                    value, node->data.toggle.class_name,
+                    node->data.toggle.off_label,
                     node->data.toggle.on_label,
                     IsFocusActive(node->id) &&
                     !ui_popup_input_snapshot_keyboard_captures(
@@ -2714,6 +2715,7 @@ Toggle(ToggleProps toggle)
     NodeId node = ui_tree_add(id, WIDGET_TOGGLE, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.toggle.value = value;
+        ui_tree_nodes[node].data.toggle.class_name = toggle.class_name;
         ui_tree_nodes[node].data.toggle.off_label = toggle.off_label;
         ui_tree_nodes[node].data.toggle.on_label = toggle.on_label;
         ui_tree_invalid |= INVALIDATE_PAINT;
@@ -2739,6 +2741,7 @@ Toggle(ToggleProps toggle)
     (void)ToggleSwitch((int)bounds.x, (int)bounds.y, (int)bounds.width,
                        (int)bounds.height,
                        value != NULL && !toggle.disabled ? &paint_value : NULL,
+                       toggle.class_name,
                        toggle.off_label, toggle.on_label, focused);
     return changed;
 }

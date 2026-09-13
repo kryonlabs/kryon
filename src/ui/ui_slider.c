@@ -107,10 +107,11 @@ ui_slider_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled)
 }
 
 static StyleFrame
-ui_toggle_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
-                           int role)
+ui_toggle_style_frame_role_class(ButtonTone tone, ButtonState state,
+                                 int disabled, int class_name, int role)
 {
     ButtonProps props = {0};
+    props.class_name = class_name;
     props.tone = tone;
     props.emphasis = tone == ButtonToneAccent
                        ? ButtonEmphasisFilled
@@ -123,10 +124,18 @@ ui_toggle_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
 }
 
 static StyleFrame
-ui_toggle_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled,
-                            int selected)
+ui_toggle_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
+                           int role)
+{
+    return ui_toggle_style_frame_role_class(tone, state, disabled, 0, role);
+}
+
+static StyleFrame
+ui_toggle_thumb_style_frame_class(ButtonTone tone, ButtonState state,
+                                  int disabled, int selected, int class_name)
 {
     ButtonProps props = {0};
+    props.class_name = class_name;
     props.tone = tone;
     props.emphasis = selected ? ButtonEmphasisFilled : ButtonEmphasisSoft;
     props.size = ControlSizeMedium;
@@ -135,6 +144,13 @@ ui_toggle_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled,
     props.selected = selected;
     return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
                                        StyleKindToggleThumb());
+}
+
+static StyleFrame
+ui_toggle_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                            int selected)
+{
+    return ui_toggle_thumb_style_frame_class(tone, state, disabled, selected, 0);
 }
 
 static StyleFrame
@@ -534,7 +550,8 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
 
 int
 ToggleSwitch(int x, int y, int w, int h, int *value,
-             const char *off_label, const char *on_label, int focused)
+             int class_name, const char *off_label, const char *on_label,
+             int focused)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)h};
@@ -547,8 +564,8 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     const char *on_text = on_label != NULL ? on_label : "";
     int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
     int enabled = value != NULL && !UIContentDisabled();
-    StyleFrame label_frame = ui_toggle_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, !enabled, 6);
+    StyleFrame label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral,
+        ButtonStateNormal, !enabled, class_name, 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
     if(label_style.font_size > 0.0f)
         font = (int)(label_style.font_size + 0.5f);
@@ -635,16 +652,18 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
             .on_width = on_w,
             .font = font,
             .scale = runtime_scale,
-            .track = ui_toggle_style_frame_role(track_tone, state, !enabled,
+            .track = ui_toggle_style_frame_role_class(track_tone, state,
+                                                !enabled, class_name,
                                                 track_role),
-            .active = ui_toggle_style_frame_role(ButtonToneAccent, state,
-                                                 !enabled, 5),
-            .thumb = ui_toggle_thumb_style_frame(track_tone, state, !enabled,
-                                                 checked)
+            .active = ui_toggle_style_frame_role_class(ButtonToneAccent, state,
+                                                 !enabled, class_name, 5),
+            .thumb = ui_toggle_thumb_style_frame_class(track_tone, state,
+                                                 !enabled, checked,
+                                                 class_name)
         };
         paint = TogglePaintFor(spec);
-        label_frame = ui_toggle_style_frame_role(ButtonToneNeutral, state,
-                                                 !enabled, 6);
+        label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral, state,
+                                                 !enabled, class_name, 6);
         label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
         if(paint.has_labels) {
             unsigned int label_color = Opacity(ColorToInt(label_style.foreground),

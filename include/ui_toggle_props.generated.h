@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct ToggleProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     int32_t* value;
     const char* off_label;
     const char* on_label;

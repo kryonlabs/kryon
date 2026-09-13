@@ -310,6 +310,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "ToggleProps :: struct {\n"
         "    bounds: Rectangle\n"
         "    id: i32\n"
+        "    class_name: i32\n"
         "    value: *i32\n"
         "    off_label: const char*\n"
         "    on_label: const char*\n"

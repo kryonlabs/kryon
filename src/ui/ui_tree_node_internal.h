@@ -58,6 +58,7 @@ typedef union WidgetData {
     TextAreaProps text_area;
     struct {
         int *value;
+        int class_name;
         const char *off_label;
         const char *on_label;
     } toggle;

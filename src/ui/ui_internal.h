@@ -453,7 +453,8 @@ int ui_render_vertical_slider_with_marks(
     int id, int x, int y, int h, int min, int max, int *value,
     SliderMarkCallback callback, void *callback_user_data);
 int ToggleSwitch(int x, int y, int w, int h, int *value,
-                 const char *off_label, const char *on_label, int focused);
+                 int class_name, const char *off_label, const char *on_label,
+                 int focused);
 int RenderCheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);

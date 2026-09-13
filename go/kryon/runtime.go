@@ -953,18 +953,6 @@ type InputProps struct {
 	Disabled     bool
 }
 
-type SpinboxProps struct {
-	Bounds    Rectangle
-	ID        int32
-	Min       int32
-	Max       int32
-	Step      int32
-	Value     *int32
-	Disabled  bool
-	ValueText string
-	Wrap      bool
-}
-
 type DropdownOption struct {
 	Label           string
 	FontName        string
@@ -1007,11 +995,6 @@ type SegmentedControlResult struct {
 	ClickedIndex  int32
 	Changed       int32
 	Height        int32
-}
-
-type FieldsetProps struct {
-	Bounds Rectangle
-	Title  string
 }
 
 type ListBoxProps struct {
@@ -5231,8 +5214,9 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	bounds := props.Bounds
 	hasLabels := props.OffLabel != "" || props.OnLabel != ""
-	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
-		props.Disabled || r.contentDisabled(), false, StyleSheet_StyleKindToggle(), 6).Value)
+	labelStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		props.Disabled || r.contentDisabled(), false, props.ClassName,
+		StyleSheet_StyleKindToggle(), 6).Value)
 	labelFont, labelFontID := styleTextFace(labelStyle, Text16)
 	offWidth := int32(runtimeTextWidthWithFont(props.OffLabel, labelFont, labelFontID))
 	onWidth := int32(runtimeTextWidthWithFont(props.OnLabel, labelFont, labelFontID))
@@ -5269,7 +5253,8 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		trackTone = ButtonToneAccent
 		trackRole = 5
 	}
-	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindToggle(), 6)
+	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled,
+		false, props.ClassName, StyleSheet_StyleKindToggle(), 6)
 	paint := Toggle_TogglePaintFor(ToggleSpec{
 		Bounds:    bounds,
 		Checked:   checked,
@@ -5282,9 +5267,12 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		OnWidth:   onWidth,
 		Font:      labelFont,
 		Scale:     1,
-		Track:     simpleStyleFrameWithRole(trackTone, state, disabled, checked, StyleSheet_StyleKindToggle(), trackRole),
-		Active:    simpleStyleFrameWithRole(ButtonToneAccent, state, disabled, checked, StyleSheet_StyleKindToggle(), 5),
-		Thumb:     simpleStyleFrame(trackTone, state, disabled, checked, StyleSheet_StyleKindToggleThumb()),
+		Track: simpleStyleFrameWithClassRole(trackTone, state, disabled, checked,
+			props.ClassName, StyleSheet_StyleKindToggle(), trackRole),
+		Active: simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled,
+			checked, props.ClassName, StyleSheet_StyleKindToggle(), 5),
+		Thumb: simpleStyleFrameWithClassRole(trackTone, state, disabled, checked,
+			props.ClassName, StyleSheet_StyleKindToggleThumb(), StyleSheet_StyleAny()),
 	})
 	if paint.HasLabels {
 		labelStyle = unpackStyle(labelFrame.Value)
@@ -6244,13 +6232,19 @@ func simpleStyleFrame(tone ButtonTone, state ButtonState, disabled, selected boo
 }
 
 func simpleStyleFrameWithRole(tone ButtonTone, state ButtonState, disabled, selected bool, styleKind int32, role int32) StyleFrame {
+	return simpleStyleFrameWithClassRole(tone, state, disabled, selected, 0,
+		styleKind, role)
+}
+
+func simpleStyleFrameWithClassRole(tone ButtonTone, state ButtonState, disabled, selected bool, className int32, styleKind int32, role int32) StyleFrame {
 	props := ButtonProps{
-		Tone:     tone,
-		Emphasis: ButtonEmphasisSoft,
-		Size:     ControlSizeMedium,
-		Pill:     true,
-		Disabled: disabled,
-		Selected: selected,
+		ClassName: className,
+		Tone:      tone,
+		Emphasis:  ButtonEmphasisSoft,
+		Size:      ControlSizeMedium,
+		Pill:      true,
+		Disabled:  disabled,
+		Selected:  selected,
 	}
 	if tone == ButtonToneAccent {
 		props.Emphasis = ButtonEmphasisFilled
