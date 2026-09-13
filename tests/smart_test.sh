@@ -254,7 +254,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/paned_view.kry|go/kryon/paned_view.go|tests/paned_view_policy_test.c)
+        runtime/paned_view.kry|src/ui/tab_bar.c|go/kryon/paned_view.go|tests/paned_view_policy_test.c)
             needs_paned_view=1
             interesting=1
             ;;

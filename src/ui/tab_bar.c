@@ -2,6 +2,7 @@
 #include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
 #include "tab_bar_store.h"
+#include "runtime/paned_view.h"
 #include "runtime/tab_bar.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -786,20 +787,13 @@ RenderTabBar(TabBarProps bar)
 PaneDropZone
 GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 {
-    int edge;
-
-    if(!CheckCollisionPointRec(mouse, bounds))
-        return PaneDropNone;
-
-    edge = Scale(46);
-    if(mouse.x < bounds.x + (float)edge)
-        return PaneDropLeft;
-    if(mouse.x > bounds.x + bounds.width - (float)edge)
-        return PaneDropRight;
-    if(mouse.y < bounds.y + (float)edge)
-        return PaneDropTop;
-    if(mouse.y > bounds.y + bounds.height - (float)edge)
-        return PaneDropBottom;
-
-    return PaneDropCenter;
+    StyleFrame frame = {0};
+    frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindPanedView(), 0, 0, 12,
+            ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+            ButtonStateNormal),
+        ButtonStateNormal);
+    PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale(),
+                                                   frame);
+    return (PaneDropZone)PanedViewDropZoneFor(bounds, mouse, metrics);
 }

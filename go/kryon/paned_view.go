@@ -5,7 +5,8 @@ package kryon
 // #import drawing_props
 // #import style
 type PanedViewMetrics struct {
-	Grip int32
+	Grip     int32
+	DropEdge int32
 }
 
 func PanedView_PanedViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
@@ -50,8 +51,46 @@ func PanedView_PanedViewMetricsFor(scale float32, handle StyleFrame) PanedViewMe
 	var value_9 float32 = scale
 	var value_10 int32 = PanedView_PanedViewMetric(value_4, value_6, value_7, value_8, value_9)
 	metrics.Grip = value_10
-	var value_11 PanedViewMetrics = metrics
-	return value_11
+	var value_11 uint32 = handle.Value.Fields
+	var value_12 int32 = int32(StylePaddingX)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = handle.Value.PaddingX
+	var value_15 float32 = 46.0
+	var value_16 float32 = scale
+	var value_17 int32 = PanedView_PanedViewMetric(value_11, value_13, value_14, value_15, value_16)
+	metrics.DropEdge = value_17
+	var value_18 PanedViewMetrics = metrics
+	return value_18
+}
+
+func PanedView_PanedViewDropNone() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func PanedView_PanedViewDropCenter() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func PanedView_PanedViewDropLeft() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func PanedView_PanedViewDropRight() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func PanedView_PanedViewDropTop() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func PanedView_PanedViewDropBottom() int32 {
+	var value_0 int32 = 5
+	return value_0
 }
 
 func PanedView_PanedViewSize(bounds Rectangle, vertical bool) int32 {
@@ -165,4 +204,94 @@ func PanedView_PanedViewHandleFor(bounds Rectangle, vertical bool, split int32, 
 	}
 	var value_25 Rectangle = handle
 	return value_25
+}
+
+func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics PanedViewMetrics) int32 {
+	var value_0 float32 = mouse.X
+	var value_1 float32 = bounds.X
+	var value_2 bool = value_0 < value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 float32 = mouse.X
+		var value_5 float32 = bounds.X
+		var value_6 float32 = bounds.Width
+		var value_7 float32 = value_5 + value_6
+		var value_8 bool = value_4 > value_7
+		value_3 = value_8
+	}
+	var value_9 bool = value_3
+	if !value_9 {
+		var value_10 float32 = mouse.Y
+		var value_11 float32 = bounds.Y
+		var value_12 bool = value_10 < value_11
+		value_9 = value_12
+	}
+	var value_13 bool = value_9
+	if !value_13 {
+		var value_14 float32 = mouse.Y
+		var value_15 float32 = bounds.Y
+		var value_16 float32 = bounds.Height
+		var value_17 float32 = value_15 + value_16
+		var value_18 bool = value_14 > value_17
+		value_13 = value_18
+	}
+	if value_13 {
+		var value_19 int32 = PanedView_PanedViewDropNone()
+		return value_19
+	}
+	var value_20 int32 = metrics.DropEdge
+	var edge int32 = value_20
+	var value_21 int32 = edge
+	var value_22 int32 = 0
+	var value_23 bool = value_21 < value_22
+	if value_23 {
+		var value_24 int32 = 0
+		edge = value_24
+	}
+	var value_25 float32 = mouse.X
+	var value_26 float32 = bounds.X
+	var value_27 int32 = edge
+	var value_28 float32 = float32(value_27)
+	var value_29 float32 = value_26 + value_28
+	var value_30 bool = value_25 < value_29
+	if value_30 {
+		var value_31 int32 = PanedView_PanedViewDropLeft()
+		return value_31
+	}
+	var value_32 float32 = mouse.X
+	var value_33 float32 = bounds.X
+	var value_34 float32 = bounds.Width
+	var value_35 float32 = value_33 + value_34
+	var value_36 int32 = edge
+	var value_37 float32 = float32(value_36)
+	var value_38 float32 = value_35 - value_37
+	var value_39 bool = value_32 > value_38
+	if value_39 {
+		var value_40 int32 = PanedView_PanedViewDropRight()
+		return value_40
+	}
+	var value_41 float32 = mouse.Y
+	var value_42 float32 = bounds.Y
+	var value_43 int32 = edge
+	var value_44 float32 = float32(value_43)
+	var value_45 float32 = value_42 + value_44
+	var value_46 bool = value_41 < value_45
+	if value_46 {
+		var value_47 int32 = PanedView_PanedViewDropTop()
+		return value_47
+	}
+	var value_48 float32 = mouse.Y
+	var value_49 float32 = bounds.Y
+	var value_50 float32 = bounds.Height
+	var value_51 float32 = value_49 + value_50
+	var value_52 int32 = edge
+	var value_53 float32 = float32(value_52)
+	var value_54 float32 = value_51 - value_53
+	var value_55 bool = value_48 > value_54
+	if value_55 {
+		var value_56 int32 = PanedView_PanedViewDropBottom()
+		return value_56
+	}
+	var value_57 int32 = PanedView_PanedViewDropCenter()
+	return value_57
 }
