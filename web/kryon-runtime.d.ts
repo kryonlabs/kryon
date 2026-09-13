@@ -694,6 +694,8 @@ declare global {
 
 export interface WebDOMSnapshot {
   ref: string;
+  aliases: string[];
+  identity: WebNodeIdentity;
   index: number;
   kind: string;
   tag: string;

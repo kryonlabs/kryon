@@ -602,9 +602,10 @@ other nodes, and reverse `labelledBy` links for controls targeted by
 `dom_for`; snapshots include serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
-plain, serializable views of mounted Kry DOM objects: identity, source
-location, parent/child refs, attributes, dataset, style, text/value, state,
-geometry, and scroll without live DOM references.
+plain, serializable views of mounted Kry DOM objects: the complete
+`WebNodeIdentity` packet and alias list, source location, parent/child refs,
+relation refs, attributes, dataset, style, text/value, state, geometry, and
+scroll without live DOM references.
 `webDOMSnapshotFromElement(element)` and `webDOMSnapshotFromEvent(...)` provide
 the same serializable projection from native DOM elements and events.
 

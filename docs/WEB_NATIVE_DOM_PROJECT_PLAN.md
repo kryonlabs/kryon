@@ -74,6 +74,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
+- Mounted DOM snapshots serialize the full `WebNodeIdentity` packet and alias
+  list so devtools can show every stable lookup key for a `.kry` node without
+  keeping live DOM references.
 - Headless browser smoke coverage verifies real DOM rendering, native
   attributes, source-range annotations, Kry object lookup, KSS application, and
   decorated event dispatch in Chromium when available.

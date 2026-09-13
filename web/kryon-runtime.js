@@ -7429,8 +7429,11 @@ function webDOMObjectSnapshot(target, object) {
   const node = object.node || {};
   const el = object.element || {};
   const relations = webDOMRelationsForNode(target, node);
+  const identity = webNodeIdentity(node);
   return {
     ref: object.ref || "",
+    aliases: identity.aliases,
+    identity,
     index: node.index || 0,
     kind: node.kind || "",
     tag: node.tag || String(el.tagName || "").toLowerCase(),

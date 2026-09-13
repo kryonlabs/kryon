@@ -3017,6 +3017,13 @@ function fakeDocument() {
     assert.equal(buttonObject.root, root);
     assert.equal(buttonObject.identity.ref, "primary-action");
     assert.equal(buttonObject.snapshot.parentRef, "Scene/root");
+    assert.deepEqual(buttonObject.snapshot.aliases.slice(0, 4), [
+      "primary-action",
+      "Scene/root/tap",
+      "tap",
+      "tap-button"
+    ]);
+    assert.equal(buttonObject.snapshot.identity.sourceRangeRef, tapSourceRangeRef);
     assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
     assert.deepEqual(buttonObject.snapshot.relationRefs.owns, ["search-box"]);
     assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");
