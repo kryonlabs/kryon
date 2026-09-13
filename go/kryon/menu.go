@@ -3,6 +3,7 @@ package kryon
 
 // #import drawing_props
 // #import style
+// #import control_props
 type MenuMetrics struct {
 	RowHeight       int32
 	PanelMinWidth   int32
@@ -15,6 +16,52 @@ type MenuMetrics struct {
 	BarItemYPadding int32
 }
 
+func Menu_MenuHas(fields uint32, field uint32) bool {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 != value_4
+	return value_5
+}
+
+func Menu_MenuMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 bool = Menu_MenuHas(value_0, value_1)
+	var value_3 bool = !value_2
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 float32 = value
+		var value_6 float32 = 0.0
+		var value_7 bool = value_5 < value_6
+		value_4 = value_7
+	}
+	var value_8 bool = value_4
+	if !value_8 {
+		var value_9 bool = allow_zero
+		var value_10 bool = !value_9
+		var value_11 bool = value_10
+		if value_11 {
+			var value_12 float32 = value
+			var value_13 float32 = 0.0
+			var value_14 bool = value_12 <= value_13
+			value_11 = value_14
+		}
+		value_8 = value_11
+	}
+	if value_8 {
+		var value_15 float32 = fallback
+		value = value_15
+	}
+	var value_16 float32 = value
+	var value_17 float32 = scale
+	var value_18 float32 = value_16 * value_17
+	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
+	return value_19
+}
+
 func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -24,128 +71,114 @@ func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar S
 		scale = value_3
 	}
 	var metrics MenuMetrics = MenuMetrics{}
-	var value_4 float32 = item.Value.FontSize
-	var value_5 float32 = item.Value.PaddingY
-	var value_6 float32 = 2.0
-	var value_7 float32 = value_5 * value_6
-	var value_8 float32 = value_4 + value_7
-	var row_height float32 = value_8
-	var value_9 float32 = panel.Value.OffsetX
-	var panel_min_width float32 = value_9
-	var value_10 float32 = panel.Value.PaddingX
-	var panel_padding float32 = value_10
-	var value_11 float32 = panel.Value.Gap
-	var panel_margin float32 = value_11
-	var value_12 float32 = item.Value.OffsetX
-	var accelerator_gap float32 = value_12
-	var value_13 float32 = bar.Value.PaddingX
-	var value_14 float32 = 2.0
-	var value_15 float32 = value_13 * value_14
-	var bar_item_padding float32 = value_15
-	var value_16 float32 = bar.Value.Gap
-	var bar_item_gap float32 = value_16
-	var value_17 float32 = bar.Value.PaddingY
-	var bar_item_y_padding float32 = value_17
-	var value_18 float32 = row_height
-	var value_19 float32 = 0.0
-	var value_20 bool = value_18 <= value_19
-	if value_20 {
+	var value_4 uint32 = item.Value.Fields
+	var value_5 int32 = int32(StyleFontSize)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 bool = Menu_MenuHas(value_4, value_6)
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 uint32 = item.Value.Fields
+		var value_10 int32 = int32(StylePaddingY)
+		var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+		var value_12 bool = Menu_MenuHas(value_9, value_11)
+		value_8 = value_12
+	}
+	if value_8 {
+		var value_13 float32 = item.Value.FontSize
+		var value_14 float32 = item.Value.PaddingY
+		var value_15 float32 = 2.0
+		var value_16 float32 = value_14 * value_15
+		var value_17 float32 = value_13 + value_16
+		var value_18 float32 = scale
+		var value_19 float32 = value_17 * value_18
+		var value_20 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_19), 32, true)), uint64(0), 32, true, 0))
+		metrics.RowHeight = value_20
+	} else {
 		var value_21 float32 = 30.0
-		row_height = value_21
+		var value_22 float32 = scale
+		var value_23 float32 = value_21 * value_22
+		var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
+		metrics.RowHeight = value_24
 	}
-	var value_22 float32 = panel_min_width
-	var value_23 float32 = 0.0
-	var value_24 bool = value_22 <= value_23
-	if value_24 {
-		var value_25 float32 = 180.0
-		panel_min_width = value_25
+	var value_25 int32 = metrics.RowHeight
+	var value_26 int32 = 0
+	var value_27 bool = value_25 <= value_26
+	if value_27 {
+		var value_28 float32 = 30.0
+		var value_29 float32 = scale
+		var value_30 float32 = value_28 * value_29
+		var value_31 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_30), 32, true)), uint64(0), 32, true, 0))
+		metrics.RowHeight = value_31
 	}
-	var value_26 float32 = panel_padding
-	var value_27 float32 = 0.0
-	var value_28 bool = value_26 <= value_27
-	if value_28 {
-		var value_29 float32 = 12.0
-		panel_padding = value_29
-	}
-	var value_30 float32 = panel_margin
-	var value_31 float32 = 0.0
-	var value_32 bool = value_30 <= value_31
-	if value_32 {
-		var value_33 float32 = 4.0
-		panel_margin = value_33
-	}
-	var value_34 float32 = accelerator_gap
-	var value_35 float32 = 0.0
-	var value_36 bool = value_34 <= value_35
-	if value_36 {
-		var value_37 float32 = 88.0
-		accelerator_gap = value_37
-	}
-	var value_38 float32 = bar_item_padding
-	var value_39 float32 = 0.0
-	var value_40 bool = value_38 <= value_39
-	if value_40 {
-		var value_41 float32 = 24.0
-		bar_item_padding = value_41
-	}
-	var value_42 float32 = bar_item_gap
-	var value_43 float32 = 0.0
-	var value_44 bool = value_42 <= value_43
-	if value_44 {
-		var value_45 float32 = 2.0
-		bar_item_gap = value_45
-	}
-	var value_46 float32 = bar_item_y_padding
-	var value_47 float32 = 0.0
-	var value_48 bool = value_46 <= value_47
-	if value_48 {
-		var value_49 float32 = 3.0
-		bar_item_y_padding = value_49
-	}
-	var value_50 float32 = row_height
-	var value_51 float32 = scale
-	var value_52 float32 = value_50 * value_51
-	var value_53 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_52), 32, true)), uint64(0), 32, true, 0))
-	metrics.RowHeight = value_53
-	var value_54 float32 = panel_min_width
-	var value_55 float32 = scale
-	var value_56 float32 = value_54 * value_55
-	var value_57 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_56), 32, true)), uint64(0), 32, true, 0))
-	metrics.PanelMinWidth = value_57
-	var value_58 float32 = panel_padding
-	var value_59 float32 = scale
-	var value_60 float32 = value_58 * value_59
-	var value_61 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_60), 32, true)), uint64(0), 32, true, 0))
-	metrics.PanelPadding = value_61
-	var value_62 float32 = panel_margin
-	var value_63 float32 = scale
-	var value_64 float32 = value_62 * value_63
-	var value_65 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_64), 32, true)), uint64(0), 32, true, 0))
-	metrics.PanelMargin = value_65
-	var value_66 float32 = accelerator_gap
-	var value_67 float32 = scale
-	var value_68 float32 = value_66 * value_67
-	var value_69 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_68), 32, true)), uint64(0), 32, true, 0))
-	metrics.AcceleratorGap = value_69
-	var value_70 int32 = 0
-	metrics.BarItemMinWidth = value_70
-	var value_71 float32 = bar_item_padding
+	var value_32 uint32 = panel.Value.Fields
+	var value_33 int32 = int32(StyleContentOffset)
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 float32 = panel.Value.OffsetX
+	var value_36 float32 = 180.0
+	var value_37 float32 = scale
+	var value_38 bool = false
+	var value_39 int32 = Menu_MenuMetric(value_32, value_34, value_35, value_36, value_37, value_38)
+	metrics.PanelMinWidth = value_39
+	var value_40 uint32 = panel.Value.Fields
+	var value_41 int32 = int32(StylePaddingX)
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 float32 = panel.Value.PaddingX
+	var value_44 float32 = 12.0
+	var value_45 float32 = scale
+	var value_46 bool = true
+	var value_47 int32 = Menu_MenuMetric(value_40, value_42, value_43, value_44, value_45, value_46)
+	metrics.PanelPadding = value_47
+	var value_48 uint32 = panel.Value.Fields
+	var value_49 int32 = int32(StyleGap)
+	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+	var value_51 float32 = panel.Value.Gap
+	var value_52 float32 = 4.0
+	var value_53 float32 = scale
+	var value_54 bool = true
+	var value_55 int32 = Menu_MenuMetric(value_48, value_50, value_51, value_52, value_53, value_54)
+	metrics.PanelMargin = value_55
+	var value_56 uint32 = item.Value.Fields
+	var value_57 int32 = int32(StyleContentOffset)
+	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
+	var value_59 float32 = item.Value.OffsetX
+	var value_60 float32 = 88.0
+	var value_61 float32 = scale
+	var value_62 bool = false
+	var value_63 int32 = Menu_MenuMetric(value_56, value_58, value_59, value_60, value_61, value_62)
+	metrics.AcceleratorGap = value_63
+	var value_64 int32 = 0
+	metrics.BarItemMinWidth = value_64
+	var value_65 uint32 = bar.Value.Fields
+	var value_66 int32 = int32(StylePaddingX)
+	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_66), uint64(0), 32, false, 0))
+	var value_68 float32 = bar.Value.PaddingX
+	var value_69 float32 = 2.0
+	var value_70 float32 = value_68 * value_69
+	var value_71 float32 = 24.0
 	var value_72 float32 = scale
-	var value_73 float32 = value_71 * value_72
-	var value_74 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_73), 32, true)), uint64(0), 32, true, 0))
+	var value_73 bool = true
+	var value_74 int32 = Menu_MenuMetric(value_65, value_67, value_70, value_71, value_72, value_73)
 	metrics.BarItemPadding = value_74
-	var value_75 float32 = bar_item_gap
-	var value_76 float32 = scale
-	var value_77 float32 = value_75 * value_76
-	var value_78 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_77), 32, true)), uint64(0), 32, true, 0))
-	metrics.BarItemGap = value_78
-	var value_79 float32 = bar_item_y_padding
+	var value_75 uint32 = bar.Value.Fields
+	var value_76 int32 = int32(StyleGap)
+	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
+	var value_78 float32 = bar.Value.Gap
+	var value_79 float32 = 2.0
 	var value_80 float32 = scale
-	var value_81 float32 = value_79 * value_80
-	var value_82 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_81), 32, true)), uint64(0), 32, true, 0))
-	metrics.BarItemYPadding = value_82
-	var value_83 MenuMetrics = metrics
-	return value_83
+	var value_81 bool = true
+	var value_82 int32 = Menu_MenuMetric(value_75, value_77, value_78, value_79, value_80, value_81)
+	metrics.BarItemGap = value_82
+	var value_83 uint32 = bar.Value.Fields
+	var value_84 int32 = int32(StylePaddingY)
+	var value_85 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(0), 32, false, 0))
+	var value_86 float32 = bar.Value.PaddingY
+	var value_87 float32 = 3.0
+	var value_88 float32 = scale
+	var value_89 bool = true
+	var value_90 int32 = Menu_MenuMetric(value_83, value_85, value_86, value_87, value_88, value_89)
+	metrics.BarItemYPadding = value_90
+	var value_91 MenuMetrics = metrics
+	return value_91
 }
 
 func Menu_MenuGroupItemWidth(label_width int32, metrics MenuMetrics) int32 {

@@ -1,6 +1,7 @@
 #module "menu"
 #import "drawing_props"
 #import "style"
+#import "control_props"
 
 MenuMetrics :: struct {
     row_height: i32
@@ -14,35 +15,46 @@ MenuMetrics :: struct {
     bar_item_y_padding: i32
 }
 
+MenuHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+MenuMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !MenuHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: MenuMetrics
-    row_height: float = item.value.font_size + item.value.padding_y * 2.0
-    panel_min_width: float = panel.value.offset_x
-    panel_padding: float = panel.value.padding_x
-    panel_margin: float = panel.value.gap
-    accelerator_gap: float = item.value.offset_x
-    bar_item_padding: float = bar.value.padding_x * 2.0
-    bar_item_gap: float = bar.value.gap
-    bar_item_y_padding: float = bar.value.padding_y
-    if row_height <= 0.0 { row_height = 30.0 }
-    if panel_min_width <= 0.0 { panel_min_width = 180.0 }
-    if panel_padding <= 0.0 { panel_padding = 12.0 }
-    if panel_margin <= 0.0 { panel_margin = 4.0 }
-    if accelerator_gap <= 0.0 { accelerator_gap = 88.0 }
-    if bar_item_padding <= 0.0 { bar_item_padding = 24.0 }
-    if bar_item_gap <= 0.0 { bar_item_gap = 2.0 }
-    if bar_item_y_padding <= 0.0 { bar_item_y_padding = 3.0 }
-    metrics.row_height = (i32)(row_height * scale)
-    metrics.panel_min_width = (i32)(panel_min_width * scale)
-    metrics.panel_padding = (i32)(panel_padding * scale)
-    metrics.panel_margin = (i32)(panel_margin * scale)
-    metrics.accelerator_gap = (i32)(accelerator_gap * scale)
+    if MenuHas(item.value.fields, (u32)StyleFontSize) &&
+       MenuHas(item.value.fields, (u32)StylePaddingY) {
+        metrics.row_height = (i32)((item.value.font_size +
+            item.value.padding_y * 2.0) * scale)
+    } else {
+        metrics.row_height = (i32)(30.0 * scale)
+    }
+    if metrics.row_height <= 0 { metrics.row_height = (i32)(30.0 * scale) }
+    metrics.panel_min_width = MenuMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_x, 180.0, scale, false)
+    metrics.panel_padding = MenuMetric(panel.value.fields,
+        (u32)StylePaddingX, panel.value.padding_x, 12.0, scale, true)
+    metrics.panel_margin = MenuMetric(panel.value.fields,
+        (u32)StyleGap, panel.value.gap, 4.0, scale, true)
+    metrics.accelerator_gap = MenuMetric(item.value.fields,
+        (u32)StyleContentOffset, item.value.offset_x, 88.0, scale, false)
     metrics.bar_item_min_width = 0
-    metrics.bar_item_padding = (i32)(bar_item_padding * scale)
-    metrics.bar_item_gap = (i32)(bar_item_gap * scale)
-    metrics.bar_item_y_padding = (i32)(bar_item_y_padding * scale)
+    metrics.bar_item_padding = MenuMetric(bar.value.fields,
+        (u32)StylePaddingX, bar.value.padding_x * 2.0, 24.0, scale, true)
+    metrics.bar_item_gap = MenuMetric(bar.value.fields,
+        (u32)StyleGap, bar.value.gap, 2.0, scale, true)
+    metrics.bar_item_y_padding = MenuMetric(bar.value.fields,
+        (u32)StylePaddingY, bar.value.padding_y, 3.0, scale, true)
     return metrics
 }
 

@@ -34,12 +34,15 @@ main(void)
     assert(metrics.bar_item_gap == 4);
     assert(metrics.bar_item_y_padding == 6);
 
+    panel.value.fields = StylePaddingX | StyleGap | StyleContentOffset;
     panel.value.padding_x = 10.0f;
     panel.value.gap = 3.0f;
     panel.value.offset_x = 160.0f;
+    item.value.fields = StyleFontSize | StylePaddingY | StyleContentOffset;
     item.value.font_size = 18.0f;
     item.value.padding_y = 6.0f;
     item.value.offset_x = 70.0f;
+    bar.value.fields = StylePaddingX | StylePaddingY | StyleGap;
     bar.value.padding_x = 9.0f;
     bar.value.padding_y = 2.0f;
     bar.value.gap = 5.0f;
@@ -52,6 +55,12 @@ main(void)
     assert(metrics.bar_item_padding == 18);
     assert(metrics.bar_item_gap == 5);
     assert(metrics.bar_item_y_padding == 2);
+
+    panel.value.gap = 0.0f;
+    bar.value.gap = 0.0f;
+    metrics = MenuMetricsFor(1.0f, panel, item, bar);
+    assert(metrics.panel_margin == 0);
+    assert(metrics.bar_item_gap == 0);
 
     panel = (StyleFrame){0};
     item = (StyleFrame){0};
