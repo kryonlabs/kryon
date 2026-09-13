@@ -1,5 +1,17 @@
 package kryon
 
+const (
+	dropdownRolePanel     int32 = 2
+	dropdownRoleOption    int32 = 26
+	dropdownRoleScrollbar int32 = 27
+)
+
+func (r *runtime) dropdownRoleFrame(role int32, className int32) StyleFrame {
+	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, ClassName: className}
+	return resolveMinimalControlRoleFrame(props, ButtonStateNormal, false, 0, 0, 0,
+		StyleSheet_StyleKindDropdown(), role)
+}
+
 // Popup surfaces expose semantic roles; KSS owns the visual result.
 func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState, className ...int32) Style {
 	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}

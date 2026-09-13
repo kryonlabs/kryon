@@ -4139,6 +4139,13 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal, styleClass)
 	surface.ID = id
 	r.record(surface)
+	menuMetrics := Dropdown_DropdownMenuMetricsFor(1,
+		r.dropdownRoleFrame(dropdownRolePanel, styleClass),
+		r.dropdownRoleFrame(dropdownRoleOption, styleClass),
+		r.dropdownRoleFrame(dropdownRoleScrollbar, styleClass))
+	menuLayout := Dropdown_MenuLayoutFor(panel, int32(len(labels)), int32(itemH),
+		menuMetrics.PaddingTop, menuMetrics.PaddingBottom,
+		menuMetrics.ScrollbarWidth, menuMetrics.ScrollbarGap)
 	if r.dropdownOffsets == nil {
 		r.dropdownOffsets = make(map[int32]*int32)
 	}
@@ -4147,22 +4154,33 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		offset = new(int32)
 		r.dropdownOffsets[id] = offset
 	}
-	viewport := panel
-	viewport.Y += 4
-	viewport.Height = max(float32(0), viewport.Height-8)
-	contentHeight := Dropdown_ContentHeight(int32(len(labels)), itemH, 0)
-	maximum := max32(0, contentHeight-int32(viewport.Height))
+	viewport := menuLayout.ContentBounds
+	contentHeight := menuLayout.ContentHeight
+	maximum := menuLayout.MaxScroll
 	if pressed || navigating {
 		*offset = Dropdown_RevealRow(*offset, r.dropdownHighlight[id], itemH, viewport.Height, maximum)
 	}
 	if r.dropdownGestures == nil {
 		r.dropdownGestures = make(map[int32]PopupGesture)
 	}
-	track := Rectangle{X: panel.X + panel.Width - 10, Y: panel.Y, Width: 10, Height: panel.Height}
+	track := Dropdown_ScrollbarTrackBounds(menuLayout.ScrollbarBounds, menuMetrics.ScrollbarTrackInset)
+	if maximum > 0 && !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(track) {
+		thumbH := min(track.Height, max(float32(menuMetrics.ScrollbarWidth), track.Height*track.Height/float32(contentHeight)))
+		thumbY := track.Y
+		travel := track.Height - thumbH
+		if travel > 0 {
+			thumbY += travel * float32(*offset) / float32(maximum)
+		}
+		r.scrollDragOffset = offset
+		r.scrollDragGrab = thumbH / 2
+		if r.mousePos.Y >= thumbY && r.mousePos.Y < thumbY+thumbH {
+			r.scrollDragGrab = r.mousePos.Y - thumbY
+		}
+	}
 	scrollbar := r.scrollDragOffset == offset || maximum > 0 && pointInRect(r.mousePos.X, r.mousePos.Y, track)
 	gesture := Dropdown_PopupDragGesture(r.dropdownGestures[id], *offset, r.mouseDown[MouseButtonLeft],
 		pointInRect(r.mousePos.X, r.mousePos.Y, panel) || pointInRect(r.mousePos.X, r.mousePos.Y, bounds),
-		scrollbar, r.mousePos.Y, maximum, 8)
+		scrollbar, r.mousePos.Y, maximum, float32(menuMetrics.DragThreshold))
 	*offset = gesture.Offset
 	r.dropdownGestures[id] = gesture
 	if r.pointerCanReach(viewport) && r.mouseWheel != 0 {
@@ -4177,9 +4195,15 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	for i := int(rows.First); i < int(rows.End); i++ {
 
 		label := labels[i]
-		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
+		optionPaint := Dropdown_OptionPaintFor(panel, menuLayout.OptionWidth,
+			int32(i), int32(itemH), *offset, menuMetrics.PaddingTop,
+			menuMetrics.PaddingBottom, menuMetrics.HighlightInsetX,
+			menuMetrics.HighlightInsetY)
+		row := Rectangle{X: content.X, Y: float32(optionPaint.OptionY),
+			Width: content.Width, Height: itemH}
+		visibleRow := optionPaint.VisibleBounds
 		selectedRow := selected != nil && int32(i) == *selected
-		highlighted := !disabledRow(int32(i)) && (r.dropdownHighlight[id] == int32(i) || pointInRect(r.mousePos.X, r.mousePos.Y, row))
+		highlighted := !disabledRow(int32(i)) && (r.dropdownHighlight[id] == int32(i) || pointInRect(r.mousePos.X, r.mousePos.Y, visibleRow))
 		state := ButtonStateNormal
 		if highlighted {
 			state = ButtonStateHover
@@ -4187,11 +4211,14 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		if disabledRow(int32(i)) {
 			state = ButtonStateDisabled
 		}
-		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, 2, selectedRow, state, styleClass)
+		paint := r.dropdownSurface(optionPaint.HighlightBounds, 2, selectedRow, state, styleClass)
 		paint.ID, paint.Row, paint.Selected, paint.Focused = id, int32(i), selectedRow, highlighted
 		if selectedRow || highlighted {
 			r.record(paint)
 		}
+		hasIcon := i < len(items) && items[i].IconType != IconNone
+		rowContent := Dropdown_DropdownOptionContentFor(row, visibleRow,
+			contentMetrics, menuMetrics, hasIcon)
 		if selected != nil && Dropdown_CanCommit(!disabledRow(int32(i)), pressed, false, false,
 			r.consumeTap(row), scrollbar, gesture.Dragging, *offset == gesture.OriginOffset) {
 			next := int32(i)
@@ -4203,23 +4230,19 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 			selectedRow = true
 		}
 		paint.TextColor = unpackRGBA(Surface_Opacity(packRGBA(paint.TextColor), paint.Opacity))
-		textX := row.X + contentMetrics.Padding
 		if i < len(items) {
 			item := items[i]
 			if item.SeparatorBefore {
-				r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 16, Y: row.Y, Width: row.Width - 32}, Color: r.Fade(paint.TextColor, 0.18), ID: id})
+				r.record(FrameOp{Kind: FrameOpLine, Bounds: rowContent.SeparatorBounds, Color: r.Fade(paint.TextColor, 0.18), ID: id})
 			}
 			if item.IconType != IconNone {
-				r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: item.IconType, Color: paint.TextColor, ID: id})
-				textX += contentMetrics.Icon + contentMetrics.Gap
+				r.record(FrameOp{Kind: FrameOpIcon, Bounds: rowContent.IconBounds, IconType: item.IconType, Color: paint.TextColor, ID: id})
 			}
 		}
-		textClip := Rectangle{X: textX, Y: row.Y, Width: max(float32(0), row.X+row.Width-contentMetrics.Padding-contentMetrics.Icon-contentMetrics.Gap-textX), Height: row.Height}
-		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), ID: id, Row: int32(i), Selected: selectedRow})
+		r.record(FrameOp{Kind: FrameOpText, Clip: rowContent.ClipBounds, HasClip: true, Bounds: rowContent.TextBounds, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), ID: id, Row: int32(i), Selected: selectedRow})
 		if selectedRow {
 			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: IconCheck,
-				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon},
-				Row:    int32(i), Selected: true})
+				Bounds: rowContent.CheckBounds, Row: int32(i), Selected: true})
 		}
 	}
 	return changed

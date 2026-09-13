@@ -253,6 +253,14 @@ OptionPaint :: struct {
     highlight_bounds: Rectangle
 }
 
+DropdownOptionContent :: struct {
+    icon_bounds: Rectangle
+    text_bounds: Rectangle
+    clip_bounds: Rectangle
+    check_bounds: Rectangle
+    separator_bounds: Rectangle
+}
+
 DropdownMenuMetrics :: struct {
     padding_top: i32
     padding_bottom: i32
@@ -353,6 +361,52 @@ OptionPaintFor :: (menu: Rectangle, option_width: i32, index: i32,
     if paint.highlight_bounds.width < 0.0 { paint.highlight_bounds.width = 0.0 }
     if paint.highlight_bounds.height < 0.0 { paint.highlight_bounds.height = 0.0 }
     return paint
+}
+
+DropdownOptionContentFor :: (row: Rectangle, visible: Rectangle,
+    content: ContentMetrics, metrics: DropdownMenuMetrics,
+    has_icon: bool) -> DropdownOptionContent #export {
+    layout: DropdownOptionContent
+    text_x: float = row.x + content.padding
+    text_right: float = row.x + row.width - content.padding -
+        content.icon - content.gap
+
+    layout.separator_bounds.x = row.x + (float)metrics.separator_inset
+    layout.separator_bounds.y = row.y
+    layout.separator_bounds.width = row.width -
+        (float)(metrics.separator_inset * 2)
+    if layout.separator_bounds.width < 0.0 {
+        layout.separator_bounds.width = 0.0
+    }
+
+    if has_icon {
+        layout.icon_bounds.x = text_x
+        layout.icon_bounds.y = row.y + (row.height - content.icon) / 2.0
+        layout.icon_bounds.width = content.icon
+        layout.icon_bounds.height = content.icon
+        text_x += content.icon + content.gap
+    }
+
+    layout.clip_bounds.x = text_x
+    layout.clip_bounds.y = visible.y
+    layout.clip_bounds.width = text_right - text_x
+    layout.clip_bounds.height = visible.height
+    if layout.clip_bounds.width < 0.0 {
+        layout.clip_bounds.width = 0.0
+    }
+    if layout.clip_bounds.height < 0.0 {
+        layout.clip_bounds.height = 0.0
+    }
+
+    layout.text_bounds = layout.clip_bounds
+    layout.text_bounds.y = row.y + (row.height - content.font) / 2.0
+    layout.text_bounds.height = row.height
+
+    layout.check_bounds.x = row.x + row.width - content.padding - content.icon
+    layout.check_bounds.y = row.y + (row.height - content.icon) / 2.0
+    layout.check_bounds.width = content.icon
+    layout.check_bounds.height = content.icon
+    return layout
 }
 
 PopupBounds :: (button: Rectangle, view: Rectangle, count: i32,

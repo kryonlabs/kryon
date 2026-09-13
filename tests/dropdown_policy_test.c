@@ -127,6 +127,10 @@ test_existing_policy(void)
                                       5, 20, 4, 4, 8, 2);
     Rectangle track;
     OptionPaint option;
+    ContentMetrics content = {.padding = 8.0f, .gap = 4.0f,
+                              .icon = 16.0f, .font = 14.0f};
+    DropdownMenuMetrics metrics = {.separator_inset = 16};
+    DropdownOptionContent option_content;
 
     assert(ClampIndex(-2, 3) == 0);
     assert(ClampIndex(5, 3) == 2);
@@ -147,6 +151,19 @@ test_existing_policy(void)
     assert(option.option_y == 46);
     check_rect(option.visible_bounds, 10, 46, 90, 20);
     check_rect(option.highlight_bounds, 14, 48, 82, 16);
+    option_content = DropdownOptionContentFor(
+        (Rectangle){10, 46, 90, 20}, option.visible_bounds, content,
+        metrics, false);
+    check_rect(option_content.separator_bounds, 26, 46, 58, 0);
+    check_rect(option_content.clip_bounds, 18, 46, 54, 20);
+    check_rect(option_content.text_bounds, 18, 49, 54, 20);
+    check_rect(option_content.check_bounds, 76, 48, 16, 16);
+    option_content = DropdownOptionContentFor(
+        (Rectangle){10, 46, 90, 20}, option.visible_bounds, content,
+        metrics, true);
+    check_rect(option_content.icon_bounds, 18, 48, 16, 16);
+    check_rect(option_content.clip_bounds, 38, 46, 34, 20);
+    check_rect(option_content.text_bounds, 38, 49, 34, 20);
     frame.value.padding_y = 10.0f;
     frame.value.gap = 6.0f;
     frame.value.offset_y = 20.0f;

@@ -647,7 +647,6 @@ dropdown_paint_menu(int id)
             metrics.padding_bottom, metrics.highlight_inset_x,
             metrics.highlight_inset_y);
         int option_y = option_paint.option_y;
-        int visible_y = (int)option_paint.visible_bounds.y;
         int visible_h = (int)option_paint.visible_bounds.height;
         Rectangle visible_bounds = option_paint.visible_bounds;
 
@@ -696,30 +695,34 @@ dropdown_paint_menu(int id)
         }
 
         if(can_draw) {
-            int text_x = x + (int)content.padding;
+            int has_icon = options[i].icon_type != ICON_NONE;
+            Rectangle row_bounds = {(float)x, (float)option_y,
+                                    (float)option_w, (float)option_h};
+            DropdownOptionContent option_content =
+                DropdownOptionContentFor(row_bounds, visible_bounds, content,
+                                         metrics, has_icon != 0);
             if(options[i].separator_before)
-                DrawLine(x + metrics.separator_inset, option_y,
-                    x + option_w - metrics.separator_inset, option_y,
+                DrawLine((int)option_content.separator_bounds.x,
+                    (int)option_content.separator_bounds.y,
+                    (int)(option_content.separator_bounds.x +
+                          option_content.separator_bounds.width),
+                    (int)option_content.separator_bounds.y,
                     Fade(row_text, 0.18f));
-            if(options[i].icon_type != ICON_NONE) {
-                DrawIcon(options[i].icon_type,
-                    (Rectangle){text_x, option_y + (option_h - content.icon) / 2, content.icon, content.icon}, row_text);
-                text_x += (int)(content.icon + content.gap);
-            }
-            int text_w = x + option_w - (int)(content.padding + content.icon + content.gap) - text_x;
-            BeginClip((int)(g_ui_camera.offset.x + text_x * g_ui_camera.zoom),
-                (int)(g_ui_camera.offset.y + visible_y * g_ui_camera.zoom),
-                (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
-                (int)(visible_h * g_ui_camera.zoom));
-            RenderText(options[i].label, text_x,
-                       ControlTextY(options[i].label, option_y, option_h, font),
+            if(has_icon)
+                DrawIcon(options[i].icon_type, option_content.icon_bounds,
+                         row_text);
+            BeginClip((int)(g_ui_camera.offset.x +
+                            option_content.clip_bounds.x * g_ui_camera.zoom),
+                (int)(g_ui_camera.offset.y +
+                      option_content.clip_bounds.y * g_ui_camera.zoom),
+                (int)(option_content.clip_bounds.width * g_ui_camera.zoom),
+                (int)(option_content.clip_bounds.height * g_ui_camera.zoom));
+            RenderText(options[i].label, (int)option_content.text_bounds.x,
+                       (int)option_content.text_bounds.y,
                        font, row_text);
             EndClip();
             if(state->selected_index == i) {
-                int cx = x + option_w - (int)(content.padding + content.icon / 2);
-                int cy = option_y + option_h / 2;
-                DrawIcon(ICON_CHECK,
-                    (Rectangle){cx - content.icon / 2, cy - content.icon / 2, content.icon, content.icon}, row_text);
+                DrawIcon(ICON_CHECK, option_content.check_bounds, row_text);
             }
         }
     }

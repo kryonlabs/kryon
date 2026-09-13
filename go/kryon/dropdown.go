@@ -63,6 +63,14 @@ type OptionPaint struct {
 	HighlightBounds Rectangle
 }
 
+type DropdownOptionContent struct {
+	IconBounds      Rectangle
+	TextBounds      Rectangle
+	ClipBounds      Rectangle
+	CheckBounds     Rectangle
+	SeparatorBounds Rectangle
+}
+
 type DropdownMenuMetrics struct {
 	PaddingTop          int32
 	PaddingBottom       int32
@@ -1022,6 +1030,125 @@ func Dropdown_OptionPaintFor(menu Rectangle, option_width int32, index int32, ro
 		paint.HighlightBounds.Height = value_80
 	}
 	var value_81 OptionPaint = paint
+	return value_81
+}
+
+func Dropdown_DropdownOptionContentFor(row Rectangle, visible Rectangle, content ContentMetrics, metrics DropdownMenuMetrics, has_icon bool) DropdownOptionContent {
+	var layout DropdownOptionContent = DropdownOptionContent{}
+	var value_0 float32 = row.X
+	var value_1 float32 = content.Padding
+	var value_2 float32 = value_0 + value_1
+	var text_x float32 = value_2
+	var value_3 float32 = row.X
+	var value_4 float32 = row.Width
+	var value_5 float32 = value_3 + value_4
+	var value_6 float32 = content.Padding
+	var value_7 float32 = value_5 - value_6
+	var value_8 float32 = content.Icon
+	var value_9 float32 = value_7 - value_8
+	var value_10 float32 = content.Gap
+	var value_11 float32 = value_9 - value_10
+	var text_right float32 = value_11
+	var value_12 float32 = row.X
+	var value_13 int32 = metrics.SeparatorInset
+	var value_14 float32 = float32(value_13)
+	var value_15 float32 = value_12 + value_14
+	layout.SeparatorBounds.X = value_15
+	var value_16 float32 = row.Y
+	layout.SeparatorBounds.Y = value_16
+	var value_17 float32 = row.Width
+	var value_18 int32 = metrics.SeparatorInset
+	var value_19 int32 = 2
+	var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 3))
+	var value_21 float32 = float32(value_20)
+	var value_22 float32 = value_17 - value_21
+	layout.SeparatorBounds.Width = value_22
+	var value_23 float32 = layout.SeparatorBounds.Width
+	var value_24 float32 = 0.0
+	var value_25 bool = value_23 < value_24
+	if value_25 {
+		var value_26 float32 = 0.0
+		layout.SeparatorBounds.Width = value_26
+	}
+	var value_27 bool = has_icon
+	if value_27 {
+		var value_28 float32 = text_x
+		layout.IconBounds.X = value_28
+		var value_29 float32 = row.Y
+		var value_30 float32 = row.Height
+		var value_31 float32 = content.Icon
+		var value_32 float32 = value_30 - value_31
+		var value_33 float32 = 2.0
+		var value_34 float32 = value_32 / value_33
+		var value_35 float32 = value_29 + value_34
+		layout.IconBounds.Y = value_35
+		var value_36 float32 = content.Icon
+		layout.IconBounds.Width = value_36
+		var value_37 float32 = content.Icon
+		layout.IconBounds.Height = value_37
+		var value_38 float32 = text_x
+		var value_39 float32 = content.Icon
+		var value_40 float32 = content.Gap
+		var value_41 float32 = value_39 + value_40
+		text_x = value_38 + value_41
+	}
+	var value_42 float32 = text_x
+	layout.ClipBounds.X = value_42
+	var value_43 float32 = visible.Y
+	layout.ClipBounds.Y = value_43
+	var value_44 float32 = text_right
+	var value_45 float32 = text_x
+	var value_46 float32 = value_44 - value_45
+	layout.ClipBounds.Width = value_46
+	var value_47 float32 = visible.Height
+	layout.ClipBounds.Height = value_47
+	var value_48 float32 = layout.ClipBounds.Width
+	var value_49 float32 = 0.0
+	var value_50 bool = value_48 < value_49
+	if value_50 {
+		var value_51 float32 = 0.0
+		layout.ClipBounds.Width = value_51
+	}
+	var value_52 float32 = layout.ClipBounds.Height
+	var value_53 float32 = 0.0
+	var value_54 bool = value_52 < value_53
+	if value_54 {
+		var value_55 float32 = 0.0
+		layout.ClipBounds.Height = value_55
+	}
+	var value_56 Rectangle = layout.ClipBounds
+	layout.TextBounds = value_56
+	var value_57 float32 = row.Y
+	var value_58 float32 = row.Height
+	var value_59 float32 = content.Font
+	var value_60 float32 = value_58 - value_59
+	var value_61 float32 = 2.0
+	var value_62 float32 = value_60 / value_61
+	var value_63 float32 = value_57 + value_62
+	layout.TextBounds.Y = value_63
+	var value_64 float32 = row.Height
+	layout.TextBounds.Height = value_64
+	var value_65 float32 = row.X
+	var value_66 float32 = row.Width
+	var value_67 float32 = value_65 + value_66
+	var value_68 float32 = content.Padding
+	var value_69 float32 = value_67 - value_68
+	var value_70 float32 = content.Icon
+	var value_71 float32 = value_69 - value_70
+	layout.CheckBounds.X = value_71
+	var value_72 float32 = row.Y
+	var value_73 float32 = row.Height
+	var value_74 float32 = content.Icon
+	var value_75 float32 = value_73 - value_74
+	var value_76 float32 = 2.0
+	var value_77 float32 = value_75 / value_76
+	var value_78 float32 = value_72 + value_77
+	layout.CheckBounds.Y = value_78
+	var value_79 float32 = content.Icon
+	layout.CheckBounds.Width = value_79
+	var value_80 float32 = content.Icon
+	layout.CheckBounds.Height = value_80
+	var value_81 DropdownOptionContent = layout
 	return value_81
 }
 
