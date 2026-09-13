@@ -1706,7 +1706,9 @@ Scroll {
   border-width: border;
   icon-size: 10;
   padding-x: 16;
+  padding-y: 8;
   gap: 20;
+  offset-x: 5;
   offset-y: 42;
   opacity: 1;
   material: default;
@@ -3647,7 +3649,9 @@ Scroll {
   border-width: border;
   icon-size: 10;
   padding-x: 16;
+  padding-y: 8;
   gap: 20;
+  offset-x: 5;
   offset-y: 42;
   opacity: 1;
   material: default;
@@ -5624,7 +5628,9 @@ Scroll {
   border-width: border;
   icon-size: 10;
   padding-x: 16;
+  padding-y: 8;
   gap: 20;
+  offset-x: 5;
   offset-y: 42;
   opacity: 1;
   material: default;
@@ -7676,7 +7682,9 @@ Scroll {
   border-width: border;
   icon-size: 10;
   padding-x: 16;
+  padding-y: 8;
   gap: 20;
+  offset-x: 5;
   offset-y: 42;
   opacity: 1;
   material: glow;
@@ -9698,7 +9706,9 @@ Scroll {
   border-width: border;
   icon-size: 10;
   padding-x: 16;
+  padding-y: 8;
   gap: 20;
+  offset-x: 5;
   offset-y: 42;
   opacity: 1;
   material: premium;
