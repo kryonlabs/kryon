@@ -1933,6 +1933,14 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(submitTarget, "[form=contact]").element, externalEmail);
     assert.equal(runtime.webDOMRelations(submitTarget, "external_email").formOwner.ref, "Page/contact");
     assert.equal(runtime.webDOMSnapshot(submitTarget, "external_email").relationRefs.formOwner, "Page/contact");
+    assert.deepEqual(runtime.webDOMRelations(submitTarget, "contact").formControls
+      .map((object) => object.ref), ["Page/externalEmail", "Page/contact/email"]);
+    assert.deepEqual(runtime.webDOMSnapshot(submitTarget, "contact").relationRefs.formControls,
+      ["Page/externalEmail", "Page/contact/email"]);
+    assert.deepEqual(runtime.webNodeRelations(submitRt, "contact").formControls
+      .map((node) => node.path), ["Page/externalEmail", "Page/contact/email"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(submitRt, "contact").formControls,
+      ["Page/externalEmail", "Page/contact/email"]);
     assert.equal(runtime.webFormValues(submitTarget, "contact").external_email, "outside@example.test");
     assert.equal(runtime.webFormValues(submitTarget, "contact").loose_email, undefined);
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);

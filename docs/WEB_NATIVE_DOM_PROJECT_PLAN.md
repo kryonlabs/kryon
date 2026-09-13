@@ -135,6 +135,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `Scroll(...)` widget expressions now participate in compiler-owned
   Web Document identity and source-span metadata instead of relying on runtime
   fallback paths.
+- Web relationship facts include reverse `formControls` links so form-like DOM
+  nodes can enumerate controls that reference them through native form
+  ownership.
 - Mounted DOM snapshots serialize event refs for generated logic hooks so
   inspectors can show which Kry logic action is attached to each native DOM
   object without scraping `data-kry-on-*` attributes; direct

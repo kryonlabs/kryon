@@ -549,6 +549,15 @@ try {
   assert(externalEmail.getAttribute("form") === "contact-form", "form owner did not resolve to native id");
   const formRelations = kryon.webDOMRelations(target, "externalEmail");
   assert(formRelations.formOwner?.ref === "contact", "form owner relation missing");
+  assert(kryon.webDOMRelations(target, "contact").formControls
+    .map((object) => object.ref).join(" ") === "Page/externalEmail Page/contact/email",
+    "form controls reverse relation missing");
+  assert(kryon.webDOMRelationRefs(target, "contact").formControls
+    .join(" ") === "Page/externalEmail Page/contact/email",
+    "form controls reverse relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "contact").relationRefs.formControls
+    .join(" ") === "Page/externalEmail Page/contact/email",
+    "form controls reverse snapshot missing");
   const contactValues = kryon.webFormValues(target, "contact");
   assert(contactValues.email === "hello@example.test", "nested form value missing");
   assert(contactValues.external_email === "outside@example.test", "owned form value missing");

@@ -6163,6 +6163,27 @@ function webDOMReverseRelationList(target, node, field) {
   return out;
 }
 
+function webNodeIsFormControl(node) {
+  return ["button", "fieldset", "input", "output", "select", "textarea"]
+    .includes(String(node?.tag || "").toLowerCase());
+}
+
+function webDOMFormControls(target, node) {
+  const explicit = webDOMReverseRelationList(target, node, "formOwner");
+  const root = mountedRoot(target);
+  if (!root || !node?.path)
+    return explicit;
+  const descendants = [];
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const candidate = el.__kryDocNode || null;
+    if (!candidate || candidate === node || !webNodeIsFormControl(candidate))
+      continue;
+    if (candidate.path?.startsWith(node.path + "/"))
+      descendants.push(makeWebDOMObject(root, candidate, el, webNodeRef(candidate)));
+  }
+  return mergeWebDOMRelationObjects(explicit, descendants);
+}
+
 function mergeWebDOMRelationObjects(...lists) {
   const out = [];
   const seen = new Set();
@@ -6247,6 +6268,7 @@ function webDOMRelationsForNode(target, node) {
     columnGroupHeaders: webDOMScopedHeaderList(target, node, "colgroup"),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
+    formControls: webDOMFormControls(target, node),
     labelledBy: mergeWebDOMRelationObjects(
       webDOMRelationList(target, node.ariaLabelledBy),
       webDOMReverseRelationList(target, node, "htmlFor")
@@ -7451,6 +7473,7 @@ function webDOMRelationRefsForRelations(relations) {
     columnGroupHeaders: (relations?.columnGroupHeaders || []).map((relation) => relation.ref),
     labelFor: relations?.labelFor?.ref || "",
     formOwner: relations?.formOwner?.ref || "",
+    formControls: (relations?.formControls || []).map((relation) => relation.ref),
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
     groupOwner: relations?.groupOwner?.ref || "",
     groupMembers: (relations?.groupMembers || []).map((relation) => relation.ref),
@@ -8058,6 +8081,15 @@ function webNodeReverseRelationList(rt, node, field) {
   return out;
 }
 
+function webNodeFormControls(rt, node) {
+  const explicit = webNodeReverseRelationList(rt, node, "formOwner");
+  if (!rt || !node?.path)
+    return explicit;
+  const descendants = webNodeDescendants(rt, node.path)
+    .filter((candidate) => webNodeIsFormControl(candidate));
+  return mergeWebNodeRelations(explicit, descendants);
+}
+
 function mergeWebNodeRelationRefs(...lists) {
   const out = [];
   const seen = new Set();
@@ -8148,6 +8180,7 @@ function webNodeRelationsForNode(rt, node) {
     columnGroupHeaders: webNodeScopedHeaderList(rt, node, "colgroup"),
     labelFor: webNodeRelationList(rt, node.htmlFor)[0] || null,
     formOwner: webNodeRelationList(rt, node.formOwner)[0] || null,
+    formControls: webNodeFormControls(rt, node),
     labelledBy: mergeWebNodeRelations(
       webNodeRelationList(rt, node.ariaLabelledBy),
       webNodeReverseRelationList(rt, node, "htmlFor")
@@ -8186,6 +8219,7 @@ function webNodeRelationRefsForNode(rt, node) {
     columnGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "colgroup")),
     labelFor: webNodeRef(webNodeRelationList(rt, node.htmlFor)[0]) || "",
     formOwner: webNodeRef(webNodeRelationList(rt, node.formOwner)[0]) || "",
+    formControls: webNodeRefs(webNodeFormControls(rt, node)),
     labelledBy: mergeWebNodeRelationRefs(
       webNodeRelationList(rt, node.ariaLabelledBy),
       webNodeReverseRelationList(rt, node, "htmlFor")

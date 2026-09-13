@@ -541,6 +541,7 @@ export interface WebDOMRelations {
   columnGroupHeaders: WebDOMObject[];
   labelFor: WebDOMObject | null;
   formOwner: WebDOMObject | null;
+  formControls: WebDOMObject[];
   labelledBy: WebDOMObject[];
   activeDescendant: WebDOMObject | null;
   activeDescendantOf: WebDOMObject[];
@@ -570,6 +571,7 @@ export interface WebNodeRelations {
   columnGroupHeaders: WebDocumentNode[];
   labelFor: WebDocumentNode | null;
   formOwner: WebDocumentNode | null;
+  formControls: WebDocumentNode[];
   labelledBy: WebDocumentNode[];
   activeDescendant: WebDocumentNode | null;
   activeDescendantOf: WebDocumentNode[];
@@ -599,6 +601,7 @@ export interface WebDOMRelationRefs {
   columnGroupHeaders: string[];
   labelFor: string;
   formOwner: string;
+  formControls: string[];
   labelledBy: string[];
   activeDescendant: string;
   activeDescendantOf: string[];
