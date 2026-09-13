@@ -2,9 +2,9 @@
 #define KRYON_UI_TREE_LAYOUT_INTERNAL_H
 
 #include "kryon.h"
-#define UI_TREE_LAYOUT_DEPTH 128
+#define TREE_LAYOUT_DEPTH 128
 typedef struct TreeLayoutScopeState {
-    NodeId stack[UI_TREE_LAYOUT_DEPTH];
+    NodeId stack[TREE_LAYOUT_DEPTH];
     int depth, building;
     unsigned long declaration;
 } TreeLayoutScopeState;

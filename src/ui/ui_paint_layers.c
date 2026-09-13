@@ -68,9 +68,9 @@ struct PaintLayers {
 
 static PaintLayers *main_layers;
 static int main_frame_open;
-#define UI_FRAME_LAYER_STACK_MAX 8
-static PaintLayers *frame_layer_stack[UI_FRAME_LAYER_STACK_MAX];
-static PaintLayers *nested_frame_layers[UI_FRAME_LAYER_STACK_MAX];
+#define FRAME_LAYER_STACK_MAX 8
+static PaintLayers *frame_layer_stack[FRAME_LAYER_STACK_MAX];
+static PaintLayers *nested_frame_layers[FRAME_LAYER_STACK_MAX];
 static int frame_layer_stack_depth;
 /* Input ownership is a runtime concern, not a renderer concern.  Injection,
  * generated parity, and other headless callers still need popup scopes even
@@ -91,7 +91,7 @@ void ui_frame_layers_begin(void)
     if(main_frame_open && IsWindowReady()) {
         int level = frame_layer_stack_depth;
 
-        if(level >= UI_FRAME_LAYER_STACK_MAX)
+        if(level >= FRAME_LAYER_STACK_MAX)
             abort();
         frame_layer_stack[level] = main_layers;
         main_layers = nested_frame_layers[level];
@@ -185,7 +185,7 @@ void ui_paint_layers_shutdown(void)
         ui_paint_layers_destroy(main_layers);
         main_layers = NULL;
     }
-    for(int i = 0; i < UI_FRAME_LAYER_STACK_MAX; i++) {
+    for(int i = 0; i < FRAME_LAYER_STACK_MAX; i++) {
         if(nested_frame_layers[i]) {
             ui_paint_layers_destroy(nested_frame_layers[i]);
             nested_frame_layers[i] = NULL;

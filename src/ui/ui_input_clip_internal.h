@@ -1,9 +1,9 @@
 #ifndef KRYON_UI_INPUT_CLIP_INTERNAL_H
 #define KRYON_UI_INPUT_CLIP_INTERNAL_H
 #include "kryon.h"
-#define UI_INPUT_CLIP_DEPTH 16
+#define INPUT_CLIP_DEPTH 16
 typedef struct InputClipScopeState {
-    Rectangle clips[UI_INPUT_CLIP_DEPTH];
+    Rectangle clips[INPUT_CLIP_DEPTH];
     int count, scroll_depth;
 } InputClipScopeState;
 InputClipScopeState ui_input_clip_suspend(void);

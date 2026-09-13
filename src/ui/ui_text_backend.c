@@ -31,7 +31,7 @@ static const GlyphInfo kryon_zero_glyphinfo;
 static const Rectangle kryon_zero_rectangle;
 
 
-#define UI_GLYPH_INDEX_CACHE_SIZE 256
+#define GLYPH_INDEX_CACHE_SIZE 256
 
 typedef struct GlyphIndexCacheEntry {
     const GlyphInfo *glyphs;
@@ -41,7 +41,7 @@ typedef struct GlyphIndexCacheEntry {
     int index;
 } GlyphIndexCacheEntry;
 
-static GlyphIndexCacheEntry g_glyph_index_cache[UI_GLYPH_INDEX_CACHE_SIZE];
+static GlyphIndexCacheEntry g_glyph_index_cache[GLYPH_INDEX_CACHE_SIZE];
 
 static int
 ui_font_glyph_index(Font font, int codepoint)
@@ -54,7 +54,7 @@ ui_font_glyph_index(Font font, int codepoint)
         return 0;
 
     slot = ((unsigned int)codepoint * 2654435761u ^ font.texture.id) %
-           UI_GLYPH_INDEX_CACHE_SIZE;
+           GLYPH_INDEX_CACHE_SIZE;
     cached = &g_glyph_index_cache[slot];
     if(cached->glyphs == font.glyphs && cached->texture_id == font.texture.id &&
        cached->glyph_count == font.glyphCount && cached->codepoint == codepoint)

@@ -2,10 +2,10 @@
 #include "ui_style_internal.h"
 #include "runtime/toast.h"
 
-#define UI_TOAST_MESSAGE_SIZE 256
-#define UI_TOAST_DEFAULT_SECONDS 3.0
+#define TOAST_MESSAGE_SIZE 256
+#define TOAST_DEFAULT_SECONDS 3.0
 
-static char toast_message[UI_TOAST_MESSAGE_SIZE];
+static char toast_message[TOAST_MESSAGE_SIZE];
 static int toast_class_name;
 static double toast_until;
 
@@ -48,7 +48,7 @@ RenderToast(void)
     int text_w;
     int line_h;
     int content_w;
-    char display[UI_TOAST_MESSAGE_SIZE];
+    char display[TOAST_MESSAGE_SIZE];
 
     if(toast_message[0] == '\0')
         return;

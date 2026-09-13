@@ -31,7 +31,7 @@ ui_paint_surface(Rectangle bounds, Style style)
         style.focus, 0, style.opacity, ui_style_fill(style), style.material);
 }
 
-#define UI_TREE_MAX_DEPTH UI_TREE_LAYOUT_DEPTH
+#define TREE_MAX_DEPTH TREE_LAYOUT_DEPTH
 #define UI_NODE_HOVERED (1U << 28)
 #define UI_NODE_PRESSED (1U << 29)
 #define UI_NODE_OWNS_STATE (1U << 30)
@@ -89,7 +89,7 @@ static int ui_tree_screen_id = 0;
 static KeyID ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
 static int ui_tree_build_activation = 0;
-static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
+static NodeId ui_tree_stack[TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
 static unsigned long ui_tree_declaration;
 static RenderTexture2D ui_tree_paint_target;
@@ -906,7 +906,7 @@ ui_tree_layout_suspend(void)
 void
 ui_tree_layout_resume(TreeLayoutScopeState scope)
 {
-    if(scope.depth < 0 || scope.depth > UI_TREE_MAX_DEPTH ||
+    if(scope.depth < 0 || scope.depth > TREE_MAX_DEPTH ||
        scope.declaration != ui_tree_declaration || scope.building != ui_tree_building ||
        ui_tree_stack_depth != (scope.building ? 1 : 0)) abort();
     memcpy(ui_tree_stack,scope.stack,(size_t)scope.depth*sizeof(NodeId));
@@ -3161,7 +3161,7 @@ ui_numeric_input_begin(int id, Rectangle *bounds)
     NodeId node = ui_tree_add(id, WIDGET_CUSTOM, *bounds, NULL);
     if(node >= 0) {
         *bounds = ui_tree_nodes[node].bounds;
-        if(ui_tree_stack_depth >= UI_TREE_MAX_DEPTH) abort();
+        if(ui_tree_stack_depth >= TREE_MAX_DEPTH) abort();
         ui_tree_stack[ui_tree_stack_depth++] = node;
     }
     return depth;
@@ -3594,7 +3594,7 @@ ButtonScope(ButtonProps button)
     spec.props.bounds = ui_tree_nodes[node].bounds;
     ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
     ui_tree_nodes[node].data.button = spec;
-    if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
+    if(ui_tree_stack_depth < TREE_MAX_DEPTH)
         ui_tree_stack[ui_tree_stack_depth++] = node;
     if(button.label != NULL && button.label[0] != '\0')
         Text((TextProps){.text = button.label, .wrap = TextWrapNone});
@@ -3664,7 +3664,7 @@ CardScope(CardProps card)
                                             : ui_button_render(spec));
     else if(!ui_tree_building)
         ui_paint_button(spec, 0, 0);
-    if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
+    if(ui_tree_stack_depth < TREE_MAX_DEPTH)
         ui_tree_stack[ui_tree_stack_depth++] = node;
     return node;
 }
@@ -3702,7 +3702,7 @@ ui_begin_layout_node(int kind, KeyID key, Rectangle bounds,
         ui_tree_nodes[node].data.layout.gap = metrics.gap;
         ui_tree_nodes[node].data.layout.padding = metrics.padding;
         ui_tree_nodes[node].data.layout.columns = 1;
-        if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
+        if(ui_tree_stack_depth < TREE_MAX_DEPTH)
             ui_tree_stack[ui_tree_stack_depth++] = node;
     }
     return node;

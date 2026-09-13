@@ -76,9 +76,9 @@ typedef struct {
     unsigned long frame_seen;
 } UIDefaultRipple;
 
-#define UI_DEFAULT_RIPPLE_MAX 64
+#define DEFAULT_RIPPLE_MAX 64
 
-static UIDefaultRipple g_default_ripples[UI_DEFAULT_RIPPLE_MAX];
+static UIDefaultRipple g_default_ripples[DEFAULT_RIPPLE_MAX];
 #endif
 
 ThemeMetrics
@@ -650,7 +650,7 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 
     if(key == 0 || !FancyEffectsEnabled())
         return;
-    ripple = &g_default_ripples[hash % UI_DEFAULT_RIPPLE_MAX];
+    ripple = &g_default_ripples[hash % DEFAULT_RIPPLE_MAX];
     if(ripple->key != hash || g_ui_frame_serial - ripple->frame_seen > 20) {
         memset(ripple, 0, sizeof(*ripple));
         ripple->key = hash;

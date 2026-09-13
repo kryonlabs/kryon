@@ -91,9 +91,9 @@ static int ui_default_font_auto_load = 1;
 int g_ui_pointer_owner = POINTER_OWNER_NONE;
 int g_ui_scroll_gesture_pending = 0;
 
-#define UI_FOCUS_MAX_ITEMS 256
+#define FOCUS_MAX_ITEMS 256
 static int g_ui_focus_active_id = 0;
-static int g_ui_focus_ids[UI_FOCUS_MAX_ITEMS];
+static int g_ui_focus_ids[FOCUS_MAX_ITEMS];
 static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
 static int g_ui_focus_frame_open = 0;
@@ -122,7 +122,7 @@ typedef struct TextSelection {
 
 static TextSelection g_ui_text_area_selection = {0};
 
-#define UI_TEXT_AREA_HEIGHT_CACHE_SIZE 16
+#define TEXT_AREA_HEIGHT_CACHE_SIZE 16
 
 typedef struct TextAreaHeightCacheEntry {
     const char *text;
@@ -134,7 +134,7 @@ typedef struct TextAreaHeightCacheEntry {
     int height;
 } TextAreaHeightCacheEntry;
 
-static TextAreaHeightCacheEntry g_ui_text_area_height_cache[UI_TEXT_AREA_HEIGHT_CACHE_SIZE];
+static TextAreaHeightCacheEntry g_ui_text_area_height_cache[TEXT_AREA_HEIGHT_CACHE_SIZE];
 static int g_ui_text_area_height_cache_next = 0;
 static TextSelection g_ui_text_field_selection = {0};
 static int g_ui_text_field_last_click_id = 0;
@@ -145,7 +145,7 @@ static double g_ui_text_field_last_click_time = 0.0;
 static int g_ui_text_field_drag_id = 0;
 static int *g_ui_text_field_drag_owner = NULL;
 
-#define UI_TEXT_FIELD_SCROLL_CACHE_SIZE 128
+#define TEXT_FIELD_SCROLL_CACHE_SIZE 128
 
 typedef struct TextFieldScrollCacheEntry {
     int id;
@@ -153,7 +153,7 @@ typedef struct TextFieldScrollCacheEntry {
     int scroll_x;
 } TextFieldScrollCacheEntry;
 
-static TextFieldScrollCacheEntry g_ui_text_field_scroll_cache[UI_TEXT_FIELD_SCROLL_CACHE_SIZE];
+static TextFieldScrollCacheEntry g_ui_text_field_scroll_cache[TEXT_FIELD_SCROLL_CACHE_SIZE];
 static int g_ui_text_field_scroll_cache_next = 0;
 static int g_ui_text_field_pan_id = 0;
 static int *g_ui_text_field_pan_owner = NULL;
@@ -217,8 +217,8 @@ static unsigned long g_ui_text_focus_frame = 0;
 static unsigned long g_ui_text_focus_owner_frame = 0;
 static int *g_ui_text_focus_owner_this_frame = NULL;
 
-#define UI_TEXT_INPUT_QUEUE_MAX 64
-static int g_ui_text_input_codepoints[UI_TEXT_INPUT_QUEUE_MAX];
+#define TEXT_INPUT_QUEUE_MAX 64
+static int g_ui_text_input_codepoints[TEXT_INPUT_QUEUE_MAX];
 static int g_ui_text_input_codepoint_count = 0;
 static int g_ui_text_input_backspace_count = 0;
 static int g_ui_text_input_enter_count = 0;
@@ -238,17 +238,17 @@ enum {
     UI_CURSOR_PRIORITY_RESIZE = 4
 };
 
-#define UI_INPUT_CLIP_STACK_MAX UI_INPUT_CLIP_DEPTH
-static Rectangle g_ui_input_clip_stack[UI_INPUT_CLIP_STACK_MAX];
+#define INPUT_CLIP_STACK_MAX INPUT_CLIP_DEPTH
+static Rectangle g_ui_input_clip_stack[INPUT_CLIP_STACK_MAX];
 static int g_ui_input_clip_stack_count = 0;
 
-#define UI_INPUT_CAPTURE_STACK_MAX 16
+#define INPUT_CAPTURE_STACK_MAX 16
 typedef struct InputCapture {
     Rectangle bounds;
     int allow_inside;
 } InputCapture;
 
-static InputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
+static InputCapture g_ui_input_capture_stack[INPUT_CAPTURE_STACK_MAX];
 static int g_ui_input_capture_stack_count = 0;
 static Rectangle g_ui_modal_capture_next_frame_bounds;
 static int g_ui_modal_capture_next_frame = 0;
@@ -336,7 +336,7 @@ ui_text_field_scroll_for(int id, int *owner)
     int empty_slot = -1;
     int slot;
 
-    for(int i = 0; i < UI_TEXT_FIELD_SCROLL_CACHE_SIZE; i++) {
+    for(int i = 0; i < TEXT_FIELD_SCROLL_CACHE_SIZE; i++) {
         if(ui_text_field_scroll_entry_matches(g_ui_text_field_scroll_cache[i],
                                               id, owner))
             return &g_ui_text_field_scroll_cache[i].scroll_x;
@@ -352,7 +352,7 @@ ui_text_field_scroll_for(int id, int *owner)
         slot = g_ui_text_field_scroll_cache_next;
         g_ui_text_field_scroll_cache_next =
             (g_ui_text_field_scroll_cache_next + 1) %
-            UI_TEXT_FIELD_SCROLL_CACHE_SIZE;
+            TEXT_FIELD_SCROLL_CACHE_SIZE;
     }
 
     g_ui_text_field_scroll_cache[slot].id = id;
@@ -723,7 +723,7 @@ ClearInputCaptures(void)
 void
 PushInputCapture(Rectangle bounds, int allow_inside)
 {
-    if(g_ui_input_capture_stack_count >= UI_INPUT_CAPTURE_STACK_MAX)
+    if(g_ui_input_capture_stack_count >= INPUT_CAPTURE_STACK_MAX)
         return;
     g_ui_input_capture_stack[g_ui_input_capture_stack_count++] =
         (InputCapture){bounds, allow_inside != 0};
@@ -753,7 +753,7 @@ ui_input_clip_suspend(void)
 void
 ui_input_clip_resume(InputClipScopeState scope)
 {
-    if(scope.count < 0 || scope.count > UI_INPUT_CLIP_STACK_MAX || scope.scroll_depth < 0 ||
+    if(scope.count < 0 || scope.count > INPUT_CLIP_STACK_MAX || scope.scroll_depth < 0 ||
        g_ui_input_clip_stack_count != 0 || g_scroll_scope_depth != 0) abort();
     memcpy(g_ui_input_clip_stack,scope.clips,(size_t)scope.count*sizeof(Rectangle));
     g_ui_input_clip_stack_count = scope.count;
@@ -980,7 +980,7 @@ PushInputClip(Rectangle bounds)
     if(g_ui_input_clip_stack_count > 0)
         bounds = GetClipIntersection(g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1],
                                          bounds);
-    if(g_ui_input_clip_stack_count < UI_INPUT_CLIP_STACK_MAX)
+    if(g_ui_input_clip_stack_count < INPUT_CLIP_STACK_MAX)
         g_ui_input_clip_stack[g_ui_input_clip_stack_count++] = bounds;
 }
 
@@ -1485,7 +1485,7 @@ QueueTextInputCodepoint(int codepoint)
 {
     if(codepoint <= 0)
         return;
-    if(g_ui_text_input_codepoint_count >= UI_TEXT_INPUT_QUEUE_MAX)
+    if(g_ui_text_input_codepoint_count >= TEXT_INPUT_QUEUE_MAX)
         return;
     g_ui_text_input_codepoints[g_ui_text_input_codepoint_count++] = codepoint;
 }
@@ -1493,14 +1493,14 @@ QueueTextInputCodepoint(int codepoint)
 void
 QueueTextInputBackspace(void)
 {
-    if(g_ui_text_input_backspace_count < UI_TEXT_INPUT_QUEUE_MAX)
+    if(g_ui_text_input_backspace_count < TEXT_INPUT_QUEUE_MAX)
         g_ui_text_input_backspace_count++;
 }
 
 void
 QueueTextInputEnter(void)
 {
-    if(g_ui_text_input_enter_count < UI_TEXT_INPUT_QUEUE_MAX)
+    if(g_ui_text_input_enter_count < TEXT_INPUT_QUEUE_MAX)
         g_ui_text_input_enter_count++;
 }
 
@@ -1601,7 +1601,7 @@ ui_register_focus_snapshot(int id, Rectangle bounds, PopupInputToken snapshot)
         !ui_base_input_captures_click(focus_point,0) &&
         !dropdown_captures(focus_point) &&
         !ui_popup_input_snapshot_captures(snapshot,focus_point));
-    if(g_ui_focus_count < UI_FOCUS_MAX_ITEMS)
+    if(g_ui_focus_count < FOCUS_MAX_ITEMS)
         g_ui_focus_ids[g_ui_focus_count++] = id;
 
     mouse_world = ui_mouse_world();
@@ -2759,7 +2759,7 @@ ui_text_area_content_height(const char *text, int font, int line_gap,
                                                    wrap_width);
 
     if(!force_recompute) {
-        for(int i = 0; i < UI_TEXT_AREA_HEIGHT_CACHE_SIZE; i++) {
+        for(int i = 0; i < TEXT_AREA_HEIGHT_CACHE_SIZE; i++) {
             TextAreaHeightCacheEntry *entry = &g_ui_text_area_height_cache[i];
             if(entry->text == text && entry->font == font &&
                entry->line_gap == line_gap &&
@@ -2780,7 +2780,7 @@ ui_text_area_content_height(const char *text, int font, int line_gap,
     entry->height = ui_text_area_content_height_uncached(text, font, line_gap,
                                                         len, wrap_width);
     g_ui_text_area_height_cache_next =
-        (g_ui_text_area_height_cache_next + 1) % UI_TEXT_AREA_HEIGHT_CACHE_SIZE;
+        (g_ui_text_area_height_cache_next + 1) % TEXT_AREA_HEIGHT_CACHE_SIZE;
     return entry->height;
 }
 
@@ -5246,7 +5246,7 @@ SaveFrameState(void)
     state.input_clip_count = g_ui_input_clip_stack_count;
     memcpy(state.input_clips, g_ui_input_clip_stack, sizeof(state.input_clips));
     state.input_capture_count = g_ui_input_capture_stack_count;
-    for(int i = 0; i < UI_INPUT_CAPTURE_STACK_MAX; i++) {
+    for(int i = 0; i < INPUT_CAPTURE_STACK_MAX; i++) {
         state.input_captures[i].bounds = g_ui_input_capture_stack[i].bounds;
         state.input_captures[i].allow_inside =
             g_ui_input_capture_stack[i].allow_inside;
@@ -5285,7 +5285,7 @@ RestoreFrameState(FrameState state)
     g_ui_input_clip_stack_count = state.input_clip_count;
     memcpy(g_ui_input_clip_stack, state.input_clips, sizeof(g_ui_input_clip_stack));
     g_ui_input_capture_stack_count = state.input_capture_count;
-    for(int i = 0; i < UI_INPUT_CAPTURE_STACK_MAX; i++) {
+    for(int i = 0; i < INPUT_CAPTURE_STACK_MAX; i++) {
         g_ui_input_capture_stack[i].bounds = state.input_captures[i].bounds;
         g_ui_input_capture_stack[i].allow_inside =
             state.input_captures[i].allow_inside;
