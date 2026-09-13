@@ -178,6 +178,37 @@ GuideChromeHeight :: (metrics: GuideMetrics) -> i32 #export {
            metrics.button_size + metrics.pad
 }
 
+GuideLineGapFor :: (requested_line_gap: i32, metrics: GuideMetrics) -> i32 #export {
+    if requested_line_gap > 0 { return requested_line_gap }
+    return metrics.default_line_gap
+}
+
+GuideParagraphFontFor :: (requested_font: i32, style_font: i32,
+    style_has_font: bool, default_font: i32) -> i32 #export {
+    font: i32 = default_font
+    if requested_font > 0 { font = requested_font }
+    if style_has_font && style_font > 0 { font = style_font }
+    return font
+}
+
+GuideParagraphHeightLimit :: (max_tip_height: i32,
+    metrics: GuideMetrics) -> i32 #export {
+    return max_tip_height - GuideChromeHeight(metrics)
+}
+
+GuideShouldShrinkParagraphFont :: (paragraph_height: i32, height_limit: i32,
+    font: i32, min_font: i32) -> bool #export {
+    return font > min_font && paragraph_height > height_limit
+}
+
+GuideShrinkParagraphFontStep :: (paragraph_height: i32, height_limit: i32,
+    font: i32, min_font: i32) -> i32 #export {
+    if GuideShouldShrinkParagraphFont(paragraph_height, height_limit, font, min_font) {
+        return font - 1
+    }
+    return font
+}
+
 GuideTipHeight :: (paragraph_height: i32, max_tip_height: i32,
     metrics: GuideMetrics) -> i32 #export {
     height: i32 = GuideChromeHeight(metrics) + paragraph_height

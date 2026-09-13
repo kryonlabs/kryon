@@ -81,7 +81,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     int view_h = guide.view_height > 0 ? guide.view_height : ui_view_height;
     int step;
     int tip_w;
-    int line_gap = guide.line_gap > 0 ? guide.line_gap : metrics.default_line_gap;
+    int line_gap = GuideLineGapFor(guide.line_gap, metrics);
     int max_tip_h;
     char page_text[32];
     int label_font;
@@ -133,18 +133,21 @@ RenderGuideOverlay(GuideOverlayProps guide)
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = guide.steps[step].text;
     paragraph.width = tip_w - metrics.pad * 2;
-    paragraph.font = guide.paragraph_font > 0 ? guide.paragraph_font : Text16;
-    if((label_style.fields & (uint32_t)StyleFontSize) != 0 &&
-       label_style.font_size > 0.0f)
-        paragraph.font = (int)(label_style.font_size + 0.5f);
+    paragraph.font = GuideParagraphFontFor(
+        guide.paragraph_font, (int)(label_style.font_size + 0.5f),
+        (label_style.fields & (uint32_t)StyleFontSize) != 0,
+        Text16);
     label_font = paragraph.font;
     paragraph.line_gap = line_gap;
     label_color = GetColor(Opacity(ColorToInt(label_style.foreground),
                                    label_style.opacity));
     paragraph_h = ui_paragraph_height(paragraph);
-    while(paragraph.font > Text12 &&
-          paragraph_h > max_tip_h - GuideChromeHeight(metrics)) {
-        paragraph.font--;
+    while(GuideShouldShrinkParagraphFont(
+              paragraph_h, GuideParagraphHeightLimit(max_tip_h, metrics),
+              paragraph.font, Text12)) {
+        paragraph.font = GuideShrinkParagraphFontStep(
+            paragraph_h, GuideParagraphHeightLimit(max_tip_h, metrics),
+            paragraph.font, Text12);
         paragraph_h = ui_paragraph_height(paragraph);
     }
 

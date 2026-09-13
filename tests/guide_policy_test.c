@@ -144,6 +144,17 @@ main(void)
     assert(GuideTipWidth(120, 80, metrics) == 80);
     assert(GuideMaxTipHeight(480, 20, 30, metrics) == 406);
     assert(GuideChromeHeight(metrics) == 114);
+    assert(GuideLineGapFor(0, metrics) == metrics.default_line_gap);
+    assert(GuideLineGapFor(9, metrics) == 9);
+    assert(GuideParagraphFontFor(0, 0, false, 16) == 16);
+    assert(GuideParagraphFontFor(18, 0, false, 16) == 18);
+    assert(GuideParagraphFontFor(18, 20, true, 16) == 20);
+    assert(GuideParagraphHeightLimit(300, metrics) == 186);
+    assert(GuideShouldShrinkParagraphFont(220, 186, 18, 12));
+    assert(!GuideShouldShrinkParagraphFont(180, 186, 18, 12));
+    assert(!GuideShouldShrinkParagraphFont(220, 186, 12, 12));
+    assert(GuideShrinkParagraphFontStep(220, 186, 18, 12) == 17);
+    assert(GuideShrinkParagraphFontStep(180, 186, 18, 12) == 18);
     assert(GuideTipHeight(30, 300, metrics) == 144);
     assert(GuideTipHeight(600, 300, metrics) == 300);
 
