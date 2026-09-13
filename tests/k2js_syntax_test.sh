@@ -526,12 +526,23 @@ Conditional :: () #ui {
     if Button((ButtonProps){.label="First"}) {
     } else if Toggle((ToggleProps){.label="Second"}) {
     }
+    if Button(
+        (ButtonProps){
+            .label = "Wrapped"
+        }
+    ) {
+    }
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/conditional_widgets.kry"
 conditional_out="$work/out/src/conditional_widgets.js"
 grep -Eq '"path": "Conditional/Button@[0-9]+(-[0-9]+)?"' "$conditional_out"
 grep -Eq '"path": "Conditional/Toggle@[0-9]+(-[0-9]+)?"' "$conditional_out"
+grep -q '"path": "Conditional/Button@6-3"' "$conditional_out"
+grep -q '"sourceLine": 6' "$conditional_out"
+grep -q '"sourceColumn": 5' "$conditional_out"
+grep -q '"sourceEndLine": 10' "$conditional_out"
+grep -q '"sourceEndColumn": 8' "$conditional_out"
 
 cat > "$work/src/multiline_widget_metadata.kry" <<'EOF'
 #import "kryon.h"
