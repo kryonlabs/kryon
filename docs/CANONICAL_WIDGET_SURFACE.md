@@ -226,8 +226,6 @@ host roles rather than retained nodes.
 | `Row` | `.kry canonical` | Layout block. |
 | `Stack` | `.kry canonical` | Layout block. |
 | `End` | Native support | Lowered/parser block close marker, not a widget. |
-| `Scroll` | `.kry canonical` | Lexical scroll-content block. |
-| `Canvas` | `.kry canonical` | Lexical canvas block. |
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |
 | `TabBar` | `.kry canonical` | Tab navigation surface. |

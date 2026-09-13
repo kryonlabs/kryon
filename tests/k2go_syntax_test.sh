@@ -161,10 +161,13 @@ App :: () #ui {
     dropdown_options: [3] const char * = {"a","b","c"}
     Dropdown((DropdownProps){.bounds = {Scale(4), Scale(80), Scale(120), Scale(30)}, .id = 1, .options = dropdown_options, .option_count = 3, .selected_index = &pick})
     Progress((ProgressProps){{Scale(4), Scale(120), Scale(100), Scale(10)}, 0, 100, query_jobs(0, 10), ""})
-    Scroll(Scale(4), Scale(8), Scale(200), Scale(100), Scale(400), &scroll_off)
-    Circle(Scale(120), Scale(120), Scale(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
-    Ring(Scale(120), Scale(120), Scale(36), Scale(40), (Color){0x70, 0x90, 0xc0, 0xff})
-    EndScroll()
+    Scroll {
+        bounds = {Scale(4), Scale(8), Scale(200), Scale(100)}
+        content_height = Scale(400)
+        scroll_offset = &scroll_off
+        Circle(Scale(120), Scale(120), Scale(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
+        Ring(Scale(120), Scale(120), Scale(36), Scale(40), (Color){0x70, 0x90, 0xc0, 0xff})
+    }
     Text((TextProps){.bounds = {Scale(4), Scale(130), Scale(160), Scale(20)}, .text = "in rect", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
     Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone})

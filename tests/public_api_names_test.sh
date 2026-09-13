@@ -216,7 +216,7 @@ pm = re.search(r'static const char \*const widgets\[\]\s*=\s*\{(?P<body>.*?)\};'
 wm = re.search(r'const runtimeCallNames = \[(?P<body>.*?)\];', web, re.S)
 parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 web_names = set(re.findall(r'"([^"]+)"', wm.group('body')) if wm else [])
-special = {'Canvas', 'End'}
+special = {'End'}
 for name in parser_names:
     if name not in special and name not in web_names:
         print(name)

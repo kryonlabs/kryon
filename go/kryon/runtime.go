@@ -1258,7 +1258,6 @@ type Runtime interface {
 	Surface(Rectangle, Style)
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
-	Scroll(int32, int32, int32, int32, int32, *int32)
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Card(CardProps) bool
@@ -2073,7 +2072,6 @@ func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
 		Color:  color,
 	})
 }
-func (r *runtime) Scroll(int32, int32, int32, int32, int32, *int32) {}
 func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	clip := r.scrollClip(bounds)
 	if offset != nil {

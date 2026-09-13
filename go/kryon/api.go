@@ -182,9 +182,6 @@ func RectGradientH(x, y, w, h int32, left, right Color) {
 	active().RectGradientH(x, y, w, h, left, right)
 }
 func Line(x1, y1, x2, y2 int32, color Color) { active().Line(x1, y1, x2, y2, color) }
-func Scroll(x, y, w, h, contentH int32, offset *int32) {
-	active().Scroll(x, y, w, h, contentH, offset)
-}
 func EndScroll() { active().EndScroll() }
 func BeginTableCell(props TableViewProps, row, column int32) Rectangle {
 	return active().BeginTableCell(props, row, column)
