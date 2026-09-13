@@ -2413,18 +2413,14 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		r.inputEvents = remaining
 	}
-	font := props.Font
-	fontID := uint32(0)
-	if font <= 0 {
-		tabStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral,
-			func() ButtonState {
-				if disabled {
-					return ButtonStateDisabled
-				}
-				return ButtonStateNormal
-			}(), disabled, false, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()).Value)
-		font, fontID = styleTextFace(tabStyle, Text12)
-	}
+	tabStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		func() ButtonState {
+			if disabled {
+				return ButtonStateDisabled
+			}
+			return ButtonStateNormal
+		}(), disabled, false, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()).Value)
+	font, fontID := styleTextFace(tabStyle, Text12)
 	minWidth := float32(props.MinTabWidth)
 	if minWidth <= 0 {
 		minWidth = 120

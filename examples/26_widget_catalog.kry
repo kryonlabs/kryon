@@ -331,7 +331,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         Text((TextProps){.bounds={right + Scale(12), y + Scale(148), 0, 0}, .text="Right-click here for a context menu", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(216), 0, 0}, .text="TabBar close props", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        close_tab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(252),Scale(760),Scale(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = tab_selected, .font = Text16, .closed_index = &closed_tab, .id = 2604})
+        close_tab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(252),Scale(760),Scale(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = tab_selected, .closed_index = &closed_tab, .id = 2604})
         if closed_tab >= 0 {
             if closed_tab < tab_count {
                 tab_index: int = closed_tab
@@ -362,12 +362,12 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if category == 4 {
             Text((TextProps){.bounds={x, y + Scale(308), 0, 0}, .text=TextFormat("Open tabs: %d / Menu command: %d", tab_count, menu_command), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
             Text((TextProps){.bounds={x, y + Scale(350), 0, 0}, .text="Level 2 tabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            subtab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(384),Scale(350),Scale(36)},.tabs = subtabs,.count = 3,.selected_index = subtab_selected,.font = Text16,.min_tab_width = Scale(110),.max_tab_width = Scale(120)})
+            subtab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(384),Scale(350),Scale(36)},.tabs = subtabs,.count = 3,.selected_index = subtab_selected,.min_tab_width = Scale(110),.max_tab_width = Scale(120)})
             if subtab_result >= 0 {
                 subtab_selected = subtab_result
             }
             Text((TextProps){.bounds={right, y + Scale(350), 0, 0}, .text="Pane tabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            pane_result: int = TabBar((TabBarProps){.bounds = {right,y + Scale(384),Scale(350),Scale(36)},.tabs = tabs,.count = 2,.selected_index = pane_selected,.font = Text16,.min_tab_width = Scale(92),.max_tab_width = Scale(120)})
+            pane_result: int = TabBar((TabBarProps){.bounds = {right,y + Scale(384),Scale(350),Scale(36)},.tabs = tabs,.count = 2,.selected_index = pane_selected,.min_tab_width = Scale(92),.max_tab_width = Scale(120)})
             if pane_result >= 0 {
                 pane_selected = pane_result
             }

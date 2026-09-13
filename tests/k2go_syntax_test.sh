@@ -329,7 +329,7 @@ App :: () #ui {
     Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = choice_image.tint, .image_fit = choice_image.fit, .image_background = GetThemeButton(), .id = 51})
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section"})
     Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
-    tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})
+    tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})
     DragDrop((DragDropProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .role = DragDropRoleSource, .type = "TEXT", .data = field_text, .data_size = 64})
     DragDrop((DragDropProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .role = DragDropRoleTarget, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
     ListBox((ListBoxProps){.bounds = {Scale(250),Scale(1194),Scale(180),Scale(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})

@@ -81,7 +81,7 @@ Valid :: (viewport: Rectangle) #ui {
             count = nav_result.clicked_route
         }
         tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
-        count = TabBar((TabBarProps){.bounds = {0, Scale(32), Scale(120), Scale(28)}, .tabs = tabs, .count = 1, .selected_index = count, .font = Text16})
+        count = TabBar((TabBarProps){.bounds = {0, Scale(32), Scale(120), Scale(28)}, .tabs = tabs, .count = 1, .selected_index = count})
         count = c_abs(-3)
         value := count + 1
         unused value

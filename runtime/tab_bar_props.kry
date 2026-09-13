@@ -17,7 +17,6 @@ TabBarProps :: struct {
     tabs: const Tab*
     count: i32
     selected_index: i32
-    font: i32
     min_tab_width: i32
     max_tab_width: i32
     scroll_offset: *i32

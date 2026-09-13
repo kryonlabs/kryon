@@ -29,8 +29,6 @@ ui_tab_bar_font(TabBarProps bar, int disabled)
 {
     StyleFrame tab_frame;
 
-    if(bar.font > 0)
-        return bar.font;
     tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         bar.class_name);

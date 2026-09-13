@@ -1666,7 +1666,7 @@ func TestNativeTabItemControls(t *testing.T) {
 
 	tabs := []Tab{{Label: "One", Closeable: true}, {Label: "Two", Closeable: true}}
 	selected, closed := int32(0), int32(-1)
-	props := TabBarProps{Bounds: NewRectangle(10, 60, 200, 30), Tabs: tabs, Count: 2, SelectedIndex: selected, Font: Text14, MinTabWidth: 100, MaxTabWidth: 100, ClosedIndex: &closed}
+	props := TabBarProps{Bounds: NewRectangle(10, 60, 200, 30), Tabs: tabs, Count: 2, SelectedIndex: selected, MinTabWidth: 100, MaxTabWidth: 100, ClosedIndex: &closed}
 	r.QueueTap(195, 70)
 	r.BeginFrame()
 	if clicked := r.TabBar(props); clicked != -1 || closed != 1 || selected != 0 {

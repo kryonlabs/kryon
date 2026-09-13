@@ -1137,7 +1137,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    tabs: const Tab*\n"
         "    count: i32\n"
         "    selected_index: i32\n"
-        "    font: i32\n"
         "    min_tab_width: i32\n"
         "    max_tab_width: i32\n"
         "    scroll_offset: *i32\n"

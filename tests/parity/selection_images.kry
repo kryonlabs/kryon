@@ -33,7 +33,7 @@ selection_images_frame :: () #ui {
         Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section"})
         tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
         Button((ButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
-        TabBar((TabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = selected_tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = 90, .max_tab_width = 90})
+        TabBar((TabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = selected_tab, .closed_index = &closed_tab, .min_tab_width = 90, .max_tab_width = 90})
         DragDrop((DragDropProps){.bounds = {20,245,80,28}, .id = 955, .role = DragDropRoleSource, .type = "ITEM", .data = payload, .data_size = 8})
         DragDrop((DragDropProps){.bounds = {120,245,120,28}, .id = 956, .role = DragDropRoleTarget, .type = "ITEM", .output = received, .output_size = 8, .accepted_size = &accepted_size})
         multi_items: [3] const char * = {"Alpha","Beta","Gamma"}

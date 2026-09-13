@@ -37,7 +37,6 @@ typedef struct TabBarProps {
     const Tab* tabs;
     int32_t count;
     int32_t selected_index;
-    int32_t font;
     int32_t min_tab_width;
     int32_t max_tab_width;
     int32_t* scroll_offset;

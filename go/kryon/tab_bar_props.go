@@ -18,7 +18,6 @@ type TabBarProps struct {
 	Tabs               []Tab
 	Count              int32
 	SelectedIndex      int32
-	Font               int32
 	MinTabWidth        int32
 	MaxTabWidth        int32
 	ScrollOffset       *int32

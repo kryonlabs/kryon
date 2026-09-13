@@ -1500,7 +1500,6 @@ typedef struct {
     const Tab *tabs;
     int count;
     int selected_index;
-    int font;
     int min_tab_width;
     int max_tab_width;
     int *scroll_offset;
