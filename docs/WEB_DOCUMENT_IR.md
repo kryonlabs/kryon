@@ -98,8 +98,8 @@ directly from an element back to the source `.kry` object. `sourcePath`,
 the DOM-producing widget/block token when the compiler can see the original
 source line. Source references support both
 `path:line` and `path:line:column` lookup forms. Anonymous widget expressions
-receive source-derived path components such as `Text@42`; repeated anonymous
-widgets under the same
+in declarations, assignments, returns, and control-flow conditions receive
+source-derived path components such as `Text@42`; repeated anonymous widgets under the same
 parent receive deterministic occurrence suffixes such as `Text@42-2` so every
 DOM object remains individually addressable.
 

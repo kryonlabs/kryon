@@ -2437,10 +2437,32 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_SWITCH: {
             const char *keyword = st->kind == KIR_STMT_WHILE ? "while" : "switch";
             char out[K2JS_TEXT_MAX];
+            char widget[K2JS_NAME_MAX];
+            char args[K2JS_TEXT_MAX];
             kir_strip_block_brace(raw);
-            tx_expr(m, kir_skip_ws(raw + strlen(keyword)), out, sizeof(out));
             emit_indent(f, indent);
-            fprintf(f, "%s (%s) {\n", keyword, out);
+            const char *condition = kir_skip_ws(raw + strlen(keyword));
+            if(st->kind == KIR_STMT_WHILE &&
+               begin_popup_call_args(condition, args, sizeof(args))) {
+                fprintf(f, "while (kryon.widget($rt, \"Popup\", ");
+                emit_initializer_value(f, m, args);
+                fprintf(f, ", $state, ");
+                emit_web_metadata(f, m, st);
+                fprintf(f, ")) {\n");
+            } else if(st->kind == KIR_STMT_WHILE &&
+                      condition_is_widget_call(condition, widget, sizeof(widget),
+                                               args, sizeof(args))) {
+                fprintf(f, "while (kryon.widget($rt, ");
+                js_string(f, widget);
+                fprintf(f, ", ");
+                emit_widget_arguments(f, m, widget, args);
+                fprintf(f, ", $state, ");
+                emit_web_metadata(f, m, st);
+                fprintf(f, ")) {\n");
+            } else {
+                tx_expr(m, condition, out, sizeof(out));
+                fprintf(f, "%s (%s) {\n", keyword, out);
+            }
             if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
                 block_stack[block_top++] = 1;
             indent++;

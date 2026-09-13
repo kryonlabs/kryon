@@ -37,9 +37,9 @@ the browser receives normal elements, attributes, CSS, and events.
   ref/range object lookup
   against a real DOM, plus native lifecycle events, DOM observers, and native
   containment style application.
-- Expression-backed widget calls in declarations and assignments emit
-  source-derived Web Document metadata, so logic expressions still produce
-  inspectable DOM nodes.
+- Expression-backed widget calls in declarations, assignments, returns, and
+  control-flow conditions emit source-derived Web Document metadata, so logic
+  expressions still produce inspectable DOM nodes.
 - Declared `.kry` widget blocks emit a call-site Web Document node and remap
   child nodes from the component definition path into that call-site subtree, so
   KSS selectors and native DOM nesting see composed widgets as real structure.

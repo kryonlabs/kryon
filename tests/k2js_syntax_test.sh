@@ -849,6 +849,41 @@ assert.deepEqual(paths, [
 ]);
 EOF
 
+cat > "$work/src/while_widget_nodes.kry" <<'EOF'
+#import "kryon.h"
+WhileWidgetNodes :: () #ui {
+    while Button(
+        (ButtonProps){
+            .label = "Loop"
+        }
+    ) {
+        break
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/while_widget_nodes.kry"
+while_widget_out="$work/out/src/while_widget_nodes.js"
+grep -q 'while (kryon.widget(\$rt, "Button"' "$while_widget_out"
+grep -q '"path": "WhileWidgetNodes/Button@3"' "$while_widget_out"
+grep -q '"sourcePath": "src/while_widget_nodes.kry"' "$while_widget_out"
+grep -q '"sourceLine": 3' "$while_widget_out"
+grep -q '"sourceColumn": 5' "$while_widget_out"
+grep -q '"sourceEndLine": 7' "$while_widget_out"
+grep -q '"sourceEndColumn": 8' "$while_widget_out"
+node --input-type=module - "$while_widget_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.WhileWidgetNodes_WhileWidgetNodes(rt, module.createState(), {});
+const frame = runtime.webDocumentFrame(rt);
+assert.equal(frame.nodes.length, 1);
+assert.equal(frame.nodes[0].path, "WhileWidgetNodes/Button@3");
+assert.equal(frame.nodes[0].sourceLine, 3);
+assert.equal(frame.nodes[0].sourceEndLine, 7);
+EOF
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {
