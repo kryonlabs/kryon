@@ -66,6 +66,16 @@ try {
     path: "Page/article/save",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Icon", {}, null, {
+    nodeName: "icon",
+    path: "Page/article/icon",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "Bullet", {}, null, {
+    nodeName: "bullet",
+    path: "Page/article/bullet",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "TableView", {}, null, {
     nodeName: "prices",
     path: "Page/prices"
@@ -241,6 +251,13 @@ try {
     "article snapshot error relation missing");
   assert(root.kryRelationRefs("article-ref").flowTo.join(" ") === "Page/article/save",
     "root flow relation refs missing");
+  const icon = kryon.findWebElement(target, "icon");
+  const bullet = kryon.findWebElement(target, "bullet");
+  assert(icon.tagName === "SPAN", "icon native span not rendered");
+  assert(icon.getAttribute("role") === "img", "icon image role missing");
+  assert(bullet.tagName === "LI", "bullet native list item not rendered");
+  assert(kryon.webDOMSnapshot(target, "bullet").role === "listitem",
+    "bullet listitem snapshot role missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);
