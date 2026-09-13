@@ -3,6 +3,7 @@
 #include "ui_style_internal.h"
 #include "tab_bar_store.h"
 #include "runtime/paned_view.h"
+#include "runtime/style.h"
 #include "runtime/tab_bar.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -33,9 +34,8 @@ ui_tab_bar_font(TabBarProps bar, int disabled)
     tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         bar.class_name);
-    return tab_frame.value.font_size > 0.0f
-        ? (int)(tab_frame.value.font_size + 0.5f)
-        : GetSmallFontSize();
+    return ResolveFont(0, (int)(tab_frame.value.font_size + 0.5f),
+                       GetSmallFontSize());
 }
 
 static float
