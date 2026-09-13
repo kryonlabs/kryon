@@ -63,6 +63,60 @@ try {
     path: "Page/article/save",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "TableView", {}, null, {
+    nodeName: "prices",
+    path: "Page/prices"
+  });
+  kryon.widget(rt, "TableCell", {
+    text: "Price",
+    scope: "col",
+    web_ref: "priceHeader"
+  }, null, {
+    nodeName: "priceHeader",
+    path: "Page/prices/priceHeader",
+    parentPath: "Page/prices"
+  });
+  kryon.widget(rt, "TableCell", {
+    text: "Item",
+    scope: "row",
+    web_ref: "itemHeader"
+  }, null, {
+    nodeName: "itemHeader",
+    path: "Page/prices/itemHeader",
+    parentPath: "Page/prices"
+  });
+  kryon.widget(rt, "TableCell", {
+    text: "\$12",
+    headers: "priceHeader itemHeader"
+  }, null, {
+    nodeName: "priceCell",
+    path: "Page/prices/priceCell",
+    parentPath: "Page/prices"
+  });
+  kryon.widget(rt, "Column", {
+    dom_tag: "form",
+    dom_id: "contact-form",
+    web_ref: "contact"
+  }, null, {
+    nodeName: "contact",
+    path: "Page/contact"
+  });
+  kryon.widget(rt, "TextField", {
+    text: "hello@example.test",
+    dom_name: "email"
+  }, null, {
+    nodeName: "email",
+    path: "Page/contact/email",
+    parentPath: "Page/contact"
+  });
+  kryon.widget(rt, "TextField", {
+    text: "outside@example.test",
+    dom_name: "external_email",
+    form: "contact"
+  }, null, {
+    nodeName: "externalEmail",
+    path: "Page/externalEmail"
+  });
   kryon.endFrame(rt);
   kryon.setWebStyleSheets(rt, kryon.parseWebStyleSheet(\`
     Section[webRef="article-ref"] {
@@ -101,6 +155,29 @@ try {
   assert(eventLog[0] === "article-ref", "decorated event did not expose Kry object");
   const button = kryon.webDOMQuery(target, "Section > Button.primary");
   assert(button?.element?.id === "save", "child selector query failed");
+  const priceHeader = kryon.findWebElement(target, "priceHeader");
+  const itemHeader = kryon.findWebElement(target, "itemHeader");
+  const priceCell = kryon.findWebElement(target, "priceCell");
+  assert(priceHeader.id && itemHeader.id, "table headers did not receive native ids");
+  assert(priceCell.getAttribute("headers") === \`\${priceHeader.id} \${itemHeader.id}\`,
+    \`table headers were not resolved to native ids: \${priceCell.getAttribute("headers")} expected \${priceHeader.id} \${itemHeader.id}\`);
+  const tableRelations = kryon.webDOMRelations(target, "priceCell");
+  assert(tableRelations.headers.map((object) => object.ref).join(" ") === "priceHeader itemHeader",
+    "table relation refs missing");
+  assert(tableRelations.columnHeaders[0]?.ref === "priceHeader", "column header relation missing");
+  assert(tableRelations.rowHeaders[0]?.ref === "itemHeader", "row header relation missing");
+  const contact = kryon.findWebElement(target, "contact");
+  const email = kryon.findWebElement(target, "email");
+  const externalEmail = kryon.findWebElement(target, "externalEmail");
+  assert(contact.tagName === "FORM", "form native tag not rendered");
+  assert(email.getAttribute("name") === "email", "nested input name missing");
+  assert(externalEmail.getAttribute("name") === "external_email", "external input name missing");
+  assert(externalEmail.getAttribute("form") === "contact-form", "form owner did not resolve to native id");
+  const formRelations = kryon.webDOMRelations(target, "externalEmail");
+  assert(formRelations.formOwner?.ref === "contact", "form owner relation missing");
+  const contactValues = kryon.webFormValues(target, "contact");
+  assert(contactValues.email === "hello@example.test", "nested form value missing");
+  assert(contactValues.external_email === "outside@example.test", "owned form value missing");
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";
