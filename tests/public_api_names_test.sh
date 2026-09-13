@@ -448,21 +448,18 @@ if [ -n "$public_widget_data_matches" ]; then
 fi
 
 public_button_matches="$(
-    rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
+    rg -n '\b(UIButtonSpec|UIButtonNode|ButtonSpec)\b' \
         include/ui_controls.h \
         include/ui_tree.h \
         README.md \
-        src/ui/button.c \
-        src/ui/modal.c \
-        src/ui/ui_internal.h \
-        src/ui/ui_tk.c \
-        src/ui/ui_tree.c \
+        docs/API.md \
+        docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
 if [ -n "$public_button_matches" ]; then
-    echo "Public button internals must use clean ButtonSpec/ButtonNode names without stale UI prefixes:"
+    echo "Button internals must stay out of the public surface; use Button(ButtonProps):"
     echo "$public_button_matches"
     exit 1
 fi

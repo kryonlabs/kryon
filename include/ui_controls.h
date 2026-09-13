@@ -35,15 +35,6 @@ typedef struct {
     int padding_y;
 } TextInputStyle;
 
-typedef struct {
-    ButtonProps props;
-    Style paint;
-    Color hover_background;
-    int style_resolved;
-    Rectangle surface_bounds;
-    int disclosure;
-    int style_kind;
-} ButtonSpec;
 
 Style MergeStyle(Style base, Style overrides);
 

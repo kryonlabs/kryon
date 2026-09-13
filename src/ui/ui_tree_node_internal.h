@@ -3,6 +3,16 @@
 
 #include "ui_tree.h"
 
+typedef struct {
+    ButtonProps props;
+    Style paint;
+    Color hover_background;
+    int style_resolved;
+    Rectangle surface_bounds;
+    int disclosure;
+    int style_kind;
+} ButtonSpec;
+
 typedef union WidgetData {
     struct {
         unsigned long long words[16];

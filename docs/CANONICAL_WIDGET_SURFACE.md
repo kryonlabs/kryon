@@ -506,6 +506,7 @@ Recent retained-tree public C cleanup:
 | `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `int` as an opaque integer plus `GetNodeKindName(kind)` |
 | `UIWidgetNode` | Opaque `WidgetNode` inspection handle plus `GetNode*` accessors |
 | `UIWidgetData` | Internal `WidgetData`; public code uses clean node inspection helpers |
+| public C `ButtonSpec` | Internal retained/render payload; public code uses `Button(ButtonProps)` |
 | text input paint snapshot | Internal `TextInputPaint` host snapshot. |
 | `UIAccessibilitySink` | `AccessibilitySink` |
 | `UIInspect*`, `BeginUIInspect*`, `PushUIInspect*`, `IsUIInspectActive` | `Inspect*`, `BeginInspect*`, `PushInspect*`, `IsInspectActive` |
