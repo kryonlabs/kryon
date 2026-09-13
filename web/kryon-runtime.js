@@ -2001,6 +2001,7 @@ function parseSimpleSelector(text) {
     not: [],
     matches: [],
     state: "",
+    states: [],
     specificity: 0
   };
   source = source.replace(/\[([A-Za-z_][\w.-]*)\s*([~|^$*]?=)\s*([^\]]+)\]/g, (_all, key, op, value) => {
@@ -2020,9 +2021,12 @@ function parseSimpleSelector(text) {
     } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
         pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open"))
-      selector.state = name;
-    else
+        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open")) {
+      const state = pseudo === "focused" ? "focus" : pseudo;
+      selector.state = state;
+      if (!selector.states.includes(state))
+        selector.states.push(state);
+    } else
       selector.pseudos.push(arg === undefined ? pseudo : `${pseudo}(${String(arg).trim()})`);
     selector.specificity += 10;
     return "";
@@ -2068,6 +2072,7 @@ function parseSelector(text) {
     not: [],
     matches: [],
     state: "",
+    states: [],
     specificity: selectors.reduce((sum, selector) => sum + selector.specificity, 0),
     parts: selectors
   };
@@ -2368,6 +2373,15 @@ function webStylePseudoToCSS(pseudo) {
   return `:${name}(${arg})`;
 }
 
+function webStyleStateSelectorToCSS(state) {
+  const text = String(state || "").trim();
+  if (!text)
+    return "";
+  if (text === "normal")
+    return ":not([data-kry-state])";
+  return `[data-kry-state~="${cssEscapeString(text === "focused" ? "focus" : text)}"]`;
+}
+
 export function webStyleSelectorToCSS(selector) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
     return selector.parts.map((part, index) => {
@@ -2393,8 +2407,12 @@ export function webStyleSelectorToCSS(selector) {
     parts.push(`:not(${webStyleSelectorToCSS(notSelector)})`);
   if (selector.matches?.length)
     parts.push(`:is(${selector.matches.map(webStyleSelectorToCSS).join(",")})`);
-  if (selector.state)
-    parts.push(`[data-kry-state~="${cssEscapeString(selector.state === "focused" ? "focus" : selector.state)}"]`);
+  const states = selector.states?.length ? selector.states : (selector.state ? [selector.state] : []);
+  for (const state of states) {
+    const stateSelector = webStyleStateSelectorToCSS(state);
+    if (stateSelector)
+      parts.push(stateSelector);
+  }
   return parts.join("");
 }
 
@@ -3185,7 +3203,8 @@ function selectorMatchesFacts(selector, facts) {
              !selectorAttrValueMatches(selectorAttrValue(key, facts), value, op))
       return false;
   }
-  return styleStateMatches(selector.state, facts.state);
+  const states = selector.states?.length ? selector.states : (selector.state ? [selector.state] : []);
+  return states.every((state) => styleStateMatches(state, facts.state));
 }
 
 function webNodeParentFromFrame(node) {

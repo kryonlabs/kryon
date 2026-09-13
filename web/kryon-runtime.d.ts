@@ -721,6 +721,7 @@ export interface WebStyleSelector {
   not: WebStyleSelector[];
   matches: WebStyleSelector[];
   state: string;
+  states: string[];
   specificity: number;
   combinator?: string;
   parts?: WebStyleSelector[];

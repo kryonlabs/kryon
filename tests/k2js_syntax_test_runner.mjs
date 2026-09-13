@@ -95,8 +95,14 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button#tap-button:pressed {
     background: #405060;
   }
+  Button#tap-button:hover:pressed {
+    border-width: 7;
+  }
   Button#tap-button:focus {
     border: #506070;
+  }
+  Button#tap-button:normal {
+    outline-width: 5;
   }
   Button[state=hover] {
     outline-color: #607080;
@@ -637,6 +643,10 @@ assert.match(webStyleCSS, /order: 2;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]\[data-kry-state~="pressed"\]/);
+assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(\[data-kry-state\]\)/);
+assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 for (const legacyAlias of [
@@ -938,12 +948,17 @@ assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   radius: 9,
   "padding-x": 13,
   "offset-y": 8,
-  opacity: 0.75
+  opacity: 0.75,
+  "outline-width": 5
 });
 assert.equal(runtime.resolveWebStyle({
   ...webDoc.nodes[2],
   state: { ...webDoc.nodes[2].state, hover: true }
 }, webStyleSheet)["outline-color"], "#607080");
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[2],
+  state: { ...webDoc.nodes[2].state, hover: true, pressed: true }
+}, webStyleSheet)["border-width"], 7);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
   Button#tap-button {
@@ -2542,6 +2557,7 @@ function fakeDocument() {
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
     assert.equal(firstButton.style.paddingLeft, "13px");
+    assert.equal(firstButton.style.outlineWidth, "5px");
     assert.equal(firstButton.style["--kry-offset-y"], "8px");
     assert.equal(firstButton.style.transform,
       "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))");
@@ -2553,6 +2569,7 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryState, "hover");
     firstButton.mousedown();
     assert.equal(firstButton.style.background, "#405060");
+    assert.equal(firstButton.style.borderWidth, "7px");
     assert.equal(firstButton.__kryDocNode.state.pressed, true);
     assert.equal(firstButton.dataset.kryState, "hover pressed");
     firstButton.mouseup();
