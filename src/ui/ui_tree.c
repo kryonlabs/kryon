@@ -832,16 +832,26 @@ EndTree(void)
     static int trace_enabled = -1;
     static unsigned long trace_frame;
     double start = GetTime(), reconcile, layout, input, update, draw;
+    int keep_committed;
 
     if(trace_enabled < 0)
         trace_enabled = getenv("KRYON_FRAME_TRACE") != NULL;
     ui_tree_building = 0;
     ui_tree_stack_depth = 0;
-    ReconcileTree();
+    keep_committed = ui_tree_build_activation &&
+        ui_committed_node_count > 0 &&
+        ui_tree_node_count < ui_committed_node_count;
+    if(keep_committed) {
+        ui_tree_node_count = 0;
+        ui_tree_build_activation = 0;
+    } else {
+        ReconcileTree();
+    }
     reconcile = GetTime();
     LayoutTree();
     layout = GetTime();
-    RouteInput();
+    if(!keep_committed)
+        RouteInput();
     input = GetTime();
     UpdateTree();
     update = GetTime();
@@ -1588,9 +1598,9 @@ RouteInput(void)
                     changed |= ui_text_delete_range(
                         field->text, field->text_size, &state->cursor,
                         start, end);
-                if(ui_text_insert_ascii(field->text, field->text_size,
-                                        &state->cursor, '\n',
-                                        field->max_codepoints))
+                if(ui_text_insert_newline(field->text, field->text_size,
+                                          &state->cursor,
+                                          field->max_codepoints))
                     changed = 1;
                 ui_tree_text_collapse(state, state->cursor);
                 selection_changed = 1;

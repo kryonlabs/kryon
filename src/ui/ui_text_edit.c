@@ -354,6 +354,31 @@ ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
 }
 
 int
+ui_text_insert_newline(char *text, size_t text_size, int *cursor,
+                       int max_codepoints)
+{
+    TextInsertDecision decision;
+    int len;
+    int codepoint_count;
+
+    if(text == NULL || text_size == 0 || cursor == NULL)
+        return 0;
+    len = (int)strlen(text);
+    codepoint_count = ui_utf8_codepoint_count(text);
+    *cursor = ui_clampi(*cursor, 0, len);
+    decision = TextInsertDecisionFor('\n', 1, len, (int)text_size,
+                                     codepoint_count, 0,
+                                     max_codepoints, 1);
+    if(!decision.accept)
+        return 0;
+    memmove(text + *cursor + 1, text + *cursor,
+            (size_t)(len - *cursor + 1));
+    text[*cursor] = '\n';
+    (*cursor)++;
+    return 1;
+}
+
+int
 ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoint,
                          int max_codepoints)
 {

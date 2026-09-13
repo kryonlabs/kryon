@@ -628,6 +628,8 @@ int ui_text_copy_range(const char *text, int start, int end);
 int ui_text_paste_clipboard(TextEdit edit, int allow_newlines);
 int ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                          int max_codepoints);
+int ui_text_insert_newline(char *text, size_t text_size, int *cursor,
+                           int max_codepoints);
 int ui_text_insert_codepoint(char *text, size_t text_size, int *cursor,
                              int codepoint, int max_codepoints);
 int ui_text_insert_text(char *text, size_t text_size, int *cursor,
