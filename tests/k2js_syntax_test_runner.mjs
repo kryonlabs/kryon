@@ -2388,8 +2388,9 @@ function fakeDocument() {
     assert.equal(tree.attributes.role, "tree");
     assert.equal(menu.tagName, "MENU");
     assert.equal(menu.attributes.role, "menu");
+    assert.equal(toast.tagName, "OUTPUT");
     assert.equal(plot.tagName, "CANVAS");
-    assert.equal(toast.attributes.role, "status");
+    assert.equal(toast.attributes.role, undefined);
     assert.equal(plot.attributes.role, "img");
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");

@@ -59,8 +59,8 @@ the browser receives normal elements, attributes, CSS, and events.
   and table cell relation attributes.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
-  selectors, segmented controls, progress, separators, tables, title/navigation
-  landmarks, canvas-backed widgets, and common overlay roles.
+  selectors, segmented controls, status output, progress, separators, tables,
+  title/navigation landmarks, canvas-backed widgets, and common overlay roles.
 - Direct `.kry` widget args can override native tag choice with `dom`,
   `dom_tag`, `html_tag`, or `tag`, and can expose stable web refs with
   `dom_ref`, `web_ref`, or `kry_ref`.

@@ -1195,6 +1195,8 @@ function widgetTag(item) {
   case "Plot":
   case "CanvasGrid":
     return "canvas";
+  case "Toast":
+    return "output";
   default:
     return "div";
   }
@@ -1889,6 +1891,8 @@ function implicitRole(node) {
     return "textbox";
   if (node.tag === "progress")
     return "progressbar";
+  if (node.tag === "output")
+    return "status";
   if (node.tag === "hr")
     return "separator";
   if (node.tag === "table")
