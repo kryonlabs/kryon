@@ -892,6 +892,12 @@ ParenthesizedScopeCalls :: () #ui {
     canvas_spec: Canvas = (Canvas){.bounds = {0, 0, 100, 100}}
     canvas: CanvasResult = (BeginCanvas(canvas_spec))
     EndCanvas(canvas_spec)
+    (BeginDisabled(true))
+    EndDisabled()
+    popup: PopupProps = (PopupProps){.bounds={0, 0, 80, 40}, .id=7}
+    if (BeginPopup(popup)) {
+        EndPopup()
+    }
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"
@@ -899,9 +905,13 @@ parenthesized_scope_out="$work/out/src/parenthesized_scope_calls.js"
 grep -q 'kryon.widget(\$rt, "Scroll"' "$parenthesized_scope_out"
 grep -q 'kryon.widget(\$rt, "TableCell"' "$parenthesized_scope_out"
 grep -q 'kryon.widget(\$rt, "Canvas"' "$parenthesized_scope_out"
+grep -q 'kryon.widget(\$rt, "Disabled"' "$parenthesized_scope_out"
+grep -q 'kryon.widget(\$rt, "Popup"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/Scroll@3"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/TableCell@6-2"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/Canvas@9-3"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Disabled@11-4"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Popup@14-5"' "$parenthesized_scope_out"
 node --input-type=module - "$parenthesized_scope_out" "$work/out/kryon-runtime.js" <<'EOF'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
@@ -912,7 +922,9 @@ module.ParenthesizedScopeCalls_ParenthesizedScopeCalls(rt, module.createState(),
 assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
   "ParenthesizedScopeCalls/Scroll@3",
   "ParenthesizedScopeCalls/TableCell@6-2",
-  "ParenthesizedScopeCalls/Canvas@9-3"
+  "ParenthesizedScopeCalls/Canvas@9-3",
+  "ParenthesizedScopeCalls/Disabled@11-4",
+  "ParenthesizedScopeCalls/Popup@14-5"
 ]);
 EOF
 

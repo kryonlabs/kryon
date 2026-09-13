@@ -104,9 +104,10 @@ parent receive deterministic occurrence suffixes such as `Text@42-2` so every
 DOM object remains individually addressable. Harmless outer parentheses around
 single widget expressions do not change this identity contract.
 Special scope-producing calls that become DOM surfaces, including
-`BeginScroll(...)`, `BeginCanvas(...)`, and `BeginTableCell(...)`, use the same
-source-derived identity rules as their `Scroll`, `Canvas`, and `TableCell`
-widgets.
+`BeginScroll(...)`, `BeginCanvas(...)`, `BeginTableCell(...)`,
+`BeginDisabled(...)`, and `BeginPopup(...)`, use the same source-derived
+identity rules as their `Scroll`, `Canvas`, `TableCell`, `Disabled`, and
+`Popup` widgets.
 
 Supported metadata fields:
 

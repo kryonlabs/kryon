@@ -1789,6 +1789,8 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
             return;
         memmove(expr, eq + 1, strlen(eq + 1) + 1);
         kir_trim_in_place(expr);
+    } else if(kind == KIR_STMT_EXPR) {
+        /* Keep void scope-producing calls addressable when authored directly. */
     } else {
         return;
     }
@@ -1805,6 +1807,10 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
             node_widget = "Canvas";
         else if(strcmp(widget, "BeginTableCell") == 0)
             node_widget = "TableCell";
+        else if(strcmp(widget, "BeginDisabled") == 0)
+            node_widget = "Disabled";
+        else if(strcmp(widget, "BeginPopup") == 0)
+            node_widget = "Popup";
         if(node_widget != NULL)
             ui_stmt_apply_source_metadata(statement, fn, parent,
                                           root_anonymous_count, node_widget,
@@ -4314,9 +4320,9 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
-                       kind == KIR_STMT_ASSIGN || kind == KIR_STMT_IF ||
-                       kind == KIR_STMT_WHILE || kind == KIR_STMT_FOR ||
-                       kind == KIR_STMT_SWITCH)
+                       kind == KIR_STMT_ASSIGN || kind == KIR_STMT_EXPR ||
+                       kind == KIR_STMT_IF || kind == KIR_STMT_WHILE ||
+                       kind == KIR_STMT_FOR || kind == KIR_STMT_SWITCH)
                         ui_stmt_apply_expression_widget_metadata(st, fn,
                             ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
                             &root_anonymous_widget_count,
