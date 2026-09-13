@@ -1705,6 +1705,7 @@ const webKssLengthProperties = new Set([
   "inset-inline-start", "inset-inline-end",
   "inset-block-start", "inset-block-end",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
+  "flex-basis",
   "text-indent", "outline-width", "outline-offset", "tab-size",
   "column-count", "column-width",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
@@ -1732,8 +1733,12 @@ const webKssLiteralProperties = new Set([
   "overscroll-behavior-y", "scroll-snap-type", "scroll-snap-align",
   "scroll-snap-stop", "touch-action",
   "align-items", "justify-content", "align-self", "justify-self",
-  "flex-direction", "flex-wrap", "flex", "grid-template-columns",
-  "grid-template-rows", "grid-auto-flow", "place-items", "place-content", "place-self",
+  "flex-direction", "flex-wrap", "flex", "flex-grow", "flex-shrink",
+  "grid-template-columns", "grid-template-rows",
+  "grid-auto-columns", "grid-auto-rows", "grid-auto-flow",
+  "grid-column", "grid-column-start", "grid-column-end",
+  "grid-row", "grid-row-start", "grid-row-end",
+  "align-content", "justify-items", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat",
   "background-clip", "background-origin", "background-attachment",
@@ -1751,7 +1756,8 @@ const webKssLiteralProperties = new Set([
   "border-style", "outline-style", "box-shadow", "color-scheme",
   "contain", "container-type", "container-name", "will-change",
   "isolation", "mix-blend-mode", "columns", "column-rule",
-  "break-before", "break-after", "break-inside", "float", "clear"
+  "break-before", "break-after", "break-inside", "float", "clear",
+  "order"
 ]);
 
 function stripKssComments(source) {
@@ -2371,9 +2377,22 @@ const webCSSPropertyNames = new Map([
   ["flex-direction", "flex-direction"],
   ["flex-wrap", "flex-wrap"],
   ["flex", "flex"],
+  ["flex-grow", "flex-grow"],
+  ["flex-shrink", "flex-shrink"],
+  ["flex-basis", "flex-basis"],
   ["grid-template-columns", "grid-template-columns"],
   ["grid-template-rows", "grid-template-rows"],
+  ["grid-auto-columns", "grid-auto-columns"],
+  ["grid-auto-rows", "grid-auto-rows"],
   ["grid-auto-flow", "grid-auto-flow"],
+  ["grid-column", "grid-column"],
+  ["grid-column-start", "grid-column-start"],
+  ["grid-column-end", "grid-column-end"],
+  ["grid-row", "grid-row"],
+  ["grid-row-start", "grid-row-start"],
+  ["grid-row-end", "grid-row-end"],
+  ["align-content", "align-content"],
+  ["justify-items", "justify-items"],
   ["place-items", "place-items"],
   ["place-content", "place-content"],
   ["place-self", "place-self"],
@@ -2439,6 +2458,7 @@ const webCSSPropertyNames = new Map([
   ["break-inside", "break-inside"],
   ["float", "float"],
   ["clear", "clear"],
+  ["order", "order"],
   ["focus", "outline-color"]
 ]);
 
@@ -2449,6 +2469,13 @@ function webStyleCSSValue(name, value) {
       name !== "z-index" && name !== "zIndex" &&
       name !== "tab-size" && name !== "tabSize" &&
       name !== "column-count" && name !== "columnCount" &&
+      name !== "order" &&
+      name !== "flex-grow" && name !== "flexGrow" &&
+      name !== "flex-shrink" && name !== "flexShrink" &&
+      name !== "grid-column-start" && name !== "gridColumnStart" &&
+      name !== "grid-column-end" && name !== "gridColumnEnd" &&
+      name !== "grid-row-start" && name !== "gridRowStart" &&
+      name !== "grid-row-end" && name !== "gridRowEnd" &&
       name !== "line-clamp" && name !== "lineClamp" &&
       name !== "webkitLineClamp" &&
       name !== "animation-iteration-count" && name !== "animationIterationCount"
@@ -3278,9 +3305,22 @@ function applyResolvedWebStyle(el, style) {
   set("flexDirection", style["flex-direction"]);
   set("flexWrap", style["flex-wrap"]);
   set("flex", style.flex);
+  set("flexGrow", style["flex-grow"]);
+  set("flexShrink", style["flex-shrink"]);
+  set("flexBasis", style["flex-basis"]);
   set("gridTemplateColumns", style["grid-template-columns"]);
   set("gridTemplateRows", style["grid-template-rows"]);
+  set("gridAutoColumns", style["grid-auto-columns"]);
+  set("gridAutoRows", style["grid-auto-rows"]);
   set("gridAutoFlow", style["grid-auto-flow"]);
+  set("gridColumn", style["grid-column"]);
+  set("gridColumnStart", style["grid-column-start"]);
+  set("gridColumnEnd", style["grid-column-end"]);
+  set("gridRow", style["grid-row"]);
+  set("gridRowStart", style["grid-row-start"]);
+  set("gridRowEnd", style["grid-row-end"]);
+  set("alignContent", style["align-content"]);
+  set("justifyItems", style["justify-items"]);
   set("placeItems", style["place-items"]);
   set("placeContent", style["place-content"]);
   set("placeSelf", style["place-self"]);
@@ -3348,6 +3388,7 @@ function applyResolvedWebStyle(el, style) {
   set("breakInside", style["break-inside"]);
   set("float", style.float);
   set("clear", style.clear);
+  set("order", style.order);
   set("--kry-content-offset-x", style["content-offset-x"]);
   set("--kry-content-offset-y", style["content-offset-y"]);
   set("--kry-icon-size", style["icon-size"]);
