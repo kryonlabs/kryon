@@ -340,6 +340,7 @@ The initial tag mapping is intentionally conservative:
 | `Radio` | `input type=radio` |
 | `Progress` | `progress` |
 | `Separator` | `hr` |
+| `Menu` | `menu` |
 | `TableView` | `table` |
 | `Plot` | `canvas` |
 | `CanvasGrid` | `canvas` |
@@ -349,7 +350,8 @@ contract.
 
 Div-backed widgets still expose conservative native ARIA roles when the widget
 semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
-`TreeView` uses `tree`, `Menu` uses `menu`, and `Toast` uses `status`.
+`TreeView` uses `tree`, and `Toast` uses `status`.
+The `menu` element still receives explicit `role=menu`.
 Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 
 ## KSS Fit

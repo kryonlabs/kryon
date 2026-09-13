@@ -1087,6 +1087,8 @@ function widgetTag(item) {
     return "progress";
   case "Separator":
     return "hr";
+  case "Menu":
+    return "menu";
   case "TableView":
     return "table";
   case "Plot":
@@ -1666,7 +1668,8 @@ function webDOMRole(node) {
   if (role)
     return role;
   const implicit = implicitRole(node);
-  return node?.tag === "div" || node?.tag === "canvas" ? implicit : "";
+  return node?.tag === "div" || node?.tag === "canvas" || node?.tag === "menu"
+    ? implicit : "";
 }
 
 const webStyleLayers = {

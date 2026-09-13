@@ -1856,6 +1856,7 @@ function fakeDocument() {
       .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
@@ -1931,6 +1932,7 @@ function fakeDocument() {
     assert.equal(toolbar.attributes.role, "toolbar");
     assert.equal(tabs.attributes.role, "tablist");
     assert.equal(tree.attributes.role, "tree");
+    assert.equal(menu.tagName, "MENU");
     assert.equal(menu.attributes.role, "menu");
     assert.equal(plot.tagName, "CANVAS");
     assert.equal(toast.attributes.role, "status");
