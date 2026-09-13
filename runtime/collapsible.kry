@@ -24,41 +24,31 @@ CollapsibleLayout :: struct {
     has_close: bool
 }
 
+CollapsibleMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> float {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return value * scale
+}
+
 CollapsibleMetricsFor :: (scale: float, header: StyleFrame,
     tree_header: StyleFrame, close: StyleFrame) -> CollapsibleMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: CollapsibleMetrics
-    font_size: float = header.value.font_size
-    if (header.value.fields & (u32)StyleFontSize) == (u32)0 || font_size < 0.0 {
-        font_size = 16.0
-    }
-    header_padding_y: float = header.value.padding_y
-    if (header.value.fields & (u32)StylePaddingY) == (u32)0 || header_padding_y < 0.0 {
-        header_padding_y = 8.0
-    }
-    header_height: float = font_size + header_padding_y * 2.0
-    depth_indent: float = tree_header.value.padding_x
-    if (tree_header.value.fields & (u32)StylePaddingX) == (u32)0 || depth_indent < 0.0 {
-        depth_indent = 20.0
-    }
-    close_width: float = close.value.icon_size
-    if (close.value.fields & (u32)StyleIconSize) == (u32)0 || close_width < 0.0 {
-        close_width = 28.0
-    }
-    icon_offset: float = header.value.padding_x
-    if (header.value.fields & (u32)StylePaddingX) == (u32)0 || icon_offset < 0.0 {
-        icon_offset = 8.0
-    }
-    icon_size: float = header.value.icon_size
-    if (header.value.fields & (u32)StyleIconSize) == (u32)0 || icon_size < 0.0 {
-        icon_size = 20.0
-    }
-    text_offset: float = icon_offset + icon_size
-    metrics.header_height = (i32)(header_height * scale)
-    metrics.depth_indent = (i32)(depth_indent * scale)
-    metrics.close_width = (i32)(close_width * scale)
-    metrics.icon_offset = (i32)(icon_offset * scale)
-    metrics.text_offset = (i32)(text_offset * scale)
+    font_size: float = CollapsibleMetric(header.value.fields,
+        (u32)StyleFontSize, header.value.font_size, 16.0, scale)
+    header_padding_y: float = CollapsibleMetric(header.value.fields,
+        (u32)StylePaddingY, header.value.padding_y, 8.0, scale)
+    metrics.header_height = (i32)(font_size + header_padding_y * 2.0)
+    metrics.depth_indent = (i32)CollapsibleMetric(tree_header.value.fields,
+        (u32)StylePaddingX, tree_header.value.padding_x, 20.0, scale)
+    metrics.close_width = (i32)CollapsibleMetric(close.value.fields,
+        (u32)StyleIconSize, close.value.icon_size, 28.0, scale)
+    icon_offset: float = CollapsibleMetric(header.value.fields,
+        (u32)StylePaddingX, header.value.padding_x, 8.0, scale)
+    metrics.icon_offset = (i32)icon_offset
+    icon_size: float = CollapsibleMetric(header.value.fields,
+        (u32)StyleIconSize, header.value.icon_size, 20.0, scale)
+    metrics.text_offset = (i32)(icon_offset + icon_size)
     return metrics
 }
 

@@ -27,6 +27,30 @@ type CollapsibleLayout struct {
 	HasClose    bool
 }
 
+func Collapsible_CollapsibleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	return value_13
+}
+
 func Collapsible_CollapsibleMetricsFor(scale float32, header StyleFrame, tree_header StyleFrame, close StyleFrame) CollapsibleMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -36,163 +60,73 @@ func Collapsible_CollapsibleMetricsFor(scale float32, header StyleFrame, tree_he
 		scale = value_3
 	}
 	var metrics CollapsibleMetrics = CollapsibleMetrics{}
-	var value_4 float32 = header.Value.FontSize
-	var font_size float32 = value_4
-	var value_5 uint32 = header.Value.Fields
-	var value_6 int32 = int32(StyleFontSize)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 float32 = font_size
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
-	}
-	if value_12 {
-		var value_16 float32 = 16.0
-		font_size = value_16
-	}
-	var value_17 float32 = header.Value.PaddingY
+	var value_4 uint32 = header.Value.Fields
+	var value_5 int32 = int32(StyleFontSize)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = header.Value.FontSize
+	var value_8 float32 = 16.0
+	var value_9 float32 = scale
+	var value_10 float32 = Collapsible_CollapsibleMetric(value_4, value_6, value_7, value_8, value_9)
+	var font_size float32 = value_10
+	var value_11 uint32 = header.Value.Fields
+	var value_12 int32 = int32(StylePaddingY)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = header.Value.PaddingY
+	var value_15 float32 = 8.0
+	var value_16 float32 = scale
+	var value_17 float32 = Collapsible_CollapsibleMetric(value_11, value_13, value_14, value_15, value_16)
 	var header_padding_y float32 = value_17
-	var value_18 uint32 = header.Value.Fields
-	var value_19 int32 = int32(StylePaddingY)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(value_20), 32, false, 8))
-	var value_22 int32 = 0
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 bool = value_21 == value_23
-	var value_25 bool = value_24
-	if !value_25 {
-		var value_26 float32 = header_padding_y
-		var value_27 float32 = 0.0
-		var value_28 bool = value_26 < value_27
-		value_25 = value_28
-	}
-	if value_25 {
-		var value_29 float32 = 8.0
-		header_padding_y = value_29
-	}
-	var value_30 float32 = font_size
-	var value_31 float32 = header_padding_y
-	var value_32 float32 = 2.0
-	var value_33 float32 = value_31 * value_32
-	var value_34 float32 = value_30 + value_33
-	var header_height float32 = value_34
-	var value_35 float32 = tree_header.Value.PaddingX
-	var depth_indent float32 = value_35
-	var value_36 uint32 = tree_header.Value.Fields
-	var value_37 int32 = int32(StylePaddingX)
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
-	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(value_38), 32, false, 8))
-	var value_40 int32 = 0
-	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 bool = value_39 == value_41
-	var value_43 bool = value_42
-	if !value_43 {
-		var value_44 float32 = depth_indent
-		var value_45 float32 = 0.0
-		var value_46 bool = value_44 < value_45
-		value_43 = value_46
-	}
-	if value_43 {
-		var value_47 float32 = 20.0
-		depth_indent = value_47
-	}
-	var value_48 float32 = close.Value.IconSize
-	var close_width float32 = value_48
-	var value_49 uint32 = close.Value.Fields
+	var value_18 float32 = font_size
+	var value_19 float32 = header_padding_y
+	var value_20 float32 = 2.0
+	var value_21 float32 = value_19 * value_20
+	var value_22 float32 = value_18 + value_21
+	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
+	metrics.HeaderHeight = value_23
+	var value_24 uint32 = tree_header.Value.Fields
+	var value_25 int32 = int32(StylePaddingX)
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
+	var value_27 float32 = tree_header.Value.PaddingX
+	var value_28 float32 = 20.0
+	var value_29 float32 = scale
+	var value_30 float32 = Collapsible_CollapsibleMetric(value_24, value_26, value_27, value_28, value_29)
+	var value_31 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_30), 32, true)), uint64(0), 32, true, 0))
+	metrics.DepthIndent = value_31
+	var value_32 uint32 = close.Value.Fields
+	var value_33 int32 = int32(StyleIconSize)
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 float32 = close.Value.IconSize
+	var value_36 float32 = 28.0
+	var value_37 float32 = scale
+	var value_38 float32 = Collapsible_CollapsibleMetric(value_32, value_34, value_35, value_36, value_37)
+	var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
+	metrics.CloseWidth = value_39
+	var value_40 uint32 = header.Value.Fields
+	var value_41 int32 = int32(StylePaddingX)
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 float32 = header.Value.PaddingX
+	var value_44 float32 = 8.0
+	var value_45 float32 = scale
+	var value_46 float32 = Collapsible_CollapsibleMetric(value_40, value_42, value_43, value_44, value_45)
+	var icon_offset float32 = value_46
+	var value_47 float32 = icon_offset
+	var value_48 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_47), 32, true)), uint64(0), 32, true, 0))
+	metrics.IconOffset = value_48
+	var value_49 uint32 = header.Value.Fields
 	var value_50 int32 = int32(StyleIconSize)
 	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
-	var value_52 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(value_51), 32, false, 8))
-	var value_53 int32 = 0
-	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
-	var value_55 bool = value_52 == value_54
-	var value_56 bool = value_55
-	if !value_56 {
-		var value_57 float32 = close_width
-		var value_58 float32 = 0.0
-		var value_59 bool = value_57 < value_58
-		value_56 = value_59
-	}
-	if value_56 {
-		var value_60 float32 = 28.0
-		close_width = value_60
-	}
-	var value_61 float32 = header.Value.PaddingX
-	var icon_offset float32 = value_61
-	var value_62 uint32 = header.Value.Fields
-	var value_63 int32 = int32(StylePaddingX)
-	var value_64 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(0), 32, false, 0))
-	var value_65 uint32 = uint32(number_runtime_bits(uint64(value_62), uint64(value_64), 32, false, 8))
-	var value_66 int32 = 0
-	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_66), uint64(0), 32, false, 0))
-	var value_68 bool = value_65 == value_67
-	var value_69 bool = value_68
-	if !value_69 {
-		var value_70 float32 = icon_offset
-		var value_71 float32 = 0.0
-		var value_72 bool = value_70 < value_71
-		value_69 = value_72
-	}
-	if value_69 {
-		var value_73 float32 = 8.0
-		icon_offset = value_73
-	}
-	var value_74 float32 = header.Value.IconSize
-	var icon_size float32 = value_74
-	var value_75 uint32 = header.Value.Fields
-	var value_76 int32 = int32(StyleIconSize)
-	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
-	var value_78 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(value_77), 32, false, 8))
-	var value_79 int32 = 0
-	var value_80 uint32 = uint32(number_runtime_bits(uint64(value_79), uint64(0), 32, false, 0))
-	var value_81 bool = value_78 == value_80
-	var value_82 bool = value_81
-	if !value_82 {
-		var value_83 float32 = icon_size
-		var value_84 float32 = 0.0
-		var value_85 bool = value_83 < value_84
-		value_82 = value_85
-	}
-	if value_82 {
-		var value_86 float32 = 20.0
-		icon_size = value_86
-	}
-	var value_87 float32 = icon_offset
-	var value_88 float32 = icon_size
-	var value_89 float32 = value_87 + value_88
-	var text_offset float32 = value_89
-	var value_90 float32 = header_height
-	var value_91 float32 = scale
-	var value_92 float32 = value_90 * value_91
-	var value_93 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_92), 32, true)), uint64(0), 32, true, 0))
-	metrics.HeaderHeight = value_93
-	var value_94 float32 = depth_indent
-	var value_95 float32 = scale
-	var value_96 float32 = value_94 * value_95
-	var value_97 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_96), 32, true)), uint64(0), 32, true, 0))
-	metrics.DepthIndent = value_97
-	var value_98 float32 = close_width
-	var value_99 float32 = scale
-	var value_100 float32 = value_98 * value_99
-	var value_101 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_100), 32, true)), uint64(0), 32, true, 0))
-	metrics.CloseWidth = value_101
-	var value_102 float32 = icon_offset
-	var value_103 float32 = scale
-	var value_104 float32 = value_102 * value_103
-	var value_105 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_104), 32, true)), uint64(0), 32, true, 0))
-	metrics.IconOffset = value_105
-	var value_106 float32 = text_offset
-	var value_107 float32 = scale
-	var value_108 float32 = value_106 * value_107
-	var value_109 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_108), 32, true)), uint64(0), 32, true, 0))
-	metrics.TextOffset = value_109
-	var value_110 CollapsibleMetrics = metrics
-	return value_110
+	var value_52 float32 = header.Value.IconSize
+	var value_53 float32 = 20.0
+	var value_54 float32 = scale
+	var value_55 float32 = Collapsible_CollapsibleMetric(value_49, value_51, value_52, value_53, value_54)
+	var icon_size float32 = value_55
+	var value_56 float32 = icon_offset
+	var value_57 float32 = icon_size
+	var value_58 float32 = value_56 + value_57
+	var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
+	metrics.TextOffset = value_59
+	var value_60 CollapsibleMetrics = metrics
+	return value_60
 }
 
 func Collapsible_CollapsibleMarkerFor(open bool, leaf bool) int32 {
