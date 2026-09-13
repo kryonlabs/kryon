@@ -156,6 +156,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Decorated native browser events expose the same Kry DOM traversal helpers as
   mounted elements and objects, so logic handlers can inspect structure without
   generated JS rebuilding DOM shape.
+- Native element list lookup mirrors DOM object queries through
+  `findWebElements(...)` and `root.kryElements(...)`, letting host integrations
+  work with browser elements while Kry remains the structural source.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
 - Browser-backed KSS coverage verifies mounted application of native container,

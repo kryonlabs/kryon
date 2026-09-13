@@ -527,9 +527,10 @@ leaves the selector or the binding is unsubscribed.
 refresh the mount root indexes, so browser-authored class, attribute, state,
 text/value, and scroll changes become visible to Kry queries and KSS selectors.
 Mount roots also provide non-enumerable `kryElement(query)`,
-`kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
-`kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser
-code can resolve `.kry` nodes without importing the module-level helpers.
+`kryElements(query)`, `kryObject(query)`, `kryQuery(selector)`,
+`kryQueryAll(selector)`, and `kryAtSource(sourcePath, sourceLine,
+sourceColumn?)` methods so native browser code can resolve `.kry` nodes
+without importing the module-level helpers.
 They also expose query-based `kryAddClass(...)`, `krySetAttr(...)`,
 `krySetStyle(...)`, `krySetState(...)`, `kryText(...)`, `kryValue(...)`,
 `kryDispatch(...)`, geometry, scroll, dialog, popover, and native command
@@ -580,6 +581,8 @@ scroll are empty or null until the Web Document is mounted.
 
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, DOM id, DOM name, or selector fallback matches `query`.
+`findWebElements(target, query)` returns every matching native element using
+the same Kry identity and KSS selector lookup rules.
 
 `webDOMQuery(target, selector)` and `webDOMQueryAll(target, selector)` return
 native DOM objects by the same KSS-style selector facts used for style
