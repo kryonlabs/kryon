@@ -49,8 +49,7 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
     result.active = 1;
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        SwipeDirection direction;
-        float distance;
+        SwipeDragState drag;
 
         if(g_ui_pointer_owner != UI_POINTER_OWNER_NONE &&
            g_ui_pointer_owner != UI_POINTER_OWNER_SWIPE) {
@@ -61,27 +60,24 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
             return result;
         }
 
-        direction = SwipeDirectionFor(delta, directions, axis_bias);
-        distance = SwipeMaxDistanceFor(delta);
-
-        if(!gesture->dragging && distance >= decision_distance) {
-            if(direction == SwipeNone) {
-                if(SwipeShouldCancelForAxis(delta, directions, axis_bias)) {
-                    gesture->active = 0;
-                    gesture->cancelled = 1;
-                    result.active = 0;
-                    result.cancelled = 1;
-                }
-                return result;
-            }
+        drag = SwipeDragStateFor(delta, directions, axis_bias,
+                                 decision_distance, min_distance,
+                                 gesture->dragging != 0);
+        if(drag.cancelled) {
+            gesture->active = 0;
+            gesture->cancelled = 1;
+            result.active = 0;
+            result.cancelled = 1;
+            return result;
+        }
+        if(!gesture->dragging && drag.dragging) {
             gesture->dragging = 1;
             g_ui_pointer_owner = UI_POINTER_OWNER_SWIPE;
         }
 
         result.dragging = gesture->dragging;
         if(gesture->dragging) {
-            float primary = SwipePrimaryDistanceFor(delta, direction);
-            result.progress = SwipeProgressFor(primary, min_distance);
+            result.progress = drag.progress;
             PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);

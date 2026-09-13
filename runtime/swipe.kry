@@ -1,6 +1,13 @@
 #module "swipe"
 #import "swipe_props"
 
+SwipeDragState :: struct {
+    dragging: bool
+    cancelled: bool
+    direction: SwipeDirection
+    progress: float
+}
+
 SwipeAbs :: (value: float) -> float #export {
     if value < 0.0 { return -value }
     return value
@@ -90,4 +97,29 @@ SwipeShouldCancelForAxis :: (delta: Vector2, directions: u32,
         return true
     }
     return false
+}
+
+SwipeDragStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
+    decision_distance: float, min_distance: float,
+    was_dragging: bool) -> SwipeDragState #export {
+    state: SwipeDragState
+    state.dragging = was_dragging
+    direction: SwipeDirection = SwipeDirectionFor(delta, directions, axis_bias)
+    primary: float = SwipePrimaryDistanceFor(delta, direction)
+    distance: float = SwipeMaxDistanceFor(delta)
+
+    if !state.dragging && distance >= decision_distance {
+        if direction == (SwipeDirection)SwipeNone {
+            state.cancelled = SwipeShouldCancelForAxis(delta, directions,
+                axis_bias)
+            return state
+        }
+        state.dragging = true
+    }
+
+    state.direction = direction
+    if state.dragging {
+        state.progress = SwipeProgressFor(primary, min_distance)
+    }
+    return state
 }

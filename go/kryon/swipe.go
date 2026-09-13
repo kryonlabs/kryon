@@ -2,6 +2,13 @@
 package kryon
 
 // #import swipe_props
+type SwipeDragState struct {
+	Dragging  bool
+	Cancelled bool
+	Direction SwipeDirection
+	Progress  float32
+}
+
 func Swipe_SwipeAbs(value float32) float32 {
 	var value_0 float32 = value
 	var value_1 float32 = 0.0
@@ -267,4 +274,59 @@ func Swipe_SwipeShouldCancelForAxis(delta Vector2, directions uint32, axis_bias 
 	}
 	var value_40 bool = false
 	return value_40
+}
+
+func Swipe_SwipeDragStateFor(delta Vector2, directions uint32, axis_bias float32, decision_distance float32, min_distance float32, was_dragging bool) SwipeDragState {
+	var state SwipeDragState = SwipeDragState{}
+	var value_0 bool = was_dragging
+	state.Dragging = value_0
+	var value_1 Vector2 = delta
+	var value_2 uint32 = directions
+	var value_3 float32 = axis_bias
+	var value_4 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(value_1, value_2, value_3))
+	var direction SwipeDirection = SwipeDirection(value_4)
+	var value_5 Vector2 = delta
+	var value_6 SwipeDirection = SwipeDirection(direction)
+	var value_7 float32 = Swipe_SwipePrimaryDistanceFor(value_5, value_6)
+	var primary float32 = value_7
+	var value_8 Vector2 = delta
+	var value_9 float32 = Swipe_SwipeMaxDistanceFor(value_8)
+	var distance float32 = value_9
+	var value_10 bool = state.Dragging
+	var value_11 bool = !value_10
+	var value_12 bool = value_11
+	if value_12 {
+		var value_13 float32 = distance
+		var value_14 float32 = decision_distance
+		var value_15 bool = value_13 >= value_14
+		value_12 = value_15
+	}
+	if value_12 {
+		var value_16 SwipeDirection = SwipeDirection(direction)
+		var value_17 int32 = int32(SwipeNone)
+		var value_18 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_17), uint64(0), 32, true, 0)))
+		var value_19 bool = value_16 == value_18
+		if value_19 {
+			var value_20 Vector2 = delta
+			var value_21 uint32 = directions
+			var value_22 float32 = axis_bias
+			var value_23 bool = Swipe_SwipeShouldCancelForAxis(value_20, value_21, value_22)
+			state.Cancelled = value_23
+			var value_24 SwipeDragState = state
+			return value_24
+		}
+		var value_25 bool = true
+		state.Dragging = value_25
+	}
+	var value_26 SwipeDirection = SwipeDirection(direction)
+	state.Direction = value_26
+	var value_27 bool = state.Dragging
+	if value_27 {
+		var value_28 float32 = primary
+		var value_29 float32 = min_distance
+		var value_30 float32 = Swipe_SwipeProgressFor(value_28, value_29)
+		state.Progress = value_30
+	}
+	var value_31 SwipeDragState = state
+	return value_31
 }

@@ -61,6 +61,38 @@ test_axis_cancel(void)
                                      1.25f));
 }
 
+static void
+test_drag_state(void)
+{
+    SwipeDragState state;
+
+    state = SwipeDragStateFor((Vector2){7.0f, 0.0f}, SwipeAll, 1.25f,
+                              8.0f, 48.0f, false);
+    assert(!state.dragging);
+    assert(!state.cancelled);
+    assert(state.direction == SwipeRight);
+    assert(fabsf(state.progress - 0.0f) < 0.001f);
+
+    state = SwipeDragStateFor((Vector2){0.0f, 12.0f}, SwipeHorizontal, 1.25f,
+                              8.0f, 48.0f, false);
+    assert(!state.dragging);
+    assert(state.cancelled);
+    assert(state.direction == SwipeNone);
+
+    state = SwipeDragStateFor((Vector2){24.0f, 2.0f}, SwipeHorizontal, 1.25f,
+                              8.0f, 48.0f, false);
+    assert(state.dragging);
+    assert(!state.cancelled);
+    assert(state.direction == SwipeRight);
+    assert(fabsf(state.progress - 0.5f) < 0.001f);
+
+    state = SwipeDragStateFor((Vector2){96.0f, 2.0f}, SwipeHorizontal, 1.25f,
+                              8.0f, 48.0f, true);
+    assert(state.dragging);
+    assert(!state.cancelled);
+    assert(fabsf(state.progress - 1.0f) < 0.001f);
+}
+
 int
 main(void)
 {
@@ -68,5 +100,6 @@ main(void)
     test_direction();
     test_distances();
     test_axis_cancel();
+    test_drag_state();
     return 0;
 }
