@@ -118,33 +118,22 @@ UpdateReorderList(ReorderList list)
         result.to_index = result.target_index;
 
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int abs_dy = dy < 0 ? -dy : dy;
-
-            if(!g_ui_reorder_state.dragging &&
-               abs_dy >= metrics.drag_threshold) {
+            ReorderDragMotion motion = ReorderDragMotionFor(
+                pointer_y, g_ui_reorder_state.press_y,
+                g_ui_reorder_state.dragging, list.bounds, list.viewport_top,
+                list.viewport_bottom,
+                list.scroll_offset != NULL ? *list.scroll_offset : 0,
+                list.max_scroll, metrics);
+            if(!g_ui_reorder_state.dragging && motion.dragging) {
                 g_ui_reorder_state.dragging = 1;
                 g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
             }
             if(g_ui_reorder_state.dragging) {
-                int view_top = list.viewport_top > 0
-                                   ? list.viewport_top
-                                   : (int)list.bounds.y;
-                int view_bottom = list.viewport_bottom > 0
-                                      ? list.viewport_bottom
-                                      : (int)(list.bounds.y + list.bounds.height);
                 result.dragging = 1;
                 PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                                (float)ui_view_height}, 0);
-
-                if(list.scroll_offset != NULL && list.max_scroll > 0) {
-                    if(pointer_y < view_top + metrics.auto_scroll_margin)
-                        *list.scroll_offset -= metrics.auto_scroll_step;
-                    else if(pointer_y >
-                            view_bottom - metrics.auto_scroll_margin)
-                        *list.scroll_offset += metrics.auto_scroll_step;
-                    *list.scroll_offset = ui_clampi(*list.scroll_offset, 0,
-                                                    list.max_scroll);
-                }
+                if(list.scroll_offset != NULL)
+                    *list.scroll_offset = motion.scroll_offset;
             }
             return result;
         }

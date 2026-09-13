@@ -3,6 +3,11 @@
 #import "reorder_props"
 #import "style"
 
+ReorderDragMotion :: struct {
+    dragging: i32
+    scroll_offset: i32
+}
+
 ReorderMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -167,4 +172,38 @@ ReorderTargetIndexFor :: (target: i32, item_count: i32) -> i32 #export {
     limit: i32 = item_count - 1
     if target > limit { return limit }
     return target
+}
+
+ReorderDragMotionFor :: (pointer_y: i32, press_y: i32, was_dragging: i32,
+    bounds: Rectangle, viewport_top: i32, viewport_bottom: i32,
+    scroll_offset: i32, max_scroll: i32,
+    metrics: ReorderMetrics) -> ReorderDragMotion #export {
+    motion: ReorderDragMotion
+    dy: i32 = pointer_y - press_y
+    abs_dy: i32 = dy
+    if abs_dy < 0 { abs_dy = -abs_dy }
+
+    motion.dragging = was_dragging
+    if motion.dragging == 0 && abs_dy >= metrics.drag_threshold {
+        motion.dragging = 1
+    }
+
+    motion.scroll_offset = scroll_offset
+    if motion.dragging == 0 || max_scroll <= 0 {
+        return motion
+    }
+
+    view_top: i32 = viewport_top
+    if view_top <= 0 { view_top = (i32)bounds.y }
+    view_bottom: i32 = viewport_bottom
+    if view_bottom <= 0 { view_bottom = (i32)(bounds.y + bounds.height) }
+
+    if pointer_y < view_top + metrics.auto_scroll_margin {
+        motion.scroll_offset -= metrics.auto_scroll_step
+    } else if pointer_y > view_bottom - metrics.auto_scroll_margin {
+        motion.scroll_offset += metrics.auto_scroll_step
+    }
+    if motion.scroll_offset < 0 { motion.scroll_offset = 0 }
+    if motion.scroll_offset > max_scroll { motion.scroll_offset = max_scroll }
+    return motion
 }

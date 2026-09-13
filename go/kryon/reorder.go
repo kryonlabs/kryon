@@ -4,6 +4,11 @@ package kryon
 // #import control_props
 // #import reorder_props
 // #import style
+type ReorderDragMotion struct {
+	Dragging     int32
+	ScrollOffset int32
+}
+
 func Reorder_ReorderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -574,4 +579,113 @@ func Reorder_ReorderTargetIndexFor(target int32, item_count int32) int32 {
 	}
 	var value_15 int32 = target
 	return value_15
+}
+
+func Reorder_ReorderDragMotionFor(pointer_y int32, press_y int32, was_dragging int32, bounds Rectangle, viewport_top int32, viewport_bottom int32, scroll_offset int32, max_scroll int32, metrics ReorderMetrics) ReorderDragMotion {
+	var motion ReorderDragMotion = ReorderDragMotion{}
+	var value_0 int32 = pointer_y
+	var value_1 int32 = press_y
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
+	var dy int32 = value_2
+	var value_3 int32 = dy
+	var abs_dy int32 = value_3
+	var value_4 int32 = abs_dy
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = abs_dy
+		var value_8 int32 = int32(number_runtime_bits(uint64(0), uint64(value_7), 32, true, 2))
+		abs_dy = value_8
+	}
+	var value_9 int32 = was_dragging
+	motion.Dragging = value_9
+	var value_10 int32 = motion.Dragging
+	var value_11 int32 = 0
+	var value_12 bool = value_10 == value_11
+	var value_13 bool = value_12
+	if value_13 {
+		var value_14 int32 = abs_dy
+		var value_15 int32 = metrics.DragThreshold
+		var value_16 bool = value_14 >= value_15
+		value_13 = value_16
+	}
+	if value_13 {
+		var value_17 int32 = 1
+		motion.Dragging = value_17
+	}
+	var value_18 int32 = scroll_offset
+	motion.ScrollOffset = value_18
+	var value_19 int32 = motion.Dragging
+	var value_20 int32 = 0
+	var value_21 bool = value_19 == value_20
+	var value_22 bool = value_21
+	if !value_22 {
+		var value_23 int32 = max_scroll
+		var value_24 int32 = 0
+		var value_25 bool = value_23 <= value_24
+		value_22 = value_25
+	}
+	if value_22 {
+		var value_26 ReorderDragMotion = motion
+		return value_26
+	}
+	var value_27 int32 = viewport_top
+	var view_top int32 = value_27
+	var value_28 int32 = view_top
+	var value_29 int32 = 0
+	var value_30 bool = value_28 <= value_29
+	if value_30 {
+		var value_31 float32 = bounds.Y
+		var value_32 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_31), 32, true)), uint64(0), 32, true, 0))
+		view_top = value_32
+	}
+	var value_33 int32 = viewport_bottom
+	var view_bottom int32 = value_33
+	var value_34 int32 = view_bottom
+	var value_35 int32 = 0
+	var value_36 bool = value_34 <= value_35
+	if value_36 {
+		var value_37 float32 = bounds.Y
+		var value_38 float32 = bounds.Height
+		var value_39 float32 = value_37 + value_38
+		var value_40 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_39), 32, true)), uint64(0), 32, true, 0))
+		view_bottom = value_40
+	}
+	var value_41 int32 = pointer_y
+	var value_42 int32 = view_top
+	var value_43 int32 = metrics.AutoScrollMargin
+	var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 1))
+	var value_45 bool = value_41 < value_44
+	if value_45 {
+		var value_46 int32 = motion.ScrollOffset
+		var value_47 int32 = metrics.AutoScrollStep
+		motion.ScrollOffset = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 2))
+	} else {
+		var value_48 int32 = pointer_y
+		var value_49 int32 = view_bottom
+		var value_50 int32 = metrics.AutoScrollMargin
+		var value_51 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 2))
+		var value_52 bool = value_48 > value_51
+		if value_52 {
+			var value_53 int32 = motion.ScrollOffset
+			var value_54 int32 = metrics.AutoScrollStep
+			motion.ScrollOffset = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 1))
+		}
+	}
+	var value_55 int32 = motion.ScrollOffset
+	var value_56 int32 = 0
+	var value_57 bool = value_55 < value_56
+	if value_57 {
+		var value_58 int32 = 0
+		motion.ScrollOffset = value_58
+	}
+	var value_59 int32 = motion.ScrollOffset
+	var value_60 int32 = max_scroll
+	var value_61 bool = value_59 > value_60
+	if value_61 {
+		var value_62 int32 = max_scroll
+		motion.ScrollOffset = value_62
+	}
+	var value_63 ReorderDragMotion = motion
+	return value_63
 }

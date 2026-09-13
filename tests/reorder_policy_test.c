@@ -18,6 +18,7 @@ main(void)
     StyleFrame handle_frame = {0};
     StyleFrame placeholder_frame = {0};
     ReorderMetrics metrics;
+    ReorderDragMotion motion;
     Rectangle handle;
     ReorderHandlePaint handle_paint;
     ReorderPlaceholderPaint placeholder;
@@ -126,6 +127,37 @@ main(void)
     assert(ReorderTargetIndexFor(2, 4) == 2);
     assert(ReorderTargetIndexFor(9, 4) == 3);
     assert(ReorderTargetIndexFor(0, 0) == -1);
+
+    metrics = (ReorderMetrics){.drag_threshold = 10,
+                               .auto_scroll_margin = 20,
+                               .auto_scroll_step = 7};
+    motion = ReorderDragMotionFor(109, 100, 0,
+                                  (Rectangle){10, 40, 200, 100},
+                                  0, 0, 30, 80, metrics);
+    assert(motion.dragging == 0);
+    assert(motion.scroll_offset == 30);
+
+    motion = ReorderDragMotionFor(110, 100, 0,
+                                  (Rectangle){10, 40, 200, 100},
+                                  0, 0, 30, 80, metrics);
+    assert(motion.dragging == 1);
+    assert(motion.scroll_offset == 30);
+
+    motion = ReorderDragMotionFor(45, 100, 1,
+                                  (Rectangle){10, 40, 200, 100},
+                                  0, 0, 30, 80, metrics);
+    assert(motion.dragging == 1);
+    assert(motion.scroll_offset == 23);
+
+    motion = ReorderDragMotionFor(139, 100, 1,
+                                  (Rectangle){10, 40, 200, 100},
+                                  0, 0, 78, 80, metrics);
+    assert(motion.scroll_offset == 80);
+
+    motion = ReorderDragMotionFor(72, 100, 1,
+                                  (Rectangle){10, 40, 200, 100},
+                                  60, 120, 3, 80, metrics);
+    assert(motion.scroll_offset == 0);
 
     return 0;
 }
