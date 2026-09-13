@@ -1193,10 +1193,6 @@ func (r *runtime) Text(props TextProps) {
 	r.textWithFont(props, 0)
 }
 func (r *runtime) textWithFont(props TextProps, fontID uint32) {
-	explicitTypeface := props.Typeface != ""
-	if selected := registeredTypeface(props.Typeface); selected != 0 {
-		fontID = selected
-	}
 	var inheritedFont int32
 	var inheritedColor Color
 	var inheritedColorSet bool
@@ -1226,7 +1222,7 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	if style.Fields&StyleFontSize != 0 {
 		props.Font = int32(style.FontSize)
 	}
-	if !explicitTypeface && style.Fields&StyleTypeface != 0 {
+	if style.Fields&StyleTypeface != 0 {
 		if selected := registeredTypeface(style.Typeface); selected != 0 {
 			fontID = selected
 		}

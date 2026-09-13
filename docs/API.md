@@ -692,6 +692,7 @@ typedef enum { TextAlignStart, TextAlignCenter, TextAlignEnd } TextAlign;
 typedef struct {
     Rectangle bounds;
     const char *text;
+    int class_name;
     int font;
     Color color;
     TextWrap wrap;
@@ -699,8 +700,7 @@ typedef struct {
     TextAlign vertical_align;
     int disabled;
     int letter_spacing;
-    const char *typeface;
-    Style style;
+    int selectable;
 } TextProps;
 
 void Text(TextProps text);
@@ -726,11 +726,11 @@ An inherited disabled foreground is already resolved and is not faded again.
 Explicit child colors receive disabled presentation when their button or scope
 is disabled.
 
-`typeface` selects a registered font by name for this node's measurement,
-wrapping, and painting in C and native Go. Empty or unknown names keep the
-current face. The selection does not change subsequent text nodes. The bundled
-Noto font setup also registers `"semibold"`; use `.typeface="semibold"` for real
-semibold outlines, or register your own named face. `font` remains the size.
+KSS `typeface` selects a registered font by name for text measurement,
+wrapping, and painting in C and native Go. Unknown names keep the current face.
+The bundled Noto font setup also registers `"semibold"`; use a text class with
+`typeface: semibold` for real semibold outlines, or register your own named
+face. `font` remains the size.
 
 `letter_spacing` adds a non-negative number of logical pixels between Unicode
 codepoints (not UTF-8 bytes), with no trailing gap. Zero preserves the font's

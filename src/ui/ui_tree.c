@@ -2419,7 +2419,7 @@ Text(TextProps props)
     int previous_typeface;
     int previous_spacing;
     const char *value = props.text != NULL ? props.text : "";
-    const char *typeface = props.typeface;
+    const char *typeface = NULL;
     int font;
     int inherited_font = 0;
     Color inherited_color = {0};
@@ -2462,8 +2462,7 @@ Text(TextProps props)
             .foreground = props.color});
     if((style.fields & StyleFontSize) != 0)
         props.font = (int)(style.font_size + 0.5f);
-    if((typeface == NULL || typeface[0] == '\0') &&
-       (style.fields & StyleTypeface) != 0)
+    if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
     previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),

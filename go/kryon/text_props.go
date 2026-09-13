@@ -29,5 +29,4 @@ type TextProps struct {
 	Disabled      bool
 	LetterSpacing int32
 	Selectable    bool
-	Typeface      string
 }

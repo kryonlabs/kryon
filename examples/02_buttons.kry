@@ -29,7 +29,7 @@ ButtonsExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={28, 38, 300, 20}, .text="DESIGN SYSTEM 2040",
             .font=13, .letter_spacing=6, .color=chrome.colors.icon, .wrap=TextWrapNone})
         Text((TextProps){.bounds={321, 5, 900, 38}, .text="PROPOSAL 4 — MAGNETIC LIGHTFIELD",
-            .font=37, .typeface="semibold", .letter_spacing=2, .align=TextAlignCenter,
+            .font=37, .letter_spacing=2, .align=TextAlignCenter,
             .color=chrome.colors.text, .wrap=TextWrapNone})
         Text((TextProps){.bounds={415, 43, 700, 22}, .text="LIVING INTERFACES. QUIETER POWER.",
             .font=15, .letter_spacing=6, .align=TextAlignCenter,
@@ -219,11 +219,11 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             full_delete_style.content_offset.x = -15
         }
         theme_heading: TextProps = (TextProps){.bounds={origin + 27, 83, 350, 26},
-            .text="LIGHT THEME", .font=Text24, .typeface="semibold", .letter_spacing=3, .wrap=TextWrapNone}
+            .text="LIGHT THEME", .font=Text24, .letter_spacing=3, .wrap=TextWrapNone}
         sizes_heading: TextProps = (TextProps){.bounds={origin + 26, 475, 200, 28},
-            .text="SIZES", .font=27, .typeface="semibold", .wrap=TextWrapNone}
+            .text="SIZES", .font=27, .wrap=TextWrapNone}
         icons_heading: TextProps = (TextProps){.bounds={origin + 25, 679, 300, 28},
-            .text="ICON VARIANTS", .font=27, .typeface="semibold", .wrap=TextWrapNone}
+            .text="ICON VARIANTS", .font=27, .wrap=TextWrapNone}
         theme_caption: TextProps = (TextProps){.bounds={origin + 27, 108, 350, 20},
             .text="DEPTH THROUGH LIGHT", .font=13, .letter_spacing=5,
             .color=current_theme.colors.link_hover, .wrap=TextWrapNone}
@@ -488,7 +488,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
         }
         Line(origin + 24, 864, origin + 744, 864, GetThemeBorder())
         Text((TextProps){.bounds={origin + 25, 872, 400, 28},
-            .text="FULL WIDTH EXAMPLES", .font=Text24, .typeface="semibold", .letter_spacing=1, .wrap=TextWrapNone})
+            .text="FULL WIDTH EXAMPLES", .font=Text24, .letter_spacing=1, .wrap=TextWrapNone})
         Button full_run: {
             bounds = {origin + 24, 901, 720, 34}
             label = "Run"

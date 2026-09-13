@@ -65,6 +65,8 @@ func TestTextFrameBlendsFadeIncludingRotation(t *testing.T) {
 }
 
 func TestTextTypefaceMeasuresAndPaintsWithoutLeaking(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
 	data, err := os.ReadFile("../../fonts/noto/NotoSans-SemiBold.ttf")
 	if err != nil {
 		t.Fatal(err)
@@ -73,17 +75,19 @@ func TestTextTypefaceMeasuresAndPaintsWithoutLeaking(t *testing.T) {
 	if !ok {
 		t.Fatal("could not register the semibold test face")
 	}
+	if !RegisterStylePackSource(`@pack test.text.typeface;
+Text.face { typeface: test-semibold; }`, "Text Typeface", "") || !SetActiveStylePack("test.text.typeface") {
+		t.Fatal("could not register text typeface style")
+	}
 	r := New(AppConfig{Width: 300, Height: 100}).(*runtime)
 	r.BeginFrame()
 	defer r.EndFrame()
-	props := TextProps{Text: "Actions", Font: 26, Typeface: "test-semibold", Wrap: TextWrapNone}
-	r.Text(props)
-	props.Typeface = "missing-face"
-	r.Text(props)
+	r.Text(TextProps{Text: "Actions", ClassName: StyleClassID("face"), Font: 26, Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "Actions", Font: 26, Wrap: TextWrapNone})
 	ops := r.FrameOps()
 	selected, fallback := ops[len(ops)-2], ops[len(ops)-1]
 	if selected.FontID != id || fallback.FontID != 0 {
-		t.Fatal("a per-node typeface must not leak or replace the unknown-name fallback")
+		t.Fatal("a KSS typeface must not leak into the following text node")
 	}
 	if selected.Bounds.Width != float32(runtimeTextWidthWithFont("Actions", 26, id)) {
 		t.Fatal("intrinsic measurement must use the selected typeface")

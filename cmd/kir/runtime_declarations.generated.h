@@ -1273,7 +1273,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "    letter_spacing: i32\n"
         "    selectable: bool\n"
-        "    typeface: const char*\n"
         "}\n"
     },
     {"runtime/title_bar_props.kry",

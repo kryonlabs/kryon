@@ -23,7 +23,7 @@ render_column(int x, int fancy)
     SetFancyEffectsEnabled(fancy);
     scheme = GetThemeScheme();
     Text((TextProps){.bounds = {x, 28, 320, 32}, .text = title,
-        .font = Text24, .typeface = "semibold", .color = scheme.on_surface,
+        .font = Text24, .color = scheme.on_surface,
         .wrap = TextWrapNone});
     Text((TextProps){.bounds = {x, 60, 360, 24}, .text = subtitle,
         .font = Text14, .color = scheme.on_surface_variant, .wrap = TextWrapNone});
