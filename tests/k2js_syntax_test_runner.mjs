@@ -831,6 +831,9 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   href: "",
   target: "",
   rel: "",
+  alt: "",
+  asset: "",
+  src: "",
   htmlFor: "",
   part: "",
   slot: "",
@@ -1960,6 +1963,8 @@ function fakeDocument() {
       { nodeName: "rule", path: "Page/rule" });
     runtime.widget(nativeRt, "TableView", {}, null,
       { nodeName: "table", path: "Page/table" });
+    runtime.widget(nativeRt, "Image", { asset_path: "hero.png", alt_text: "Hero" }, null,
+      { nodeName: "hero", path: "Page/hero" });
     runtime.widget(nativeRt, "CanvasGrid", {}, null,
       { nodeName: "grid", path: "Page/grid" });
     runtime.widget(nativeRt, "Toolbar", {}, null,
@@ -2021,6 +2026,11 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).src, "hero.png");
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).alt, "Hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
@@ -2072,6 +2082,7 @@ function fakeDocument() {
     const upload = runtime.findWebElement(nativeTarget, "upload");
     const rule = runtime.findWebElement(nativeTarget, "rule");
     const table = runtime.findWebElement(nativeTarget, "table");
+    const hero = runtime.findWebElement(nativeTarget, "hero");
     const grid = runtime.findWebElement(nativeTarget, "grid");
     const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
     const tabs = runtime.findWebElement(nativeTarget, "tabs");
@@ -2113,6 +2124,10 @@ function fakeDocument() {
     assert.equal(upload.attributes.value, "42");
     assert.equal(rule.tagName, "HR");
     assert.equal(table.tagName, "TABLE");
+    assert.equal(hero.tagName, "IMG");
+    assert.equal(hero.attributes.src, "hero.png");
+    assert.equal(hero.attributes.alt, "Hero");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "hero").styleFacts.src, "hero.png");
     assert.equal(grid.tagName, "CANVAS");
     assert.equal(grid.attributes.role, "img");
     assert.equal(toolbar.attributes.role, "toolbar");

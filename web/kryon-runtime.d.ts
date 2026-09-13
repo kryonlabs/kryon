@@ -268,6 +268,9 @@ export interface WebNodeStyleFacts {
   href: string;
   target: string;
   rel: string;
+  alt: string;
+  asset: string;
+  src: string;
   htmlFor: string;
   part: string;
   slot: string;
