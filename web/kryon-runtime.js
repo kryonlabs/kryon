@@ -1687,7 +1687,9 @@ const webKssColorProperties = new Set([
 const webKssLengthProperties = new Set([
   "radius", "border-width", "opacity",
   "padding", "padding-x", "padding-y",
+  "padding-left", "padding-right", "padding-top", "padding-bottom",
   "margin", "margin-x", "margin-y",
+  "margin-left", "margin-right", "margin-top", "margin-bottom",
   "width", "height", "min-width", "max-width", "min-height", "max-height",
   "inset", "top", "right", "bottom", "left",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height", "outline-width",
@@ -1978,9 +1980,17 @@ const webCSSPropertyNames = new Map([
   ["padding", "padding"],
   ["padding-x", "padding-left"],
   ["padding-y", "padding-top"],
+  ["padding-left", "padding-left"],
+  ["padding-right", "padding-right"],
+  ["padding-top", "padding-top"],
+  ["padding-bottom", "padding-bottom"],
   ["margin", "margin"],
   ["margin-x", "margin-left"],
   ["margin-y", "margin-top"],
+  ["margin-left", "margin-left"],
+  ["margin-right", "margin-right"],
+  ["margin-top", "margin-top"],
+  ["margin-bottom", "margin-bottom"],
   ["width", "width"],
   ["height", "height"],
   ["min-width", "min-width"],
@@ -2566,11 +2576,19 @@ function applyResolvedWebStyle(el, style) {
   set("paddingRight", style["padding-x"]);
   set("paddingTop", style["padding-y"]);
   set("paddingBottom", style["padding-y"]);
+  set("paddingLeft", style["padding-left"]);
+  set("paddingRight", style["padding-right"]);
+  set("paddingTop", style["padding-top"]);
+  set("paddingBottom", style["padding-bottom"]);
   set("margin", style.margin);
   set("marginLeft", style["margin-x"]);
   set("marginRight", style["margin-x"]);
   set("marginTop", style["margin-y"]);
   set("marginBottom", style["margin-y"]);
+  set("marginLeft", style["margin-left"]);
+  set("marginRight", style["margin-right"]);
+  set("marginTop", style["margin-top"]);
+  set("marginBottom", style["margin-bottom"]);
   set("width", style.width);
   set("height", style.height);
   set("minWidth", style["min-width"]);
