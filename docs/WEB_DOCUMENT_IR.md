@@ -551,6 +551,11 @@ before a frame has been mounted into browser DOM.
 `webNodeQueryAllWithin(rt, query, selector)` provide the pre-mount version of
 scoped subtree selection for compiler tests, static inspectors, and hydration
 planning.
+`webNodeSnapshot(rt, query)` and `webNodeSnapshots(rt, selector)` return the
+same serializable Kry identity packet shape before mount, with node-sourced
+identity, parent/child refs, relation refs, event refs, style facts, state,
+text, and value. Browser-only fields such as live attributes, geometry, and
+scroll are empty or null until the Web Document is mounted.
 
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, DOM id, DOM name, or selector fallback matches `query`.

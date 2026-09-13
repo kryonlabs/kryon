@@ -75,6 +75,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
+- Pre-mount Web Document snapshots expose the same serializable Kry identity,
+  relation, event, and style-fact packet shape before a frame is rendered into
+  live browser DOM.
 - Mounted DOM snapshots serialize the full `WebNodeIdentity` packet and alias
   list so devtools can show every stable lookup key for a `.kry` node without
   keeping live DOM references.

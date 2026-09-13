@@ -937,6 +937,8 @@ export function webNodeIdentity(node: WebDocumentNode): WebNodeIdentity;
 export function webNodeEventRefs(node: WebDocumentNode | null): WebNodeEventRefs;
 export function webNodeRelations(rt: Runtime, query: string): WebNodeRelations | null;
 export function webNodeRelationRefs(rt: Runtime, query: string): WebDOMRelationRefs | null;
+export function webNodeSnapshot(rt: Runtime, query: string): WebDOMSnapshot | null;
+export function webNodeSnapshots(rt: Runtime, selector?: string): WebDOMSnapshot[];
 export function webSourceRef(sourcePath: string, sourceLine: number, sourceColumn?: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;

@@ -1038,6 +1038,19 @@ assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
   sourceColumnRef: tapSourceColumnRef,
   sourceRangeRef: tapSourceRangeRef
 });
+const preMountButtonSnapshot = runtime.webNodeSnapshot(rt, "tap-button");
+assert.equal(preMountButtonSnapshot.ref, "primary-action");
+assert.equal(preMountButtonSnapshot.identity.domId, "tap-button");
+assert.equal(preMountButtonSnapshot.parentRef, "Scene/root");
+assert.deepEqual(preMountButtonSnapshot.childRefs, []);
+assert.deepEqual(preMountButtonSnapshot.relationRefs.controls, ["search-box"]);
+assert.equal(preMountButtonSnapshot.eventRefs.click, "call_host");
+assert.equal(preMountButtonSnapshot.styleFacts.kind, "Button");
+assert.equal(preMountButtonSnapshot.element, undefined);
+assert.deepEqual(preMountButtonSnapshot.attrs, {});
+assert.equal(preMountButtonSnapshot.rect, null);
+assert.deepEqual(runtime.webNodeSnapshots(rt, "Button.primary").map((snapshot) => snapshot.ref),
+  ["primary-action"]);
 assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   background: "#203040",
   "background-end": "#203850",

@@ -7872,6 +7872,61 @@ export function webNodeRelationRefs(rt, query) {
   return webNodeRelationRefsForNode(rt, webNodeQuery(rt, query));
 }
 
+function webNodeSnapshotForNode(rt, node) {
+  if (!node)
+    return null;
+  const identity = webNodeIdentity(node);
+  const query = node.path || node.webRef || identity.ref;
+  return {
+    ref: identity.ref,
+    aliases: identity.aliases,
+    identity,
+    index: node.index || 0,
+    kind: node.kind || "",
+    tag: node.tag || "",
+    role: node.role || implicitRole(node),
+    path: node.path || "",
+    webRef: node.webRef || "",
+    parentPath: node.parentPath || "",
+    parentRef: webNodeRef(webNodeParent(rt, query)) || "",
+    childRefs: webNodeChildren(rt, query).map((child) => webNodeRef(child)).filter(Boolean),
+    relationRefs: webNodeRelationRefsForNode(rt, node),
+    eventRefs: webNodeEventRefs(node),
+    name: node.name || "",
+    key: node.key || "",
+    id: node.domId || "",
+    domName: node.domName || "",
+    classes: [...(node.classes || [])],
+    sourcePath: node.sourcePath || "",
+    sourceLine: node.sourceLine || 0,
+    sourceColumn: node.sourceColumn || 0,
+    sourceEndLine: node.sourceEndLine || 0,
+    sourceEndColumn: node.sourceEndColumn || 0,
+    sourceRef: webNodeSourceRef(node),
+    sourceColumnRef: webNodeSourceColumnRef(node),
+    sourceRangeRef: webNodeSourceRangeRef(node),
+    styleFacts: webNodeStyleFacts(node),
+    text: node.text ?? "",
+    value: node.domValue ?? node.value ?? "",
+    state: { ...(node.state || {}) },
+    attrs: {},
+    dataset: {},
+    style: {},
+    rect: null,
+    scroll: null
+  };
+}
+
+export function webNodeSnapshot(rt, query) {
+  return webNodeSnapshotForNode(rt, webNodeQuery(rt, query));
+}
+
+export function webNodeSnapshots(rt, selector = "") {
+  const text = String(selector || "").trim();
+  const nodes = text ? webNodeQueryAll(rt, text) : (webDocumentFrame(rt).nodes || []);
+  return nodes.map((node) => webNodeSnapshotForNode(rt, node)).filter(Boolean);
+}
+
 function webDOMObjectSnapshot(target, object) {
   if (!object)
     return null;
