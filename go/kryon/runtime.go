@@ -2604,8 +2604,7 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	if labelInset <= 0 {
 		labelInset = 8
 	}
-	font := styleFont(style, Text14)
-	fontID := styleFontID(style)
+	font, fontID := styleTextFace(style, Text14)
 	paint := Selectable_SelectablePaintFor(SelectableSpec{
 		Bounds:     props.Bounds,
 		Selected:   selected,
@@ -2663,8 +2662,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	})
 	paint.LabelColor = label.Value.Foreground
 	labelStyle := unpackStyle(label.Value)
-	labelFont := styleFont(labelStyle, Text14)
-	labelFontID := styleFontID(labelStyle)
+	labelFont, labelFontID := styleTextFace(labelStyle, Text14)
 	fill := unpackRGBA(box.Value.Background)
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
@@ -2731,12 +2729,14 @@ func (r *runtime) Separator(props SeparatorProps) {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.Color)})
 		return
 	}
-	font := props.Font
-	if font <= 0 {
-		font = styleFont(unpackStyle(frame.Value), Text14)
-	}
 	labelStyle := unpackStyle(frame.Value)
-	fontID := styleFontID(labelStyle)
+	font, fontID := styleTextFace(labelStyle, Text14)
+	if props.Font > 0 {
+		font = props.Font
+	}
+	if font <= 0 {
+		font = Text14
+	}
 	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
 	lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
@@ -3353,8 +3353,7 @@ func (r *runtime) Progress(props ProgressProps) {
 	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		StyleSheet_StyleKindProgress(), 6)
 	labelStyle := unpackStyle(labelFrame.Value)
-	font := styleFont(labelStyle, Text14)
-	fontID := styleFontID(labelStyle)
+	font, fontID := styleTextFace(labelStyle, Text14)
 	labelW := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 6, 1,
 		simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
@@ -3423,8 +3422,7 @@ func (r *runtime) Plot(props PlotProps) {
 		}
 	}
 	labelWidth := float32(0)
-	font := styleFont(plotStyle, Text14)
-	fontID := styleFontID(plotStyle)
+	font, fontID := styleTextFace(plotStyle, Text14)
 	if props.Label != "" {
 		labelWidth = float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	}
@@ -4059,16 +4057,14 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 		x := bounds.X + bounds.Width*ratio
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: trackStyle.Foreground, ID: id, Row: component})
 	}
-	labelFont := styleFont(labelStyle, Text14)
-	labelFontID := styleFontID(labelStyle)
+	labelFont, labelFontID := styleTextFace(labelStyle, Text14)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: id, Row: component})
 }
 
 func (r *runtime) drawSliderLabel(bounds Rectangle, label string, id int32) {
 	if label != "" {
 		style := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
-		font := styleFont(style, Text14)
-		fontID := styleFontID(style)
+		font, fontID := styleTextFace(style, Text14)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: id})
 	}
 }
@@ -4986,11 +4982,10 @@ func (r *runtime) Heading(props HeadingProps) {
 		level = 6
 	}
 	style := defaultTextStyleForKind(Text24, StyleSheet_StyleKindHeading())
-	font := props.Font
-	if font <= 0 {
-		font = styleFont(style, Text24)
+	font, fontID := styleTextFace(style, Text24)
+	if props.Font > 0 {
+		font = props.Font
 	}
-	fontID := styleFontID(style)
 	color := props.Color
 	if color.A == 0 {
 		color = style.Foreground
@@ -5007,11 +5002,10 @@ func (r *runtime) Heading(props HeadingProps) {
 }
 func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	style := defaultTextStyleForKind(Text16, StyleSheet_StyleKindParagraphText())
-	font := props.Font
-	if font <= 0 {
-		font = styleFont(style, Text16)
+	font, fontID := styleTextFace(style, Text16)
+	if props.Font > 0 {
+		font = props.Font
 	}
-	fontID := styleFontID(style)
 	color := props.Color
 	if color.A == 0 {
 		color = style.Foreground
@@ -5030,11 +5024,10 @@ func (r *runtime) Link(props LinkProps) bool {
 	}
 	frame := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, false, StyleSheet_StyleKindLink())
 	linkStyle := unpackStyle(frame.Value)
-	font := props.Font
-	if font <= 0 {
-		font = styleFont(linkStyle, Text16)
+	font, fontID := styleTextFace(linkStyle, Text16)
+	if props.Font > 0 {
+		font = props.Font
 	}
-	fontID := styleFontID(linkStyle)
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
@@ -5155,10 +5148,8 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindParagraphText()),
 		int32(ButtonStateNormal)))
 	textStyle := defaultTextStyle(Text16)
-	font, fontID := styleTextFace(style, styleFont(textStyle, Text16))
-	if fontID == 0 {
-		fontID = styleFontID(textStyle)
-	}
+	textFont, textFontID := styleTextFace(textStyle, Text16)
+	font, fontID := styleTextFaceWithFallback(style, textFont, textFontID)
 	if spec.Font > 0 {
 		font = spec.Font
 	}
@@ -5276,8 +5267,7 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSlider(), 5)
 	thumbFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSliderThumb())
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
-	font := styleFont(labelStyle, Text16)
-	fontID := styleFontID(labelStyle)
+	font, fontID := styleTextFace(labelStyle, Text16)
 	paint := Slider_SliderPaintFor(SliderSpec{
 		Bounds:      Rectangle{X: bounds.X, Y: bounds.Y + 18, Width: bounds.Width, Height: bounds.Height - 18},
 		Ratio:       ratio,
@@ -5307,11 +5297,9 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	bounds := props.Bounds
 	hasLabels := props.OffLabel != "" || props.OnLabel != ""
-	labelFont := int32(Text16)
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
 		props.Disabled || r.contentDisabled(), false, StyleSheet_StyleKindToggle(), 6).Value)
-	labelFont = styleFont(labelStyle, Text16)
-	labelFontID := styleFontID(labelStyle)
+	labelFont, labelFontID := styleTextFace(labelStyle, Text16)
 	offWidth := int32(runtimeTextWidthWithFont(props.OffLabel, labelFont, labelFontID))
 	onWidth := int32(runtimeTextWidthWithFont(props.OnLabel, labelFont, labelFontID))
 	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
@@ -5366,7 +5354,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	})
 	if paint.HasLabels {
 		labelStyle = unpackStyle(labelFrame.Value)
-		labelFontID = styleFontID(labelStyle)
+		labelFont, labelFontID = styleTextFace(labelStyle, Text16)
 		labelColor := packRGBA(labelStyle.Foreground)
 		if checked {
 			paint.OffLabelColor = labelColor
@@ -5488,6 +5476,15 @@ func styleFontID(style Style) uint32 {
 
 func styleTextFace(style Style, fallback int32) (int32, uint32) {
 	return styleFont(style, fallback), styleFontID(style)
+}
+
+func styleTextFaceWithFallback(style Style, fallbackFont int32, fallbackID uint32) (int32, uint32) {
+	font := styleFont(style, fallbackFont)
+	fontID := fallbackID
+	if style.Fields&StyleTypeface != 0 {
+		fontID = styleFontID(style)
+	}
+	return font, fontID
 }
 
 func modalActionLabel(action ModalAction, index, count int) string {
@@ -5694,11 +5691,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 				BorderColor: face.Border, BorderWidth: face.BorderWidth, Radius: face.Radius,
 				Material: face.Material, Selected: item.Active, Disabled: item.Disabled})
 		}
-		textFont := styleFont(textStyle, labelFont)
-		textFontID := labelFontID
-		if textStyle.Fields&StyleTypeface != 0 {
-			textFontID = styleFontID(textStyle)
-		}
+		textFont, textFontID := styleTextFaceWithFallback(textStyle, labelFont, labelFontID)
 		if item.Icon.ID != 0 {
 			tint := props.IconColor
 			if tint.A == 0 {
@@ -6234,11 +6227,7 @@ func (r *runtime) recordToast() {
 	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindToast(), 6)
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
-	labelFont := int32(label.FontSize)
-	if labelFont <= 0 {
-		labelFont = Text14
-	}
-	labelFontID := styleFontID(label)
+	labelFont, labelFontID := styleTextFace(label, Text14)
 	textWidth := int32(runtimeTextWidthWithFont(r.toastMessage, labelFont, labelFontID))
 	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, labelFont, metrics)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: surface.Background, BorderColor: surface.Border, Radius: surface.Radius, BorderWidth: surface.BorderWidth, Material: MaterialKind(surface.Material), Opacity: surface.Opacity})
@@ -6284,10 +6273,8 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	paint.LabelColor = label.Value.Foreground
 	markStyle := unpackStyle(selectedFrame.Value)
 	labelStyle := unpackStyle(label.Value)
-	labelFont := styleFont(labelStyle, Text16)
-	markFont := styleFont(markStyle, Text16)
-	labelFontID := styleFontID(labelStyle)
-	markFontID := styleFontID(markStyle)
+	labelFont, labelFontID := styleTextFace(labelStyle, Text16)
+	markFont, markFontID := styleTextFace(markStyle, Text16)
 	mark := Radio_RadioMarkText(props.Checked)
 	markColor := unpackRGBA(paint.RingColor)
 	if props.Checked {
@@ -8778,10 +8765,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			textFontID := cellFontID
 			if selectedCell {
 				textOpacity = selectedStyle.Opacity
-				textFont = styleFont(selectedStyle, cellFont)
-				if selectedStyle.Fields&StyleTypeface != 0 {
-					textFontID = styleFontID(selectedStyle)
-				}
+				textFont, textFontID = styleTextFaceWithFallback(selectedStyle, cellFont, cellFontID)
 			}
 			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideTextWithFont(text, rect.Width-12, textFont, textFontID), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, FontID: textFontID, Row: row, Column: col, Disabled: props.Disabled})
 		}
