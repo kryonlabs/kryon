@@ -21,15 +21,6 @@ typedef struct {
     int selectable;
 } TextStyle;
 
-typedef struct {
-    int id;                 /* stable positive identity across frames */
-    const char *text;
-    Rectangle bounds;
-    int font_size;
-    int line_gap;
-    Color color;
-} SelectableTextBlock;
-
 Font GetTextFont(void);
 int EnsureUIDefaultFont(void);
 int RegisterTextFont(const char *name, Font font);

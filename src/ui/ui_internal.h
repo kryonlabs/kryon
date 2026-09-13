@@ -60,6 +60,15 @@ typedef struct {
 DismissibleOverlayResult DismissibleOverlay(DismissibleOverlayProps overlay);
 
 typedef struct {
+    int id;
+    const char *text;
+    Rectangle bounds;
+    int font_size;
+    int line_gap;
+    Color color;
+} SelectableTextBlock;
+
+typedef struct {
     Rectangle anchor;
     const char *text;
 } GuideStep;
