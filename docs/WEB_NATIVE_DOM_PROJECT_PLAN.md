@@ -132,6 +132,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `.kry` widget event args such as `on_click`, `on_input`, `on_key_up`,
   pointer/mouse/drag/clipboard handlers, and dialog/popover lifecycle handlers
   populate Web Document event facts and rendered `data-kry-on-*` glue hooks.
+- Direct `Scroll(...)` widget expressions now participate in compiler-owned
+  Web Document identity and source-span metadata instead of relying on runtime
+  fallback paths.
 - Mounted DOM snapshots serialize event refs for generated logic hooks so
   inspectors can show which Kry logic action is attached to each native DOM
   object without scraping `data-kry-on-*` attributes; direct
