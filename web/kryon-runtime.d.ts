@@ -256,6 +256,7 @@ export interface WebDocumentNode {
     selected: boolean;
     checked: boolean;
     invalid: boolean;
+    valid: boolean;
     expanded: boolean;
     open: boolean;
     hover: boolean;

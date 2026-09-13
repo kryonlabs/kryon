@@ -789,6 +789,7 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Selectable:selected { opacity: 0.6; }
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
+  TextField:valid { text-shadow: none; }
   Section:expanded { opacity: 0.9; }
   Section:loading { cursor: progress; }
   TextField:readonly { color: #111111; }
@@ -810,6 +811,8 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="Toggle"\]:is\(:checked,\[aria-checked="true"\],\[data-kry-state~="checked"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:invalid,\[aria-invalid="true"\],\[data-kry-state~="invalid"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="TextField"\]:is\(:valid,\[aria-invalid="false"\],\[data-kry-state~="valid"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Section"\]:is\(\[aria-expanded="true"\],\[data-kry-state~="expanded"\]\)/);
 assert.match(stateSelectorCSS,
@@ -1150,6 +1153,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
     selected: false,
     checked: false,
     invalid: false,
+    valid: false,
     expanded: false,
     open: false,
     hover: false,
@@ -1238,6 +1242,11 @@ assert.equal(runtime.resolveWebStyle({
   ...webDoc.nodes[2],
   state: { ...webDoc.nodes[2].state, focus: true }
 }, webStyleSheet)["caret-color"], "#8090a0");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], runtime.parseWebStyleSheet(`
+  TextField:valid {
+    opacity: 0.66;
+  }
+`)).opacity, 0.66);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
   Button#tap-button {
@@ -1264,6 +1273,8 @@ assert.equal(runtime.webNodeQuery(rt, "TextField:read-only").path, "Scene/root/s
 assert.equal(runtime.webNodeQuery(rt, "TextField:required").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "Button:enabled").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "Input:optional").path, webDoc.nodes[6].path);
+assert.equal(runtime.webNodeQuery(rt, "TextField:valid").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "Screen:valid"), null);
 assert.equal(runtime.webNodeQuery(rt, "[min=1]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[max=100]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[step=1]").path, "Scene/root/search");
@@ -2273,6 +2284,7 @@ function fakeDocument() {
           selected: false,
           checked: false,
           invalid: false,
+          valid: false,
           expanded: false,
           open: false,
           hover: false,
@@ -4095,6 +4107,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "TextField:required").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "Button:enabled").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "Input:optional").node.path, inputPaths[0]);
+    assert.equal(runtime.webDOMQuery(target, "TextField:valid").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "Screen:valid"), null);
+    assert.equal(runtime.webDOMSetState(target, "q", "valid", true), true);
+    assert.equal(runtime.webDOMGetState(target, "q", "valid"), true);
     assert.equal(runtime.webDOMQuery(target, "[min=1]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[max=100]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[step=1]").element, runtime.findWebElement(target, "q"));
@@ -4152,6 +4168,7 @@ function fakeDocument() {
     assert.equal(domObjectMap.get(tapSourceColumnRef).element, firstButton);
     assert.equal(domObjectMap.get(selectablePath).node.kind, "Selectable");
     const firstField = screen.children[2];
+    assert.equal(firstField.attributes["aria-invalid"], "false");
     assert.equal(firstField.__kryDocNode.scrollLeft, 7);
     assert.equal(firstField.__kryDocNode.scrollTop, 19);
     const fieldObject = runtime.webDOMObject(target, "search-box");

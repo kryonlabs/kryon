@@ -1463,6 +1463,7 @@ function webNodeFromWidget(item, index) {
     selected: isTruthyProp(args, "selected"),
     checked: isTruthyProp(args, "checked"),
     invalid: isTruthyProp(args, "invalid"),
+    valid: isTruthyProp(args, "valid"),
     expanded: isTruthyProp(args, "expanded"),
     open: isTruthyProp(args, "open"),
     hover: false,
@@ -2344,7 +2345,7 @@ function parseSimpleSelector(text) {
         pseudo === "focus" || pseudo === "focused" || pseudo === "focus-visible" ||
         pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open" ||
+        pseudo === "invalid" || pseudo === "valid" || pseudo === "expanded" || pseudo === "open" ||
         pseudo === "readonly" || pseudo === "read-only" || pseudo === "required" ||
         pseudo === "enabled" || pseudo === "optional")) {
       const state = pseudo === "active" ? "pressed" :
@@ -2719,6 +2720,7 @@ function webStyleStateSelectorToCSS(state) {
     checked: [":checked", "[aria-checked=\"true\"]"],
     selected: [":checked", "[selected]", "[aria-selected=\"true\"]", "[aria-current]"],
     invalid: [":invalid", "[aria-invalid=\"true\"]"],
+    valid: [":valid", "[aria-invalid=\"false\"]"],
     expanded: ["[aria-expanded=\"true\"]"],
     readonly: [":read-only", "[readonly]"],
     required: [":required", "[required]"],
@@ -3367,6 +3369,16 @@ function styleStateMatches(name, state, facts = {}) {
     return !!facts.required || !!state?.required;
   if (key === "optional")
     return !facts.required && !state?.required;
+  if (key === "valid") {
+    if (state?.valid)
+      return true;
+    const invalid = !!state?.invalid || facts.ariaAttrs?.invalid === "true" ||
+      facts.extraAttrs?.["aria-invalid"] === "true";
+    const formControl = facts.tag === "input" || facts.tag === "select" || facts.tag === "textarea" ||
+      ["TextField", "Input", "TextArea", "ColorPicker", "Slider", "Spinbox", "Dropdown",
+       "ListBox", "Checkbox", "Toggle", "Radio"].includes(facts.kind);
+    return formControl && !invalid;
+  }
   return !!state?.[key];
 }
 
@@ -6784,7 +6796,7 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-disabled", docNode.state.disabled ? "true" : "");
   setAttr(el, "aria-busy", docNode.state.loading ? "true" : "");
   setAttr(el, "aria-selected", docNode.state.selected ? "true" : "");
-  setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : "");
+  setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : (docNode.state.valid ? "false" : ""));
   setAttr(el, "aria-expanded", docNode.state.expanded ? "true" : "");
   setAttr(el, "aria-orientation", docNode.ariaOrientation);
   setAttr(el, "aria-posinset", docNode.ariaPosInSet);
@@ -9134,7 +9146,7 @@ export function webDOMHasClass(target, query, className) {
 }
 
 const webDOMStateNames = new Set([
-  "disabled", "loading", "selected", "checked", "invalid", "expanded",
+  "disabled", "loading", "selected", "checked", "invalid", "valid", "expanded",
   "open", "hover", "pressed", "focus"
 ]);
 
