@@ -198,6 +198,9 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Screen TextField { border-style: dotted; }
   Screen > Text:first-child { visibility: hidden; }
   Screen > Input:last-child { user-select: text; }
+  Screen > Button:nth-child(2) { outline-width: 4; }
+  Screen > Text:nth-child(odd) { line-height: 1.2; }
+  Screen > Input:nth-child(even) { appearance: auto; }
 `);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -217,6 +220,8 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Text"\]:first-child/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Input"\]:last-child/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]:nth-child\(2\)/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -369,6 +374,9 @@ assert.equal(runtime.webNodeQuery(rt, `Screen > Button[webRef="primary-action"]`
 assert.equal(runtime.webNodeQuery(rt, `Screen TextField`).path, webDoc.nodes[3].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Text:first-child`).path, webDoc.nodes[1].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Input:last-child`).path, webDoc.nodes[7].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Button:nth-child(2)`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Text:nth-child(odd)`).path, webDoc.nodes[1].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Input:nth-child(even)`).path, webDoc.nodes[6].path);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["pointer-events"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).appearance, "none");
@@ -378,6 +386,9 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outli
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], operatorStyleSheet)["border-style"], "dotted");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet).visibility, "hidden");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[7], operatorStyleSheet)["user-select"], "text");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outline-width"], 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet)["line-height"], 1.2);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet).appearance, "auto");
 const soloRt = runtime.createRuntime();
 runtime.beginFrame(soloRt);
 runtime.widget(soloRt, "Screen", {}, null, { nodeName: "root", path: "Solo/root" });
@@ -2313,6 +2324,12 @@ function fakeDocument() {
       firstText);
     assert.equal(runtime.webDOMQuery(target, "Screen > Input:last-child").node.path,
       inputPaths[inputPaths.length - 1]);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Button:nth-child(2)").element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Text:nth-child(odd)").element,
+      firstText);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Input:nth-child(even)").node.path,
+      inputPaths[0]);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);

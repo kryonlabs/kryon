@@ -1792,15 +1792,15 @@ function parseSimpleSelector(text) {
     selector.specificity += 10;
     return "";
   });
-  source = source.replace(/:([A-Za-z_][\w-]*)/g, (_all, name) => {
+  source = source.replace(/:([A-Za-z_][\w-]*)(?:\(\s*([^)]*?)\s*\))?/g, (_all, name, arg) => {
     const pseudo = name.replace(/_/g, "-").toLowerCase();
-    if (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
+    if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
         pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open")
+        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open"))
       selector.state = name;
     else
-      selector.pseudos.push(pseudo);
+      selector.pseudos.push(arg === undefined ? pseudo : `${pseudo}(${String(arg).trim()})`);
     selector.specificity += 10;
     return "";
   });
@@ -2046,6 +2046,16 @@ function webStyleSelectorAttrToCSS(key, value, op = "=") {
   return attr(key);
 }
 
+function webStylePseudoToCSS(pseudo) {
+  const text = String(pseudo || "").trim();
+  const functional = text.match(/^([A-Za-z_][\w-]*)\(([^)]*)\)$/);
+  if (!functional)
+    return ":" + cssEscapeIdent(text);
+  const name = cssEscapeIdent(functional[1].replace(/_/g, "-").toLowerCase());
+  const arg = functional[2].trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
+  return `:${name}(${arg})`;
+}
+
 export function webStyleSelectorToCSS(selector) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
     return selector.parts.map((part, index) => {
@@ -2064,7 +2074,7 @@ export function webStyleSelectorToCSS(selector) {
   for (const [key, value] of Object.entries(selector.attrs || {}))
     parts.push(webStyleSelectorAttrToCSS(key, value, selector.attrOps?.[key] || "="));
   for (const pseudo of selector.pseudos || [])
-    parts.push(`:${cssEscapeIdent(pseudo)}`);
+    parts.push(webStylePseudoToCSS(pseudo));
   if (selector.state)
     parts.push(`[data-kry-state~="${cssEscapeString(selector.state === "focused" ? "focus" : selector.state)}"]`);
   return parts.join("");
@@ -2677,6 +2687,20 @@ function webNodeSiblingsFromFrame(node) {
   });
 }
 
+function nthChildPseudoMatches(pseudo, siblings, node) {
+  const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
+  if (!match)
+    return false;
+  const position = siblings.indexOf(node) + 1;
+  const text = match[1].trim().toLowerCase();
+  if (text === "odd")
+    return position % 2 === 1;
+  if (text === "even")
+    return position > 0 && position % 2 === 0;
+  const number = Number(text);
+  return Number.isInteger(number) && number > 0 && position === number;
+}
+
 function selectorStructuralPseudosMatch(selector, node) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
@@ -2688,6 +2712,9 @@ function selectorStructuralPseudosMatch(selector, node) {
         return false;
     } else if (pseudo === "only-child") {
       if (siblings.length !== 1 || siblings[0] !== node)
+        return false;
+    } else if (String(pseudo).startsWith("nth-child(")) {
+      if (!nthChildPseudoMatches(pseudo, siblings, node))
         return false;
     } else {
       return false;
