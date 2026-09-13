@@ -1242,6 +1242,21 @@ function widgetTag(item) {
     return "option";
   case "Image":
     return "img";
+  case "Picture":
+    return "picture";
+  case "Video":
+    return "video";
+  case "Audio":
+    return "audio";
+  case "Source":
+    return "source";
+  case "Track":
+    return "track";
+  case "IFrame":
+  case "Iframe":
+    return "iframe";
+  case "Embed":
+    return "embed";
   case "Checkbox":
   case "Toggle":
   case "Radio":
@@ -1306,6 +1321,10 @@ function widgetText(item) {
   case "Small":
   case "Figure":
   case "Figcaption":
+  case "Video":
+  case "Audio":
+  case "IFrame":
+  case "Iframe":
   case "Summary":
   case "Label":
   case "Option":
@@ -1587,6 +1606,73 @@ function widgetNativeAttrs(item, meta, args) {
   case "ListItem":
     setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
       propStringAny(args, ["value", "dom_value", "html_value"]));
+    break;
+  case "Video":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "poster", metaString(meta, "poster") ||
+      propStringAny(args, ["poster", "dom_poster", "html_poster"]));
+    setWidgetNativeAttr(out, "controls", metaBool(meta, "controls") ||
+      isTruthyPropAny(args, ["controls", "dom_controls", "html_controls"]));
+    setWidgetNativeAttr(out, "autoplay", metaBool(meta, "autoplay") ||
+      isTruthyPropAny(args, ["autoplay", "auto_play", "dom_autoplay", "html_autoplay"]));
+    setWidgetNativeAttr(out, "loop", metaBool(meta, "loop") ||
+      isTruthyPropAny(args, ["loop", "dom_loop", "html_loop"]));
+    setWidgetNativeAttr(out, "muted", metaBool(meta, "muted") ||
+      isTruthyPropAny(args, ["muted", "dom_muted", "html_muted"]));
+    setWidgetNativeAttr(out, "preload", metaString(meta, "preload") ||
+      propStringAny(args, ["preload", "dom_preload", "html_preload"]));
+    break;
+  case "Audio":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "controls", metaBool(meta, "controls") ||
+      isTruthyPropAny(args, ["controls", "dom_controls", "html_controls"]));
+    setWidgetNativeAttr(out, "autoplay", metaBool(meta, "autoplay") ||
+      isTruthyPropAny(args, ["autoplay", "auto_play", "dom_autoplay", "html_autoplay"]));
+    setWidgetNativeAttr(out, "loop", metaBool(meta, "loop") ||
+      isTruthyPropAny(args, ["loop", "dom_loop", "html_loop"]));
+    setWidgetNativeAttr(out, "muted", metaBool(meta, "muted") ||
+      isTruthyPropAny(args, ["muted", "dom_muted", "html_muted"]));
+    setWidgetNativeAttr(out, "preload", metaString(meta, "preload") ||
+      propStringAny(args, ["preload", "dom_preload", "html_preload"]));
+    break;
+  case "Source":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
+      propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
+    setWidgetNativeAttr(out, "media", metaString(meta, "media") ||
+      propStringAny(args, ["media", "dom_media", "html_media"]));
+    break;
+  case "Track":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "kind", metaString(meta, "kindAttr") ||
+      propStringAny(args, ["kind", "track_kind", "dom_kind", "html_kind"]));
+    setWidgetNativeAttr(out, "srclang", metaString(meta, "srcLang") ||
+      propStringAny(args, ["srclang", "src_lang", "dom_srclang", "html_srclang"]));
+    setWidgetNativeAttr(out, "label", metaString(meta, "trackLabel") ||
+      propStringAny(args, ["label", "track_label", "dom_label", "html_label"]));
+    setWidgetNativeAttr(out, "default", metaBool(meta, "default") ||
+      isTruthyPropAny(args, ["default", "dom_default", "html_default"]));
+    break;
+  case "IFrame":
+  case "Iframe":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "loading", metaString(meta, "loading") ||
+      propStringAny(args, ["loading", "dom_loading", "html_loading"]));
+    setWidgetNativeAttr(out, "allow", metaString(meta, "allow") ||
+      propStringAny(args, ["allow", "dom_allow", "html_allow"]));
+    setWidgetNativeAttr(out, "allowfullscreen", metaBool(meta, "allowFullscreen") ||
+      isTruthyPropAny(args, ["allowfullscreen", "allow_fullscreen", "dom_allowfullscreen", "html_allowfullscreen"]));
+    break;
+  case "Embed":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
+      propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
     break;
   default:
     break;

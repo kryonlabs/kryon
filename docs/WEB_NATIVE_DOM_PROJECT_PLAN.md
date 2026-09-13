@@ -87,6 +87,10 @@ the browser receives normal elements, attributes, CSS, and events.
   `Details`, `Summary`, `Dialog`, and `Output` render to matching browser
   elements and participate in label, form-control, collection, dialog, and
   status accessibility facts.
+- Native media/embed aliases such as `Video`, `Audio`, `Picture`, `Source`,
+  `Track`, `IFrame`, and `Embed` render to matching browser elements with
+  standard source, preload, controls, poster, track, loading, allow, and MIME
+  attributes available to snapshots, selectors, and mounted DOM.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

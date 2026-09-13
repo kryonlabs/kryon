@@ -2828,6 +2828,20 @@ function fakeDocument() {
       { nodeName: "mark", path: "Page/mark" });
     runtime.widget(nativeRt, "Time", { text: "2026-09-13", datetime: "2026-09-13" }, null,
       { nodeName: "time", path: "Page/time" });
+    runtime.widget(nativeRt, "Video", { src: "intro.mp4", poster: "intro.jpg", controls: true, preload: "metadata" }, null,
+      { nodeName: "nativeVideo", path: "Page/video" });
+    runtime.widget(nativeRt, "Source", { src: "intro.webm", type: "video/webm" }, null,
+      { nodeName: "nativeVideoSource", path: "Page/video/webm", parentPath: "Page/video" });
+    runtime.widget(nativeRt, "Track", { src: "captions.vtt", kind: "captions", srclang: "en", label: "English", default: true }, null,
+      { nodeName: "nativeVideoTrack", path: "Page/video/captions", parentPath: "Page/video" });
+    runtime.widget(nativeRt, "Audio", { src: "theme.mp3", controls: true, loop: true }, null,
+      { nodeName: "nativeAudio", path: "Page/audio" });
+    runtime.widget(nativeRt, "Picture", {}, null,
+      { nodeName: "nativePicture", path: "Page/picture" });
+    runtime.widget(nativeRt, "IFrame", { src: "/embed", loading: "lazy", allow: "fullscreen", allow_fullscreen: true, text: "Embedded content" }, null,
+      { nodeName: "nativeFrame", path: "Page/frame" });
+    runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
+      { nodeName: "nativeEmbed", path: "Page/embed" });
     runtime.widget(nativeRt, "Form", { form_action: "/signup", form_method: "post" }, null,
       { nodeName: "nativeForm", path: "Page/nativeForm" });
     runtime.widget(nativeRt, "Label", { text: "Email", for: "form-email" }, null,
@@ -3036,6 +3050,19 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Video").tag, "video");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.src, "intro.mp4");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.controls, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Source").tag, "source");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Source").extraAttrs.type, "video/webm");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Track").tag, "track");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Track").extraAttrs.srclang, "en");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Audio").tag, "audio");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Picture").tag, "picture");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").tag, "iframe");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.loading, "lazy");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"intro.mp4\"]").path, "Page/video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Form").tag, "form");
     assert.equal(runtime.webNodeQuery(nativeRt, "Label").tag, "label");
     assert.equal(runtime.webNodeQuery(nativeRt, "Select").tag, "select");
@@ -3206,6 +3233,13 @@ function fakeDocument() {
     const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
     const nativeMark = runtime.findWebElement(nativeTarget, "mark");
     const nativeTime = runtime.findWebElement(nativeTarget, "time");
+    const nativeVideo = runtime.findWebElement(nativeTarget, "nativeVideo");
+    const nativeVideoSource = runtime.findWebElement(nativeTarget, "nativeVideoSource");
+    const nativeVideoTrack = runtime.findWebElement(nativeTarget, "nativeVideoTrack");
+    const nativeAudio = runtime.findWebElement(nativeTarget, "nativeAudio");
+    const nativePicture = runtime.findWebElement(nativeTarget, "nativePicture");
+    const nativeFrame = runtime.findWebElement(nativeTarget, "nativeFrame");
+    const nativeEmbed = runtime.findWebElement(nativeTarget, "nativeEmbed");
     const nativeForm = runtime.findWebElement(nativeTarget, "nativeForm");
     const nativeLabel = runtime.findWebElement(nativeTarget, "nativeLabel");
     const nativeEmail = runtime.findWebElement(nativeTarget, "nativeEmail");
@@ -3280,6 +3314,34 @@ function fakeDocument() {
     assert.equal(nativeMark.tagName, "MARK");
     assert.equal(nativeTime.tagName, "TIME");
     assert.equal(nativeTime.attributes.datetime, "2026-09-13");
+    assert.equal(nativeVideo.tagName, "VIDEO");
+    assert.equal(nativeVideo.attributes.src, "intro.mp4");
+    assert.equal(nativeVideo.attributes.poster, "intro.jpg");
+    assert.equal(nativeVideo.attributes.controls, "");
+    assert.equal(nativeVideo.attributes.preload, "metadata");
+    assert.equal(nativeVideoSource.tagName, "SOURCE");
+    assert.equal(nativeVideoSource.attributes.src, "intro.webm");
+    assert.equal(nativeVideoSource.attributes.type, "video/webm");
+    assert.equal(nativeVideoTrack.tagName, "TRACK");
+    assert.equal(nativeVideoTrack.attributes.src, "captions.vtt");
+    assert.equal(nativeVideoTrack.attributes.kind, "captions");
+    assert.equal(nativeVideoTrack.attributes.srclang, "en");
+    assert.equal(nativeVideoTrack.attributes.label, "English");
+    assert.equal(nativeVideoTrack.attributes.default, "");
+    assert.equal(nativeAudio.tagName, "AUDIO");
+    assert.equal(nativeAudio.attributes.src, "theme.mp3");
+    assert.equal(nativeAudio.attributes.controls, "");
+    assert.equal(nativeAudio.attributes.loop, "");
+    assert.equal(nativePicture.tagName, "PICTURE");
+    assert.equal(nativeFrame.tagName, "IFRAME");
+    assert.equal(nativeFrame.attributes.src, "/embed");
+    assert.equal(nativeFrame.attributes.loading, "lazy");
+    assert.equal(nativeFrame.attributes.allow, "fullscreen");
+    assert.equal(nativeFrame.attributes.allowfullscreen, "");
+    assert.equal(nativeFrame.textContent, "Embedded content");
+    assert.equal(nativeEmbed.tagName, "EMBED");
+    assert.equal(nativeEmbed.attributes.src, "chart.svg");
+    assert.equal(nativeEmbed.attributes.type, "image/svg+xml");
     assert.equal(nativeForm.tagName, "FORM");
     assert.equal(nativeForm.attributes.action, "/signup");
     assert.equal(nativeForm.attributes.method, "post");
