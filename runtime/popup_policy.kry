@@ -11,6 +11,11 @@ PopupDecision :: struct {
     requires_trigger: bool
 }
 
+PopupContextActivation :: struct {
+    open: bool
+    origin: Vector2
+}
+
 PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
     decision: PopupDecision
     tooltip_flag: u32 = (u32)1
@@ -85,6 +90,23 @@ PopupMenuBarOrigin :: (item: Rectangle, bar: Rectangle) -> Vector2 #export {
 
 PopupContextOrigin :: (mouse: Vector2) -> Vector2 #export {
     return mouse
+}
+
+PopupContextActivationFor :: (decision: PopupDecision, trigger: Rectangle,
+    mouse: Vector2, disabled: bool, click_captured: bool,
+    right_released: bool) -> PopupContextActivation #export {
+    activation: PopupContextActivation
+    activation.origin = PopupContextOrigin(mouse)
+    if !decision.context || disabled || click_captured || !right_released {
+        return activation
+    }
+    if mouse.x < trigger.x || mouse.y < trigger.y ||
+       mouse.x > trigger.x + trigger.width ||
+       mouse.y > trigger.y + trigger.height {
+        return activation
+    }
+    activation.open = true
+    return activation
 }
 
 PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {

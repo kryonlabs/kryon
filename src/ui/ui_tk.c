@@ -1713,6 +1713,7 @@ RenderContextMenu(MenuProps menu)
     Rectangle panel;
     int suppress_close = 0;
     int focused;
+    PopupContextActivation activation;
 
     if(menu.open == NULL)
         menu.open = &open_local;
@@ -1733,13 +1734,16 @@ RenderContextMenu(MenuProps menu)
         *menu.open = 0;
         return 0;
     }
-    if(!ContentDisabled() && ui_contains(menu.trigger, mouse) &&
-       !InputCapturesClick(mouse) &&
-       IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
-        Vector2 origin = PopupContextOrigin(mouse);
+    activation = PopupContextActivationFor(PopupDecisionFor(PopupContext, 0),
+                                           menu.trigger, mouse,
+                                           ContentDisabled() != 0,
+                                           InputCapturesClick(mouse) != 0,
+                                           IsMouseButtonReleased(
+                                               MOUSE_BUTTON_RIGHT) != 0);
+    if(activation.open) {
         *menu.open = 1;
-        *menu.x = (int)origin.x;
-        *menu.y = (int)origin.y;
+        *menu.x = (int)activation.origin.x;
+        *menu.y = (int)activation.origin.y;
         SetFocus(menu.id);
         menu_navigation_reset(menu.id,menu.items,menu.item_count);
         suppress_close = 1;

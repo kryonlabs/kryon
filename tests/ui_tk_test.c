@@ -1005,6 +1005,12 @@ test_popup_policy(void)
     Vector2 bar_origin = PopupMenuBarOrigin((Rectangle){10, 20, 80, 24},
                                             (Rectangle){0, 5, 200, 40});
     Vector2 context_origin = PopupContextOrigin((Vector2){33, 44});
+    PopupContextActivation context_open =
+        PopupContextActivationFor(context, trigger, (Vector2){20, 18},
+                                  0, 0, 1);
+    PopupContextActivation context_blocked =
+        PopupContextActivationFor(context, trigger, (Vector2){20, 18},
+                                  0, 1, 1);
 
     check_int("popup plain valid", plain.valid, 1);
     check_int("popup plain captures", plain.captures_input, 1);
@@ -1028,6 +1034,9 @@ test_popup_policy(void)
     check_int("popup menu bar origin y", (int)bar_origin.y, 45);
     check_int("popup context origin x", (int)context_origin.x, 33);
     check_int("popup context origin y", (int)context_origin.y, 44);
+    check_int("popup context activation", context_open.open, 1);
+    check_int("popup context activation x", (int)context_open.origin.x, 20);
+    check_int("popup context captured blocks", context_blocked.open, 0);
 }
 
 static void

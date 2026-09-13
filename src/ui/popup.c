@@ -114,6 +114,7 @@ static void end_popup_scope(void)
 int PopupScope(PopupProps popup)
 {
     PopupDecision decision = PopupDecisionFor(popup.flags, popup.disabled != 0);
+    Vector2 mouse = ui_mouse_world();
     if(!decision.valid) abort();
     if(!PopupCanBegin(decision, popup.id, popup.bounds, popup.trigger,
                       popup.open != NULL))
@@ -121,14 +122,16 @@ int PopupScope(PopupProps popup)
     PaintLayers *layers = ui_frame_paint_layers();
     PopupInput *input_context = layers ? ui_paint_layers_input(layers) :
                                           ui_popup_input_bound();
-    if(decision.context && !popup.disabled &&
-       IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
-       CheckCollisionPointRec(ui_mouse_world(),popup.trigger) &&
-       !InputCapturesClick(ui_mouse_world()))
+    PopupContextActivation context =
+        PopupContextActivationFor(decision, popup.trigger, mouse,
+                                  popup.disabled != 0,
+                                  InputCapturesClick(mouse),
+                                  IsMouseButtonReleased(MOUSE_BUTTON_RIGHT));
+    if(context.open)
         *popup.open = true;
     if(decision.tooltip) {
         if(popup.disabled ||
-           !CheckCollisionPointRec(ui_mouse_world(),popup.trigger)) return 0;
+           !CheckCollisionPointRec(mouse,popup.trigger)) return 0;
     } else {
         *popup.open = PopupOpenAfterDisabled(decision, *popup.open,
                                              popup.disabled != 0);
@@ -139,7 +142,7 @@ int PopupScope(PopupProps popup)
     }
     if(!decision.tooltip && !decision.modal &&
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ReleaseConsumed() &&
-       !CheckCollisionPointRec(ui_mouse_world(),popup.bounds)) {
+       !CheckCollisionPointRec(mouse,popup.bounds)) {
         ConsumeRelease();
         *popup.open = false;
         if(input_context) ui_popup_input_close(input_context,popup.id);
