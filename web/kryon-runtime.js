@@ -1157,6 +1157,8 @@ function widgetTag(item) {
     return "header";
   case "Fieldset":
     return "fieldset";
+  case "Legend":
+    return "legend";
   case "Collapsible":
   case "Details":
     return "details";
@@ -1403,6 +1405,7 @@ function widgetText(item) {
   case "IFrame":
   case "Iframe":
   case "Summary":
+  case "Legend":
   case "Label":
   case "Option":
   case "ListItem":
@@ -7272,6 +7275,11 @@ function webNodeCanOwnSummary(owner, summary) {
     String(summary?.tag || "").toLowerCase() === "summary";
 }
 
+function webNodeCanOwnLegend(owner, legend) {
+  return String(owner?.tag || "").toLowerCase() === "fieldset" &&
+    String(legend?.tag || "").toLowerCase() === "legend";
+}
+
 function webNodeCaptionOwner(rt, node) {
   if (!rt || !node)
     return null;
@@ -7322,6 +7330,37 @@ function webNodeSummaryItems(rt, node) {
     if (!candidate || candidate === node)
       return false;
     const owner = webNodeSummaryOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
+function webNodeLegendOwner(rt, node) {
+  if (!rt || !node || String(node.tag || "").toLowerCase() !== "legend")
+    return null;
+  const nodes = webFrameNodeMap(webDocumentFrame(rt));
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = nodes.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnLegend(parent, node))
+      return parent;
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webNodeLegendItems(rt, node) {
+  if (!rt || !node || String(node.tag || "").toLowerCase() !== "fieldset")
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node ||
+        String(candidate.tag || "").toLowerCase() !== "legend")
+      return false;
+    const owner = webNodeLegendOwner(rt, candidate);
     return owner === node || (ref && webNodeRef(owner) === ref);
   });
 }
@@ -7530,6 +7569,41 @@ function webDOMSummaryItems(target, node) {
   return out;
 }
 
+function webDOMLegendOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node || String(node.tag || "").toLowerCase() !== "legend")
+    return null;
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnLegend(parent, node))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMLegendItems(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node || String(node.tag || "").toLowerCase() !== "fieldset")
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node ||
+        String(object.node.tag || "").toLowerCase() !== "legend")
+      continue;
+    const owner = webDOMLegendOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMSelectedCollectionOwner(target, node) {
   return webNodeIsSelectedCollectionMember(node)
     ? webDOMCollectionOwner(target, node)
@@ -7581,6 +7655,8 @@ function webDOMRelationsForNode(target, node) {
     captionItems: webDOMCaptionItems(target, node),
     summaryOwner: webDOMSummaryOwner(target, node),
     summaryItems: webDOMSummaryItems(target, node),
+    legendOwner: webDOMLegendOwner(target, node),
+    legendItems: webDOMLegendItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
     selectedCollectionItems: webDOMSelectedCollectionItems(target, node),
     activeCollectionOwner: webDOMActiveCollectionOwner(target, node),
@@ -9000,6 +9076,8 @@ function webDOMRelationRefsForRelations(relations) {
     captionItems: (relations?.captionItems || []).map((relation) => relation.ref),
     summaryOwner: relations?.summaryOwner?.ref || "",
     summaryItems: (relations?.summaryItems || []).map((relation) => relation.ref),
+    legendOwner: relations?.legendOwner?.ref || "",
+    legendItems: (relations?.legendItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
     selectedCollectionItems: (relations?.selectedCollectionItems || []).map((relation) => relation.ref),
     activeCollectionOwner: relations?.activeCollectionOwner?.ref || "",
@@ -9904,6 +9982,8 @@ function webNodeRelationsForNode(rt, node) {
     captionItems: webNodeCaptionItems(rt, node),
     summaryOwner: webNodeSummaryOwner(rt, node),
     summaryItems: webNodeSummaryItems(rt, node),
+    legendOwner: webNodeLegendOwner(rt, node),
+    legendItems: webNodeLegendItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
     selectedCollectionItems: webNodeSelectedCollectionItems(rt, node),
     activeCollectionOwner: webNodeActiveCollectionOwner(rt, node),
@@ -9991,6 +10071,8 @@ function webNodeRelationRefsForNode(rt, node) {
     captionItems: webNodeRefs(webNodeCaptionItems(rt, node)),
     summaryOwner: webNodeRef(webNodeSummaryOwner(rt, node)) || "",
     summaryItems: webNodeRefs(webNodeSummaryItems(rt, node)),
+    legendOwner: webNodeRef(webNodeLegendOwner(rt, node)) || "",
+    legendItems: webNodeRefs(webNodeLegendItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
     selectedCollectionItems: webNodeRefs(webNodeSelectedCollectionItems(rt, node)),
     activeCollectionOwner: webNodeRef(webNodeActiveCollectionOwner(rt, node)) || "",
@@ -11258,7 +11340,7 @@ const runtimeCallNames = [
   "Figcaption", "Figure", "Footer", "Form", "Header",
   "IFrame", "Iframe", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
-  "Mark", "Meter", "Nav", "Navigation", "OrderedList", "Option",
+  "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList", "Option",
   "Output", "Pre", "Quote", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
@@ -11338,6 +11420,7 @@ export function Italic(...args) { return struct("Italic", args); }
 export function Kbd(...args) { return struct("Kbd", args); }
 export function Keyboard(...args) { return struct("Keyboard", args); }
 export function Label(...args) { return struct("Label", args); }
+export function Legend(...args) { return struct("Legend", args); }
 export function SegmentedControl(...args) { return struct("SegmentedControl", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }
