@@ -91,6 +91,11 @@ try {
     path: "Page/article/choices",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "TextField", { aria_activedescendant: "Page/article/choices/beta" }, null, {
+    nodeName: "choiceSearch",
+    path: "Page/article/choiceSearch",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "Selectable", { text: "Beta", value: "b", selected: true }, null, {
     nodeName: "choiceBeta",
     path: "Page/article/choices/beta",
@@ -318,6 +323,12 @@ try {
     "article snapshot error relation missing");
   assert(root.kryRelationRefs("article-ref").flowTo.join(" ") === "Page/article/save",
     "root flow relation refs missing");
+  assert(kryon.webDOMRelations(target, "choiceBeta").activeDescendantOf
+    .map((object) => object.ref).join(" ") === "Page/article/choiceSearch",
+    "active descendant reverse relation missing");
+  assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.activeDescendantOf
+    .join(" ") === "Page/article/choiceSearch",
+    "active descendant reverse relation refs missing");
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");

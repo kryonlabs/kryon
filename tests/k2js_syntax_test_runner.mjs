@@ -1062,6 +1062,8 @@ assert.equal(preMountButtonSnapshot.identity.domId, "tap-button");
 assert.equal(preMountButtonSnapshot.parentRef, "Scene/root");
 assert.deepEqual(preMountButtonSnapshot.childRefs, []);
 assert.deepEqual(preMountButtonSnapshot.relationRefs.controls, ["search-box"]);
+assert.deepEqual(runtime.webNodeRelationRefs(rt, "Scene/root/search_label").activeDescendantOf,
+  ["search-box"]);
 assert.equal(preMountButtonSnapshot.eventRefs.click, "call_host");
 assert.equal(preMountButtonSnapshot.styleFacts.kind, "Button");
 assert.equal(preMountButtonSnapshot.element, undefined);
@@ -3912,6 +3914,8 @@ function fakeDocument() {
       .map((object) => object.ref), ["Scene/root/search_label"]);
     assert.equal(runtime.webDOMRelations(target, "search-box").activeDescendant.ref,
       "Scene/root/search_label");
+    assert.deepEqual(runtime.webDOMRelations(target, "Scene/root/search_label").activeDescendantOf
+      .map((object) => object.ref), ["search-box"]);
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.describedBy,
       ["primary-action"]);
     assert.equal(runtime.webDOMSnapshot(target, "search-box").relationRefs.details,
@@ -3924,6 +3928,8 @@ function fakeDocument() {
       ["search-box"]);
     assert.equal(runtime.webDOMSnapshot(target, "search-box").relationRefs.activeDescendant,
       "Scene/root/search_label");
+    assert.deepEqual(runtime.webDOMSnapshot(target, "Scene/root/search_label").relationRefs.activeDescendantOf,
+      ["search-box"]);
     firstField.setAttribute("aria-describedby", "primary-action");
     firstField.setAttribute("aria-details", "Scene/root/search_label");
     firstField.setAttribute("aria-errormessage", "Scene/root/search_label");

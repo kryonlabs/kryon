@@ -6199,6 +6199,7 @@ function webDOMRelationsForNode(target, node) {
       webDOMReverseRelationList(target, node, "htmlFor")
     ),
     activeDescendant: webDOMRelationList(target, node.ariaActiveDescendant)[0] || null,
+    activeDescendantOf: webDOMReverseRelationList(target, node, "ariaActiveDescendant"),
     popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null,
     popoverInvokers: webDOMReverseRelationList(target, node, "popoverTarget")
   };
@@ -7399,6 +7400,7 @@ function webDOMRelationRefsForRelations(relations) {
     formOwner: relations?.formOwner?.ref || "",
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
     activeDescendant: relations?.activeDescendant?.ref || "",
+    activeDescendantOf: (relations?.activeDescendantOf || []).map((relation) => relation.ref),
     popoverTarget: relations?.popoverTarget?.ref || "",
     popoverInvokers: (relations?.popoverInvokers || []).map((relation) => relation.ref)
   };
@@ -8070,6 +8072,7 @@ function webNodeRelationsForNode(rt, node) {
       webNodeReverseRelationList(rt, node, "htmlFor")
     ),
     activeDescendant: webNodeRelationList(rt, node.ariaActiveDescendant)[0] || null,
+    activeDescendantOf: webNodeReverseRelationList(rt, node, "ariaActiveDescendant"),
     popoverTarget: webNodeRelationList(rt, node.popoverTarget)[0] || null,
     popoverInvokers: webNodeReverseRelationList(rt, node, "popoverTarget")
   };
@@ -8107,6 +8110,7 @@ function webNodeRelationRefsForNode(rt, node) {
       webNodeReverseRelationList(rt, node, "htmlFor")
     ),
     activeDescendant: webNodeRef(webNodeRelationList(rt, node.ariaActiveDescendant)[0]) || "",
+    activeDescendantOf: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaActiveDescendant")),
     popoverTarget: webNodeRef(webNodeRelationList(rt, node.popoverTarget)[0]) || "",
     popoverInvokers: webNodeRefs(webNodeReverseRelationList(rt, node, "popoverTarget"))
   };

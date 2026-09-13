@@ -541,6 +541,7 @@ export interface WebDOMRelations {
   formOwner: WebDOMObject | null;
   labelledBy: WebDOMObject[];
   activeDescendant: WebDOMObject | null;
+  activeDescendantOf: WebDOMObject[];
   popoverTarget: WebDOMObject | null;
   popoverInvokers: WebDOMObject[];
 }
@@ -567,6 +568,7 @@ export interface WebNodeRelations {
   formOwner: WebDocumentNode | null;
   labelledBy: WebDocumentNode[];
   activeDescendant: WebDocumentNode | null;
+  activeDescendantOf: WebDocumentNode[];
   popoverTarget: WebDocumentNode | null;
   popoverInvokers: WebDocumentNode[];
 }
@@ -593,6 +595,7 @@ export interface WebDOMRelationRefs {
   formOwner: string;
   labelledBy: string[];
   activeDescendant: string;
+  activeDescendantOf: string[];
   popoverTarget: string;
   popoverInvokers: string[];
 }

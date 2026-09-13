@@ -633,8 +633,8 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `aria_activedescendant`, detail, error-message, and flow links from
 `aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
 `form`, reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
-`errorFor`, `flowFrom`, and `popoverInvokers` links for targets referenced by
-other nodes, and reverse `labelledBy` links for controls targeted by
+`errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for
+targets referenced by other nodes, and reverse `labelledBy` links for controls targeted by
 `dom_for`; `webNodeRelations(rt, query)` exposes those links before mount as
 Web Document nodes, while `webNodeRelationRefs(rt, query)`,
 `webDOMRelationRefs(target, query)`, and snapshots expose the same links as
