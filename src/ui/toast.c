@@ -26,7 +26,7 @@ ClearToast(void)
 void
 Toast(ToastProps props)
 {
-    ToastMetrics metrics = ToastMetricsFor(1.0f);
+    ToastMetrics metrics = ToastMetricsFor(1.0f, (StyleFrame){0});
 
     if(props.message == NULL || props.message[0] == '\0') {
         ClearToast();
@@ -43,7 +43,7 @@ RenderToast(void)
 {
     int font = GetSmallFontSize();
     float scale = (float)Scale(1000) / 1000.0f;
-    ToastMetrics metrics = ToastMetricsFor(scale);
+    ToastMetrics metrics;
     ToastLayout layout;
     int text_w;
     int line_h;
@@ -82,6 +82,7 @@ RenderToast(void)
     Style surface = ui_unpack_style(ui_style_apply_effects_frame(surface_frame).value);
     Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
     int font_token;
+    metrics = ToastMetricsFor(scale, surface_frame);
     if(text.font_size > 0.0f)
         font = (int)(text.font_size + 0.5f);
 

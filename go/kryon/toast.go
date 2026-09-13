@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type ToastMetrics struct {
 	PadX           int32
 	PadY           int32
@@ -15,7 +16,7 @@ type ToastLayout struct {
 	ContentWidth int32
 }
 
-func Toast_ToastMetricsFor(scale float32) ToastMetrics {
+func Toast_ToastMetricsFor(scale float32, frame StyleFrame) ToastMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -24,25 +25,52 @@ func Toast_ToastMetricsFor(scale float32) ToastMetrics {
 		scale = value_3
 	}
 	var metrics ToastMetrics = ToastMetrics{}
-	var value_4 float32 = 14.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	metrics.PadX = value_7
-	var value_8 float32 = 10.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	metrics.PadY = value_11
-	var value_12 float32 = 18.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	metrics.Margin = value_15
-	var value_16 float32 = 3.0
-	metrics.DefaultSeconds = value_16
-	var value_17 ToastMetrics = metrics
-	return value_17
+	var value_4 float32 = frame.Value.PaddingX
+	var pad_x float32 = value_4
+	var value_5 float32 = frame.Value.PaddingY
+	var pad_y float32 = value_5
+	var value_6 float32 = frame.Value.Gap
+	var margin float32 = value_6
+	var value_7 float32 = pad_x
+	var value_8 float32 = 0.0
+	var value_9 bool = value_7 <= value_8
+	if value_9 {
+		var value_10 float32 = 14.0
+		pad_x = value_10
+	}
+	var value_11 float32 = pad_y
+	var value_12 float32 = 0.0
+	var value_13 bool = value_11 <= value_12
+	if value_13 {
+		var value_14 float32 = 10.0
+		pad_y = value_14
+	}
+	var value_15 float32 = margin
+	var value_16 float32 = 0.0
+	var value_17 bool = value_15 <= value_16
+	if value_17 {
+		var value_18 float32 = 18.0
+		margin = value_18
+	}
+	var value_19 float32 = pad_x
+	var value_20 float32 = scale
+	var value_21 float32 = value_19 * value_20
+	var value_22 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_21), 32, true)), uint64(0), 32, true, 0))
+	metrics.PadX = value_22
+	var value_23 float32 = pad_y
+	var value_24 float32 = scale
+	var value_25 float32 = value_23 * value_24
+	var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
+	metrics.PadY = value_26
+	var value_27 float32 = margin
+	var value_28 float32 = scale
+	var value_29 float32 = value_27 * value_28
+	var value_30 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_29), 32, true)), uint64(0), 32, true, 0))
+	metrics.Margin = value_30
+	var value_31 float32 = 3.0
+	metrics.DefaultSeconds = value_31
+	var value_32 ToastMetrics = metrics
+	return value_32
 }
 
 func Toast_ToastDuration(seconds float32, metrics ToastMetrics) float32 {

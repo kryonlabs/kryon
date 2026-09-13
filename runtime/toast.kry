@@ -1,5 +1,6 @@
 #module "toast"
 #import "drawing_props"
+#import "style"
 
 ToastMetrics :: struct {
     pad_x: i32
@@ -14,12 +15,18 @@ ToastLayout :: struct {
     content_width: i32
 }
 
-ToastMetricsFor :: (scale: float) -> ToastMetrics #export {
+ToastMetricsFor :: (scale: float, frame: StyleFrame) -> ToastMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ToastMetrics
-    metrics.pad_x = (i32)(14.0 * scale)
-    metrics.pad_y = (i32)(10.0 * scale)
-    metrics.margin = (i32)(18.0 * scale)
+    pad_x: float = frame.value.padding_x
+    pad_y: float = frame.value.padding_y
+    margin: float = frame.value.gap
+    if pad_x <= 0.0 { pad_x = 14.0 }
+    if pad_y <= 0.0 { pad_y = 10.0 }
+    if margin <= 0.0 { margin = 18.0 }
+    metrics.pad_x = (i32)(pad_x * scale)
+    metrics.pad_y = (i32)(pad_y * scale)
+    metrics.margin = (i32)(margin * scale)
     metrics.default_seconds = 3.0
     return metrics
 }

@@ -2,6 +2,7 @@
 #include <math.h>
 
 #include "runtime/toast.h"
+#include "runtime/style.h"
 
 static void
 check_rect(Rectangle got, float x, float y, float width, float height)
@@ -15,7 +16,8 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    ToastMetrics metrics = ToastMetricsFor(2.0f);
+    StyleFrame frame = {0};
+    ToastMetrics metrics = ToastMetricsFor(2.0f, frame);
     ToastLayout layout;
 
     assert(metrics.pad_x == 28);
@@ -27,7 +29,16 @@ main(void)
     assert(ToastMaxWidth(640, metrics) == 568);
     assert(ToastContentWidth(640, metrics) == 512);
 
-    metrics = ToastMetricsFor(1.0f);
+    frame.value.padding_x = 20.0f;
+    frame.value.padding_y = 12.0f;
+    frame.value.gap = 24.0f;
+    metrics = ToastMetricsFor(1.0f, frame);
+    assert(metrics.pad_x == 20);
+    assert(metrics.pad_y == 12);
+    assert(metrics.margin == 24);
+
+    frame = (StyleFrame){0};
+    metrics = ToastMetricsFor(1.0f, frame);
     layout = ToastLayoutFor(640, 480, 70, 18, metrics);
     check_rect(layout.bounds, 271, 424, 98, 38);
     check_rect(layout.text_bounds, 285, 434, 70, 18);

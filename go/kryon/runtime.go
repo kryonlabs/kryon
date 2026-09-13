@@ -5546,7 +5546,7 @@ func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 	}
 }
 func (r *runtime) Toast(props ToastProps) {
-	metrics := Toast_ToastMetricsFor(1)
+	metrics := Toast_ToastMetricsFor(1, StyleFrame{})
 	if props.Message == "" {
 		r.toastMessage = ""
 		r.toastClassName = 0
@@ -5563,13 +5563,13 @@ func (r *runtime) recordToast() {
 		r.toastMessage = ""
 		return
 	}
-	metrics := Toast_ToastMetricsFor(1)
 	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, r.toastClassName, StyleSheet_StyleKindToast(), StyleSheet_StyleAny())
 	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, r.toastClassName, StyleSheet_StyleKindToast(), 6)
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
+	metrics := Toast_ToastMetricsFor(1, surfaceFrame)
 	labelFont, labelFontID := styleTextFace(label, Text14)
 	textWidth := int32(runtimeTextWidthWithFont(r.toastMessage, labelFont, labelFontID))
 	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, labelFont, metrics)

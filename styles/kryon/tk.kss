@@ -700,6 +700,9 @@ Toast {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 1;
   material: default;
 }

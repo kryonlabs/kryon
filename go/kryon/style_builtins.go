@@ -690,6 +690,9 @@ Toast {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 0.98;
   material: default;
 }
@@ -2447,6 +2450,9 @@ Toast {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 1;
   material: default;
 }
@@ -4162,6 +4168,9 @@ Toast {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 1;
   material: default;
 }
@@ -5959,6 +5968,9 @@ Toast {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 0.98;
   material: glow;
 }
@@ -7793,6 +7805,9 @@ Toast {
   border: border-soft;
   radius: radius;
   border-width: border;
+  padding-x: 14;
+  padding-y: 10;
+  gap: 18;
   opacity: 0.98;
   material: premium;
 }
