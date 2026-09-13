@@ -318,6 +318,7 @@ The initial tag mapping is intentionally conservative:
 | `Screen`, `Page` | `main` |
 | `Section` | `section` |
 | `NavigationBar` | `nav` |
+| `TitleBar` | `header` |
 | `Disabled` | `fieldset` |
 | `Fieldset` | `fieldset` |
 | `Collapsible` | `details` |
@@ -353,9 +354,10 @@ Other widgets remain `div` nodes until they gain a specific web-native
 contract.
 
 Div-backed widgets still expose conservative native ARIA roles when the widget
-semantics are clear: `Toolbar` uses `toolbar`, `SegmentedControl` uses `group`,
-`TabBar` uses `tablist`, `TreeView` uses `tree`, and `Toast` uses `status`.
-The `menu` element still receives explicit `role=menu`.
+semantics are clear: `TitleBar` uses `banner`, `Toolbar` uses `toolbar`,
+`SegmentedControl` uses `group`, `TabBar` uses `tablist`, `TreeView` uses
+`tree`, and `Toast` uses `status`. The `menu` element still receives explicit
+`role=menu`.
 Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 
 ## KSS Fit

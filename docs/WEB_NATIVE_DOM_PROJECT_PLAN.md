@@ -41,8 +41,8 @@ the browser receives normal elements, attributes, CSS, and events.
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
-  selectors, segmented controls, progress, separators, tables, canvas-backed
-  widgets, and common navigation/overlay roles.
+  selectors, segmented controls, progress, separators, tables, title/navigation
+  landmarks, canvas-backed widgets, and common overlay roles.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata and surface row/column header roles in accessibility facts.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text

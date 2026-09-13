@@ -1119,6 +1119,8 @@ function widgetTag(item) {
     return "section";
   case "NavigationBar":
     return "nav";
+  case "TitleBar":
+    return "header";
   case "Fieldset":
     return "fieldset";
   case "Collapsible":
@@ -1739,6 +1741,8 @@ function implicitRole(node) {
     return "main";
   if (node.tag === "nav")
     return "navigation";
+  if (node.tag === "header")
+    return "banner";
   if (node.tag === "fieldset" || node.tag === "details")
     return "group";
   if (node.tag === "dialog")
