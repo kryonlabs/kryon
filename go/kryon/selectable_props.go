@@ -3,9 +3,10 @@ package kryon
 
 // #import kryon_compat.generated.h
 type SelectableProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Label    string
-	Selected *int32
-	Disabled bool
+	Bounds    Rectangle
+	ID        int32
+	Label     string
+	Selected  *int32
+	Disabled  bool
+	ClassName int32
 }

@@ -371,6 +371,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    label: const char*\n"
         "    selected: *i32\n"
         "    disabled: bool\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/separator_props.kry",

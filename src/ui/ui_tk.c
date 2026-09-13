@@ -886,8 +886,9 @@ RenderSelectable(SelectableProps selectable)
         state = ButtonStateHover;
     else if(selected)
         state = ButtonStateSelected;
-    StyleFrame face = ui_tk_simple_style_frame(ButtonToneNeutral, state, disabled,
-                                               selected, StyleKindSelectable());
+    StyleFrame face = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        state, disabled, selected, selectable.class_name,
+        StyleKindSelectable(), StyleAny());
     float label_inset = face.value.padding_x > 0.0f
         ? face.value.padding_x
         : (float)Scale(8);

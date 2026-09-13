@@ -7,4 +7,5 @@ SelectableProps :: struct {
     label: const char*
     selected: *i32
     disabled: bool
+    class_name: i32
 }

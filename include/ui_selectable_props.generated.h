@@ -27,6 +27,7 @@ typedef struct SelectableProps {
     const char* label;
     int32_t* selected;
     bool disabled;
+    int32_t class_name;
 } SelectableProps;
 
 #endif /* K_RUNTIME_SELECTABLE_PROPS_H */

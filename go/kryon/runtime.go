@@ -2479,7 +2479,9 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	} else if selected {
 		state = ButtonStateSelected
 	}
-	face := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, selected, StyleSheet_StyleKindSelectable())
+	face := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
+		props.Disabled, selected, props.ClassName,
+		StyleSheet_StyleKindSelectable(), StyleSheet_StyleAny())
 	style := unpackStyle(face.Value)
 	labelInset := style.PaddingX
 	if labelInset <= 0 {

@@ -2890,16 +2890,22 @@ Selectable {
   font-size: 18;
   opacity: 0.72;
 }
+Selectable.primary {
+  background: #224466;
+  foreground: #ccffee;
+  padding-x: 18;
+}
 `, "Test Selectable", "") || !SetActiveStylePack("test.selectable") {
 		t.Fatal("test selectable style did not activate")
 	}
 	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
 	selected := int32(1)
 	rt.Selectable(SelectableProps{
-		Bounds:   Rectangle{X: 10, Y: 20, Width: 120, Height: 28},
-		ID:       72,
-		Label:    "Choice",
-		Selected: &selected,
+		Bounds:    Rectangle{X: 10, Y: 20, Width: 120, Height: 28},
+		ID:        72,
+		Label:     "Choice",
+		Selected:  &selected,
+		ClassName: StyleClassID("primary"),
 	})
 
 	var sawFill, sawText bool
@@ -2907,13 +2913,13 @@ Selectable {
 		switch {
 		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 20, Width: 120, Height: 28}):
 			sawFill = true
-			if op.Color != (Color{R: 0x31, G: 0x52, B: 0x7a, A: 0xff}) || op.Opacity != 0.72 {
+			if op.Color != (Color{R: 0x22, G: 0x44, B: 0x66, A: 0xff}) || op.Opacity != 0.72 {
 				t.Fatalf("selectable fill op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Choice":
 			sawText = true
-			if op.Bounds.X != 24 || op.Bounds.Width != 92 ||
-				op.Color != (Color{R: 0xee, G: 0xf5, B: 0xff, A: 0xff}) ||
+			if op.Bounds.X != 28 || op.Bounds.Width != 84 ||
+				op.Color != (Color{R: 0xcc, G: 0xff, B: 0xee, A: 0xff}) ||
 				op.FontSize != 18 || op.Opacity != 0.72 {
 				t.Fatalf("selectable label op = %+v", op)
 			}
