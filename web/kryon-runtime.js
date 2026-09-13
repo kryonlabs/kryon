@@ -2260,12 +2260,12 @@ const webKssLiteralProperties = new Set([
   "background-clip", "background-origin",
   "background-attachment", "background-blend-mode", "visibility",
   "transition", "transition-property", "transition-duration",
-  "transition-timing-function", "transition-delay",
+  "transition-timing-function", "transition-delay", "transition-behavior",
   "animation", "animation-name", "animation-duration",
   "animation-timing-function", "animation-delay",
   "animation-iteration-count", "animation-direction",
   "animation-fill-mode", "animation-play-state",
-  "animation-timeline", "animation-range", "animation-range-start",
+  "animation-composition", "animation-timeline", "animation-range", "animation-range-start",
   "animation-range-end", "scroll-timeline", "scroll-timeline-name",
   "scroll-timeline-axis", "view-timeline", "view-timeline-name",
   "view-timeline-axis", "view-timeline-inset", "timeline-scope",
@@ -3208,6 +3208,7 @@ const webCSSPropertyNames = new Map([
   ["transition-duration", "transition-duration"],
   ["transition-timing-function", "transition-timing-function"],
   ["transition-delay", "transition-delay"],
+  ["transition-behavior", "transition-behavior"],
   ["animation", "animation"],
   ["animation-name", "animation-name"],
   ["animation-duration", "animation-duration"],
@@ -3217,6 +3218,7 @@ const webCSSPropertyNames = new Map([
   ["animation-direction", "animation-direction"],
   ["animation-fill-mode", "animation-fill-mode"],
   ["animation-play-state", "animation-play-state"],
+  ["animation-composition", "animation-composition"],
   ["animation-timeline", "animation-timeline"],
   ["animation-range", "animation-range"],
   ["animation-range-start", "animation-range-start"],
@@ -4668,6 +4670,7 @@ function applyResolvedWebStyle(el, style) {
   set("transitionDuration", style["transition-duration"]);
   set("transitionTimingFunction", style["transition-timing-function"]);
   set("transitionDelay", style["transition-delay"]);
+  set("transitionBehavior", style["transition-behavior"]);
   set("animation", style.animation);
   set("animationName", style["animation-name"]);
   set("animationDuration", style["animation-duration"]);
@@ -4677,6 +4680,7 @@ function applyResolvedWebStyle(el, style) {
   set("animationDirection", style["animation-direction"]);
   set("animationFillMode", style["animation-fill-mode"]);
   set("animationPlayState", style["animation-play-state"]);
+  set("animationComposition", style["animation-composition"]);
   set("animationTimeline", style["animation-timeline"]);
   set("animationRange", style["animation-range"]);
   set("animationRangeStart", style["animation-range-start"]);

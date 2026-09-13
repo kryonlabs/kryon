@@ -372,6 +372,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     transition-duration: 120ms;
     transition-timing-function: ease-in-out;
     transition-delay: 20ms;
+    transition-behavior: allow-discrete;
     animation: fade-in 200ms ease both;
     animation-name: fade-in;
     animation-duration: 200ms;
@@ -381,6 +382,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     animation-direction: alternate;
     animation-fill-mode: both;
     animation-play-state: running;
+    animation-composition: accumulate;
     transform: scale(1.1);
     transform-origin: center;
     offset-path: path("M 0 0 L 10 10");
@@ -5041,6 +5043,7 @@ Page { background: #0a141e; }`
     assert.equal(firstField.style.transitionDuration, "120ms");
     assert.equal(firstField.style.transitionTimingFunction, "ease-in-out");
     assert.equal(firstField.style.transitionDelay, "20ms");
+    assert.equal(firstField.style.transitionBehavior, "allow-discrete");
     assert.equal(firstField.style.animation, "fade-in 200ms ease both");
     assert.equal(firstField.style.animationName, "fade-in");
     assert.equal(firstField.style.animationDuration, "200ms");
@@ -5050,6 +5053,7 @@ Page { background: #0a141e; }`
     assert.equal(firstField.style.animationDirection, "alternate");
     assert.equal(firstField.style.animationFillMode, "both");
     assert.equal(firstField.style.animationPlayState, "running");
+    assert.equal(firstField.style.animationComposition, "accumulate");
     assert.equal(firstField.style.transform,
       "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px)) scale(1.1)");
     assert.equal(firstField.style.transformOrigin, "center");

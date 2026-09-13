@@ -55,6 +55,8 @@ const sheet = runtime.parseWebStyleSheet(`
     perspective: 800;
     perspective-origin: 50% 50%;
     backface-visibility: hidden;
+    transition-behavior: allow-discrete;
+    animation-composition: accumulate;
     animation-timeline: --field-scroll;
     animation-range: entry 0% cover 80%;
     animation-range-start: entry 10%;
@@ -148,6 +150,8 @@ assert.match(css, /scale: 1.2;/);
 assert.match(css, /perspective: 800px;/);
 assert.match(css, /perspective-origin: 50% 50%;/);
 assert.match(css, /backface-visibility: hidden;/);
+assert.match(css, /transition-behavior: allow-discrete;/);
+assert.match(css, /animation-composition: accumulate;/);
 assert.match(css, /animation-timeline: --field-scroll;/);
 assert.match(css, /animation-range: entry 0% cover 80%;/);
 assert.match(css, /animation-range-start: entry 10%;/);
@@ -244,6 +248,8 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   perspective: 800,
   "perspective-origin": "50% 50%",
   "backface-visibility": "hidden",
+  "transition-behavior": "allow-discrete",
+  "animation-composition": "accumulate",
   "animation-timeline": "--field-scroll",
   "animation-range": "entry 0% cover 80%",
   "animation-range-start": "entry 10%",

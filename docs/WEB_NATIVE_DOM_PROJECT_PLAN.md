@@ -252,7 +252,8 @@ the browser receives normal elements, attributes, CSS, and events.
   intrinsic containment sizing, and container query shorthand/name/type
   properties.
 - KSS web overlay and transition styling supports native anchor positioning
-  fields and `view-transition-name`.
+  fields, `view-transition-name`, transition behavior, and animation
+  composition.
 - KSS web motion, sizing, accessibility, and paint styling supports native
   scroll/view timelines, animation ranges, `field-sizing`, `interpolate-size`,
   `overlay`, forced/print color adjustment, SVG paint-order/interpolation, and
