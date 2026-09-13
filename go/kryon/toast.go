@@ -17,6 +17,31 @@ type ToastLayout struct {
 	ContentWidth int32
 }
 
+func Toast_ToastMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
 func Toast_ToastMetricsFor(scale float32, frame StyleFrame) ToastMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -26,85 +51,34 @@ func Toast_ToastMetricsFor(scale float32, frame StyleFrame) ToastMetrics {
 		scale = value_3
 	}
 	var metrics ToastMetrics = ToastMetrics{}
-	var value_4 float32 = frame.Value.PaddingX
-	var pad_x float32 = value_4
-	var value_5 float32 = frame.Value.PaddingY
-	var pad_y float32 = value_5
-	var value_6 float32 = frame.Value.Gap
-	var margin float32 = value_6
-	var value_7 uint32 = frame.Value.Fields
-	var value_8 int32 = int32(StylePaddingX)
-	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 8))
-	var value_11 int32 = 0
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 bool = value_10 == value_12
-	var value_14 bool = value_13
-	if !value_14 {
-		var value_15 float32 = pad_x
-		var value_16 float32 = 0.0
-		var value_17 bool = value_15 < value_16
-		value_14 = value_17
-	}
-	if value_14 {
-		var value_18 float32 = 14.0
-		pad_x = value_18
-	}
-	var value_19 uint32 = frame.Value.Fields
-	var value_20 int32 = int32(StylePaddingY)
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 8))
-	var value_23 int32 = 0
-	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
-	var value_25 bool = value_22 == value_24
-	var value_26 bool = value_25
-	if !value_26 {
-		var value_27 float32 = pad_y
-		var value_28 float32 = 0.0
-		var value_29 bool = value_27 < value_28
-		value_26 = value_29
-	}
-	if value_26 {
-		var value_30 float32 = 10.0
-		pad_y = value_30
-	}
-	var value_31 uint32 = frame.Value.Fields
-	var value_32 int32 = int32(StyleGap)
-	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(value_33), 32, false, 8))
-	var value_35 int32 = 0
-	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
-	var value_37 bool = value_34 == value_36
-	var value_38 bool = value_37
-	if !value_38 {
-		var value_39 float32 = margin
-		var value_40 float32 = 0.0
-		var value_41 bool = value_39 < value_40
-		value_38 = value_41
-	}
-	if value_38 {
-		var value_42 float32 = 18.0
-		margin = value_42
-	}
-	var value_43 float32 = pad_x
-	var value_44 float32 = scale
-	var value_45 float32 = value_43 * value_44
-	var value_46 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_45), 32, true)), uint64(0), 32, true, 0))
-	metrics.PadX = value_46
-	var value_47 float32 = pad_y
-	var value_48 float32 = scale
-	var value_49 float32 = value_47 * value_48
-	var value_50 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_49), 32, true)), uint64(0), 32, true, 0))
-	metrics.PadY = value_50
-	var value_51 float32 = margin
-	var value_52 float32 = scale
-	var value_53 float32 = value_51 * value_52
-	var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
-	metrics.Margin = value_54
-	var value_55 float32 = 3.0
-	metrics.DefaultSeconds = value_55
-	var value_56 ToastMetrics = metrics
-	return value_56
+	var value_4 uint32 = frame.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.PaddingX
+	var value_8 float32 = 14.0
+	var value_9 float32 = scale
+	var value_10 int32 = Toast_ToastMetric(value_4, value_6, value_7, value_8, value_9)
+	metrics.PadX = value_10
+	var value_11 uint32 = frame.Value.Fields
+	var value_12 int32 = int32(StylePaddingY)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = frame.Value.PaddingY
+	var value_15 float32 = 10.0
+	var value_16 float32 = scale
+	var value_17 int32 = Toast_ToastMetric(value_11, value_13, value_14, value_15, value_16)
+	metrics.PadY = value_17
+	var value_18 uint32 = frame.Value.Fields
+	var value_19 int32 = int32(StyleGap)
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
+	var value_21 float32 = frame.Value.Gap
+	var value_22 float32 = 18.0
+	var value_23 float32 = scale
+	var value_24 int32 = Toast_ToastMetric(value_18, value_20, value_21, value_22, value_23)
+	metrics.Margin = value_24
+	var value_25 float32 = 3.0
+	metrics.DefaultSeconds = value_25
+	var value_26 ToastMetrics = metrics
+	return value_26
 }
 
 func Toast_ToastDuration(seconds float32, metrics ToastMetrics) float32 {

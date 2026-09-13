@@ -16,24 +16,21 @@ ToastLayout :: struct {
     content_width: i32
 }
 
+ToastMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
 ToastMetricsFor :: (scale: float, frame: StyleFrame) -> ToastMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ToastMetrics
-    pad_x: float = frame.value.padding_x
-    pad_y: float = frame.value.padding_y
-    margin: float = frame.value.gap
-    if (frame.value.fields & (u32)StylePaddingX) == (u32)0 || pad_x < 0.0 {
-        pad_x = 14.0
-    }
-    if (frame.value.fields & (u32)StylePaddingY) == (u32)0 || pad_y < 0.0 {
-        pad_y = 10.0
-    }
-    if (frame.value.fields & (u32)StyleGap) == (u32)0 || margin < 0.0 {
-        margin = 18.0
-    }
-    metrics.pad_x = (i32)(pad_x * scale)
-    metrics.pad_y = (i32)(pad_y * scale)
-    metrics.margin = (i32)(margin * scale)
+    metrics.pad_x = ToastMetric(frame.value.fields, (u32)StylePaddingX,
+        frame.value.padding_x, 14.0, scale)
+    metrics.pad_y = ToastMetric(frame.value.fields, (u32)StylePaddingY,
+        frame.value.padding_y, 10.0, scale)
+    metrics.margin = ToastMetric(frame.value.fields, (u32)StyleGap,
+        frame.value.gap, 18.0, scale)
     metrics.default_seconds = 3.0
     return metrics
 }
