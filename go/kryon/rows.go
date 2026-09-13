@@ -34,6 +34,12 @@ type ButtonRowMetrics struct {
 	MaxWidth     int32
 }
 
+type ButtonRowPlacement struct {
+	StartX      int32
+	ButtonWidth int32
+	TotalWidth  int32
+}
+
 type SpinboxRowMetrics struct {
 	RowHeight          int32
 	ControlWidth       int32
@@ -345,6 +351,65 @@ func Rows_ButtonRowItemWidth(label_width int32, metrics ButtonRowMetrics) int32 
 	}
 	var value_13 int32 = width
 	return value_13
+}
+
+func Rows_ButtonRowPlacementFor(x int32, width int32, row_count int32, gap int32) ButtonRowPlacement {
+	var placement ButtonRowPlacement = ButtonRowPlacement{}
+	var value_0 int32 = row_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = width
+		var value_5 int32 = 0
+		var value_6 bool = value_4 <= value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 int32 = x
+		placement.StartX = value_7
+		var value_8 ButtonRowPlacement = placement
+		return value_8
+	}
+	var value_9 int32 = width
+	var value_10 int32 = gap
+	var value_11 int32 = row_count
+	var value_12 int32 = 1
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 3))
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_14), 32, true, 2))
+	var usable int32 = value_15
+	var value_16 int32 = usable
+	var value_17 int32 = row_count
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 4))
+	placement.ButtonWidth = value_18
+	var value_19 int32 = placement.ButtonWidth
+	var value_20 int32 = 0
+	var value_21 bool = value_19 < value_20
+	if value_21 {
+		var value_22 int32 = 0
+		placement.ButtonWidth = value_22
+	}
+	var value_23 int32 = placement.ButtonWidth
+	var value_24 int32 = row_count
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
+	var value_26 int32 = gap
+	var value_27 int32 = row_count
+	var value_28 int32 = 1
+	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_29), 32, true, 3))
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_30), 32, true, 1))
+	placement.TotalWidth = value_31
+	var value_32 int32 = x
+	var value_33 int32 = width
+	var value_34 int32 = placement.TotalWidth
+	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
+	var value_36 int32 = 2
+	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 4))
+	var value_38 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_37), 32, true, 1))
+	placement.StartX = value_38
+	var value_39 ButtonRowPlacement = placement
+	return value_39
 }
 
 func Rows_SpinboxRowMetricsFor(row_height int32, control_width int32, scale float32, row StyleFrame, control StyleFrame) SpinboxRowMetrics {

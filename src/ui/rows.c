@@ -460,8 +460,10 @@ RenderButtonRow(ButtonRowProps row)
         }
 
         if(row_count > 0) {
-            int button_w = (row.width - gap * (row_count - 1)) / row_count;
-            int x = row.x + (row.width - (button_w * row_count + gap * (row_count - 1))) / 2;
+            ButtonRowPlacement placement =
+                ButtonRowPlacementFor(row.x, row.width, row_count, gap);
+            int button_w = placement.button_width;
+            int x = placement.start_x;
 
             if(button_w <= 0)
                 return clicked;

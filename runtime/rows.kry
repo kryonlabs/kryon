@@ -33,6 +33,12 @@ ButtonRowMetrics :: struct {
     max_width: i32
 }
 
+ButtonRowPlacement :: struct {
+    start_x: i32
+    button_width: i32
+    total_width: i32
+}
+
 SpinboxRowMetrics :: struct {
     row_height: i32
     control_width: i32
@@ -150,6 +156,22 @@ ButtonRowItemWidth :: (label_width: i32, metrics: ButtonRowMetrics) -> i32 #expo
     if width < metrics.min_width { width = metrics.min_width }
     if width > metrics.max_width { width = metrics.max_width }
     return width
+}
+
+ButtonRowPlacementFor :: (x: i32, width: i32, row_count: i32,
+    gap: i32) -> ButtonRowPlacement #export {
+    placement: ButtonRowPlacement
+    if row_count <= 0 || width <= 0 {
+        placement.start_x = x
+        return placement
+    }
+    usable: i32 = width - gap * (row_count - 1)
+    placement.button_width = usable / row_count
+    if placement.button_width < 0 { placement.button_width = 0 }
+    placement.total_width = placement.button_width * row_count +
+        gap * (row_count - 1)
+    placement.start_x = x + (width - placement.total_width) / 2
+    return placement
 }
 
 SpinboxRowMetricsFor :: (row_height: i32, control_width: i32,
