@@ -688,6 +688,8 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
 `form`, reverse `formControls` links for controls owned by a form-like node,
 semantic `groupOwner`/`groupMembers` links for grouped controls,
+disabled scope owner/member links for controls inside disabled fieldsets or
+`Disabled` scopes,
 semantic `landmarkOwner`/`landmarkMembers` links for nodes inside native or
 ARIA page landmarks,
 semantic `collectionOwner`/`collectionItems` links for native menu, tablist,

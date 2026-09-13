@@ -539,6 +539,8 @@ export interface WebDOMRelations {
   nextSibling: WebDOMObject | null;
   groupOwner: WebDOMObject | null;
   groupMembers: WebDOMObject[];
+  disabledOwner: WebDOMObject | null;
+  disabledMembers: WebDOMObject[];
   landmarkOwner: WebDOMObject | null;
   landmarkMembers: WebDOMObject[];
   collectionOwner: WebDOMObject | null;
@@ -580,6 +582,8 @@ export interface WebNodeRelations {
   nextSibling: WebDocumentNode | null;
   groupOwner: WebDocumentNode | null;
   groupMembers: WebDocumentNode[];
+  disabledOwner: WebDocumentNode | null;
+  disabledMembers: WebDocumentNode[];
   landmarkOwner: WebDocumentNode | null;
   landmarkMembers: WebDocumentNode[];
   collectionOwner: WebDocumentNode | null;
@@ -621,6 +625,8 @@ export interface WebDOMRelationRefs {
   nextSibling: string;
   groupOwner: string;
   groupMembers: string[];
+  disabledOwner: string;
+  disabledMembers: string[];
   landmarkOwner: string;
   landmarkMembers: string[];
   collectionOwner: string;

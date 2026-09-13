@@ -2802,6 +2802,10 @@ function fakeDocument() {
       { nodeName: "fieldset", path: "Page/fieldset" });
     runtime.widget(nativeRt, "Checkbox", { checked: true, label: "Agree" }, null,
       { nodeName: "fieldsetAgree", path: "Page/fieldset/agree", parentPath: "Page/fieldset" });
+    runtime.widget(nativeRt, "Fieldset", { title: "Locked", disabled: true }, null,
+      { nodeName: "lockedFieldset", path: "Page/locked" });
+    runtime.widget(nativeRt, "TextField", { label: "Locked field" }, null,
+      { nodeName: "lockedField", path: "Page/locked/field", parentPath: "Page/locked" });
     runtime.widget(nativeRt, "Collapsible", {}, null,
       { nodeName: "autoDetails", path: "Page/autoDetails" });
     runtime.widget(nativeRt, "Modal", {}, null,
@@ -2930,6 +2934,12 @@ function fakeDocument() {
       "Page/fieldset");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Fieldset").groupMembers,
       ["Page/fieldset/agree"]);
+    assert.equal(runtime.webNodeRelations(nativeRt, "lockedField").disabledOwner.path,
+      "Page/locked");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "lockedFieldset").disabledMembers,
+      ["Page/locked/field"]);
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "lockedField")
+      .relationRefs.disabledOwner, "Page/locked");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3073,6 +3083,8 @@ function fakeDocument() {
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
     const fieldsetAgree = runtime.findWebElement(nativeTarget, "fieldsetAgree");
+    const lockedFieldset = runtime.findWebElement(nativeTarget, "lockedFieldset");
+    const lockedField = runtime.findWebElement(nativeTarget, "lockedField");
     const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
     const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
     const email = runtime.findWebElement(nativeTarget, "email");
@@ -3118,6 +3130,15 @@ function fakeDocument() {
       "Page/fieldset");
     assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.groupMembers,
       ["Page/fieldset/agree"]);
+    assert.equal(lockedFieldset.tagName, "FIELDSET");
+    assert.equal(lockedFieldset.attributes.disabled, "");
+    assert.equal(lockedField.tagName, "INPUT");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "lockedField").disabledOwner.ref,
+      "Page/locked");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "lockedFieldset").disabledMembers,
+      ["Page/locked/field"]);
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "lockedField")
+      .relationRefs.disabledOwner, "Page/locked");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nav/home").landmarkOwner.ref,
       "Page/nav");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nav").landmarkMembers,

@@ -88,6 +88,9 @@ the browser receives normal elements, attributes, CSS, and events.
   row-group/column-group headers for inspectors and browser DOM snapshots.
 - Semantic group relationship facts expose `groupOwner` and `groupMembers` for
   controls inside native or ARIA groups.
+- Disabled scope relationship facts expose `disabledOwner` and
+  `disabledMembers` for nodes inside disabled `Fieldset` and `Disabled`
+  scopes.
 - Semantic landmark relationship facts expose `landmarkOwner` and
   `landmarkMembers` for nodes inside native or ARIA page landmarks.
 - Semantic collection relationship facts expose `collectionOwner` and

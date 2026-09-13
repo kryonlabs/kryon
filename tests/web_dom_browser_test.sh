@@ -122,6 +122,16 @@ try {
     path: "Page/article/options/email",
     parentPath: "Page/article/options"
   });
+  kryon.widget(rt, "Fieldset", { title: "Locked", disabled: true }, null, {
+    nodeName: "lockedOptions",
+    path: "Page/article/lockedOptions",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "TextField", { label: "Locked field" }, null, {
+    nodeName: "lockedField",
+    path: "Page/article/lockedOptions/field",
+    parentPath: "Page/article/lockedOptions"
+  });
   kryon.widget(rt, "Column", { dom_tag: "label", web_ref: "newsletterLabel" }, null, {
     nodeName: "newsletterLabel",
     path: "Page/article/newsletterLabel",
@@ -454,6 +464,15 @@ try {
     "fieldset group member relation refs missing");
   assert(kryon.webDOMSnapshot(target, "emailOptIn").relationRefs.groupOwner === "Page/article/options",
     "fieldset group owner snapshot missing");
+  assert(kryon.findWebElement(target, "lockedOptions").getAttribute("disabled") === "",
+    "disabled fieldset attribute missing");
+  assert(kryon.webDOMRelations(target, "lockedField").disabledOwner.ref ===
+    "Page/article/lockedOptions", "disabled owner relation missing");
+  assert(kryon.webDOMRelationRefs(target, "lockedOptions").disabledMembers
+    .join(" ") === "Page/article/lockedOptions/field",
+    "disabled member relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "lockedField").relationRefs.disabledOwner ===
+    "Page/article/lockedOptions", "disabled owner snapshot missing");
   assert(kryon.webDOMRelations(target, "newsletterLabel").labelFor.ref ===
     "Page/article/newsletterLabel/optIn", "implicit labelFor relation missing");
   assert(kryon.webDOMRelations(target, "newsletterOptIn").labelledBy
