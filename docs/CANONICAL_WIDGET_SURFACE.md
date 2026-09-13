@@ -372,7 +372,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
-| `Dropdown` | `.kry canonical` | Already has `.kry` module. |
+| `Dropdown` | `.kry canonical` | Already has `.kry` module; trigger and option typography use resolved KSS font sizes directly. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
