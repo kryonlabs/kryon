@@ -95,7 +95,7 @@ func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, sca
 	var value_29 float32 = tab.Value.IconSize
 	var value_30 float32 = 16.0
 	var value_31 float32 = scale
-	var value_32 bool = false
+	var value_32 bool = true
 	var value_33 int32 = TabBar_TabBarMetric(value_26, value_28, value_29, value_30, value_31, value_32)
 	paint.IconSize = value_33
 	var value_34 uint32 = tab.Value.Fields
@@ -122,7 +122,7 @@ func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, sca
 	var value_53 float32 = close.Value.IconSize
 	var value_54 float32 = 18.0
 	var value_55 float32 = scale
-	var value_56 bool = false
+	var value_56 bool = true
 	var value_57 int32 = TabBar_TabBarMetric(value_50, value_52, value_53, value_54, value_55, value_56)
 	paint.CloseSize = value_57
 	var value_58 uint32 = close.Value.Fields
@@ -269,7 +269,7 @@ func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32
 	var value_38 float32 = tab.Value.IconSize
 	var value_39 float32 = 44.0
 	var value_40 float32 = scale
-	var value_41 bool = false
+	var value_41 bool = true
 	var value_42 int32 = TabBar_TabBarMetric(value_35, value_37, value_38, value_39, value_40, value_41)
 	metrics.IconWidth = value_42
 	var value_43 uint32 = bar.Value.Fields
@@ -287,7 +287,7 @@ func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32
 	var value_54 float32 = close.Value.IconSize
 	var value_55 float32 = 24.0
 	var value_56 float32 = scale
-	var value_57 bool = false
+	var value_57 bool = true
 	var value_58 int32 = TabBar_TabBarMetric(value_51, value_53, value_54, value_55, value_56, value_57)
 	metrics.CloseWidth = value_58
 	var value_59 uint32 = tab.Value.Fields

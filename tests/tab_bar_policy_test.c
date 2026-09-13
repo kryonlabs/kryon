@@ -104,14 +104,22 @@ main(void)
     tab_frame.value.padding_x = 0.0f;
     tab_frame.value.gap = 0.0f;
     close_frame.value.gap = 0.0f;
+    tab_frame.value.icon_size = 0.0f;
+    close_frame.value.icon_size = 0.0f;
     metrics = TabBarDefaultMetrics(0, 0, 1.0f,
                                    bar_frame, tab_frame, close_frame);
     paint = TabBarPaintFor(bar_frame, tab_frame, close_frame, 1.0f);
     assert(metrics.gap == 0);
+    assert(metrics.icon_width == 0);
+    assert(metrics.close_width == 0);
     assert(metrics.label_padding == 0);
     assert(paint.text_padding == 0);
+    assert(paint.icon_size == 0);
     assert(paint.icon_gap == 0);
+    assert(paint.close_size == 0);
     assert(paint.close_gap == 0);
+    assert(TabBarTabWidth(0, 0, 1, 0, metrics) == 0);
+    assert(TabBarTabWidth(42, 1, 0, 1, metrics) == 80);
 
     paint = TabBarPaintFor((StyleFrame){0}, (StyleFrame){0},
                            (StyleFrame){0}, 2.0f);

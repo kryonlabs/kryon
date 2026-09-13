@@ -576,7 +576,7 @@ RenderTabBar(TabBarProps bar)
         Color icon_tint = Fade(GetColor(paint.icon_color), tab_style.opacity);
 
         // Draw icon if present
-        if(tab->icon.id != 0) {
+        if(tab->icon.id != 0 && icon_size > 0) {
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
             else {
@@ -614,7 +614,7 @@ RenderTabBar(TabBarProps bar)
         if(can_draw && text_rect.width > 0 && has_label)
             DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
 
-        if(can_draw && tab->closeable) {
+        if(can_draw && tab->closeable && close_size > 0) {
             if(close_hovered) {
                 close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
                     ButtonStateHover, is_disabled, 0, bar.class_name);

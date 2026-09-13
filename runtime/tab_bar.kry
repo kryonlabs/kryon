@@ -63,13 +63,13 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     paint.text_padding = TabBarMetric(tab.value.fields,
         (u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
     paint.icon_size = TabBarMetric(tab.value.fields,
-        (u32)StyleIconSize, tab.value.icon_size, 16.0, scale, false)
+        (u32)StyleIconSize, tab.value.icon_size, 16.0, scale, true)
     paint.icon_gap = TabBarMetric(tab.value.fields,
         (u32)StyleGap, tab.value.gap, 4.0, scale, true)
     paint.content_inset_y = TabBarMetric(tab.value.fields,
         (u32)StylePaddingY, tab.value.padding_y, 8.0, scale, true)
     paint.close_size = TabBarMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 18.0, scale, false)
+        (u32)StyleIconSize, close.value.icon_size, 18.0, scale, true)
     paint.close_gap = TabBarMetric(close.value.fields,
         (u32)StyleGap, close.value.gap, 6.0, scale, true)
     paint.reorder_drag_threshold = TabBarMetric(bar.value.fields,
@@ -115,11 +115,11 @@ TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float,
         metrics.max_width = metrics.min_width
     }
     metrics.icon_width = TabBarMetric(tab.value.fields,
-        (u32)StyleIconSize, tab.value.icon_size, 44.0, scale, false)
+        (u32)StyleIconSize, tab.value.icon_size, 44.0, scale, true)
     metrics.gap = TabBarMetric(bar.value.fields, (u32)StyleGap,
         bar.value.gap, 0.0, scale, true)
     metrics.close_width = TabBarMetric(close.value.fields,
-        (u32)StyleIconSize, close.value.icon_size, 24.0, scale, false)
+        (u32)StyleIconSize, close.value.icon_size, 24.0, scale, true)
     metrics.label_padding = TabBarMetric(tab.value.fields,
         (u32)StylePaddingX, tab.value.padding_x * 2.0, 16.0, scale, true)
     return metrics
