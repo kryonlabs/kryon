@@ -56,6 +56,14 @@ const sheet = runtime.parseWebStyleSheet(`
     contain-intrinsic-inline-size: 320;
     contain-intrinsic-block-size: 180;
     overflow-clip-margin: 12;
+    anchor-name: --search-control;
+    position-anchor: --search-control;
+    position-area: bottom span-right;
+    position-try: flip-block;
+    position-try-fallbacks: flip-inline;
+    position-try-order: most-width;
+    position-visibility: anchors-visible;
+    view-transition-name: search-control;
     accent-color: accent;
     caret-color: caret;
     appearance: none;
@@ -109,6 +117,14 @@ assert.match(css, /contain-intrinsic-size: 320px;/);
 assert.match(css, /contain-intrinsic-inline-size: 320px;/);
 assert.match(css, /contain-intrinsic-block-size: 180px;/);
 assert.match(css, /overflow-clip-margin: 12px;/);
+assert.match(css, /anchor-name: --search-control;/);
+assert.match(css, /position-anchor: --search-control;/);
+assert.match(css, /position-area: bottom span-right;/);
+assert.match(css, /position-try: flip-block;/);
+assert.match(css, /position-try-fallbacks: flip-inline;/);
+assert.match(css, /position-try-order: most-width;/);
+assert.match(css, /position-visibility: anchors-visible;/);
+assert.match(css, /view-transition-name: search-control;/);
 assert.match(css, /accent-color: #3366ff;/);
 assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
@@ -165,6 +181,14 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "contain-intrinsic-inline-size": 320,
   "contain-intrinsic-block-size": 180,
   "overflow-clip-margin": 12,
+  "anchor-name": "--search-control",
+  "position-anchor": "--search-control",
+  "position-area": "bottom span-right",
+  "position-try": "flip-block",
+  "position-try-fallbacks": "flip-inline",
+  "position-try-order": "most-width",
+  "position-visibility": "anchors-visible",
+  "view-transition-name": "search-control",
   "accent-color": "#3366ff",
   "caret-color": "#ff6633",
   appearance: "none",
@@ -334,6 +358,14 @@ assert.equal(field.style.containIntrinsicSize, "320px");
 assert.equal(field.style.containIntrinsicInlineSize, "320px");
 assert.equal(field.style.containIntrinsicBlockSize, "180px");
 assert.equal(field.style.overflowClipMargin, "12px");
+assert.equal(field.style.anchorName, "--search-control");
+assert.equal(field.style.positionAnchor, "--search-control");
+assert.equal(field.style.positionArea, "bottom span-right");
+assert.equal(field.style.positionTry, "flip-block");
+assert.equal(field.style.positionTryFallbacks, "flip-inline");
+assert.equal(field.style.positionTryOrder, "most-width");
+assert.equal(field.style.positionVisibility, "anchors-visible");
+assert.equal(field.style.viewTransitionName, "search-control");
 assert.equal(field.style.accentColor, "#3366ff");
 assert.equal(field.style.caretColor, "#ff6633");
 assert.equal(field.style.appearance, "none");

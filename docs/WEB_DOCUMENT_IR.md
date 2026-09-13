@@ -459,7 +459,7 @@ list-style and table layout controls, flex flow/grow/shrink/basis/order,
 grid tracks/areas/auto tracks/auto-flow/line placement,
 row/column gaps, placement/content/self alignment, transforms, containment,
 content visibility, intrinsic containment sizing, container
-queries, will-change, isolation, blend mode,
+queries, anchor positioning, view-transition names, will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
 animations, clip/mask paint controls, writing direction/mode, hyphenation,
 line clamping, color scheme, columns/break flow controls,

@@ -2075,7 +2075,9 @@ const webKssLiteralProperties = new Set([
   "contain-intrinsic-width", "contain-intrinsic-height",
   "contain-intrinsic-inline-size", "contain-intrinsic-block-size",
   "container-type", "container-name", "will-change",
-  "isolation", "mix-blend-mode", "columns", "column-rule",
+  "anchor-name", "position-anchor", "position-area", "position-try",
+  "position-try-fallbacks", "position-try-order", "position-visibility",
+  "view-transition-name", "isolation", "mix-blend-mode", "columns", "column-rule",
   "break-before", "break-after", "break-inside", "float", "clear",
   "order"
 ]);
@@ -2957,7 +2959,15 @@ const webCSSPropertyNames = new Map([
   ["contain-intrinsic-block-size", "contain-intrinsic-block-size"],
   ["container-type", "container-type"],
   ["container-name", "container-name"],
+  ["anchor-name", "anchor-name"],
+  ["position-anchor", "position-anchor"],
+  ["position-area", "position-area"],
+  ["position-try", "position-try"],
+  ["position-try-fallbacks", "position-try-fallbacks"],
+  ["position-try-order", "position-try-order"],
+  ["position-visibility", "position-visibility"],
   ["will-change", "will-change"],
+  ["view-transition-name", "view-transition-name"],
   ["isolation", "isolation"],
   ["mix-blend-mode", "mix-blend-mode"],
   ["columns", "columns"],
@@ -4042,7 +4052,15 @@ function applyResolvedWebStyle(el, style) {
   set("containIntrinsicBlockSize", style["contain-intrinsic-block-size"]);
   set("containerType", style["container-type"]);
   set("containerName", style["container-name"]);
+  set("anchorName", style["anchor-name"]);
+  set("positionAnchor", style["position-anchor"]);
+  set("positionArea", style["position-area"]);
+  set("positionTry", style["position-try"]);
+  set("positionTryFallbacks", style["position-try-fallbacks"]);
+  set("positionTryOrder", style["position-try-order"]);
+  set("positionVisibility", style["position-visibility"]);
   set("willChange", style["will-change"]);
+  set("viewTransitionName", style["view-transition-name"]);
   set("isolation", style.isolation);
   set("mixBlendMode", style["mix-blend-mode"]);
   set("columns", style.columns);
