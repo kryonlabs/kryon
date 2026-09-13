@@ -49,6 +49,21 @@ GO_SCOPE_EXPORT_ALLOWLIST = {
     "EndFrame",
 }
 
+LOWERED_HOST_SCOPE_NAMES = {
+    "BeginButton",
+    "BeginCanvas",
+    "BeginCard",
+    "BeginDisabled",
+    "BeginPopup",
+    "BeginScroll",
+    "BeginTableCell",
+    "EndCanvas",
+    "EndDisabled",
+    "EndPopup",
+    "EndScroll",
+    "EndTableCell",
+}
+
 PUBLIC_WIDGET_NAMES = {
     "Button",
     "Bullet",
@@ -320,6 +335,25 @@ def web_compat_rows() -> dict[str, list[str]]:
     return rows
 
 
+def public_category_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Core Drawing And Text\n(?P<body>.*?)(?=^## Escape Hatches)",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing public widget category sections")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            name = cells[0].strip("`")
+            rows[name] = cells
+    return rows
+
+
 def feature_matrix_parser_names() -> tuple[int, list[str]]:
     text = FEATURE_MATRIX.read_text(encoding="utf-8")
     count_match = re.search(
@@ -354,6 +388,7 @@ def main() -> int:
     compat_doc_rows = compat_rows()
     go_compat_doc_rows = go_compat_rows()
     web_compat_doc_rows = web_compat_rows()
+    category_rows = public_category_rows()
     feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
     ui_tree_functions = ui_tree_function_names()
@@ -376,6 +411,10 @@ def main() -> int:
     for name in sorted(PUBLIC_WIDGET_NAMES):
         if f"`{name}`" not in doc:
             errors.append(f"missing public widget surface row: {name}")
+    for name in sorted(LOWERED_HOST_SCOPE_NAMES & set(category_rows)):
+        errors.append(
+            f"lowered host scope must not appear as a public widget category row: {name}"
+        )
     guide_row = re.search(r"^\| `Guide` \| (?P<decision>[^|]+) \| (?P<notes>[^|]+) \|$", doc, re.M)
     if not guide_row:
         errors.append("missing Guide overlay review row")

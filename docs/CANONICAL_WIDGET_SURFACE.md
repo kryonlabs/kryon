@@ -351,11 +351,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `Card` | `.kry canonical` | Already has `.kry` module. |
-| `BeginCard` | Native support | Lowered host entry for composed `.kry` `Card` content; not a separate widget concept. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, and emphasis behavior should live in `ButtonProps` or small `.kry` composition, not separate public widget names. |
-| `BeginButton` | Native support | Lowered host entry for composed `.kry` `Button` content; not a separate widget concept. |
-| `BeginDisabled` | Native support | Host scope for disabled child content. |
-| `EndDisabled` | Native support | Host scope exit for disabled child content. |
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, typography uses resolved KSS font sizes directly, and URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
@@ -398,10 +394,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
 | `ScrollPage` | Native support | Internal host helper only; not a public widget concept. |
 | `ScreenScaffold` | Native support | Internal app-shell helper only; compose pages from `.kry` layout. |
-| `BeginScroll` | Native support | Lowered host entry for `.kry` `Scroll` blocks; not a separate public widget name. |
-| `EndScroll` | Native support | Lowered host exit for `.kry` `Scroll` blocks; not a separate public widget name. |
-| `BeginTableCell` | Native support | Lowered host entry for `.kry` `TableCell` blocks; not a separate public widget name. |
-| `EndTableCell` | Native support | Lowered host exit for `.kry` `TableCell` blocks; not a separate public widget name. |
 
 ## Page And Web Surfaces
 
@@ -422,8 +414,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/cell geometry is in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
 | `Canvas` | `.kry canonical` | Transform, hit-test, and result policy are in `.kry`; host keeps clip/camera renderer scope. |
-| `BeginCanvas` | Native support | Lowered host entry for `.kry` `Canvas` blocks; not a separate public widget name. |
-| `EndCanvas` | Native support | Lowered host exit for `.kry` `Canvas` blocks; not a separate public widget name. |
 | `DragDrop` | `.kry canonical` | Typed drag/drop interaction concept. Source and target roles belong in props or composition; decision policy is in `.kry`, host keeps payload storage, type comparison, and pointer ownership. |
 
 ## Navigation
@@ -443,8 +433,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. Mode/input policy is in `.kry`; host handles pointer sampling, paint layers, clipping, and child content. |
-| `BeginPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
-| `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
