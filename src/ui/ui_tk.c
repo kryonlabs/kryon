@@ -89,14 +89,6 @@ ui_tk_radio_style_frame(ButtonTone tone, ButtonState state, int disabled,
 }
 
 static StyleFrame
-ui_tk_simple_style_frame(ButtonTone tone, ButtonState state, int disabled,
-                         int selected, int style_kind)
-{
-    return ui_tk_simple_style_frame_role(tone, state, disabled, selected,
-                                         style_kind, StyleAny());
-}
-
-static StyleFrame
 ui_tk_simple_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
                               int selected, int style_kind, int role)
 {
@@ -2823,7 +2815,8 @@ ui_paint_slider_angle(SliderAngleProps slider)
     float degrees = *slider.value * 57.295779513082320876f;
     SliderScalarProps value_slider = {
         slider.bounds, slider.id, slider.label, &degrees, 1,
-        slider.min_degrees, slider.max_degrees, slider.format, slider.disabled
+        slider.min_degrees, slider.max_degrees, slider.format,
+        slider.disabled, slider.class_name
     };
     ui_paint_slider_scalar(value_slider, 0);
 }

@@ -1481,7 +1481,8 @@ func (r *runtime) Button(props ButtonProps) bool {
 		menu.Split = false
 		clicked := r.surfaceButtonAt(action, fullBounds, false)
 		*props.Open = boolInt(Button_ButtonToggleMenuOpen(*props.Open != 0, r.surfaceButtonAt(menu, fullBounds, true)))
-		divider := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindButton()).Value)
+		divider := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+			props.ClassName, StyleSheet_StyleKindButton(), StyleSheet_StyleAny()).Value)
 		r.record(FrameOp{Kind: FrameOpLine,
 			Bounds: Rectangle{X: menu.Bounds.X, Y: menu.Bounds.Y + layout.DividerInset,
 				Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: divider.Border})
@@ -5573,11 +5574,6 @@ func radioStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool
 	}
 	return resolveMinimalControlRoleFrame(props, state, false, 0, 0, 0,
 		StyleSheet_StyleKindRadio(), role)
-}
-
-func simpleStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, styleKind int32) StyleFrame {
-	return simpleStyleFrameWithRole(tone, state, disabled, selected,
-		styleKind, StyleSheet_StyleAny())
 }
 
 func simpleStyleFrameWithRole(tone ButtonTone, state ButtonState, disabled, selected bool, styleKind int32, role int32) StyleFrame {

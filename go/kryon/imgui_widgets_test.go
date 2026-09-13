@@ -832,7 +832,8 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 
 		r.BeginFrame()
 		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1, Mode: 1})
-		markColor := unpackStyle(simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindPlotMark()).Value).Background
+		markColor := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, false, true,
+			0, StyleSheet_StyleKindPlotMark(), StyleSheet_StyleAny()).Value).Background
 		bars := 0
 		for _, op := range r.FrameOps() {
 			if op.Kind == FrameOpRect && op.Color == markColor && op.Bounds != NewRectangle(10, 10, 120, 60) {
@@ -1720,9 +1721,12 @@ func TestNativeTabBarKeyboardNavigation(t *testing.T) {
 	}
 	focused := false
 	expectedFocus := unpackRGBA(TabBar_TabBarPaintFor(
-		simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindTabBar()),
-		simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindTab()),
-		simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindTabClose()),
+		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+			0, StyleSheet_StyleKindTabBar(), StyleSheet_StyleAny()),
+		simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, false, true,
+			0, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()),
+		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+			0, StyleSheet_StyleKindTabClose(), StyleSheet_StyleAny()),
 	).FocusColor)
 	for _, op := range r.FrameOps() {
 		if op.ID == props.ID && op.Row == 0 && op.Focused && op.FocusColor == expectedFocus {
