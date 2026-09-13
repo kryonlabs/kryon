@@ -2224,6 +2224,10 @@ function fakeDocument() {
       { nodeName: "table", path: "Page/table" });
     runtime.widget(nativeRt, "Image", { asset_path: "hero.png", alt_text: "Hero" }, null,
       { nodeName: "hero", path: "Page/hero" });
+    runtime.widget(nativeRt, "Icon", {}, null,
+      { nodeName: "glyph", path: "Page/glyph" });
+    runtime.widget(nativeRt, "Bullet", {}, null,
+      { nodeName: "bullet", path: "Page/bullet" });
     runtime.widget(nativeRt, "CanvasGrid", {}, null,
       { nodeName: "grid", path: "Page/grid" });
     runtime.widget(nativeRt, "Toolbar", {}, null,
@@ -2308,6 +2312,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).src, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).alt, "Hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Icon").tag, "span");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bullet").tag, "li");
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
@@ -2334,10 +2340,10 @@ function fakeDocument() {
         .find((node) => node.kind === kind)?.role),
       ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
        "switch", "radio", "progressbar", "separator", "table"]);
-    assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
+    assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
-      ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "img"]);
+      ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "listitem", "img", "img"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -2362,6 +2368,8 @@ function fakeDocument() {
     const rule = runtime.findWebElement(nativeTarget, "rule");
     const table = runtime.findWebElement(nativeTarget, "table");
     const hero = runtime.findWebElement(nativeTarget, "hero");
+    const glyph = runtime.findWebElement(nativeTarget, "glyph");
+    const bullet = runtime.findWebElement(nativeTarget, "bullet");
     const grid = runtime.findWebElement(nativeTarget, "grid");
     const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
     const segments = runtime.findWebElement(nativeTarget, "segments");
@@ -2419,6 +2427,11 @@ function fakeDocument() {
     assert.equal(hero.attributes.src, "hero.png");
     assert.equal(hero.attributes.alt, "Hero");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "hero").styleFacts.src, "hero.png");
+    assert.equal(glyph.tagName, "SPAN");
+    assert.equal(glyph.attributes.role, "img");
+    assert.equal(bullet.tagName, "LI");
+    assert.equal(bullet.attributes.role, undefined);
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "bullet").role, "listitem");
     assert.equal(grid.tagName, "CANVAS");
     assert.equal(grid.attributes.role, "img");
     assert.equal(toolbar.attributes.role, "toolbar");

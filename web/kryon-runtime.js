@@ -1153,7 +1153,10 @@ function widgetTag(item) {
   case "ParagraphText":
     return "p";
   case "Text":
+  case "Icon":
     return "span";
+  case "Bullet":
+    return "li";
   case "Link":
     return "a";
   case "Button":
@@ -1919,6 +1922,8 @@ function implicitRole(node) {
     return "status";
   if (node.tag === "hr")
     return "separator";
+  if (node.tag === "li")
+    return "listitem";
   if (node.tag === "table")
     return "table";
   if (node.tag === "th") {
@@ -1953,6 +1958,7 @@ function implicitRole(node) {
     return "menu";
   case "Toast":
     return "status";
+  case "Icon":
   case "Plot":
   case "CanvasGrid":
     return "img";
@@ -1967,7 +1973,8 @@ function webDOMRole(node) {
   if (role)
     return role;
   const implicit = implicitRole(node);
-  return node?.tag === "div" || node?.tag === "canvas" || node?.tag === "menu"
+  return node?.tag === "div" || node?.tag === "canvas" || node?.tag === "menu" ||
+      (node?.tag === "span" && node?.kind === "Icon")
     ? implicit : "";
 }
 
