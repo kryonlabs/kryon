@@ -70,7 +70,7 @@ surface review:
 | `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
-| `runtime/focus.kry` | Focus ring and debug overlay geometry policy | Native support |
+| `runtime/focus.kry` | Focus ring and debug overlay geometry policy | `.kry support` |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
 | `runtime/layout_props.kry` | Column/Row/Flow layout props | `.kry canonical` |
 | `runtime/link.kry` | Link state/color policy | `.kry canonical` |
@@ -136,7 +136,7 @@ surface review:
 | `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
-| `runtime/transition_fade.kry` | Transition fade alpha/easing policy | Native support |
+| `runtime/transition_fade.kry` | Transition fade alpha/easing policy | `.kry support` |
 | `runtime/modal.kry` | Modal layout, frame geometry, and action policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window and paint geometry policy | `.kry canonical` |
