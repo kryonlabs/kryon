@@ -1844,6 +1844,10 @@ const webKssLiteralProperties = new Set([
   "text-decoration", "text-decoration-style", "text-shadow",
   "text-transform", "text-overflow", "white-space",
   "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "border-style", "border-top-style", "border-right-style",
+  "border-bottom-style", "border-left-style", "border-inline-style",
+  "border-block-style", "border-inline-start-style",
+  "border-inline-end-style", "border-block-start-style", "border-block-end-style",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
   "list-style-position", "list-style-image",
@@ -1873,7 +1877,7 @@ const webKssLiteralProperties = new Set([
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
-  "border-style", "outline-style", "box-shadow", "color-scheme",
+  "outline-style", "box-shadow", "color-scheme",
   "contain", "container-type", "container-name", "will-change",
   "isolation", "mix-blend-mode", "columns", "column-rule",
   "break-before", "break-after", "break-inside", "float", "clear",
@@ -2460,6 +2464,16 @@ const webCSSPropertyNames = new Map([
   ["border-block-start-width", "border-block-start-width"],
   ["border-block-end-width", "border-block-end-width"],
   ["border-style", "border-style"],
+  ["border-top-style", "border-top-style"],
+  ["border-right-style", "border-right-style"],
+  ["border-bottom-style", "border-bottom-style"],
+  ["border-left-style", "border-left-style"],
+  ["border-inline-style", "border-inline-style"],
+  ["border-block-style", "border-block-style"],
+  ["border-inline-start-style", "border-inline-start-style"],
+  ["border-inline-end-style", "border-inline-end-style"],
+  ["border-block-start-style", "border-block-start-style"],
+  ["border-block-end-style", "border-block-end-style"],
   ["radius", "border-radius"],
   ["border-top-left-radius", "border-top-left-radius"],
   ["border-top-right-radius", "border-top-right-radius"],
@@ -3443,6 +3457,16 @@ function applyResolvedWebStyle(el, style) {
   set("borderBlockStartWidth", style["border-block-start-width"]);
   set("borderBlockEndWidth", style["border-block-end-width"]);
   set("borderStyle", style["border-style"]);
+  set("borderTopStyle", style["border-top-style"]);
+  set("borderRightStyle", style["border-right-style"]);
+  set("borderBottomStyle", style["border-bottom-style"]);
+  set("borderLeftStyle", style["border-left-style"]);
+  set("borderInlineStyle", style["border-inline-style"]);
+  set("borderBlockStyle", style["border-block-style"]);
+  set("borderInlineStartStyle", style["border-inline-start-style"]);
+  set("borderInlineEndStyle", style["border-inline-end-style"]);
+  set("borderBlockStartStyle", style["border-block-start-style"]);
+  set("borderBlockEndStyle", style["border-block-end-style"]);
   set("borderRadius", style.radius);
   set("borderTopLeftRadius", style["border-top-left-radius"]);
   set("borderTopRightRadius", style["border-top-right-radius"]);
