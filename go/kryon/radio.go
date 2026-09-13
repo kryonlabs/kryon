@@ -140,19 +140,16 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var value_7 int32 = Radio_RadioSizeForStyle(value_5, value_6)
 	var value_8 float32 = float32(value_7)
 	var diameter float32 = value_8
-	var value_9 float32 = spec.Frame.Value.Gap
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	var gap float32 = value_11
-	var value_12 float32 = gap
-	var value_13 float32 = 0.0
-	var value_14 bool = value_12 <= value_13
-	if value_14 {
-		var value_15 float32 = 8.0
-		var value_16 float32 = scale
-		var value_17 float32 = value_15 * value_16
-		gap = value_17
-	}
+	var value_9 uint32 = spec.Frame.Value.Fields
+	var value_10 int32 = int32(StyleGap)
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+	var value_12 float32 = spec.Frame.Value.Gap
+	var value_13 float32 = 8.0
+	var value_14 float32 = scale
+	var value_15 bool = true
+	var value_16 int32 = Radio_RadioMetric(value_9, value_11, value_12, value_13, value_14, value_15)
+	var value_17 float32 = float32(value_16)
+	var gap float32 = value_17
 	var value_18 StyleFrame = spec.Frame
 	var value_19 float32 = scale
 	var value_20 int32 = Radio_RadioTouchSizeForStyle(value_18, value_19)

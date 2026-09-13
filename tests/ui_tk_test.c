@@ -636,6 +636,14 @@ test_radio_paint_policy(void)
     check_int("radio styled size", RadioSizeForStyle(frame, 1.0f), 20);
     check_int("radio styled touch size", RadioTouchSizeForStyle(frame, 1.0f), 40);
     check_int("radio label x", (int)unchecked.label_x, 58);
+    frame.value.fields |= StyleGap | StylePaddingX;
+    frame.value.gap = 0.0f;
+    frame.value.padding_x = 40.0f;
+    check_int("radio explicit zero label gap",
+              (int)RadioPaintFor((RadioSpec){.bounds = bounds,
+                  .scale = 1.0f, .frame = frame,
+                  .selected = selected}).label_x,
+              50);
     check_int("radio unchecked fill", (int)unchecked.fill_radius, 0);
     check_int("radio unchecked ring", (int)unchecked.ring_color, 0x222222FF);
     check_int("radio checked fill", (int)checked.fill_radius, 8);

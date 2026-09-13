@@ -64,10 +64,8 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
     diameter: float = (float)RadioSizeForStyle(spec.frame, scale)
-    gap: float = spec.frame.value.gap * scale
-    if gap <= 0.0 {
-        gap = 8.0 * scale
-    }
+    gap: float = (float)RadioMetric(spec.frame.value.fields,
+        (u32)StyleGap, spec.frame.value.gap, 8.0, scale, true)
     slot_width: float = (float)RadioTouchSizeForStyle(spec.frame, scale)
     if slot_width < diameter {
         slot_width = diameter
