@@ -62,6 +62,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring.
+- KSS state selectors support explicit `[state=...]`, accumulated pseudo
+  states such as `:hover:pressed`, and `:normal` export against native
+  `data-kry-state` annotations.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
