@@ -723,7 +723,9 @@ and host plumbing behind the canonical names.
   routes through `runtime/rows.kry`; menu selectable-item and wraparound
   navigation policy now routes through `runtime/menu.kry`; centered-column and
   page side-padding policy now route through `runtime/layout.kry`; scroll-page
-  content-width normalization now routes through `runtime/scroll.kry`. Continue by
+  content-width normalization now routes through `runtime/scroll.kry`; table
+  keyboard selection and scroll-into-view policy now route through
+  `runtime/table_view.kry`. Continue by
   reducing raw native constants in menu host glue and other shared
   immediate-mode helpers.
 2. Keep prefix cleanup verified:
