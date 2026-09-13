@@ -43,6 +43,8 @@ the browser receives normal elements, attributes, CSS, and events.
   equivalents or accessibility semantics, with coverage for form controls,
   selectors, progress, separators, tables, canvas-backed widgets, and common
   navigation/overlay roles.
+- Table header `TableCell` nodes infer native `<th>` tags from row/column
+  scope metadata and surface row/column header roles in accessibility facts.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
