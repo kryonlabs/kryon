@@ -188,13 +188,13 @@ ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
 }
 
 
-#define UI_TK_MENU_MAX 8
-#define UI_TK_MENU_DEPTH_MAX 8
-#define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
-#define UI_RADIO_ANIM_MAX 128
-#define UI_INSTANCE_BUCKETS 512
-#define UI_DRAG_DROP_DATA_MAX 1024
-#define UI_NUMERIC_INPUT_BUCKETS 128
+#define TK_MENU_MAX 8
+#define TK_MENU_DEPTH_MAX 8
+#define TK_CONTEXT_MENU_MAX_ITEMS 64
+#define RADIO_ANIM_MAX 128
+#define INSTANCE_BUCKETS 512
+#define DRAG_DROP_DATA_MAX 1024
+#define NUMERIC_INPUT_BUCKETS 128
 typedef struct NumericClickState {
     int valid;
     int kind;
@@ -207,7 +207,7 @@ typedef struct DragDropState {
     int active;
     int source_id;
     char type[32];
-    unsigned char data[UI_DRAG_DROP_DATA_MAX];
+    unsigned char data[DRAG_DROP_DATA_MAX];
     int data_size;
 } DragDropState;
 static int ui_slider_continuous(SliderContinuousProps slider, int vertical);
@@ -219,7 +219,7 @@ typedef struct MenuOverlayState {
     int x;
     int y;
     int item_count;
-    MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
+    MenuItem items[TK_CONTEXT_MENU_MAX_ITEMS];
 } MenuOverlayState;
 
 typedef struct ContextMenuOverlayState {
@@ -230,14 +230,14 @@ typedef struct ContextMenuOverlayState {
     int y;
     int item_count;
     int suppress_close;
-    MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
+    MenuItem items[TK_CONTEXT_MENU_MAX_ITEMS];
 } ContextMenuOverlayState;
 
 typedef struct MenuNavigationState {
     int focus_id;
     int top;
     int depth;
-    int path[UI_TK_MENU_DEPTH_MAX];
+    int path[TK_MENU_DEPTH_MAX];
     int key_handled;
     unsigned long key_frame;
 } MenuNavigationState;
@@ -273,8 +273,8 @@ struct ToolkitStore {
     DragDropState drag_drop;
     int canvas_depth;
     int canvas_mode_depth;
-    RadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
-    InstanceEntry *instances[UI_INSTANCE_BUCKETS];
+    RadioAnimState radio_anim[RADIO_ANIM_MAX];
+    InstanceEntry *instances[INSTANCE_BUCKETS];
     unsigned long instance_frame;
     int last_table_id;
     int last_table_row;
@@ -287,7 +287,7 @@ struct ToolkitStore {
     PopupInputOwner resize_owner;
     int *active_split;
     PopupInputOwner active_split_owner;
-    NumericInputState *numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
+    NumericInputState *numeric_inputs[NUMERIC_INPUT_BUCKETS];
     int numeric_next_token;
     TreeHeaderNavState *tree_headers;
     TreeHeaderNavState *tree_previous;
@@ -342,7 +342,7 @@ toolkit_store_free(ToolkitStore *store)
         return;
     if(store == current_toolkit_store || store == &fallback_toolkit_store)
         abort();
-    for(int i = 0; i < UI_INSTANCE_BUCKETS; i++) {
+    for(int i = 0; i < INSTANCE_BUCKETS; i++) {
         InstanceEntry *entry = store->instances[i];
         while(entry != NULL) {
             InstanceEntry *next = entry->next;
@@ -351,7 +351,7 @@ toolkit_store_free(ToolkitStore *store)
             entry = next;
         }
     }
-    for(int i = 0; i < UI_NUMERIC_INPUT_BUCKETS; i++) {
+    for(int i = 0; i < NUMERIC_INPUT_BUCKETS; i++) {
         NumericInputState *state = store->numeric_inputs[i];
 
         while(state != NULL) {
@@ -387,7 +387,7 @@ toolkit_store_frame(ToolkitStore *store)
     if(store == NULL)
         return;
     unsigned long frame = ++store->instance_frame;
-    for(int i = 0; i < UI_INSTANCE_BUCKETS; i++) {
+    for(int i = 0; i < INSTANCE_BUCKETS; i++) {
         InstanceEntry **link = &store->instances[i];
         while(*link != NULL) {
             InstanceEntry *entry = *link;
@@ -406,7 +406,7 @@ void *
 InstanceState(const char *type, uint64_t key, size_t size)
 {
     ToolkitStore *store = current_toolkit_store;
-    unsigned int bucket = key % UI_INSTANCE_BUCKETS;
+    unsigned int bucket = key % INSTANCE_BUCKETS;
     for(InstanceEntry *entry = store->instances[bucket]; entry != NULL;
         entry = entry->next) {
         if(entry->key == key && strcmp(entry->type, type) == 0) {
@@ -657,7 +657,7 @@ RenderDragDrop(DragDropProps drag_drop)
         valid = DragDropSourceValid(drag_drop.disabled, ContentDisabled(),
                                     drag_drop.type != NULL &&
                                     drag_drop.type[0] != '\0',
-                                    drag_drop.data_size, UI_DRAG_DROP_DATA_MAX,
+                                    drag_drop.data_size, DRAG_DROP_DATA_MAX,
                                     drag_drop.data != NULL);
         if(!valid)
             return 0;
@@ -1133,7 +1133,7 @@ menu_navigation_reset(int focus_id, const MenuItem *items, int item_count)
     state->navigation.focus_id = focus_id;
     state->navigation.top = 0;
     state->navigation.depth = 0;
-    for(int i = 0; i < UI_TK_MENU_DEPTH_MAX; i++)
+    for(int i = 0; i < TK_MENU_DEPTH_MAX; i++)
         state->navigation.path[i] = -1;
     state->navigation.path[0] = menu_first_item(items,item_count);
 }
@@ -1175,7 +1175,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                !ui_popup_input_focus_captures(focus_id);
     if(keyboard && state->navigation.focus_id != focus_id)
         menu_navigation_reset(focus_id,items,item_count);
-    if(keyboard && depth < UI_TK_MENU_DEPTH_MAX) {
+    if(keyboard && depth < TK_MENU_DEPTH_MAX) {
         int selected;
         if(state->navigation.path[depth] < 0 ||
            state->navigation.path[depth] >= item_count ||
@@ -1211,7 +1211,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 if(selected_item->kind == MenuSubmenu &&
                    selected_item->submenu != NULL &&
                    selected_item->submenu_count > 0 &&
-                   depth+1 < UI_TK_MENU_DEPTH_MAX) {
+                   depth+1 < TK_MENU_DEPTH_MAX) {
                     state->submenu_id = selected_item->id;
                     state->navigation.depth = depth+1;
                     state->navigation.path[depth+1] =
@@ -1248,7 +1248,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         int row_hot = !ContentDisabled() && ui_contains(row, mouse) &&
                       item->kind != MenuSeparator;
         int hot = row_hot && !item->disabled;
-        int selected = keyboard && depth < UI_TK_MENU_DEPTH_MAX &&
+        int selected = keyboard && depth < TK_MENU_DEPTH_MAX &&
                        state->navigation.path[depth] == i;
         ButtonState item_state = item->disabled ? ButtonStateDisabled :
             ((hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ?
@@ -1281,10 +1281,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 
         if(hot) {
             if(state->navigation.focus_id == focus_id &&
-               depth < UI_TK_MENU_DEPTH_MAX) {
+               depth < TK_MENU_DEPTH_MAX) {
                 state->navigation.path[depth] = i;
                 state->navigation.depth = depth;
-                for(int child = depth+1; child < UI_TK_MENU_DEPTH_MAX; child++)
+                for(int child = depth+1; child < TK_MENU_DEPTH_MAX; child++)
                 state->navigation.path[child] = -1;
             }
             if(can_draw)
@@ -1338,7 +1338,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             ConsumeRelease();
             if(state->navigation.focus_id != focus_id)
                 menu_navigation_reset(focus_id,items,item_count);
-            if(depth < UI_TK_MENU_DEPTH_MAX) {
+            if(depth < TK_MENU_DEPTH_MAX) {
                 state->navigation.path[depth] = i;
                 state->navigation.depth = depth;
             }
@@ -1397,11 +1397,11 @@ copy_menu_items(MenuItem *arena, int *used, const MenuItem *items,
 
     *copied_count = 0;
     if(items == NULL || item_count <= 0 ||
-       *used >= UI_TK_CONTEXT_MENU_MAX_ITEMS)
+       *used >= TK_CONTEXT_MENU_MAX_ITEMS)
         return -1;
     count = item_count;
-    if(count > UI_TK_CONTEXT_MENU_MAX_ITEMS-*used)
-        count = UI_TK_CONTEXT_MENU_MAX_ITEMS-*used;
+    if(count > TK_CONTEXT_MENU_MAX_ITEMS-*used)
+        count = TK_CONTEXT_MENU_MAX_ITEMS-*used;
     start = *used;
     *used += count;
     *copied_count = count;
@@ -1491,8 +1491,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         if(open_index != NULL)
             *open_index = -1;
     }
-    if(menu_count > UI_TK_MENU_MAX)
-        menu_count = UI_TK_MENU_MAX;
+    if(menu_count > TK_MENU_MAX)
+        menu_count = TK_MENU_MAX;
     focused = !ContentDisabled() && id > 0 && RegisterFocus(id,bounds) &&
               !ui_popup_input_focus_captures(id);
     if(state->navigation.focus_id != id)
@@ -1868,7 +1868,7 @@ RenderRadio(RadioProps radio)
         key = (key ^ (unsigned int)(int)radio.bounds.height) * 16777619u;
         while(*text != '\0')
             key = (key ^ (unsigned char)*text++) * 16777619u;
-        anim = &toolkit->radio_anim[key % UI_RADIO_ANIM_MAX];
+        anim = &toolkit->radio_anim[key % RADIO_ANIM_MAX];
         if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
             memset(anim, 0, sizeof(*anim));
             anim->key = key;
@@ -2843,7 +2843,7 @@ ui_numeric_input_find(int kind, int widget_id, int component)
 {
     ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
-                       (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
+                       (unsigned)kind) % NUMERIC_INPUT_BUCKETS;
     for(NumericInputState *state = toolkit->numeric_inputs[bucket];
         state != NULL; state = state->next)
         if(state->kind == kind && state->widget_id == widget_id &&
@@ -2857,7 +2857,7 @@ ui_numeric_input_state(int kind, int widget_id, int component)
 {
     ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
-                       (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
+                       (unsigned)kind) % NUMERIC_INPUT_BUCKETS;
     NumericInputState *existing =
         ui_numeric_input_find(kind, widget_id, component);
     if(existing != NULL)

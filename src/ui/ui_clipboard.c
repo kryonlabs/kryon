@@ -6,12 +6,12 @@
 /* Large enough that the editors source buffer (512 KiB) is the real ceiling,
  * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
  * copy and paste caps stay symmetric. */
-#define UI_TK_CLIPBOARD_MAX (1024 * 1024)
+#define TK_CLIPBOARD_MAX (1024 * 1024)
 #define CLIPBOARD_OSC52_ENCODED_SIZE 5464
 #define CLIPBOARD_OSC52_RESPONSE_SIZE 5520
 
-static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
-static char g_primary_selection_text[UI_TK_CLIPBOARD_MAX];
+static char g_clipboard_text[TK_CLIPBOARD_MAX];
+static char g_primary_selection_text[TK_CLIPBOARD_MAX];
 
 int
 SetClipboardTextValue(const char *text)
