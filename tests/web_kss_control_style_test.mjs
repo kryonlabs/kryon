@@ -85,6 +85,11 @@ const sheet = runtime.parseWebStyleSheet(`
     appearance: none;
     user-select: text;
     resize: vertical;
+    flex-flow: row wrap;
+    grid: auto-flow / 1fr 2fr;
+    grid-template: "label field" auto / auto 1fr;
+    align-tracks: stretch;
+    justify-tracks: center;
     field-sizing: content;
     interpolate-size: allow-keywords;
     overlay: auto;
@@ -173,6 +178,11 @@ assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
 assert.match(css, /user-select: text;/);
 assert.match(css, /resize: vertical;/);
+assert.match(css, /flex-flow: row wrap;/);
+assert.match(css, /grid: auto-flow \/ 1fr 2fr;/);
+assert.match(css, /grid-template: "label field" auto \/ auto 1fr;/);
+assert.match(css, /align-tracks: stretch;/);
+assert.match(css, /justify-tracks: center;/);
 assert.match(css, /field-sizing: content;/);
 assert.match(css, /interpolate-size: allow-keywords;/);
 assert.match(css, /overlay: auto;/);
@@ -264,6 +274,11 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   appearance: "none",
   "user-select": "text",
   resize: "vertical",
+  "flex-flow": "row wrap",
+  grid: "auto-flow / 1fr 2fr",
+  "grid-template": "\"label field\" auto / auto 1fr",
+  "align-tracks": "stretch",
+  "justify-tracks": "center",
   "field-sizing": "content",
   "interpolate-size": "allow-keywords",
   overlay: "auto",
