@@ -255,9 +255,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         button.props.disabled ? ButtonStateDisabled : ButtonStateNormal,
         0, 0, 0, 0,
         button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
-    int font = normal_style.font_size > 0.0f
-        ? (int)(normal_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(normal_style.font_size + 0.5f),
+                           GetFontSize());
     Style hover_style = ui_unpack_style(ui_resolve_button_spec_frame(button,
         ButtonStateHover, 0, 0, 0, 0,
         button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
@@ -509,9 +508,8 @@ ui_text_button_render(int x, int y, const char *label, int *hover)
                       .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindButton());
-    int font = frame.value.font_size > 0.0f
-        ? (int)(frame.value.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(frame.value.font_size + 0.5f),
+                           GetFontSize());
     const char *text = label != NULL ? label : "";
     TextButtonMetrics metrics = TextButtonMetricsFor(
         (float)Scale(1000) / 1000.0f, frame);
@@ -828,9 +826,8 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
         fill = style.background;
         stroke = style.border;
         text = style.foreground;
-        font = style.font_size > 0.0f
-            ? (int)(style.font_size + 0.5f)
-            : GetSmallFontSize();
+        font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                           GetSmallFontSize());
     }
     DrawCircle(center_x, center_y, radius, fill);
     DrawCircleLines(center_x, center_y, radius, stroke);
