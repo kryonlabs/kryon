@@ -98,6 +98,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button#tap-button:focus {
     border: #506070;
   }
+  Button[state=hover] {
+    outline-color: #607080;
+  }
   Button[data-tracking-id="tap-1"] {
     opacity: 0.75;
   }
@@ -633,6 +636,8 @@ assert.match(webStyleCSS, /clear: both;/);
 assert.match(webStyleCSS, /order: 2;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
+assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 for (const legacyAlias of [
   "background-color", "color", "border-color", "focus-color",
@@ -935,6 +940,10 @@ assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   "offset-y": 8,
   opacity: 0.75
 });
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[2],
+  state: { ...webDoc.nodes[2].state, hover: true }
+}, webStyleSheet)["outline-color"], "#607080");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
   Button#tap-button {
@@ -2539,6 +2548,7 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryState, undefined);
     firstButton.mouseenter();
     assert.equal(firstButton.style.background, "#304050");
+    assert.equal(firstButton.style.outlineColor, "#607080");
     assert.equal(firstButton.__kryDocNode.state.hover, true);
     assert.equal(firstButton.dataset.kryState, "hover");
     firstButton.mousedown();
