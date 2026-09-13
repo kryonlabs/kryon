@@ -103,6 +103,11 @@ NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     return (i32)(86.0 * scale)
 }
 
+NavigationBarFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
+    if style_font > 0 { return style_font }
+    return default_font
+}
+
 NavigationBarConfigCountsFor :: (route_count: i32, max_route_count: i32,
     option_count: i32, slot_limit: i32) -> NavigationBarConfigCounts #export {
     counts: NavigationBarConfigCounts

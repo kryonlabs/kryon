@@ -165,9 +165,8 @@ RenderNavigationBar(NavigationBarProps nav)
                                                              item->disabled, 0,
                                                              nav.class_name);
         Style text_style = base_style;
-        int label_font = base_style.font_size > 0.0f
-            ? (int)(base_style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int label_font = NavigationBarFontFor(
+            GetSmallFontSize(), (int)(base_style.font_size + 0.5f));
         int label_h = TextLineHeight(label_font);
         NavigationBarItemPaint item_paint;
 
@@ -204,8 +203,8 @@ RenderNavigationBar(NavigationBarProps nav)
             StyleFrame face_frame = ui_style_apply_effects_frame(item_paint.face);
             Style face_style = ui_unpack_style(face_frame.value);
             text_style = face_style;
-            if(face_style.font_size > 0.0f)
-                label_font = (int)(face_style.font_size + 0.5f);
+            label_font = NavigationBarFontFor(
+                label_font, (int)(face_style.font_size + 0.5f));
             ui_draw_material(item_paint.state_bounds, (Rectangle){0},
                              face_style.background, face_style.border,
                              face_style.border, face_style.radius,
@@ -305,9 +304,8 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         ui_control_style_frame_kind((ButtonProps){0}, ButtonStateNormal, 0,
                                     0.0f, 0.0f, 0.0f,
                                     StyleKindNavigationBarItem())).value);
-    label_font = label_style.font_size > 0.0f
-        ? (int)(label_style.font_size + 0.5f)
-        : GetSmallFontSize();
+    label_font = NavigationBarFontFor(
+        GetSmallFontSize(), (int)(label_style.font_size + 0.5f));
     for(i = 0; i < route_count; i++)
         selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);

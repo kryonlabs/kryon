@@ -186,6 +186,10 @@ main(void)
 
     check_int("compact navigation bar default height",
               NavigationBarDefaultHeight(1.0f), 86);
+    check_int("compact navigation bar default font fallback",
+              NavigationBarFontFor(11, 0), 11);
+    check_int("compact navigation bar style font override",
+              NavigationBarFontFor(11, 13), 13);
     {
         StyleFrame bar = test_style_frame(0x111111ffu, 0x222222ffu,
                                           0x333333ffu);
