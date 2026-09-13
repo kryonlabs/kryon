@@ -2421,6 +2421,9 @@ function fakeDocument() {
         max: "",
         valueNow: "",
         href: "",
+        alt: "",
+        asset: "",
+        src: "",
         inputType: "",
         level: 0,
         rowIndex: "2",
@@ -2780,6 +2783,13 @@ function fakeDocument() {
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).src, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).alt, "Hero");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Image").asset, "hero.png");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Image").src, "hero.png");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Image").alt, "Hero");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Image")?.label, "Hero");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Image")?.src, "hero.png");
     assert.equal(runtime.webNodeQuery(nativeRt, "Icon").tag, "span");
     assert.equal(runtime.webNodeQuery(nativeRt, "Bullet").tag, "li");
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");

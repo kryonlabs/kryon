@@ -81,6 +81,11 @@ try {
     path: "Page/article/line",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Image", { asset_path: "hero.png", alt_text: "Hero image" }, null, {
+    nodeName: "hero",
+    path: "Page/article/hero",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "Progress", { min: 0, max: 100, value: 64, label: "Upload" }, null, {
     nodeName: "upload",
     path: "Page/article/upload",
@@ -464,6 +469,7 @@ try {
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");
+  const hero = kryon.findWebElement(target, "hero");
   const upload = kryon.findWebElement(target, "upload");
   const status = kryon.findWebElement(target, "status");
   const choice = kryon.findWebElement(target, "choiceBeta");
@@ -478,6 +484,18 @@ try {
   assert(line.tagName === "HR", "line native separator not rendered");
   assert(kryon.webDOMSnapshot(target, "line").role === "separator",
     "line separator snapshot role missing");
+  assert(hero.tagName === "IMG", "image native img not rendered");
+  assert(hero.getAttribute("src") === "hero.png", "image src attr missing");
+  assert(hero.getAttribute("alt") === "Hero image", "image alt attr missing");
+  assert(kryon.webDOMSnapshot(target, "hero").src === "hero.png",
+    "image snapshot src missing");
+  assert(kryon.webDOMSnapshot(target, "hero").asset === "hero.png",
+    "image snapshot asset missing");
+  assert(kryon.webDOMSnapshot(target, "hero").alt === "Hero image",
+    "image snapshot alt missing");
+  assert(kryon.webDOMAccessibilitySnapshot(target).nodes
+    .find((node) => node.kind === "Image")?.label === "Hero image",
+    "image accessibility alt label missing");
   assert(upload.tagName === "PROGRESS", "progress native element missing");
   assert(kryon.webDOMSnapshot(target, "upload").min === "0",
     "progress snapshot min missing");

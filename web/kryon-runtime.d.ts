@@ -427,6 +427,9 @@ export interface WebAccessibilityNode {
   max: string;
   valueNow: string;
   href: string;
+  alt: string;
+  asset: string;
+  src: string;
   inputType: string;
   level: number;
   rowIndex: string;
@@ -923,6 +926,9 @@ export interface WebDOMSnapshot {
   styleFacts: WebNodeStyleFacts;
   text: string;
   value: unknown;
+  alt: string;
+  asset: string;
+  src: string;
   min: string;
   max: string;
   valueNow: string;

@@ -93,7 +93,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Semantic collection relationship facts expose `selectedCollectionOwner` and
   `selectedCollectionItems` for selected members inside those collections.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
-  through DOM attributes, KSS selector facts, and mounted DOM snapshots.
+  through DOM attributes, KSS selector facts, pre-mount and mounted DOM
+  snapshots, and accessibility snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.

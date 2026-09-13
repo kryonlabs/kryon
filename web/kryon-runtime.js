@@ -1923,6 +1923,8 @@ export function webAccessibilitySnapshot(source) {
 
 function webAccessibilityNodeFromNode(node) {
   const range = webNodeValueRange(node);
+  const label = node.ariaLabel || (node.tag === "img" ? node.alt : "") ||
+    node.text || node.name;
   return {
     path: node.path,
     sourcePath: node.sourcePath,
@@ -1936,7 +1938,7 @@ function webAccessibilityNodeFromNode(node) {
     id: node.domId,
     classes: [...node.classes],
     role: node.role || implicitRole(node),
-    label: node.ariaLabel || node.text || node.name,
+    label,
     description: node.ariaDescription,
     text: node.text,
     value: node.tag === "progress" ? node.domValue
@@ -1945,6 +1947,9 @@ function webAccessibilityNodeFromNode(node) {
     max: range.max,
     valueNow: range.valueNow,
     href: node.href,
+    alt: node.alt || "",
+    asset: node.asset || "",
+    src: node.asset || "",
     inputType: node.inputType,
     level: node.level || 0,
     rowIndex: node.ariaRowIndex,
@@ -1957,6 +1962,8 @@ function webAccessibilityNodeFromNode(node) {
 
 function webAccessibilityNodeFromDOMSnapshot(snapshot) {
   const facts = snapshot?.styleFacts || {};
+  const label = facts.ariaLabel || (snapshot?.tag === "img" ? snapshot?.alt : "") ||
+    snapshot?.text || snapshot?.name || "";
   return {
     path: snapshot?.path || "",
     sourcePath: snapshot?.sourcePath || "",
@@ -1970,7 +1977,7 @@ function webAccessibilityNodeFromDOMSnapshot(snapshot) {
     id: snapshot?.id || "",
     classes: [...(snapshot?.classes || [])],
     role: snapshot?.role || "",
-    label: facts.ariaLabel || snapshot?.text || snapshot?.name || "",
+    label,
     description: facts.ariaDescription || "",
     text: snapshot?.text || "",
     value: snapshot?.value ?? "",
@@ -1978,6 +1985,9 @@ function webAccessibilityNodeFromDOMSnapshot(snapshot) {
     max: snapshot?.max || "",
     valueNow: snapshot?.valueNow || "",
     href: facts.href || "",
+    alt: snapshot?.alt || facts.alt || "",
+    asset: snapshot?.asset || facts.asset || "",
+    src: snapshot?.src || facts.src || "",
     inputType: facts.inputType || "",
     level: Number(facts.ariaLevel || 0) || 0,
     rowIndex: facts.ariaRowIndex || "",
@@ -9176,6 +9186,9 @@ function webNodeSnapshotForNode(rt, node) {
     styleFacts: webNodeStyleFacts(node),
     text: node.text ?? "",
     value: node.domValue ?? node.value ?? "",
+    alt: node.alt || "",
+    asset: node.asset || "",
+    src: node.asset || "",
     min: range.min,
     max: range.max,
     valueNow: range.valueNow,
@@ -9237,6 +9250,9 @@ function webDOMObjectSnapshot(target, object) {
     styleFacts: webNodeStyleFacts(node),
     text: webDOMGetText(target, node.path) ?? node.text ?? "",
     value: webDOMGetValue(target, node.path),
+    alt: node.alt || el.getAttribute?.("alt") || "",
+    asset: node.asset || "",
+    src: node.asset || el.getAttribute?.("src") || "",
     min: range.min,
     max: range.max,
     valueNow: range.valueNow,

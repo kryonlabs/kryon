@@ -428,6 +428,10 @@ sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
 source text in `app.styles[].source` when a `#style` import resolves on disk.
 App style installation preserves normal rules, top-level `@keyframes`, and
 conditional groups from every embedded sheet.
+`webNodeSnapshot(...)` and mounted `webDOMSnapshot(...)` expose image media
+facts directly as `alt`, `asset`, and `src`, mirroring `webNodeStyleFacts(...)`.
+Accessibility snapshots use `alt` as the fallback label for native `img` nodes
+when no explicit ARIA label is present.
 Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, attrOps,
 state, specificity }`, with `parts` for descendant and child selector chains,
 matching the facts used by node queries and DOM object lookup.
