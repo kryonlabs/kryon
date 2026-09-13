@@ -1859,7 +1859,6 @@ include/ui_tree.h function Fieldset
 include/ui_tree.h function Focus
 include/ui_tree.h function GetAccessibilitySnapshot
 include/ui_tree.h function GetNode
-include/ui_tree.h function GetNodeHeight
 include/ui_tree.h function GetNodeHeightById
 include/ui_tree.h function GetNodeKindName
 include/ui_tree.h function GetTreeNodes
@@ -1915,6 +1914,7 @@ include/ui_tree.h function UpdateTree
 include/ui_tree.h typedef AccessibilitySink
 include/ui_tree.h typedef KeyID
 include/ui_tree.h typedef NodeId
+include/ui_tree.h typedef WidgetNode
 include/ui_window.h enum NATIVE_WINDOW_ALWAYS_ON_TOP
 include/ui_window.h enum NATIVE_WINDOW_BORDERLESS
 include/ui_window.h enum NATIVE_WINDOW_CENTER

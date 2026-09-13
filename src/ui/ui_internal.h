@@ -3,6 +3,7 @@
 
 #include "ui_draw.h"
 #include "ui_tree.h"
+#include "ui_tree_node_internal.h"
 #include "ui_clip.h"
 #include "theme.h"
 #include "ui_color.h"
@@ -546,6 +547,7 @@ void EndCanvas(Canvas canvas);
 /* Retained submissions borrow this destination until EndTree. The caller
  * separately captures immediate drawing and owns the texture lifetime. */
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
+int GetNodeHeight(WidgetNode node);
 void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
 WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
 WidgetNode NodeNavigationBar(NavigationBarProps nav);

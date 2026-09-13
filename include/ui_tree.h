@@ -47,88 +47,7 @@ typedef enum Invalidation {
     INVALIDATE_TREE = 1 << 2
 } Invalidation;
 
-typedef union WidgetData {
-    struct {
-        unsigned long long words[16];
-    } internal;
-    struct {
-        DragProps props;
-        size_t format_offset;
-    } drag;
-    struct {
-        SliderProps props;
-        size_t format_offset;
-    } slider;
-    struct {
-        int gap;
-        int padding;
-        int columns;
-        int min_item_width;
-        int max_columns;
-    } layout;
-    ParagraphSpec paragraph;
-    ImageProps image;
-    struct {
-        int x1;
-        int y1;
-        int x2;
-        int y2;
-        int x3;
-        int y3;
-        int font;
-        int font_token;
-        int letter_spacing;
-        int heading_level;
-        int wrap;
-        int align;
-        int vertical_align;
-        Color color;
-        Color border;
-        int styled;
-        Style style;
-    } primitive;
-    ButtonSpec button;
-    TextFieldProps text_field;
-    TextAreaProps text_area;
-    /* Retained interactive controls. Pointer fields follow the TextField
-     * contract: callers keep them valid while the tree is not re-declared,
-     * painting reads them live, and retained input routing writes through
-     * them. */
-    struct {
-        int *value;
-        const char *off_label;
-        const char *on_label;
-    } toggle;
-    struct {
-        int *value;
-        const char *label;
-    } checkbox;
-} WidgetData;
-
-typedef struct WidgetNode {
-    int id;
-    KeyID key;
-    int kind;
-    Rectangle bounds;
-    Rectangle declared_bounds;
-    Rectangle input_clip;
-    int has_input_clip;
-    /* Internal frame-local paint snapshot index; zero means ordinary painting. */
-    unsigned paint_capture;
-    /* Internal declaration snapshot for deferred popup hit testing. */
-    unsigned popup_input_capture;
-    /* Internal declaration-time font snapshot for deferred text painting. */
-    int font_token;
-    int parent;
-    int first_child;
-    int next_sibling;
-    const void *props;
-    void *state;
-    WidgetData data;
-    unsigned flags;
-    unsigned generation;
-    char *owned_text;
-} WidgetNode;
+typedef struct WidgetNode WidgetNode;
 
 typedef void (*AccessibilitySink)(const AccessibilityNode *nodes,
                                     int count, void *userdata);
@@ -149,7 +68,6 @@ void UpdateTree(void);
 void Overlays(void);
 const WidgetNode *GetTreeNodes(int *count);
 const char *GetNodeKindName(int kind);
-int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 const WidgetNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);

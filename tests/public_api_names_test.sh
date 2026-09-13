@@ -432,6 +432,21 @@ if [ -n "$public_widget_kind_matches" ]; then
     exit 1
 fi
 
+public_widget_data_matches="$(
+    rg -n '\bWidgetData\b|\bstruct WidgetNode\s*\{' \
+        include \
+        docs/PUBLIC_API_SNAPSHOT.txt \
+        docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_widget_data_matches" ]; then
+    echo "Retained WidgetNode payloads are internal; public code uses opaque nodes and clean inspection helpers:"
+    echo "$public_widget_data_matches"
+    exit 1
+fi
+
 public_button_matches="$(
     rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
         include/ui_controls.h \

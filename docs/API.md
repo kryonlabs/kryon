@@ -1693,12 +1693,12 @@ generated/runtime code and are not public widget names.
 
 ```c
 const char *GetNodeKindName(int kind);
-int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 ```
 
 `GetNodeKindName` returns clean inspection names such as `"Button"`,
-`"TextField"`, and `"Image"`; retained `WIDGET_*` constants are internal.
+`"TextField"`, and `"Image"`; retained `WIDGET_*` constants and retained node
+payloads are internal.
 
 ---
 
