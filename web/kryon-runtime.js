@@ -2933,11 +2933,17 @@ function webStyleCSSValue(name, value) {
 function webStyleValueToCSS(name, value) {
   if (value === undefined || value === null || value === "")
     return "";
-  const prop = webCSSPropertyNames.get(name) || (name.startsWith("--") ? name : "");
+  let prop = webCSSPropertyNames.get(name) || (name.startsWith("--") ? name : "");
+  if (name === "border" && isWebBorderShorthandValue(value))
+    prop = "border";
   if (!prop)
     return "";
   const cssValue = webStyleCSSValue(prop, value);
   return `  ${prop}: ${cssValue};`;
+}
+
+function isWebBorderShorthandValue(value) {
+  return /\s/.test(String(value || "").trim());
 }
 
 function webStyleRuleToCSS(rule) {
@@ -3650,7 +3656,10 @@ function applyResolvedWebStyle(el, style) {
   set("color", style.color);
   set("accentColor", style["accent-color"]);
   set("caretColor", style["caret-color"]);
-  set("borderColor", style.border);
+  if (isWebBorderShorthandValue(style.border))
+    set("border", style.border);
+  else
+    set("borderColor", style.border);
   set("borderColor", style["border-color"]);
   set("borderWidth", style["border-width"]);
   set("borderTopWidth", style["border-top-width"]);

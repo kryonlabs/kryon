@@ -20,6 +20,7 @@ const sheet = runtime.parseWebStyleSheet(`
     background-position-y: top;
     font-family: system-ui;
     border-radius: 6;
+    border: 3px solid #203040;
     border-top: 1px solid #3366ff;
     border-inline-start: 2px solid #ff6633;
     text-decoration-line: underline;
@@ -41,6 +42,7 @@ assert.match(css, /background-position-x: left;/);
 assert.match(css, /background-position-y: top;/);
 assert.match(css, /font-family: system-ui;/);
 assert.match(css, /border-radius: 6px;/);
+assert.match(css, /border: 3px solid #203040;/);
 assert.match(css, /border-top: 1px solid #3366ff;/);
 assert.match(css, /border-inline-start: 2px solid #ff6633;/);
 assert.match(css, /text-decoration-line: underline;/);
@@ -65,6 +67,7 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "background-position-y": "top",
   "font-family": "system-ui",
   "border-radius": 6,
+  border: "3px solid #203040",
   "border-top": "1px solid #3366ff",
   "border-inline-start": "2px solid #ff6633",
   "text-decoration-line": "underline",
@@ -199,6 +202,7 @@ assert.equal(field.style.backgroundPositionX, "left");
 assert.equal(field.style.backgroundPositionY, "top");
 assert.equal(field.style.fontFamily, "system-ui");
 assert.equal(field.style.borderRadius, "6px");
+assert.equal(field.style.border, "3px solid #203040");
 assert.equal(field.style.borderTop, "1px solid #3366ff");
 assert.equal(field.style.borderInlineStart, "2px solid #ff6633");
 assert.equal(field.style.textDecorationLine, "underline");
