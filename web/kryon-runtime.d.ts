@@ -768,10 +768,17 @@ export interface WebStyleKeyframes {
   frames: WebStyleKeyframe[];
 }
 
+export interface WebStyleConditionalGroup {
+  kind: "media" | "supports" | "container" | string;
+  query: string;
+  rules: WebStyleRule[];
+}
+
 export interface WebStyleSheet {
   pack?: string;
   rules: WebStyleRule[];
   keyframes?: WebStyleKeyframes[];
+  groups?: WebStyleConditionalGroup[];
 }
 
 export interface Ref<T = unknown> {
