@@ -1010,6 +1010,8 @@ export function webNodeRelationRefs(rt: Runtime, query: string): WebDOMRelationR
 export function webNodeSnapshot(rt: Runtime, query: string): WebDOMSnapshot | null;
 export function webNodeSnapshots(rt: Runtime, selector?: string): WebDOMSnapshot[];
 export function webSourceRef(sourcePath: string, sourceLine: number, sourceColumn?: number): string;
+export function webSourceRangeRef(sourcePath: string, sourceLine: number,
+  sourceColumn: number, sourceEndLine: number, sourceEndColumn: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;

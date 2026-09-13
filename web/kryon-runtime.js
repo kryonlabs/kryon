@@ -4925,6 +4925,16 @@ export function webSourceRef(sourcePath, sourceLine, sourceColumn = 0) {
   return column > 0 ? `${path}:${line}:${column}` : `${path}:${line}`;
 }
 
+export function webSourceRangeRef(sourcePath, sourceLine, sourceColumn,
+                                  sourceEndLine, sourceEndColumn) {
+  const start = webSourceRef(sourcePath, sourceLine, sourceColumn);
+  const endLine = Number.isFinite(Number(sourceEndLine)) ? Math.trunc(Number(sourceEndLine)) : 0;
+  const endColumn = Number.isFinite(Number(sourceEndColumn)) ? Math.trunc(Number(sourceEndColumn)) : 0;
+  if (!start || endLine <= 0 || endColumn <= 0)
+    return "";
+  return `${start}-${endLine}:${endColumn}`;
+}
+
 function webNodeHasSource(node) {
   return !!(node?.sourcePath && node?.sourceLine);
 }

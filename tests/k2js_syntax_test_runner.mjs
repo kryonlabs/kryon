@@ -867,6 +867,10 @@ const tapSourceRangeRef = `${tapSourceColumnRef}-${webDoc.nodes[2].sourceEndLine
 assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine), tapSourceRef);
 assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn), tapSourceColumnRef);
+assert.equal(runtime.webSourceRangeRef("src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceColumn, webDoc.nodes[2].sourceEndLine,
+  webDoc.nodes[2].sourceEndColumn), tapSourceRangeRef);
+assert.equal(runtime.webSourceRangeRef("", 0, 0, 0, 0), "");
 assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.webSourceMap(rt)

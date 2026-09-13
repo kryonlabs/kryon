@@ -544,6 +544,8 @@ frame.
 `webNodeIdentity(node)` returns a plain identity projection for a Web Document
 node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
 DOM name, source refs, and source range refs.
+`webSourceRef(...)` and `webSourceRangeRef(...)` build the same stable source
+lookup keys that identities, snapshots, and source maps expose.
 If a generated widget item does not yet carry an explicit Kry path, the web
 runtime synthesizes one from the nearest known parent, widget kind, source line,
 and frame index before exposing node identity. This keeps every Web Document
