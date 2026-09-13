@@ -17,11 +17,14 @@ main(void)
 {
     Rectangle bounds = {10, 20, 240, 80};
     StyleFrame handle = {0};
+    assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
+
+    handle.value.fields = StyleIconSize;
     handle.value.icon_size = 7.0f;
     PanedViewMetrics metrics = PanedViewMetricsFor(2.0f, handle);
     assert(metrics.grip == 14);
     handle.value.icon_size = 0.0f;
-    assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
+    assert(PanedViewMetricsFor(1.0f, handle).grip == 8);
 
     assert(PanedViewSize(bounds, true) == 240);
     assert(PanedViewSize(bounds, false) == 80);

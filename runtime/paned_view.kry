@@ -1,4 +1,5 @@
 #module "paned_view"
+#import "control_props"
 #import "drawing_props"
 #import "style"
 
@@ -6,12 +7,16 @@ PanedViewMetrics :: struct {
     grip: i32
 }
 
+PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
 PanedViewMetricsFor :: (scale: float, handle: StyleFrame) -> PanedViewMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: PanedViewMetrics
-    grip: float = handle.value.icon_size
-    if grip <= 0.0 { grip = 8.0 }
-    metrics.grip = (i32)(grip * scale)
+    metrics.grip = PanedViewMetric(handle.value.fields, (u32)StyleIconSize,
+        handle.value.icon_size, 8.0, scale)
     return metrics
 }
 
