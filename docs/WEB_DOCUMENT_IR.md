@@ -381,8 +381,9 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `installAppWebStyleSheets(app, target?, id?)`, and `setWebStyleSheets(rt,
 sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
 source text in `app.styles[].source` when a `#style` import resolves on disk.
-Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, state,
-specificity }`, matching the facts used by node queries and DOM object lookup.
+Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, attrOps,
+state, specificity }`, with `parts` for descendant and child selector chains,
+matching the facts used by node queries and DOM object lookup.
 File imports resolve relative to the source module and then the project root;
 package imports resolve built-in `kryon.*` packs and project packages under
 `styles/`, including dotted package names as nested paths. Projects can also
@@ -392,8 +393,9 @@ embedded sheets automatically. CSS export and
 installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. The web
-resolver supports kind selectors, `[index=...]`, `#id`, `.class`, `[ref=...]`,
-`[webRef=...]`, source identity selectors
+resolver supports kind selectors, descendant and child chains, `[index=...]`,
+`#id`, `.class`, `[ref=...]`, `[webRef=...]`, CSS-style attribute operators
+`=`, `~=`, `|=`, `^=`, `$=`, and `*=`, source identity selectors
 such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
 and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,

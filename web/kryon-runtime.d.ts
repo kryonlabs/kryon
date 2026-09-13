@@ -707,6 +707,8 @@ export interface WebStyleSelector {
   attrOps: Record<string, string>;
   state: string;
   specificity: number;
+  combinator?: string;
+  parts?: WebStyleSelector[];
 }
 
 export interface WebStyleRule {

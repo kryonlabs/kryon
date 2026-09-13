@@ -1721,7 +1721,60 @@ function stripKssComments(source) {
     .replace(/\/\/.*$/gm, "");
 }
 
-function parseSelector(text) {
+function splitSelectorSequence(text) {
+  const parts = [];
+  let token = "";
+  let bracketDepth = 0;
+  let quote = "";
+  let pendingCombinator = "";
+  const push = () => {
+    const value = token.trim();
+    if (!value)
+      return;
+    parts.push({ combinator: pendingCombinator || (parts.length ? " " : ""), text: value });
+    token = "";
+    pendingCombinator = "";
+  };
+  for (const ch of String(text || "")) {
+    if (quote) {
+      token += ch;
+      if (ch === quote)
+        quote = "";
+      continue;
+    }
+    if (ch === "\"" || ch === "'") {
+      token += ch;
+      quote = ch;
+      continue;
+    }
+    if (ch === "[") {
+      bracketDepth++;
+      token += ch;
+      continue;
+    }
+    if (ch === "]" && bracketDepth > 0) {
+      bracketDepth--;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && ch === ">") {
+      push();
+      pendingCombinator = ">";
+      continue;
+    }
+    if (!bracketDepth && /\s/.test(ch)) {
+      push();
+      if (!pendingCombinator)
+        pendingCombinator = " ";
+      continue;
+    }
+    token += ch;
+  }
+  push();
+  return parts;
+}
+
+function parseSimpleSelector(text) {
   let source = String(text || "").trim();
   const selector = {
     kind: "*",
@@ -1765,6 +1818,26 @@ function parseSelector(text) {
   if (selector.kind !== "*")
     selector.specificity += 1;
   return selector;
+}
+
+function parseSelector(text) {
+  const parts = splitSelectorSequence(text);
+  if (parts.length <= 1)
+    return parseSimpleSelector(text);
+  const selectors = parts.map((part) => ({
+    ...parseSimpleSelector(part.text),
+    combinator: part.combinator
+  }));
+  return {
+    kind: selectors[selectors.length - 1]?.kind || "*",
+    id: "",
+    classes: [],
+    attrs: {},
+    attrOps: {},
+    state: "",
+    specificity: selectors.reduce((sum, selector) => sum + selector.specificity, 0),
+    parts: selectors
+  };
 }
 
 function parseKssValue(value) {
@@ -1966,6 +2039,11 @@ function webStyleSelectorAttrToCSS(key, value, op = "=") {
 }
 
 export function webStyleSelectorToCSS(selector) {
+  if (Array.isArray(selector?.parts) && selector.parts.length)
+    return selector.parts.map((part, index) => {
+      const prefix = index === 0 ? "" : (part.combinator === ">" ? " > " : " ");
+      return prefix + webStyleSelectorToCSS(part);
+    }).join("");
   const parts = [];
   if (!selector || selector.kind === "*")
     parts.push(".kryon-node");
@@ -2567,7 +2645,47 @@ function selectorMatchesFacts(selector, facts) {
   return styleStateMatches(selector.state, facts.state);
 }
 
+function webNodeParentFromFrame(node) {
+  const parentPath = node?.parentPath || "";
+  if (!node || !parentPath || parentPath === node.path)
+    return null;
+  for (const candidate of node.__kryFrameNodes || [])
+    if (candidate?.path === parentPath)
+      return candidate;
+  return null;
+}
+
+function selectorChainMatchesWebNode(selector, node) {
+  const parts = selector?.parts || [];
+  if (!parts.length)
+    return false;
+  let current = node;
+  for (let index = parts.length - 1; index >= 0; index--) {
+    const part = parts[index];
+    if (!current || !selectorMatchesFacts(part, { ...(current?.styleFacts || {}), ...webNodeStyleFacts(current) }))
+      return false;
+    if (index === 0)
+      return true;
+    const relation = parts[index].combinator || " ";
+    if (relation === ">") {
+      current = webNodeParentFromFrame(current);
+      continue;
+    }
+    let ancestor = webNodeParentFromFrame(current);
+    const ancestorSelector = parts[index - 1];
+    while (ancestor &&
+           !selectorMatchesFacts(ancestorSelector, { ...(ancestor?.styleFacts || {}), ...webNodeStyleFacts(ancestor) }))
+      ancestor = webNodeParentFromFrame(ancestor);
+    if (!ancestor)
+      return false;
+    current = ancestor;
+  }
+  return true;
+}
+
 function selectorMatchesWebNode(selector, node) {
+  if (Array.isArray(selector?.parts) && selector.parts.length)
+    return selectorChainMatchesWebNode(selector, node);
   const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
   return selectorMatchesFacts(selector, facts);
 }
@@ -2819,6 +2937,15 @@ function normalizeWebDocumentNodes(nodes) {
       node.key = node.name || cleanWebPathSegment(node.path.split("/").pop(), String(index));
     if (!node.name && node.key && !/^\d+$/.test(String(node.key)))
       node.name = String(node.key);
+    try {
+      Object.defineProperty(node, "__kryFrameNodes", {
+        configurable: true,
+        enumerable: false,
+        value: nodes
+      });
+    } catch {
+      node.__kryFrameNodes = nodes;
+    }
     if (!node.parentPath || node.parentPath === node.path)
       rootPath = node.path || rootPath;
     else
