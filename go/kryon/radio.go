@@ -76,36 +76,6 @@ func Radio_RadioMetric(fields uint32, field uint32, value float32, fallback floa
 	return value_19
 }
 
-func Radio_RadioSize(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = 20.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
-}
-
-func Radio_RadioTouchSize(scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = 40.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
-}
-
 func Radio_RadioSizeForStyle(ring StyleFrame, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

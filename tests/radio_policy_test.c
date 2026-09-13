@@ -32,9 +32,6 @@ main(void)
     StyleFrame styled_ring;
     StyleFrame zero_ring;
 
-    assert(RadioSize(2.0f) == 40);
-    assert(RadioTouchSize(2.0f) == 80);
-    assert(RadioSize(0.0f) == 20);
     assert(RadioSizeForStyle((StyleFrame){0}, 2.0f) == 40);
     assert(RadioTouchSizeForStyle((StyleFrame){0}, 2.0f) == 80);
     assert(strcmp(RadioMarkText(false), "○") == 0);

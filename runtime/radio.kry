@@ -42,16 +42,6 @@ RadioMetric :: (fields: u32, field: u32, value: float,
     return (i32)(value * scale)
 }
 
-RadioSize :: (scale: float) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    return (i32)(20.0 * scale)
-}
-
-RadioTouchSize :: (scale: float) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    return (i32)(40.0 * scale)
-}
-
 RadioSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return RadioMetric(ring.value.fields, (u32)StyleIconSize,

@@ -622,8 +622,6 @@ test_radio_paint_policy(void)
         .selected = disabled_frame
     });
 
-    check_int("radio size", RadioSize(1.0f), 20);
-    check_int("radio touch size", RadioTouchSize(1.0f), 40);
     check_int("radio styled size", RadioSizeForStyle(frame, 1.0f), 20);
     check_int("radio styled touch size", RadioTouchSizeForStyle(frame, 1.0f), 40);
     check_int("radio label x", (int)unchecked.label_x, 58);
