@@ -43,6 +43,10 @@ the browser receives normal elements, attributes, CSS, and events.
   `input_type`, `placeholder`, `required`, `autocomplete`, length/pattern
   constraints, input mode, and enter key hints, with compiler metadata still
   taking precedence.
+- Direct `.kry` widget args also feed native `data-*` and extra attributes via
+  `data_*`, `dom_data_*`, `html_data_*`, `attr_*`, `dom_attr_*`, and
+  `html_attr_*`, with compiler metadata overlays preserving the stronger source
+  of truth.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
   selectors, segmented controls, progress, separators, tables, title/navigation

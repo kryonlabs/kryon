@@ -2521,7 +2521,9 @@ function fakeDocument() {
       link: "/manual.pdf",
       target: "_blank",
       rel: "noopener",
-      download: "manual.pdf"
+      download: "manual.pdf",
+      data_tracking_id: "manual-link",
+      attr_itemprop: "url"
     }, null,
       {
         nodeName: "manual",
@@ -2544,6 +2546,10 @@ function fakeDocument() {
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[rel=\"noopener\"]").path,
       "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[data-tracking-id=\"manual-link\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[itemprop=\"url\"]").path,
+      "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[hidden]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[draggable=false]").path,
@@ -2559,6 +2565,8 @@ function fakeDocument() {
     assert.equal(manual.attributes.target, "_blank");
     assert.equal(manual.attributes.rel, "noopener");
     assert.equal(manual.attributes.download, "manual.pdf");
+    assert.equal(manual.attributes["data-tracking-id"], "manual-link");
+    assert.equal(manual.attributes.itemprop, "url");
     assert.equal(manual.attributes.hidden, "");
     assert.equal(manual.hidden, true);
     assert.equal(manual.attributes.draggable, "false");

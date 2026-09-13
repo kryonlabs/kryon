@@ -1301,12 +1301,37 @@ function widgetLevel(item) {
   return Math.max(1, Math.min(6, propNumber(item.args || {}, "level", 2)));
 }
 
-function propDataAttrs(meta) {
+function propPrefixedAttrs(source, prefixes, normalize, valid) {
   const out = {};
+  const add = (rawName, value) => {
+    const key = String(rawName || "").trim();
+    const prefix = prefixes.find((candidate) => key.startsWith(candidate));
+    if (!prefix || key.length <= prefix.length)
+      return;
+    const attr = normalize(key.slice(prefix.length));
+    if (!attr || !valid.test(attr))
+      return;
+    out[attr] = value === undefined || value === null ? "" : String(value);
+  };
+  if (source && typeof source === "object" && !Array.isArray(source)) {
+    for (const [name, value] of Object.entries(source))
+      add(name, value);
+  } else {
+    const prefixPattern = prefixes.map((prefix) => prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const pattern = new RegExp(`\\.(${prefixPattern}[A-Za-z0-9_.:-]+)\\s*=\\s*("(?:[^"\\\\]|\\\\.)*"|[^,}]+)`, "g");
+    let match = null;
+    while ((match = pattern.exec(String(source || ""))) !== null)
+      add(match[1], stringValue(match[2], String(match[2] || "").trim()));
+  }
+  return out;
+}
+
+function propDataAttrs(meta, args = null) {
+  const out = propPrefixedAttrs(args, ["data_", "dom_data_", "html_data_"],
+    (name) => String(name).replace(/_/g, "-").toLowerCase(),
+    /^[a-z0-9][a-z0-9.-]*$/);
   const data = meta && typeof meta.data === "object" && !Array.isArray(meta.data) ? meta.data : null;
-  if (!data)
-    return out;
-  for (const [name, value] of Object.entries(data)) {
+  for (const [name, value] of Object.entries(data || {})) {
     const attr = String(name).trim().replace(/_/g, "-").toLowerCase();
     if (!attr || !/^[a-z0-9][a-z0-9.-]*$/.test(attr))
       continue;
@@ -1329,13 +1354,13 @@ function propAriaAttrs(meta) {
   return out;
 }
 
-function propExtraAttrs(meta) {
-  const out = {};
+function propExtraAttrs(meta, args = null) {
+  const out = propPrefixedAttrs(args, ["attr_", "dom_attr_", "html_attr_"],
+    (name) => String(name).replace(/_/g, "-").toLowerCase(),
+    /^[a-z][a-z0-9._:-]*$/);
   const attrs = meta && typeof meta.extraAttrs === "object" && !Array.isArray(meta.extraAttrs)
     ? meta.extraAttrs : null;
-  if (!attrs)
-    return out;
-  for (const [name, value] of Object.entries(attrs)) {
+  for (const [name, value] of Object.entries(attrs || {})) {
     const attr = String(name).trim().toLowerCase();
     if (!attr || !/^[a-z][a-z0-9._:-]*$/.test(attr))
       continue;
@@ -1416,8 +1441,8 @@ function webNodeFromWidget(item, index) {
     htmlFor: metaString(meta, "htmlFor"),
     part: metaString(meta, "part"),
     slot: metaString(meta, "slot"),
-    dataAttrs: propDataAttrs(meta),
-    extraAttrs: propExtraAttrs(meta),
+    dataAttrs: propDataAttrs(meta, args),
+    extraAttrs: propExtraAttrs(meta, args),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
     formOwner: meta.formOwner === undefined || meta.formOwner === null
       ? propStringAny(args, ["form", "dom_form", "html_form"])
