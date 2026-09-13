@@ -4328,12 +4328,9 @@ func (r *runtime) Link(props LinkProps) bool {
 	linkStyle := unpackStyle(frame.Value)
 	font, fontID := styleTextFace(linkStyle, Text16)
 	bounds := r.layoutRect(props.Bounds)
-	if bounds.Width <= 0 {
-		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
-	}
-	if bounds.Height <= 0 {
-		bounds.Height = float32(font + 4)
-	}
+	bounds = Link_LinkBoundsFor(bounds,
+		int32(runtimeTextWidthWithFont(props.Text, font, fontID)),
+		textHeight(font, fontID), font)
 	pressed := false
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)

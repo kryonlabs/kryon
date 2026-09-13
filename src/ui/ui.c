@@ -2341,13 +2341,7 @@ RenderLink(LinkProps link)
         ? (int)(style_frame.value.font_size + 0.5f)
         : GetFontSize();
     text_w = TextWidth(text, font);
-
-    if(bounds.width <= 0)
-        bounds.width = (float)text_w;
-    if(bounds.height <= 0)
-        bounds.height = (float)TextHeight(text, font);
-    if(bounds.height <= 0)
-        bounds.height = (float)font;
+    bounds = LinkBoundsFor(bounds, text_w, TextHeight(text, font), font);
 
     widget = BeginWidget("link",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),

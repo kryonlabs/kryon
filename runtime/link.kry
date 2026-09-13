@@ -12,6 +12,21 @@ LinkAppearance :: struct {
     underline: bool
 }
 
+LinkBoundsFor :: (bounds: Rectangle, text_width: i32,
+    text_height: i32, font: i32) -> Rectangle #export {
+    result: Rectangle = bounds
+    if result.width <= 0.0 {
+        result.width = (float)text_width
+    }
+    if result.height <= 0.0 {
+        result.height = (float)text_height
+    }
+    if result.height <= 0.0 {
+        result.height = (float)font
+    }
+    return result
+}
+
 ResolveLinkAppearance :: (frame: StyleFrame, hovered: bool,
     disabled: bool) -> LinkAppearance #export {
     state: i32 = LinkStateNormal

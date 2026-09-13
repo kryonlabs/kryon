@@ -28,10 +28,17 @@ main(void)
     StyleFrame hover = {0};
     StyleFrame disabled = {0};
     LinkAppearance paint;
+    Rectangle bounds;
 
     normal.value.foreground = 0x0044ccffu;
     hover.value.foreground = 0x2266eeffu;
     disabled.value.foreground = 0x667788ffu;
+
+    bounds = LinkBoundsFor((Rectangle){10, 20, 0, 0}, 72, 18, 16);
+    check_bool("link fills zero width", (int)bounds.width == 72, 1);
+    check_bool("link fills zero height", (int)bounds.height == 18, 1);
+    bounds = LinkBoundsFor((Rectangle){10, 20, 0, 0}, 0, 0, 16);
+    check_bool("link falls back to font height", (int)bounds.height == 16, 1);
 
     paint = ResolveLinkAppearance(normal, false, false);
     check_u32("normal link color", paint.color, normal.value.foreground);

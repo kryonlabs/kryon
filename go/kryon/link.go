@@ -15,6 +15,37 @@ type LinkAppearance struct {
 	Underline bool
 }
 
+func Link_LinkBoundsFor(bounds Rectangle, text_width int32, text_height int32, font int32) Rectangle {
+	var value_0 Rectangle = bounds
+	var result Rectangle = value_0
+	var value_1 float32 = result.Width
+	var value_2 float32 = 0.0
+	var value_3 bool = value_1 <= value_2
+	if value_3 {
+		var value_4 int32 = text_width
+		var value_5 float32 = float32(value_4)
+		result.Width = value_5
+	}
+	var value_6 float32 = result.Height
+	var value_7 float32 = 0.0
+	var value_8 bool = value_6 <= value_7
+	if value_8 {
+		var value_9 int32 = text_height
+		var value_10 float32 = float32(value_9)
+		result.Height = value_10
+	}
+	var value_11 float32 = result.Height
+	var value_12 float32 = 0.0
+	var value_13 bool = value_11 <= value_12
+	if value_13 {
+		var value_14 int32 = font
+		var value_15 float32 = float32(value_14)
+		result.Height = value_15
+	}
+	var value_16 Rectangle = result
+	return value_16
+}
+
 func Link_ResolveLinkAppearance(frame StyleFrame, hovered bool, disabled bool) LinkAppearance {
 	var value_0 int32 = LinkVisualStateLinkStateNormal
 	var state int32 = value_0
