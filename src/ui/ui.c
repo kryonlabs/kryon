@@ -163,20 +163,20 @@ static int g_ui_text_field_pan_start_scroll = 0;
 static int g_ui_text_field_panning = 0;
 
 enum {
-    UI_TEXT_CONTEXT_NONE = 0,
-    UI_TEXT_CONTEXT_FIELD,
-    UI_TEXT_CONTEXT_AREA
+    TEXT_CONTEXT_NONE = 0,
+    TEXT_CONTEXT_FIELD,
+    TEXT_CONTEXT_AREA
 };
 
 enum {
-    UI_TEXT_CONTEXT_CUT = 9101,
-    UI_TEXT_CONTEXT_COPY,
-    UI_TEXT_CONTEXT_PASTE,
-    UI_TEXT_CONTEXT_SELECT_ALL
+    TEXT_CONTEXT_CUT = 9101,
+    TEXT_CONTEXT_COPY,
+    TEXT_CONTEXT_PASTE,
+    TEXT_CONTEXT_SELECT_ALL
 };
 
 static int g_ui_text_context_open = 0;
-static int g_ui_text_context_kind = UI_TEXT_CONTEXT_NONE;
+static int g_ui_text_context_kind = TEXT_CONTEXT_NONE;
 static int g_ui_text_context_id = 0;
 static int *g_ui_text_context_owner = NULL;
 static int g_ui_text_context_x = 0;
@@ -197,7 +197,7 @@ static int g_ui_text_context_allow_newlines = 0;
 static int g_ui_text_context_copy_all_when_empty = 0;
 static int g_ui_text_context_read_only = 0;
 static int g_ui_text_context_changed = 0;
-static int g_ui_text_context_changed_kind = UI_TEXT_CONTEXT_NONE;
+static int g_ui_text_context_changed_kind = TEXT_CONTEXT_NONE;
 static int g_ui_text_context_changed_id = 0;
 static int *g_ui_text_context_changed_owner = NULL;
 /* Identity of the widget that currently owns text input focus, recorded as the
@@ -225,17 +225,17 @@ static int g_ui_text_input_enter_count = 0;
 static double g_ui_backspace_next_repeat_at = 0.0;
 
 enum {
-    UI_CURSOR_PRIORITY_DEFAULT = 0,
+    CURSOR_PRIORITY_DEFAULT = 0,
     /* Disabled sits just above default and below every interactive intent:
      * widgets draw back-to-front, so anything clickable, textual or
      * resizable drawn after disabled background content is visually on top
      * of it and must own the cursor. With DISABLED ranked highest, a board
      * that disables its cards behind a modal banned the cursor for the
      * whole frame — the modals own buttons and text never got a say. */
-    UI_CURSOR_PRIORITY_DISABLED = 1,
-    UI_CURSOR_PRIORITY_TEXT = 2,
-    UI_CURSOR_PRIORITY_CLICKABLE = 3,
-    UI_CURSOR_PRIORITY_RESIZE = 4
+    CURSOR_PRIORITY_DISABLED = 1,
+    CURSOR_PRIORITY_TEXT = 2,
+    CURSOR_PRIORITY_CLICKABLE = 3,
+    CURSOR_PRIORITY_RESIZE = 4
 };
 
 #define INPUT_CLIP_STACK_MAX INPUT_CLIP_DEPTH
@@ -402,24 +402,24 @@ MarkClickable(void)
 {
     if(g_ui_cursor_clickable != NULL)
         *g_ui_cursor_clickable = 1;
-    ui_set_cursor_intent(MOUSE_CURSOR_POINTING_HAND, UI_CURSOR_PRIORITY_CLICKABLE);
+    ui_set_cursor_intent(MOUSE_CURSOR_POINTING_HAND, CURSOR_PRIORITY_CLICKABLE);
 }
 
 void
 MarkCursor(int cursor)
 {
-    int priority = UI_CURSOR_PRIORITY_CLICKABLE;
+    int priority = CURSOR_PRIORITY_CLICKABLE;
 
     if(cursor == MOUSE_CURSOR_NOT_ALLOWED)
-        priority = UI_CURSOR_PRIORITY_DISABLED;
+        priority = CURSOR_PRIORITY_DISABLED;
     else if(cursor == MOUSE_CURSOR_IBEAM)
-        priority = UI_CURSOR_PRIORITY_TEXT;
+        priority = CURSOR_PRIORITY_TEXT;
     else if(cursor == MOUSE_CURSOR_RESIZE_EW ||
             cursor == MOUSE_CURSOR_RESIZE_NS ||
             cursor == MOUSE_CURSOR_RESIZE_NWSE ||
             cursor == MOUSE_CURSOR_RESIZE_NESW ||
             cursor == MOUSE_CURSOR_RESIZE_ALL)
-        priority = UI_CURSOR_PRIORITY_RESIZE;
+        priority = CURSOR_PRIORITY_RESIZE;
     ui_set_cursor_intent(cursor, priority);
 }
 
@@ -428,7 +428,7 @@ MarkDisabled(void)
 {
     if(g_ui_cursor_disabled != NULL)
         *g_ui_cursor_disabled = 1;
-    ui_set_cursor_intent(MOUSE_CURSOR_NOT_ALLOWED, UI_CURSOR_PRIORITY_DISABLED);
+    ui_set_cursor_intent(MOUSE_CURSOR_NOT_ALLOWED, CURSOR_PRIORITY_DISABLED);
 }
 
 int
@@ -440,7 +440,7 @@ GetMouseCursorIntent(void)
 static void
 MarkTextCursor(void)
 {
-    ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, UI_CURSOR_PRIORITY_TEXT);
+    ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, CURSOR_PRIORITY_TEXT);
 }
 
 static int
@@ -1098,7 +1098,7 @@ static void
 ui_text_context_close(void)
 {
     g_ui_text_context_open = 0;
-    g_ui_text_context_kind = UI_TEXT_CONTEXT_NONE;
+    g_ui_text_context_kind = TEXT_CONTEXT_NONE;
     g_ui_text_context_id = 0;
     g_ui_text_context_owner = NULL;
     g_ui_text_context_target_frame = 0;
@@ -1157,7 +1157,7 @@ ui_text_context_take_changed(int kind, int id, int *owner)
        (id > 0 && g_ui_text_context_changed_id != id))
         return 0;
     g_ui_text_context_changed = 0;
-    g_ui_text_context_changed_kind = UI_TEXT_CONTEXT_NONE;
+    g_ui_text_context_changed_kind = TEXT_CONTEXT_NONE;
     g_ui_text_context_changed_id = 0;
     g_ui_text_context_changed_owner = NULL;
     return 1;
@@ -1210,7 +1210,7 @@ ui_text_apply_context_command(int command, TextEdit edit,
     selection_end = ui_clampi(selection_end, 0, len);
 
     switch(command) {
-    case UI_TEXT_CONTEXT_CUT:
+    case TEXT_CONTEXT_CUT:
         if(selection_end > selection_start) {
             if(read_only) {
                 ui_text_copy_range(edit.text, selection_start, selection_end);
@@ -1228,13 +1228,13 @@ ui_text_apply_context_command(int command, TextEdit edit,
         ui_text_selection_set(selection, selection_id, selection_owner,
                               *edit.cursor_position, *edit.cursor_position, 0);
         break;
-    case UI_TEXT_CONTEXT_COPY:
+    case TEXT_CONTEXT_COPY:
         if(selection_end > selection_start)
             ui_text_copy_range(edit.text, selection_start, selection_end);
         else if(copy_all_when_empty && len > 0)
             SetClipboardTextValue(edit.text);
         break;
-    case UI_TEXT_CONTEXT_PASTE:
+    case TEXT_CONTEXT_PASTE:
         if(read_only)
             break;
         if(selection_end > selection_start)
@@ -1246,7 +1246,7 @@ ui_text_apply_context_command(int command, TextEdit edit,
         ui_text_selection_set(selection, selection_id, selection_owner,
                               *edit.cursor_position, *edit.cursor_position, 0);
         break;
-    case UI_TEXT_CONTEXT_SELECT_ALL:
+    case TEXT_CONTEXT_SELECT_ALL:
         len = (int)strlen(edit.text);
         ui_text_selection_set(selection, selection_id, selection_owner,
                               0, len, 0);
@@ -1286,22 +1286,22 @@ ui_text_draw_context_overlay(void)
     }
 
     items[0] = (MenuItem){MenuCommand, "Cut", "Ctrl+X",
-                            UI_TEXT_CONTEXT_CUT,
+                            TEXT_CONTEXT_CUT,
                             !(has_selection ||
                               (g_ui_text_context_copy_all_when_empty && has_text)) ||
                             g_ui_text_context_read_only,
                             0, NULL, 0};
     items[1] = (MenuItem){MenuCommand, "Copy", "Ctrl+C",
-                            UI_TEXT_CONTEXT_COPY,
+                            TEXT_CONTEXT_COPY,
                             !(has_selection ||
                               (g_ui_text_context_copy_all_when_empty && has_text)),
                             0, NULL, 0};
     items[2] = (MenuItem){MenuCommand, "Paste", "Ctrl+V",
-                            UI_TEXT_CONTEXT_PASTE,
+                            TEXT_CONTEXT_PASTE,
                             !ui_clipboard_has_text() ||
                             g_ui_text_context_read_only, 0, NULL, 0};
     items[3] = (MenuItem){MenuCommand, "Select All", "Ctrl+A",
-                            UI_TEXT_CONTEXT_SELECT_ALL,
+                            TEXT_CONTEXT_SELECT_ALL,
                             !has_text, 0, NULL, 0};
 
     memset(&menu, 0, sizeof(menu));
@@ -3750,16 +3750,16 @@ ui_text_area_render(TextAreaProps area)
     if(mouse_inside && !captured)
         MarkTextCursor();
     drag_id = area.focus_id > 0 ? area.focus_id : 1;
-    changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_AREA, drag_id,
+    changed |= ui_text_context_take_changed(TEXT_CONTEXT_AREA, drag_id,
                                             area.focused);
-    context_active = ui_text_context_matches(UI_TEXT_CONTEXT_AREA, drag_id,
+    context_active = ui_text_context_matches(TEXT_CONTEXT_AREA, drag_id,
                                              area.focused);
     if(context_active) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
     }
 
-    if(ui_text_context_open_for(UI_TEXT_CONTEXT_AREA, drag_id, area.focused,
+    if(ui_text_context_open_for(TEXT_CONTEXT_AREA, drag_id, area.focused,
                                 area.bounds, mouse_world, captured)) {
         int clicked_cursor;
         int current_start = 0;
@@ -4155,7 +4155,7 @@ ui_text_area_render(TextAreaProps area)
         }
     }
 
-    ui_text_context_register_target(UI_TEXT_CONTEXT_AREA, drag_id,
+    ui_text_context_register_target(TEXT_CONTEXT_AREA, drag_id,
                                     area.focused, area.text, area.text_size,
                                     area.cursor_position,
                                     area.max_codepoints, NULL, NULL,
@@ -4417,9 +4417,9 @@ ui_text_field_render_filtered(TextFieldProps field,
     captured = InputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
         MarkTextCursor();
-    changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_FIELD,
+    changed |= ui_text_context_take_changed(TEXT_CONTEXT_FIELD,
                                             field.focus_id, field.focused);
-    context_active = ui_text_context_matches(UI_TEXT_CONTEXT_FIELD,
+    context_active = ui_text_context_matches(TEXT_CONTEXT_FIELD,
                                              field.focus_id, field.focused);
     if(context_active) {
         focused = 1;
@@ -4427,7 +4427,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     }
 
     if(!field.secure &&
-       ui_text_context_open_for(UI_TEXT_CONTEXT_FIELD, field.focus_id,
+       ui_text_context_open_for(TEXT_CONTEXT_FIELD, field.focus_id,
                                 field.focused, field.bounds, mouse_world,
                                 captured)) {
         int clicked_cursor;
@@ -4861,7 +4861,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     }
 
     if(!field.secure)
-        ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
+        ui_text_context_register_target(TEXT_CONTEXT_FIELD, field.focus_id,
                                         field.focused, field.text,
                                         field.text_size, field.cursor_position,
                                         field.max_codepoints, filter,
@@ -5173,7 +5173,7 @@ SetFrameCamera(Camera2D camera)
         g_ui_cursor_current = MOUSE_CURSOR_DEFAULT;
         SetMouseCursor(MOUSE_CURSOR_DEFAULT);
     }
-    g_ui_cursor_priority = UI_CURSOR_PRIORITY_DEFAULT;
+    g_ui_cursor_priority = CURSOR_PRIORITY_DEFAULT;
     g_ui_cursor_had_intent = 0;
 
     g_ui_camera = ui_sane_camera(camera);

@@ -2153,10 +2153,10 @@ static NumericInputState *ui_numeric_input_find(int kind, int widget_id,
                                                    int component);
 
 enum {
-    UI_NUMERIC_EDIT_DRAG_FLOAT = 3,
-    UI_NUMERIC_EDIT_DRAG_INT,
-    UI_NUMERIC_EDIT_SLIDER_FLOAT,
-    UI_NUMERIC_EDIT_SLIDER_INT
+    NUMERIC_EDIT_DRAG_FLOAT = 3,
+    NUMERIC_EDIT_DRAG_INT,
+    NUMERIC_EDIT_SLIDER_FLOAT,
+    NUMERIC_EDIT_SLIDER_INT
 };
 
 static int
@@ -2351,7 +2351,7 @@ ui_update_drag_continuous(DragContinuousProps drag)
         int enabled = !drag.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0) RegisterFocus(focus_id,cell);
-        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_FLOAT,
+        changed |= ui_numeric_temp_edit(cell, NUMERIC_EDIT_DRAG_FLOAT,
             drag.id, i, focus_id, &drag.values[i], drag.format,
             drag.disabled, 0, &editing);
         if(editing)
@@ -2390,7 +2390,7 @@ ui_update_drag_discrete(DragDiscreteProps drag)
         int enabled = !drag.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0) RegisterFocus(focus_id,cell);
-        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_INT,
+        changed |= ui_numeric_temp_edit(cell, NUMERIC_EDIT_DRAG_INT,
             drag.id, i, focus_id, &drag.values[i], drag.format,
             drag.disabled, 1, &editing);
         if(editing)
@@ -2462,7 +2462,7 @@ ui_paint_drag_continuous(DragContinuousProps drag)
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
         NumericInputState *state = ui_numeric_input_find(
-            UI_NUMERIC_EDIT_DRAG_FLOAT, drag.id, i);
+            NUMERIC_EDIT_DRAG_FLOAT, drag.id, i);
         int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
             continue;
@@ -2485,7 +2485,7 @@ ui_paint_drag_discrete(DragDiscreteProps drag)
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
         NumericInputState *state = ui_numeric_input_find(
-            UI_NUMERIC_EDIT_DRAG_INT, drag.id, i);
+            NUMERIC_EDIT_DRAG_INT, drag.id, i);
         int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
             continue;
@@ -2675,7 +2675,7 @@ ui_update_slider_continuous(SliderContinuousProps slider, int vertical)
         int editing = 0;
         if(enabled && focus_id > 0)
             RegisterFocus(focus_id,cell);
-        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_SLIDER_FLOAT,
+        changed |= ui_numeric_temp_edit(cell, NUMERIC_EDIT_SLIDER_FLOAT,
             slider.id, i, focus_id, &slider.values[i], slider.format,
             slider.disabled, 0, &editing);
         if(editing)
@@ -2718,7 +2718,7 @@ ui_update_slider_discrete(SliderDiscreteProps slider, int vertical)
         int editing = 0;
         if(enabled && focus_id > 0)
             RegisterFocus(focus_id,cell);
-        changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_SLIDER_INT,
+        changed |= ui_numeric_temp_edit(cell, NUMERIC_EDIT_SLIDER_INT,
             slider.id, i, focus_id, &slider.values[i], slider.format,
             slider.disabled, 1, &editing);
         if(editing)
@@ -2756,7 +2756,7 @@ ui_paint_slider_continuous(SliderContinuousProps slider, int vertical)
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
         NumericInputState *state = ui_numeric_input_find(
-            UI_NUMERIC_EDIT_SLIDER_FLOAT, slider.id, i);
+            NUMERIC_EDIT_SLIDER_FLOAT, slider.id, i);
         if(state != NULL && state->focused)
             continue;
         int focused = !slider.disabled && focus_id > 0 &&
@@ -2781,7 +2781,7 @@ ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
         NumericInputState *state = ui_numeric_input_find(
-            UI_NUMERIC_EDIT_SLIDER_INT, slider.id, i);
+            NUMERIC_EDIT_SLIDER_INT, slider.id, i);
         if(state != NULL && state->focused)
             continue;
         int focused = !slider.disabled && focus_id > 0 &&
