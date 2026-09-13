@@ -273,6 +273,7 @@ host roles rather than retained nodes.
 | `Stack` | `.kry canonical` | Layout block. |
 | `Flow` | `.kry canonical` | Page/content flow layout. |
 | `Grid` | `.kry canonical` | Grid layout; metrics and cursor placement are in `.kry`. |
+| `Scroll` | `.kry canonical` | Parser statement form for generated/runtime lowering; lexical block form remains canonical for scroll content. |
 | `End` | Native support | Lowered/parser block close marker, not a widget. |
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |

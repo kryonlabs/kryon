@@ -183,7 +183,11 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed,
 {
     ButtonProps props = {.id = id, .bounds = bounds, .tone = ButtonToneNeutral,
         .emphasis = ButtonEmphasisSoft, .disabled = UIContentDisabled(),
-        .class_name = class_name, .style = dropdown_trigger_style(class_name)};
+        .class_name = class_name};
+    ButtonSpec spec = {.props = props,
+        .style = dropdown_trigger_style(class_name),
+        .style_kind = StyleKindDropdown(),
+        .style_resolved = 1};
     Activation sample = {.hovered = hovered, .pressed = pressed, .focused = focused};
     if(focused && IsFocusActivatePressed(id))
         sample.pressed = true;
@@ -198,8 +202,9 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed,
     InteractionMotion motion = AdvanceButtonMotion(key, (int)props.state, input,
         TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
         metrics.transition_normal_ms, metrics.transition_fast_ms);
-    StyleFrame appearance = ui_button_style_frame(props, input.interaction.state,
-        1, motion.hover.value, motion.press.value, motion.focus.value);
+    StyleFrame appearance = ui_resolve_button_spec_frame(spec,
+        input.interaction.state, 1, motion.hover.value, motion.press.value,
+        motion.focus.value, StyleKindDropdown());
     ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
         ColorToInt(ui_app_style().background), (float)Scale(1000) / 1000.0f,
         appearance.value.font_size > 0.0f

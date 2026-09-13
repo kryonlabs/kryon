@@ -19,14 +19,18 @@ func TestSharedFontRequestPrecedence(t *testing.T) {
 }
 
 func TestLiveButtonStyleResolvesFontAtPaintTime(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.fonts;
+Button.measured-font { font-size: 17; }
+Button.measured-font:hover { font-size: 27; }`, "Button Fonts", "") {
+		t.Fatal("button font style pack did not register")
+	}
 	for _, explicit := range []int32{0, 13} {
 		now := time.Unix(1, 0)
 		r := New(AppConfig{Width: 400, Height: 200, FrameClock: func() time.Time { return now }}).(*runtime)
 		props := ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 180, Height: 60}, Label: "Measured", ID: 911, Font: explicit,
-			Style: ControlStyle{
-				Normal: Style{Fields: StyleFontSize, FontSize: 17},
-				Hover:  Style{Fields: StyleFontSize, FontSize: 27},
-			}}
+			ClassName: StyleClassID("measured-font")}
 		for _, hovered := range []bool{false, true, false} {
 			if hovered {
 				r.QueueMouseMove(25, 25)
@@ -56,14 +60,18 @@ func TestLiveButtonStyleResolvesFontAtPaintTime(t *testing.T) {
 
 func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 	for _, theme := range []Theme{ThemeDefaultDark(), ThemeDefaultLight()} {
+		ClearStylePacks()
+		if !RegisterStylePackSource(`@pack test.button.composed;
+Button.composed { foreground: #c8281400; opacity: 0.5; }
+Button.composed:hover { foreground: #1464f0; opacity: 1; }`, "Button Composed", "") {
+			t.Fatal("button composed style pack did not register")
+		}
+		hoverForeground := Color{20, 100, 240, 255}
 		now := time.Unix(1, 0)
 		r := New(AppConfig{Width: 320, Height: 160, FrameClock: func() time.Time { return now }}).(*runtime)
 		r.SetTheme(theme)
 		props := ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 991,
-			Style: ControlStyle{
-				Normal: Style{Fields: StyleForeground | StyleOpacity, Foreground: Color{200, 40, 20, 0}, Opacity: 0.5},
-				Hover:  Style{Fields: StyleForeground | StyleOpacity, Foreground: Color{20, 100, 240, 255}, Opacity: 1},
-			}}
+			ClassName: StyleClassID("composed")}
 		draw := func(delta time.Duration) FrameOp {
 			now = now.Add(delta)
 			r.BeginFrame()
@@ -109,11 +117,11 @@ func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 		normal := draw(0)
 		r.QueueMouseMove(80, 50)
 		middle := draw(35 * time.Millisecond)
-		if middle.Button.Material.Hover != 0.578125 || unpackRGBA(middle.Button.Appearance.Value.Foreground) == unpackRGBA(normal.Button.Appearance.Value.Foreground) || unpackRGBA(middle.Button.Appearance.Value.Foreground) == props.Style.Hover.Foreground {
+		if middle.Button.Material.Hover != 0.578125 || unpackRGBA(middle.Button.Appearance.Value.Foreground) == unpackRGBA(normal.Button.Appearance.Value.Foreground) || unpackRGBA(middle.Button.Appearance.Value.Foreground) == hoverForeground {
 			t.Fatalf("hover must advance exactly once and produce an intermediate style: %+v", middle)
 		}
 		settled := draw(140 * time.Millisecond)
-		if unpackRGBA(settled.Button.Appearance.Value.Foreground) != props.Style.Hover.Foreground || settled.Button.Appearance.Value.Opacity != 1 {
+		if unpackRGBA(settled.Button.Appearance.Value.Foreground) != hoverForeground || settled.Button.Appearance.Value.Opacity != 1 {
 			t.Fatalf("hover did not reach its endpoint: %+v", settled)
 		}
 		r.QueueMouseMove(300, 150)
@@ -122,6 +130,7 @@ func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 		if unpackRGBA(returned.Button.Appearance.Value.Foreground) != unpackRGBA(normal.Button.Appearance.Value.Foreground) || returned.Button.Appearance.Value.Opacity != normal.Button.Appearance.Value.Opacity {
 			t.Fatal("hover exit did not restore the original transparent style")
 		}
+		ClearStylePacks()
 	}
 }
 
@@ -209,14 +218,14 @@ func TestNestedTextStyleKeepsExplicitTransparency(t *testing.T) {
 Text.transparent { foreground: #00000000; }
 Text.half { opacity: 0.5; }
 Text.hidden { opacity: 0; }
+Button.text-parent { foreground: #11223380; opacity: 0.5; }
 `, "Nested Text Style", "") {
 		t.Fatal("style pack did not register")
 	}
 	r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	r.BeginFrame()
 	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 923,
-		Style: ControlStyle{Normal: Style{Fields: StyleForeground | StyleOpacity,
-			Foreground: Color{17, 34, 51, 128}, Opacity: 0.5}}})
+		ClassName: StyleClassID("text-parent")})
 	r.Text(TextProps{Text: "Transparent", ClassName: StyleClassID("transparent")})
 	r.Text(TextProps{Text: "Half", ClassName: StyleClassID("half")})
 	r.Text(TextProps{Text: "Hidden", ClassName: StyleClassID("hidden")})
@@ -245,13 +254,23 @@ Text.hidden { opacity: 0; }
 }
 
 func TestExplicitButtonStateMeasuresItsResolvedFont(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.state.fonts;
+Button.state-font { font-size: 17; padding-x: 8; }
+Button.state-font:hover { font-size: 27; padding-x: 19; }
+Button.state-font:pressed { font-size: 27; padding-x: 19; }
+Button.state-font:focus { font-size: 27; padding-x: 19; }
+Button.state-font:disabled { font-size: 27; padding-x: 19; }
+Button.state-font:loading { font-size: 27; padding-x: 19; }
+Button.state-font:selected { font-size: 27; padding-x: 19; }`, "Button State Fonts", "") {
+		t.Fatal("button state font style pack did not register")
+	}
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus,
 		ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected} {
 		for _, explicit := range []int32{0, 13} {
-			style := Style{Fields: StyleFontSize | StylePaddingX, FontSize: 27, PaddingX: 19}
 			props := ButtonProps{Label: "Measured", State: state, Font: explicit, ID: 11,
-				Style: ControlStyle{Normal: Style{Fields: StyleFontSize | StylePaddingX, FontSize: 17, PaddingX: 8},
-					Hover: style, Pressed: style, Focused: style, Disabled: style, Loading: style, Selected: style}}
+				ClassName: StyleClassID("state-font")}
 			r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
 			r.Button(props)
 			wantFont, padding := int32(27), float32(19)
@@ -271,10 +290,16 @@ func TestExplicitButtonStateMeasuresItsResolvedFont(t *testing.T) {
 }
 
 func TestTransparentTextInheritanceAcrossDisabledScope(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.transparent.text;
+Button.transparent-text { foreground: #11223300; }`, "Button Transparent Text", "") {
+		t.Fatal("button transparent text style pack did not register")
+	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
 	r.BeginFrame()
 	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, Font: 27, ID: 992,
-		Style: ControlStyle{Normal: Style{Fields: StyleForeground, Foreground: Color{17, 34, 51, 0}}}})
+		ClassName: StyleClassID("transparent-text")})
 	r.BeginDisabled(true)
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 	r.Text(TextProps{Text: "Transparent", Wrap: TextWrapNone})
@@ -303,12 +328,18 @@ func TestTransparentTextInheritanceAcrossDisabledScope(t *testing.T) {
 }
 
 func TestComposedDisabledTextIsNotFadedTwice(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.disabled.text;
+Button.disabled-text:disabled { foreground: #11223380; }`, "Button Disabled Text", "") {
+		t.Fatal("button disabled text style pack did not register")
+	}
 	for _, scoped := range []bool{false, true} {
 		r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 		r.BeginFrame()
 		r.BeginDisabled(scoped)
 		r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 963, Disabled: !scoped,
-			Style: ControlStyle{Disabled: Style{Fields: StyleForeground, Foreground: Color{17, 34, 51, 128}}}})
+			ClassName: StyleClassID("disabled-text")})
 		r.Text(TextProps{Text: "Inherited"})
 		r.Text(TextProps{Text: "Explicit", Color: Color{68, 85, 102, 128}})
 		r.Text(TextProps{Text: "Disabled inherited", Disabled: true})
@@ -336,9 +367,15 @@ func TestComposedDisabledTextIsNotFadedTwice(t *testing.T) {
 }
 
 func TestTextChildInheritsFontBeforeMeasurement(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.inherit.text;
+Button.inherit-text { foreground: #11223300; }`, "Button Inherit Text", "") {
+		t.Fatal("button inherit text style pack did not register")
+	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
 	r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, Font: 27, ID: 991,
-		Style: ControlStyle{Normal: Style{Fields: StyleForeground, Foreground: Color{17, 34, 51, 0}}}})
+		ClassName: StyleClassID("inherit-text")})
 	r.Text(TextProps{Text: "Inherited", Wrap: TextWrapNone})
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 	r.Text(TextProps{Text: "Nested", Wrap: TextWrapNone})

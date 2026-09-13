@@ -25,7 +25,8 @@ ui_minimal_control_style_data(void)
 
 static StyleData
 ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
-                                      int style_kind, int role)
+                                      int style_kind, int role,
+                                      ControlStyle override)
 {
     StyleFacts facts = StyleControlRoleFacts(
         style_kind != 0 ? style_kind : StyleKindButton(), button.id,
@@ -33,7 +34,7 @@ ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
         role, (int)button.tone, (int)button.emphasis, (int)button.size, state);
     StyleData value = ResolveActiveStyle(ui_minimal_control_style_data(),
                                          facts, state);
-    return ResolveValues(value, ui_pack_style_states(button.style), state);
+    return ResolveValues(value, ui_pack_style_states(override), state);
 }
 
 static StyleFrame
@@ -46,7 +47,8 @@ ui_resolve_minimal_control_role_frame(ButtonProps button, ButtonState state,
     StyleFrame frame = {0};
 
     frame.value = ui_resolve_minimal_control_role_state(button, state,
-                                                       style_kind, role);
+                                                       style_kind, role,
+                                                       (ControlStyle){0});
     frame.fill = FillState(frame.value.fields, frame.value.background,
                            frame.value.background_end);
     if(automatic && !flags.disabled && !flags.loading && !flags.selected &&
@@ -54,18 +56,65 @@ ui_resolve_minimal_control_role_frame(ButtonProps button, ButtonState state,
         StyleData normal = state == ButtonStateNormal
             ? frame.value
             : ui_resolve_minimal_control_role_state(button, ButtonStateNormal,
-                                                    style_kind, role);
+                                                    style_kind, role,
+                                                    (ControlStyle){0});
         StyleData hover = h > 0.0f
             ? ui_resolve_minimal_control_role_state(button, ButtonStateHover,
-                                                    style_kind, role)
+                                                    style_kind, role,
+                                                    (ControlStyle){0})
             : normal;
         StyleData press = p > 0.0f
             ? ui_resolve_minimal_control_role_state(button, ButtonStatePressed,
-                                                    style_kind, role)
+                                                    style_kind, role,
+                                                    (ControlStyle){0})
             : normal;
         StyleData focus = f > 0.0f
             ? ui_resolve_minimal_control_role_state(button, ButtonStateFocus,
-                                                    style_kind, role)
+                                                    style_kind, role,
+                                                    (ControlStyle){0})
+            : normal;
+        frame = TransitionFrame(frame.value, normal, hover, press, focus,
+                                h, p, f);
+    }
+    return frame;
+}
+
+StyleFrame
+ui_resolve_button_spec_frame(ButtonSpec button, ButtonState state,
+                             int automatic, float h, float p, float f,
+                             int style_kind)
+{
+    StateFlags flags = ResolveFlags((int)button.props.state,
+                                    button.props.disabled,
+                                    button.props.loading,
+                                    button.props.selected);
+    StyleFrame frame = {0};
+    int kind = style_kind != 0 ? style_kind : StyleKindButton();
+
+    frame.value = ui_resolve_minimal_control_role_state(
+        button.props, state, kind, StyleAny(), button.style);
+    frame.fill = FillState(frame.value.fields, frame.value.background,
+                           frame.value.background_end);
+    if(automatic && !flags.disabled && !flags.loading && !flags.selected &&
+       (h > 0.0f || p > 0.0f || f > 0.0f)) {
+        StyleData normal = state == ButtonStateNormal ? frame.value
+            : ui_resolve_minimal_control_role_state(
+                button.props, ButtonStateNormal, kind, StyleAny(),
+                button.style);
+        StyleData hover = h > 0.0f
+            ? ui_resolve_minimal_control_role_state(
+                button.props, ButtonStateHover, kind, StyleAny(),
+                button.style)
+            : normal;
+        StyleData press = p > 0.0f
+            ? ui_resolve_minimal_control_role_state(
+                button.props, ButtonStatePressed, kind, StyleAny(),
+                button.style)
+            : normal;
+        StyleData focus = f > 0.0f
+            ? ui_resolve_minimal_control_role_state(
+                button.props, ButtonStateFocus, kind, StyleAny(),
+                button.style)
             : normal;
         frame = TransitionFrame(frame.value, normal, hover, press, focus,
                                 h, p, f);
@@ -203,16 +252,17 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Widget widget;
     int hovered;
     int focused;
-    Style normal_style = ui_resolve_button_style_kind(button.props,
+    Style normal_style = ui_unpack_style(ui_resolve_button_spec_frame(button,
         button.props.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        button.style_kind != 0 ? button.style_kind : StyleKindButton());
+        0, 0, 0, 0,
+        button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
     int font = button.props.font > 0 ? button.props.font :
         (normal_style.font_size > 0.0f
             ? (int)(normal_style.font_size + 0.5f)
             : GetFontSize());
-    Style hover_style = ui_resolve_button_style_kind(button.props,
-        ButtonStateHover,
-        button.style_kind != 0 ? button.style_kind : StyleKindButton());
+    Style hover_style = ui_unpack_style(ui_resolve_button_spec_frame(button,
+        ButtonStateHover, 0, 0, 0, 0,
+        button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
     const char *typeface = normal_style.typeface;
     int typeface_token = 0;
     Color background = button.paint.background.a != 0 ? button.paint.background : normal_style.background;
@@ -303,7 +353,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         metrics = GetThemeMetrics();
         motion = AdvanceButtonMotion(key, (int)props.state, input, cues,
             GetFrameTime() * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
-        appearance = ui_resolve_minimal_control_frame(props,
+        appearance = ui_resolve_button_spec_frame(button,
             input.interaction.state, (int)props.state == ButtonStateAuto,
             motion.hover.value, motion.press.value, motion.focus.value,
             button.style_kind != 0 ? button.style_kind : StyleKindButton());
@@ -423,27 +473,27 @@ RenderIconAction(IconActionSpec button)
     spec.props.emphasis = button.background.a != 0
         ? ButtonEmphasisSoft : ButtonEmphasisGhost;
     spec.style_resolved = 1;
-    spec.props.style.normal.fields = StyleIconSize;
-    spec.props.style.normal.icon_size = spec.paint.icon_size;
+    spec.style.normal.fields = StyleIconSize;
+    spec.style.normal.icon_size = spec.paint.icon_size;
     if(button.background.a != 0) {
-        spec.props.style.normal.fields |= StyleBackground;
-        spec.props.style.normal.background = button.background;
+        spec.style.normal.fields |= StyleBackground;
+        spec.style.normal.background = button.background;
     }
     if(button.hover_background.a != 0) {
-        spec.props.style.hover.fields |= StyleBackground;
-        spec.props.style.hover.background = button.hover_background;
+        spec.style.hover.fields |= StyleBackground;
+        spec.style.hover.background = button.hover_background;
     }
     if(button.icon_color.a != 0) {
-        spec.props.style.normal.fields |= StyleForeground;
-        spec.props.style.normal.foreground = button.icon_color;
+        spec.style.normal.fields |= StyleForeground;
+        spec.style.normal.foreground = button.icon_color;
     }
     if(button.border.a != 0) {
-        spec.props.style.normal.fields |= StyleBorder;
-        spec.props.style.normal.border = button.border;
+        spec.style.normal.fields |= StyleBorder;
+        spec.style.normal.border = button.border;
     }
     if(button.radius > 0.0f) {
-        spec.props.style.normal.fields |= StyleRadius;
-        spec.props.style.normal.radius = button.radius *
+        spec.style.normal.fields |= StyleRadius;
+        spec.style.normal.radius = button.radius *
             fminf(button.bounds.width, button.bounds.height) / (2.0f * scale);
     }
     spec.paint.background = button.background;

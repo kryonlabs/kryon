@@ -58,19 +58,19 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
         MarkClickable();
 
     button.props = props;
-    button.props.style.normal = ui_unpack_style(
+    button.style.normal = ui_unpack_style(
         ui_control_style_frame_role_kind(
             props, disabled ? ButtonStateDisabled : ButtonStateNormal,
             0, 0.0f, 0.0f, 0.0f, StyleKindModal(), 17).value);
-    button.props.style.hover = ui_unpack_style(
+    button.style.hover = ui_unpack_style(
         ui_control_style_frame_role_kind(
             props, ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
             StyleKindModal(), 17).value);
-    button.props.style.pressed = ui_unpack_style(
+    button.style.pressed = ui_unpack_style(
         ui_control_style_frame_role_kind(
             props, ButtonStatePressed, 0, 0.0f, 0.0f, 0.0f,
             StyleKindModal(), 17).value);
-    button.props.style.disabled = ui_unpack_style(
+    button.style.disabled = ui_unpack_style(
         ui_control_style_frame_role_kind(
             props, ButtonStateDisabled, 0, 0.0f, 0.0f, 0.0f,
             StyleKindModal(), 17).value);

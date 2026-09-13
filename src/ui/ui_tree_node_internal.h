@@ -5,6 +5,7 @@
 
 typedef struct {
     ButtonProps props;
+    ControlStyle style;
     Style paint;
     Color hover_background;
     int style_resolved;

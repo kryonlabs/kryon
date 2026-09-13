@@ -45,5 +45,4 @@ ButtonProps :: struct {
     info: bool
     direction: i32
     state: ButtonState
-    style: ControlStyle
 }

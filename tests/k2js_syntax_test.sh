@@ -164,7 +164,7 @@ Scene :: (viewport: Rectangle) #ui {
         Button tap: {
             bounds = button_bounds
             label = "Tap"
-            style = (ControlStyle){.normal = (Style){.fields = StyleRadius, .radius = (float)6}}
+            class_name = StyleClassID("primary")
             dom = "button"
             dom_ref = "primary-action"
             dom_id = "tap-button"
@@ -271,9 +271,9 @@ StyleCopies :: () #ui {
     declared.normal.font_size = 24
     bounds: Rectangle = {10, 20, 30, 40}
     bounds.width = 50
-    Button((ButtonProps){.id=1, .label="Source", .style=source, .bounds=bounds})
-    Button((ButtonProps){.id=2, .label="Declared", .style=declared})
-    Button((ButtonProps){.id=3, .label="Assigned", .style=assigned})
+    Button((ButtonProps){.id=1, .label="Source", .bounds=bounds})
+    Button((ButtonProps){.id=2, .label="Declared"})
+    Button((ButtonProps){.id=3, .label="Assigned"})
 }
 EOF
 

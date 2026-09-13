@@ -63,7 +63,6 @@ BLOCK_ONLY_WIDGET_NAMES = {
     "Canvas",
     "Disabled",
     "Popup",
-    "Scroll",
     "TableCell",
 }
 

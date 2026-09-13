@@ -23,20 +23,10 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 	if button.Emphasis != ButtonEmphasisFilled {
 		t.Fatal("card button props should keep requested emphasis")
 	}
-	if button.Style.Normal.PaddingX != 0 || button.Style.Normal.PaddingY != 0 {
-		t.Fatal("card must not provide hidden padding defaults")
-	}
-	if button.Style.Normal.Material != 0 || button.Style.Hover.Material != 0 {
-		t.Fatal("card must not provide hidden material defaults")
-	}
-	if button.Style.Normal.Fields != 0 || button.Style.Hover.Fields != 0 {
-		t.Fatal("card must not carry inline visual style")
-	}
-
 	plain := Card_CardButtonProps(CardProps{
 		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
 	})
-	if plain.Emphasis != ButtonEmphasisFilled || plain.Style.Normal.Fields != 0 {
+	if plain.Emphasis != ButtonEmphasisFilled {
 		t.Fatal("plain card should preserve semantics and carry no visual style")
 	}
 }

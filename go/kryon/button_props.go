@@ -45,5 +45,4 @@ type ButtonProps struct {
 	Info            bool
 	Direction       int32
 	State           ButtonState
-	Style           ControlStyle
 }

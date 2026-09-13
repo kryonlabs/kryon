@@ -661,14 +661,16 @@ func TestSurfaceGradientTransparencyAndRoundedClip(t *testing.T) {
 }
 
 func TestButtonUsesSharedStyleGradient(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.gradient;
+Button.gradient { background: #c80000; background-end: #0000c8; }`, "Button Gradient", "") {
+		t.Fatal("button gradient style pack did not register")
+	}
 	r := New(AppConfig{Width: 80, Height: 48}).(*runtime)
 	r.SetThemeMode(ThemeModeDark)
 	r.Button(ButtonProps{Bounds: Rectangle{X: 4, Y: 4, Width: 72, Height: 40},
-		ID: 1, State: ButtonStateNormal,
-		Style: ControlStyle{Normal: Style{
-			Fields:     StyleBackground | StyleBackgroundEnd,
-			Background: Color{200, 0, 0, 255}, BackgroundEnd: Color{0, 0, 200, 255},
-		}},
+		ID: 1, State: ButtonStateNormal, ClassName: StyleClassID("gradient"),
 	})
 	ops := r.FrameOps()
 	op := ops[len(ops)-1]
@@ -684,13 +686,19 @@ func TestButtonUsesSharedStyleGradient(t *testing.T) {
 }
 
 func TestCustomGradientPresenceFadesWithInteraction(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.gradient.fade;
+Button.gradient-fade { background: #102030; background-end: #405060; radius: 8; }
+Button.gradient-fade:hover { background-end: #0000ff; }`, "Button Gradient Fade", "") {
+		t.Fatal("button gradient fade style pack did not register")
+	}
 	r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
 	r.BeginFrame()
 	defer r.EndFrame()
 	r.frameDeltaMS = 70
 	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30}, ID: 91,
-		Style: ControlStyle{Hover: Style{Fields: StyleBackgroundEnd,
-			BackgroundEnd: Color{B: 255}}}}
+		ClassName: StyleClassID("gradient-fade")}
 	material := Surface_FillGradient(Surface_FlatLayer(0, 80, 30, 8, 0, 0, 0, 1),
 		true, 0x102030ff, 0x405060ff, 1)
 	for _, inside := range []bool{true, false} {
@@ -701,7 +709,7 @@ func TestCustomGradientPresenceFadesWithInteraction(t *testing.T) {
 		r.buttonAt(props)
 		ops := r.FrameOps()
 		op := ops[len(ops)-1]
-		if !op.Button.Material.FillValid || op.Button.Appearance.Fill.Normal || !op.Button.Appearance.Fill.Hover {
+		if !op.Button.Material.FillValid || !op.Button.Appearance.Fill.Normal || !op.Button.Appearance.Fill.Hover {
 			t.Fatalf("lost state-specific gradient presence: %+v", op.Button.Appearance.Fill)
 		}
 		amount := op.Button.Appearance.Fill.HoverAmount
@@ -709,7 +717,7 @@ func TestCustomGradientPresenceFadesWithInteraction(t *testing.T) {
 			t.Fatalf("expected an in-flight fade, got %v", amount)
 		}
 		got := Surface_ApplyFillStates(material, op.Button.Appearance.Fill, 1)
-		want := Surface_GradientColor(material.EndColor, 0x0000ff00, amount)
+		want := Surface_GradientColor(material.EndColor, 0x0000ffff, amount)
 		if got.EndColor != want {
 			t.Fatalf("gradient snapped on entering/leaving hover: %08x != %08x", got.EndColor, want)
 		}
@@ -833,16 +841,19 @@ func TestDefaultButtonMotionAndZeroDurationOptOut(t *testing.T) {
 }
 
 func TestCustomPaintMetricsFadeAndReverseWithoutMovingHitBounds(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.metrics;
+Button.metrics { radius: 4; border-width: 1; opacity: 1; offset-x: 0; offset-y: 0; }
+Button.metrics:hover { radius: 12; border-width: 3; opacity: 0.25; offset-x: 4; offset-y: -2; }
+Button.metrics:pressed { radius: 0; border-width: 0; opacity: 0; offset-x: 0; offset-y: 0; }`, "Button Metrics", "") {
+		t.Fatal("button metrics style pack did not register")
+	}
 	r := New(AppConfig{Width: 120, Height: 60}).(*runtime)
 	r.BeginFrame()
 	defer r.EndFrame()
-	fields := StyleRadius | StyleBorderWidth | StyleOpacity | StyleContentOffset
 	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 100, Height: 40}, ID: 92,
-		Style: ControlStyle{
-			Normal: Style{Fields: fields, Radius: 4, BorderWidth: 1, Opacity: 1},
-			Hover: Style{Fields: fields, Radius: 12, BorderWidth: 3, Opacity: 0.25,
-				ContentOffset: Vector2{X: 4, Y: -2}},
-		}}
+		ClassName: StyleClassID("metrics")}
 	paint := func() FrameOp {
 		r.buttonAt(props)
 		ops := r.FrameOps()
@@ -874,7 +885,6 @@ func TestCustomPaintMetricsFadeAndReverseWithoutMovingHitBounds(t *testing.T) {
 		(Vector2{X: explicit.Button.Appearance.Value.OffsetX, Y: explicit.Button.Appearance.Value.OffsetY}) != (Vector2{X: 4, Y: -2}) {
 		t.Fatal("explicit preview states must use their exact target metrics immediately")
 	}
-	props.Style.Pressed = Style{Fields: fields}
 	props.State = ButtonStatePressed
 	zero := paint()
 	if zero.Radius != 0 || zero.BorderWidth != 0 || zero.Opacity != 0 || zero.ContentOffset != (Vector2{}) {
@@ -894,17 +904,24 @@ func TestInteractionValueHasExactEndpointsAndPrecedence(t *testing.T) {
 }
 
 func TestCustomFocusColorFadesAndReverses(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.focus;
+Button.focusy { focus: #ff000080; }
+Button.focusy:focus { focus: #0000ff40; }
+Button.focusy:hover { focus: #00ff00c0; }
+Button.focusy:pressed { focus: #00000000; }`, "Button Focus", "") {
+		t.Fatal("button focus style pack did not register")
+	}
 	r := New(AppConfig{Width: 120, Height: 60}).(*runtime)
 	r.SetThemeMode(ThemeModeDark)
 	r.BeginFrame()
 	defer r.EndFrame()
 	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 100, Height: 40}, ID: 93,
-		Style: ControlStyle{
-			Normal:  Style{Fields: StyleFocus, Focus: Color{R: 255, A: 128}},
-			Focused: Style{Fields: StyleFocus, Focus: Color{B: 255, A: 64}},
-			Hover:   Style{Fields: StyleFocus, Focus: Color{G: 255, A: 192}},
-			Pressed: Style{Fields: StyleFocus},
-		}}
+		ClassName: StyleClassID("focusy")}
+	normalFocus := Color{R: 255, A: 128}
+	focusedFocus := Color{B: 255, A: 64}
+	hoverFocus := Color{G: 255, A: 192}
 	paint := func() Color {
 		r.buttonAt(props)
 		ops := r.FrameOps()
@@ -923,11 +940,11 @@ func TestCustomFocusColorFadesAndReverses(t *testing.T) {
 		t.Fatal("focus reversal jumped at zero elapsed time")
 	}
 	r.frameDeltaMS = 140
-	if paint() != props.Style.Normal.Focus {
+	if paint() != normalFocus {
 		t.Fatal("focus exit did not settle to its exact normal color")
 	}
 	r.focusID = 93
-	if paint() != props.Style.Focused.Focus {
+	if paint() != focusedFocus {
 		t.Fatal("focus did not settle to its exact custom color")
 	}
 	r.mousePos = Vector2{X: 30, Y: 30}
@@ -942,11 +959,11 @@ func TestCustomFocusColorFadesAndReverses(t *testing.T) {
 		t.Fatal("hover reversal jumped while focused")
 	}
 	r.frameDeltaMS = 140
-	if paint() != props.Style.Focused.Focus {
+	if paint() != focusedFocus {
 		t.Fatal("hover exit must reveal the focused color")
 	}
 	r.mousePos = Vector2{X: 30, Y: 30}
-	if paint() != props.Style.Hover.Focus {
+	if paint() != hoverFocus {
 		t.Fatal("hover must reach its exact color before pressing")
 	}
 	r.mouseDown[MouseButtonLeft] = true
@@ -961,7 +978,7 @@ func TestCustomFocusColorFadesAndReverses(t *testing.T) {
 		t.Fatal("release jumped at zero elapsed time")
 	}
 	r.frameDeltaMS = 80
-	if paint() != props.Style.Hover.Focus {
+	if paint() != hoverFocus {
 		t.Fatal("release must reveal the hover color while the pointer remains inside")
 	}
 	props.State = ButtonStatePressed
@@ -1004,12 +1021,16 @@ func TestAutomaticFocusFadesMaterialColors(t *testing.T) {
 }
 
 func TestTransparentSurfaceHasNoFallbackPaint(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.transparent;
+Button.transparent-face { background: #00000000; foreground: #00000000; border: #00000000; focus: #00000000; }`, "Button Transparent", "") {
+		t.Fatal("button transparent style pack did not register")
+	}
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateDisabled} {
 		r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
 		r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30},
-			Label: "Hidden", State: state, Style: ControlStyle{Normal: Style{
-				Fields: StyleBackground | StyleForeground | StyleBorder | StyleFocus,
-			}}})
+			Label: "Hidden", State: state, ClassName: StyleClassID("transparent-face")})
 		img := image.NewRGBA(image.Rect(0, 0, 100, 50))
 		for _, op := range r.FrameOps() {
 			if op.Kind == FrameOpButton {
@@ -1040,14 +1061,18 @@ func TestFallbackIconBlendsPartialOpacity(t *testing.T) {
 }
 
 func TestTransparentButtonForegroundDoesNotResurrectIcons(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.transparent.icon;
+Button.transparent-icon { foreground: #7b2d4300; }`, "Button Transparent Icon", "") {
+		t.Fatal("button transparent icon style pack did not register")
+	}
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
 		ButtonStateFocus, ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected} {
 		for _, icon := range []int32{IconPlay, IconX, IconWorkbookFillColor} {
 			r := New(AppConfig{Width: 100, Height: 60}).(*runtime)
 			r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 40},
-				State: state, IconType: icon, Style: ControlStyle{Normal: Style{
-					Fields: StyleForeground, Foreground: Color{R: 123, G: 45, B: 67, A: 0},
-				}}})
+				State: state, IconType: icon, ClassName: StyleClassID("transparent-icon")})
 			for _, op := range r.FrameOps() {
 				if op.Kind != FrameOpButton {
 					continue

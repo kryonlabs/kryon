@@ -39,12 +39,15 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
                                       popup.popup_height,
                                       (float)Scale(1000) / 1000.0f);
     was_open = *popup.open;
-    icon_clicked = Button((ButtonProps){
-        .bounds = layout.button_bounds,
-        .icon = popup.icon, .icon_only = true,
-        .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+    icon_clicked = ui_button_render((ButtonSpec){
+        .props = {
+            .bounds = layout.button_bounds,
+            .icon = popup.icon, .icon_only = true,
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft
+        },
         .style = {.normal = {.fields = StyleIconSize,
-            .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}}
+            .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}},
+        .style_resolved = 1
     });
     if(icon_clicked) {
         *popup.open = !was_open;
@@ -90,12 +93,15 @@ RenderBottomIconRow(BottomIconRowProps row)
 
         if(row.items[i].disabled)
             continue;
-        if(Button((ButtonProps){
-            .bounds = bounds,
-            .icon = row.items[i].icon, .icon_only = true,
-            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+        if(ui_button_render((ButtonSpec){
+            .props = {
+                .bounds = bounds,
+                .icon = row.items[i].icon, .icon_only = true,
+                .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft
+            },
             .style = {.normal = {.fields = StyleIconSize,
-                .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}}
+                .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}},
+            .style_resolved = 1
         }))
             result.clicked_index = i;
     }

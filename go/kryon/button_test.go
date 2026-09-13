@@ -109,11 +109,17 @@ func TestButtonInputConsumesOnlyItsOwnActivation(t *testing.T) {
 }
 
 func TestExplicitDisabledButtonOverridesLoadingAppearance(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.disabled;
+Button.disabled-bg:disabled { background: #01020380; }`, "Button Disabled", "") {
+		t.Fatal("button disabled style pack did not register")
+	}
 	rt := New(AppConfig{Width: 100, Height: 100}).(*runtime)
 	frame, activated := rt.surfaceButtonFrame(ButtonProps{
 		ID: 1, Bounds: Rectangle{Width: 80, Height: 40}, Label: "Run",
 		State: ButtonStateDisabled, Loading: true,
-		Style: ControlStyle{Disabled: Style{Fields: StyleBackground, Background: Color{1, 2, 3, 128}}},
+		ClassName: StyleClassID("disabled-bg"),
 	}, Rectangle{}, false)
 	if activated || !frame.Disabled || !frame.Button.Props.Loading || frame.Hovered || frame.Pressed || frame.Focused {
 		t.Fatalf("explicit disabled state lost to loading: %+v, activated=%v", frame, activated)
@@ -124,18 +130,20 @@ func TestExplicitDisabledButtonOverridesLoadingAppearance(t *testing.T) {
 }
 
 func TestDisabledScopeResolvesButtonStyleBeforeMeasurement(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.disabled.measure;
+Button.measure-disabled { font-size: 17; padding-x: 8; padding-y: 8; }
+Button.measure-disabled:disabled { font-size: 27; padding-x: 19; padding-y: 20; foreground: #11223380; }`, "Button Disabled Measure", "") {
+		t.Fatal("button disabled measure style pack did not register")
+	}
 	var direct FrameOp
 	for _, scoped := range []bool{false, true} {
 		r := New(AppConfig{Width: 400, Height: 180}).(*runtime)
 		r.BeginFrame()
 		r.BeginDisabled(scoped)
 		r.Button(ButtonProps{Label: "Measured", ID: 951, Disabled: !scoped,
-			Style: ControlStyle{
-				Normal: Style{Fields: StyleFontSize | StylePaddingX | StylePaddingY,
-					FontSize: 17, PaddingX: 8, PaddingY: 8},
-				Disabled: Style{Fields: StyleFontSize | StylePaddingX | StylePaddingY | StyleForeground,
-					FontSize: 27, PaddingX: 19, PaddingY: 20, Foreground: Color{17, 34, 51, 128}},
-			}})
+			ClassName: StyleClassID("measure-disabled")})
 		r.EndDisabled()
 		r.EndFrame()
 		op := r.FrameOps()[0]
@@ -400,17 +408,19 @@ func TestGeneratedButtonGeometryAndStatePolicy(t *testing.T) {
 
 func TestButtonControlStyleLayersTransparentAndStateValues(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.states;
+Button.custom { background: #00000000; radius: 0; }
+Button.custom:hover { foreground: #67e8f9; offset-x: 2; offset-y: 1; }`, "Button States", "") {
+		t.Fatal("button state style pack did not register")
+	}
 	transparent := Color{}
 	hoverText := Color{R: 103, G: 232, B: 249, A: 255}
 	r.Button(ButtonProps{
 		Bounds: Rectangle{X: 10, Y: 10, Width: 140, Height: 40},
 		Label:  "Custom", State: ButtonStateHover,
-		Style: ControlStyle{
-			Normal: Style{Fields: StyleBackground | StyleRadius,
-				Background: transparent, Radius: 0},
-			Hover: Style{Fields: StyleForeground | StyleContentOffset,
-				Foreground: hoverText, ContentOffset: Vector2{X: 2, Y: 1}},
-		},
+		ClassName: StyleClassID("custom"),
 	})
 	op := r.ops[len(r.ops)-1]
 	if unpackRGBA(op.Button.Appearance.Value.Background) != transparent || unpackRGBA(op.Button.Appearance.Value.Foreground) != hoverText {
@@ -423,6 +433,14 @@ func TestButtonControlStyleLayersTransparentAndStateValues(t *testing.T) {
 
 func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
 	useMaterialStyleForTest(t)
+	if !RegisterStylePackSource(`@pack test.button.radius;
+Button { radius: 8; }
+Button.zero-radius { radius: 0; }`, "Button Radius", "") {
+		t.Fatal("button radius style pack did not register")
+	}
+	if !SetActiveStylePack("test.button.radius") {
+		t.Fatal("button radius style pack did not activate")
+	}
 	for _, theme := range []Theme{ThemeDefaultLight(), ThemeDefaultDark()} {
 		t.Run(theme.Name, func(t *testing.T) {
 			now := time.Unix(1, 0)
@@ -477,7 +495,7 @@ func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
 			frame(40*time.Millisecond, 8)
 			r.QueueMouseButtonUp(MouseButtonLeft, 50, 40)
 			frame(140*time.Millisecond, 8)
-			props.Style.Normal = Style{Fields: StyleRadius, Radius: 0}
+			props.ClassName = StyleClassID("zero-radius")
 			frame(0, 0)
 			r.QueueMouseMove(-100, -100)
 			frame(70*time.Millisecond, 0)

@@ -48,13 +48,6 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 	if len(className) > 0 {
 		props.ClassName = className[0]
 	}
-	props.Style = ControlStyle{
-		Normal:   r.dropdownStyle(0, false, ButtonStateNormal, props.ClassName),
-		Hover:    r.dropdownStyle(0, false, ButtonStateHover, props.ClassName),
-		Pressed:  r.dropdownStyle(0, false, ButtonStatePressed, props.ClassName),
-		Focused:  r.dropdownStyle(0, false, ButtonStateFocus, props.ClassName),
-		Disabled: r.dropdownStyle(0, false, ButtonStateDisabled, props.ClassName),
-	}
 	input := Button_ResolveButtonInput(int32(props.State), props.Disabled, props.Loading, props.Selected,
 		Activation{Hovered: hovered, Pressed: held, Focused: focused})
 	metrics := r.themeMetrics()

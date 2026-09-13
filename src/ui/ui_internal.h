@@ -417,6 +417,9 @@ int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 Style ui_resolve_button_style_kind(ButtonProps button, ButtonState state,
                                    int style_kind);
+StyleFrame ui_resolve_button_spec_frame(ButtonSpec button, ButtonState state,
+                                        int automatic, float h, float p,
+                                        float f, int style_kind);
 TextInputStyle ui_resolve_text_input_style(TextInputStyle style,
                                            int style_kind, int class_name);
 int ButtonNode(ButtonSpec button);

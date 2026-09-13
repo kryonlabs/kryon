@@ -64,7 +64,6 @@ typedef struct ButtonProps {
     bool info;
     int32_t direction;
     ButtonState state;
-    ControlStyle style;
 } ButtonProps;
 
 #endif /* K_RUNTIME_BUTTON_PROPS_H */

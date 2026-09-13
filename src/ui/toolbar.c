@@ -71,10 +71,10 @@ RenderToolbar(ToolbarProps toolbar)
             button.props.tone = ButtonToneNeutral;
             button.props.emphasis = ButtonEmphasisSoft;
             button.props.class_name = toolbar.class_name;
-            button.props.style.normal = action;
-            button.props.style.hover = action_hover;
-            button.props.style.normal.fields |= StyleIconSize;
-            button.props.style.normal.icon_size =
+            button.style.normal = action;
+            button.style.hover = action_hover;
+            button.style.normal.fields |= StyleIconSize;
+            button.style.normal.icon_size =
                 (float)layout.action_icon_size * 1000.0f / Scale(1000);
             button.style_kind = StyleKindToolbar();
             button.style_resolved = 1;

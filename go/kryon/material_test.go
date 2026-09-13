@@ -6,6 +6,15 @@ import (
 )
 
 func TestSurfaceAndButtonShareMaterialRendering(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack materialcompare;
+Button.flat-solid { background: #123456; border: #5078c8; radius: 8; border-width: 1; opacity: 0.75; material: Flat; }
+Button.flat-gradient { background: #123456; background-end: #50142880; border: #5078c8; radius: 8; border-width: 1; opacity: 0.75; material: Flat; }
+Button.light-solid { background: #123456; border: #5078c8; radius: 8; border-width: 1; opacity: 0.75; material: Lightfield; }
+Button.light-gradient { background: #123456; background-end: #50142880; border: #5078c8; radius: 8; border-width: 1; opacity: 0.75; material: Lightfield; }`, "Material Compare", "") {
+		t.Fatal("material compare style pack did not register")
+	}
 	for _, material := range []MaterialKind{MaterialFlat, MaterialLightfield} {
 		for _, gradient := range []bool{false, true} {
 			r := New(AppConfig{Width: 120, Height: 80}).(*runtime)
@@ -20,8 +29,18 @@ func TestSurfaceAndButtonShareMaterialRendering(t *testing.T) {
 			bounds := Rectangle{X: 20, Y: 20, Width: 80, Height: 40}
 			r.Surface(bounds, style)
 			surface := r.FrameOps()[0]
-			button, _ := r.surfaceButtonFrame(ButtonProps{Bounds: bounds, ID: 78, State: ButtonStateNormal,
-				Style: ControlStyle{Normal: style}}, Rectangle{}, false)
+			className := "flat-solid"
+			if material == MaterialFlat && gradient {
+				className = "flat-gradient"
+			}
+			if material == MaterialLightfield && !gradient {
+				className = "light-solid"
+			}
+			if material == MaterialLightfield && gradient {
+				className = "light-gradient"
+			}
+			button, _ := r.surfaceButtonFrame(ButtonProps{Bounds: bounds, ID: 78,
+				State: ButtonStateNormal, ClassName: StyleClassID(className)}, Rectangle{}, false)
 			if surface.Material != material {
 				t.Fatal("surface discarded explicit material selection")
 			}
@@ -41,12 +60,16 @@ func TestSurfaceAndButtonShareMaterialRendering(t *testing.T) {
 }
 
 func TestMaterialSelectionAndExplicitZero(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack materialzero;
+Button.material-zero { background: #123456; material: Flat; }
+Button.material-light:hover { background: #123456; material: Lightfield; }`, "Material Zero", "") {
+		t.Fatal("material zero style pack did not register")
+	}
 	r := New(AppConfig{Width: 100, Height: 60}).(*runtime)
 	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 40}, ID: 77,
-		Style: ControlStyle{Normal: Style{
-			Fields:   StyleMaterial | StyleBackground | StyleBorder | StyleFocus | StyleRadius,
-			Material: MaterialFlat, Background: Color{18, 52, 86, 255},
-		}}}
+		ClassName: StyleClassID("material-zero")}
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus} {
 		props.State = state
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
@@ -65,7 +88,7 @@ func TestMaterialSelectionAndExplicitZero(t *testing.T) {
 			t.Fatal("flat material drew outside its bounds")
 		}
 	}
-	props.Style.Hover = Style{Fields: StyleMaterial, Material: MaterialLightfield}
+	props.ClassName = StyleClassID("material-light")
 	props.State = ButtonStateHover
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	if MaterialKind(frame.Button.Material.Value.Material) != MaterialLightfield {

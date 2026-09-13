@@ -48,7 +48,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    info: bool\n"
         "    direction: i32\n"
         "    state: ButtonState\n"
-        "    style: ControlStyle\n"
         "}\n"
     },
     {"runtime/canvas_props.kry",

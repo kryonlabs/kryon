@@ -334,8 +334,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         if(Button((ButtonProps){
             .bounds = row.remove_bounds,
             .icon = modal.close_icon, .icon_only = true,
-            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-            .style = {.normal = {.fields = StyleIconSize, .icon_size = 20}}
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft
         })) {
             for(j = i; j < route_count - 1; j++)
                 modal.routes[j] = modal.routes[j + 1];

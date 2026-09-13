@@ -72,9 +72,13 @@ func TestButtonPaintCallbacks(t *testing.T) {
 
 func TestButtonAdvanceFrame(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
-	useMaterialStyleForTest(t)
-	props := ButtonProps{Label: "Run", Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
-	props.Style.Normal = Style{Fields: StyleFontSize, FontSize: 17}
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.advance;
+Button.advance { font-size: 17; material: Flat; }`, "Button Advance", "") {
+		t.Fatal("button advance style pack did not register")
+	}
+	props := ButtonProps{Label: "Run", Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}, ClassName: StyleClassID("advance")}
 	input := resolveButtonInputForTest(props, Activation{Hovered: true})
 	advance := func() ButtonFrame {
 		metrics := r.themeMetrics()
@@ -185,14 +189,18 @@ func TestButtonChildPlacement(t *testing.T) {
 }
 
 func TestButtonChildrenUseResolvedStylePadding(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.children;
+Button.child-padding { padding-x: 25; padding-y: 4; }
+Button.child-padding:hover { padding-x: 0; padding-y: 0; }`, "Button Children", "") {
+		t.Fatal("button child padding style pack did not register")
+	}
 	r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStateNormal} {
 		r.BeginFrame()
 		r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 901, State: state,
-			Style: ControlStyle{
-				Normal: Style{Fields: StylePaddingX | StylePaddingY, PaddingX: 25, PaddingY: 4},
-				Hover:  Style{Fields: StylePaddingX | StylePaddingY, PaddingX: 0, PaddingY: 0},
-			}})
+			ClassName: StyleClassID("child-padding")})
 		r.Column(ColumnProps{})
 		r.End()
 		r.End()
@@ -226,11 +234,26 @@ func TestSharedStyleContentBoundsClampEmptyArea(t *testing.T) {
 }
 
 func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
-	useMaterialStyleForTest(t)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.icons;
+Button { padding-x: 10; }
+Button.icon-neg { icon-size: -1; }
+Button.icon-zero { icon-size: 0; }
+Button.icon-half { icon-size: 0.5; }
+Button.icon-one { icon-size: 1; }
+Button.icon-mid { icon-size: 8.5; }
+Button.icon-full { icon-size: 18; }`, "Button Icons", "") {
+		t.Fatal("button icon style pack did not register")
+	}
 	r := New(AppConfig{}).(*runtime)
-	for _, size := range []float32{-1, 0, 0.5, 1, 8.5, 18} {
+	for _, test := range []struct {
+		class string
+		size  float32
+	}{{"icon-neg", -1}, {"icon-zero", 0}, {"icon-half", 0.5}, {"icon-one", 1}, {"icon-mid", 8.5}, {"icon-full", 18}} {
+		size := test.size
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
-			Style: ControlStyle{Normal: Style{Fields: StyleIconSize, IconSize: size}}})
+			ClassName: StyleClassID(test.class)})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 		if frame.Button.Appearance.Value.IconSize != size {
 			t.Fatalf("style icon size %v was rounded to %v before rendering", size, frame.Button.Appearance.Value.IconSize)
@@ -242,7 +265,8 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 			t.Fatalf("custom icon size %v replaced by %v", size, content.IconSize)
 		}
 		if size <= 0 {
-			if props.Bounds.Width != labelWidth+2*defaultThemeMetrics().ControlPaddingMedium {
+			padding := frame.Button.Appearance.Value.PaddingX
+			if props.Bounds.Width != labelWidth+2*padding {
 				t.Fatalf("hidden icon must not reserve a size or gap: width %v, text %v", props.Bounds.Width, labelWidth)
 			}
 			frame.Button.Props.IconType = IconNone
@@ -262,14 +286,22 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 }
 
 func TestButtonNaturalHeightFitsStyledText(t *testing.T) {
-	useMaterialStyleForTest(t)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.height;
+Button.height-regular { padding-y: 8; font-size: 18; }
+Button.height-tall { padding-y: 20; font-size: 27; }
+Button.height-negative { padding-y: -10; font-size: 60; }`, "Button Height", "") {
+		t.Fatal("button height style pack did not register")
+	}
 	r := New(AppConfig{}).(*runtime)
 	for _, test := range []struct {
-		requested, padding, font, want float32
-	}{{0, 8, 18, 40}, {0, 20, 27, 67}, {0, -10, 60, 60}, {24, 20, 27, 24}} {
+		requested float32
+		class     string
+		want      float32
+	}{{0, "height-regular", 40}, {0, "height-tall", 67}, {0, "height-negative", 60}, {24, "height-tall", 24}} {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", Bounds: Rectangle{Height: test.requested},
-			Style: ControlStyle{Normal: Style{Fields: StylePaddingY | StyleFontSize,
-				PaddingY: test.padding, FontSize: test.font}}})
+			ClassName: StyleClassID(test.class)})
 		if props.Bounds.Height != test.want {
 			t.Fatalf("%+v: resolved height %v", test, props.Bounds.Height)
 		}
@@ -321,11 +353,14 @@ func TestButtonMeasurementMatchesPlacedContent(t *testing.T) {
 			}
 		}
 	}
-	useMaterialStyleForTest(t)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.measure;
+Button.icon-measure { padding-x: 11; icon-size: 64; gap: 8; }`, "Button Measure", "") {
+		t.Fatal("button measure style pack did not register")
+	}
 	r := New(AppConfig{}).(*runtime)
-	props := ButtonProps{IconType: IconPlay,
-		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleIconSize | StyleGap,
-			PaddingX: 11, IconSize: 64, Gap: 8}}}
+	props := ButtonProps{IconType: IconPlay, ClassName: StyleClassID("icon-measure")}
 	measured := r.resolveButtonProps(props)
 	if measured.Bounds.Width != measured.Bounds.Height-12+22 {
 		t.Fatalf("empty-label icon width must use its fitted size and no gap: %+v", measured.Bounds)
@@ -376,11 +411,16 @@ func TestDefaultAndExplicitButtonSizes(t *testing.T) {
 }
 
 func TestButtonZeroPaddingAndGapRemainExplicit(t *testing.T) {
-	useMaterialStyleForTest(t)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.zero-gap;
+Button.zero-gap { padding-x: 0; gap: 0; }`, "Button Zero Gap", "") {
+		t.Fatal("button zero gap style pack did not register")
+	}
 	r := New(AppConfig{}).(*runtime)
 	r.SetTheme(ThemeDefaultLight())
 	props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
-		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleGap, PaddingX: 0, Gap: 0}}})
+		ClassName: StyleClassID("zero-gap")})
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	want := float32(runtimeTextWidth("Run", frame.Button.Font)) + frame.Button.Appearance.Value.IconSize
 	if props.Bounds.Width != want {

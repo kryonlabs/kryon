@@ -281,12 +281,10 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
         if theme_switch {
             Text((TextProps){.bounds={origin + 24, 16, 490, 32},
                 .text="MAGNETIC LIGHTFIELD", .wrap=TextWrapNone,
-                .style=(Style){.fields=StyleForeground|StyleFontSize,
-                    .foreground=chrome_theme.colors.text, .font_size=(float)Text24}})
+                .color=chrome_theme.colors.text, .font=Text24})
             Text((TextProps){.bounds={origin + 25, 50, 490, 24},
                 .text="Living interfaces. Quieter power.", .wrap=TextWrapNone,
-                .style=(Style){.fields=StyleForeground|StyleFontSize,
-                    .foreground=chrome_theme.colors.icon, .font_size=(float)Text14}})
+                .color=chrome_theme.colors.icon, .font=Text14})
             if Button((ButtonProps){.bounds={origin + 590, 22, 68, 32}, .label="Light", .id=id_base + 91}) {
                 SetThemeMode(THEME_MODE_LIGHT)
             }
@@ -410,10 +408,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
         for int row = 0; row < 2; row++ {
             tone := tones[row]
             emphasis := emphases[row]
-            icon_style: ControlStyle = (ControlStyle){}
-            if row == 1 {
-                icon_style.normal = (Style){.fields=StyleIconSize, .icon_size=20}
-            }
             if current_theme.mode == THEME_MODE_LIGHT { emphasis = ButtonEmphasisSoft }
             Button text_only: {
                 bounds = text_bounds[row]
@@ -448,7 +442,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                 icon_type = leading_icons[row]
                 icon_only = true
                 circle = row == 0
-                style = icon_style
             }
             Button pill: {
                 bounds = pill_bounds[row]

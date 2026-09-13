@@ -776,8 +776,8 @@ assert.equal(snap.frame[2].name, "Button");
 assert.equal(typeof snap.frame[2].args, "object");
 assert.deepEqual(rectangle(snap.frame[2].args.bounds), { x: 10, y: 50, width: 120, height: 28 });
 assert.equal(snap.frame[2].args.label, "Tap");
-assert.equal(snap.frame[2].args.style.normal.radius, 6);
-assert.equal(snap.frame[2].args.style.normal.fields, 16);
+assert.equal(typeof snap.frame[2].args.class_name, "number");
+assert.equal("style" in snap.frame[2].args, false);
 assert.equal(snap.frame[5].name, "Selectable");
 assert.equal(snap.frame[6].name, "Input");
 assert.equal(snap.frame[7].name, "Input");
@@ -1921,7 +1921,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeRelations(submitRt, "newsletterLabel").labelFor.path,
       "Page/newsletterLabel/optIn");
     assert.deepEqual(runtime.webNodeRelationRefs(submitRt, "newsletterOptIn").labelledBy,
-      ["newsletterLabel"]);
+      ["Page/newsletterLabel"]);
     assert.equal(runtime.webNodeQuery(submitRt, "[action=\"/contact\"]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[method=post]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[enctype=\"multipart/form-data\"]").path, "Page/contact");
@@ -1952,7 +1952,7 @@ function fakeDocument() {
     assert.equal(runtime.webDOMRelations(submitTarget, "newsletterLabel").labelFor.ref,
       "Page/newsletterLabel/optIn");
     assert.deepEqual(runtime.webDOMSnapshot(submitTarget, "newsletterOptIn").relationRefs.labelledBy,
-      ["newsletterLabel"]);
+      ["Page/newsletterLabel"]);
     assert.equal(runtime.webFormValues(submitTarget, "contact").external_email, "outside@example.test");
     assert.equal(runtime.webFormValues(submitTarget, "contact").loose_email, undefined);
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
@@ -4503,10 +4503,8 @@ runtime.beginFrame(styleRuntime);
 generated.Valid_StyleCopies(styleRuntime, state, host);
 const styleFrame = runtime.endFrame(styleRuntime).frame;
 assert.deepEqual(rectangle(styleFrame[0].args.bounds), { x: 10, y: 20, width: 50, height: 40 });
-const styles = styleFrame.map(item => item.args.style.normal);
-assert.deepEqual(styles.map(style => style.font_size), [19, 24, 32]);
-assert.deepEqual(styles.map(({ content_offset: { x, y } }) => ({ x, y })),
-  [{ x: 0, y: 1 }, { x: 0, y: 1 }, { x: 0, y: -1 }]);
+assert.deepEqual(styleFrame.map(item => item.name), ["Button", "Button", "Button"]);
+assert.deepEqual(styleFrame.map(item => "style" in item.args), [false, false, false]);
 
 for (const [actionName, action] of [
   ["DirectAction", generated.Valid_DirectAction],

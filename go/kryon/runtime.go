@@ -1770,7 +1770,7 @@ func resolveMinimalControlRoleState(props ButtonProps, state ButtonState, styleK
 		int32(props.Tone), int32(props.Emphasis), int32(props.Size), int32(state))
 	facts.Role = role
 	value := ResolveActiveStyle(minimalControlStyleData(), facts, int32(state))
-	return Style_ResolveValues(value, packStyleStates(props.Style), int32(state))
+	return value
 }
 
 func resolveMinimalControlFrame(props ButtonProps, state ButtonState, automatic bool,

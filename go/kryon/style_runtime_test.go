@@ -24,12 +24,22 @@ func TestTypefaceStylePresenceAndButtonMeasurement(t *testing.T) {
 	if got := mergeStyle(base, Style{Fields: StyleTypeface}); got.Typeface != "" {
 		t.Fatal("explicit empty typeface must restore the default face")
 	}
-	useMaterialStyleForTest(t)
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.button.typeface;
+Button.face-semibold { typeface: semibold; }
+Button.face-unknown { typeface: unknown-face; }`, "Button Typeface", "") {
+		t.Fatal("button typeface style pack did not register")
+	}
 	r := New(AppConfig{Width: 500, Height: 100}).(*runtime)
 	r.BeginFrame()
-	for _, name := range []string{"semibold", "", "unknown-face"} {
+	for _, test := range []struct {
+		name  string
+		class string
+	}{{"semibold", "face-semibold"}, {"unknown-face", "face-unknown"}} {
+		name := test.name
 		props := ButtonProps{Label: "Measure this label", State: ButtonStateNormal,
-			Style: ControlStyle{Normal: Style{Fields: StyleTypeface, Typeface: name}}}
+			ClassName: StyleClassID(test.class)}
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 		fontID := registeredTypeface(name)
 		if frame.FontID != fontID {
