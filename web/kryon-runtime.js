@@ -1686,6 +1686,9 @@ const webKssColorProperties = new Set([
 
 const webKssLengthProperties = new Set([
   "radius", "border-width", "opacity",
+  "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
+  "border-top-left-radius", "border-top-right-radius",
+  "border-bottom-right-radius", "border-bottom-left-radius",
   "padding", "padding-x", "padding-y",
   "padding-left", "padding-right", "padding-top", "padding-bottom",
   "margin", "margin-x", "margin-y",
@@ -1707,7 +1710,7 @@ const webKssLiteralProperties = new Set([
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat", "visibility",
   "transition", "transition-duration", "filter", "backdrop-filter",
-  "cursor", "pointer-events", "outline-style", "box-shadow"
+  "cursor", "pointer-events", "border-style", "outline-style", "box-shadow"
 ]);
 
 function stripKssComments(source) {
@@ -1975,7 +1978,16 @@ const webCSSPropertyNames = new Map([
   ["background", "background"],
   ["border", "border-color"],
   ["border-width", "border-width"],
+  ["border-top-width", "border-top-width"],
+  ["border-right-width", "border-right-width"],
+  ["border-bottom-width", "border-bottom-width"],
+  ["border-left-width", "border-left-width"],
+  ["border-style", "border-style"],
   ["radius", "border-radius"],
+  ["border-top-left-radius", "border-top-left-radius"],
+  ["border-top-right-radius", "border-top-right-radius"],
+  ["border-bottom-right-radius", "border-bottom-right-radius"],
+  ["border-bottom-left-radius", "border-bottom-left-radius"],
   ["opacity", "opacity"],
   ["padding", "padding"],
   ["padding-x", "padding-left"],
@@ -2569,7 +2581,16 @@ function applyResolvedWebStyle(el, style) {
   set("color", style.foreground);
   set("borderColor", style.border);
   set("borderWidth", style["border-width"]);
+  set("borderTopWidth", style["border-top-width"]);
+  set("borderRightWidth", style["border-right-width"]);
+  set("borderBottomWidth", style["border-bottom-width"]);
+  set("borderLeftWidth", style["border-left-width"]);
+  set("borderStyle", style["border-style"]);
   set("borderRadius", style.radius);
+  set("borderTopLeftRadius", style["border-top-left-radius"]);
+  set("borderTopRightRadius", style["border-top-right-radius"]);
+  set("borderBottomRightRadius", style["border-bottom-right-radius"]);
+  set("borderBottomLeftRadius", style["border-bottom-left-radius"]);
   set("opacity", style.opacity);
   set("padding", style.padding);
   set("paddingLeft", style["padding-x"]);
