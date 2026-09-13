@@ -249,12 +249,17 @@ try {
   assert(article.getAttribute("aria-errormessage") === "save",
     "aria-errormessage relation not resolved");
   assert(article.getAttribute("aria-flowto") === "save", "aria-flowto relation not resolved");
-  assert(article.getAttribute("data-kry-source-range-ref") === "browser.kry:3:5-11:6",
+  const articleSourceRef = kryon.webSourceRef("browser.kry", 3);
+  const articleSourceColumnRef = kryon.webSourceRef("browser.kry", 3, 5);
+  const articleSourceRangeRef = kryon.webSourceRangeRef("browser.kry", 3, 5, 11, 6);
+  assert(articleSourceRangeRef === "browser.kry:3:5-11:6",
+    "source range helper mismatch");
+  assert(article.getAttribute("data-kry-source-range-ref") === articleSourceRangeRef,
     "source range attr missing");
-  assert(article.dataset.krySourceRef === "browser.kry:3", "source ref dataset missing");
-  assert(article.dataset.krySourceColumnRef === "browser.kry:3:5",
+  assert(article.dataset.krySourceRef === articleSourceRef, "source ref dataset missing");
+  assert(article.dataset.krySourceColumnRef === articleSourceColumnRef,
     "source column ref dataset missing");
-  assert(article.dataset.krySourceRangeRef === "browser.kry:3:5-11:6",
+  assert(article.dataset.krySourceRangeRef === articleSourceRangeRef,
     "source range dataset missing");
   assert(article.style.display === "grid", "KSS display not applied");
   assert(article.style.gridTemplateAreas === '"main"', "KSS grid area not applied");
@@ -307,11 +312,11 @@ try {
     "mounted accessibility numeric Input missing");
   assert(root.kryAccessibilitySnapshot("Button[role=tab]").nodes[0]?.role === "tab",
     "root mounted accessibility selector missing");
-  assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
+  assert(root.kryObjectMap.get(articleSourceRef)?.element === article,
     "root source object map lookup failed");
-  assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,
+  assert(root.kryObjectMap.get(articleSourceColumnRef)?.element === article,
     "root source column object map lookup failed");
-  assert(root.kryObjectMap.get("browser.kry:3:5-11:6")?.element === article,
+  assert(root.kryObjectMap.get(articleSourceRangeRef)?.element === article,
     "root source range object map lookup failed");
   assert(kryon.webDOMObjectAtSource(target, "browser.kry", 3)?.element === article,
     "DOM object source lookup failed");
