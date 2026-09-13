@@ -32,6 +32,7 @@ main(void)
     assert(metrics.depth_indent == 36);
     assert(metrics.marker_width == 32);
     assert(metrics.text_gap == 4);
+    assert(metrics.scrollbar_width == 16);
     assert(TreeViewRowHeight(0, 2.0f, metrics) == 56);
     assert(TreeViewRowHeight(18, 2.0f, metrics) == 36);
     assert(TreeViewContentHeight(5, 28) == 140);
@@ -59,6 +60,7 @@ main(void)
     assert(metrics.depth_indent == 14);
     assert(metrics.marker_width == 12);
     assert(metrics.text_gap == 3);
+    assert(metrics.scrollbar_width == 8);
 
     item.value.offset_y = 44.0f;
     metrics = TreeViewMetricsFor(1.0f, panel, item);
@@ -66,10 +68,13 @@ main(void)
     item.value.offset_y = 0.0f;
 
     panel.value.padding_x = 0.0f;
+    panel.value.fields |= StyleIconSize;
+    panel.value.icon_size = 0.0f;
     item.value.gap = 0.0f;
     metrics = TreeViewMetricsFor(1.0f, panel, item);
     assert(metrics.indent_x == 0);
     assert(metrics.text_gap == 0);
+    assert(metrics.scrollbar_width == 0);
 
     panel = (StyleFrame){0};
     item = (StyleFrame){0};
@@ -89,5 +94,7 @@ main(void)
     assert(paint.text_y == 44);
     scrollbar = TreeViewScrollbarBoundsFor(bounds, 8);
     check_rect(scrollbar, 182, 20, 8, 90);
+    scrollbar = TreeViewScrollbarBoundsFor(bounds, 0);
+    check_rect(scrollbar, 190, 20, 0, 90);
     return 0;
 }

@@ -9,6 +9,7 @@ TreeViewMetrics :: struct {
     depth_indent: i32
     marker_width: i32
     text_gap: i32
+    scrollbar_width: i32
 }
 
 TreeViewScrollLayout :: struct {
@@ -55,6 +56,8 @@ TreeViewMetricsFor :: (scale: float, panel: StyleFrame,
         (u32)StyleIconSize, item.value.icon_size, 16.0, scale, false)
     metrics.text_gap = TreeViewMetric(item.value.fields,
         (u32)StyleGap, item.value.gap, 2.0, scale, true)
+    metrics.scrollbar_width = TreeViewMetric(panel.value.fields,
+        (u32)StyleIconSize, panel.value.icon_size, 8.0, scale, true)
     return metrics
 }
 
@@ -145,7 +148,7 @@ TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
 
 TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
     bar: Rectangle
-    if scrollbar_width <= 0 { scrollbar_width = 8 }
+    if scrollbar_width < 0 { scrollbar_width = 0 }
     bar.x = bounds.x + bounds.width - (float)scrollbar_width
     bar.y = bounds.y
     bar.width = (float)scrollbar_width

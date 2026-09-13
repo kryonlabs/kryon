@@ -3335,7 +3335,8 @@ RenderTreeView(TreeViewProps tree)
     if(paint)
         EndClip();
     if(paint && tree.scroll_offset != NULL && max_scroll > 0) {
-        Rectangle scrollbar = TreeViewScrollbarBoundsFor(tree.bounds, Scale(8));
+        Rectangle scrollbar = TreeViewScrollbarBoundsFor(tree.bounds,
+                                                         metrics.scrollbar_width);
         ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
                      (int)scrollbar.height,
                      content_h, tree.scroll_offset, max_scroll, 0);

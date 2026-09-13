@@ -10,6 +10,7 @@ type TreeViewMetrics struct {
 	DepthIndent      int32
 	MarkerWidth      int32
 	TextGap          int32
+	ScrollbarWidth   int32
 }
 
 type TreeViewScrollLayout struct {
@@ -146,8 +147,17 @@ func TreeView_TreeViewMetricsFor(scale float32, panel StyleFrame, item StyleFram
 	var value_57 bool = true
 	var value_58 int32 = TreeView_TreeViewMetric(value_51, value_53, value_54, value_55, value_56, value_57)
 	metrics.TextGap = value_58
-	var value_59 TreeViewMetrics = metrics
-	return value_59
+	var value_59 uint32 = panel.Value.Fields
+	var value_60 int32 = int32(StyleIconSize)
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
+	var value_62 float32 = panel.Value.IconSize
+	var value_63 float32 = 8.0
+	var value_64 float32 = scale
+	var value_65 bool = true
+	var value_66 int32 = TreeView_TreeViewMetric(value_59, value_61, value_62, value_63, value_64, value_65)
+	metrics.ScrollbarWidth = value_66
+	var value_67 TreeViewMetrics = metrics
+	return value_67
 }
 
 func TreeView_TreeViewRowHeight(requested_row_height int32, scale float32, metrics TreeViewMetrics) int32 {
@@ -402,9 +412,9 @@ func TreeView_TreeViewScrollbarBoundsFor(bounds Rectangle, scrollbar_width int32
 	var bar Rectangle = Rectangle{}
 	var value_0 int32 = scrollbar_width
 	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
+	var value_2 bool = value_0 < value_1
 	if value_2 {
-		var value_3 int32 = 8
+		var value_3 int32 = 0
 		scrollbar_width = value_3
 	}
 	var value_4 float32 = bounds.X
