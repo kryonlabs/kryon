@@ -40,6 +40,16 @@ MenuMetric :: (fields: u32, field: u32, value: float,
     return (i32)(value * scale)
 }
 
+MenuWrappedItemIndex :: (start: i32, direction: i32, item_count: i32) -> i32 #export {
+    if item_count <= 0 { return -1 }
+    if direction == 0 { direction = 1 }
+    return (start + direction + item_count) % item_count
+}
+
+MenuItemSelectable :: (kind: i32, disabled: bool) -> bool #export {
+    return kind != 3 && !disabled
+}
+
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }

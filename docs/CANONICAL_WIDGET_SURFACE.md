@@ -720,8 +720,10 @@ and host plumbing behind the canonical names.
    native files. The latest focused audits moved context-popup activation into
    `runtime/popup_policy.kry` and label text-field row layout into
   `runtime/rows.kry`; InfoRows background/text/separator geometry now also
-  routes through `runtime/rows.kry`. Continue by reducing raw native constants
-  in menu host glue and other shared immediate-mode helpers.
+  routes through `runtime/rows.kry`; menu selectable-item and wraparound
+  navigation policy now routes through `runtime/menu.kry`. Continue by reducing
+  raw native constants in menu host glue and other shared immediate-mode
+  helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

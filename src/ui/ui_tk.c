@@ -1100,10 +1100,11 @@ static int
 menu_item_at(const MenuItem *items, int item_count, int start, int direction)
 {
     int index = start;
-    if(items == NULL || item_count <= 0) return -1;
+    if(items == NULL || item_count <= 0)
+        return -1;
     for(int i = 0; i < item_count; i++) {
-        index = (index + direction + item_count) % item_count;
-        if(items[index].kind != MenuSeparator && !items[index].disabled)
+        index = MenuWrappedItemIndex(index, direction, item_count);
+        if(MenuItemSelectable((int)items[index].kind, items[index].disabled))
             return index;
     }
     return -1;

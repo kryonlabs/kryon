@@ -129,5 +129,14 @@ main(void)
     assert(MenuBarNextItemX(10, 74, metrics) == 86);
     assert(MenuBarLabelX(bar_item, metrics) == 22);
     assert(MenuBarLabelY(bar_item, 16) == 7);
+    assert(MenuWrappedItemIndex(2, 1, 4) == 3);
+    assert(MenuWrappedItemIndex(3, 1, 4) == 0);
+    assert(MenuWrappedItemIndex(0, -1, 4) == 3);
+    assert(MenuWrappedItemIndex(2, 0, 4) == 3);
+    assert(MenuWrappedItemIndex(2, 1, 0) == -1);
+    assert(!MenuItemSelectable(3, 0));
+    assert(!MenuItemSelectable(0, 1));
+    assert(MenuItemSelectable(0, 0));
+    assert(MenuItemSelectable(4, 0));
     return 0;
 }
