@@ -20,7 +20,7 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "ui_control_props.generated.h"
-#include "ui_menu_types.h"
+#include "ui_menu_props.generated.h"
 
 typedef struct ButtonProps {
     Rectangle bounds;

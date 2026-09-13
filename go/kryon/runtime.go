@@ -34,7 +34,6 @@ type KeyID uint64
 type ThemeId int32
 type ThemeSource int32
 type ThemeMode int32
-type MenuItemKind int32
 type SemanticKind int32
 
 const (
@@ -149,14 +148,6 @@ const (
 	SemanticLink
 	SemanticImage
 	SemanticButton
-)
-
-const (
-	MenuCommand MenuItemKind = iota
-	MenuCheck
-	MenuRadio
-	MenuSeparator
-	MenuSubmenu
 )
 
 const (
@@ -361,49 +352,7 @@ const (
 
 type RowProps = ColumnProps
 
-type ParagraphSpec struct {
-	Text     string
-	IconType int32
-	IconSize int32
-	Width    int32
-	Font     int32
-	LineGap  int32
-	Color    Color
-	Align    TextAlign
-}
-
 type FlowProps = ColumnProps
-
-type MenuItem struct {
-	Kind         MenuItemKind
-	Label        string
-	Accelerator  string
-	ID           int32
-	Disabled     bool
-	Checked      bool
-	Submenu      []MenuItem
-	SubmenuCount int32
-}
-
-type MenuGroup struct {
-	Bounds    Rectangle
-	Label     string
-	Items     []MenuItem
-	ItemCount int32
-}
-
-type MenuMode int32
-
-const (
-	MenuModeBar     MenuMode = 0
-	MenuModePopup   MenuMode = 1
-	MenuModeContext MenuMode = 2
-)
-
-type MenuResult struct {
-	ActivatedID int32
-	OpenIndex   int32
-}
 
 type dragFloatProps struct {
 	Bounds     Rectangle
@@ -531,14 +480,6 @@ type inputDoubleProps struct {
 	StepFast   float64
 	Format     string
 	Disabled   bool
-}
-
-type DropdownOption struct {
-	Label           string
-	FontName        string
-	IconType        int32
-	Disabled        bool
-	SeparatorBefore bool
 }
 
 // Accelerator describes one keyboard chord and the command returned when it

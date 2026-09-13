@@ -19,7 +19,44 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
-#include "ui_menu_types.h"
+#include "kryon_compat.generated.h"
+
+typedef enum MenuItemKind {
+    MenuCommand = 0,
+    MenuCheck = 1,
+    MenuRadio = 2,
+    MenuSeparator = 3,
+    MenuSubmenu = 4,
+} MenuItemKind;
+
+typedef enum MenuMode {
+    MenuModeBar = 0,
+    MenuModePopup = 1,
+    MenuModeContext = 2,
+} MenuMode;
+
+typedef struct MenuItem {
+    MenuItemKind kind;
+    const char* label;
+    const char* accelerator;
+    int32_t id;
+    bool disabled;
+    bool checked;
+    const struct MenuItem* submenu;
+    int32_t submenu_count;
+} MenuItem;
+
+typedef struct MenuGroup {
+    Rectangle bounds;
+    const char* label;
+    const MenuItem* items;
+    int32_t item_count;
+} MenuGroup;
+
+typedef struct MenuResult {
+    int32_t activated_id;
+    int32_t open_index;
+} MenuResult;
 
 typedef struct MenuProps {
     int32_t id;

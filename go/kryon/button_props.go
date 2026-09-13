@@ -2,7 +2,7 @@
 package kryon
 
 // #import ui_control_props.generated.h
-// #import ui_menu_types.h
+// #import ui_menu_props.generated.h
 type ButtonProps struct {
 	Bounds          Rectangle
 	Label           string

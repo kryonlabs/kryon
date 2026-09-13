@@ -101,14 +101,6 @@ typedef struct ThemeScheme {
 typedef void (*SliderMarkCallback)(void *user_data, int x, int y, int h,
                                    int min, int max, int value);
 
-typedef struct {
-    const char *label;
-    const char *font_name;
-    IconType icon_type;
-    int disabled;
-    int separator_before;
-} DropdownOption;
-
 ThemeMetrics GetThemeMetrics(void);
 ThemeMetrics GetDefaultThemeMetrics(void);
 ThemeScheme GetThemeScheme(void);

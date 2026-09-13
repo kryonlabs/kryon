@@ -1,5 +1,13 @@
 #module "dropdown_props"
-#import "ui_controls.h"
+#import "kryon_compat.generated.h"
+
+DropdownOption :: struct {
+    label: const char*
+    font_name: const char*
+    icon_type: i32
+    disabled: bool
+    separator_before: bool
+}
 
 DropdownProps :: struct {
     bounds: Rectangle

@@ -19,7 +19,15 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
-#include "ui_controls.h"
+#include "kryon_compat.generated.h"
+
+typedef struct DropdownOption {
+    const char* label;
+    const char* font_name;
+    int32_t icon_type;
+    bool disabled;
+    bool separator_before;
+} DropdownOption;
 
 typedef struct DropdownProps {
     Rectangle bounds;

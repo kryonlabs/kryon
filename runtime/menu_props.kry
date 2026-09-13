@@ -1,5 +1,42 @@
 #module "menu_props"
-#import "ui_menu_types.h"
+#import "kryon_compat.generated.h"
+
+MenuItemKind :: enum {
+    MenuCommand = 0
+    MenuCheck = 1
+    MenuRadio = 2
+    MenuSeparator = 3
+    MenuSubmenu = 4
+}
+
+MenuMode :: enum {
+    MenuModeBar = 0
+    MenuModePopup = 1
+    MenuModeContext = 2
+}
+
+MenuItem :: struct {
+    kind: MenuItemKind
+    label: const char*
+    accelerator: const char*
+    id: i32
+    disabled: bool
+    checked: bool
+    submenu: const MenuItem*
+    submenu_count: i32
+}
+
+MenuGroup :: struct {
+    bounds: Rectangle
+    label: const char*
+    items: const MenuItem*
+    item_count: i32
+}
+
+MenuResult :: struct {
+    activated_id: i32
+    open_index: i32
+}
 
 MenuProps :: struct {
     id: i32

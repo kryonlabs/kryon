@@ -100,6 +100,37 @@ split_array_type(const char *type, char *base, size_t base_size,
     snprintf(base, base_size, "%s", p);
 }
 
+static void
+rewrite_self_pointer_type(const char *owner, char *base, size_t base_size)
+{
+    char work[LOWER_TEXT_MAX];
+    char *p;
+    char *star;
+    int is_const = 0;
+    size_t n;
+
+    snprintf(work, sizeof(work), "%s", base);
+    p = work;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(strncmp(p, "const ", 6) == 0) {
+        is_const = 1;
+        p += 6;
+        while(*p == ' ' || *p == '\t')
+            p++;
+    }
+    star = strrchr(p, '*');
+    if(star == NULL)
+        return;
+    *star = '\0';
+    n = strlen(p);
+    while(n > 0 && (p[n - 1] == ' ' || p[n - 1] == '\t'))
+        p[--n] = '\0';
+    if(strcmp(p, owner) != 0)
+        return;
+    snprintf(base, base_size, "%sstruct %s*", is_const ? "const " : "", owner);
+}
+
 static int is_module_alias(const KirModule *m, const char *alias,
                            size_t alias_len);
 static void function_c_name(const KirModule *m, const KirFunction *fn,
@@ -1409,6 +1440,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
                         strip_alias_type(m, base, tmpb, sizeof(tmpb));
                         snprintf(base, sizeof(base), "%s", tmpb);
+                        rewrite_self_pointer_type(ty->name, base, sizeof(base));
                     }
                     fprintf(h, "    %s %s%s;\n", base, name, suffix);
                 }
