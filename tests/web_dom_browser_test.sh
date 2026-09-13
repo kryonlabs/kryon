@@ -141,6 +141,11 @@ try {
       display: grid;
       grid-template-areas: "main";
       border-collapse: collapse;
+      content-visibility: auto;
+      contain-intrinsic-size: 320;
+      contain-intrinsic-inline-size: 320;
+      contain-intrinsic-block-size: 180;
+      overflow-clip-margin: 12;
     }
     Button.primary { color-scheme: light dark; }
   \`));
@@ -167,6 +172,13 @@ try {
   assert(article.style.display === "grid", "KSS display not applied");
   assert(article.style.gridTemplateAreas === '"main"', "KSS grid area not applied");
   assert(article.style.borderCollapse === "collapse", "KSS table style not applied");
+  assert(article.style.contentVisibility === "auto", "KSS content visibility not applied");
+  assert(article.style.containIntrinsicSize === "320px", "KSS contain intrinsic size not applied");
+  assert(article.style.containIntrinsicInlineSize === "320px",
+    "KSS contain intrinsic inline size not applied");
+  assert(article.style.containIntrinsicBlockSize === "180px",
+    "KSS contain intrinsic block size not applied");
+  assert(article.style.overflowClipMargin === "12px", "KSS overflow clip margin not applied");
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
   const root = kryon.webDOMRoot(target);
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
