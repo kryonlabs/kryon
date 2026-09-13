@@ -1645,6 +1645,7 @@ include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
 include/ui_paned_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_plot_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_popup_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_profile.h enum SYNC_PROFILE_ICON_BAMBUS
 include/ui_profile.h enum SYNC_PROFILE_ICON_BIRD
 include/ui_profile.h enum SYNC_PROFILE_ICON_BOWL
@@ -1775,6 +1776,7 @@ include/ui_text_layout.h function FreeTextLayout
 include/ui_text_layout.h function GetTextLayoutHeight
 include/ui_text_layout.h function ParseTextLayout
 include/ui_text_layout.h function ReflowTextLayout
+include/ui_text_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_tk.h enum ARROW_DOWN
 include/ui_tk.h enum ARROW_LEFT
 include/ui_tk.h enum ARROW_RIGHT

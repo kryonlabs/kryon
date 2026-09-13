@@ -1,0 +1,18 @@
+#module "popup_props"
+#import "kryon_compat.generated.h"
+
+PopupFlags :: enum {
+    PopupFlagsNone = 0
+    PopupTooltip = 1
+    PopupModal = 2
+    PopupContext = 4
+}
+
+PopupProps :: struct {
+    bounds: Rectangle
+    id: i32
+    open: *bool
+    disabled: bool
+    trigger: Rectangle
+    flags: PopupFlags
+}

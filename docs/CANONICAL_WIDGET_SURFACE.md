@@ -80,6 +80,7 @@ surface review:
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props | `.kry canonical` |
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
+| `runtime/popup_props.kry` | Popup props | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
@@ -101,6 +102,7 @@ surface review:
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
+| `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea metrics, scroll, navigation, and edit-intent policy | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout policy | `.kry canonical` |
@@ -340,7 +342,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `Background` | `.kry canonical` | Viewport bounds policy is in `.kry`; host keeps immediate fill drawing and retained paint ordering. |
-| `Text` | `.kry canonical` | Single canonical signature should be `Text(TextProps)`. |
+| `Text` | `.kry canonical` | Public props live in `runtime/text_props.kry`; single canonical signature is `Text(TextProps)`. |
 | `Paragraph` | `.kry canonical` | Metrics/default policy is in `.kry`; host keeps rich text parsing, reflow, icon shaping, and drawing. |
 | `Box` | `.kry canonical` | Rectangle primitive with `Rectangle` bounds. |
 | `Rect` | Removed | Old positional rectangle helper; use `Box`. |

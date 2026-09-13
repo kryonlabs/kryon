@@ -469,55 +469,6 @@ type TextAreaProps struct {
 	Wrap           bool
 }
 
-type TextWrap int32
-
-const (
-	TextWrapAuto TextWrap = iota
-	TextWrapNone
-)
-
-type TextAlign int32
-
-const (
-	TextAlignStart TextAlign = iota
-	TextAlignCenter
-	TextAlignEnd
-)
-
-type TextProps struct {
-	Bounds        Rectangle
-	Text          string
-	ClassName     int32
-	Font          int32
-	Color         Color
-	Wrap          TextWrap
-	Align         TextAlign
-	VerticalAlign TextAlign
-	Disabled      bool
-	LetterSpacing int32
-	Selectable    bool
-	Typeface      string
-	Style         Style
-}
-
-type PopupFlags uint32
-
-const (
-	PopupFlagsNone PopupFlags = 0
-	PopupTooltip   PopupFlags = 1 << (iota - 1)
-	PopupModal
-	PopupContext
-)
-
-type PopupProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Open     *bool
-	Disabled bool
-	Trigger  Rectangle
-	Flags    PopupFlags
-}
-
 type ColumnProps struct {
 	Bounds  Rectangle
 	Gap     int32

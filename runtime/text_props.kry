@@ -1,0 +1,29 @@
+#module "text_props"
+#import "ui_control_props.generated.h"
+
+TextWrap :: enum {
+    TextWrapAuto = 0
+    TextWrapNone = 1
+}
+
+TextAlign :: enum {
+    TextAlignStart = 0
+    TextAlignCenter = 1
+    TextAlignEnd = 2
+}
+
+TextProps :: struct {
+    bounds: Rectangle
+    text: const char*
+    class_name: i32
+    font: i32
+    color: Color
+    wrap: TextWrap
+    align: TextAlign
+    vertical_align: TextAlign
+    disabled: bool
+    letter_spacing: i32
+    selectable: bool
+    typeface: const char*
+    style: Style
+}
