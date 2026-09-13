@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "src/ui/ui_node_registry.c"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
-UI_TREE = ROOT / "include/ui_tree.h"
+TREE_API = ROOT / "include/ui_tree.h"
 GO_API = ROOT / "go/kryon/api.go"
 WEB_RUNTIME = ROOT / "web/kryon-runtime.js"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
@@ -133,7 +133,7 @@ def block_widget_names() -> list[str]:
 
 
 def ui_tree_function_names() -> set[str]:
-    text = UI_TREE.read_text(encoding="utf-8")
+    text = TREE_API.read_text(encoding="utf-8")
     names = set(
         re.findall(
             r"^[A-Za-z_][A-Za-z0-9_ *]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
