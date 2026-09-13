@@ -89,7 +89,6 @@ func BeginDisabled(disabled bool)      { active().BeginDisabled(disabled) }
 func EndDisabled()                     { active().EndDisabled() }
 func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
 func EndPopup()                        { active().EndPopup() }
-func ClosePopup()                      { active().ClosePopup() }
 func AcceleratorPressed(accelerator Accelerator) int32 {
 	return active().AcceleratorPressed(accelerator)
 }
