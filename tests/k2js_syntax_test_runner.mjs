@@ -1794,13 +1794,17 @@ function fakeDocument() {
     const productHeader = runtime.findWebElement(tableTarget, "productHeader");
     const priceCell = runtime.findWebElement(tableTarget, "priceCell");
     assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/priceHeader").tag, "th");
+    assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/priceHeader").text, "Price");
     assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/productHeader").tag, "th");
+    assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/productHeader").text, "Product");
     assert.equal(priceHeader.tagName, "TH");
+    assert.equal(priceHeader.textContent, "Price");
     assert.equal(priceHeader.attributes.scope, "col");
     assert.equal(priceHeader.attributes["aria-sort"], "ascending");
     assert.equal(priceHeader.attributes["aria-colindex"], "1");
     assert.equal(priceHeader.attributes["aria-colcount"], "2");
     assert.equal(productHeader.tagName, "TH");
+    assert.equal(productHeader.textContent, "Product");
     assert.equal(productHeader.attributes.scope, "row");
     assert.equal(productHeader.attributes["aria-rowindex"], "2");
     assert.equal(priceCell.attributes.headers, "price-header product-header");
@@ -1813,8 +1817,14 @@ function fakeDocument() {
       .find((node) => node.path === "Page/prices/priceHeader")?.role,
       "columnheader");
     assert.equal(runtime.webAccessibilitySnapshot(tableRt).nodes
+      .find((node) => node.path === "Page/prices/priceHeader")?.label,
+      "Price");
+    assert.equal(runtime.webAccessibilitySnapshot(tableRt).nodes
       .find((node) => node.path === "Page/prices/productHeader")?.role,
       "rowheader");
+    assert.equal(runtime.webAccessibilitySnapshot(tableRt).nodes
+      .find((node) => node.path === "Page/prices/productHeader")?.label,
+      "Product");
     assert.deepEqual(runtime.webAccessibilitySnapshot(tableRt).nodes
       .find((node) => node.kind === "Text" && node.path === "Page/prices/priceCell"),
       {

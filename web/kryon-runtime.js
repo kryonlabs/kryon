@@ -1197,6 +1197,8 @@ function widgetText(item) {
   case "TextField":
   case "TextArea":
     return propString(args, "text", propString(args, "value", ""));
+  case "TableCell":
+    return propString(args, "text", "");
   default:
     return "";
   }
