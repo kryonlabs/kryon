@@ -42,6 +42,10 @@ const sheet = runtime.parseWebStyleSheet(`
     text-decoration-skip-ink: auto;
     text-size-adjust: 100%;
     text-orientation: mixed;
+    text-spacing-trim: trim-start;
+    text-autospace: ideograph-alpha;
+    text-box-trim: trim-both;
+    text-box-edge: cap alphabetic;
     vertical-align: middle;
     transform-box: border-box;
     transform-style: preserve-3d;
@@ -51,6 +55,18 @@ const sheet = runtime.parseWebStyleSheet(`
     perspective: 800;
     perspective-origin: 50% 50%;
     backface-visibility: hidden;
+    animation-timeline: --field-scroll;
+    animation-range: entry 0% cover 80%;
+    animation-range-start: entry 10%;
+    animation-range-end: cover 90%;
+    scroll-timeline: --field-scroll block;
+    scroll-timeline-name: --field-scroll;
+    scroll-timeline-axis: block;
+    view-timeline: --field-view inline;
+    view-timeline-name: --field-view;
+    view-timeline-axis: inline;
+    view-timeline-inset: 10% 20%;
+    timeline-scope: --field-scroll;
     content-visibility: auto;
     contain-intrinsic-size: 320;
     contain-intrinsic-inline-size: 320;
@@ -69,6 +85,17 @@ const sheet = runtime.parseWebStyleSheet(`
     appearance: none;
     user-select: text;
     resize: vertical;
+    field-sizing: content;
+    interpolate-size: allow-keywords;
+    overlay: auto;
+    forced-color-adjust: none;
+    print-color-adjust: exact;
+    color-interpolation: sRGB;
+    color-interpolation-filters: linearRGB;
+    paint-order: stroke fill markers;
+    shape-outside: circle(50%);
+    shape-margin: 8;
+    shape-image-threshold: 0.4;
   }
 `);
 
@@ -103,6 +130,10 @@ assert.match(css, /text-decoration-line: underline;/);
 assert.match(css, /text-decoration-skip-ink: auto;/);
 assert.match(css, /text-size-adjust: 100%;/);
 assert.match(css, /text-orientation: mixed;/);
+assert.match(css, /text-spacing-trim: trim-start;/);
+assert.match(css, /text-autospace: ideograph-alpha;/);
+assert.match(css, /text-box-trim: trim-both;/);
+assert.match(css, /text-box-edge: cap alphabetic;/);
 assert.match(css, /vertical-align: middle;/);
 assert.match(css, /transform-box: border-box;/);
 assert.match(css, /transform-style: preserve-3d;/);
@@ -112,6 +143,18 @@ assert.match(css, /scale: 1.2;/);
 assert.match(css, /perspective: 800px;/);
 assert.match(css, /perspective-origin: 50% 50%;/);
 assert.match(css, /backface-visibility: hidden;/);
+assert.match(css, /animation-timeline: --field-scroll;/);
+assert.match(css, /animation-range: entry 0% cover 80%;/);
+assert.match(css, /animation-range-start: entry 10%;/);
+assert.match(css, /animation-range-end: cover 90%;/);
+assert.match(css, /scroll-timeline: --field-scroll block;/);
+assert.match(css, /scroll-timeline-name: --field-scroll;/);
+assert.match(css, /scroll-timeline-axis: block;/);
+assert.match(css, /view-timeline: --field-view inline;/);
+assert.match(css, /view-timeline-name: --field-view;/);
+assert.match(css, /view-timeline-axis: inline;/);
+assert.match(css, /view-timeline-inset: 10% 20%;/);
+assert.match(css, /timeline-scope: --field-scroll;/);
 assert.match(css, /content-visibility: auto;/);
 assert.match(css, /contain-intrinsic-size: 320px;/);
 assert.match(css, /contain-intrinsic-inline-size: 320px;/);
@@ -130,6 +173,17 @@ assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
 assert.match(css, /user-select: text;/);
 assert.match(css, /resize: vertical;/);
+assert.match(css, /field-sizing: content;/);
+assert.match(css, /interpolate-size: allow-keywords;/);
+assert.match(css, /overlay: auto;/);
+assert.match(css, /forced-color-adjust: none;/);
+assert.match(css, /print-color-adjust: exact;/);
+assert.match(css, /color-interpolation: sRGB;/);
+assert.match(css, /color-interpolation-filters: linearRGB;/);
+assert.match(css, /paint-order: stroke fill markers;/);
+assert.match(css, /shape-outside: circle\(50%\);/);
+assert.match(css, /shape-margin: 8px;/);
+assert.match(css, /shape-image-threshold: 0.4;/);
 
 const node = {
   kind: "TextField",
@@ -167,6 +221,10 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "text-decoration-skip-ink": "auto",
   "text-size-adjust": "100%",
   "text-orientation": "mixed",
+  "text-spacing-trim": "trim-start",
+  "text-autospace": "ideograph-alpha",
+  "text-box-trim": "trim-both",
+  "text-box-edge": "cap alphabetic",
   "vertical-align": "middle",
   "transform-box": "border-box",
   "transform-style": "preserve-3d",
@@ -176,6 +234,18 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   perspective: 800,
   "perspective-origin": "50% 50%",
   "backface-visibility": "hidden",
+  "animation-timeline": "--field-scroll",
+  "animation-range": "entry 0% cover 80%",
+  "animation-range-start": "entry 10%",
+  "animation-range-end": "cover 90%",
+  "scroll-timeline": "--field-scroll block",
+  "scroll-timeline-name": "--field-scroll",
+  "scroll-timeline-axis": "block",
+  "view-timeline": "--field-view inline",
+  "view-timeline-name": "--field-view",
+  "view-timeline-axis": "inline",
+  "view-timeline-inset": "10% 20%",
+  "timeline-scope": "--field-scroll",
   "content-visibility": "auto",
   "contain-intrinsic-size": 320,
   "contain-intrinsic-inline-size": 320,
@@ -193,7 +263,18 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "caret-color": "#ff6633",
   appearance: "none",
   "user-select": "text",
-  resize: "vertical"
+  resize: "vertical",
+  "field-sizing": "content",
+  "interpolate-size": "allow-keywords",
+  overlay: "auto",
+  "forced-color-adjust": "none",
+  "print-color-adjust": "exact",
+  "color-interpolation": "sRGB",
+  "color-interpolation-filters": "linearRGB",
+  "paint-order": "stroke fill markers",
+  "shape-outside": "circle(50%)",
+  "shape-margin": 8,
+  "shape-image-threshold": 0.4
 });
 
 const lexicalSheet = runtime.parseWebStyleSheet(`
@@ -344,6 +425,10 @@ assert.equal(field.style.textDecorationLine, "underline");
 assert.equal(field.style.textDecorationSkipInk, "auto");
 assert.equal(field.style.textSizeAdjust, "100%");
 assert.equal(field.style.textOrientation, "mixed");
+assert.equal(field.style.textSpacingTrim, "trim-start");
+assert.equal(field.style.textAutospace, "ideograph-alpha");
+assert.equal(field.style.textBoxTrim, "trim-both");
+assert.equal(field.style.textBoxEdge, "cap alphabetic");
 assert.equal(field.style.verticalAlign, "middle");
 assert.equal(field.style.transformBox, "border-box");
 assert.equal(field.style.transformStyle, "preserve-3d");
@@ -353,6 +438,18 @@ assert.equal(field.style.scale, "1.2");
 assert.equal(field.style.perspective, "800px");
 assert.equal(field.style.perspectiveOrigin, "50% 50%");
 assert.equal(field.style.backfaceVisibility, "hidden");
+assert.equal(field.style.animationTimeline, "--field-scroll");
+assert.equal(field.style.animationRange, "entry 0% cover 80%");
+assert.equal(field.style.animationRangeStart, "entry 10%");
+assert.equal(field.style.animationRangeEnd, "cover 90%");
+assert.equal(field.style.scrollTimeline, "--field-scroll block");
+assert.equal(field.style.scrollTimelineName, "--field-scroll");
+assert.equal(field.style.scrollTimelineAxis, "block");
+assert.equal(field.style.viewTimeline, "--field-view inline");
+assert.equal(field.style.viewTimelineName, "--field-view");
+assert.equal(field.style.viewTimelineAxis, "inline");
+assert.equal(field.style.viewTimelineInset, "10% 20%");
+assert.equal(field.style.timelineScope, "--field-scroll");
 assert.equal(field.style.contentVisibility, "auto");
 assert.equal(field.style.containIntrinsicSize, "320px");
 assert.equal(field.style.containIntrinsicInlineSize, "320px");
@@ -371,3 +468,14 @@ assert.equal(field.style.caretColor, "#ff6633");
 assert.equal(field.style.appearance, "none");
 assert.equal(field.style.userSelect, "text");
 assert.equal(field.style.resize, "vertical");
+assert.equal(field.style.fieldSizing, "content");
+assert.equal(field.style.interpolateSize, "allow-keywords");
+assert.equal(field.style.overlay, "auto");
+assert.equal(field.style.forcedColorAdjust, "none");
+assert.equal(field.style.printColorAdjust, "exact");
+assert.equal(field.style.colorInterpolation, "sRGB");
+assert.equal(field.style.colorInterpolationFilters, "linearRGB");
+assert.equal(field.style.paintOrder, "stroke fill markers");
+assert.equal(field.style.shapeOutside, "circle(50%)");
+assert.equal(field.style.shapeMargin, "8px");
+assert.equal(field.style.shapeImageThreshold, "0.4");

@@ -2002,6 +2002,7 @@ const webKssLengthProperties = new Set([
   "contain-intrinsic-size", "contain-intrinsic-width",
   "contain-intrinsic-height", "contain-intrinsic-inline-size",
   "contain-intrinsic-block-size", "overflow-clip-margin",
+  "shape-margin",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
   "scroll-margin-bottom", "scroll-margin-left",
   "scroll-margin-inline", "scroll-margin-block",
@@ -2028,6 +2029,7 @@ const webKssLiteralProperties = new Set([
   "text-decoration-skip-ink", "text-shadow",
   "text-transform", "text-overflow", "white-space",
   "text-size-adjust", "text-orientation", "text-wrap",
+  "text-spacing-trim", "text-autospace", "text-box-trim", "text-box-edge",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "border-top", "border-right", "border-bottom", "border-left",
   "border-inline", "border-block", "border-inline-start",
@@ -2065,12 +2067,19 @@ const webKssLiteralProperties = new Set([
   "animation-timing-function", "animation-delay",
   "animation-iteration-count", "animation-direction",
   "animation-fill-mode", "animation-play-state",
+  "animation-timeline", "animation-range", "animation-range-start",
+  "animation-range-end", "scroll-timeline", "scroll-timeline-name",
+  "scroll-timeline-axis", "view-timeline", "view-timeline-name",
+  "view-timeline-axis", "view-timeline-inset", "timeline-scope",
   "transform", "transform-origin", "transform-box", "transform-style",
   "translate", "rotate", "scale", "perspective-origin", "backface-visibility",
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
   "outline", "outline-style", "box-shadow", "color-scheme",
+  "field-sizing", "interpolate-size", "overlay", "forced-color-adjust",
+  "print-color-adjust", "color-interpolation", "color-interpolation-filters",
+  "paint-order", "shape-outside", "shape-image-threshold",
   "contain", "content-visibility", "contain-intrinsic-size",
   "contain-intrinsic-width", "contain-intrinsic-height",
   "contain-intrinsic-inline-size", "contain-intrinsic-block-size",
@@ -2803,6 +2812,10 @@ const webCSSPropertyNames = new Map([
   ["text-size-adjust", "text-size-adjust"],
   ["text-orientation", "text-orientation"],
   ["text-wrap", "text-wrap"],
+  ["text-spacing-trim", "text-spacing-trim"],
+  ["text-autospace", "text-autospace"],
+  ["text-box-trim", "text-box-trim"],
+  ["text-box-edge", "text-box-edge"],
   ["word-break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
   ["vertical-align", "vertical-align"],
@@ -2836,6 +2849,14 @@ const webCSSPropertyNames = new Map([
   ["scroll-snap-type", "scroll-snap-type"],
   ["scroll-snap-align", "scroll-snap-align"],
   ["scroll-snap-stop", "scroll-snap-stop"],
+  ["scroll-timeline", "scroll-timeline"],
+  ["scroll-timeline-name", "scroll-timeline-name"],
+  ["scroll-timeline-axis", "scroll-timeline-axis"],
+  ["view-timeline", "view-timeline"],
+  ["view-timeline-name", "view-timeline-name"],
+  ["view-timeline-axis", "view-timeline-axis"],
+  ["view-timeline-inset", "view-timeline-inset"],
+  ["timeline-scope", "timeline-scope"],
   ["scrollbar-color", "scrollbar-color"],
   ["scrollbar-width", "scrollbar-width"],
   ["scrollbar-gutter", "scrollbar-gutter"],
@@ -2920,6 +2941,10 @@ const webCSSPropertyNames = new Map([
   ["animation-direction", "animation-direction"],
   ["animation-fill-mode", "animation-fill-mode"],
   ["animation-play-state", "animation-play-state"],
+  ["animation-timeline", "animation-timeline"],
+  ["animation-range", "animation-range"],
+  ["animation-range-start", "animation-range-start"],
+  ["animation-range-end", "animation-range-end"],
   ["transform", "transform"],
   ["transform-origin", "transform-origin"],
   ["transform-box", "transform-box"],
@@ -2943,6 +2968,9 @@ const webCSSPropertyNames = new Map([
   ["appearance", "appearance"],
   ["user-select", "user-select"],
   ["resize", "resize"],
+  ["field-sizing", "field-sizing"],
+  ["interpolate-size", "interpolate-size"],
+  ["overlay", "overlay"],
   ["outline", "outline"],
   ["outline-width", "outline-width"],
   ["outline-offset", "outline-offset"],
@@ -2950,6 +2978,14 @@ const webCSSPropertyNames = new Map([
   ["outline-color", "outline-color"],
   ["box-shadow", "box-shadow"],
   ["color-scheme", "color-scheme"],
+  ["forced-color-adjust", "forced-color-adjust"],
+  ["print-color-adjust", "print-color-adjust"],
+  ["color-interpolation", "color-interpolation"],
+  ["color-interpolation-filters", "color-interpolation-filters"],
+  ["paint-order", "paint-order"],
+  ["shape-outside", "shape-outside"],
+  ["shape-margin", "shape-margin"],
+  ["shape-image-threshold", "shape-image-threshold"],
   ["contain", "contain"],
   ["content-visibility", "content-visibility"],
   ["contain-intrinsic-size", "contain-intrinsic-size"],
@@ -3004,6 +3040,7 @@ function webStyleCSSValue(name, value) {
       name !== "line-clamp" && name !== "lineClamp" &&
       name !== "webkitLineClamp" &&
       name !== "animation-iteration-count" && name !== "animationIterationCount" &&
+      name !== "shape-image-threshold" && name !== "shapeImageThreshold" &&
       name !== "scale"
     ? value + "px" : String(value);
 }
@@ -3894,6 +3931,10 @@ function applyResolvedWebStyle(el, style) {
   set("textSizeAdjust", style["text-size-adjust"]);
   set("textOrientation", style["text-orientation"]);
   set("textWrap", style["text-wrap"]);
+  set("textSpacingTrim", style["text-spacing-trim"]);
+  set("textAutospace", style["text-autospace"]);
+  set("textBoxTrim", style["text-box-trim"]);
+  set("textBoxEdge", style["text-box-edge"]);
   set("wordBreak", style["word-break"]);
   set("overflowWrap", style["overflow-wrap"]);
   set("verticalAlign", style["vertical-align"]);
@@ -3928,6 +3969,14 @@ function applyResolvedWebStyle(el, style) {
   set("scrollSnapType", style["scroll-snap-type"]);
   set("scrollSnapAlign", style["scroll-snap-align"]);
   set("scrollSnapStop", style["scroll-snap-stop"]);
+  set("scrollTimeline", style["scroll-timeline"]);
+  set("scrollTimelineName", style["scroll-timeline-name"]);
+  set("scrollTimelineAxis", style["scroll-timeline-axis"]);
+  set("viewTimeline", style["view-timeline"]);
+  set("viewTimelineName", style["view-timeline-name"]);
+  set("viewTimelineAxis", style["view-timeline-axis"]);
+  set("viewTimelineInset", style["view-timeline-inset"]);
+  set("timelineScope", style["timeline-scope"]);
   set("scrollbarColor", style["scrollbar-color"]);
   set("scrollbarWidth", style["scrollbar-width"]);
   set("scrollbarGutter", style["scrollbar-gutter"]);
@@ -4011,6 +4060,10 @@ function applyResolvedWebStyle(el, style) {
   set("animationDirection", style["animation-direction"]);
   set("animationFillMode", style["animation-fill-mode"]);
   set("animationPlayState", style["animation-play-state"]);
+  set("animationTimeline", style["animation-timeline"]);
+  set("animationRange", style["animation-range"]);
+  set("animationRangeStart", style["animation-range-start"]);
+  set("animationRangeEnd", style["animation-range-end"]);
   if (!((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
         (offsetY !== undefined && offsetY !== null && offsetY !== "")))
     set("transform", style.transform);
@@ -4036,6 +4089,9 @@ function applyResolvedWebStyle(el, style) {
   set("appearance", style.appearance);
   set("userSelect", style["user-select"]);
   set("resize", style.resize);
+  set("fieldSizing", style["field-sizing"]);
+  set("interpolateSize", style["interpolate-size"]);
+  set("overlay", style.overlay);
   set("outline", style.outline);
   set("outlineWidth", style["outline-width"]);
   set("outlineOffset", style["outline-offset"]);
@@ -4043,6 +4099,14 @@ function applyResolvedWebStyle(el, style) {
   set("outlineColor", style["outline-color"]);
   set("boxShadow", style["box-shadow"]);
   set("colorScheme", style["color-scheme"]);
+  set("forcedColorAdjust", style["forced-color-adjust"]);
+  set("printColorAdjust", style["print-color-adjust"]);
+  set("colorInterpolation", style["color-interpolation"]);
+  set("colorInterpolationFilters", style["color-interpolation-filters"]);
+  set("paintOrder", style["paint-order"]);
+  set("shapeOutside", style["shape-outside"]);
+  set("shapeMargin", style["shape-margin"]);
+  set("shapeImageThreshold", style["shape-image-threshold"]);
   set("contain", style.contain);
   set("contentVisibility", style["content-visibility"]);
   set("containIntrinsicSize", style["contain-intrinsic-size"]);

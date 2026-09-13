@@ -148,6 +148,10 @@ the browser receives normal elements, attributes, CSS, and events.
   intrinsic containment sizing, and container query naming/type properties.
 - KSS web overlay and transition styling supports native anchor positioning
   fields and `view-transition-name`.
+- KSS web motion, sizing, accessibility, and paint styling supports native
+  scroll/view timelines, animation ranges, `field-sizing`, `interpolate-size`,
+  `overlay`, forced/print color adjustment, SVG paint-order/interpolation, and
+  CSS shape/text box controls for browser-native layouts.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo

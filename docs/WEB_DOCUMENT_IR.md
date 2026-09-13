@@ -453,16 +453,20 @@ border styles, per-side border widths, per-corner radii, opacity, font size, off
 font family, font weight/style/variant/stretch/kerning/feature/variation settings,
 letter spacing, text alignment/indent,
 content offsets, line height, text transform/overflow/decoration/wrapping,
-display/layout keywords, box sizing, scroll behavior/snap/margins/padding,
+text spacing and text box controls, display/layout keywords, box sizing,
+scroll behavior/snap/margins/padding/timelines,
 overscroll including logical inline/block controls, touch-action controls,
 list-style and table layout controls, flex flow/grow/shrink/basis/order,
 grid tracks/areas/auto tracks/auto-flow/line placement,
 row/column gaps, placement/content/self alignment, transforms, containment,
 content visibility, intrinsic containment sizing, container
-queries, anchor positioning, view-transition names, will-change, isolation, blend mode,
+queries, anchor positioning, view-transition names, animation ranges,
+will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
 animations, clip/mask paint controls, writing direction/mode, hyphenation,
-line clamping, color scheme, columns/break flow controls,
+line clamping, color scheme, forced/print color adjustment, SVG
+interpolation and paint-order controls, shape controls,
+columns/break flow controls, form field sizing, overlay/interpolate sizing,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
