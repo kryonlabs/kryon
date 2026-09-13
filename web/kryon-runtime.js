@@ -1725,6 +1725,7 @@ function splitSelectorSequence(text) {
   const parts = [];
   let token = "";
   let bracketDepth = 0;
+  let parenDepth = 0;
   let quote = "";
   let pendingCombinator = "";
   const push = () => {
@@ -1757,15 +1758,79 @@ function splitSelectorSequence(text) {
       token += ch;
       continue;
     }
-    if (!bracketDepth && ch === ">") {
+    if (!bracketDepth && ch === "(") {
+      parenDepth++;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && ch === ")" && parenDepth > 0) {
+      parenDepth--;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && !parenDepth && ch === ">") {
       push();
       pendingCombinator = ">";
       continue;
     }
-    if (!bracketDepth && /\s/.test(ch)) {
+    if (!bracketDepth && !parenDepth && /\s/.test(ch)) {
       push();
       if (!pendingCombinator)
         pendingCombinator = " ";
+      continue;
+    }
+    token += ch;
+  }
+  push();
+  return parts;
+}
+
+function splitSelectorList(text) {
+  const parts = [];
+  let token = "";
+  let bracketDepth = 0;
+  let parenDepth = 0;
+  let quote = "";
+  const push = () => {
+    const value = token.trim();
+    if (value)
+      parts.push(value);
+    token = "";
+  };
+  for (const ch of String(text || "")) {
+    if (quote) {
+      token += ch;
+      if (ch === quote)
+        quote = "";
+      continue;
+    }
+    if (ch === "\"" || ch === "'") {
+      token += ch;
+      quote = ch;
+      continue;
+    }
+    if (ch === "[") {
+      bracketDepth++;
+      token += ch;
+      continue;
+    }
+    if (ch === "]" && bracketDepth > 0) {
+      bracketDepth--;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && ch === "(") {
+      parenDepth++;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && ch === ")" && parenDepth > 0) {
+      parenDepth--;
+      token += ch;
+      continue;
+    }
+    if (!bracketDepth && !parenDepth && ch === ",") {
+      push();
       continue;
     }
     token += ch;
@@ -1783,6 +1848,8 @@ function parseSimpleSelector(text) {
     attrs: {},
     attrOps: {},
     pseudos: [],
+    not: [],
+    matches: [],
     state: "",
     specificity: 0
   };
@@ -1794,7 +1861,13 @@ function parseSimpleSelector(text) {
   });
   source = source.replace(/:([A-Za-z_][\w-]*)(?:\(\s*([^)]*?)\s*\))?/g, (_all, name, arg) => {
     const pseudo = name.replace(/_/g, "-").toLowerCase();
-    if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
+    if (arg !== undefined && (pseudo === "not" || pseudo === "is" || pseudo === "where")) {
+      const selectors = splitSelectorList(arg).map(parseSimpleSelector);
+      if (pseudo === "not")
+        selector.not.push(...selectors);
+      else
+        selector.matches.push(...selectors);
+    } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
         pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
         pseudo === "invalid" || pseudo === "expanded" || pseudo === "open"))
@@ -1842,6 +1915,8 @@ function parseSelector(text) {
     attrs: {},
     attrOps: {},
     pseudos: [],
+    not: [],
+    matches: [],
     state: "",
     specificity: selectors.reduce((sum, selector) => sum + selector.specificity, 0),
     parts: selectors
@@ -1854,6 +1929,15 @@ function parseKssValue(value) {
   if (Number.isFinite(number) && /^-?\d+(?:\.\d+)?(?:px)?$/.test(text))
     return number;
   return text;
+}
+
+function parseKssDurationValue(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^(-?\d+(?:\.\d+)?)(ms|s)?$/i);
+  if (!match)
+    throw new Error(`expected token duration ${text}`);
+  const number = Number(match[1]);
+  return match[2]?.toLowerCase() === "s" ? number * 1000 : number;
 }
 
 function parseKssDeclarationValue(name, value, tokens) {
@@ -1923,7 +2007,7 @@ function parseWebStyleTokens(text) {
     for (let group; (group = groupPattern.exec(body));) {
       const kind = group[1].toLowerCase();
       const target = kind === "color" ? tokens.colors :
-        (kind === "length" || kind === "number") ? tokens.lengths :
+        (kind === "length" || kind === "number" || kind === "duration") ? tokens.lengths :
         kind === "material" ? tokens.materials : null;
       if (!target)
         throw new Error(`unknown KSS token group ${group[1]}`);
@@ -1934,7 +2018,9 @@ function parseWebStyleTokens(text) {
         const name = part.slice(0, colon).trim();
         if (!name)
           continue;
-        target.set(name, parseKssValue(part.slice(colon + 1)));
+        target.set(name, kind === "duration"
+          ? parseKssDurationValue(part.slice(colon + 1))
+          : parseKssValue(part.slice(colon + 1)));
       }
     }
     cursor = close + 1;
@@ -1968,7 +2054,7 @@ export function parseWebStyleSheet(source) {
       }
       continue;
     }
-    for (const selectorText of String(match[3] || "").split(",")) {
+    for (const selectorText of splitSelectorList(match[3])) {
       if (!selectorText.trim())
         continue;
       const selector = parseSelector(selectorText);
@@ -2075,6 +2161,10 @@ export function webStyleSelectorToCSS(selector) {
     parts.push(webStyleSelectorAttrToCSS(key, value, selector.attrOps?.[key] || "="));
   for (const pseudo of selector.pseudos || [])
     parts.push(webStylePseudoToCSS(pseudo));
+  for (const notSelector of selector.not || [])
+    parts.push(`:not(${webStyleSelectorToCSS(notSelector)})`);
+  if (selector.matches?.length)
+    parts.push(`:is(${selector.matches.map(webStyleSelectorToCSS).join(",")})`);
   if (selector.state)
     parts.push(`[data-kry-state~="${cssEscapeString(selector.state === "focused" ? "focus" : selector.state)}"]`);
   return parts.join("");
@@ -2725,8 +2815,17 @@ function selectorStructuralPseudosMatch(selector, node) {
 
 function selectorMatchesSimpleWebNode(selector, node) {
   const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
-  return selectorMatchesFacts(selector, facts) &&
-    selectorStructuralPseudosMatch(selector, node);
+  if (!selectorMatchesFacts(selector, facts) ||
+      !selectorStructuralPseudosMatch(selector, node))
+    return false;
+  if ((selector.not || []).some((notSelector) =>
+      selectorMatchesSimpleWebNode(notSelector, node)))
+    return false;
+  if (selector.matches?.length &&
+      !selector.matches.some((matchSelector) =>
+        selectorMatchesSimpleWebNode(matchSelector, node)))
+    return false;
+  return true;
 }
 
 function selectorChainMatchesWebNode(selector, node) {

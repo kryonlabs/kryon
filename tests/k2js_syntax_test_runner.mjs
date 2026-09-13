@@ -43,6 +43,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   tokens {
     color { button-face: #102030; button-ink: #f0f0f0; id-face: #203040; }
     length { radius.md: 9; space.3: 13; field-y: 5; line: 2; }
+    duration { fast: 80ms; normal: 0.14s; }
   }
   @layer components;
   Button.primary {
@@ -72,6 +73,10 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   }
   Button.runtime-selected {
     border-width: 6;
+  }
+  Button.duration-token {
+    padding-y: fast;
+    opacity: normal;
   }
   Button[data-runtime="1"] {
     padding-y: 9;
@@ -201,6 +206,9 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Screen > Button:nth-child(2) { outline-width: 4; }
   Screen > Text:nth-child(odd) { line-height: 1.2; }
   Screen > Input:nth-child(even) { appearance: auto; }
+  Button:not(.secondary) { caret-color: #112233; }
+  :is(Button, TextField)[webRef^="primary"] { accent-color: #223344; }
+  :where(TextField, Button)[data.tracking_id|="tap"] { resize: vertical; }
 `);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -222,6 +230,10 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Input"\]:last-child/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]:nth-child\(2\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Button"\]:not\(\.kryon-node\.secondary\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\.kryon-node\[data-kry-web-ref\^="primary"\]:is\(\[data-kry-kind="Button"\],\[data-kry-kind="TextField"\]\)/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -229,6 +241,8 @@ assert.match(webStyleCSS, /color: #f0f0f0;/);
 assert.match(webStyleCSS, /border-radius: 9px;/);
 assert.match(webStyleCSS, /padding-left: 13px;/);
 assert.match(webStyleCSS, /padding-right: 13px;/);
+assert.match(webStyleCSS, /padding-top: 80px;/);
+assert.match(webStyleCSS, /opacity: 140;/);
 assert.match(webStyleCSS, /--kry-offset-y: 8px;/);
 assert.match(webStyleCSS, /transform: translate\(var\(--kry-offset-x, 0px\), var\(--kry-offset-y, 0px\)\);/);
 assert.match(webStyleCSS, /--kry-content-offset-y: 7px;/);
@@ -377,11 +391,16 @@ assert.equal(runtime.webNodeQuery(rt, `Screen > Input:last-child`).path, webDoc.
 assert.equal(runtime.webNodeQuery(rt, `Screen > Button:nth-child(2)`).path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Text:nth-child(odd)`).path, webDoc.nodes[1].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Input:nth-child(even)`).path, webDoc.nodes[6].path);
+assert.equal(runtime.webNodeQuery(rt, `Button:not(.secondary)`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `:is(Button, TextField)[webRef^="primary"]`).path,
+  webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `:where(TextField, Button)[data.tracking_id|="tap"]`).path,
+  webDoc.nodes[2].path);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["pointer-events"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).appearance, "none");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["user-select"], "none");
-assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "both");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "vertical");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outline-style"], "solid");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], operatorStyleSheet)["border-style"], "dotted");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet).visibility, "hidden");
@@ -389,6 +408,9 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[7], operatorStyleSheet)["user-
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outline-width"], 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet)["line-height"], 1.2);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet).appearance, "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["caret-color"], "#112233");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["accent-color"], "#223344");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "vertical");
 const soloRt = runtime.createRuntime();
 runtime.beginFrame(soloRt);
 runtime.widget(soloRt, "Screen", {}, null, { nodeName: "root", path: "Solo/root" });
@@ -2330,6 +2352,11 @@ function fakeDocument() {
       firstText);
     assert.equal(runtime.webDOMQuery(target, "Screen > Input:nth-child(even)").node.path,
       inputPaths[0]);
+    assert.equal(runtime.webDOMQuery(target, "Button:not(.secondary)").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, ":is(Button, TextField)[webRef^=\"primary\"]").element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, ":where(TextField, Button)[data.tracking_id|=\"tap\"]").element,
+      firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);
