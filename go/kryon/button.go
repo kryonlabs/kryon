@@ -27,6 +27,23 @@ type ContentSize struct {
 	Gap       float32
 }
 
+type IconActionMetrics struct {
+	Padding  int32
+	IconSize int32
+}
+
+type TextButtonMetrics struct {
+	PaddingX  int32
+	PaddingY  int32
+	MinWidth  int32
+	MinHeight int32
+}
+
+type InfoIndicatorMetrics struct {
+	MinTouch int32
+	Diameter int32
+}
+
 type ButtonSplitLayout struct {
 	Width        float32
 	ActionWidth  float32
@@ -259,6 +276,200 @@ func Button_ButtonResolveSplitLayout(width float32, height float32) ButtonSplitL
 	layout.DividerInset = value_14
 	var value_15 ButtonSplitLayout = layout
 	return value_15
+}
+
+func Button_ButtonMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = fields
+	var value_5 uint32 = field
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
+	var value_7 int32 = 0
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 bool = value_6 == value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float32 = value
+		var value_12 float32 = 0.0
+		var value_13 bool = value_11 < value_12
+		value_10 = value_13
+	}
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 bool = allow_zero
+		var value_16 bool = !value_15
+		var value_17 bool = value_16
+		if value_17 {
+			var value_18 float32 = value
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 <= value_19
+			value_17 = value_20
+		}
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_21 float32 = fallback
+		value = value_21
+	}
+	var value_22 float32 = value
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
+	return value_25
+}
+
+func Button_IconActionMetricsFor(bounds Rectangle, requested_icon_size int32, requested_padding int32, scale float32, face StyleFrame) IconActionMetrics {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var metrics IconActionMetrics = IconActionMetrics{}
+	var value_4 int32 = requested_padding
+	var value_5 int32 = 0
+	var value_6 bool = value_4 > value_5
+	if value_6 {
+		var value_7 int32 = requested_padding
+		metrics.Padding = value_7
+	} else {
+		var value_8 uint32 = face.Value.Fields
+		var value_9 int32 = int32(StylePaddingX)
+		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+		var value_11 float32 = face.Value.PaddingX
+		var value_12 float32 = 3.0
+		var value_13 float32 = scale
+		var value_14 bool = true
+		var value_15 int32 = Button_ButtonMetric(value_8, value_10, value_11, value_12, value_13, value_14)
+		metrics.Padding = value_15
+	}
+	var value_16 int32 = requested_icon_size
+	metrics.IconSize = value_16
+	var value_17 int32 = metrics.IconSize
+	var value_18 int32 = 0
+	var value_19 bool = value_17 <= value_18
+	if value_19 {
+		var value_20 float32 = bounds.Width
+		var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
+		var available int32 = value_21
+		var value_22 float32 = bounds.Height
+		var value_23 float32 = bounds.Width
+		var value_24 bool = value_22 < value_23
+		if value_24 {
+			var value_25 float32 = bounds.Height
+			var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
+			available = value_26
+		}
+		var value_27 int32 = available
+		var value_28 int32 = metrics.Padding
+		var value_29 int32 = 2
+		var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 3))
+		var value_31 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_30), 32, true, 2))
+		metrics.IconSize = value_31
+	}
+	var value_32 int32 = metrics.IconSize
+	var value_33 int32 = 1
+	var value_34 bool = value_32 < value_33
+	if value_34 {
+		var value_35 int32 = 1
+		metrics.IconSize = value_35
+	}
+	var value_36 IconActionMetrics = metrics
+	return value_36
+}
+
+func Button_TextButtonMetricsFor(scale float32, face StyleFrame) TextButtonMetrics {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var metrics TextButtonMetrics = TextButtonMetrics{}
+	var value_4 uint32 = face.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = face.Value.PaddingX
+	var value_8 float32 = 8.0
+	var value_9 float32 = scale
+	var value_10 bool = true
+	var value_11 int32 = Button_ButtonMetric(value_4, value_6, value_7, value_8, value_9, value_10)
+	metrics.PaddingX = value_11
+	var value_12 uint32 = face.Value.Fields
+	var value_13 int32 = int32(StylePaddingY)
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 float32 = face.Value.PaddingY
+	var value_16 float32 = 4.0
+	var value_17 float32 = scale
+	var value_18 bool = true
+	var value_19 int32 = Button_ButtonMetric(value_12, value_14, value_15, value_16, value_17, value_18)
+	metrics.PaddingY = value_19
+	var value_20 uint32 = face.Value.Fields
+	var value_21 int32 = int32(StyleContentOffset)
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
+	var value_23 float32 = face.Value.OffsetX
+	var value_24 float32 = 34.0
+	var value_25 float32 = scale
+	var value_26 bool = false
+	var value_27 int32 = Button_ButtonMetric(value_20, value_22, value_23, value_24, value_25, value_26)
+	metrics.MinWidth = value_27
+	var value_28 uint32 = face.Value.Fields
+	var value_29 int32 = int32(StyleIconSize)
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
+	var value_31 float32 = face.Value.IconSize
+	var value_32 float32 = 34.0
+	var value_33 float32 = scale
+	var value_34 bool = false
+	var value_35 int32 = Button_ButtonMetric(value_28, value_30, value_31, value_32, value_33, value_34)
+	metrics.MinHeight = value_35
+	var value_36 TextButtonMetrics = metrics
+	return value_36
+}
+
+func Button_InfoIndicatorMetricsFor(requested_diameter int32, scale float32, face StyleFrame) InfoIndicatorMetrics {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var metrics InfoIndicatorMetrics = InfoIndicatorMetrics{}
+	var value_4 uint32 = face.Value.Fields
+	var value_5 int32 = int32(StyleContentOffset)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = face.Value.OffsetX
+	var value_8 float32 = 32.0
+	var value_9 float32 = scale
+	var value_10 bool = false
+	var value_11 int32 = Button_ButtonMetric(value_4, value_6, value_7, value_8, value_9, value_10)
+	metrics.MinTouch = value_11
+	var value_12 int32 = requested_diameter
+	var value_13 int32 = 0
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 int32 = requested_diameter
+		metrics.Diameter = value_15
+	} else {
+		var value_16 uint32 = face.Value.Fields
+		var value_17 int32 = int32(StyleIconSize)
+		var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
+		var value_19 float32 = face.Value.IconSize
+		var value_20 float32 = 18.0
+		var value_21 float32 = scale
+		var value_22 bool = false
+		var value_23 int32 = Button_ButtonMetric(value_16, value_18, value_19, value_20, value_21, value_22)
+		metrics.Diameter = value_23
+	}
+	var value_24 InfoIndicatorMetrics = metrics
+	return value_24
 }
 
 func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {

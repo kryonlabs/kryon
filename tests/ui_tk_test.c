@@ -420,6 +420,11 @@ test_color_picker_policy(void)
 static void
 test_button_policy(void)
 {
+    StyleFrame frame = {0};
+    IconActionMetrics icon_metrics;
+    TextButtonMetrics text_metrics;
+    InfoIndicatorMetrics info_metrics;
+
     check_int("action enabled", ButtonActionEnabled(false, false) ? 1 : 0, 1);
     check_int("action own disabled", ButtonActionEnabled(true, false) ? 1 : 0, 0);
     check_int("action parent disabled", ButtonActionEnabled(false, true) ? 1 : 0, 0);
@@ -427,6 +432,58 @@ test_button_policy(void)
     check_int("arrow right glyph", ButtonArrowGlyph(ARROW_RIGHT), '>');
     check_int("arrow up glyph", ButtonArrowGlyph(ARROW_UP), '^');
     check_int("arrow down glyph", ButtonArrowGlyph(ARROW_DOWN), 'v');
+
+    icon_metrics = IconActionMetricsFor((Rectangle){0, 0, 40, 32},
+                                        0, 0, 1.0f, frame);
+    check_int("icon action fallback padding", icon_metrics.padding, 3);
+    check_int("icon action fallback size", icon_metrics.icon_size, 26);
+    icon_metrics = IconActionMetricsFor((Rectangle){0, 0, 40, 32},
+                                        12, 5, 2.0f, frame);
+    check_int("icon action requested padding", icon_metrics.padding, 5);
+    check_int("icon action requested size", icon_metrics.icon_size, 12);
+    frame.value.fields = StylePaddingX;
+    frame.value.padding_x = 0.0f;
+    icon_metrics = IconActionMetricsFor((Rectangle){0, 0, 20, 20},
+                                        0, 0, 1.0f, frame);
+    check_int("icon action explicit zero padding", icon_metrics.padding, 0);
+    check_int("icon action explicit zero size", icon_metrics.icon_size, 20);
+
+    frame = (StyleFrame){0};
+    text_metrics = TextButtonMetricsFor(1.0f, frame);
+    check_int("text button fallback padding x", text_metrics.padding_x, 8);
+    check_int("text button fallback padding y", text_metrics.padding_y, 4);
+    check_int("text button fallback min width", text_metrics.min_width, 34);
+    check_int("text button fallback min height", text_metrics.min_height, 34);
+    frame.value.fields = StylePaddingX | StylePaddingY |
+        StyleContentOffset | StyleIconSize;
+    frame.value.padding_x = 2.0f;
+    frame.value.padding_y = 3.0f;
+    frame.value.offset_x = 18.0f;
+    frame.value.icon_size = 21.0f;
+    text_metrics = TextButtonMetricsFor(2.0f, frame);
+    check_int("text button styled padding x", text_metrics.padding_x, 4);
+    check_int("text button styled padding y", text_metrics.padding_y, 6);
+    check_int("text button styled min width", text_metrics.min_width, 36);
+    check_int("text button styled min height", text_metrics.min_height, 42);
+
+    frame.value.offset_x = 0.0f;
+    frame.value.icon_size = 0.0f;
+    text_metrics = TextButtonMetricsFor(1.0f, frame);
+    check_int("text button zero min width fallback", text_metrics.min_width, 34);
+    check_int("text button zero min height fallback", text_metrics.min_height, 34);
+
+    frame = (StyleFrame){0};
+    info_metrics = InfoIndicatorMetricsFor(0, 1.0f, frame);
+    check_int("info indicator fallback touch", info_metrics.min_touch, 32);
+    check_int("info indicator fallback diameter", info_metrics.diameter, 18);
+    frame.value.fields = StyleContentOffset | StyleIconSize;
+    frame.value.offset_x = 28.0f;
+    frame.value.icon_size = 14.0f;
+    info_metrics = InfoIndicatorMetricsFor(20, 2.0f, frame);
+    check_int("info indicator styled touch", info_metrics.min_touch, 56);
+    check_int("info indicator requested diameter", info_metrics.diameter, 20);
+    info_metrics = InfoIndicatorMetricsFor(0, 2.0f, frame);
+    check_int("info indicator styled diameter", info_metrics.diameter, 28);
 }
 
 static void

@@ -448,17 +448,15 @@ RenderIconAction(IconActionSpec button)
 {
     ButtonSpec spec = {0};
     float scale = (float)Scale(1000) / 1000.0f;
-    int padding = button.icon_padding > 0 ? button.icon_padding : Scale(3);
-    int icon_size = button.icon_size;
+    StyleFrame frame = {0};
+    IconActionMetrics metrics;
+    int icon_size;
 
     if(scale <= 0.0f)
         scale = 1.0f;
-    if(icon_size <= 0) {
-        float available = fminf(button.bounds.width, button.bounds.height);
-        icon_size = (int)available - padding * 2;
-    }
-    if(icon_size < 1)
-        icon_size = 1;
+    metrics = IconActionMetricsFor(button.bounds, button.icon_size,
+                                   button.icon_padding, scale, frame);
+    icon_size = metrics.icon_size;
 
     spec.props.bounds = button.bounds;
     spec.props.id = button.focus_id;
@@ -515,18 +513,18 @@ ui_text_button_render(int x, int y, const char *label, int *hover)
         ? (int)(frame.value.font_size + 0.5f)
         : GetFontSize();
     const char *text = label != NULL ? label : "";
-    int w = (int)TextWidth(text, font) + Scale(16);
-    int h = TextLineHeight(font) + Scale(8);
-    int min_w = Scale(34);
-    int min_h = Scale(34);
+    TextButtonMetrics metrics = TextButtonMetricsFor(
+        (float)Scale(1000) / 1000.0f, frame);
+    int w = (int)TextWidth(text, font) + metrics.padding_x * 2;
+    int h = TextLineHeight(font) + metrics.padding_y * 2;
     Rectangle bounds;
     int hovered;
     ButtonSpec spec;
 
-    if(w < min_w)
-        w = min_w;
-    if(h < min_h)
-        h = min_h;
+    if(w < metrics.min_width)
+        w = metrics.min_width;
+    if(h < metrics.min_height)
+        h = metrics.min_height;
     x = x - w / 2;
     bounds.x = (float)x;
     bounds.y = (float)y;
@@ -789,7 +787,15 @@ int
 RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int min_touch = Scale(32);
+    float scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame frame = ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisGhost,
+                      .size = ControlSizeSmall,
+                      .pill = 1},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindButton());
+    InfoIndicatorMetrics metrics =
+        InfoIndicatorMetricsFor(diameter, scale, frame);
     int radius;
     int active = 0;
     int hover = 0;
@@ -799,11 +805,11 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
     Color text;
     int font;
 
-    if(diameter <= 0)
-        diameter = Scale(18);
+    diameter = metrics.diameter;
     radius = diameter / 2;
     hit = ui_centered_min_hit_rect(center_x - radius, center_y - radius,
-                                  diameter, diameter, min_touch, min_touch);
+                                  diameter, diameter,
+                                  metrics.min_touch, metrics.min_touch);
 
     active = CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world);
     if(active) {

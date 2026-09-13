@@ -86,6 +86,23 @@ ContentSize :: struct {
     gap: float
 }
 
+IconActionMetrics :: struct {
+    padding: i32
+    icon_size: i32
+}
+
+TextButtonMetrics :: struct {
+    padding_x: i32
+    padding_y: i32
+    min_width: i32
+    min_height: i32
+}
+
+InfoIndicatorMetrics :: struct {
+    min_touch: i32
+    diameter: i32
+}
+
 ButtonSplitLayout :: struct {
     width: float
     action_width: float
@@ -135,6 +152,65 @@ ButtonResolveSplitLayout :: (width: float, height: float) -> ButtonSplitLayout #
     layout.menu_width = height
     layout.divider_inset = 8.0
     return layout
+}
+
+ButtonMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+IconActionMetricsFor :: (bounds: Rectangle, requested_icon_size: i32,
+    requested_padding: i32, scale: float, face: StyleFrame) -> IconActionMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: IconActionMetrics
+    if requested_padding > 0 {
+        metrics.padding = requested_padding
+    } else {
+        metrics.padding = ButtonMetric(face.value.fields, (u32)StylePaddingX,
+            face.value.padding_x, 3.0, scale, true)
+    }
+    metrics.icon_size = requested_icon_size
+    if metrics.icon_size <= 0 {
+        available: i32 = (i32)bounds.width
+        if bounds.height < bounds.width { available = (i32)bounds.height }
+        metrics.icon_size = available - metrics.padding * 2
+    }
+    if metrics.icon_size < 1 { metrics.icon_size = 1 }
+    return metrics
+}
+
+TextButtonMetricsFor :: (scale: float, face: StyleFrame) -> TextButtonMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TextButtonMetrics
+    metrics.padding_x = ButtonMetric(face.value.fields, (u32)StylePaddingX,
+        face.value.padding_x, 8.0, scale, true)
+    metrics.padding_y = ButtonMetric(face.value.fields, (u32)StylePaddingY,
+        face.value.padding_y, 4.0, scale, true)
+    metrics.min_width = ButtonMetric(face.value.fields, (u32)StyleContentOffset,
+        face.value.offset_x, 34.0, scale, false)
+    metrics.min_height = ButtonMetric(face.value.fields, (u32)StyleIconSize,
+        face.value.icon_size, 34.0, scale, false)
+    return metrics
+}
+
+InfoIndicatorMetricsFor :: (requested_diameter: i32, scale: float,
+    face: StyleFrame) -> InfoIndicatorMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: InfoIndicatorMetrics
+    metrics.min_touch = ButtonMetric(face.value.fields, (u32)StyleContentOffset,
+        face.value.offset_x, 32.0, scale, false)
+    if requested_diameter > 0 {
+        metrics.diameter = requested_diameter
+    } else {
+        metrics.diameter = ButtonMetric(face.value.fields, (u32)StyleIconSize,
+            face.value.icon_size, 18.0, scale, false)
+    }
+    return metrics
 }
 
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {
