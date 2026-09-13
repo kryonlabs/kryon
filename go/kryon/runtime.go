@@ -5280,14 +5280,18 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 			*openIndex = open
 		}
 		menu := menus[open]
-		menuX := Menu_MenuBarFirstItemX(bounds, metrics)
+		menuItemX := Menu_MenuBarFirstItemX(bounds, metrics)
+		menuItemWidth := int32(0)
 		for i := 0; i < int(open); i++ {
 			w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menus[i].Label, font, fontID)), metrics)
-			menuX = Menu_MenuBarNextItemX(menuX, w, metrics)
+			menuItemX = Menu_MenuBarNextItemX(menuItemX, w, metrics)
 		}
+		menuItemWidth = Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
+		menuItem := Menu_MenuGroupItemBounds(menuItemX, bounds, menuItemWidth, metrics)
+		origin := PopupPolicy_PopupMenuBarOrigin(menuItem, bounds)
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
 		handled := openedByKeyboard
-		result.ActivatedID, _ = r.drawPopupMenu(id, className, menuX, int32(bounds.Y+bounds.Height), items, id, 0, &handled)
+		result.ActivatedID, _ = r.drawPopupMenu(id, className, int32(origin.X), int32(origin.Y), items, id, 0, &handled)
 		if result.ActivatedID != 0 {
 			delete(r.openMenus, id)
 			delete(r.openSubmenus, id)
