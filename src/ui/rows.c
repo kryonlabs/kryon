@@ -142,9 +142,9 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
-    int label_font = ResolveFont(row.label_font,
-                                 (int)(text_style.font_size + 0.5f),
-                                 GetSmallFontSize());
+    int label_font = ResolveFont(
+        row.label_font, StyleFontValue(text_style.fields, text_style.font_size),
+        GetSmallFontSize());
     Color label_color = row.label_color.a != 0 ? row.label_color
                                                : text_style.foreground;
     int font_token;
@@ -175,7 +175,9 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
-    int font = ResolveFont(label.font, (int)(text_style.font_size + 0.5f),
+    int font = ResolveFont(label.font,
+                           StyleFontValue(text_style.fields,
+                                          text_style.font_size),
                            GetSmallFontSize());
     Color color = label.color.a != 0 ? label.color : text_style.foreground;
     int font_token;

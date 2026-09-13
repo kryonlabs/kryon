@@ -747,7 +747,9 @@ RenderListBoxMulti(ListBoxProps list)
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int default_item_font = ResolveFont(
-        0, (int)(default_item_style.font_size + 0.5f), GetSmallFontSize());
+        0, StyleFontValue(default_item_style.fields,
+                          default_item_style.font_size),
+        GetSmallFontSize());
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     int focused;
@@ -810,7 +812,8 @@ RenderListBoxMulti(ListBoxProps list)
             ui_style_apply_effects_frame(item_frame).value);
         if(paint) {
             int font = ResolveFont(
-                0, (int)(item_style.font_size + 0.5f), default_item_font);
+                0, StyleFontValue(item_style.fields, item_style.font_size),
+                default_item_font);
             int label_inset = ListBoxMultiItemLabelInset(
                 (float)Scale(1000) / 1000.0f, item_frame);
             if(selected || hot || disabled)
@@ -974,7 +977,8 @@ RenderCheckbox(CheckboxProps checkbox)
         Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
             label_frame).value);
         int label_font = ResolveFont(
-            0, (int)(label_style.font_size + 0.5f), GetFontSize());
+            0, StyleFontValue(label_style.fields, label_style.font_size),
+            GetFontSize());
         paint.label_color = ColorToInt(label_style.foreground);
 
         if(paint.show_state)
@@ -3049,7 +3053,8 @@ RenderSpinbox(SpinboxProps spinbox)
         Style value_style = ui_unpack_style(
             ui_style_apply_effects_frame(value_frame).value);
         int value_font = ResolveFont(
-            0, (int)(value_style.font_size + 0.5f), GetFontSize());
+            0, StyleFontValue(value_style.fields, value_style.font_size),
+            GetFontSize());
         ui_tk_draw_style_frame(spinbox.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, 0);
         ui_tk_draw_style_frame(text, spinbox.bounds, value_frame, 0, 0,
@@ -3201,7 +3206,8 @@ RenderListBox(ListBoxProps list)
             MarkClickable();
         if(paint) {
             int item_font = ResolveFont(
-                0, (int)(item_style.font_size + 0.5f), font);
+                0, StyleFontValue(item_style.fields, item_style.font_size),
+                font);
             int label_inset = ListBoxItemLabelInset(runtime_scale, item_frame);
             ListBoxItemPaint item_paint =
                 ListBoxItemPaintFor(row, label_inset,
@@ -3847,7 +3853,9 @@ RenderTableView(TableViewProps table)
             Color text_color = Fade(header_paint.foreground,
                                     header_paint.opacity);
             int render_header_font = ResolveFont(
-                0, (int)(header_paint.font_size + 0.5f), header_font);
+                0, StyleFontValue(header_paint.fields,
+                                  header_paint.font_size),
+                header_font);
             float shift = ui_table_header_shift(table,head.y);
             if(shift != 0) {
                 Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
@@ -3963,7 +3971,8 @@ RenderTableView(TableViewProps table)
                     text_color = selection_style.foreground;
                     text_opacity = selection_style.opacity;
                     render_font = ResolveFont(
-                        0, (int)(selection_style.font_size + 0.5f),
+                        0, StyleFontValue(selection_style.fields,
+                                          selection_style.font_size),
                         render_font);
                 } else {
                     text_color = text_style.foreground;
