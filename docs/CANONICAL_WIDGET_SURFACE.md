@@ -281,6 +281,7 @@ host roles rather than retained nodes.
 | `Kbd` | `.kry canonical` | Web-native keyboard input phrasing element. |
 | `Keyboard` | `.kry canonical` | Long-form alias for `Kbd`. |
 | `Label` | `.kry canonical` | Web-native form label element. |
+| `Legend` | `.kry canonical` | Web-native fieldset legend element; authored legends participate in legend relations and are not separate Go app widgets. |
 | `List` | `.kry canonical` | Web-native unordered list alias. |
 | `ListItem` | `.kry canonical` | Web-native list item element. |
 | `Main` | `.kry canonical` | Web-native main landmark element. |
