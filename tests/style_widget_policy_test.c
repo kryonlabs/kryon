@@ -131,6 +131,14 @@ main(void)
     frame.value.font_size = 14.0f;
     fieldset_paint = FieldsetPaintFor((Rectangle){20, 30, 120, 60}, 40.0f,
         1, 1.0f, frame);
+    check_float("fieldset padding falls back when unset",
+                fieldset_paint.title_background.x, 28.0f);
+    check_float("fieldset title height falls back when unset",
+                fieldset_paint.title_text.height, 18.0f);
+    frame.value.fields |= StylePaddingX | StylePaddingY | StyleGap |
+                          StyleFontSize;
+    fieldset_paint = FieldsetPaintFor((Rectangle){20, 30, 120, 60}, 40.0f,
+        1, 1.0f, frame);
     check_float("fieldset title background padding comes from style",
                 fieldset_paint.title_background.x, 32.0f);
     check_float("fieldset title background width comes from style",
@@ -144,6 +152,16 @@ main(void)
     frame.value.padding_y = 0.0f;
     frame.value.gap = 0.0f;
     frame.value.font_size = 0.0f;
+    fieldset_paint = FieldsetPaintFor((Rectangle){20, 30, 120, 60}, 40.0f,
+        1, 1.0f, frame);
+    check_float("fieldset keeps explicit zero title offset",
+                fieldset_paint.title_background.y, 30.0f);
+    check_float("fieldset keeps explicit zero text offset",
+                fieldset_paint.title_text.y, 30.0f);
+    check_float("fieldset title height protects layout",
+                fieldset_paint.title_text.height, 18.0f);
+    frame.value.fields &= ~(StylePaddingX | StylePaddingY | StyleGap |
+                            StyleFontSize);
     frame.value.padding_x = 11.0f;
     frame.value.padding_y = 3.0f;
     frame.value.font_size = 13.0f;
