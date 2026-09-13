@@ -655,7 +655,7 @@ func NavigationBar_NavigationBarPaintFor(spec NavigationBarSpec) NavigationBarPa
 	var icon_size int32 = value_36
 	var value_37 int32 = icon_size
 	var value_38 int32 = 0
-	var value_39 bool = value_37 <= value_38
+	var value_39 bool = value_37 < value_38
 	if value_39 {
 		var value_40 float32 = 32.0
 		var value_41 float32 = scale

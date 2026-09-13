@@ -196,6 +196,7 @@ main(void)
             .view_width = 900,
             .view_height = 720,
             .count = 4,
+            .icon_size = -1,
             .scale = 1.0f,
             .bar = bar,
         });
@@ -211,6 +212,8 @@ main(void)
 
         check_int("compact navigation bar hit target width",
                   (int)item_paint.bounds.width, 225);
+        check_int("compact navigation bar default icon size",
+                  paint.icon_size, 32);
         check_int("compact navigation bar active badge width",
                   (int)item_paint.state_bounds.width, 58);
         check_int("compact navigation bar active badge height",
@@ -274,6 +277,27 @@ main(void)
         check_int("compact navigation bar zero label width uses KSS",
                   (int)item_paint.label_bounds.width, 225);
 
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 900,
+            .view_height = 720,
+            .count = 4,
+            .icon_size = 0,
+            .scale = 1.0f,
+            .bar = bar,
+        });
+        item_paint = NavigationBarItemPaintFor((NavigationBarItemSpec){
+            .bar = paint,
+            .index = 1,
+            .active = true,
+            .label_height = TextLineHeight(GetSmallFontSize()),
+            .base = item,
+            .face = item,
+        });
+        check_int("compact navigation bar explicit zero icon size",
+                  paint.icon_size, 0);
+        check_int("compact navigation bar explicit zero icon width",
+                  (int)item_paint.icon_bounds.width, 0);
+
         bar.value.fields |= StyleIconSize | StyleContentOffset |
                             StyleBorderWidth;
         bar.value.icon_size = 72.0f;
@@ -284,6 +308,7 @@ main(void)
             .view_width = 120,
             .view_height = 200,
             .count = 2,
+            .icon_size = -1,
             .scale = 1.0f,
             .bar = bar,
         });
@@ -298,6 +323,7 @@ main(void)
             .view_width = 120,
             .view_height = 200,
             .count = 2,
+            .icon_size = -1,
             .scale = 1.0f,
             .bar = bar,
         });

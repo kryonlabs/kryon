@@ -241,7 +241,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     side_margin: i32 = spec.side_margin
     if side_margin < 0 { side_margin = 0 }
     icon_size: i32 = spec.icon_size
-    if icon_size <= 0 { icon_size = (i32)(32.0 * scale) }
+    if icon_size < 0 { icon_size = (i32)(32.0 * scale) }
 
     y: i32 = spec.view_height - bottom_margin - height
     available_w: i32 = spec.view_width - side_margin * 2
