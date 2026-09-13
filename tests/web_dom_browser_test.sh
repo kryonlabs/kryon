@@ -167,7 +167,7 @@ try {
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
-      background: rgb(12, 34, 56);
+      background-color: rgb(12, 34, 56);
     }
     @media all {
       Button.primary { border-top-width: 3px; }

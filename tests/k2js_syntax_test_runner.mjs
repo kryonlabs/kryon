@@ -740,7 +740,7 @@ assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 for (const legacyAlias of [
-  "background-color", "color", "focus-color",
+  "focus-color",
   "background_end", "border_width", "padding_x", "padding_y",
   "font_size", "icon_size", "offset_x", "offset_y", "font-family",
   "font_family", "text_align", "pointer_events", "outline_width"

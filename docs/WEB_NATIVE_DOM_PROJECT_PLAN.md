@@ -101,6 +101,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web CSS export and mounted DOM styling cover physical and logical border
   colors, widths, styles, and corner radii, including per-side inline/block
   properties.
+- KSS web color styling accepts both Kryon aliases (`foreground`,
+  `background`) and native CSS names (`color`, `background-color`) for browser
+  CSS export and mounted DOM style application.
 - KSS web sizing supports logical `inline-size`/`block-size` and min/max
   variants for writing-mode-aware layouts.
 - KSS web grid styling supports named template areas and per-node grid-area

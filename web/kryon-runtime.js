@@ -1955,6 +1955,7 @@ const webStyleLayers = {
 
 const webKssColorProperties = new Set([
   "background", "foreground", "border", "focus", "background-end",
+  "color", "background-color",
   "accent-color", "caret-color", "border-color", "border-top-color",
   "border-right-color", "border-bottom-color", "border-left-color",
   "border-inline-color", "border-block-color", "border-inline-start-color",
@@ -2610,6 +2611,8 @@ export function webStyleSelectorToCSS(selector) {
 const webCSSPropertyNames = new Map([
   ["foreground", "color"],
   ["background", "background"],
+  ["color", "color"],
+  ["background-color", "background-color"],
   ["accent-color", "accent-color"],
   ["caret-color", "caret-color"],
   ["border", "border-color"],
@@ -3615,11 +3618,13 @@ function applyResolvedWebStyle(el, style) {
   const offsetX = style["offset-x"];
   const offsetY = style["offset-y"];
   set("background", backgroundStart);
+  set("backgroundColor", style["background-color"]);
   set("--kry-background-end", backgroundEnd);
   if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
       backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
     set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
   set("color", style.foreground);
+  set("color", style.color);
   set("accentColor", style["accent-color"]);
   set("caretColor", style["caret-color"]);
   set("borderColor", style.border);
