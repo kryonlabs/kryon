@@ -5514,7 +5514,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
-		pageRows:      textAreaPageRows(props),
+		pageRows:      r.textAreaPageRows(props),
 		readOnly:      props.ReadOnly,
 		multiline:     true,
 	})
@@ -5522,8 +5522,9 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 	return changed
 }
 
-func textAreaPageRows(props TextAreaProps) int {
-	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, Text16, 10, 8, 6)
+func (r *runtime) textAreaPageRows(props TextAreaProps) int {
+	style := r.textInputStyle(FrameOpTextArea, false, r.contentDisabled(), props.ClassName)
+	metrics := TextInput_TextInputMetricsFor(props.Font, int32(style.PaddingX), int32(style.PaddingY), props.LineGap, Text16, 10, 8, 6)
 	return int(TextInput_TextAreaPageRows(props.Bounds.Height, metrics.Font, metrics.LineGap, metrics.PaddingY))
 }
 
@@ -6365,7 +6366,8 @@ func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), props.ClassName, Text16)
-	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, 0, defaultFont, 10, 8, 0)
+	style := r.textInputStyle(FrameOpTextField, focused, r.contentDisabled(), props.ClassName)
+	metrics := TextInput_TextInputMetricsFor(props.Font, int32(style.PaddingX), int32(style.PaddingY), 0, defaultFont, 10, 8, 0)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
 		secure:        props.Secure,
@@ -6518,7 +6520,8 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 func (r *runtime) recordTextArea(props TextAreaProps) {
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName, Text16)
-	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, defaultFont, 10, 8, 6)
+	style := r.textInputStyle(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName)
+	metrics := TextInput_TextInputMetricsFor(props.Font, int32(style.PaddingX), int32(style.PaddingY), props.LineGap, defaultFont, 10, 8, 6)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY

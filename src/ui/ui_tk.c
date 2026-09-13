@@ -141,8 +141,6 @@ ui_tk_draw_style_frame(Rectangle bounds, Rectangle surface_bounds,
                      style.material);
 }
 
-static const TextInputStyle kryon_zero_text_input_style;
-
 static void
 ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
                         int disabled)
@@ -2210,7 +2208,6 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
             .max_codepoints = 63,
             .font = 0,
             .focus_id = focus_id,
-            .style = kryon_zero_text_input_style,
             .commit_pressed = &commit,
             .read_only = !enabled
         }, ui_numeric_input_filter, NULL)) {
@@ -2934,7 +2931,6 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                 .max_codepoints = 63,
                 .font = 0,
                 .focus_id = token,
-                .style = kryon_zero_text_input_style,
                 .commit_pressed = &commit,
                 .secure = 0,
                 .read_only = disabled

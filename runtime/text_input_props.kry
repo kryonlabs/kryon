@@ -8,17 +8,6 @@ SyntaxMode :: enum {
     SyntaxMake = 3
 }
 
-TextInputStyle :: struct {
-    background: Color
-    border: Color
-    focus_border: Color
-    text: Color
-    cursor: Color
-    radius: f32
-    padding_x: i32
-    padding_y: i32
-}
-
 TextInputProps :: struct {
     bounds: Rectangle
     text: const char*
@@ -27,7 +16,6 @@ TextInputProps :: struct {
     cursor_visible: bool
     font: i32
     focus_id: i32
-    style: TextInputStyle
     class_name: i32
 }
 
@@ -40,7 +28,6 @@ TextFieldProps :: struct {
     max_codepoints: i32
     font: i32
     focus_id: i32
-    style: TextInputStyle
     commit_pressed: *i32
     secure: bool
     read_only: bool
@@ -60,7 +47,6 @@ TextAreaProps :: struct {
     focus_id: i32
     placeholder: const char*
     syntax: SyntaxMode
-    style: TextInputStyle
     content_version: i32
     read_only: bool
     wrap: bool

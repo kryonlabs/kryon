@@ -1853,7 +1853,7 @@ ui_text_input_default_font(int style_kind, int class_name)
         ? (int)(resolved.font_size + 0.5f) : GetFontSize();
 }
 
-static TextInputStyle
+TextInputStyle
 ui_resolve_text_input_style(TextInputStyle style, int style_kind,
                             int class_name)
 {
@@ -2121,11 +2121,11 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 void
 DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
-                         TextInputStyle style, int focus_id, int class_name)
+                         int focus_id, int class_name)
 {
     RenderTextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0, 0, 0, 0, focus_id,
-                      class_name);
+                      cursor_visible, font, (TextInputStyle){0}, 0, 0, 0, 0,
+                      0, focus_id, class_name);
 }
 
 static int
@@ -2301,8 +2301,7 @@ ui_text_input_control_render(TextInputProps input)
     DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetFontSize(),
-                             input.style, input.focus_id,
-                             input.class_name);
+                             input.focus_id, input.class_name);
     EndWidget(&widget);
     return focused;
 }
@@ -2540,11 +2539,12 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 int
 ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
 {
+    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+        StyleKindTextArea(), area.class_name);
     int font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
-    int padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : Scale(8);
+    int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int page_rows = TextAreaPageRows(area.bounds.height, font, line_gap,
                                      padding_y);
 
@@ -3215,13 +3215,13 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
+    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+        StyleKindTextArea(), area.class_name);
     int font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
-    int padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : Scale(10);
-    int padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : Scale(8);
+    int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int wrap_width = area.wrap
         ? (int)area.bounds.width - padding_x * 2 : 0;
     int scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
@@ -3248,16 +3248,18 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     int cursor_h;
     int cursor_y;
     int scroll_y;
+    TextInputStyle style;
 
     if(area.text == NULL || area.scroll_y == NULL)
         return;
+    style = ui_resolve_text_input_style((TextInputStyle){0},
+                                        StyleKindTextArea(),
+                                        area.class_name);
     font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
-    padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : Scale(10);
-    padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : Scale(8);
+    padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
     if(wrap_width < Scale(24))
         wrap_width = 0;
@@ -3285,7 +3287,8 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
                             int selection_start, int selection_end,
                             int composition_start, int composition_end)
 {
-    TextInputStyle requested_style = area.style;
+    TextInputStyle requested_style = {0};
+    TextInputStyle style;
     int font;
     int line_gap;
     int padding_x;
@@ -3296,15 +3299,13 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
 
     if(area.text == NULL)
         return;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
-                                             area.class_name);
+    style = ui_resolve_text_input_style((TextInputStyle){0},
+                                        StyleKindTextArea(), area.class_name);
     font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
-    padding_x = area.style.padding_x > 0
-        ? area.style.padding_x : Scale(10);
-    padding_y = area.style.padding_y > 0
-        ? area.style.padding_y : Scale(8);
+    padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
     {
         wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
@@ -3321,18 +3322,18 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
         if(area.scroll_y != NULL)
             *area.scroll_y = scroll_y;
     }
-    (void)ui_text_input_surface(area.bounds, area.style, focused,
+    (void)ui_text_input_surface(area.bounds, style, focused,
                                 !area.read_only, area.focus_id, "text_area",
                                 requested_style, area.class_name);
     ui_begin_world_clip(paint.clip_bounds);
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
         RenderText(area.placeholder, paint.placeholder_x,
-                   paint.placeholder_y, font, area.style.border);
+                   paint.placeholder_y, font, style.border);
     else
         ui_draw_text_area_text(area.text, cursor,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
-                               wrap_width, area.syntax, area.style,
+                               wrap_width, area.syntax, style,
                                selection_start, selection_end,
                                composition_start, composition_end);
     EndClip();
@@ -3566,11 +3567,12 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     int total;
     int y;
     Rectangle gutter;
+    TextInputStyle style;
 
     if(gutter_width <= 0)
         return area.bounds;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
-                                             area.class_name);
+    style = ui_resolve_text_input_style((TextInputStyle){0},
+                                        StyleKindTextArea(), area.class_name);
     font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
@@ -3585,10 +3587,10 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     total = TextBufferLineCount(area.text);
     gutter = (Rectangle){area.bounds.x, area.bounds.y, (float)gutter_width,
                          area.bounds.height};
-    DrawRectangleRec(gutter, area.style.background);
+    DrawRectangleRec(gutter, style.background);
     DrawLine((int)(gutter.x + gutter.width) - 1, (int)gutter.y,
              (int)(gutter.x + gutter.width) - 1,
-             (int)(gutter.y + gutter.height), area.style.border);
+             (int)(gutter.y + gutter.height), style.border);
     y = (int)gutter.y + Scale(10) - (scroll_y % line_h);
     for(int row = 0; row < rows; row++) {
         int line_no = first + row + 1;
@@ -3598,12 +3600,12 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
             break;
         if(line_no == active)
             DrawRectangle((int)gutter.x, y - Scale(2), (int)gutter.width,
-                          line_h, area.style.border);
+                          line_h, style.border);
         snprintf(label, sizeof(label), "%d", line_no);
         Color inactive = ui_default_text_color();
         inactive.a = (unsigned char)(inactive.a * 0.62f);
         RenderText(label, (int)gutter.x + Scale(6), y, Scale(10),
-                   line_no == active ? area.style.text : inactive);
+                   line_no == active ? style.text : inactive);
         y += line_h;
         if(y > (int)(gutter.y + gutter.height))
             break;
@@ -3659,8 +3661,8 @@ ui_text_area_render(TextAreaProps area)
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
-                                             area.class_name);
+    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+        StyleKindTextArea(), area.class_name);
     memset(&area_edit, 0, sizeof(area_edit));
     area_edit.text = area.text;
     area_edit.text_size = area.text_size;
@@ -3680,8 +3682,8 @@ ui_text_area_render(TextAreaProps area)
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
-    padding_x = area.style.padding_x > 0 ? area.style.padding_x : Scale(10);
-    padding_y = area.style.padding_y > 0 ? area.style.padding_y : Scale(8);
+    padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
+    padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
     if(wrap_width < Scale(24))
         wrap_width = 0;
@@ -4154,22 +4156,22 @@ ui_text_area_render(TextAreaProps area)
         EndWidget(&widget);
         return changed;
     }
-    border = focused ? area.style.focus_border : area.style.border;
-    radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
-    ui_draw_box_background(area.bounds, radius, area.style.background, border);
+    border = focused ? style.focus_border : style.border;
+    radius = style.radius >= 0.0f ? style.radius : 0.12f;
+    ui_draw_box_background(area.bounds, radius, style.background, border);
 
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2 - scrollbar_w,
                                     area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
         RenderText(area.placeholder, (int)area.bounds.x + padding_x,
-                   first_line_y, font, area.style.border);
+                   first_line_y, font, style.border);
     else
         ui_draw_text_area_text(display_text, display_cursor,
                                focused && !area.read_only,
                                area.bounds, font, line_gap, scroll_y,
                                wrap_width,
-                               area.syntax, area.style, selection_start,
+                               area.syntax, style, selection_start,
                                selection_end, composition_start,
                                composition_end);
     EndClip();
@@ -4338,7 +4340,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                            WIDGET_RESIZABLE);
     field.bounds = widget.bounds;
 
-    layout_style = ui_resolve_text_input_style(field.style,
+    layout_style = ui_resolve_text_input_style((TextInputStyle){0},
                                                StyleKindTextField(),
                                                field.class_name);
     metrics = TextInputMetricsFor(field.font, layout_style.padding_x,
@@ -4824,7 +4826,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                                         field.read_only);
 
     TextInputPaint paint = {
-        .style = field.style, .cursor = paint_cursor, .focused = focused,
+        .style = (TextInputStyle){0}, .cursor = paint_cursor, .focused = focused,
         .class_name = field.class_name,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),

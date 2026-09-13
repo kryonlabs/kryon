@@ -273,8 +273,7 @@ int main(void)
         .font = 16,
         .line_gap = 0,
         .focus_id = 7771,
-        .syntax = SyntaxKry,
-        .style = (TextInputStyle){BLACK, BLACK, WHITE, WHITE, WHITE, 0, 0, 0}
+        .syntax = SyntaxKry
     });
     EndTextureMode();
     if(syntax_directive_tokens == 0 || syntax_string_tokens == 0 ||

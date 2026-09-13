@@ -132,6 +132,17 @@ typedef struct {
     Color color;
 } UIInfoRow;
 
+typedef struct TextInputStyle {
+    Color background;
+    Color border;
+    Color focus_border;
+    Color text;
+    Color cursor;
+    float radius;
+    int padding_x;
+    int padding_y;
+} TextInputStyle;
+
 /* Prepared retained painting only: no editing-state pointers survive
  * submission. This is internal host storage, not a public widget surface. */
 typedef struct TextInputPaint {
@@ -406,6 +417,8 @@ int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 Style ui_resolve_button_style_kind(ButtonProps button, ButtonState state,
                                    int style_kind);
+TextInputStyle ui_resolve_text_input_style(TextInputStyle style,
+                                           int style_kind, int class_name);
 int ButtonNode(ButtonSpec button);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
@@ -429,7 +442,7 @@ int RenderLink(LinkProps link);
 int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
-                     TextInputStyle style, int focus_id, int class_name);
+                     int focus_id, int class_name);
 int ui_text_field_render(TextFieldProps field);
 int ui_text_field_render_filtered(TextFieldProps field,
                                   TextInputFilter filter,

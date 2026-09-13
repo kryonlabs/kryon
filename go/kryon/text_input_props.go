@@ -11,17 +11,6 @@ const (
 	SyntaxMake SyntaxMode = 3
 )
 
-type TextInputStyle struct {
-	Background  Color
-	Border      Color
-	FocusBorder Color
-	Text        Color
-	Cursor      Color
-	Radius      float32
-	PaddingX    int32
-	PaddingY    int32
-}
-
 type TextInputProps struct {
 	Bounds         Rectangle
 	Text           string
@@ -30,7 +19,6 @@ type TextInputProps struct {
 	CursorVisible  bool
 	Font           int32
 	FocusID        int32
-	Style          TextInputStyle
 	ClassName      int32
 }
 
@@ -42,7 +30,6 @@ type TextFieldProps struct {
 	MaxCodepoints  int32
 	Font           int32
 	FocusID        int32
-	Style          TextInputStyle
 	CommitPressed  *bool
 	Secure         bool
 	ReadOnly       bool
@@ -61,7 +48,6 @@ type TextAreaProps struct {
 	FocusID        int32
 	Placeholder    string
 	Syntax         SyntaxMode
-	Style          TextInputStyle
 	ContentVersion int32
 	ReadOnly       bool
 	Wrap           bool

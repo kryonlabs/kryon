@@ -83,16 +83,6 @@ ThemePanel :: (x: int, y: int, w: int) -> int {
 
 ControlDemo :: (x: int, y: int, w: int) {
     options: [3] const char * = {"One", "Two", "Three"}
-    field_style := (TextInputStyle){
-        DarkenColor(GetThemeBackground(), 6),
-        DarkenColor(GetThemeBackground(), 38),
-        GetThemeButtonHover(),
-        GetThemeText(),
-        GetThemeText(),
-        0.08f,
-        Scale(12),
-        Scale(8)
-    }
 
     Text((TextProps){.bounds={x, y, 0, 0}, .text="Live controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
     y += Scale(46)
@@ -111,7 +101,7 @@ ControlDemo :: (x: int, y: int, w: int) {
 
     TextField((TextFieldProps){{x, y, w, Scale(44)}, text_value, sizeof(text_value),
                                   &text_cursor, &text_focused, 80, Text16, 303,
-                                  field_style, NULL, NULL, NULL})
+                                  NULL, NULL, NULL, 0})
     y += Scale(70)
     Dropdown((DropdownProps){.bounds = {x, y, w, Scale(44)}, .id = 304,
         .options = options, .option_count = 3, .selected_index = &dropdown_index})

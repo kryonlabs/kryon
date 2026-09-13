@@ -1346,8 +1346,8 @@ RouteInput(void)
             field_storage.max_codepoints = area->max_codepoints;
             field_storage.font = area->font;
             field_storage.focus_id = area->focus_id;
-            field_storage.style = area->style;
             field_storage.read_only = area->read_only;
+            field_storage.class_name = area->class_name;
             field = &field_storage;
         }
         state = node->state;
@@ -1370,8 +1370,11 @@ RouteInput(void)
             }
             if(focused) {
                 int font = field->font > 0 ? field->font : GetFontSize();
-                int padding = field->style.padding_x > 0
-                    ? field->style.padding_x : Scale(10);
+                TextInputStyle style = ui_resolve_text_input_style(
+                    (TextInputStyle){0}, StyleKindTextField(),
+                    field->class_name);
+                int padding = style.padding_x > 0 ? style.padding_x
+                                                  : Scale(10);
                 double now = GetTime();
                 KeyID click_key = field->focus_id > 0
                     ? (KeyID)field->focus_id : node->key;
@@ -1420,8 +1423,10 @@ RouteInput(void)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             int font = field->font > 0 ? field->font : GetFontSize();
-            int padding = field->style.padding_x > 0
-                ? field->style.padding_x : Scale(10);
+            TextInputStyle style = ui_resolve_text_input_style(
+                (TextInputStyle){0}, StyleKindTextField(),
+                field->class_name);
+            int padding = style.padding_x > 0 ? style.padding_x : Scale(10);
             int cursor;
 
             if(node->kind == WIDGET_TEXT_AREA)
@@ -1960,7 +1965,7 @@ DrawTree(void)
             }
             {
                 TextInputPaint paint = {
-                    .style = field.style,
+                    .style = (TextInputStyle){0},
                     .cursor = cursor,
                     .focused = state != NULL ? state->focused : 0,
                     .editable = !field.read_only,

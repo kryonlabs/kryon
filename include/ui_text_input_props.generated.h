@@ -28,17 +28,6 @@ typedef enum SyntaxMode {
     SyntaxMake = 3,
 } SyntaxMode;
 
-typedef struct TextInputStyle {
-    Color background;
-    Color border;
-    Color focus_border;
-    Color text;
-    Color cursor;
-    float radius;
-    int32_t padding_x;
-    int32_t padding_y;
-} TextInputStyle;
-
 typedef struct TextInputProps {
     Rectangle bounds;
     const char* text;
@@ -47,7 +36,6 @@ typedef struct TextInputProps {
     bool cursor_visible;
     int32_t font;
     int32_t focus_id;
-    TextInputStyle style;
     int32_t class_name;
 } TextInputProps;
 
@@ -60,7 +48,6 @@ typedef struct TextFieldProps {
     int32_t max_codepoints;
     int32_t font;
     int32_t focus_id;
-    TextInputStyle style;
     int32_t* commit_pressed;
     bool secure;
     bool read_only;
@@ -80,7 +67,6 @@ typedef struct TextAreaProps {
     int32_t focus_id;
     const char* placeholder;
     SyntaxMode syntax;
-    TextInputStyle style;
     int32_t content_version;
     bool read_only;
     bool wrap;
