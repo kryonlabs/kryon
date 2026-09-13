@@ -414,7 +414,7 @@ margin, size constraints, positioning insets, radius, border width, opacity, fon
 font family, font weight, letter spacing, text alignment, content offsets,
 line height, text decoration/wrapping, display/layout keywords, flex flow,
 grid tracks, grid auto-flow, row/column gaps, placement alignment,
-media/background fit and rendering, visibility,
+media/background fit and rendering, visibility, transitions, filters,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 

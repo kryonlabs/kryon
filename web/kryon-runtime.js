@@ -1704,6 +1704,7 @@ const webKssLiteralProperties = new Set([
   "grid-template-rows", "grid-auto-flow", "place-items", "place-content",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat", "visibility",
+  "transition", "transition-duration", "filter", "backdrop-filter",
   "cursor", "pointer-events", "outline-style", "box-shadow"
 ]);
 
@@ -2028,6 +2029,10 @@ const webCSSPropertyNames = new Map([
   ["background-position", "background-position"],
   ["background-repeat", "background-repeat"],
   ["visibility", "visibility"],
+  ["transition", "transition"],
+  ["transition-duration", "transition-duration"],
+  ["filter", "filter"],
+  ["backdrop-filter", "backdrop-filter"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
   ["outline-width", "outline-width"],
@@ -2614,6 +2619,10 @@ function applyResolvedWebStyle(el, style) {
   set("backgroundPosition", style["background-position"]);
   set("backgroundRepeat", style["background-repeat"]);
   set("visibility", style.visibility);
+  set("transition", style.transition);
+  set("transitionDuration", style["transition-duration"]);
+  set("filter", style.filter);
+  set("backdropFilter", style["backdrop-filter"]);
   set("cursor", style.cursor);
   set("pointerEvents", style["pointer-events"]);
   set("outlineWidth", style["outline-width"]);
