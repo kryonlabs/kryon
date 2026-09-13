@@ -1785,6 +1785,8 @@ function parseKssDeclarationValue(name, value, tokens) {
     return tokens.lengths.get(key) ?? parsed;
   if (webKssMaterialProperties.has(property))
     return tokens.materials.get(key) ?? parsed;
+  if (property.startsWith("--"))
+    return parsed;
   if (!webKssLiteralProperties.has(property))
     throw new Error(`unknown KSS property ${name}`);
   return parsed;
@@ -2578,6 +2580,10 @@ function applyResolvedWebStyle(el, style) {
     applied.add(name);
   };
   style = style || {};
+  for (const [name, value] of Object.entries(style)) {
+    if (name.startsWith("--"))
+      set(name, value);
+  }
   const backgroundStart = style.background;
   const backgroundEnd = style["background-end"];
   set("background", backgroundStart);
