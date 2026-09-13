@@ -210,10 +210,9 @@ Button {
 }
 ```
 
-The generated `Draw*`, `BeginDrawing`, and raylib-shaped input/asset names are
-legacy compatibility and backend migration surface. They remain available while
-existing code is moved over, but they are not the product API for new Kryon
-code.
+Generated `Draw*`, `BeginDrawing`, and raylib-shaped input/asset names are
+backend and test support, not app-facing widget API. New Kryon UI code should
+use the canonical widget names and props shown here.
 
 Use canonical widget names when declaring controls from C:
 
