@@ -1034,6 +1034,10 @@ function fakeDocument() {
     const nativeEvents = [];
     runtime.widget(nativeRt, "NavigationBar", {}, null,
       { nodeName: "nav", path: "Page/nav" });
+    runtime.widget(nativeRt, "Card", {}, null,
+      { nodeName: "plainCard", path: "Page/plainCard" });
+    runtime.widget(nativeRt, "Card", { clickable: true }, null,
+      { nodeName: "actionCard", path: "Page/actionCard" });
     runtime.widget(nativeRt, "Fieldset", {}, null,
       { nodeName: "fieldset", path: "Page/fieldset" });
     runtime.widget(nativeRt, "Collapsible", {}, null,
@@ -1100,9 +1104,13 @@ function fakeDocument() {
     runtime.endFrame(nativeRt);
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").tag, "nav");
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").role, "");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Card").tag, "div");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").tag, "button");
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
-    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[0].role, "navigation");
-    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[1].role, "group");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "NavigationBar")?.role, "navigation");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
@@ -1132,6 +1140,8 @@ function fakeDocument() {
     const nativeTarget = document.createElement("div");
     runtime.renderWebDocument(nativeRt, nativeTarget);
     const nav = runtime.findWebElement(nativeTarget, "nav");
+    const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
+    const actionCard = runtime.findWebElement(nativeTarget, "actionCard");
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
     const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
     const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
@@ -1153,6 +1163,8 @@ function fakeDocument() {
     const popover = runtime.findWebElement(nativeTarget, "popover");
     const popoverButton = runtime.findWebElement(nativeTarget, "popoverButton");
     assert.equal(nav.tagName, "NAV");
+    assert.equal(plainCard.tagName, "DIV");
+    assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");
     assert.equal(autoDetails.tagName, "DETAILS");
     assert.equal(autoDetails.open, false);

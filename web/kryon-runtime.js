@@ -1064,6 +1064,9 @@ function widgetTag(item) {
     return "a";
   case "Button":
     return "button";
+  case "Card":
+    return isTruthyProp(args, "clickable") || isTruthyProp(args, "Clickable")
+      ? "button" : "div";
   case "TextField":
     return "input";
   case "TextArea":

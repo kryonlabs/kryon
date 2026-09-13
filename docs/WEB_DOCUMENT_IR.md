@@ -319,6 +319,7 @@ The initial tag mapping is intentionally conservative:
 | `Paragraph`, `ParagraphText` | `p` |
 | `Link` | `a` |
 | `Button` | `button` |
+| clickable `Card` | `button` |
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text` |
 | `TextArea` | `textarea` |
