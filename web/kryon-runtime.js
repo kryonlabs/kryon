@@ -533,7 +533,7 @@ function propString(args, prop, fallback = "") {
 function propClassList(args) {
   const classes = [];
   const add = (value) => {
-    if (value === undefined || value === null)
+    if (value === undefined || value === null || value === false || value === 0)
       return;
     String(value).split(/\s+/).filter(Boolean).forEach((name) => classes.push(name));
   };
@@ -1692,10 +1692,19 @@ const webKssLengthProperties = new Set([
   "border-bottom-right-radius", "border-bottom-left-radius",
   "padding", "padding-x", "padding-y",
   "padding-left", "padding-right", "padding-top", "padding-bottom",
+  "padding-inline", "padding-block",
+  "padding-inline-start", "padding-inline-end",
+  "padding-block-start", "padding-block-end",
   "margin", "margin-x", "margin-y",
   "margin-left", "margin-right", "margin-top", "margin-bottom",
+  "margin-inline", "margin-block",
+  "margin-inline-start", "margin-inline-end",
+  "margin-block-start", "margin-block-end",
   "width", "height", "min-width", "max-width", "min-height", "max-height",
   "inset", "top", "right", "bottom", "left",
+  "inset-inline", "inset-block",
+  "inset-inline-start", "inset-inline-end",
+  "inset-block-start", "inset-block-end",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height", "outline-width",
   "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
 ]);
@@ -1705,9 +1714,10 @@ const webKssMaterialProperties = new Set(["material"]);
 const webKssLiteralProperties = new Set([
   "typeface", "font-weight", "text-align", "text-decoration", "white-space",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
-  "overflow-x", "overflow-y", "align-items", "justify-content",
+  "overflow-x", "overflow-y", "box-sizing",
+  "align-items", "justify-content", "align-self", "justify-self",
   "flex-direction", "flex-wrap", "flex", "grid-template-columns",
-  "grid-template-rows", "grid-auto-flow", "place-items", "place-content",
+  "grid-template-rows", "grid-auto-flow", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat", "visibility",
   "transition", "transition-duration", "filter", "backdrop-filter",
@@ -2197,6 +2207,12 @@ const webCSSPropertyNames = new Map([
   ["padding-right", "padding-right"],
   ["padding-top", "padding-top"],
   ["padding-bottom", "padding-bottom"],
+  ["padding-inline", "padding-inline"],
+  ["padding-block", "padding-block"],
+  ["padding-inline-start", "padding-inline-start"],
+  ["padding-inline-end", "padding-inline-end"],
+  ["padding-block-start", "padding-block-start"],
+  ["padding-block-end", "padding-block-end"],
   ["margin", "margin"],
   ["margin-x", "margin-left"],
   ["margin-y", "margin-top"],
@@ -2204,6 +2220,12 @@ const webCSSPropertyNames = new Map([
   ["margin-right", "margin-right"],
   ["margin-top", "margin-top"],
   ["margin-bottom", "margin-bottom"],
+  ["margin-inline", "margin-inline"],
+  ["margin-block", "margin-block"],
+  ["margin-inline-start", "margin-inline-start"],
+  ["margin-inline-end", "margin-inline-end"],
+  ["margin-block-start", "margin-block-start"],
+  ["margin-block-end", "margin-block-end"],
   ["width", "width"],
   ["height", "height"],
   ["min-width", "min-width"],
@@ -2215,6 +2237,12 @@ const webCSSPropertyNames = new Map([
   ["right", "right"],
   ["bottom", "bottom"],
   ["left", "left"],
+  ["inset-inline", "inset-inline"],
+  ["inset-block", "inset-block"],
+  ["inset-inline-start", "inset-inline-start"],
+  ["inset-inline-end", "inset-inline-end"],
+  ["inset-block-start", "inset-block-start"],
+  ["inset-block-end", "inset-block-end"],
   ["gap", "gap"],
   ["row-gap", "row-gap"],
   ["column-gap", "column-gap"],
@@ -2234,8 +2262,11 @@ const webCSSPropertyNames = new Map([
   ["overflow", "overflow"],
   ["overflow-x", "overflow-x"],
   ["overflow-y", "overflow-y"],
+  ["box-sizing", "box-sizing"],
   ["align-items", "align-items"],
   ["justify-content", "justify-content"],
+  ["align-self", "align-self"],
+  ["justify-self", "justify-self"],
   ["flex-direction", "flex-direction"],
   ["flex-wrap", "flex-wrap"],
   ["flex", "flex"],
@@ -2244,6 +2275,7 @@ const webCSSPropertyNames = new Map([
   ["grid-auto-flow", "grid-auto-flow"],
   ["place-items", "place-items"],
   ["place-content", "place-content"],
+  ["place-self", "place-self"],
   ["object-fit", "object-fit"],
   ["object-position", "object-position"],
   ["aspect-ratio", "aspect-ratio"],
@@ -2953,6 +2985,12 @@ function applyResolvedWebStyle(el, style) {
   set("paddingRight", style["padding-right"]);
   set("paddingTop", style["padding-top"]);
   set("paddingBottom", style["padding-bottom"]);
+  set("paddingInline", style["padding-inline"]);
+  set("paddingBlock", style["padding-block"]);
+  set("paddingInlineStart", style["padding-inline-start"]);
+  set("paddingInlineEnd", style["padding-inline-end"]);
+  set("paddingBlockStart", style["padding-block-start"]);
+  set("paddingBlockEnd", style["padding-block-end"]);
   set("margin", style.margin);
   set("marginLeft", style["margin-x"]);
   set("marginRight", style["margin-x"]);
@@ -2962,6 +3000,12 @@ function applyResolvedWebStyle(el, style) {
   set("marginRight", style["margin-right"]);
   set("marginTop", style["margin-top"]);
   set("marginBottom", style["margin-bottom"]);
+  set("marginInline", style["margin-inline"]);
+  set("marginBlock", style["margin-block"]);
+  set("marginInlineStart", style["margin-inline-start"]);
+  set("marginInlineEnd", style["margin-inline-end"]);
+  set("marginBlockStart", style["margin-block-start"]);
+  set("marginBlockEnd", style["margin-block-end"]);
   set("width", style.width);
   set("height", style.height);
   set("minWidth", style["min-width"]);
@@ -2973,6 +3017,12 @@ function applyResolvedWebStyle(el, style) {
   set("right", style.right);
   set("bottom", style.bottom);
   set("left", style.left);
+  set("insetInline", style["inset-inline"]);
+  set("insetBlock", style["inset-block"]);
+  set("insetInlineStart", style["inset-inline-start"]);
+  set("insetInlineEnd", style["inset-inline-end"]);
+  set("insetBlockStart", style["inset-block-start"]);
+  set("insetBlockEnd", style["inset-block-end"]);
   set("gap", style.gap);
   set("rowGap", style["row-gap"]);
   set("columnGap", style["column-gap"]);
@@ -2992,8 +3042,11 @@ function applyResolvedWebStyle(el, style) {
   set("overflow", style.overflow);
   set("overflowX", style["overflow-x"]);
   set("overflowY", style["overflow-y"]);
+  set("boxSizing", style["box-sizing"]);
   set("alignItems", style["align-items"]);
   set("justifyContent", style["justify-content"]);
+  set("alignSelf", style["align-self"]);
+  set("justifySelf", style["justify-self"]);
   set("flexDirection", style["flex-direction"]);
   set("flexWrap", style["flex-wrap"]);
   set("flex", style.flex);
@@ -3002,6 +3055,7 @@ function applyResolvedWebStyle(el, style) {
   set("gridAutoFlow", style["grid-auto-flow"]);
   set("placeItems", style["place-items"]);
   set("placeContent", style["place-content"]);
+  set("placeSelf", style["place-self"]);
   set("objectFit", style["object-fit"]);
   set("objectPosition", style["object-position"]);
   set("aspectRatio", style["aspect-ratio"]);

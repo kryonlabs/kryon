@@ -416,11 +416,12 @@ data/ARIA/extra attribute selectors, state pseudos, structural pseudos
 `:first-child`, `:last-child`, `:only-child`, and numeric/odd/even
 `:nth-child(...)`, plus simple `:not(...)`, `:is(...)`, and `:where(...)`,
 layers, colors, padding,
-margin, per-edge spacing, size constraints, positioning insets, radius,
+margin, logical spacing, per-edge spacing, size constraints, positioning insets,
+logical insets, radius,
 border styles, per-side border widths, per-corner radii, opacity, font size, offsets,
 font family, font weight, letter spacing, text alignment, content offsets,
-line height, text decoration/wrapping, display/layout keywords, flex flow,
-grid tracks, grid auto-flow, row/column gaps, placement alignment,
+line height, text decoration/wrapping, display/layout keywords, box sizing,
+flex flow, grid tracks, grid auto-flow, row/column gaps, placement/self alignment,
 media/background fit and rendering, visibility, transitions, filters,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
