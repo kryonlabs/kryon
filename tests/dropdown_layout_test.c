@@ -175,8 +175,8 @@ main(void)
     for(int i = 0; i < 3; i++)
         step();
 
-    /* Plain clicks on the flipped-up popup (options 0..11 at
-     * y = 24 + 44*i). */
+    /* Plain clicks on the flipped-up popup. The panel keeps vertical padding,
+     * so the bottom visible option is inside the lower padded content band. */
     open_dropdown();
     g_selected = -1;
     tap(46);
@@ -184,7 +184,7 @@ main(void)
 
     open_dropdown();
     g_selected = -1;
-    tap(510);
+    tap(530);
     check_int("bottom visible row selects", g_selected, 11);
 
     /* Wobbled and slow human clicks still select. */
@@ -200,7 +200,7 @@ main(void)
 
     open_dropdown();
     g_selected = -1;
-    wobble_tap(510, 10);
+    wobble_tap(530, 10);
     check_int("wobbled click selects near bottom", g_selected, 11);
 
     /* A drag that actually scrolls the list must not select on release. */
@@ -270,7 +270,7 @@ main(void)
     check_int("clipped: outside click closes", popup_open(), 0);
     open_dropdown();
     g_selected = -1;
-    tap(510);
+    tap(530);
     check_int("clipped: bottom row selects", g_selected, 9);
     check_int("clipped: selection closes", popup_open(), 0);
     open_dropdown();

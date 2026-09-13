@@ -76,6 +76,8 @@ main(void)
         .disabled = true,
         .scale = 1.0f,
         .frame = (StyleFrame){.value = {
+            .fields = StyleBackground | StyleForeground | StyleBorder |
+                      StyleBorderWidth | StylePaddingX | StyleGap,
             .background = 0x333333ff,
             .foreground = 0x666666ff,
             .border = 0x666666ff,
