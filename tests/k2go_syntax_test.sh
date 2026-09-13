@@ -260,7 +260,7 @@ App :: () #ui {
     ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
     TreeView((TreeViewProps){.bounds = {Scale(280), Scale(356), Scale(80), Scale(50)}, .id = 27, .items = tree_items, .item_count = 2, .selected_id = &pick})
     Collapsible((CollapsibleProps){.bounds = {Scale(4), Scale(360), Scale(120), Scale(30)}, .label = "sect", .open = NULL})
-    SetThemeDarkMode(1)
+    SetThemeMode(THEME_MODE_DARK)
     SetCurrentTheme(0, 1)
     Dropdown((DropdownProps){.bounds = {Scale(4), Scale(210), Scale(120), Scale(24)}, .id = 11, .options = choices, .option_count = 3, .selected_index = &pick})
     Progress((ProgressProps){{Scale(140), Scale(210), Scale(100), Scale(10)}, 0, 100, nums[0] + scalar, ""})
@@ -615,7 +615,7 @@ grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleSource.*Data: st.Fi
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleTarget.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
 grep -q 'kr.ListBox(kr.ListBoxProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
 grep -q 'kr.Collapsible(kr.CollapsibleProps{' "$out"
-grep -q 'SetThemeDarkMode(1' "$out"
+grep -q 'kr.SetThemeMode(kr.THEME_MODE_DARK)' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"
 
 # typed declarations, arrays, and goto/labels lower for real now

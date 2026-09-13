@@ -1317,7 +1317,6 @@ type Runtime interface {
 	BeginCanvas(canvas Canvas) CanvasResult
 	EndCanvas(canvas Canvas)
 	SetCurrentTheme(themeID int32, darkMode int32)
-	SetThemeDarkMode(dark int32)
 	SetThemeSource(source ThemeSource)
 	SetThemeMode(mode ThemeMode)
 	GetThemeMode() ThemeMode
@@ -6986,14 +6985,6 @@ func (r *runtime) GetTheme() Theme {
 		return ThemeDefaultDark()
 	}
 	return ThemeDefaultLight()
-}
-func (r *runtime) SetThemeDarkMode(dark int32) {
-	if dark != 0 {
-		r.themeMode = ThemeModeDark
-	} else {
-		r.themeMode = ThemeModeLight
-	}
-	r.applyThemeFamily()
 }
 func (r *runtime) SetThemeSource(source ThemeSource) {
 	if r.defaultTheme {

@@ -100,16 +100,6 @@ void DrawThemeTKBorder(Rectangle rec, int borderWidth, bool raised)
     DrawRectangle(x + w - borderWidth, y, borderWidth, h, bottomRight);
 }
 
-void SetThemeDarkMode(bool dark)
-{
-    SetThemeMode(dark ? THEME_MODE_DARK : THEME_MODE_LIGHT);
-}
-
-bool GetThemeDarkMode(void)
-{
-    return GetEffectiveThemeDarkMode();
-}
-
 void
 SetThemeSource(ThemeSource source)
 {

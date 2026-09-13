@@ -1103,7 +1103,6 @@ export function Scroll(...args: unknown[]): unknown;
 export function Selectable(...args: unknown[]): unknown;
 export function Separator(...args: unknown[]): unknown;
 export function SetCurrentTheme(...args: unknown[]): unknown;
-export function SetThemeDarkMode(...args: unknown[]): unknown;
 export function Toast(...args: unknown[]): unknown;
 export function Slider(...args: unknown[]): unknown;
 export function Spinbox(...args: unknown[]): unknown;

@@ -75,9 +75,6 @@ void ResetTheme(void);
 Color GetThemeColor(const char *scope, const char *key);
 void DrawThemeTKBorder(Rectangle rec, int borderWidth, bool raised);
 
-void SetThemeDarkMode(bool dark);
-bool GetThemeDarkMode(void);
-
 void SetThemeSource(ThemeSource source);
 ThemeSource GetThemeSource(void);
 void SetThemeMode(ThemeMode mode);

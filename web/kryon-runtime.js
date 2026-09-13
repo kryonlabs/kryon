@@ -7720,7 +7720,7 @@ const runtimeCallNames = [
   "Icon", "Fieldset", "Line", "Link", "ListBox", "Menu",
   "Modal", "NavigationBar", "PanedView", "Paragraph", "Image", "Plot", "Progress", "Radio",
   "Row", "Screen", "Scroll", "Selectable", "Separator", "SetCurrentTheme",
-  "SetThemeDarkMode", "Toast", "Slider", "Spinbox", "Stack", "TabBar",
+  "Toast", "Slider", "Spinbox", "Stack", "TabBar",
   "TableView", "Text", "TextArea", "TextField", "TitleBar", "TreeView",
   "Toggle", "Toolbar"
 ];
@@ -7769,13 +7769,6 @@ export function Scroll(...args) { return struct("Scroll", args); }
 export function Selectable(...args) { return struct("Selectable", args); }
 export function Separator(...args) { return struct("Separator", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
-export function SetThemeDarkMode(dark) {
-  activeThemeMode = dark ? 2 : 1;
-  if (activeThemeFamily) {
-    activeTheme = activeThemeMode === 2 ? activeThemeFamily.dark : activeThemeFamily.light;
-  }
-  return struct("SetThemeDarkMode", [dark]);
-}
 export function Toast(...args) { return struct("Toast", args); }
 export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }

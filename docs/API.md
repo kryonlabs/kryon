@@ -861,8 +861,6 @@ Color GetThemeColor(const char *scope, const char *key);
 #### Dark Mode
 
 ```c
-void SetThemeDarkMode(bool dark);
-bool GetThemeDarkMode(void);
 void SetCurrentTheme(int theme_id, int dark_mode);
 ```
 

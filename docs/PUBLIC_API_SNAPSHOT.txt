@@ -1278,7 +1278,6 @@ include/theme.h function GetThemeButtonText
 include/theme.h function GetThemeCircle
 include/theme.h function GetThemeColor
 include/theme.h function GetThemeColorLuminance
-include/theme.h function GetThemeDarkMode
 include/theme.h function GetThemeFamily
 include/theme.h function GetThemeIcon
 include/theme.h function GetThemeLink
@@ -1300,7 +1299,6 @@ include/theme.h function SetCurrentTheme
 include/theme.h function SetSystemThemeDarkMode
 include/theme.h function SetSystemThemePalette
 include/theme.h function SetTheme
-include/theme.h function SetThemeDarkMode
 include/theme.h function SetThemeFamily
 include/theme.h function SetThemeMode
 include/theme.h function SetThemeSource
