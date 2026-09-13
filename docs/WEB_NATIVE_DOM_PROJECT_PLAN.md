@@ -146,6 +146,9 @@ the browser receives normal elements, attributes, CSS, and events.
   nodes can enumerate cells that reference them.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
+- Browser-backed KSS coverage verifies mounted application of native container,
+  containment, compositing, multicolumn, will-change, and view-transition
+  properties.
 - Mounted DOM snapshots serialize event refs for generated logic hooks so
   inspectors can show which Kry logic action is attached to each native DOM
   object without scraping `data-kry-on-*` attributes; direct

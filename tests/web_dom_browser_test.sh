@@ -244,6 +244,15 @@ try {
       contain-intrinsic-inline-size: 320;
       contain-intrinsic-block-size: 180;
       overflow-clip-margin: 12;
+      container-type: inline-size;
+      container-name: article;
+      isolation: isolate;
+      mix-blend-mode: multiply;
+      column-count: 2;
+      column-width: 180;
+      column-rule: 1px solid #ccc;
+      will-change: transform;
+      view-transition-name: article-view;
     }
     Button.primary { color-scheme: light dark; }
   \`));
@@ -286,6 +295,17 @@ try {
   assert(article.style.containIntrinsicBlockSize === "180px",
     "KSS contain intrinsic block size not applied");
   assert(article.style.overflowClipMargin === "12px", "KSS overflow clip margin not applied");
+  assert(article.style.containerType === "inline-size", "KSS container type not applied");
+  assert(article.style.containerName === "article", "KSS container name not applied");
+  assert(article.style.isolation === "isolate", "KSS isolation not applied");
+  assert(article.style.mixBlendMode === "multiply", "KSS mix blend mode not applied");
+  assert(article.style.columnCount === "2", "KSS column count not applied");
+  assert(article.style.columnWidth === "180px", "KSS column width not applied");
+  assert(article.style.columnRule === "1px solid rgb(204, 204, 204)" ||
+    article.style.columnRule === "1px solid #ccc", "KSS column rule not applied");
+  assert(article.style.willChange === "transform", "KSS will-change not applied");
+  assert(article.style.viewTransitionName === "article-view",
+    "KSS view transition name not applied");
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
   const root = kryon.webDOMRoot(target);
   assert(root.kryIdentity("article-ref").domId === "article-id", "root identity lookup failed");
