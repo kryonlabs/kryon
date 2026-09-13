@@ -159,10 +159,32 @@ try {
   assert(article.getAttribute("aria-label") === "Browser article", "aria attr missing");
   assert(article.getAttribute("data-kry-source-range-ref") === "browser.kry:3:5-11:6",
     "source range attr missing");
+  assert(article.dataset.krySourceRef === "browser.kry:3", "source ref dataset missing");
+  assert(article.dataset.krySourceColumnRef === "browser.kry:3:5",
+    "source column ref dataset missing");
+  assert(article.dataset.krySourceRangeRef === "browser.kry:3:5-11:6",
+    "source range dataset missing");
   assert(article.style.display === "grid", "KSS display not applied");
   assert(article.style.gridTemplateAreas === '"main"', "KSS grid area not applied");
   assert(article.style.borderCollapse === "collapse", "KSS table style not applied");
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
+  const root = kryon.webDOMRoot(target);
+  assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
+    "root source object map lookup failed");
+  assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,
+    "root source column object map lookup failed");
+  assert(root.kryObjectMap.get("browser.kry:3:5-11:6")?.element === article,
+    "root source range object map lookup failed");
+  assert(kryon.webDOMObjectAtSource(target, "browser.kry", 3)?.element === article,
+    "DOM object source lookup failed");
+  assert(kryon.webDOMObjectAtSource(target, "browser.kry", 3, 5)?.element === article,
+    "DOM object source column lookup failed");
+  assert(kryon.webDOMObjectAtSourceRange(target, "browser.kry", 3, 5)?.element === article,
+    "DOM object source range lookup failed");
+  assert(root.kryAtSource("browser.kry", 3, 5)?.element === article,
+    "root source lookup failed");
+  assert(root.kryAtSourceRange("browser.kry", 3, 5)?.element === article,
+    "root source range lookup failed");
   assert(article.kryObject.element === article, "element Kry object getter failed");
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
