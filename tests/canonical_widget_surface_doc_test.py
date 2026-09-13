@@ -64,6 +64,14 @@ LOWERED_HOST_SCOPE_NAMES = {
     "EndTableCell",
 }
 
+BLOCK_ONLY_WIDGET_NAMES = {
+    "Canvas",
+    "Disabled",
+    "Popup",
+    "Scroll",
+    "TableCell",
+}
+
 PUBLIC_WIDGET_NAMES = {
     "Button",
     "Bullet",
@@ -435,11 +443,15 @@ def main() -> int:
             errors.append(f"missing parser statement surface row: {name}")
     for name in sorted(set(parser_doc_rows) - set(parser_expected)):
         errors.append(f"parser statement row is not in parse_widget_statement: {name}")
+    for name in sorted(BLOCK_ONLY_WIDGET_NAMES & set(parser_expected)):
+        errors.append(f"block-only widget must not be a parser call statement: {name}")
     for name in block_expected:
         if name not in block_doc_rows:
             errors.append(f"missing block statement surface row: {name}")
     for name in sorted(set(block_doc_rows) - set(block_expected)):
         errors.append(f"block statement row is not in ui_block_prop_type: {name}")
+    for name in sorted(BLOCK_ONLY_WIDGET_NAMES - set(block_expected)):
+        errors.append(f"block-only widget is missing from block statement surface: {name}")
     if compat_expected != NATIVE_COMPAT_EXPORTS:
         for name in sorted(compat_expected - NATIVE_COMPAT_EXPORTS):
             errors.append(f"unreviewed native compatibility export in ui_tree.h: {name}")
