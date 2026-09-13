@@ -1255,9 +1255,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             class_name, StyleKindMenuItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
-        int item_font = item_style.font_size > 0.0f
-            ? (int)(item_style.font_size + 0.5f)
-            : font;
+        int item_font = ResolveFont(0, (int)(item_style.font_size + 0.5f),
+                                    font);
         Color item_text = Fade(item_style.foreground, item_style.opacity);
 
         if(item->kind == MenuSeparator) {
@@ -1364,9 +1363,8 @@ menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count,
     StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
         StyleKindMenu(), 1);
-    int font = style.font_size > 0.0f
-        ? (int)(style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                           GetFontSize());
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
                                          panel_frame, frame, bar_frame);
     int w = metrics.panel_min_width;
@@ -1460,9 +1458,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
     StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
         StyleKindMenu(), 2);
-    int font = base_item_style.font_size > 0.0f
-        ? (int)(base_item_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(base_item_style.font_size + 0.5f),
+                           GetFontSize());
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
                                          panel_frame, base_item_frame,
                                          bar_frame);
@@ -1566,9 +1563,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             StyleKindMenuItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
-        int item_font = item_style.font_size > 0.0f
-            ? (int)(item_style.font_size + 0.5f)
-            : font;
+        int item_font = ResolveFont(0, (int)(item_style.font_size + 0.5f),
+                                    font);
         Color item_text = Fade(item_style.foreground, item_style.opacity);
         if(can_draw && (hot || open))
             ui_tk_draw_style_frame(item, bounds, item_frame, hot, 0, 0,
@@ -1805,9 +1801,8 @@ RenderRadio(RadioProps radio)
                                                      radio.class_name, 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
         label_frame).value);
-    int font = label_style.font_size > 0.0f
-        ? (int)(label_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+                           GetFontSize());
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     RadioPaint paint = RadioPaintFor((RadioSpec){
         .bounds = radio.bounds,
@@ -1915,8 +1910,7 @@ RenderRadio(RadioProps radio)
                                               radio.class_name, 6);
         label_style = ui_unpack_style(ui_style_apply_effects_frame(
             label_frame).value);
-        if(label_style.font_size > 0.0f)
-            font = (int)(label_style.font_size + 0.5f);
+        font = ResolveFont(0, (int)(label_style.font_size + 0.5f), font);
         paint.label_color = ColorToInt(label_style.foreground);
 
         ring = GetColor(paint.ring_color);
@@ -1971,9 +1965,8 @@ RenderProgress(ProgressProps progress)
     StyleFrame text = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 6);
     Style text_style = ui_unpack_style(ui_style_apply_effects_frame(text).value);
-    int font = text_style.font_size > 0.0f
-        ? (int)(text_style.font_size + 0.5f)
-        : GetSmallFontSize();
+    int font = ResolveFont(0, (int)(text_style.font_size + 0.5f),
+                           GetSmallFontSize());
     int label_w = label != NULL ? TextWidth(label, font) : 0;
     StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 4);
@@ -2098,9 +2091,8 @@ ui_plot(PlotProps plot, int histogram)
     {
         Style plot_style = ui_unpack_style(
             ui_style_apply_effects_frame(plot_frame).value);
-        int font = plot_style.font_size > 0.0f
-            ? (int)(plot_style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int font = ResolveFont(0, (int)(plot_style.font_size + 0.5f),
+                               GetSmallFontSize());
         float runtime_scale = (float)Scale(1000) / 1000.0f;
         float label_width = plot.label != NULL ? (float)TextWidth(plot.label, font) : 0.0f;
         float overlay_width = plot.overlay != NULL ? (float)TextWidth(plot.overlay, font) : 0.0f;
@@ -2419,9 +2411,8 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled,
                                                       disabled, 0, class_name,
                                                       StyleKindDragValue(), StyleAny());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-    int font = style.font_size > 0.0f
-        ? (int)(style.font_size + 0.5f)
-        : GetSmallFontSize();
+    int font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                           GetSmallFontSize());
     DragTextPaint paint = DragCellTextPaintFor(bounds, (float)Scale(6),
                                                (float)TextLineHeight(font));
 
@@ -2440,9 +2431,8 @@ ui_paint_drag_label(Rectangle bounds, const char *label, int class_name)
                                                           StyleKindDrag(),
                                                           StyleAny());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-        int font = style.font_size > 0.0f
-            ? (int)(style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                               GetSmallFontSize());
         DragTextPaint paint = DragLabelTextPaintFor(bounds, (float)Scale(6),
                                                     font, (float)Scale(2));
         RenderText(label, (int)paint.text_x, (int)paint.text_y,
@@ -2611,9 +2601,8 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     StyleFrame label = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         state, disabled, 0, class_name, StyleKindSlider(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label).value);
-    int label_font = label_style.font_size > 0.0f
-        ? (int)(label_style.font_size + 0.5f)
-        : GetSmallFontSize();
+    int label_font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+                                 GetSmallFontSize());
     float scale = (float)Scale(1000) / 1000.0f;
     SliderTextPaint text_paint = SliderCellTextPaintFor(
         cell, SliderLabelInsetForStyle(label, scale),
@@ -2644,9 +2633,8 @@ ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
         StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             ButtonStateNormal, 0, 0, class_name, StyleKindSlider(), 6);
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-        int font = style.font_size > 0.0f
-            ? (int)(style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                               GetSmallFontSize());
         float scale = (float)Scale(1000) / 1000.0f;
         SliderTextPaint paint = SliderLabelTextPaintFor(
             bounds, SliderLabelInsetForStyle(frame, scale), font,
@@ -3060,9 +3048,8 @@ RenderSpinbox(SpinboxProps spinbox)
             spinbox.class_name, StyleKindSpinboxValue(), StyleAny());
         Style value_style = ui_unpack_style(
             ui_style_apply_effects_frame(value_frame).value);
-        int value_font = value_style.font_size > 0.0f
-            ? (int)(value_style.font_size + 0.5f)
-            : GetFontSize();
+        int value_font = ResolveFont(
+            0, (int)(value_style.font_size + 0.5f), GetFontSize());
         ui_tk_draw_style_frame(spinbox.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, 0);
         ui_tk_draw_style_frame(text, spinbox.bounds, value_frame, 0, 0,
@@ -3108,8 +3095,7 @@ RenderFieldset(FieldsetProps frame)
     StyleFrame style = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, frame.class_name, StyleKindFieldset(),
         StyleAny());
-    if(style.value.font_size > 0.0f)
-        font = (int)(style.value.font_size + 0.5f);
+    font = ResolveFont(0, (int)(style.value.font_size + 0.5f), font);
     int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
     FieldsetPaint paint = FieldsetPaintFor(
         frame.bounds, (float)title_width, title[0] != '\0',
@@ -3139,9 +3125,8 @@ RenderListBox(ListBoxProps list)
         list.class_name, StyleKindListBoxItem(), StyleAny());
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
-    int font = default_item_style.font_size > 0.0f
-        ? (int)(default_item_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(default_item_style.font_size + 0.5f),
+                           GetFontSize());
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = ListBoxRowHeight(list.row_height > 0
         ? Scale(list.row_height) : 0, runtime_scale, default_item_frame);
@@ -3215,9 +3200,8 @@ RenderListBox(ListBoxProps list)
         if(hot)
             MarkClickable();
         if(paint) {
-            int item_font = item_style.font_size > 0.0f
-                ? (int)(item_style.font_size + 0.5f)
-                : font;
+            int item_font = ResolveFont(
+                0, (int)(item_style.font_size + 0.5f), font);
             int label_inset = ListBoxItemLabelInset(runtime_scale, item_frame);
             ListBoxItemPaint item_paint =
                 ListBoxItemPaintFor(row, label_inset,
@@ -3259,9 +3243,8 @@ RenderTreeView(TreeViewProps tree)
     StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
         tree.disabled, 0, tree.class_name, StyleKindTreeView(), StyleAny());
-    int font = default_item_style.font_size > 0.0f
-        ? (int)(default_item_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(default_item_style.font_size + 0.5f),
+                           GetFontSize());
     TreeViewMetrics metrics = TreeViewMetricsFor((float)GetScale(),
                                                  panel_frame,
                                                  default_item_frame);
@@ -3303,9 +3286,8 @@ RenderTreeView(TreeViewProps tree)
             StyleKindTreeViewItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
-        int item_font = item_style.font_size > 0.0f
-            ? (int)(item_style.font_size + 0.5f)
-            : font;
+        int item_font = ResolveFont(0, (int)(item_style.font_size + 0.5f),
+                                    font);
         TreeViewTextPaint text_paint = TreeViewTextPaintFor(
             marker_bounds, text_bounds, TextLineHeight(item_font));
         Color item_text = Fade(item_style.foreground, item_style.opacity);
