@@ -634,6 +634,33 @@ grep -q '"path": "DirectWebNodes/viewport"' "$direct_web_out"
 grep -q 'const \$bounds = kryon.copyValue' "$direct_web_out"
 grep -q 'let visible_width = kryon.copyValue(viewport.width)' "$direct_web_out"
 
+cat > "$work/src/canvas_block_nodes.kry" <<'EOF'
+#import "kryon.h"
+state {
+    sx: int = 0
+    sy: int = 0
+    zoom: float = 1
+}
+CanvasBlockNodes :: () #ui {
+    Canvas drawing: {
+        bounds = {0, 0, 100, 100}
+        scroll_x = &sx
+        scroll_y = &sy
+        zoom = &zoom
+        if drawing.active {
+            sx += 1
+        }
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/canvas_block_nodes.kry"
+canvas_block_out="$work/out/src/canvas_block_nodes.js"
+grep -q 'kryon.widget(\$rt, "Canvas"' "$canvas_block_out"
+grep -q '"nodeName": "drawing"' "$canvas_block_out"
+grep -q '"path": "CanvasBlockNodes/drawing"' "$canvas_block_out"
+grep -q 'const \$canvas = kryon.Canvas(drawing_spec)' "$canvas_block_out"
+grep -q 'if (drawing.active)' "$canvas_block_out"
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {

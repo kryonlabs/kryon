@@ -1790,6 +1790,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
     }
     if(strcmp(block->widget, "Canvas") == 0) {
         char spec_name[KIR_NAME_MAX + 16];
+        KirStmt *statement;
 
         if(block->name[0] == '\0')
             die("%s:%d: Canvas requires a result binding name", span.path, span.line);
@@ -1804,7 +1805,12 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         ui_block_format(call, sizeof(call), span,
                         "%s: CanvasResult = BeginCanvas(%s)",
                         block->name, spec_name);
-        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
+        statement = KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "",
+                                       source_span);
+        if(statement == NULL)
+            die("out of memory parsing Canvas block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         ui_block_format(call, sizeof(call), span, "defer EndCanvas(%s)",
                         spec_name);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);

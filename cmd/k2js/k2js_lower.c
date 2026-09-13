@@ -1130,6 +1130,16 @@ begin_scroll_call_args(const char *source, char *args, size_t args_size)
     return strcmp(name, "BeginScroll") == 0;
 }
 
+static int
+begin_canvas_call_args(const char *source, char *args, size_t args_size)
+{
+    char name[K2JS_NAME_MAX];
+
+    if(!split_direct_call(source, name, sizeof(name), args, args_size))
+        return 0;
+    return strcmp(name, "BeginCanvas") == 0;
+}
+
 static void
 emit_scroll_widget_arguments(FILE *f, const KirModule *m, const char *args)
 {
@@ -1186,6 +1196,19 @@ emit_scroll_initializer_with_meta(FILE *f, const KirModule *m,
     fputs("); return $bounds; })()", f);
 }
 
+static void
+emit_canvas_initializer_with_meta(FILE *f, const KirModule *m,
+                                  const char *args, const KirStmt *meta)
+{
+    fputs("(() => { const $canvas = kryon.Canvas(", f);
+    emit_initializer_value(f, m, args);
+    fputs("); kryon.widget($rt, \"Canvas\", ", f);
+    emit_initializer_value(f, m, args);
+    fputs(", $state, ", f);
+    emit_web_metadata(f, m, meta);
+    fputs("); return $canvas; })()", f);
+}
+
 /* Evaluate initializer leaves in lexical scope, rather than sending source
  * text to a runtime parser that cannot see widget parameters or local values. */
 static void emit_widget_arguments(FILE *f, const KirModule *m,
@@ -1205,6 +1228,11 @@ emit_initializer_value_with_meta(FILE *f, const KirModule *m,
     if(meta != NULL && stmt_has_web_metadata(meta) &&
        begin_scroll_call_args(value, arguments, sizeof(arguments))) {
         emit_scroll_initializer_with_meta(f, m, arguments, meta);
+        return;
+    }
+    if(meta != NULL && stmt_has_web_metadata(meta) &&
+       begin_canvas_call_args(value, arguments, sizeof(arguments))) {
+        emit_canvas_initializer_with_meta(f, m, arguments, meta);
         return;
     }
     if(condition_is_widget_call(value, widget, sizeof(widget),

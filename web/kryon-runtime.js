@@ -1091,6 +1091,7 @@ function widgetTag(item) {
     return "menu";
   case "TableView":
     return "table";
+  case "Canvas":
   case "Plot":
   case "CanvasGrid":
     return "canvas";
