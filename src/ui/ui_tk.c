@@ -27,6 +27,7 @@
 #include "runtime/separator.h"
 #include "runtime/slider.h"
 #include "runtime/spinbox.h"
+#include "runtime/style.h"
 #include "runtime/table_view.h"
 #include "runtime/tree_view.h"
 #include <limits.h>
@@ -609,9 +610,8 @@ RenderSeparator(SeparatorProps separator)
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
         separator.disabled, 0, separator.class_name, StyleKindSeparator(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-    int font = label_style.font_size > 0.0f
-        ? (int)(label_style.font_size + 0.5f)
-        : GetSmallFontSize();
+    int font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+                           GetSmallFontSize());
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame line_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
@@ -746,9 +746,8 @@ RenderListBoxMulti(ListBoxProps list)
         default_item_frame);
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
-    int default_item_font = default_item_style.font_size > 0.0f
-        ? (int)(default_item_style.font_size + 0.5f)
-        : GetSmallFontSize();
+    int default_item_font = ResolveFont(
+        0, (int)(default_item_style.font_size + 0.5f), GetSmallFontSize());
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     int focused;
@@ -810,9 +809,8 @@ RenderListBoxMulti(ListBoxProps list)
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         if(paint) {
-            int font = item_style.font_size > 0.0f
-                ? (int)(item_style.font_size + 0.5f)
-                : default_item_font;
+            int font = ResolveFont(
+                0, (int)(item_style.font_size + 0.5f), default_item_font);
             int label_inset = ListBoxMultiItemLabelInset(
                 (float)Scale(1000) / 1000.0f, item_frame);
             if(selected || hot || disabled)
