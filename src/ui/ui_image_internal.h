@@ -6,5 +6,6 @@
 Texture2D LoadImageTexture(const char *path);
 Rectangle ImageFitRect(ImageProps image, Texture2D texture);
 void ImageTexture(Texture2D texture, ImageProps image);
+void ImageTextureTinted(Texture2D texture, ImageProps image, Color tint);
 
 #endif

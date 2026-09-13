@@ -155,6 +155,7 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
 {
     Texture2D tex;
     ImageProps image;
+    Color tint_color;
 
     if(asset_path == NULL || asset_path[0] == '\0' || w <= 0 || h <= 0)
         return;
@@ -164,11 +165,12 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
     memset(&image, 0, sizeof(image));
     image.asset_path = asset_path;
     image.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    image.tint = unpack_color(tint);
     image.fit = (ImageFit)fit;
+    tint_color = unpack_color(tint);
     DrawTexturePro(tex,
                    (Rectangle){0, 0, (float)tex.width, (float)tex.height},
-                   ImageFitRect(image, tex), (Vector2){0, 0}, 0.0f, image.tint);
+                   ImageFitRect(image, tex), (Vector2){0, 0}, 0.0f,
+                   tint_color);
 }
 
 static unsigned

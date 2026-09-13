@@ -47,7 +47,6 @@ RenderTutorialImage(Texture2D texture, const char *fallback, int x, int y, int w
 
     image.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     image.fit = ImageFitCover;
-    image.tint = WHITE;
     ImageTexture(texture, image);
 }
 

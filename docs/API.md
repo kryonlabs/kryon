@@ -1246,9 +1246,8 @@ typedef struct ImageProps {
     Rectangle source;
     Vector2 origin;
     float rotation;
-    Color tint;
     ImageFit fit;
-    ImageStyle style;
+    int32_t class_name;
 } ImageProps;
 
 Image((ImageProps){...})

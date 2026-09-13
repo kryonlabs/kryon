@@ -184,7 +184,7 @@ App :: () #ui {
     lines_y += Scale(54)
     Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
-    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, 0})
+    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, ImageFitContain, 0})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com"})
@@ -199,7 +199,7 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Welcome", .level = 1})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body"})
     Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more"})
-    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitCover, 0})
+    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, ImageFitCover, 0})
     End()
     Section((SectionProps){.label = "Details"})
     Heading((HeadingProps){.text = "Details", .level = 2})
@@ -322,11 +322,11 @@ App :: () #ui {
         flags = PopupTooltip
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.wrap=TextWrapNone})
     }
-    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,ImageFitContain,0}
+    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,ImageFitContain,0}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     Checkbox((CheckboxProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
     Image(choice_image)
-    Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = choice_image.tint, .image_fit = choice_image.fit, .image_background = GetThemeButton(), .id = 51})
+    Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = WHITE, .image_fit = choice_image.fit, .image_background = GetThemeButton(), .id = 51})
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section"})
     Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
     tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})

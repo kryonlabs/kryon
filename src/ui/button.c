@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_image_internal.h"
 #include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
 #include "ui_paint_internal.h"
@@ -170,11 +171,11 @@ ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds)
     image.source = props.image_source;
     image.origin = props.image_origin;
     image.rotation = props.image_rotation;
-    image.tint = props.image_tint.a != 0 ? props.image_tint : WHITE;
     image.fit = (ImageFit)props.image_fit;
     if(props.image_background.a != 0)
         DrawRectangleRec(image.bounds, props.image_background);
-    RenderImage(image);
+    ImageTextureTinted(LoadImageTexture(image.asset_path), image,
+                       props.image_tint.a != 0 ? props.image_tint : WHITE);
 }
 
 static void

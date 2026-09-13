@@ -1595,7 +1595,7 @@ static void
 test_focusable_image_keyboard_navigation(void)
 {
     ImageProps image = {
-        .asset_path = "", .bounds = {10,10,40,30}, .tint = WHITE,
+        .asset_path = "", .bounds = {10,10,40,30},
         .fit = ImageFitContain
     };
 
@@ -1606,7 +1606,7 @@ test_focusable_image_keyboard_navigation(void)
         .bounds=image.bounds,.id=621,.image_asset_path=image.asset_path,
         .image_bounds=image.bounds,.image_source=image.source,
         .image_origin=image.origin,.image_rotation=image.rotation,
-        .image_tint=image.tint,.image_fit=image.fit,
+        .image_tint=WHITE,.image_fit=image.fit,
         .image_background=BLACK
     });
     Button((ButtonProps){
@@ -1632,7 +1632,7 @@ test_focusable_image_keyboard_navigation(void)
                   .image_source=image.source,
                   .image_origin=image.origin,
                   .image_rotation=image.rotation,
-                  .image_tint=image.tint,
+                  .image_tint=WHITE,
                   .image_fit=image.fit,
                   .image_background=BLACK
               }),1);

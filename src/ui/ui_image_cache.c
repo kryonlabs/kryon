@@ -32,6 +32,27 @@ image_widget_style(int class_name)
         StyleKindImage()).value);
 }
 
+static Style
+image_widget_tint_style(int class_name)
+{
+    StyleData base = {.fields = StyleOpacity, .opacity = 1.0f};
+    StyleFacts facts = StyleDefaultFacts(StyleKindImage());
+
+    facts.class_name = class_name;
+    return ui_unpack_style(ResolveActiveStyle(base, facts, ButtonStateNormal));
+}
+
+static Color
+image_widget_tint(int class_name)
+{
+    Style style = image_widget_tint_style(class_name);
+    Color tint = (style.fields & StyleForeground) ? style.foreground : WHITE;
+
+    if(style.opacity < 1.0f)
+        tint = Fade(tint, style.opacity);
+    return tint;
+}
+
 static Rectangle
 image_world_rect_to_screen(Rectangle rect)
 {
@@ -206,6 +227,12 @@ image_draw_rounded_texture(Texture2D texture, Rectangle source,
 void
 ImageTexture(Texture2D texture, ImageProps image)
 {
+    ImageTextureTinted(texture, image, image_widget_tint(image.class_name));
+}
+
+void
+ImageTextureTinted(Texture2D texture, ImageProps image, Color tint)
+{
     Rectangle source;
     Rectangle dst;
     Style style;
@@ -216,7 +243,7 @@ ImageTexture(Texture2D texture, ImageProps image)
 
     source = image_default_source(texture, image.source);
     dst = ImageFitRect(image, texture);
-    image.tint = image.tint.a == 0 ? WHITE : image.tint;
+    tint = tint.a == 0 ? WHITE : tint;
     style = image_widget_style(image.class_name);
 
     if(style.background.a > 0 || style.border.a > 0 ||
@@ -232,11 +259,11 @@ ImageTexture(Texture2D texture, ImageProps image)
     if(style.radius <= 0.0f) {
         image_begin_bounds_clip(image.bounds);
         DrawTexturePro(texture, source, dst, image.origin, image.rotation,
-                       image.tint);
+                       tint);
         EndClip();
         return;
     }
 
     image_draw_rounded_texture(texture, source, dst, image.bounds, style.radius,
-                                 image.tint);
+                                 tint);
 }

@@ -21,11 +21,11 @@ App :: () #ui {
             Image((ImageProps){.asset_path = "tiles/tile.png",
                      .bounds = {Scale(52), Scale(104), Scale(96), Scale(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
-                     .tint = WHITE, .fit = ImageFitContain})
+                     .fit = ImageFitContain})
             Image((ImageProps){.asset_path = "pfp/lotus.png",
                      .bounds = {Scale(168), Scale(104), Scale(96), Scale(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
-                     .tint = WHITE, .fit = ImageFitContain})
+                     .fit = ImageFitContain})
             Text((TextProps){.bounds={Scale(52), Scale(226), 0, 0}, .text="Images keep their node bounds for editing", .wrap=TextWrapNone})
         }
     }

@@ -14,7 +14,6 @@ ImageProps :: struct {
     source: Rectangle
     origin: Vector2
     rotation: float
-    tint: Color
     fit: ImageFit
     class_name: i32
 }

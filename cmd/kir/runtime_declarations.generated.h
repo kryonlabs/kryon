@@ -410,7 +410,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    source: Rectangle\n"
         "    origin: Vector2\n"
         "    rotation: float\n"
-        "    tint: Color\n"
         "    fit: ImageFit\n"
         "    class_name: i32\n"
         "}\n"

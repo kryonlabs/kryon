@@ -1713,11 +1713,12 @@ tokens {
   color {
     panel: #243140;
     edge: #7a8da0;
+    tint: #c0ffee;
   }
   length { radius: 9; border: 2; }
   material { flat: Flat; }
 }
-Image.hero { background: panel; border: edge; radius: radius; border-width: border; material: flat; opacity: 0.75; }
+Image.hero { background: panel; border: edge; foreground: tint; radius: radius; border-width: border; material: flat; opacity: 0.75; }
 `, "Image Classes", "") || !SetActiveStylePack("test.image.classes") {
 		t.Fatal("test image class style did not activate")
 	}
@@ -1727,7 +1728,6 @@ Image.hero { background: panel; border: edge; radius: radius; border-width: bord
 	rt.Image(ImageProps{
 		AssetPath: "hero.png",
 		Bounds:    Rectangle{X: 10, Y: 20, Width: 80, Height: 40},
-		Tint:      White,
 		Fit:       ImageFitCover,
 		ClassName: StyleClassID("hero"),
 	})
@@ -1743,6 +1743,9 @@ Image.hero { background: panel; border: edge; radius: radius; border-width: bord
 		style.Radius != 9 || style.BorderWidth != 2 ||
 		style.Material != MaterialFlat || style.Opacity != 0.75 {
 		t.Fatalf("image class style op = %+v", style)
+	}
+	if ops[1].Color != (Color{0xc0, 0xff, 0xee, 0xbf}) {
+		t.Fatalf("image class tint = %+v", ops[1].Color)
 	}
 }
 
@@ -3416,7 +3419,7 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	})
 	rt.Heading(HeadingProps{Text: "Install", Level: 2})
 	rt.Link(LinkProps{Text: "Read more", Link: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
-	rt.Image(ImageProps{AssetPath: "hero.png", AltText: "Hero", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE})
+	rt.Image(ImageProps{AssetPath: "hero.png", AltText: "Hero", Bounds: Rectangle{Width: 120, Height: 60}})
 	rt.End()
 	rt.Grid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
 	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "A", Wrap: TextWrapNone})

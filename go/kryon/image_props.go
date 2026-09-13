@@ -17,7 +17,6 @@ type ImageProps struct {
 	Source    Rectangle
 	Origin    Vector2
 	Rotation  float32
-	Tint      Color
 	Fit       ImageFit
 	ClassName int32
 }

@@ -1608,15 +1608,15 @@ func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, di
 		frame.Color = props.SwatchColor
 	}
 	r.record(frame)
-	if image, ok := buttonImageProps(frame.Button.Props); ok {
-		r.record(FrameOp{Kind: FrameOpImage, Bounds: image.Bounds, Text: image.AssetPath, Color: image.Tint, Disabled: frame.Disabled})
+	if image, tint, ok := buttonImageProps(frame.Button.Props); ok {
+		r.record(FrameOp{Kind: FrameOpImage, Bounds: image.Bounds, Text: image.AssetPath, Color: tint, Disabled: frame.Disabled})
 	}
 	return pressed
 }
 
-func buttonImageProps(props ButtonProps) (ImageProps, bool) {
+func buttonImageProps(props ButtonProps) (ImageProps, Color, bool) {
 	if props.ImageAssetPath == "" && props.ImageBounds.Width <= 0 && props.ImageBounds.Height <= 0 {
-		return ImageProps{}, false
+		return ImageProps{}, Color{}, false
 	}
 	bounds := props.ImageBounds
 	if bounds.Width <= 0 && bounds.Height <= 0 {
@@ -1632,9 +1632,8 @@ func buttonImageProps(props ButtonProps) (ImageProps, bool) {
 		Source:    props.ImageSource,
 		Origin:    props.ImageOrigin,
 		Rotation:  props.ImageRotation,
-		Tint:      tint,
 		Fit:       ImageFit(props.ImageFit),
-	}, true
+	}, tint, true
 }
 
 // Resolve input and animation once. A composed button uses this same frame
@@ -4443,7 +4442,23 @@ func (r *runtime) Image(props ImageProps) {
 			Fill:  styleFill(style),
 		}))
 	}
-	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint}
+	tintStyle := unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindImage()),
+		int32(ButtonStateNormal)))
+	if props.ClassName != 0 {
+		facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindImage())
+		facts.ClassName = props.ClassName
+		tintStyle = unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+			facts, int32(ButtonStateNormal)))
+	}
+	tint := White
+	if tintStyle.Fields&uint32(StyleForeground) != 0 {
+		tint = tintStyle.Foreground
+	}
+	if tintStyle.Opacity < 1 {
+		tint = unpackRGBA(Surface_Opacity(packRGBA(tint), tintStyle.Opacity))
+	}
+	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: tint}
 	if props.AltText != "" {
 		op.Semantic = SemanticImage
 		op.Role = "img"

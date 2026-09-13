@@ -206,7 +206,6 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .asset_path = \"assets/image.png\",\n"
                  "        .alt_text = \"\",\n"
                  "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n"
-                 "        .tint = WHITE,\n"
                  "        .fit = ImageFitContain,\n"
                  "    })\n",
                  x, y);
