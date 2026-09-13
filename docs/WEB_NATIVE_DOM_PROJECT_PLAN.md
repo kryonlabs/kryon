@@ -30,7 +30,7 @@ the browser receives normal elements, attributes, CSS, and events.
   Document nodes at their `.kry` block boundary: `Scroll`, `Canvas`,
   `TableCell`, `Popup`, and `Disabled`.
 - Direct expression-statement scope calls for `BeginCanvas`, `BeginTableCell`,
-  and `BeginPopup` lower through the same metadata path instead of relying on
+  and `PopupScope` lower through the same metadata path instead of relying on
   runtime fallback synthesis.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
@@ -253,7 +253,7 @@ the browser receives normal elements, attributes, CSS, and events.
   Web Document identity and source-span metadata instead of relying on runtime
   fallback paths.
 - Parenthesized `BeginScroll(...)`, `BeginCanvas(...)`,
-  `BeginTableCell(...)`, `BeginDisabled(...)`, and `BeginPopup(...)`
+  `BeginTableCell(...)`, `BeginDisabled(...)`, and `PopupScope(...)`
   scope-producing expressions emit compiler-owned `Scroll`, `Canvas`,
   `TableCell`, `Disabled`, and `Popup` Web Document identity, including popup
   open results stored in locals.

@@ -1905,7 +1905,7 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
             node_widget = "TableCell";
         else if(strcmp(widget, "BeginDisabled") == 0)
             node_widget = "Disabled";
-        else if(strcmp(widget, "BeginPopup") == 0)
+        else if(strcmp(widget, "PopupScope") == 0)
             node_widget = "Popup";
         if(node_widget != NULL)
             ui_stmt_apply_source_metadata(statement, fn, parent,
@@ -2047,15 +2047,15 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirStmt *statement;
 
         ui_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
-        ui_block_format(call, sizeof(call), span, "if Begin%s(%s) {",
-                        block->widget, args);
+        ui_block_format(call, sizeof(call), span, "if PopupScope(%s) {",
+                        args);
         statement = KirFunctionAddStmt(fn, KIR_STMT_IF, call, "",
                                        source_span);
         if(statement == NULL)
             die("out of memory parsing Popup block");
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
-        snprintf(call,sizeof(call),"defer End%s()",block->widget);
+        snprintf(call,sizeof(call),"defer PopupEndScope()");
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;
         return;

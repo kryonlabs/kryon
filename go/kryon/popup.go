@@ -8,7 +8,7 @@ type popupScope struct {
 	capturesInput bool
 }
 
-func (r *runtime) BeginPopup(p PopupProps) bool {
+func (r *runtime) PopupScope(p PopupProps) bool {
 	decision := PopupPolicy_PopupDecisionFor(uint32(p.Flags), p.Disabled)
 	if !decision.Valid {
 		panic("unsupported popup flags")
@@ -86,7 +86,7 @@ func (r *runtime) BeginPopup(p PopupProps) bool {
 
 func (r *runtime) popupCloseScope() {
 	if len(r.popupScopes) == 0 {
-		panic("popupCloseScope without BeginPopup")
+		panic("popupCloseScope without PopupScope")
 	}
 	s := &r.popupScopes[len(r.popupScopes)-1]
 	*s.open = false
@@ -96,10 +96,10 @@ func (r *runtime) popupCloseScope() {
 	}
 }
 
-func (r *runtime) EndPopup() {
+func (r *runtime) PopupEndScope() {
 	n := len(r.popupScopes)
 	if n == 0 {
-		panic("EndPopup without BeginPopup")
+		panic("PopupEndScope without PopupScope")
 	}
 	s := r.popupScopes[n-1]
 	if s.capturesInput && !*s.open {

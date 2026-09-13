@@ -6,7 +6,7 @@ func TestComposedTooltipOwnsArbitraryPaintWithoutInputCapture(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	r.QueueMouseMove(30, 25)
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{
+	if !r.PopupScope(PopupProps{
 		Bounds: NewRectangle(80, 50, 130, 70), ID: 29300,
 		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupTooltip,
 	}) {
@@ -16,7 +16,7 @@ func TestComposedTooltipOwnsArbitraryPaintWithoutInputCapture(t *testing.T) {
 	r.Text(TextProps{Text: "arbitrary tooltip"})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 90, 24), Label: "detail", ID: 29301})
 	r.End()
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 
 	panel, text, child := -1, -1, -1
@@ -40,7 +40,7 @@ func TestComposedTooltipOwnsArbitraryPaintWithoutInputCapture(t *testing.T) {
 
 	r.QueueMouseMove(230, 170)
 	r.BeginFrame()
-	if r.BeginPopup(PopupProps{
+	if r.PopupScope(PopupProps{
 		Bounds: NewRectangle(80, 50, 130, 70), ID: 29300,
 		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupTooltip,
 	}) {
@@ -54,7 +54,7 @@ func TestComposedModalOwnsArbitraryContentAndFullViewInput(t *testing.T) {
 	open := true
 	r.QueueTap(190, 150)
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{
+	if !r.PopupScope(PopupProps{
 		Bounds: NewRectangle(40, 30, 120, 90), ID: 29400,
 		Open: &open, Flags: PopupModal,
 	}) {
@@ -64,7 +64,7 @@ func TestComposedModalOwnsArbitraryContentAndFullViewInput(t *testing.T) {
 	r.Text(TextProps{Text: "arbitrary modal"})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 90, 24), Label: "confirm", ID: 29401})
 	r.End()
-	r.EndPopup()
+	r.PopupEndScope()
 	if r.Button(ButtonProps{Bounds: NewRectangle(170, 130, 60, 40), Label: "Behind", ID: 29402}) {
 		t.Fatal("modal leaked an outside tap to the background")
 	}
@@ -97,7 +97,7 @@ func TestComposedModalOwnsArbitraryContentAndFullViewInput(t *testing.T) {
 
 	r.QueueKey(KeyEscape)
 	r.BeginFrame()
-	if r.BeginPopup(PopupProps{
+	if r.PopupScope(PopupProps{
 		Bounds: NewRectangle(40, 30, 120, 90), ID: 29400,
 		Open: &open, Flags: PopupModal,
 	}) {
@@ -114,14 +114,14 @@ func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
 	open := false
 	r.QueueMouseButton(MouseButtonRight, 30, 25)
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{
+	if !r.PopupScope(PopupProps{
 		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
 		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext,
 	}) {
 		t.Fatal("right release in trigger did not open context popup")
 	}
 	r.Text(TextProps{Bounds: NewRectangle(88, 58, 0, 0), Text: "context child", Wrap: TextWrapNone})
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 	if !open {
 		t.Fatal("context popup did not update caller-owned open state")
@@ -138,7 +138,7 @@ func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
 
 	r.QueueTap(220, 160)
 	r.BeginFrame()
-	if r.BeginPopup(PopupProps{
+	if r.PopupScope(PopupProps{
 		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
 		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext,
 	}) {
@@ -151,7 +151,7 @@ func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
 
 	r.QueueMouseButton(MouseButtonRight, 30, 25)
 	r.BeginFrame()
-	if r.BeginPopup(PopupProps{
+	if r.PopupScope(PopupProps{
 		Bounds: NewRectangle(80, 50, 130, 70), ID: 29500, Open: &open,
 		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupContext, Disabled: true,
 	}) {
@@ -166,14 +166,14 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 	r.setFocus(29600)
 
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen}) {
+	if !r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen}) {
 		t.Fatal("parent popup did not open")
 	}
 	r.BeginDisabled(true)
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Disabled", ID: 29612})
 	r.EndDisabled()
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 	if r.Focus() != 29611 {
 		t.Fatalf("parent popup focus=%d, want first child 29611", r.Focus())
@@ -181,9 +181,9 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 
 	childOpen = true
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(50, 60, 130, 80), ID: 29620, Open: &childOpen})
+	r.PopupScope(PopupProps{Bounds: NewRectangle(50, 60, 130, 80), ID: 29620, Open: &childOpen})
 	r.Button(ButtonProps{Bounds: NewRectangle(60, 70, 100, 24), Label: "Child", ID: 29621})
 	if r.Focus() != 29621 {
 		t.Fatalf("nested popup focus=%d, want first child 29621", r.Focus())
@@ -192,18 +192,18 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 	if r.Focus() != 29611 {
 		t.Fatalf("nested close restored focus=%d, want parent 29611", r.Focus())
 	}
-	r.EndPopup()
-	r.EndPopup()
+	r.PopupEndScope()
+	r.PopupEndScope()
 	r.EndFrame()
 
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
 	r.popupCloseScope()
 	if r.Focus() != 29600 {
 		t.Fatalf("parent close restored focus=%d, want background 29600", r.Focus())
 	}
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 }
 
@@ -212,9 +212,9 @@ func TestComposedPopupMissingOwnerRestoresFocus(t *testing.T) {
 	open := true
 	r.setFocus(29700)
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 120, 80), ID: 29710, Open: &open})
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 120, 80), ID: 29710, Open: &open})
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 90, 24), Label: "Popup", ID: 29711})
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 	if r.Focus() != 29711 {
 		t.Fatalf("popup focus=%d, want 29711", r.Focus())
@@ -231,13 +231,13 @@ func TestComposedPopupOwnsOrdinaryChildrenAndPaintOrder(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 30, 140, 100), ID: 29000, Open: &open}) {
+	if !r.PopupScope(PopupProps{Bounds: NewRectangle(20, 30, 140, 100), ID: 29000, Open: &open}) {
 		t.Fatal("open popup returned false")
 	}
 	r.Column(ColumnProps{Bounds: NewRectangle(28, 40, 120, 70), Gap: 4})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 100, 28), Label: "Apply", ID: 29001})
 	r.End()
-	r.EndPopup()
+	r.PopupEndScope()
 	r.Button(ButtonProps{Bounds: NewRectangle(20, 30, 140, 100), Label: "Later", ID: 29002})
 	r.EndFrame()
 
@@ -282,10 +282,10 @@ Popup[role=Panel] { background: panel; border: rule; radius: radius; border-widt
 	open := true
 
 	r.BeginFrame()
-	if !r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 30, 140, 100), ID: 29010, Open: &open}) {
+	if !r.PopupScope(PopupProps{Bounds: NewRectangle(20, 30, 140, 100), ID: 29010, Open: &open}) {
 		t.Fatal("open popup returned false")
 	}
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 
 	for _, op := range r.FrameOps() {
@@ -305,13 +305,13 @@ func TestComposedPopupDismissalConsumesOutsideTap(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29100, Open: &open})
-	r.EndPopup()
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29100, Open: &open})
+	r.PopupEndScope()
 	r.EndFrame()
 
 	r.QueueTap(160, 40)
 	r.BeginFrame()
-	if r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29100, Open: &open}) {
+	if r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29100, Open: &open}) {
 		t.Fatal("outside tap left popup open")
 	}
 	if r.Button(ButtonProps{Bounds: NewRectangle(140, 20, 80, 40), Label: "Behind", ID: 29101}) {
@@ -327,10 +327,10 @@ func TestComposedPopupCloseAndMissingOwner(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
 	r.Text(TextProps{Bounds: NewRectangle(24, 24, 0, 0), Text: "hidden", Wrap: TextWrapNone})
 	r.popupCloseScope()
-	r.EndPopup()
+	r.PopupEndScope()
 	r.EndFrame()
 	if open {
 		t.Fatal("popupCloseScope did not update caller state")
@@ -343,8 +343,8 @@ func TestComposedPopupCloseAndMissingOwner(t *testing.T) {
 
 	open = true
 	r.BeginFrame()
-	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
-	r.EndPopup()
+	r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
+	r.PopupEndScope()
 	r.EndFrame()
 	r.BeginFrame()
 	r.EndFrame()
@@ -357,8 +357,8 @@ func TestComposedPopupScopeBalance(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	defer func() {
 		if recover() == nil {
-			t.Fatal("EndPopup without BeginPopup was accepted")
+			t.Fatal("PopupEndScope without PopupScope was accepted")
 		}
 	}()
-	r.EndPopup()
+	r.PopupEndScope()
 }

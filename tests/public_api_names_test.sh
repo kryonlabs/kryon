@@ -300,7 +300,7 @@ if [ -n "$go_missing_parser_widgets" ]; then
 fi
 
 go_lowered_scope_exports="$(
-    rg -n '^func (BeginDisabled|EndDisabled|BeginPopup|EndPopup|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas)\(' \
+    rg -n '^func (BeginDisabled|EndDisabled|PopupScope|PopupEndScope|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas)\(' \
         go/kryon/api.go \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -313,7 +313,7 @@ if [ -n "$go_lowered_scope_exports" ]; then
 fi
 
 lowered_doc_matches="$(
-    rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup)\b' \
+    rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|PopupScope|PopupEndScope)\b' \
         docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/ARCHITECTURE.md docs/COMPOSED_POPUP_IMPLEMENTATION.md docs/site/matrices.html \
         --glob '!vendor/**' \
         --glob '!build/**' || true
@@ -339,7 +339,7 @@ if [ -n "$public_popup_close_doc_matches" ]; then
 fi
 
 lowered_kry_source_matches="$(
-    rg -n '\b(BeginButton|BeginCard|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup|ClosePopup)\s*\(' \
+    rg -n '\b(BeginButton|BeginCard|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|PopupScope|PopupEndScope|ClosePopup)\s*\(' \
         runtime examples tests/parity tests/fixtures \
         --glob '*.kry' \
         --glob '!vendor/**' \

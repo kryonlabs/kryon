@@ -1059,12 +1059,12 @@ int main(void)
         ClearBackground(BLACK);
         BeginInterfaceFrame(64,64,1);
         BeginTree(Key("internal composed popup paint"));
-        if(BeginPopup((PopupProps){.bounds={0,8,64,56},.id=28000,
+        if(PopupScope((PopupProps){.bounds={0,8,64,56},.id=28000,
                 .open=&composed_open})) {
             DrawRectangle(0,8,8,8,GREEN);
             Box((Rectangle){16,16,8,8},YELLOW,BLANK);
             if(frame == 1) popup_close_scope();
-            EndPopup();
+            PopupEndScope();
         }
         Box((Rectangle){0,0,64,64},RED,BLANK);
         EndTree();

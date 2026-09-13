@@ -1083,16 +1083,16 @@ ParenthesizedScopeCalls :: () #ui {
     (BeginDisabled(true))
     EndDisabled()
     popup: PopupProps = (PopupProps){.bounds={0, 0, 80, 40}, .id=7}
-    if (BeginPopup(popup)) {
-        EndPopup()
+    if (PopupScope(popup)) {
+        PopupEndScope()
     }
     popup_expr: PopupProps = (PopupProps){.bounds={0, 50, 80, 40}, .id=8, .flags=1}
-    popup_visible: bool = (BeginPopup(popup_expr))
+    popup_visible: bool = (PopupScope(popup_expr))
     if popup_visible {
-        EndPopup()
+        PopupEndScope()
     }
-    BeginPopup(popup_expr)
-    EndPopup()
+    PopupScope(popup_expr)
+    PopupEndScope()
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"

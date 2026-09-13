@@ -131,8 +131,8 @@ is_lowered_scope_widget(const char *name)
 {
     return strcmp(name, "BeginDisabled") == 0 ||
            strcmp(name, "EndDisabled") == 0 ||
-           strcmp(name, "BeginPopup") == 0 ||
-           strcmp(name, "EndPopup") == 0 ||
+           strcmp(name, "PopupScope") == 0 ||
+           strcmp(name, "PopupEndScope") == 0 ||
            strcmp(name, "BeginScroll") == 0 ||
            strcmp(name, "EndScroll") == 0 ||
            strcmp(name, "BeginTableCell") == 0 ||
@@ -145,7 +145,7 @@ static int
 module_uses_lowered_scope_runtime(const KirModule *m)
 {
     static const char *const lowered[] = {
-        "BeginDisabled", "EndDisabled", "BeginPopup", "EndPopup",
+        "BeginDisabled", "EndDisabled", "PopupScope", "PopupEndScope",
         "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
         "BeginCanvas", "EndCanvas", NULL
     };
@@ -2463,7 +2463,7 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
     tx_expr(context, text, out, size);
     if(!runtime_output && current_guard[0] != '\0') {
         static const char *const lowered[] = {
-            "BeginDisabled", "EndDisabled", "BeginPopup", "EndPopup",
+            "BeginDisabled", "EndDisabled", "PopupScope", "PopupEndScope",
             "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
             "BeginCanvas", "EndCanvas", NULL
         };

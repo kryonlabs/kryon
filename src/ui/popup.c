@@ -111,7 +111,7 @@ static void end_popup_scope(void)
     free(scope);
 }
 
-int BeginPopup(PopupProps popup)
+int PopupScope(PopupProps popup)
 {
     PopupDecision decision = PopupDecisionFor(popup.flags, popup.disabled != 0);
     if(!decision.valid) abort();
@@ -161,7 +161,7 @@ void popup_close_scope(void)
     close_popup_scope(popup_scope);
 }
 
-void EndPopup(void)
+void PopupEndScope(void)
 {
     end_popup_scope();
 }

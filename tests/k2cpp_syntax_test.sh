@@ -342,11 +342,11 @@ mkdir -p "$work/composed"
     "$root/tests/parity/composed_popup.kry"
 sh "$root/tests/check_clean_generated_output.sh" "$work/composed"
 popup_cpp="$work/composed/tests/parity/composed_popup.cpp"
-grep -Fq 'BeginPopup(([&]() { PopupProps record_value_0{};' "$popup_cpp"
+grep -Fq 'PopupScope(([&]() { PopupProps record_value_0{};' "$popup_cpp"
 grep -Fq 'context_open = 0;' "$popup_cpp"
 grep -Fq 'popup_content_open = 0;' "$popup_cpp"
 grep -Fq 'popup_open = 0;' "$popup_cpp"
-grep -Fq 'EndPopup();' "$popup_cpp"
+grep -Fq 'PopupEndScope();' "$popup_cpp"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
     -I"$generated_include" -I"$internal_include" -I"$work/composed" \
     -include "$internal_header" "$popup_cpp"

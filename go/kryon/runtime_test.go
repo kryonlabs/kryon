@@ -2220,7 +2220,7 @@ Popup.shell[role=Panel] { background: popup; border: rule; radius: radius; borde
 		RowHeight:    26,
 		ColumnWidths: []int32{120},
 	})
-	if !rt.BeginPopup(PopupProps{
+	if !rt.PopupScope(PopupProps{
 		Bounds:    Rectangle{X: 30, Y: 140, Width: 120, Height: 60},
 		ID:        404,
 		ClassName: className,
@@ -2228,7 +2228,7 @@ Popup.shell[role=Panel] { background: popup; border: rule; radius: radius; borde
 	}) {
 		t.Fatal("open popup returned false")
 	}
-	rt.EndPopup()
+	rt.PopupEndScope()
 	rt.EndFrame()
 
 	var sawPaned, sawCollapsible, sawClose, sawTable, sawHeader, sawPopup bool

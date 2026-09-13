@@ -3349,13 +3349,13 @@ test_composed_popup_children_scope(void)
     BeginTree(Key("composed popup ordinary children"));
     Button((ButtonProps){.bounds={10,10,80,24},.label="Background",.id=26999});
     check_int("open composed popup returns true",
-        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
+        PopupScope((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
     Column((ColumnProps){.bounds={12,72,100,60},.gap=3});
     Button((ButtonProps){.bounds={0,0,90,24},.label="Action",.id=27001});
     TextField((TextFieldProps){.bounds={0,0,90,24},.text=text,.text_size=sizeof(text),
         .cursor_position=&cursor,.focus_id=27002});
     End();
-    EndPopup();
+    PopupEndScope();
     Button((ButtonProps){.bounds={120,10,80,24},.label="After",.id=27003});
     EndTree();
     int count = 0, action = 0, field = 0, after = 0;
@@ -3377,15 +3377,15 @@ test_composed_popup_children_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
-        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
+        PopupScope((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
     popup_close_scope();
     check_int("popup_close_scope updates caller state",open,0);
-    EndPopup();
+    PopupEndScope();
     EndTree();
     EndInterfaceFrame();
     BeginInterfaceFrame(240,180,1);
     check_int("closed composed popup stays closed",
-        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),0);
+        PopupScope((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),0);
     EndInterfaceFrame();
 }
 
@@ -3396,11 +3396,11 @@ test_composed_popup_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup ordinary children"));
     check_int("open composed popup returns true",
-        BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
+        PopupScope((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
     Column((ColumnProps){.bounds={28,40,120,70},.gap=4});
     Button((ButtonProps){.bounds={0,0,100,28},.label="Apply",.id=29001});
     End();
-    EndPopup();
+    PopupEndScope();
     Button((ButtonProps){.bounds={160,30,70,28},.label="After",.id=29002});
     EndTree();
     int count = 0, child = 0, after = 0;
@@ -3418,16 +3418,16 @@ test_composed_popup_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
-        BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
+        PopupScope((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
     popup_close_scope();
     check_int("popup_close_scope updates caller state",open,0);
-    EndPopup();
+    PopupEndScope();
     EndTree();
     EndInterfaceFrame();
 
     BeginInterfaceFrame(240,180,1);
     check_int("invalid composed popup stays closed",
-        BeginPopup((PopupProps){.bounds={20,30,0,100},.id=29000,.open=&open}),0);
+        PopupScope((PopupProps){.bounds={20,30,0,100},.id=29000,.open=&open}),0);
     EndInterfaceFrame();
 }
 
@@ -3440,7 +3440,7 @@ test_composed_tooltip_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed tooltip arbitrary children"));
     check_int("hovered tooltip popup opens",
-        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
+        PopupScope((PopupProps){.bounds={80,50,130,70},.id=29300,
             .trigger={20,20,80,30},.flags=PopupTooltip}),1);
     Column((ColumnProps){.bounds={88,58,114,54},.gap=4});
     Text((TextProps){.text="arbitrary tooltip",
@@ -3449,7 +3449,7 @@ test_composed_tooltip_scope(void)
     End();
     check_int("tooltip does not capture popup input",
         ui_popup_input_current_captures((Vector2){90,60}),0);
-    EndPopup();
+    PopupEndScope();
     EndTree();
     int count = 0, child = 0;
     const TreeNode *nodes = GetTreeNodes(&count);
@@ -3461,7 +3461,7 @@ test_composed_tooltip_scope(void)
     InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("tooltip closes outside trigger",
-        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
+        PopupScope((PopupProps){.bounds={80,50,130,70},.id=29300,
             .trigger={20,20,80,30},.flags=PopupTooltip}),0);
     EndInterfaceFrame();
 }
@@ -3474,14 +3474,14 @@ test_composed_modal_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed modal arbitrary children"));
     check_int("open composed modal returns true",
-        BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
+        PopupScope((PopupProps){.bounds={40,30,120,90},.id=29400,
             .open=&open,.flags=PopupModal}),1);
     Column((ColumnProps){.bounds={48,38,104,70},.gap=4});
     Text((TextProps){.text="arbitrary modal",
         .wrap=TextWrapNone});
     Button((ButtonProps){.bounds={0,0,90,24},.label="confirm",.id=29401});
     End();
-    EndPopup();
+    PopupEndScope();
     Button((ButtonProps){.bounds={190,145,45,30},.label="Behind",.id=29402});
     EndTree();
     int count = 0, child = 0;
@@ -3495,7 +3495,7 @@ test_composed_modal_scope(void)
     InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("Escape closes composed modal",
-        BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
+        PopupScope((PopupProps){.bounds={40,30,120,90},.id=29400,
             .open=&open,.flags=PopupModal}),0);
     check_int("Escape updates modal caller state",open,0);
     EndInterfaceFrame();
@@ -3514,11 +3514,11 @@ test_composed_context_popup_scope(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed context popup arbitrary children"));
     check_int("right release opens composed context popup",
-        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+        PopupScope((PopupProps){.bounds={80,50,130,70},.id=29500,
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext}),1);
     Button((ButtonProps){.bounds={88,58,100,24},.label="context child",
         .id=29501});
-    EndPopup();
+    PopupEndScope();
     EndTree();
     check_int("context popup updates caller open state",open,1);
     int count = 0, child = 0;
@@ -3531,7 +3531,7 @@ test_composed_context_popup_scope(void)
     InjectTap(220,160); InjectPump(); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("outside release dismisses context popup",
-        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+        PopupScope((PopupProps){.bounds={80,50,130,70},.id=29500,
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext}),0);
     check_int("context popup dismissal updates caller",open,0);
     EndInterfaceFrame();
@@ -3543,7 +3543,7 @@ test_composed_context_popup_scope(void)
     InjectMouseButton(MOUSE_BUTTON_RIGHT,0); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("disabled context popup stays closed",
-        BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
+        PopupScope((PopupProps){.bounds={80,50,130,70},.id=29500,
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext,
             .disabled=1}),0);
     EndInterfaceFrame();
@@ -3563,13 +3563,13 @@ test_composed_popup_focus_lifecycle(void)
     SetFocus(29600);
     BeginTree(Key("composed popup focus acquisition"));
     check_int("focus parent popup opens",
-        BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+        PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
             .open=&parent_open}),1);
     BeginDisabled(1);
     Button((ButtonProps){.bounds={30,30,100,24},.label="Disabled",.id=29612});
     EndDisabled();
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
-    EndPopup();
+    PopupEndScope();
     EndTree();
     check_int("parent popup acquires first child focus",GetFocus(),29611);
     ui_popup_input_finish(context);
@@ -3581,14 +3581,14 @@ test_composed_popup_focus_lifecycle(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed nested popup focus"));
-    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+    PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
-    BeginPopup((PopupProps){.bounds={50,60,130,80},.id=29620,
+    PopupScope((PopupProps){.bounds={50,60,130,80},.id=29620,
         .open=&child_open});
     Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
-    EndPopup();
-    EndPopup();
+    PopupEndScope();
+    PopupEndScope();
     EndTree();
     check_int("nested popup acquires first child focus",GetFocus(),29621);
     ui_popup_input_finish(context);
@@ -3599,16 +3599,16 @@ test_composed_popup_focus_lifecycle(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed nested popup focus restore"));
-    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+    PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
-    BeginPopup((PopupProps){.bounds={50,60,130,80},.id=29620,
+    PopupScope((PopupProps){.bounds={50,60,130,80},.id=29620,
         .open=&child_open});
     Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
     popup_close_scope();
     check_int("nested popup restores parent focus",GetFocus(),29611);
-    EndPopup();
-    EndPopup();
+    PopupEndScope();
+    PopupEndScope();
     EndTree();
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3618,12 +3618,12 @@ test_composed_popup_focus_lifecycle(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed parent popup focus restore"));
-    BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
+    PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     popup_close_scope();
     check_int("parent popup restores background focus",GetFocus(),29600);
-    EndPopup();
+    PopupEndScope();
     EndTree();
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3635,10 +3635,10 @@ test_composed_popup_focus_lifecycle(void)
     previous = ui_popup_input_bind(context);
     SetFocus(29700);
     BeginTree(Key("composed missing popup owner focus"));
-    BeginPopup((PopupProps){.bounds={20,20,120,80},.id=29710,
+    PopupScope((PopupProps){.bounds={20,20,120,80},.id=29710,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,90,24},.label="Popup",.id=29711});
-    EndPopup();
+    PopupEndScope();
     EndTree();
     check_int("popup before missing owner has child focus",GetFocus(),29711);
     ui_popup_input_finish(context);

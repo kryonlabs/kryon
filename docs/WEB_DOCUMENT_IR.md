@@ -105,7 +105,7 @@ DOM object remains individually addressable. Harmless outer parentheses around
 single widget expressions do not change this identity contract.
 Special scope-producing calls that become DOM surfaces, including
 `BeginScroll(...)`, `BeginCanvas(...)`, `BeginTableCell(...)`,
-`BeginDisabled(...)`, and `BeginPopup(...)`, use the same source-derived
+`BeginDisabled(...)`, and `PopupScope(...)`, use the same source-derived
 identity rules as their `Scroll`, `Canvas`, `TableCell`, `Disabled`, and
 `Popup` widgets, including popup open results stored in locals.
 

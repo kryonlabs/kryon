@@ -1340,7 +1340,7 @@ begin_popup_call_args(const char *source, char *args, size_t args_size)
 
     if(!split_direct_call(source, name, sizeof(name), args, args_size))
         return 0;
-    return strcmp(name, "BeginPopup") == 0;
+    return strcmp(name, "PopupScope") == 0;
 }
 
 static void
