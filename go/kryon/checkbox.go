@@ -123,7 +123,7 @@ func Checkbox_CheckboxBoxSize(scale float32, box StyleFrame) int32 {
 	var value_3 float32 = box.Value.IconSize
 	var value_4 float32 = 20.0
 	var value_5 float32 = scale
-	var value_6 bool = false
+	var value_6 bool = true
 	var value_7 float32 = Checkbox_CheckboxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
 	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
 	return value_8
@@ -323,7 +323,7 @@ func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {
 	var value_40 float32 = spec.Active.Value.IconSize
 	var value_41 float32 = 2.4
 	var value_42 float32 = scale
-	var value_43 bool = false
+	var value_43 bool = true
 	var value_44 float32 = Checkbox_CheckboxMetric(value_37, value_39, value_40, value_41, value_42, value_43)
 	var mark_width float32 = value_44
 	var value_45 float32 = spec.Box.Value.BorderWidth
@@ -527,39 +527,46 @@ func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {
 	var value_175 bool = spec.Checked
 	paint.ShowFill = value_175
 	var value_176 bool = spec.Checked
-	paint.ShowMark = value_176
-	var value_177 bool = spec.Enabled
-	var value_178 bool = value_177
-	if value_178 {
-		var value_179 bool = spec.Hovered
-		var value_180 bool = value_179
-		if !value_180 {
-			var value_181 bool = spec.Pressed
-			value_180 = value_181
+	var value_177 bool = value_176
+	if value_177 {
+		var value_178 float32 = paint.MarkWidth
+		var value_179 float32 = 0.0
+		var value_180 bool = value_178 > value_179
+		value_177 = value_180
+	}
+	paint.ShowMark = value_177
+	var value_181 bool = spec.Enabled
+	var value_182 bool = value_181
+	if value_182 {
+		var value_183 bool = spec.Hovered
+		var value_184 bool = value_183
+		if !value_184 {
+			var value_185 bool = spec.Pressed
+			value_184 = value_185
 		}
-		var value_182 bool = value_180
-		if !value_182 {
-			var value_183 bool = spec.Focused
-			value_182 = value_183
+		var value_186 bool = value_184
+		if !value_186 {
+			var value_187 bool = spec.Focused
+			value_186 = value_187
 		}
-		value_178 = value_182
+		value_182 = value_186
 	}
-	paint.ShowState = value_178
-	var value_184 bool = spec.Enabled
-	var value_185 bool = value_184
-	if value_185 {
-		var value_186 bool = spec.Focused
-		value_185 = value_186
+	paint.ShowState = value_182
+	var value_188 bool = spec.Enabled
+	var value_189 bool = value_188
+	if value_189 {
+		var value_190 bool = spec.Focused
+		value_189 = value_190
 	}
-	paint.ShowFocus = value_185
-	var value_187 bool = spec.Enabled
-	var value_188 bool = !value_187
-	if value_188 {
-		var value_189 bool = false
-		paint.ShowState = value_189
-		var value_190 bool = false
-		paint.ShowFocus = value_190
+	paint.ShowFocus = value_189
+	var value_191 bool = spec.Enabled
+	var value_192 bool = !value_191
+	if value_192 {
+		var value_193 bool = false
+		paint.ShowState = value_193
+		var value_194 bool = false
+		paint.ShowFocus = value_194
 	}
-	var value_191 CheckboxPaint = paint
-	return value_191
+	var value_195 CheckboxPaint = paint
+	return value_195
 }
