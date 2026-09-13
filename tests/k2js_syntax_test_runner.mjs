@@ -2646,9 +2646,13 @@ function fakeDocument() {
     assert.equal(buttonSnapshot.ref, "primary-action");
     assert.equal(buttonSnapshot.webRef, "primary-action");
     assert.equal(buttonSnapshot.element, undefined);
+    assert.equal(buttonSnapshot.role, "button");
     assert.equal(buttonSnapshot.parentRef, "Scene/root");
     assert.equal(buttonSnapshot.attrs.id, "tap-button");
     assert.equal(buttonSnapshot.dataset.kryPath, "Scene/root/tap");
+    assert.equal(buttonSnapshot.styleFacts.ref, "primary-action");
+    assert.equal(buttonSnapshot.styleFacts.kind, "Button");
+    assert.deepEqual(buttonSnapshot.styleFacts.classes, ["primary", "action"]);
     assert.equal(buttonSnapshot.style.background, "#203040");
     assert.deepEqual(buttonSnapshot.rect, {
       x: 10,

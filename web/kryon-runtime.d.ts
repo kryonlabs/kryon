@@ -668,6 +668,7 @@ export interface WebDOMSnapshot {
   index: number;
   kind: string;
   tag: string;
+  role: string;
   path: string;
   webRef: string;
   parentPath: string;
@@ -699,6 +700,7 @@ export interface WebDOMSnapshot {
   sourceRef: string;
   sourceColumnRef: string;
   sourceRangeRef: string;
+  styleFacts: WebNodeStyleFacts;
   text: string;
   value: unknown;
   state: Record<string, boolean>;
