@@ -9,6 +9,8 @@ main(void)
     StyleFrame row = {0};
     StyleFrame item = {0};
     InfoRowsMetrics info;
+    InfoRowsLayout info_layout;
+    InfoRowLayout info_row;
     LabelTextFieldMetrics field;
     LabelTextFieldLayout field_layout;
     SectionLabelMetrics section;
@@ -33,6 +35,20 @@ main(void)
     info = InfoRowsMetricsFor(17, 9, 2.0f, row);
     assert(info.row_height == 17);
     assert(info.padding_x == 9);
+    info_layout = InfoRowsLayoutFor(4, 5, 120, 3, info);
+    assert((int)info_layout.background.x == 4);
+    assert((int)info_layout.background.y == 5);
+    assert((int)info_layout.background.width == 120);
+    assert((int)info_layout.background.height == 51);
+    info_row = InfoRowLayoutFor(4, 5, 120, 2, info);
+    assert((int)info_row.text_bounds.x == 13);
+    assert((int)info_row.text_bounds.y == 39);
+    assert((int)info_row.text_bounds.width == 102);
+    assert((int)info_row.text_bounds.height == 17);
+    assert(info_row.separator_y == 39);
+    info_row = InfoRowLayoutFor(4, 5, 10, -1, info);
+    assert((int)info_row.text_bounds.width == 0);
+    assert(info_row.separator_y == 5);
 
     row = (StyleFrame){0};
     item = (StyleFrame){0};

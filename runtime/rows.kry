@@ -7,6 +7,15 @@ InfoRowsMetrics :: struct {
     padding_x: i32
 }
 
+InfoRowsLayout :: struct {
+    background: Rectangle
+}
+
+InfoRowLayout :: struct {
+    text_bounds: Rectangle
+    separator_y: i32
+}
+
 LabelTextFieldMetrics :: struct {
     label_height: i32
     field_height: i32
@@ -92,6 +101,34 @@ InfoRowsMetricsFor :: (row_height: i32, padding_x: i32, scale: float,
     metrics.padding_x = RowsRequestedMetric(padding_x, row.value.fields,
         (u32)StylePaddingX, row.value.padding_x, 10.0, scale, true)
     return metrics
+}
+
+InfoRowsLayoutFor :: (x: i32, y: i32, width: i32, row_count: i32,
+    metrics: InfoRowsMetrics) -> InfoRowsLayout #export {
+    layout: InfoRowsLayout
+    h: i32 = row_count * metrics.row_height
+    if width < 0 { width = 0 }
+    if h < 0 { h = 0 }
+    layout.background.x = (float)x
+    layout.background.y = (float)y
+    layout.background.width = (float)width
+    layout.background.height = (float)h
+    return layout
+}
+
+InfoRowLayoutFor :: (x: i32, y: i32, width: i32, row_index: i32,
+    metrics: InfoRowsMetrics) -> InfoRowLayout #export {
+    layout: InfoRowLayout
+    if row_index < 0 { row_index = 0 }
+    row_y: i32 = y + row_index * metrics.row_height
+    text_width: i32 = width - metrics.padding_x * 2
+    if text_width < 0 { text_width = 0 }
+    layout.text_bounds.x = (float)(x + metrics.padding_x)
+    layout.text_bounds.y = (float)row_y
+    layout.text_bounds.width = (float)text_width
+    layout.text_bounds.height = (float)metrics.row_height
+    layout.separator_y = row_y
+    return layout
 }
 
 LabelTextFieldMetricsFor :: (label_height: i32, field_height: i32,

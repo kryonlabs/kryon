@@ -87,8 +87,8 @@ RenderInfoRows(InfoRowsProps rows)
                              ? rows.default_text
                              : text_style.foreground;
     InfoRowsMetrics metrics = info_rows_metrics(rows);
+    InfoRowsLayout layout;
     int row_h = metrics.row_height;
-    int padding_x = metrics.padding_x;
     int default_font = text_style.font_size > 0.0f
                            ? (int)(text_style.font_size + 0.5f)
                            : GetFontSize();
@@ -97,23 +97,24 @@ RenderInfoRows(InfoRowsProps rows)
     if(rows.rows == NULL || rows.row_count <= 0 || rows.width <= 0 || row_h <= 0)
         return;
 
+    layout = InfoRowsLayoutFor(rows.x, rows.y, rows.width, rows.row_count,
+                               metrics);
     font_token = PushTextFont(text_style.typeface);
-    DrawRectangle(rows.x, rows.y, rows.width, row_h * rows.row_count,
-                  background);
+    DrawRectangle((int)layout.background.x, (int)layout.background.y,
+                  (int)layout.background.width,
+                  (int)layout.background.height, background);
     for(int i = 0; i < rows.row_count; i++) {
         const InfoRow *row = &rows.rows[i];
-        int y = rows.y + i * row_h;
+        InfoRowLayout row_layout =
+            InfoRowLayoutFor(rows.x, rows.y, rows.width, i, metrics);
         int font = row->font > 0 ? row->font : default_font;
         Color text = row->color.a != 0 ? row->color : default_text;
 
         if(i > 0)
-            DrawLine(rows.x, y, rows.x + rows.width, y, separator);
+            DrawLine(rows.x, row_layout.separator_y, rows.x + rows.width,
+                     row_layout.separator_y, separator);
         DrawLeftControlTextInRect(row->text ? row->text : "",
-                                        (Rectangle){(float)(rows.x + padding_x),
-                                                    (float)y,
-                                                    (float)(rows.width - padding_x * 2),
-                                                    (float)row_h},
-                                        font, text);
+                                  row_layout.text_bounds, font, text);
     }
     PopTextFont(font_token);
 }
