@@ -252,6 +252,26 @@ main(void)
                   (int)item_paint.label_bounds.x, 235);
         check_int("compact navigation bar label width uses KSS",
                   (int)item_paint.label_bounds.width, 205);
+
+        bar.value.fields |= StyleIconSize | StyleContentOffset |
+                            StyleBorderWidth;
+        bar.value.icon_size = 72.0f;
+        bar.value.offset_x = 180.0f;
+        bar.value.offset_y = 70.0f;
+        bar.value.border_width = 4.0f;
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 120,
+            .view_height = 200,
+            .count = 2,
+            .scale = 1.0f,
+            .bar = bar,
+        });
+        check_int("compact navigation bar height uses KSS",
+                  paint.height, 72);
+        check_int("compact navigation bar min width uses KSS",
+                  (int)paint.bar_bounds.width, 172);
+        check_int("compact navigation bar inset uses KSS",
+                  (int)paint.bar_bounds.x, 4);
     }
     {
         StyleFrame panel = {.value = {.fields = StyleContentOffset |

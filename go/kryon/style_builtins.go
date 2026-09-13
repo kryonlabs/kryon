@@ -175,6 +175,9 @@ NavigationBar {
   padding-x: space.4;
   padding-y: space.3;
   gap: space.3;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: default;
 }
@@ -2126,6 +2129,9 @@ NavigationBar {
   padding-x: space.2;
   padding-y: space.2;
   gap: gap;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: default;
 }
@@ -4067,6 +4073,9 @@ NavigationBar {
   padding-x: space.4;
   padding-y: space.3;
   gap: gap;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: default;
 }
@@ -6045,6 +6054,9 @@ NavigationBar {
   padding-x: space.4;
   padding-y: space.3;
   gap: gap;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: glow;
 }
@@ -8099,6 +8111,9 @@ NavigationBar {
   padding-x: space.5;
   padding-y: space.3;
   gap: gap;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: premium;
 }

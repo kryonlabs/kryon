@@ -235,7 +235,10 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     if count < 0 { count = 0 }
     if count > 8 { count = 8 }
     height: i32 = spec.height
-    if height <= 0 { height = NavigationBarDefaultHeight(scale) }
+    if height <= 0 {
+        height = NavigationBarMetric(spec.bar.value.fields,
+            (u32)StyleIconSize, spec.bar.value.icon_size, 86.0, scale)
+    }
     bottom_margin: i32 = spec.bottom_margin
     if bottom_margin < 0 { bottom_margin = 0 }
     side_margin: i32 = spec.side_margin
@@ -245,10 +248,13 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
 
     y: i32 = spec.view_height - bottom_margin - height
     available_w: i32 = spec.view_width - side_margin * 2
-    if available_w < (i32)(96.0 * scale) { available_w = (i32)(96.0 * scale) }
+    min_available: i32 = NavigationBarMetric(spec.bar.value.fields,
+        (u32)StyleContentOffset, spec.bar.value.offset_x, 96.0, scale)
+    if available_w < min_available { available_w = min_available }
     tab_w: i32 = available_w
     if count > 0 { tab_w = available_w / count }
-    min_tab: i32 = (i32)(56.0 * scale)
+    min_tab: i32 = NavigationBarMetric(spec.bar.value.fields,
+        (u32)StyleContentOffset, spec.bar.value.offset_y, 56.0, scale)
     if tab_w < min_tab { tab_w = min_tab }
     group_w: i32 = tab_w * count
     if group_w > available_w { group_w = available_w }
@@ -258,7 +264,8 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     paint.bounds.y = (float)y
     paint.bounds.width = (float)spec.view_width
     paint.bounds.height = (float)height
-    inset: i32 = (i32)(1.0 * scale)
+    inset: i32 = NavigationBarMetric(spec.bar.value.fields,
+        (u32)StyleBorderWidth, spec.bar.value.border_width, 1.0, scale)
     paint.bar_bounds.x = (float)(side_margin + inset)
     paint.bar_bounds.y = (float)(y + inset)
     paint.bar_bounds.width = (float)(available_w - inset * 2)

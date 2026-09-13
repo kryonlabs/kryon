@@ -165,6 +165,9 @@ NavigationBar {
   padding-x: space.2;
   padding-y: space.2;
   gap: gap;
+  icon-size: 86;
+  offset-x: 96;
+  offset-y: 56;
   opacity: 1;
   material: default;
 }
