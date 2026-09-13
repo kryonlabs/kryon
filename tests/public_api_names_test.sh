@@ -282,6 +282,20 @@ if [ -n "$public_popup_close_doc_matches" ]; then
     exit 1
 fi
 
+lowered_kry_source_matches="$(
+    rg -n '\b(BeginButton|BeginCard|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup|ClosePopup)\s*\(' \
+        runtime examples tests/parity tests/fixtures \
+        --glob '*.kry' \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$lowered_kry_source_matches" ]; then
+    echo ".kry source must use canonical widgets and lexical blocks, not lowered Begin*/End* host calls:"
+    echo "$lowered_kry_source_matches"
+    exit 1
+fi
+
 legacy_menu_doc_matches="$(
     rg -n 'MenuBar / PopupMenu / ContextMenu|`PopupMenu`, `ContextMenu`|PopupMenu`, `ContextMenu`|Menus: `MenuBar`|`MenuBar`, `PopupMenu`|`MenuBar`/`PopupMenu`' \
         docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
