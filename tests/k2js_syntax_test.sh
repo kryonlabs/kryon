@@ -128,6 +128,10 @@ StoredAction :: (x: float) -> bool {
     activated: bool = Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
     return activated
 }
+InferredAction :: (x: float) -> bool {
+    activated := Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
+    return activated
+}
 AssignedAction :: (x: float) -> bool {
     activated: bool = false
     activated = Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})

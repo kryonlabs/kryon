@@ -3447,6 +3447,7 @@ assert.deepEqual(styles.map(({ content_offset: { x, y } }) => ({ x, y })),
 for (const [actionName, action] of [
   ["DirectAction", generated.Valid_DirectAction],
   ["StoredAction", generated.Valid_StoredAction],
+  ["InferredAction", generated.Valid_InferredAction],
   ["AssignedAction", generated.Valid_AssignedAction]
 ]) {
   const actionRuntime = runtime.createRuntime({ app: generated.app });
