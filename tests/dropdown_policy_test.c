@@ -46,9 +46,11 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 static void
 test_indicator(void)
 {
+    StyleFrame trigger = {0};
     DropdownIndicator closed = DropdownIndicatorFor(100, 50, 10, false);
     DropdownIndicator open = DropdownIndicatorFor(100, 50, 10, true);
     DropdownIndicator zero = DropdownIndicatorFor(8, 9, -1, false);
+    DropdownTriggerMetrics metrics = DropdownTriggerMetricsFor(1.0f, trigger);
 
     assert(closed.x1 == 95);
     assert(closed.y1 == 48);
@@ -72,6 +74,31 @@ test_indicator(void)
     assert(zero.y1 == 9);
     assert(zero.x4 == 8);
     assert(zero.y4 == 9);
+
+    assert(metrics.min_width == 32);
+    assert(metrics.min_height == 24);
+    assert(metrics.indicator_padding == 24);
+    assert(metrics.indicator_size == 10);
+    assert(metrics.text_indicator_gap == 8);
+
+    trigger.value.fields = StyleContentOffset | StyleIconSize | StyleGap;
+    trigger.value.offset_x = 18.0f;
+    trigger.value.icon_size = 12.0f;
+    trigger.value.gap = 5.0f;
+    metrics = DropdownTriggerMetricsFor(2.0f, trigger);
+    assert(metrics.min_width == 64);
+    assert(metrics.min_height == 48);
+    assert(metrics.indicator_padding == 36);
+    assert(metrics.indicator_size == 24);
+    assert(metrics.text_indicator_gap == 10);
+
+    trigger.value.offset_x = 0.0f;
+    trigger.value.icon_size = 0.0f;
+    trigger.value.gap = 0.0f;
+    metrics = DropdownTriggerMetricsFor(1.0f, trigger);
+    assert(metrics.indicator_padding == 24);
+    assert(metrics.indicator_size == 10);
+    assert(metrics.text_indicator_gap == 0);
 }
 
 static void

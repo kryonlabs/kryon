@@ -12,6 +12,14 @@ type ContentMetrics struct {
 	Font    float32
 }
 
+type DropdownTriggerMetrics struct {
+	MinWidth         int32
+	MinHeight        int32
+	IndicatorPadding int32
+	IndicatorSize    int32
+	TextIndicatorGap int32
+}
+
 type DropdownIndicator struct {
 	X1 int32
 	Y1 int32
@@ -121,6 +129,101 @@ func Dropdown_Content(paint StyleData, scale float32) ContentMetrics {
 	var value_16 float32 = value_14 * value_15
 	value_4.Font = value_16
 	return value_4
+}
+
+func Dropdown_DropdownMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = fields
+	var value_5 uint32 = field
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
+	var value_7 int32 = 0
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 bool = value_6 == value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float32 = value
+		var value_12 float32 = 0.0
+		var value_13 bool = value_11 < value_12
+		value_10 = value_13
+	}
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 bool = allow_zero
+		var value_16 bool = !value_15
+		var value_17 bool = value_16
+		if value_17 {
+			var value_18 float32 = value
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 <= value_19
+			value_17 = value_20
+		}
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_21 float32 = fallback
+		value = value_21
+	}
+	var value_22 float32 = value
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
+	return value_25
+}
+
+func Dropdown_DropdownTriggerMetricsFor(scale float32, trigger StyleFrame) DropdownTriggerMetrics {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var metrics DropdownTriggerMetrics = DropdownTriggerMetrics{}
+	var value_4 float32 = 32.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	metrics.MinWidth = value_7
+	var value_8 float32 = 24.0
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	metrics.MinHeight = value_11
+	var value_12 uint32 = trigger.Value.Fields
+	var value_13 int32 = int32(StyleContentOffset)
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 float32 = trigger.Value.OffsetX
+	var value_16 float32 = 24.0
+	var value_17 float32 = scale
+	var value_18 bool = false
+	var value_19 int32 = Dropdown_DropdownMetric(value_12, value_14, value_15, value_16, value_17, value_18)
+	metrics.IndicatorPadding = value_19
+	var value_20 uint32 = trigger.Value.Fields
+	var value_21 int32 = int32(StyleIconSize)
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
+	var value_23 float32 = trigger.Value.IconSize
+	var value_24 float32 = 10.0
+	var value_25 float32 = scale
+	var value_26 bool = false
+	var value_27 int32 = Dropdown_DropdownMetric(value_20, value_22, value_23, value_24, value_25, value_26)
+	metrics.IndicatorSize = value_27
+	var value_28 uint32 = trigger.Value.Fields
+	var value_29 int32 = int32(StyleGap)
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
+	var value_31 float32 = trigger.Value.Gap
+	var value_32 float32 = 8.0
+	var value_33 float32 = scale
+	var value_34 bool = true
+	var value_35 int32 = Dropdown_DropdownMetric(value_28, value_30, value_31, value_32, value_33, value_34)
+	metrics.TextIndicatorGap = value_35
+	var value_36 DropdownTriggerMetrics = metrics
+	return value_36
 }
 
 func Dropdown_DropdownIndicatorFor(center_x int32, center_y int32, size int32, open bool) DropdownIndicator {
@@ -509,51 +612,6 @@ func Dropdown_ContentHeight(count int32, row float32, padding float32) int32 {
 	var value_16 float64 = height
 	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
 	return value_17
-}
-
-func Dropdown_DropdownMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 uint32 = fields
-	var value_5 uint32 = field
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
-	var value_7 int32 = 0
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
-	var value_9 bool = value_6 == value_8
-	var value_10 bool = value_9
-	if !value_10 {
-		var value_11 float32 = value
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 < value_12
-		value_10 = value_13
-	}
-	var value_14 bool = value_10
-	if !value_14 {
-		var value_15 bool = allow_zero
-		var value_16 bool = !value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 float32 = value
-			var value_19 float32 = 0.0
-			var value_20 bool = value_18 <= value_19
-			value_17 = value_20
-		}
-		value_14 = value_17
-	}
-	if value_14 {
-		var value_21 float32 = fallback
-		value = value_21
-	}
-	var value_22 float32 = value
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
-	return value_25
 }
 
 func Dropdown_DropdownMenuMetricsFor(scale float32, panel StyleFrame, option StyleFrame, scrollbar StyleFrame) DropdownMenuMetrics {

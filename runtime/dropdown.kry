@@ -22,6 +22,14 @@ ContentMetrics :: struct {
     font: float
 }
 
+DropdownTriggerMetrics :: struct {
+    min_width: i32
+    min_height: i32
+    indicator_padding: i32
+    indicator_size: i32
+    text_indicator_gap: i32
+}
+
 # Both native hosts consume Button's resolved content metrics. Geometry does
 # not silently select another size: the standard dropdown uses medium tokens.
 Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
@@ -29,6 +37,30 @@ Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
     return (ContentMetrics){.padding = paint.padding_x * scale,
         .gap = paint.gap * scale, .icon = paint.icon_size * scale,
         .font = paint.font_size * scale}
+}
+
+DropdownMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+DropdownTriggerMetricsFor :: (scale: float, trigger: StyleFrame) -> DropdownTriggerMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: DropdownTriggerMetrics
+    metrics.min_width = (i32)(32.0 * scale)
+    metrics.min_height = (i32)(24.0 * scale)
+    metrics.indicator_padding = DropdownMetric(trigger.value.fields,
+        (u32)StyleContentOffset, trigger.value.offset_x, 24.0, scale, false)
+    metrics.indicator_size = DropdownMetric(trigger.value.fields,
+        (u32)StyleIconSize, trigger.value.icon_size, 10.0, scale, false)
+    metrics.text_indicator_gap = DropdownMetric(trigger.value.fields,
+        (u32)StyleGap, trigger.value.gap, 8.0, scale, true)
+    return metrics
 }
 
 DropdownIndicator :: struct {
@@ -192,16 +224,6 @@ DropdownMenuMetrics :: struct {
     highlight_inset_x: i32
     highlight_inset_y: i32
     drag_threshold: i32
-}
-
-DropdownMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float, allow_zero: bool) -> i32 {
-    if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) == (u32)0 || value < 0.0 ||
-       (!allow_zero && value <= 0.0) {
-        value = fallback
-    }
-    return (i32)(value * scale)
 }
 
 DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,

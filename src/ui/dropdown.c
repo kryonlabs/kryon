@@ -351,13 +351,18 @@ ui_dropdown(DropdownProps props)
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
     Widget widget;
-    Style content_style = dropdown_style(0, 0, ButtonStateNormal, props.class_name);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame trigger_frame = dropdown_style_frame(0, 0, ButtonStateNormal,
+                                                    props.class_name);
+    Style content_style = ui_unpack_style(trigger_frame.value);
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
-        (float)Scale(1000) / 1000.0f);
+        runtime_scale);
+    DropdownTriggerMetrics trigger_metrics =
+        DropdownTriggerMetricsFor(runtime_scale, trigger_frame);
     int font = (int)content.font;
-    int arrow_pad = Scale(24);
-    int arrow_size = Scale(10);
+    int arrow_pad = trigger_metrics.indicator_padding;
+    int arrow_size = trigger_metrics.indicator_size;
     int changed = 0;
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
@@ -386,10 +391,10 @@ ui_dropdown(DropdownProps props)
     y = (int)btn_bounds.y;
     w = (int)btn_bounds.width;
     h = (int)btn_bounds.height;
-    if(w < Scale(32))
-        w = Scale(32);
-    if(h < Scale(24))
-        h = Scale(24);
+    if(w < trigger_metrics.min_width)
+        w = trigger_metrics.min_width;
+    if(h < trigger_metrics.min_height)
+        h = trigger_metrics.min_height;
     btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     WidgetSetBounds(&widget, btn_bounds);
     button_inside = CheckCollisionPointRec(mouse, btn_bounds);
@@ -474,7 +479,7 @@ ui_dropdown(DropdownProps props)
                 (Rectangle){text_x, y + (h - content.icon) / 2, content.icon, content.icon}, button_text);
         text_x += (int)(content.icon + content.gap);
     }
-    int text_w = arrow_x - arrow_size - Scale(8) - text_x;
+    int text_w = arrow_x - arrow_size - trigger_metrics.text_indicator_gap - text_x;
     if(can_draw && text_w > 0) {
         BeginClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
