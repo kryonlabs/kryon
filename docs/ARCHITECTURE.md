@@ -416,12 +416,13 @@ reopening scopes, preserving modal, clip, disabled and inspection capture.
 Retained hit testing and button hover/press state now use that same full capture
 predicate, so modal blocking also prevents deferred click events.
 The public `Popup` block binds these paint, layout and input contexts for
-arbitrary native children. `ClosePopup` remains an explicit host operation for
-the active popup. `PopupTooltip` reuses that paint/layout scope while
-intentionally skipping input ownership. `PopupModal` uses the same scope with a
-full-view input/backdrop policy, and `PopupContext` uses it with right-release
-activation over a retained trigger. Presentation variants remain flags on the
-one popup implementation rather than parallel widget trees.
+arbitrary native children. App-facing dismissal updates the caller-owned `open`
+state; the lower-level close hook is internal host support. `PopupTooltip`
+reuses that paint/layout scope while intentionally skipping input ownership.
+`PopupModal` uses the same scope with a full-view input/backdrop policy, and
+`PopupContext` uses it with right-release activation over a retained trigger.
+Presentation variants remain flags on the one popup implementation rather than
+parallel widget trees.
 Modal outside releases remain non-dismissing. The input registry saves focus
 when a top popup first opens, focuses its first eligible child, and restores the
 parent or background after nested close, root close, or missing-owner retirement.

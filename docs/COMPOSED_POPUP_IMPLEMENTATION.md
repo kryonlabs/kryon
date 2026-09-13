@@ -1,10 +1,11 @@
 # Composed popup implementation requirements
 
-Status: the public `Popup` block and `ClosePopup` operation are implemented in
-C and Go, with k2c, k2cpp and k2go generated coverage. The
-remaining lifecycle and backend gaps below still apply. This is an
-implementation checklist, not a completion claim or a restriction of the
-native ImGui widget goal.
+Status: the public `Popup` block is implemented in C and Go, with k2c, k2cpp
+and k2go generated coverage. App-facing code closes popups by updating the
+caller-owned `open` state; the lower-level close hook is internal host support.
+The remaining lifecycle and backend gaps below still apply. This is an
+implementation checklist, not a completion claim or a restriction of the native
+ImGui widget goal.
 
 ## Contract
 

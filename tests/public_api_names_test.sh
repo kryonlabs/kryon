@@ -269,6 +269,19 @@ if [ -n "$lowered_doc_matches" ]; then
     exit 1
 fi
 
+public_popup_close_doc_matches="$(
+    rg -n '\bClosePopup\b' \
+        docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/ARCHITECTURE.md docs/COMPOSED_POPUP_IMPLEMENTATION.md docs/site/matrices.html \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_popup_close_doc_matches" ]; then
+    echo "User-facing popup docs must close Popup by updating caller-owned open state, not by exposing ClosePopup:"
+    echo "$public_popup_close_doc_matches"
+    exit 1
+fi
+
 legacy_menu_doc_matches="$(
     rg -n 'MenuBar / PopupMenu / ContextMenu|`PopupMenu`, `ContextMenu`|PopupMenu`, `ContextMenu`|Menus: `MenuBar`|`MenuBar`, `PopupMenu`|`MenuBar`/`PopupMenu`' \
         docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \

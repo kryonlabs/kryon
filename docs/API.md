@@ -187,9 +187,9 @@ Popup tools: {
 
 `Popup` conditionally submits its children only while open. The compiler lowers
 the block through lexical cleanup, including `return`, `break`, and `continue`,
-so application source cannot forget the host closing operation. Call
-`ClosePopup()` inside the block for explicit dismissal. Its properties are the
-fields of `PopupProps`.
+so application source cannot forget the host closing operation. For explicit
+dismissal, update the caller-owned `open` value passed to the block. Its
+properties are the fields of `PopupProps`.
 
 ### Runtime surface
 
@@ -1573,22 +1573,22 @@ Popup tools: {
 children use the same overlay painting, clipping, nested layout and input
 capture as composed popups. Escape, a pointer release outside the popup,
 disabling it, or omitting its owner on a later frame closes it. Outside releases
-are consumed so the background widget underneath is not activated. `ClosePopup`
-closes the current `Popup` block immediately and updates the caller-owned
-`open` value. Tooltip, modal, and context behavior are selected by popup flags.
+are consumed so the background widget underneath is not activated. Explicit app
+dismissal uses the same caller-owned state: set the `open` value to false.
+Tooltip, modal, and context behavior are selected by popup flags.
 
 With `PopupTooltip`, `open` is optional and visibility is derived from pointer
 hover over `trigger`. The tooltip uses the same arbitrary-child paint and layout
 scope, but does not enter popup input capture: controls beneath it continue to
 receive input. Tooltip bounds and child positions are explicit, keeping sizing
 and placement in the retained layout rather than creating a second text-only
-renderer. `ClosePopup` may hide the tooltip for its current frame.
+renderer. Tooltips without caller-owned `open` state are hover-derived only.
 
 With `PopupModal`, the same scope accepts arbitrary native children while
 drawing a full-view dimming backdrop and owning pointer and keyboard input over
 the background. Pointer releases outside the panel are blocked without closing
-it; Escape, `ClosePopup`, disabling it, or omitting its owner closes it. Modal
-and tooltip flags are mutually exclusive.
+it; Escape, clearing the caller-owned `open` value, disabling it, or omitting
+its owner closes it. Modal and tooltip flags are mutually exclusive.
 
 With `PopupContext`, a right-button release inside `trigger` sets the
 caller-owned `open` value and enters the same arbitrary-child popup scope.
