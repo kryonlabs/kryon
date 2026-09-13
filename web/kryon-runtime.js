@@ -1127,6 +1127,8 @@ function widgetTag(item) {
   const authoredTag = propStringAny(args, ["dom", "dom_tag", "html_tag", "tag"]);
   if (/^[a-z][a-z0-9-]*$/i.test(authoredTag))
     return authoredTag.toLowerCase();
+  if (metaString(item.meta, "htmlFor") || propStringAny(args, ["for", "dom_for", "html_for"]))
+    return "label";
   switch (item.name) {
   case "Screen":
   case "Page":

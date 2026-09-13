@@ -91,6 +91,11 @@ try {
     path: "Page/article/amount",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Text", { text: "Amount", dom_for: "amount" }, null, {
+    nodeName: "amountLabel",
+    path: "Page/article/amountLabel",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "Fieldset", {}, null, {
     nodeName: "options",
     path: "Page/article/options",
@@ -308,6 +313,7 @@ try {
     node.role === "progressbar" && node.valueNow === "64"),
     "mounted accessibility range node missing");
   const amount = kryon.findWebElement(target, "amount");
+  const amountLabel = kryon.findWebElement(target, "amountLabel");
   assert(amount.tagName === "INPUT", "native Input tag missing");
   assert(amount.getAttribute("type") === "number", "native Input type missing");
   assert(amount.getAttribute("min") === "-5", "native Input min missing");
@@ -317,6 +323,10 @@ try {
   const amountSnapshot = kryon.webDOMSnapshot(target, "amount");
   assert(amountSnapshot.valueNow === "1.5" && amountSnapshot.min === "-5" &&
     amountSnapshot.max === "5", "native Input snapshot range missing");
+  assert(amountLabel.tagName === "LABEL", "htmlFor Text did not render native label");
+  assert(amountLabel.getAttribute("for") === amount.id, "native label for attr did not resolve");
+  assert(kryon.webDOMRelations(target, "amountLabel").labelFor.ref === "Page/article/amount",
+    "htmlFor label relation missing");
   assert(mountedA11y.nodes.some((node) => node.path === "Page/article/amount" &&
     node.role === "spinbutton" && node.valueNow === "1.5"),
     "mounted accessibility numeric Input missing");

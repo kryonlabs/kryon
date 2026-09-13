@@ -336,6 +336,7 @@ The initial tag mapping is intentionally conservative:
 | `Modal` | `dialog` |
 | `Popup` | `div` |
 | `Text` | `span` |
+| `Text`/other nodes with `dom_for`/`html_for` | `label` |
 | `Icon` | `span role=img` |
 | `Bullet` | `li` |
 | `Heading` | `h1`-`h6` |

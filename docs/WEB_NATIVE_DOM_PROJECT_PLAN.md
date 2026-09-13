@@ -68,6 +68,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `.kry` widget args can override native tag choice with `dom`,
   `dom_tag`, `html_tag`, or `tag`, and can expose stable web refs with
   `dom_ref`, `web_ref`, or `kry_ref`.
+- Nodes with `dom_for`/`html_for` infer native `<label>` tags when no explicit
+  tag override is present, so label ownership uses browser-native markup.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata or direct `scope` args and surface row/column header roles in
   accessibility facts.
