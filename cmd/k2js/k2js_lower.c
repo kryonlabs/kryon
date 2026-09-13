@@ -643,12 +643,57 @@ js_numeric_cast_type(const KirModule *m, const char *type)
 {
     const KirModule *owner = NULL;
     const KirType *declared = KirFindType(m, type, &owner);
+    const char *scalar = KirScalarType(type);
 
+    if(scalar[0] == 'i' || scalar[0] == 'u')
+        return 1;
     if(declared != NULL)
         return declared->is_enum;
     return strcmp(type, "ThemeSource") == 0 ||
            strcmp(type, "ThemeMode") == 0 ||
            strcmp(type, "ThemeStyle") == 0;
+}
+
+static int
+js_cast_prefix_type(const KirModule *m, const char *type)
+{
+    const KirModule *owner = NULL;
+    const KirType *declared = KirFindType(m, type, &owner);
+
+    return *KirScalarType(type) ||
+           (declared != NULL && declared->is_enum) ||
+           strcmp(type, "ThemeSource") == 0 ||
+           strcmp(type, "ThemeMode") == 0 ||
+           strcmp(type, "ThemeStyle") == 0;
+}
+
+static int
+read_js_cast_prefix(const KirModule *m, const char **source,
+                    char *type, size_t type_size)
+{
+    const char *p = kir_skip_ws(*source);
+    const char *type_begin;
+    const char *type_end;
+    size_t length;
+
+    if(*p != '(')
+        return 0;
+    type_begin = kir_skip_ws(p + 1);
+    type_end = type_begin;
+    if(!(isalpha((unsigned char)*type_end) || *type_end == '_'))
+        return 0;
+    while(kir_is_ident_char((unsigned char)*type_end))
+        type_end++;
+    length = (size_t)(type_end - type_begin);
+    if(length == 0 || length >= type_size)
+        return 0;
+    memcpy(type, type_begin, length);
+    type[length] = '\0';
+    type_end = kir_skip_ws(type_end);
+    if(*type_end != ')' || !js_cast_prefix_type(m, type))
+        return 0;
+    *source = type_end + 1;
+    return 1;
 }
 
 static void tx_expr(const KirModule *m, const char *src,
@@ -757,9 +802,15 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         if(root >= 0 && parsed.exprs[root].kind == KIR_EXPR_CAST) {
             const KirExpr *cast = &parsed.exprs[root];
             const KirExpr *operand = &parsed.exprs[cast->right];
+            const char *scalar = KirScalarType(cast->name);
             if(*KirScalarType(cast->name) &&
                KirScalarLiteral(cast->name, operand->text, KIR_JS,
                                 cast->span, dst, dst_size)) {
+                free(parsed.exprs);
+                return;
+            }
+            if(scalar[0] == 'f') {
+                tx_expr(m, parsed.exprs[cast->right].text, dst, dst_size);
                 free(parsed.exprs);
                 return;
             }
@@ -786,6 +837,46 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         if(*p == ';' || *p == '\r' || *p == '\n') {
             p++;
             continue;
+        }
+        if(*p == '(') {
+            char cast_type[KIR_NAME_MAX];
+            const char *after_cast = p;
+
+            if(read_js_cast_prefix(m, &after_cast, cast_type,
+                                   sizeof(cast_type))) {
+                if(js_numeric_cast_type(m, cast_type)) {
+                    char raw_operand[K2JS_TEXT_MAX];
+                    char operand[K2JS_TEXT_MAX];
+                    const char *operand_start = kir_skip_ws(after_cast);
+                    const char *operand_end = operand_start;
+                    size_t operand_length;
+
+                    if(*operand_start == '(') {
+                        operand_end = consume_group(operand_start + 1,
+                                                    raw_operand,
+                                                    sizeof(raw_operand));
+                        tx_expr(m, raw_operand, operand, sizeof(operand));
+                    } else {
+                        while(*operand_end != '\0' &&
+                              (kir_is_ident_char((unsigned char)*operand_end) ||
+                               *operand_end == '.'))
+                            operand_end++;
+                        operand_length = (size_t)(operand_end - operand_start);
+                        if(operand_length == 0 ||
+                           operand_length >= sizeof(raw_operand))
+                            operand_length = 0;
+                        memcpy(raw_operand, operand_start, operand_length);
+                        raw_operand[operand_length] = '\0';
+                        tx_expr(m, raw_operand, operand, sizeof(operand));
+                    }
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                                           "Math.trunc(Number(%s))", operand);
+                    p = operand_end;
+                    continue;
+                }
+                p = after_cast;
+                continue;
+            }
         }
         if(*p == '"' || *p == '\'') {
             char q = *p;
@@ -1005,6 +1096,7 @@ emit_statement_record(FILE *f, int indent, const char *raw)
 }
 
 static void emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st);
+static int stmt_has_web_metadata(const KirStmt *st);
 static void emit_initializer_value(FILE *f, const KirModule *m, const char *source);
 static void emit_initializer_value_with_meta(FILE *f, const KirModule *m,
                                              const char *source,
@@ -1118,6 +1210,51 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
         }
     }
     return 0;
+}
+
+static int
+call_is_ui_function(const KirModule *m, const char *name)
+{
+    const KirModule *owner = NULL;
+    const KirFunction *function = NULL;
+    int index = module_fn_index(m, name, strlen(name));
+
+    if(index >= 0)
+        return m->functions[index].is_ui && !m->functions[index].is_extern;
+
+    return KirResolveFunction(m, name, &owner, &function) == 1 &&
+           function != NULL && function->is_ui && !function->is_extern;
+}
+
+static int
+function_has_web_metadata(const KirFunction *fn)
+{
+    for(int i = 0; i < fn->stmt_count; i++) {
+        if(stmt_has_web_metadata(&fn->stmts[i]))
+            return 1;
+    }
+    return 0;
+}
+
+static int
+function_returns_u32(const KirFunction *fn)
+{
+    return strcmp(KirScalarType(fn->return_type), "u32") == 0;
+}
+
+static void
+emit_first_argument_value(FILE *f, const KirModule *m, const char *args)
+{
+    char parts[2][K2JS_TEXT_MAX];
+    int count = *kir_skip_ws(args) ?
+        kir_split_top(args, parts[0], 2, sizeof(parts[0])) : 0;
+
+    if(count <= 0) {
+        fputs("{}", f);
+        return;
+    }
+    kir_trim_in_place(parts[0]);
+    emit_initializer_value(f, m, parts[0]);
 }
 
 static int
@@ -2096,7 +2233,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     }
     fprintf(f, ") {\n");
     fprintf(f, "  $state = $state || moduleState;\n");
-    if(KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m, "", NULL)) {
+    if(!function_has_web_metadata(fn) &&
+       KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m, "", NULL)) {
         fprintf(f,"}\n\n"); return;
     }
     for(int i = 0; i < n; i++) {
@@ -2189,7 +2327,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 fprintf(f, "return kryon.snapshot($rt);\n");
             } else {
                 fputs("return ", f);
+                if(function_returns_u32(fn))
+                    fputs("((", f);
                 emit_initializer_value_with_meta(f, m, expr, st);
+                if(function_returns_u32(fn))
+                    fputs(") >>> 0)", f);
                 fputs(";\n", f);
             }
             break;
@@ -2243,8 +2385,20 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                  (fn->exprs[st->expr_root].kind == KIR_EXPR_UNARY &&
                   (!strcmp(fn->exprs[st->expr_root].op, "++") || !strcmp(fn->exprs[st->expr_root].op, "--"))));
             if(known_call || increment) {
-                tx_expr(m, raw, out, sizeof(out));
                 emit_indent(f, indent);
+                if(known_call && st->declared_widget &&
+                   stmt_has_web_metadata(st) &&
+                   call_is_ui_function(m, name)) {
+                    fprintf(f, "kryon.widget($rt, ");
+                    js_string(f, name);
+                    fprintf(f, ", ");
+                    emit_first_argument_value(f, m, args);
+                    fprintf(f, ", $state, ");
+                    emit_web_metadata(f, m, st);
+                    fprintf(f, ");\n");
+                    emit_indent(f, indent);
+                }
+                tx_expr(m, raw, out, sizeof(out));
                 fprintf(f, "%s;\n", out);
             } else {
                 emit_statement_record(f, indent, raw);

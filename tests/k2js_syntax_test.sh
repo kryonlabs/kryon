@@ -412,7 +412,7 @@ if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     exit 1
 fi
 grep -q '\$state.count += 1' "$out"
-grep -Eq 'kryon.hostCall\(\$host \|\| moduleHost, "HostValue", \[value_[0-9]+\]\)' "$out"
+grep -Eq 'kryon.hostCall\(\$host \|\| moduleHost, "HostValue", \[(value_[0-9]+|\$state.count)\]\)' "$out"
 if grep -q 'TODO k2js' "$out"; then
     echo "k2js left a TODO lowering in JS output:" >&2
     grep 'TODO k2js' "$out" >&2
@@ -764,6 +764,44 @@ assert.equal(disabled[0].path, "DisabledBlockNodes/locked");
 assert.equal(disabled[0].tag, "fieldset");
 assert.equal(disabled[0].state.disabled, true);
 assert(frame.nodes.some((node) => node.path === "DisabledBlockNodes/locked/child"));
+EOF
+
+cat > "$work/src/declared_widget_block_nodes.kry" <<'EOF'
+#import "kryon.h"
+PanelProps :: struct {
+    label: string
+}
+Panel :: (props: PanelProps) #ui {
+    Text((TextProps){.text=props.label})
+}
+DeclaredWidgetBlockNodes :: () #ui {
+    Panel card: {
+        label = "Composite"
+        class = "surface"
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/declared_widget_block_nodes.kry"
+declared_widget_block_out="$work/out/src/declared_widget_block_nodes.js"
+grep -q 'kryon.widget(\$rt, "Panel"' "$declared_widget_block_out"
+grep -q '"nodeName": "card"' "$declared_widget_block_out"
+grep -q '"path": "DeclaredWidgetBlockNodes/card"' "$declared_widget_block_out"
+grep -q '"class": "surface"' "$declared_widget_block_out"
+grep -Eq 'DeclaredWidgetBlockNodes_Panel\(\$rt, \$state, \$host, widget_value_[0-9]+\)' "$declared_widget_block_out"
+node --input-type=module - "$declared_widget_block_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const state = module.createState();
+const rt = runtime.createRuntime({});
+module.DeclaredWidgetBlockNodes_DeclaredWidgetBlockNodes(rt, state, {});
+const frame = runtime.webDocumentFrame(rt);
+const panel = frame.nodes.find((node) => node.path === "DeclaredWidgetBlockNodes/card");
+assert(panel);
+assert.equal(panel.kind, "Panel");
+assert.deepEqual(panel.classes, ["surface"]);
+assert(frame.nodes.some((node) => node.kind === "Text" && node.text === "Composite"));
 EOF
 
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'

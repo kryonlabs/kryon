@@ -589,7 +589,7 @@ check_type_declarations(const KirModule *module)
     return 1;
 }
 
-static int
+static KirStmt *
 widget_statement(KirFunction *body, KirStmtKind kind, KirSourceSpan span,
                   const char *format, ...)
 {
@@ -599,12 +599,34 @@ widget_statement(KirFunction *body, KirStmtKind kind, KirSourceSpan span,
     int length = vsnprintf(text, sizeof(text), format, arguments);
     va_end(arguments);
     if(length < 0 || (size_t)length >= sizeof(text))
-        return 0;
+        return NULL;
     KirStmt *statement = KirFunctionAddStmt(body, kind, text, "", span);
     if(statement == NULL)
-        return 0;
+        return NULL;
     statement->declared_widget = 1;
-    return 1;
+    return statement;
+}
+
+static void
+inherit_widget_block_metadata(KirStmt *statement, const KirStmt *source)
+{
+    char text[KIR_TEXT_MAX];
+    char args[KIR_TEXT_MAX];
+    KirStmtKind kind;
+
+    if(statement == NULL || source == NULL)
+        return;
+    kind = statement->kind;
+    kir_copy(text, sizeof(text), statement->text);
+    kir_copy(args, sizeof(args), statement->args);
+    *statement = *source;
+    statement->kind = kind;
+    kir_copy(statement->text, sizeof(statement->text), text);
+    kir_copy(statement->args, sizeof(statement->args), args);
+    statement->declared_widget = 1;
+    statement->widget_fallback = 0;
+    statement->expr_root = -1;
+    statement->lhs_root = -1;
 }
 
 /* A block initializes props and callable arguments in source order, then calls
@@ -658,7 +680,7 @@ lower_widget_block(Checker *c, int index, const KirModule *owner,
                 goto failed;
     }
     diagnostic = "widget properties exceed the lowering size limit";
-    if(!widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s", temporary, props->name))
+    if(widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s", temporary, props->name) == NULL)
         goto failed;
     for(int property = 0; property < field_count; property++) {
         char *field = fields[property];
@@ -682,8 +704,9 @@ lower_widget_block(Checker *c, int index, const KirModule *owner,
         diagnostic = "widget properties exceed the lowering size limit";
         if(parameter < parameter_count) {
             supplied[parameter] = 1;
-            if(!widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s = %s",
-                                 slot_names[parameter], slot_types[parameter], equals))
+            if(widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s = %s",
+                                slot_names[parameter], slot_types[parameter],
+                                equals) == NULL)
                 goto failed;
         } else {
             char prefix[KIR_NAME_MAX + 3] = "";
@@ -702,8 +725,9 @@ lower_widget_block(Checker *c, int index, const KirModule *owner,
             if(!found)
                 goto failed;
             diagnostic = "widget properties exceed the lowering size limit";
-            if(!widget_statement(&lowered, KIR_STMT_ASSIGN, span, "%s.%s = %s%s",
-                                 temporary, name, prefix, kir_skip_ws(equals)))
+            if(widget_statement(&lowered, KIR_STMT_ASSIGN, span,
+                                "%s.%s = %s%s", temporary, name, prefix,
+                                kir_skip_ws(equals)) == NULL)
                 goto failed;
         }
     }
@@ -719,8 +743,13 @@ lower_widget_block(Checker *c, int index, const KirModule *owner,
             goto failed;
         length += (size_t)added;
     }
-    if(!widget_statement(&lowered, KIR_STMT_EXPR, span, "%s(%s)", source->widget, arguments))
-        goto failed;
+    {
+        KirStmt *call = widget_statement(&lowered, KIR_STMT_EXPR, span,
+                                         "%s(%s)", source->widget, arguments);
+        if(call == NULL)
+            goto failed;
+        inherit_widget_block_metadata(call, source);
+    }
     int replacement_count = lowered.stmt_count;
     int total = c->fn->stmt_count - 1 + replacement_count;
     KirStmt *statements = realloc(c->fn->stmts, (size_t)total * sizeof(*statements));
