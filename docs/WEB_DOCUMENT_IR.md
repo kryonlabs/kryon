@@ -122,6 +122,7 @@ Supported metadata fields:
 | `class`, `classes`, `class_name` | `classes` |
 | `title`, `dom_title`, `html_title` | `title` |
 | `href`, `url`, `link`, `dom_href`, `html_href` | `href` |
+| `usemap`, `use_map`, `image_map`, `dom_usemap`, `html_usemap` | `useMap` |
 | `target`, `dom_target`, `html_target` | `target` |
 | `rel`, `dom_rel`, `html_rel` | `rel` |
 | `part`, `dom_part`, `html_part` | `part` |
@@ -401,7 +402,7 @@ landmark/dialog containers use `label` or `title`.
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
 `sourceEndLine`, `sourceEndColumn`, `sourceRef`, `sourceColumnRef`, `sourceRangeRef`,
-`id`, `domName`, `href`, `target`, `rel`, `alt`, `asset`, `src`, `part`, `slot`,
+`id`, `domName`, `href`, `useMap`, `target`, `rel`, `alt`, `asset`, `src`, `part`, `slot`,
 `inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `inert`, `autoCapitalize`, `enterKeyHint`,
@@ -899,4 +900,4 @@ same in-memory route state in non-browser tests.
 - Query-based DOM lookup, mutation, commands, event dispatch, geometry, scroll,
   form value lookup, relation lookup, and accessibility snapshots are
   available. Additional per-widget semantic relationships beyond controls,
-  described-by, labels, and popovers are still incremental.
+  image maps, described-by, labels, and popovers are still incremental.

@@ -483,7 +483,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
 {
     static const char *const widgets[] = {
         "AppBackground", "Background", "Text", "Paragraph",
-        "Abbr", "Abbreviation", "Address", "Article", "Aside",
+        "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside",
         "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
         "Audio", "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
         "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
@@ -492,7 +492,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "Details", "Dialog", "Em", "Embed", "Emphasis",
         "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
         "IFrame", "Iframe", "Ins", "Inserted", "Italic",
-        "Kbd", "Keyboard", "Label", "Legend", "List", "ListItem", "Main",
+        "ImageMap", "Kbd", "Keyboard", "Label", "Legend", "List", "ListItem", "Main",
         "Mark", "Meter", "Nav", "Navigation", "OrderedList",
         "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
         "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
@@ -672,13 +672,13 @@ static int
 is_web_native_block_widget(const char *name)
 {
     static const char *const widgets[] = {
-        "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
+        "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio",
         "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
         "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
         "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
         "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
         "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame",
-        "Iframe", "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label",
+        "Iframe", "ImageMap", "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label",
         "Legend",
         "List", "ListItem", "Main", "Mark", "Nav", "Navigation",
         "OrderedList", "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",

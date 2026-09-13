@@ -268,12 +268,12 @@ parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
 runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
 web_native_only = {
-    'Abbr', 'Abbreviation', 'Address', 'Article', 'Aside', 'Audio',
+    'Abbr', 'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio',
     'Bdi', 'Bdo', 'BidirectionalIsolate', 'BidirectionalOverride',
     'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
     'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
-    'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'Hgroup', 'HGroup', 'IFrame', 'Iframe',
+    'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'Hgroup', 'HGroup', 'IFrame', 'Iframe', 'ImageMap',
     'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
     'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
     'OptionGroup', 'OptGroup', 'Option', 'Output', 'Pre', 'Quote',

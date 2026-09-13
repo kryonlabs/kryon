@@ -1148,6 +1148,10 @@ function widgetTag(item) {
     return "article";
   case "Aside":
     return "aside";
+  case "ImageMap":
+    return "map";
+  case "Area":
+    return "area";
   case "Header":
     return "header";
   case "Footer":
@@ -1472,7 +1476,7 @@ function widgetText(item) {
 }
 
 function widgetLinkURL(item) {
-  if (item.name !== "Link")
+  if (item.name !== "Link" && item.name !== "Area")
     return "";
   return propStringAny(item.args, ["href", "url", "link", "dom_href", "html_href"]);
 }
@@ -1745,6 +1749,12 @@ function widgetNativeAttrs(item, meta, args) {
     setWidgetNativeAttr(out, "label", metaString(meta, "optionLabel") ||
       propStringAny(args, ["label", "title", "dom_label", "html_label"]));
     break;
+  case "Area":
+    setWidgetNativeAttr(out, "shape", metaString(meta, "shape") ||
+      propStringAny(args, ["shape", "dom_shape", "html_shape"]));
+    setWidgetNativeAttr(out, "coords", metaString(meta, "coords") ||
+      propStringAny(args, ["coords", "coordinates", "dom_coords", "html_coords"]));
+    break;
   case "TableColumnGroup":
   case "ColGroup":
   case "TableColumn":
@@ -1942,6 +1952,7 @@ function webNodeFromWidget(item, index) {
       : String(meta.rel),
     htmlFor: metaStringOrProp(meta, "htmlFor", args, ["for", "dom_for", "html_for"]),
     dataList: metaStringOrProp(meta, "dataList", args, ["list", "datalist", "data_list", "dom_list", "html_list"]),
+    useMap: metaStringOrProp(meta, "useMap", args, ["usemap", "use_map", "image_map", "dom_usemap", "html_usemap"]),
     part: metaStringOrProp(meta, "part", args, ["part", "dom_part", "html_part"]),
     slot: metaStringOrProp(meta, "slot", args, ["slot", "dom_slot", "html_slot"]),
     dataAttrs: propDataAttrs(meta, args),
@@ -2199,6 +2210,7 @@ export function webNodeStyleFacts(node) {
     src: node?.asset || "",
     htmlFor: node?.htmlFor || "",
     dataList: node?.dataList || "",
+    useMap: node?.useMap || "",
     part: node?.part || "",
     slot: node?.slot || "",
     inputType: node?.inputType || "",
@@ -4008,6 +4020,8 @@ function selectorNativeAttrValue(key, facts) {
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
     case "list": return facts.dataList;
+    case "usemap": return facts.useMap;
+    case "useMap": return facts.useMap;
     case "form": return facts.formOwner;
     case "part": return facts.part || facts.extraAttrs?.part;
     case "slot": return facts.slot || facts.extraAttrs?.slot;
@@ -7153,6 +7167,34 @@ function resolveWebDOMRelationList(root, value) {
     .join(" ");
 }
 
+function resolveWebDOMUseMapToken(root, token) {
+  const text = String(token || "").trim();
+  if (!text)
+    return "";
+  const object = webDOMObject(root, text);
+  const mapObject = object || (() => {
+    for (const el of root?.__kryChildren?.values?.() || []) {
+      const node = el.__kryDocNode || null;
+      if (node && webNodeIdentity(node).aliases.includes(text))
+        return makeWebDOMObject(root, node, el, text);
+    }
+    return null;
+  })();
+  if (!mapObject)
+    return text.startsWith("#") ? text : "#" + text;
+  const el = mapObject.element || null;
+  const current = el?.getAttribute?.("name") || el?.attributes?.name ||
+    mapObject.node?.domName || "";
+  if (current)
+    return "#" + String(current).replace(/^#/, "");
+  const id = ensureWebDOMElementId(root, mapObject);
+  setAttr(el, "name", id);
+  if (mapObject.node)
+    mapObject.node.domName = id;
+  root?.__kryElementsByDomName?.set?.(id, el);
+  return id ? "#" + id : "";
+}
+
 function resolveWebDOMRelations(root) {
   if (!root)
     return;
@@ -7176,6 +7218,7 @@ function resolveWebDOMRelations(root) {
       ? resolveWebDOMRelationList(root, docNode.htmlFor)
       : resolveWebDOMRelationToken(root, docNode.htmlFor));
     setAttr(el, "list", resolveWebDOMRelationToken(root, docNode.dataList));
+    setAttr(el, "usemap", resolveWebDOMUseMapToken(root, docNode.useMap));
     setAttr(el, "form", resolveWebDOMRelationToken(root, docNode.formOwner));
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
   }
@@ -7842,6 +7885,8 @@ function webDOMRelationsForNode(target, node) {
       .filter((object) => webNodeIsOutput(object?.node)),
     dataList: webDOMRelationList(target, node.dataList)[0] || null,
     listedBy: webDOMReverseRelationList(target, node, "dataList"),
+    imageMap: webDOMRelationList(target, node.useMap)[0] || null,
+    mappedImages: webDOMReverseRelationList(target, node, "useMap"),
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     formControls: webDOMFormControls(target, node),
     labelledBy: mergeWebDOMRelationObjects(
@@ -8221,9 +8266,11 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "rowspan", docNode.rowSpan);
   setAttr(el, "aria-sort", docNode.ariaSort);
   applyExtraAttrs(el, docNode.extraAttrs);
+  if (docNode.tag === "img" || docNode.tag === "area") {
+    setAttr(el, "alt", docNode.alt);
+  }
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
-    setAttr(el, "alt", docNode.alt);
   } else if (docNode.tag === "option") {
     setAttr(el, "selected", docNode.state.selected);
     el.selected = !!docNode.state.selected;
@@ -9231,6 +9278,8 @@ function webDOMRelationRefsForRelations(relations) {
     outputBy: (relations?.outputBy || []).map((relation) => relation.ref),
     dataList: relations?.dataList?.ref || "",
     listedBy: (relations?.listedBy || []).map((relation) => relation.ref),
+    imageMap: relations?.imageMap?.ref || "",
+    mappedImages: (relations?.mappedImages || []).map((relation) => relation.ref),
     formOwner: relations?.formOwner?.ref || "",
     formControls: (relations?.formControls || []).map((relation) => relation.ref),
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
@@ -9693,7 +9742,7 @@ const webDOMInternalAttributeNames = new Set([
   "aria-controls", "aria-owns", "aria-sort", "aria-orientation",
   "aria-level", "aria-posinset", "aria-setsize", "aria-haspopup",
   "aria-multiselectable", "aria-live",
-  "href", "target", "rel", "for", "list", "form", "part", "slot", "type", "action", "method", "enctype",
+  "href", "target", "rel", "for", "list", "usemap", "form", "part", "slot", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
   "autofocus", "inert", "autocapitalize", "enterkeyhint", "download", "formnovalidate", "novalidate", "popover",
   "popovertarget", "popovertargetaction", "readonly", "required", "min",
@@ -9786,6 +9835,7 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.role = attrs.role ?? docNode.role ?? "";
   syncDOMAriaRelationAttributes(docNode, attrs);
   docNode.dataList = attrs.list ?? docNode.dataList ?? "";
+  docNode.useMap = attrs.usemap ?? docNode.useMap ?? "";
   docNode.formOwner = attrs.form ?? docNode.formOwner ?? "";
   docNode.part = attrs.part ?? docNode.part ?? "";
   docNode.slot = attrs.slot ?? docNode.slot ?? "";
@@ -10199,6 +10249,8 @@ function webNodeRelationsForNode(rt, node) {
       .filter((candidate) => webNodeIsOutput(candidate)),
     dataList: webNodeRelationList(rt, node.dataList)[0] || null,
     listedBy: webNodeReverseRelationList(rt, node, "dataList"),
+    imageMap: webNodeRelationList(rt, node.useMap)[0] || null,
+    mappedImages: webNodeReverseRelationList(rt, node, "useMap"),
     formOwner: webNodeRelationList(rt, node.formOwner)[0] || null,
     formControls: webNodeFormControls(rt, node),
     labelledBy: mergeWebNodeRelations(
@@ -10249,6 +10301,8 @@ function webNodeRelationRefsForNode(rt, node) {
       .filter((candidate) => webNodeIsOutput(candidate))),
     dataList: webNodeRef(webNodeRelationList(rt, node.dataList)[0]) || "",
     listedBy: webNodeRefs(webNodeReverseRelationList(rt, node, "dataList")),
+    imageMap: webNodeRef(webNodeRelationList(rt, node.useMap)[0]) || "",
+    mappedImages: webNodeRefs(webNodeReverseRelationList(rt, node, "useMap")),
     formOwner: webNodeRef(webNodeRelationList(rt, node.formOwner)[0]) || "",
     formControls: webNodeRefs(webNodeFormControls(rt, node)),
     labelledBy: mergeWebNodeRelationRefs(
@@ -11531,7 +11585,7 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "AppBackground", "Background", "Text", "Paragraph",
-  "Abbr", "Abbreviation", "Address", "Article", "Aside",
+  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
   "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
@@ -11539,7 +11593,7 @@ const runtimeCallNames = [
   "DescriptionDetails", "DescriptionList", "DescriptionTerm",
   "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
-  "IFrame", "Iframe", "Ins", "Inserted", "Italic",
+  "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
   "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
@@ -11575,6 +11629,7 @@ export function AppBackground(...args) { return struct("AppBackground", args); }
 export function Abbr(...args) { return struct("Abbr", args); }
 export function Abbreviation(...args) { return struct("Abbreviation", args); }
 export function Address(...args) { return struct("Address", args); }
+export function Area(...args) { return struct("Area", args); }
 export function Background(...args) { return struct("Background", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function Article(...args) { return struct("Article", args); }
@@ -11624,6 +11679,7 @@ export function Hgroup(...args) { return struct("Hgroup", args); }
 export function HGroup(...args) { return struct("HGroup", args); }
 export function IFrame(...args) { return struct("IFrame", args); }
 export function Iframe(...args) { return struct("Iframe", args); }
+export function ImageMap(...args) { return struct("ImageMap", args); }
 export function Input(...args) { return struct("Input", args); }
 export function Ins(...args) { return struct("Ins", args); }
 export function Inserted(...args) { return struct("Inserted", args); }

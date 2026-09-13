@@ -168,6 +168,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, pre-mount and mounted DOM
   snapshots, and accessibility snapshots.
+- Native image-map aliases expose `ImageMap` as `<map>` and `Area` as
+  `<area>`, with `Image` `usemap` relations resolving to browser `#map-name`
+  attributes and reverse `mappedImages` facts for inspectors.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
@@ -209,11 +212,11 @@ the browser receives normal elements, attributes, CSS, and events.
 - Native relation resolution for `aria_controls`, `aria_owns`,
   `aria_labelledby`, `aria_activedescendant`, `aria_describedby`,
   `aria_details`, `aria_errormessage`, `aria_flowto`, `headers`, `dom_for`,
-  native input `list`, `form`, and `popover_target`, while preserving authored
+  native input `list`, `Image` `usemap`, `form`, and `popover_target`, while preserving authored
   Kry refs in Web Document facts; mounted relation objects and snapshots
   expose reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
-  `errorFor`, `flowFrom`, `activeDescendantOf`, `listedBy`, and
-  `popoverInvokers` buckets for
+  `errorFor`, `flowFrom`, `activeDescendantOf`, `listedBy`, `mappedImages`,
+  and `popoverInvokers` buckets for
   inspector navigation from relation targets; semantic landmark ownership
   exposes nodes inside native or ARIA page landmarks, plus direct serializable
   `webNodeRelations(...)`,

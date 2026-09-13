@@ -9,12 +9,12 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
   assert.equal(runtime[name]().type, name);
 }
 for (const name of [
-  "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
+  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
   "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
-  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
@@ -1284,6 +1284,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   src: "",
   htmlFor: "",
   dataList: "",
+  useMap: "",
   part: "",
   slot: "",
   inputType: "",
@@ -3029,8 +3030,17 @@ function fakeDocument() {
       { nodeName: "rule", path: "Page/rule" });
     runtime.widget(nativeRt, "TableView", {}, null,
       { nodeName: "table", path: "Page/table" });
-    runtime.widget(nativeRt, "Image", { asset_path: "hero.png", alt_text: "Hero" }, null,
+    runtime.widget(nativeRt, "Image", { asset_path: "hero.png", alt_text: "Hero", use_map: "heroMap" }, null,
       { nodeName: "hero", path: "Page/hero" });
+    runtime.widget(nativeRt, "ImageMap", { dom_name: "hero-map" }, null,
+      { nodeName: "heroMap", path: "Page/heroMap" });
+    runtime.widget(nativeRt, "Area", {
+      alt: "Primary region",
+      href: "/hero",
+      shape: "rect",
+      coords: "0,0,100,80"
+    }, null,
+      { nodeName: "heroArea", path: "Page/heroMap/primary", parentPath: "Page/heroMap" });
     runtime.widget(nativeRt, "Icon", {}, null,
       { nodeName: "glyph", path: "Page/glyph" });
     runtime.widget(nativeRt, "Bullet", {}, null,
@@ -3360,6 +3370,17 @@ function fakeDocument() {
       .find((node) => node.kind === "Slider")?.valueNow, "4");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").useMap, "heroMap");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Image").imageMap.path, "Page/heroMap");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "ImageMap").mappedImages,
+      ["Page/hero"]);
+    assert.equal(runtime.webNodeQuery(nativeRt, "ImageMap").tag, "map");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").tag, "area");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").href, "/hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").alt, "Primary region");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.shape, "rect");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Area").extraAttrs.coords, "0,0,100,80");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[usemap=heroMap]").path, "Page/hero");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).src, "hero.png");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).alt, "Hero");
@@ -3532,6 +3553,8 @@ function fakeDocument() {
     const rule = runtime.findWebElement(nativeTarget, "rule");
     const table = runtime.findWebElement(nativeTarget, "table");
     const hero = runtime.findWebElement(nativeTarget, "hero");
+    const heroMap = runtime.findWebElement(nativeTarget, "heroMap");
+    const heroArea = runtime.findWebElement(nativeTarget, "heroArea");
     const glyph = runtime.findWebElement(nativeTarget, "glyph");
     const bullet = runtime.findWebElement(nativeTarget, "bullet");
     const grid = runtime.findWebElement(nativeTarget, "grid");
@@ -3858,6 +3881,18 @@ function fakeDocument() {
     assert.equal(hero.tagName, "IMG");
     assert.equal(hero.attributes.src, "hero.png");
     assert.equal(hero.attributes.alt, "Hero");
+    assert.equal(hero.attributes.usemap, "#hero-map");
+    assert.equal(heroMap.tagName, "MAP");
+    assert.equal(heroMap.attributes.name, "hero-map");
+    assert.equal(heroArea.tagName, "AREA");
+    assert.equal(heroArea.attributes.href, "/hero");
+    assert.equal(heroArea.attributes.alt, "Primary region");
+    assert.equal(heroArea.attributes.shape, "rect");
+    assert.equal(heroArea.attributes.coords, "0,0,100,80");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Image").imageMap.ref,
+      "Page/heroMap");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "ImageMap").mappedImages,
+      ["Page/hero"]);
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "hero").styleFacts.src, "hero.png");
     assert.equal(glyph.tagName, "SPAN");
     assert.equal(glyph.attributes.role, "img");

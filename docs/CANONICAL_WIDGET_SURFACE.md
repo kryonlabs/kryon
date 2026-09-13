@@ -239,6 +239,7 @@ host roles rather than retained nodes.
 | `Abbr` | `.kry canonical` | Web-native abbreviation alias; renders as semantic DOM in the web runtime. |
 | `Abbreviation` | `.kry canonical` | Long-form alias for `Abbr` in web-native content. |
 | `Address` | `.kry canonical` | Web-native contact/address content element. |
+| `Area` | `.kry canonical` | Web-native image-map area element. |
 | `Article` | `.kry canonical` | Web-native article content region. |
 | `Aside` | `.kry canonical` | Web-native aside/related-content region. |
 | `Box` | `.kry canonical` | Canonical rectangle primitive with `Rectangle` bounds. |
@@ -283,6 +284,7 @@ host roles rather than retained nodes.
 | `HGroup` | `.kry canonical` | Alternate casing for `Hgroup`. |
 | `IFrame` | `.kry canonical` | Web-native iframe element. |
 | `Iframe` | `.kry canonical` | Alternate casing for `IFrame`. |
+| `ImageMap` | `.kry canonical` | Web-native image map element. |
 | `Ins` | `.kry canonical` | Web-native inserted text element. |
 | `Inserted` | `.kry canonical` | Long-form alias for `Ins`. |
 | `Italic` | `.kry canonical` | Web-native italic phrasing element. |
