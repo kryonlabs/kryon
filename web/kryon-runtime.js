@@ -1788,12 +1788,16 @@ const webKssColorProperties = new Set([
   "background", "foreground", "border", "focus", "background-end",
   "accent-color", "caret-color", "border-color", "border-top-color",
   "border-right-color", "border-bottom-color", "border-left-color",
+  "border-inline-color", "border-block-color", "border-inline-start-color",
+  "border-inline-end-color", "border-block-start-color", "border-block-end-color",
   "outline-color", "text-decoration-color"
 ]);
 
 const webKssLengthProperties = new Set([
   "radius", "border-width", "opacity",
   "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
+  "border-inline-width", "border-block-width", "border-inline-start-width",
+  "border-inline-end-width", "border-block-start-width", "border-block-end-width",
   "border-top-left-radius", "border-top-right-radius",
   "border-bottom-right-radius", "border-bottom-left-radius",
   "padding", "padding-x", "padding-y",
@@ -2441,6 +2445,18 @@ const webCSSPropertyNames = new Map([
   ["border-right-color", "border-right-color"],
   ["border-bottom-color", "border-bottom-color"],
   ["border-left-color", "border-left-color"],
+  ["border-inline-color", "border-inline-color"],
+  ["border-block-color", "border-block-color"],
+  ["border-inline-start-color", "border-inline-start-color"],
+  ["border-inline-end-color", "border-inline-end-color"],
+  ["border-block-start-color", "border-block-start-color"],
+  ["border-block-end-color", "border-block-end-color"],
+  ["border-inline-width", "border-inline-width"],
+  ["border-block-width", "border-block-width"],
+  ["border-inline-start-width", "border-inline-start-width"],
+  ["border-inline-end-width", "border-inline-end-width"],
+  ["border-block-start-width", "border-block-start-width"],
+  ["border-block-end-width", "border-block-end-width"],
   ["border-style", "border-style"],
   ["radius", "border-radius"],
   ["border-top-left-radius", "border-top-left-radius"],
@@ -3408,6 +3424,18 @@ function applyResolvedWebStyle(el, style) {
   set("borderRightColor", style["border-right-color"]);
   set("borderBottomColor", style["border-bottom-color"]);
   set("borderLeftColor", style["border-left-color"]);
+  set("borderInlineColor", style["border-inline-color"]);
+  set("borderBlockColor", style["border-block-color"]);
+  set("borderInlineStartColor", style["border-inline-start-color"]);
+  set("borderInlineEndColor", style["border-inline-end-color"]);
+  set("borderBlockStartColor", style["border-block-start-color"]);
+  set("borderBlockEndColor", style["border-block-end-color"]);
+  set("borderInlineWidth", style["border-inline-width"]);
+  set("borderBlockWidth", style["border-block-width"]);
+  set("borderInlineStartWidth", style["border-inline-start-width"]);
+  set("borderInlineEndWidth", style["border-inline-end-width"]);
+  set("borderBlockStartWidth", style["border-block-start-width"]);
+  set("borderBlockEndWidth", style["border-block-end-width"]);
   set("borderStyle", style["border-style"]);
   set("borderRadius", style.radius);
   set("borderTopLeftRadius", style["border-top-left-radius"]);
