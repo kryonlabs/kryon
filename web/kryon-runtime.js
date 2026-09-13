@@ -1188,6 +1188,41 @@ function widgetTag(item) {
     return "pre";
   case "Code":
     return "code";
+  case "Strong":
+  case "Bold":
+    return "strong";
+  case "Em":
+  case "Emphasis":
+  case "Italic":
+    return "em";
+  case "Abbr":
+  case "Abbreviation":
+    return "abbr";
+  case "Data":
+    return "data";
+  case "Del":
+  case "Deleted":
+    return "del";
+  case "Ins":
+  case "Inserted":
+    return "ins";
+  case "Sub":
+  case "Subscript":
+    return "sub";
+  case "Sup":
+  case "Superscript":
+    return "sup";
+  case "Kbd":
+  case "Keyboard":
+    return "kbd";
+  case "Samp":
+  case "Sample":
+    return "samp";
+  case "Var":
+  case "Variable":
+    return "var";
+  case "Cite":
+    return "cite";
   case "Mark":
     return "mark";
   case "Time":
@@ -1315,6 +1350,29 @@ function widgetText(item) {
   case "CodeBlock":
   case "Pre":
   case "Code":
+  case "Strong":
+  case "Bold":
+  case "Em":
+  case "Emphasis":
+  case "Italic":
+  case "Abbr":
+  case "Abbreviation":
+  case "Data":
+  case "Del":
+  case "Deleted":
+  case "Ins":
+  case "Inserted":
+  case "Sub":
+  case "Subscript":
+  case "Sup":
+  case "Superscript":
+  case "Kbd":
+  case "Keyboard":
+  case "Samp":
+  case "Sample":
+  case "Var":
+  case "Variable":
+  case "Cite":
   case "Mark":
   case "Time":
   case "Address":
@@ -1587,6 +1645,19 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["cite", "dom_cite", "html_cite"]));
     break;
   case "Time":
+    setWidgetNativeAttr(out, "datetime", metaString(meta, "dateTime") ||
+      propStringAny(args, ["datetime", "date_time", "dom_datetime", "html_datetime"]));
+    break;
+  case "Data":
+    setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
+      propStringAny(args, ["value", "dom_value", "html_value"]));
+    break;
+  case "Del":
+  case "Deleted":
+  case "Ins":
+  case "Inserted":
+    setWidgetNativeAttr(out, "cite", metaString(meta, "cite") ||
+      propStringAny(args, ["cite", "dom_cite", "html_cite"]));
     setWidgetNativeAttr(out, "datetime", metaString(meta, "dateTime") ||
       propStringAny(args, ["datetime", "date_time", "dom_datetime", "html_datetime"]));
     break;

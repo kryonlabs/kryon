@@ -91,6 +91,10 @@ the browser receives normal elements, attributes, CSS, and events.
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
   standard source, preload, controls, poster, track, loading, allow, and MIME
   attributes available to snapshots, selectors, and mounted DOM.
+- Native inline phrasing/editing aliases such as `Strong`, `Em`, `Abbr`,
+  `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, and `Cite` render
+  to matching browser elements, including native data values, citations, and
+  datetime attributes.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

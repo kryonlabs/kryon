@@ -2824,6 +2824,30 @@ function fakeDocument() {
       { nodeName: "codeBlock", path: "Page/codeBlock" });
     runtime.widget(nativeRt, "Code", { text: "dom_ref" }, null,
       { nodeName: "inlineCode", path: "Page/inlineCode" });
+    runtime.widget(nativeRt, "Strong", { text: "Important" }, null,
+      { nodeName: "strongText", path: "Page/strong" });
+    runtime.widget(nativeRt, "Em", { text: "Emphasis" }, null,
+      { nodeName: "emText", path: "Page/em" });
+    runtime.widget(nativeRt, "Abbr", { text: "DOM", title: "Document Object Model" }, null,
+      { nodeName: "abbrText", path: "Page/abbr" });
+    runtime.widget(nativeRt, "Data", { text: "Forty two", value: "42" }, null,
+      { nodeName: "dataText", path: "Page/data" });
+    runtime.widget(nativeRt, "Del", { text: "Old", cite: "/changes/1", datetime: "2026-09-12" }, null,
+      { nodeName: "deletedText", path: "Page/deleted" });
+    runtime.widget(nativeRt, "Ins", { text: "New", cite: "/changes/2", datetime: "2026-09-13" }, null,
+      { nodeName: "insertedText", path: "Page/inserted" });
+    runtime.widget(nativeRt, "Sub", { text: "2" }, null,
+      { nodeName: "subText", path: "Page/sub" });
+    runtime.widget(nativeRt, "Sup", { text: "n" }, null,
+      { nodeName: "supText", path: "Page/sup" });
+    runtime.widget(nativeRt, "Kbd", { text: "Ctrl+K" }, null,
+      { nodeName: "kbdText", path: "Page/kbd" });
+    runtime.widget(nativeRt, "Samp", { text: "ok" }, null,
+      { nodeName: "sampleText", path: "Page/sample" });
+    runtime.widget(nativeRt, "Var", { text: "x" }, null,
+      { nodeName: "varText", path: "Page/var" });
+    runtime.widget(nativeRt, "Cite", { text: "Kryon Notes" }, null,
+      { nodeName: "citeText", path: "Page/cite" });
     runtime.widget(nativeRt, "Mark", { text: "highlight" }, null,
       { nodeName: "mark", path: "Page/mark" });
     runtime.widget(nativeRt, "Time", { text: "2026-09-13", datetime: "2026-09-13" }, null,
@@ -3047,6 +3071,22 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").extraAttrs.cite, "/notes/native-dom");
     assert.equal(runtime.webNodeQuery(nativeRt, "CodeBlock").tag, "pre");
     assert.equal(runtime.webNodeQuery(nativeRt, "Code").tag, "code");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Strong").tag, "strong");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Em").tag, "em");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Abbr").tag, "abbr");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Abbr").title, "Document Object Model");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Data").tag, "data");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Data").extraAttrs.value, "42");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Del").tag, "del");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Del").extraAttrs.datetime, "2026-09-12");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Ins").tag, "ins");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Ins").extraAttrs.cite, "/changes/2");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Sub").tag, "sub");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Sup").tag, "sup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Kbd").tag, "kbd");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Samp").tag, "samp");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Var").tag, "var");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Cite").tag, "cite");
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
@@ -3231,6 +3271,18 @@ function fakeDocument() {
     const nativeQuote = runtime.findWebElement(nativeTarget, "quote");
     const nativeCodeBlock = runtime.findWebElement(nativeTarget, "codeBlock");
     const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
+    const nativeStrong = runtime.findWebElement(nativeTarget, "strongText");
+    const nativeEm = runtime.findWebElement(nativeTarget, "emText");
+    const nativeAbbr = runtime.findWebElement(nativeTarget, "abbrText");
+    const nativeData = runtime.findWebElement(nativeTarget, "dataText");
+    const nativeDel = runtime.findWebElement(nativeTarget, "deletedText");
+    const nativeIns = runtime.findWebElement(nativeTarget, "insertedText");
+    const nativeSub = runtime.findWebElement(nativeTarget, "subText");
+    const nativeSup = runtime.findWebElement(nativeTarget, "supText");
+    const nativeKbd = runtime.findWebElement(nativeTarget, "kbdText");
+    const nativeSamp = runtime.findWebElement(nativeTarget, "sampleText");
+    const nativeVar = runtime.findWebElement(nativeTarget, "varText");
+    const nativeCite = runtime.findWebElement(nativeTarget, "citeText");
     const nativeMark = runtime.findWebElement(nativeTarget, "mark");
     const nativeTime = runtime.findWebElement(nativeTarget, "time");
     const nativeVideo = runtime.findWebElement(nativeTarget, "nativeVideo");
@@ -3311,6 +3363,25 @@ function fakeDocument() {
     assert.equal(nativeQuote.attributes.cite, "/notes/native-dom");
     assert.equal(nativeCodeBlock.tagName, "PRE");
     assert.equal(nativeInlineCode.tagName, "CODE");
+    assert.equal(nativeStrong.tagName, "STRONG");
+    assert.equal(nativeStrong.textContent, "Important");
+    assert.equal(nativeEm.tagName, "EM");
+    assert.equal(nativeAbbr.tagName, "ABBR");
+    assert.equal(nativeAbbr.attributes.title, "Document Object Model");
+    assert.equal(nativeData.tagName, "DATA");
+    assert.equal(nativeData.attributes.value, "42");
+    assert.equal(nativeDel.tagName, "DEL");
+    assert.equal(nativeDel.attributes.cite, "/changes/1");
+    assert.equal(nativeDel.attributes.datetime, "2026-09-12");
+    assert.equal(nativeIns.tagName, "INS");
+    assert.equal(nativeIns.attributes.cite, "/changes/2");
+    assert.equal(nativeIns.attributes.datetime, "2026-09-13");
+    assert.equal(nativeSub.tagName, "SUB");
+    assert.equal(nativeSup.tagName, "SUP");
+    assert.equal(nativeKbd.tagName, "KBD");
+    assert.equal(nativeSamp.tagName, "SAMP");
+    assert.equal(nativeVar.tagName, "VAR");
+    assert.equal(nativeCite.tagName, "CITE");
     assert.equal(nativeMark.tagName, "MARK");
     assert.equal(nativeTime.tagName, "TIME");
     assert.equal(nativeTime.attributes.datetime, "2026-09-13");
