@@ -1,4 +1,5 @@
 #module "color_picker"
+#import "control_props"
 #import "drawing_props"
 #import "style"
 
@@ -22,13 +23,23 @@ ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
     return paint
 }
 
+ColorPickerMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> float {
+    if (fields & field) == (u32)0 || value < 0.0 {
+        value = fallback
+    }
+    if !allow_zero && value <= 0.0 {
+        value = fallback
+    }
+    return value * scale
+}
+
 ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
     channels: i32, scale: float, metrics: StyleFrame) -> Rectangle #export {
     row: Rectangle
     layout: ColorPickerLayout = ColorPickerLayoutFor(bounds, channels, scale, metrics)
-    inset: float = metrics.value.padding_y
-    if inset <= 0.0 { inset = 2.0 }
-    inset *= scale
+    inset: float = ColorPickerMetric(metrics.value.fields, (u32)StylePaddingY,
+        metrics.value.padding_y, 2.0, scale, true)
     row.x = bounds.x
     row.y = bounds.y + layout.row_height * (float)index
     row.width = bounds.width
@@ -42,18 +53,14 @@ ColorPickerLayoutFor :: (bounds: Rectangle, channels: i32,
     layout: ColorPickerLayout
     if scale <= 0.0 { scale = 1.0 }
     if channels < 1 { channels = 1 }
-    swatch_height: float = metrics.value.icon_size
-    gap: float = metrics.value.gap
-    minimum_row: float = metrics.value.offset_y
-    compact_threshold: float = metrics.value.offset_x
-    if swatch_height <= 0.0 { swatch_height = 36.0 }
-    if gap <= 0.0 { gap = 4.0 }
-    if minimum_row <= 0.0 { minimum_row = 28.0 }
-    if compact_threshold <= 0.0 { compact_threshold = 20.0 }
-    swatch_height *= scale
-    gap *= scale
-    minimum_row *= scale
-    compact_threshold *= scale
+    swatch_height: float = ColorPickerMetric(metrics.value.fields,
+        (u32)StyleIconSize, metrics.value.icon_size, 36.0, scale, false)
+    gap: float = ColorPickerMetric(metrics.value.fields, (u32)StyleGap,
+        metrics.value.gap, 4.0, scale, true)
+    minimum_row: float = ColorPickerMetric(metrics.value.fields,
+        (u32)StyleContentOffset, metrics.value.offset_y, 28.0, scale, false)
+    compact_threshold: float = ColorPickerMetric(metrics.value.fields,
+        (u32)StyleContentOffset, metrics.value.offset_x, 20.0, scale, false)
     row_height: float = (bounds.height - swatch_height - gap) / (float)channels
     if row_height < compact_threshold { row_height = minimum_row }
     layout.row_height = row_height
