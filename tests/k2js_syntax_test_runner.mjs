@@ -1909,13 +1909,27 @@ function fakeDocument() {
         scope: "row",
         ariaRowIndex: 2
       });
+    runtime.widget(tableRt, "TableCell", { text: "Quarter", scope: "colgroup" }, null,
+      {
+        nodeName: "quarterHeader",
+        path: "Page/prices/quarterHeader",
+        parentPath: "Page/prices",
+        id: "quarter-header"
+      });
+    runtime.widget(tableRt, "TableCell", { text: "Region", scope: "rowgroup" }, null,
+      {
+        nodeName: "regionHeader",
+        path: "Page/prices/regionHeader",
+        parentPath: "Page/prices",
+        id: "region-header"
+      });
     runtime.widget(tableRt, "Text", { text: "$12" }, null,
       {
         nodeName: "priceCell",
         path: "Page/prices/priceCell",
         parentPath: "Page/prices",
         tag: "td",
-        headers: "priceHeader productHeader",
+        headers: "priceHeader productHeader quarterHeader regionHeader",
         colSpan: "2",
         rowSpan: "1",
         ariaRowIndex: 2,
@@ -1960,7 +1974,8 @@ function fakeDocument() {
     assert.equal(productHeader.textContent, "Product");
     assert.equal(productHeader.attributes.scope, "row");
     assert.equal(productHeader.attributes["aria-rowindex"], "2");
-    assert.equal(priceCell.attributes.headers, "price-header product-header");
+    assert.equal(priceCell.attributes.headers,
+      "price-header product-header quarter-header region-header");
     assert.equal(priceCell.attributes.colspan, "2");
     assert.equal(priceCell.attributes.rowspan, "1");
     assert.equal(priceCell.attributes["aria-rowindex"], "2");
@@ -2023,12 +2038,29 @@ function fakeDocument() {
       "Page/prices/priceHeader");
     assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").rowHeaders[0].ref,
       "Page/prices/productHeader");
+    assert.deepEqual(runtime.webDOMRelations(tableTarget, "priceCell").columnHeaders
+      .map((object) => object.ref),
+      ["Page/prices/priceHeader", "Page/prices/quarterHeader"]);
+    assert.deepEqual(runtime.webDOMRelations(tableTarget, "priceCell").rowHeaders
+      .map((object) => object.ref),
+      ["Page/prices/productHeader", "Page/prices/regionHeader"]);
+    assert.deepEqual(runtime.webDOMRelations(tableTarget, "priceCell").columnGroupHeaders
+      .map((object) => object.ref),
+      ["Page/prices/quarterHeader"]);
+    assert.deepEqual(runtime.webDOMRelations(tableTarget, "priceCell").rowGroupHeaders
+      .map((object) => object.ref),
+      ["Page/prices/regionHeader"]);
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,
-      ["Page/prices/priceHeader", "Page/prices/productHeader"]);
+      ["Page/prices/priceHeader", "Page/prices/productHeader",
+       "Page/prices/quarterHeader", "Page/prices/regionHeader"]);
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.columnHeaders,
-      ["Page/prices/priceHeader"]);
+      ["Page/prices/priceHeader", "Page/prices/quarterHeader"]);
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.rowHeaders,
-      ["Page/prices/productHeader"]);
+      ["Page/prices/productHeader", "Page/prices/regionHeader"]);
+    assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.columnGroupHeaders,
+      ["Page/prices/quarterHeader"]);
+    assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.rowGroupHeaders,
+      ["Page/prices/regionHeader"]);
 
     const menuRt = runtime.createRuntime();
     runtime.beginFrame(menuRt);

@@ -66,6 +66,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata or direct `scope` args and surface row/column header roles in
   accessibility facts.
+- Mounted table relationship facts classify direct row/column headers and
+  row-group/column-group headers for inspectors and browser DOM snapshots.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
@@ -123,8 +125,8 @@ the browser receives normal elements, attributes, CSS, and events.
   choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
-- Add more semantic relationship facts where widgets need them, such as richer
-  grid headers and row/column grouping.
+- Add more semantic relationship facts where widgets need them beyond current
+  table header and row/column group coverage.
 - Expand browser-backed integration tests beyond the current smoke harness,
   keeping the fake DOM tests as fast contract tests.
 

@@ -5686,9 +5686,10 @@ function mergeWebDOMRelationObjects(...lists) {
 }
 
 function webDOMScopedHeaderList(target, node, scope) {
-  const expected = String(scope || "").toLowerCase();
+  const expected = new Set(Array.isArray(scope) ? scope.map((item) => String(item).toLowerCase())
+    : [String(scope || "").toLowerCase()]);
   return webDOMRelationList(target, node?.headers || "")
-    .filter((object) => String(object?.node?.scope || "").toLowerCase() === expected);
+    .filter((object) => expected.has(String(object?.node?.scope || "").toLowerCase()));
 }
 
 function webDOMRelationsForNode(target, node) {
@@ -5699,8 +5700,10 @@ function webDOMRelationsForNode(target, node) {
     controls: webDOMRelationList(target, node.ariaControls),
     owns: webDOMRelationList(target, node.ariaOwns),
     headers: webDOMRelationList(target, node.headers),
-    rowHeaders: webDOMScopedHeaderList(target, node, "row"),
-    columnHeaders: webDOMScopedHeaderList(target, node, "col"),
+    rowHeaders: webDOMScopedHeaderList(target, node, ["row", "rowgroup"]),
+    columnHeaders: webDOMScopedHeaderList(target, node, ["col", "colgroup"]),
+    rowGroupHeaders: webDOMScopedHeaderList(target, node, "rowgroup"),
+    columnGroupHeaders: webDOMScopedHeaderList(target, node, "colgroup"),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     labelledBy: mergeWebDOMRelationObjects(
@@ -7321,6 +7324,8 @@ function webDOMObjectSnapshot(target, object) {
       headers: (relations?.headers || []).map((relation) => relation.ref),
       rowHeaders: (relations?.rowHeaders || []).map((relation) => relation.ref),
       columnHeaders: (relations?.columnHeaders || []).map((relation) => relation.ref),
+      rowGroupHeaders: (relations?.rowGroupHeaders || []).map((relation) => relation.ref),
+      columnGroupHeaders: (relations?.columnGroupHeaders || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
       formOwner: relations?.formOwner?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),

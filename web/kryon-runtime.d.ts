@@ -513,6 +513,8 @@ export interface WebDOMRelations {
   headers: WebDOMObject[];
   rowHeaders: WebDOMObject[];
   columnHeaders: WebDOMObject[];
+  rowGroupHeaders: WebDOMObject[];
+  columnGroupHeaders: WebDOMObject[];
   labelFor: WebDOMObject | null;
   formOwner: WebDOMObject | null;
   labelledBy: WebDOMObject[];
@@ -704,6 +706,8 @@ export interface WebDOMSnapshot {
     headers: string[];
     rowHeaders: string[];
     columnHeaders: string[];
+    rowGroupHeaders: string[];
+    columnGroupHeaders: string[];
     labelFor: string;
     formOwner: string;
     labelledBy: string[];

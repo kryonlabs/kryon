@@ -86,8 +86,26 @@ try {
     parentPath: "Page/prices"
   });
   kryon.widget(rt, "TableCell", {
+    text: "Quarter",
+    scope: "colgroup",
+    web_ref: "quarterHeader"
+  }, null, {
+    nodeName: "quarterHeader",
+    path: "Page/prices/quarterHeader",
+    parentPath: "Page/prices"
+  });
+  kryon.widget(rt, "TableCell", {
+    text: "Region",
+    scope: "rowgroup",
+    web_ref: "regionHeader"
+  }, null, {
+    nodeName: "regionHeader",
+    path: "Page/prices/regionHeader",
+    parentPath: "Page/prices"
+  });
+  kryon.widget(rt, "TableCell", {
     text: "\$12",
-    headers: "priceHeader itemHeader"
+    headers: "priceHeader itemHeader quarterHeader regionHeader"
   }, null, {
     nodeName: "priceCell",
     path: "Page/prices/priceCell",
@@ -170,15 +188,25 @@ try {
     "installed CSS did not style Kryon element");
   const priceHeader = kryon.findWebElement(target, "priceHeader");
   const itemHeader = kryon.findWebElement(target, "itemHeader");
+  const quarterHeader = kryon.findWebElement(target, "quarterHeader");
+  const regionHeader = kryon.findWebElement(target, "regionHeader");
   const priceCell = kryon.findWebElement(target, "priceCell");
-  assert(priceHeader.id && itemHeader.id, "table headers did not receive native ids");
-  assert(priceCell.getAttribute("headers") === \`\${priceHeader.id} \${itemHeader.id}\`,
-    \`table headers were not resolved to native ids: \${priceCell.getAttribute("headers")} expected \${priceHeader.id} \${itemHeader.id}\`);
+  assert(priceHeader.id && itemHeader.id && quarterHeader.id && regionHeader.id,
+    "table headers did not receive native ids");
+  const expectedHeaders = \`\${priceHeader.id} \${itemHeader.id} \${quarterHeader.id} \${regionHeader.id}\`;
+  assert(priceCell.getAttribute("headers") === expectedHeaders,
+    \`table headers were not resolved to native ids: \${priceCell.getAttribute("headers")} expected \${expectedHeaders}\`);
   const tableRelations = kryon.webDOMRelations(target, "priceCell");
-  assert(tableRelations.headers.map((object) => object.ref).join(" ") === "priceHeader itemHeader",
+  assert(tableRelations.headers.map((object) => object.ref).join(" ") === "priceHeader itemHeader quarterHeader regionHeader",
     "table relation refs missing");
-  assert(tableRelations.columnHeaders[0]?.ref === "priceHeader", "column header relation missing");
-  assert(tableRelations.rowHeaders[0]?.ref === "itemHeader", "row header relation missing");
+  assert(tableRelations.columnHeaders.map((object) => object.ref).join(" ") === "priceHeader quarterHeader",
+    "column header relation missing");
+  assert(tableRelations.rowHeaders.map((object) => object.ref).join(" ") === "itemHeader regionHeader",
+    "row header relation missing");
+  assert(tableRelations.columnGroupHeaders[0]?.ref === "quarterHeader",
+    "column group header relation missing");
+  assert(tableRelations.rowGroupHeaders[0]?.ref === "regionHeader",
+    "row group header relation missing");
   const contact = kryon.findWebElement(target, "contact");
   const email = kryon.findWebElement(target, "email");
   const externalEmail = kryon.findWebElement(target, "externalEmail");
