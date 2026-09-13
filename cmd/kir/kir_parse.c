@@ -531,6 +531,52 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     return known && length > 0;
 }
 
+static const char *
+authored_scope_hook_name(const char *text)
+{
+    static const char *const hooks[] = {
+        "DisabledScope", "DisabledEndScope",
+        "PopupScope", "PopupEndScope",
+        "ScrollScope", "ScrollEndScope",
+        "TableCellScope", "TableCellEndScope",
+        "CanvasScope", "CanvasEndScope",
+        "ButtonScope", "CardScope",
+        NULL
+    };
+    int in_string = 0;
+
+    for(const char *p = text; *p != '\0'; p++) {
+        if(in_string) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '"')
+                in_string = 0;
+            continue;
+        }
+        if(*p == '"') {
+            in_string = 1;
+            continue;
+        }
+        if(!isalpha((unsigned char)*p) && *p != '_')
+            continue;
+        const char *start = p;
+        while(isalnum((unsigned char)*p) || *p == '_')
+            p++;
+        size_t length = (size_t)(p - start);
+        const char *after = p;
+        while(*after == ' ' || *after == '\t')
+            after++;
+        if(*after == '(') {
+            for(int i = 0; hooks[i] != NULL; i++)
+                if(strlen(hooks[i]) == length &&
+                   strncmp(start, hooks[i], length) == 0)
+                    return hooks[i];
+        }
+        p--;
+    }
+    return NULL;
+}
+
 typedef struct WidgetBlock {
     char widget[KIR_NAME_MAX];
     char name[KIR_NAME_MAX];
@@ -4395,6 +4441,11 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     }
                     continue;
                 }
+
+                const char *scope_hook = authored_scope_hook_name(t);
+                if(scope_hook != NULL)
+                    die("%s:%d: %s is a compiler-generated hook; use the lexical widget block form instead",
+                        rel, pending_start_line, scope_hook);
 
                 if(widget_block_count > 0 &&
                    !widget_blocks[widget_block_count - 1].opened &&

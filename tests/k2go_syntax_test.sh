@@ -443,6 +443,18 @@ if find "$work/out" -name '*_cgo.go' | grep -q .; then
     exit 1
 fi
 
+cat > "$work/src/direct_scope_hook.kry" <<'EOF'
+#import "kryon.h"
+DirectScopeHook :: () #ui {
+    DisabledScope(true)
+}
+EOF
+if "$k2go" --root "$work" -o "$work/direct-scope-out" "$work/src/direct_scope_hook.kry" 2>"$work/direct-scope.err"; then
+    echo "authored compiler scope hook was accepted" >&2
+    exit 1
+fi
+grep -q 'DisabledScope is a compiler-generated hook; use the lexical widget block form instead' "$work/direct-scope.err"
+
 # Structural assertions: the declarative subset must translate fully.
 grep -q 'package krygen' "$out"
 grep -q 'import kr "github.com/waozixyz/kryon/go/kryon"' "$out"
