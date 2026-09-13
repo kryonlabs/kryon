@@ -788,6 +788,9 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button:focus-visible { outline-color: #232323; }
   Screen:focus-within { outline-width: 6; }
   Button:target { text-decoration-line: underline; }
+  Screen:has(> Button) { padding: 4; }
+  Text:has(+ Button) { padding-x: 5; }
+  Text:has(~ TextField) { padding-y: 6; }
   TextField:placeholder-shown { opacity: 0.61; }
   Toggle:indeterminate { opacity: 0.62; }
   Radio:default { opacity: 0.63; }
@@ -815,6 +818,12 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="Screen"\]:focus-within/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:target/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Screen"\]:has\(> \[data-kry-kind="Button"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Text"\]:has\(\+ \[data-kry-kind="Button"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Text"\]:has\(~ \[data-kry-kind="TextField"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:placeholder-shown,\[data-kry-state~="placeholder-shown"\]\)/);
 assert.match(stateSelectorCSS,
@@ -1308,6 +1317,14 @@ assert.equal(runtime.resolveWebStyle({
     opacity: 0.64;
   }
 `)).opacity, 0.64);
+assert.equal(runtime.webNodeQuery(rt, "Screen:has(> Button)").path, "Scene/root");
+assert.equal(runtime.webNodeQuery(rt, "Text:has(+ Button)").path, webDoc.nodes[1].path);
+assert.equal(runtime.webNodeQuery(rt, "Text:has(~ TextField)").path, webDoc.nodes[1].path);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[0], runtime.parseWebStyleSheet(`
+  Screen:has(> Button) {
+    opacity: 0.65;
+  }
+`)).opacity, 0.65);
 const focusWithinRoot = { ...webDoc.nodes[0] };
 const focusWithinButton = {
   ...webDoc.nodes[2],
@@ -4201,6 +4218,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "TextField:read-only").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "TextField:required").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "Button:enabled").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Screen:has(> Button)").element, screen);
+    assert.equal(runtime.webDOMQuery(target, "Text:has(+ Button)").element, firstText);
+    assert.equal(runtime.webDOMQuery(target, "Text:has(~ TextField)").element, firstText);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "focus", true), true);
     assert.equal(runtime.webDOMQuery(target, "Screen:focus-within").element, screen);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "focus", false), true);

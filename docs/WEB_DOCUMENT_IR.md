@@ -464,7 +464,8 @@ data/ARIA/extra attribute selectors, state pseudos, structural pseudos
 `:first-child`, `:last-child`, `:only-child`, `:first-of-type`,
 `:last-of-type`, `:only-of-type`, `:empty`, CSS `an+b`
 `:nth-child(...)`/`:nth-last-child(...)`, and
-`:nth-of-type(...)`/`:nth-last-of-type(...)`, `:root`, and scoped `:scope`,
+`:nth-of-type(...)`/`:nth-last-of-type(...)`, `:root`, scoped `:scope`,
+`:focus-within`, `:target`, and bounded `:has(...)`,
 plus simple `:not(...)`, `:is(...)`, and `:where(...)`,
 layers, colors, padding,
 margin, logical spacing, per-edge spacing, size constraints, positioning insets,

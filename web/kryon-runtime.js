@@ -2704,7 +2704,18 @@ function webStylePseudoToCSS(pseudo) {
   const functional = text.match(/^([A-Za-z_][\w-]*)\(([^)]*)\)$/);
   if (!functional)
     return ":" + cssEscapeIdent(text);
-  const name = cssEscapeIdent(functional[1].replace(/_/g, "-").toLowerCase());
+  const rawName = functional[1].replace(/_/g, "-").toLowerCase();
+  const name = cssEscapeIdent(rawName);
+  if (rawName === "has") {
+    const arg = splitSelectorList(functional[2]).map((raw) => {
+      let text = String(raw || "").trim();
+      const relation = /^[>+~]/.test(text) ? text[0] : "";
+      if (relation)
+        text = text.slice(1).trim();
+      return (relation ? relation + " " : "") + webStyleSelectorToCSS(parseSelector(text));
+    }).filter(Boolean).join(",");
+    return `:${name}(${arg})`;
+  }
   const arg = functional[2].trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
   return `:${name}(${arg})`;
 }
@@ -3816,6 +3827,21 @@ function webNodeNextSiblingFromFrame(node) {
   return index < 0 || index >= siblings.length - 1 ? null : siblings[index + 1];
 }
 
+function webNodeChildrenFromFrame(node) {
+  if (!node)
+    return [];
+  return (node.__kryFrameNodes || []).filter((candidate) =>
+    candidate && candidate.path !== node.path && candidate.parentPath === node.path);
+}
+
+function webNodeDescendantsFromFrame(node) {
+  const path = node?.path || "";
+  if (!path)
+    return [];
+  return (node.__kryFrameNodes || []).filter((candidate) =>
+    candidate && candidate.path !== path && candidate.path?.startsWith(path + "/"));
+}
+
 function nthChildPseudoMatches(pseudo, siblings, node) {
   const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
   if (!match)
@@ -3909,6 +3935,35 @@ function webNodeMatchesRouteTarget(node) {
   return targets.has(webDOMGeneratedId({ node, ref: identity.ref }));
 }
 
+function selectorHasPseudoMatches(pseudo, node, scopeNode = null) {
+  const match = String(pseudo || "").match(/^has\(([\s\S]*)\)$/);
+  if (!match)
+    return false;
+  return splitSelectorList(match[1]).some((rawSelector) => {
+    const raw = String(rawSelector || "").trim();
+    if (!raw || /:has\s*\(/i.test(raw))
+      return false;
+    let selectorText = raw;
+    let candidates = webNodeDescendantsFromFrame(node);
+    if (raw.startsWith(">")) {
+      selectorText = raw.slice(1).trim();
+      candidates = webNodeChildrenFromFrame(node);
+    } else if (raw.startsWith("+")) {
+      selectorText = raw.slice(1).trim();
+      candidates = [webNodeNextSiblingFromFrame(node)].filter(Boolean);
+    } else if (raw.startsWith("~")) {
+      selectorText = raw.slice(1).trim();
+      const siblings = webNodeSiblingsFromFrame(node);
+      const index = siblings.indexOf(node);
+      candidates = index < 0 ? [] : siblings.slice(index + 1);
+    }
+    if (!selectorText)
+      return false;
+    const parsed = parseSelector(selectorText);
+    return candidates.some((candidate) => selectorMatchesWebNode(parsed, candidate, scopeNode));
+  });
+}
+
 function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
@@ -3950,6 +4005,9 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
         return false;
     } else if (pseudo === "target") {
       if (!webNodeMatchesRouteTarget(node))
+        return false;
+    } else if (String(pseudo).startsWith("has(")) {
+      if (!selectorHasPseudoMatches(pseudo, node, scopeNode))
         return false;
     } else if (String(pseudo).startsWith("nth-child(")) {
       if (!nthChildPseudoMatches(pseudo, siblings, node))
