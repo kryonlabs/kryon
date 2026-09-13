@@ -298,6 +298,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     object-position: center top;
     aspect-ratio: 16 / 9;
     image-rendering: pixelated;
+    background-image: linear-gradient(#102030, #203850);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -4139,6 +4140,7 @@ function fakeDocument() {
     assert.equal(firstField.style.objectPosition, "center top");
     assert.equal(firstField.style.aspectRatio, "16 / 9");
     assert.equal(firstField.style.imageRendering, "pixelated");
+    assert.equal(firstField.style.backgroundImage, "linear-gradient(#102030, #203850)");
     assert.equal(firstField.style.backgroundSize, "cover");
     assert.equal(firstField.style.backgroundPosition, "center");
     assert.equal(firstField.style.backgroundRepeat, "no-repeat");

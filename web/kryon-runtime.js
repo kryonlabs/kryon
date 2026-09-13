@@ -4199,6 +4199,7 @@ function applyResolvedWebStyle(el, style) {
   set("objectPosition", style["object-position"]);
   set("aspectRatio", style["aspect-ratio"]);
   set("imageRendering", style["image-rendering"]);
+  set("backgroundImage", style["background-image"]);
   set("backgroundSize", style["background-size"]);
   set("backgroundPosition", style["background-position"]);
   set("backgroundPositionX", style["background-position-x"]);
