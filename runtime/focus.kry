@@ -22,12 +22,11 @@ FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPa
         pad_value = 3.0
     }
     stroke_value: float = frame.value.border_width
-    if (frame.value.fields & (u32)StyleBorderWidth) == (u32)0 || stroke_value <= 0.0 {
+    if (frame.value.fields & (u32)StyleBorderWidth) == (u32)0 || stroke_value < 0.0 {
         stroke_value = 2.0
     }
     pad: i32 = (i32)(pad_value * scale)
     stroke: i32 = (i32)(stroke_value * scale)
-    if stroke < 1 { stroke = 1 }
     paint: FocusPaint
     paint.bounds.x = bounds.x - (float)pad
     paint.bounds.y = bounds.y - (float)pad

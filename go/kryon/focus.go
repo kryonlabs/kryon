@@ -57,7 +57,7 @@ func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) Focu
 	if !value_25 {
 		var value_26 float32 = stroke_value
 		var value_27 float32 = 0.0
-		var value_28 bool = value_26 <= value_27
+		var value_28 bool = value_26 < value_27
 		value_25 = value_28
 	}
 	if value_25 {
@@ -74,42 +74,35 @@ func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) Focu
 	var value_36 float32 = value_34 * value_35
 	var value_37 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_36), 32, true)), uint64(0), 32, true, 0))
 	var stroke int32 = value_37
-	var value_38 int32 = stroke
-	var value_39 int32 = 1
-	var value_40 bool = value_38 < value_39
-	if value_40 {
-		var value_41 int32 = 1
-		stroke = value_41
-	}
 	var paint FocusPaint = FocusPaint{}
-	var value_42 float32 = bounds.X
+	var value_38 float32 = bounds.X
+	var value_39 int32 = pad
+	var value_40 float32 = float32(value_39)
+	var value_41 float32 = value_38 - value_40
+	paint.Bounds.X = value_41
+	var value_42 float32 = bounds.Y
 	var value_43 int32 = pad
 	var value_44 float32 = float32(value_43)
 	var value_45 float32 = value_42 - value_44
-	paint.Bounds.X = value_45
-	var value_46 float32 = bounds.Y
+	paint.Bounds.Y = value_45
+	var value_46 float32 = bounds.Width
 	var value_47 int32 = pad
-	var value_48 float32 = float32(value_47)
-	var value_49 float32 = value_46 - value_48
-	paint.Bounds.Y = value_49
-	var value_50 float32 = bounds.Width
-	var value_51 int32 = pad
-	var value_52 int32 = 2
-	var value_53 int32 = int32(number_runtime_bits(uint64(value_51), uint64(value_52), 32, true, 3))
-	var value_54 float32 = float32(value_53)
-	var value_55 float32 = value_50 + value_54
-	paint.Bounds.Width = value_55
-	var value_56 float32 = bounds.Height
-	var value_57 int32 = pad
-	var value_58 int32 = 2
-	var value_59 int32 = int32(number_runtime_bits(uint64(value_57), uint64(value_58), 32, true, 3))
-	var value_60 float32 = float32(value_59)
-	var value_61 float32 = value_56 + value_60
-	paint.Bounds.Height = value_61
-	var value_62 int32 = stroke
-	paint.StrokeWidth = value_62
-	var value_63 FocusPaint = paint
-	return value_63
+	var value_48 int32 = 2
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 3))
+	var value_50 float32 = float32(value_49)
+	var value_51 float32 = value_46 + value_50
+	paint.Bounds.Width = value_51
+	var value_52 float32 = bounds.Height
+	var value_53 int32 = pad
+	var value_54 int32 = 2
+	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 3))
+	var value_56 float32 = float32(value_55)
+	var value_57 float32 = value_52 + value_56
+	paint.Bounds.Height = value_57
+	var value_58 int32 = stroke
+	paint.StrokeWidth = value_58
+	var value_59 FocusPaint = paint
+	return value_59
 }
 
 func Focus_FocusDebugOverlayPaintFor(bounds Rectangle, font_height int32, has_label bool) FocusDebugOverlayPaint {

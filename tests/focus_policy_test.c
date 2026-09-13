@@ -33,7 +33,7 @@ main(void)
     frame.value.border_width = 0.0f;
     paint = FocusPaintFor((Rectangle){1, 2, 3, 4}, 1.0f, frame);
     check_rect(paint.bounds, 1, 2, 3, 4);
-    assert(paint.stroke_width == 2);
+    assert(paint.stroke_width == 0);
 
     FocusDebugOverlayPaint debug =
         FocusDebugOverlayPaintFor((Rectangle){10, 20, 30, 40}, 14, true);
