@@ -2,6 +2,7 @@
 #include "ui_style_internal.h"
 #include "runtime/checkbox.h"
 #include "runtime/slider.h"
+#include "runtime/style.h"
 #include "runtime/toggle.h"
 
 static void
@@ -256,10 +257,9 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             ButtonToneNeutral, ButtonStateNormal, 0, StyleKindSlider(), 6);
         Style label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
-        if(label_style.font_size > 0.0f) {
-            label_font = (int)(label_style.font_size + 0.5f);
-            value_font = label_font;
-        }
+        label_font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+                                 label_font);
+        value_font = label_font;
         Color label_color = Fade(label_style.foreground, label_style.opacity);
         RenderText(label, x, y, label_font, label_color);
         RenderText(value_text, x + w - TextWidth(value_text, value_font),
@@ -567,8 +567,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     StyleFrame metric_thumb_frame = ui_toggle_thumb_style_frame_class(
         metric_track_tone, ButtonStateNormal, !enabled, checked_for_metrics,
         class_name);
-    if(label_style.font_size > 0.0f)
-        font = (int)(label_style.font_size + 0.5f);
+    font = ResolveFont(0, (int)(label_style.font_size + 0.5f), font);
     int off_w = has_labels ? TextWidth(off_text, font) : 0;
     int on_w = has_labels ? TextWidth(on_text, font) : 0;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -761,9 +760,8 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, checked);
     Style label_style = ui_unpack_style(
         ui_style_apply_effects_frame(label_frame).value);
-    int font = label_style.font_size > 0.0f
-        ? (int)(label_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(label_style.font_size + 0.5f),
+                           GetFontSize());
     int label_w = TextWidth(label, font);
     CheckboxLayout layout = CheckboxLayoutForText((float)x, (float)y,
                                                   (float)label_w,
@@ -820,8 +818,7 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
         label_frame = ui_checkbox_label_style_frame(state, disabled, checked);
         label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
-        if(label_style.font_size > 0.0f)
-            font = (int)(label_style.font_size + 0.5f);
+        font = ResolveFont(0, (int)(label_style.font_size + 0.5f), font);
         layout = CheckboxLayoutForText((float)x, (float)y, (float)label_w,
                                        (float)TextLineHeight(font),
                                        runtime_scale,
