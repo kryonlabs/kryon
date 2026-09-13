@@ -438,6 +438,28 @@ grep -q 'target: "registered.theme"' "$registry_out"
 grep -q 'alias: "registered_theme"' "$registry_out"
 grep -q '@pack registered.theme;' "$registry_out"
 
+cat > "$work/src/direct_scopes.kry" <<'EOF'
+#import "kryon.h"
+
+app "Direct Scopes" {
+    size 80 60
+}
+
+DirectScopes :: () #ui {
+    Screen root: {
+        BeginDisabled(true)
+        Text((TextProps){.text="Locked"})
+        EndDisabled()
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_scopes.kry"
+direct_scopes_out="$work/out/src/direct_scopes.js"
+grep -Eq '"path": "DirectScopes/root/Disabled@[0-9]+(-[0-9]+)?"' "$direct_scopes_out"
+grep -q '"parentPath": "DirectScopes/root"' "$direct_scopes_out"
+awk '/kryon.widget\(\$rt, "Disabled"/ && /"sourcePath": "src\/direct_scopes.kry"/ && /"sourceEndLine":/ { found=1 } END { exit !found }' "$direct_scopes_out"
+grep -q 'kryon.widget(\$rt, "Disabled", "end", \$state, null)' "$direct_scopes_out"
+
 cat > "$work/src/anon_refs.kry" <<'EOF'
 #import "kryon.h"
 

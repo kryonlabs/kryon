@@ -109,6 +109,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Source lookup APIs include cursor containment and source-range overlap
   helpers for editors and devtools mapping `.kry` selections to Kry DOM
   objects.
+- k2js syntax coverage locks direct `BeginDisabled` scope calls to emitted
+  Web Document path, parent, and source-range metadata so authored Kry scopes
+  remain addressable before browser mount.
 - Pre-mount Web Document snapshots expose the same serializable Kry identity,
   relation, event, and style-fact packet shape before a frame is rendered into
   live browser DOM.
