@@ -2129,6 +2129,36 @@ func TestScrollScopeClipsAndRestoresChildren(t *testing.T) {
 	}
 }
 
+func TestScrollWrapperClosesScope(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	offset := int32(0)
+	var content Rectangle
+	called := false
+
+	r.QueueMouseMove(30, 30)
+	r.QueueMouseWheel(-1)
+	r.BeginFrame()
+	r.Scroll(NewRectangle(10, 10, 100, 60), 200, &offset, func(rect Rectangle) {
+		called = true
+		content = rect
+		r.Box(NewRectangle(10, 0, 100, 160), RED, BLANK)
+	})
+	r.Box(NewRectangle(10, 80, 100, 28), BLUE, BLANK)
+	r.EndFrame()
+
+	if !called {
+		t.Fatal("scroll body was not called")
+	}
+	if offset != 42 || content.Y != -32 || content.Height != 200 {
+		t.Fatalf("content=%v offset=%d", content, offset)
+	}
+	img := RenderFrame(180, 180, r.FrameOps())
+	got := color.RGBAModel.Convert(img.At(15, 85)).(color.RGBA)
+	if got != (color.RGBA{BLUE.R, BLUE.G, BLUE.B, BLUE.A}) {
+		t.Fatalf("post-scroll scope did not restore clipping: %v", got)
+	}
+}
+
 func TestScrollThumbDrag(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	offset := int32(0)
