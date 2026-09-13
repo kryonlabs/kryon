@@ -16,7 +16,7 @@ for (const name of [
   "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
+  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
@@ -2920,8 +2920,10 @@ function fakeDocument() {
       { nodeName: "nativeEmail", path: "Page/nativeForm/email", parentPath: "Page/nativeForm", id: "form-email" });
     runtime.widget(nativeRt, "Select", {}, null,
       { nodeName: "nativeSelect", path: "Page/nativeSelect" });
+    runtime.widget(nativeRt, "OptionGroup", { label: "Numbers" }, null,
+      { nodeName: "nativeOptionGroup", path: "Page/nativeSelect/numbers", parentPath: "Page/nativeSelect" });
     runtime.widget(nativeRt, "Option", { text: "One", value: "1", selected: true }, null,
-      { nodeName: "nativeOption", path: "Page/nativeSelect/one", parentPath: "Page/nativeSelect" });
+      { nodeName: "nativeOption", path: "Page/nativeSelect/numbers/one", parentPath: "Page/nativeSelect/numbers" });
     runtime.widget(nativeRt, "Details", { open: true }, null,
       { nodeName: "nativeDetails", path: "Page/nativeDetails" });
     runtime.widget(nativeRt, "Summary", { text: "More" }, null,
@@ -3193,6 +3195,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Form").tag, "form");
     assert.equal(runtime.webNodeQuery(nativeRt, "Label").tag, "label");
     assert.equal(runtime.webNodeQuery(nativeRt, "Select").tag, "select");
+    assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").tag, "optgroup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").extraAttrs.label, "Numbers");
     assert.equal(runtime.webNodeQuery(nativeRt, "Option").tag, "option");
     assert.equal(runtime.webNodeQuery(nativeRt, "Details").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Summary").tag, "summary");
@@ -3214,8 +3218,12 @@ function fakeDocument() {
       "Page/nativeForm/email");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeForm").formControls,
       ["Page/nativeForm/email"]);
-    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeSelect/one").collectionOwner.path,
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeSelect/numbers/one").collectionOwner.path,
       "Page/nativeSelect");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeSelect/numbers/one").groupOwner.path,
+      "Page/nativeSelect/numbers");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeSelect/numbers").groupMembers,
+      ["Page/nativeSelect/numbers/one"]);
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/figure/caption").captionOwner.path,
       "Page/figure");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/figure").captionItems,
@@ -3415,6 +3423,7 @@ function fakeDocument() {
     const nativeLabel = runtime.findWebElement(nativeTarget, "nativeLabel");
     const nativeEmail = runtime.findWebElement(nativeTarget, "nativeEmail");
     const nativeSelect = runtime.findWebElement(nativeTarget, "nativeSelect");
+    const nativeOptionGroup = runtime.findWebElement(nativeTarget, "nativeOptionGroup");
     const nativeOption = runtime.findWebElement(nativeTarget, "nativeOption");
     const nativeDetailsElement = runtime.findWebElement(nativeTarget, "nativeDetails");
     const nativeSummary = runtime.findWebElement(nativeTarget, "nativeSummary");
@@ -3572,6 +3581,8 @@ function fakeDocument() {
     assert.equal(nativeEmail.tagName, "INPUT");
     assert.equal(nativeEmail.attributes.id, "form-email");
     assert.equal(nativeSelect.tagName, "SELECT");
+    assert.equal(nativeOptionGroup.tagName, "OPTGROUP");
+    assert.equal(nativeOptionGroup.attributes.label, "Numbers");
     assert.equal(nativeOption.tagName, "OPTION");
     assert.equal(nativeOption.attributes.value, "1");
     assert.equal(nativeOption.attributes.selected, "");
@@ -3604,8 +3615,12 @@ function fakeDocument() {
       "Page/nativeForm/email");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nativeForm").formControls,
       ["Page/nativeForm/email"]);
-    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeSelect/one").collectionOwner.ref,
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeSelect/numbers/one").collectionOwner.ref,
       "Page/nativeSelect");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeSelect/numbers/one").groupOwner.ref,
+      "Page/nativeSelect/numbers");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nativeSelect/numbers").groupMembers,
+      ["Page/nativeSelect/numbers/one"]);
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/figure/caption").captionOwner.ref,
       "Page/figure");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/figure").captionItems,

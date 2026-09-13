@@ -290,6 +290,8 @@ host roles rather than retained nodes.
 | `Nav` | `.kry canonical` | Web-native navigation landmark element. |
 | `Navigation` | `.kry canonical` | Long-form alias for `Nav`. |
 | `OrderedList` | `.kry canonical` | Web-native ordered list element. |
+| `OptionGroup` | `.kry canonical` | Web-native grouped select options element. |
+| `OptGroup` | `.kry canonical` | Browser-name alias for `OptionGroup`. |
 | `Option` | `.kry canonical` | Web-native select option element. |
 | `Output` | `.kry canonical` | Web-native calculation output element. |
 | `Pre` | `.kry canonical` | Web-native preformatted text element. |

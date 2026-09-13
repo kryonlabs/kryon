@@ -275,7 +275,7 @@ web_native_only = {
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'IFrame', 'Iframe',
     'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
     'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
-    'Option', 'Output', 'Pre', 'Quote', 'Samp', 'Sample', 'Select',
+    'OptionGroup', 'OptGroup', 'Option', 'Output', 'Pre', 'Quote', 'Samp', 'Sample', 'Select',
     'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
     'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',

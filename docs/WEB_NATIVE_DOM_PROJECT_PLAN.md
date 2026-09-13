@@ -101,10 +101,11 @@ the browser receives normal elements, attributes, CSS, and events.
   including corresponding landmark and collection relationship facts where the
   native semantics imply ownership, plus native quote citations, time
   datetimes, and list/item numbering attributes.
-- Native form/document aliases such as `Form`, `Label`, `Select`, `Option`,
-  `Details`, `Summary`, `Dialog`, and `Output` render to matching browser
-  elements and participate in label, form-control, collection, dialog, and
-  status accessibility facts.
+- Native form/document aliases such as `Form`, `Label`, `Select`,
+  `OptionGroup`/`OptGroup`, `Option`, `Details`, `Summary`, `Dialog`, and
+  `Output` render to matching browser elements and participate in label,
+  form-control, collection, dialog, grouped-option, and status accessibility
+  facts.
 - Native media/embed aliases such as `Video`, `Audio`, `Source`,
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
   standard source, preload, controls, poster, track, loading, allow, and MIME

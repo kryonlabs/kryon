@@ -1496,6 +1496,8 @@ export function Nav(...args: unknown[]): unknown;
 export function NavigationBar(...args: unknown[]): unknown;
 export function Navigation(...args: unknown[]): unknown;
 export function OrderedList(...args: unknown[]): unknown;
+export function OptionGroup(...args: unknown[]): unknown;
+export function OptGroup(...args: unknown[]): unknown;
 export function Option(...args: unknown[]): unknown;
 export function Output(...args: unknown[]): unknown;
 export function Page(...args: unknown[]): unknown;

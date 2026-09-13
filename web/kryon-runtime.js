@@ -1276,6 +1276,9 @@ function widgetTag(item) {
   case "ListBox":
   case "Select":
     return "select";
+  case "OptionGroup":
+  case "OptGroup":
+    return "optgroup";
   case "Option":
     return "option";
   case "Image":
@@ -1701,6 +1704,11 @@ function widgetNativeAttrs(item, meta, args) {
   case "ListItem":
     setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
       propStringAny(args, ["value", "dom_value", "html_value"]));
+    break;
+  case "OptionGroup":
+  case "OptGroup":
+    setWidgetNativeAttr(out, "label", metaString(meta, "optionLabel") ||
+      propStringAny(args, ["label", "title", "dom_label", "html_label"]));
     break;
   case "TableColumnGroup":
   case "ColGroup":
@@ -2396,6 +2404,8 @@ function implicitRole(node) {
     return "separator";
   if (node.tag === "li")
     return "listitem";
+  if (node.tag === "optgroup")
+    return "group";
   if (node.tag === "option")
     return "option";
   if (node.tag === "table")
@@ -11455,8 +11465,8 @@ const runtimeCallNames = [
   "Figcaption", "Figure", "Footer", "Form", "Header",
   "IFrame", "Iframe", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
-  "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList", "Option",
-  "Output", "Pre", "Quote", "Samp", "Sample", "Select",
+  "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
+  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
@@ -11556,6 +11566,8 @@ export function Nav(...args) { return struct("Nav", args); }
 export function NavigationBar(...args) { return struct("NavigationBar", args); }
 export function Navigation(...args) { return struct("Navigation", args); }
 export function OrderedList(...args) { return struct("OrderedList", args); }
+export function OptionGroup(...args) { return struct("OptionGroup", args); }
+export function OptGroup(...args) { return struct("OptGroup", args); }
 export function Option(...args) { return struct("Option", args); }
 export function Output(...args) { return struct("Output", args); }
 export function Page(...args) { return struct("Page", args); }
