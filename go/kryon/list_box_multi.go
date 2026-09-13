@@ -13,7 +13,7 @@ type ListBoxMultiNavResult struct {
 	RangeAnchor   int32
 }
 
-func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
 	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
@@ -24,18 +24,31 @@ func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32,
 	if !value_6 {
 		var value_7 float32 = value
 		var value_8 float32 = 0.0
-		var value_9 bool = value_7 <= value_8
+		var value_9 bool = value_7 < value_8
 		value_6 = value_9
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	var value_10 bool = value_6
+	if !value_10 {
+		var value_11 bool = allow_zero
+		var value_12 bool = !value_11
+		var value_13 bool = value_12
+		if value_13 {
+			var value_14 float32 = value
+			var value_15 float32 = 0.0
+			var value_16 bool = value_14 <= value_15
+			value_13 = value_16
+		}
+		value_10 = value_13
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	if value_10 {
+		var value_17 float32 = fallback
+		value = value_17
+	}
+	var value_18 float32 = value
+	var value_19 float32 = scale
+	var value_20 float32 = value_18 * value_19
+	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
+	return value_21
 }
 
 func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32, item StyleFrame) int32 {
@@ -79,8 +92,9 @@ func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32, item St
 	var value_24 float32 = item.Value.OffsetY
 	var value_25 float32 = fallback
 	var value_26 float32 = scale
-	var value_27 int32 = ListBoxMulti_ListBoxMultiMetric(value_21, value_23, value_24, value_25, value_26)
-	return value_27
+	var value_27 bool = false
+	var value_28 int32 = ListBoxMulti_ListBoxMultiMetric(value_21, value_23, value_24, value_25, value_26, value_27)
+	return value_28
 }
 
 func ListBoxMulti_ListBoxMultiRowBounds(bounds Rectangle, index int32, row_height int32) Rectangle {

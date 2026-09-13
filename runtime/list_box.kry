@@ -25,8 +25,11 @@ ListBoxItemPaint :: struct {
 }
 
 ListBoxMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
     return (i32)(value * scale)
 }
 
@@ -39,7 +42,7 @@ ListBoxRowHeight :: (row_height: i32, scale: float, item: StyleFrame) -> i32 #ex
             fallback = item.value.icon_size
         }
         return ListBoxMetric(item.value.fields, (u32)StyleContentOffset,
-            item.value.offset_y, fallback, scale)
+            item.value.offset_y, fallback, scale, false)
     }
     return row_height
 }
@@ -181,7 +184,7 @@ ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scale: float,
     list: StyleFrame) -> Rectangle #export {
     bar: Rectangle
     scrollbar_width: i32 = ListBoxMetric(list.value.fields,
-        (u32)StyleContentOffset, list.value.offset_y, 8.0, scale)
+        (u32)StyleContentOffset, list.value.offset_y, 8.0, scale, true)
     bar.x = bounds.x + bounds.width - (float)scrollbar_width
     bar.y = bounds.y
     bar.width = (float)scrollbar_width

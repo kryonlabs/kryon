@@ -25,7 +25,7 @@ type ListBoxItemPaint struct {
 	TextY int32
 }
 
-func ListBox_ListBoxMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+func ListBox_ListBoxMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
 	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
@@ -36,18 +36,31 @@ func ListBox_ListBoxMetric(fields uint32, field uint32, value float32, fallback 
 	if !value_6 {
 		var value_7 float32 = value
 		var value_8 float32 = 0.0
-		var value_9 bool = value_7 <= value_8
+		var value_9 bool = value_7 < value_8
 		value_6 = value_9
 	}
-	if value_6 {
-		var value_10 float32 = fallback
-		value = value_10
+	var value_10 bool = value_6
+	if !value_10 {
+		var value_11 bool = allow_zero
+		var value_12 bool = !value_11
+		var value_13 bool = value_12
+		if value_13 {
+			var value_14 float32 = value
+			var value_15 float32 = 0.0
+			var value_16 bool = value_14 <= value_15
+			value_13 = value_16
+		}
+		value_10 = value_13
 	}
-	var value_11 float32 = value
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
-	return value_14
+	if value_10 {
+		var value_17 float32 = fallback
+		value = value_17
+	}
+	var value_18 float32 = value
+	var value_19 float32 = scale
+	var value_20 float32 = value_18 * value_19
+	var value_21 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_20), 32, true)), uint64(0), 32, true, 0))
+	return value_21
 }
 
 func ListBox_ListBoxRowHeight(row_height int32, scale float32, item StyleFrame) int32 {
@@ -88,11 +101,12 @@ func ListBox_ListBoxRowHeight(row_height int32, scale float32, item StyleFrame) 
 		var value_23 float32 = item.Value.OffsetY
 		var value_24 float32 = fallback
 		var value_25 float32 = scale
-		var value_26 int32 = ListBox_ListBoxMetric(value_20, value_22, value_23, value_24, value_25)
-		return value_26
+		var value_26 bool = false
+		var value_27 int32 = ListBox_ListBoxMetric(value_20, value_22, value_23, value_24, value_25, value_26)
+		return value_27
 	}
-	var value_27 int32 = row_height
-	return value_27
+	var value_28 int32 = row_height
+	return value_28
 }
 
 func ListBox_ListBoxContentHeight(item_count int32, row_height int32, content_height int32, scale float32, item StyleFrame) int32 {
@@ -443,22 +457,23 @@ func ListBox_ListBoxScrollbarBoundsFor(bounds Rectangle, scale float32, list Sty
 	var value_3 float32 = list.Value.OffsetY
 	var value_4 float32 = 8.0
 	var value_5 float32 = scale
-	var value_6 int32 = ListBox_ListBoxMetric(value_0, value_2, value_3, value_4, value_5)
-	var scrollbar_width int32 = value_6
-	var value_7 float32 = bounds.X
-	var value_8 float32 = bounds.Width
-	var value_9 float32 = value_7 + value_8
-	var value_10 int32 = scrollbar_width
-	var value_11 float32 = float32(value_10)
-	var value_12 float32 = value_9 - value_11
-	bar.X = value_12
-	var value_13 float32 = bounds.Y
-	bar.Y = value_13
-	var value_14 int32 = scrollbar_width
-	var value_15 float32 = float32(value_14)
-	bar.Width = value_15
-	var value_16 float32 = bounds.Height
-	bar.Height = value_16
-	var value_17 Rectangle = bar
-	return value_17
+	var value_6 bool = true
+	var value_7 int32 = ListBox_ListBoxMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	var scrollbar_width int32 = value_7
+	var value_8 float32 = bounds.X
+	var value_9 float32 = bounds.Width
+	var value_10 float32 = value_8 + value_9
+	var value_11 int32 = scrollbar_width
+	var value_12 float32 = float32(value_11)
+	var value_13 float32 = value_10 - value_12
+	bar.X = value_13
+	var value_14 float32 = bounds.Y
+	bar.Y = value_14
+	var value_15 int32 = scrollbar_width
+	var value_16 float32 = float32(value_15)
+	bar.Width = value_16
+	var value_17 float32 = bounds.Height
+	bar.Height = value_17
+	var value_18 Rectangle = bar
+	return value_18
 }

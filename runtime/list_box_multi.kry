@@ -13,8 +13,11 @@ ListBoxMultiNavResult :: struct {
 }
 
 ListBoxMultiMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
     return (i32)(value * scale)
 }
 
@@ -28,7 +31,7 @@ ListBoxMultiRowHeight :: (row_height: i32, scale: float,
         fallback = item.value.icon_size
     }
     return ListBoxMultiMetric(item.value.fields, (u32)StyleContentOffset,
-        item.value.offset_y, fallback, scale)
+        item.value.offset_y, fallback, scale, false)
 }
 
 ListBoxMultiRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {

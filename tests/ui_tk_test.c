@@ -768,6 +768,12 @@ test_list_box_layout_policy(void)
               ListBoxRowHeight(0, 1.0f, item), 34);
     check_int("list custom scrollbar width from KSS",
               (int)ListBoxScrollbarBoundsFor(bounds, 1.0f, list).width, 10);
+    item.value.offset_y = 0.0f;
+    list.value.offset_y = 0.0f;
+    check_int("list explicit zero row height fallback",
+              ListBoxRowHeight(0, 1.0f, item), 30);
+    check_int("list explicit zero scrollbar width",
+              (int)ListBoxScrollbarBoundsFor(bounds, 1.0f, list).width, 0);
     check_int("list paint text y", paint.text_y, 47);
     check_int("list scrollbar x", (int)scrollbar.x, 102);
     check_int("list scrollbar height", (int)scrollbar.height, 95);
@@ -796,6 +802,8 @@ test_multi_select_policy(void)
 
     check_int("multi row default height", ListBoxMultiRowHeight(0, 1.0f, item), 34);
     check_int("multi row explicit height", ListBoxMultiRowHeight(26, 1.0f, item), 26);
+    item.value.offset_y = 0.0f;
+    check_int("multi row zero style height fallback", ListBoxMultiRowHeight(0, 1.0f, item), 34);
     check_float("multi row y", row.y, 76.0f);
     check_float("multi row height", row.height, 28.0f);
     check_int("multi focused fallback", ListBoxMultiFocusedRow(-1, 2, 3), 2);
