@@ -1155,6 +1155,27 @@ emit_assign(FILE *f, const KirModule *m, const KirStmt *st,
 }
 
 static int
+unwrap_outer_parentheses(const char *src, char *out, size_t out_size)
+{
+    const char *p = kir_skip_ws(src);
+    const char *open;
+    const char *close;
+    char raw[K2JS_TEXT_MAX];
+
+    if(*p != '(')
+        return 0;
+    open = p;
+    close = consume_group(p + 1, raw, sizeof(raw));
+    if(close == NULL || *kir_skip_ws(close) != '\0')
+        return 0;
+    if((size_t)(close - open) >= out_size)
+        return 0;
+    snprintf(out, out_size, "%s", raw);
+    kir_trim_in_place(out);
+    return out[0] != '\0';
+}
+
+static int
 split_direct_call(const char *src, char *name, size_t name_size,
                   char *args, size_t args_size)
 {
@@ -1162,7 +1183,10 @@ split_direct_call(const char *src, char *name, size_t name_size,
     const char *q = p;
     size_t nl;
     char raw[K2JS_TEXT_MAX];
+    char inner[K2JS_TEXT_MAX];
 
+    if(unwrap_outer_parentheses(src, inner, sizeof(inner)))
+        return split_direct_call(inner, name, name_size, args, args_size);
     if(!(isalpha((unsigned char)*q) || *q == '_'))
         return 0;
     while(kir_is_ident_char((unsigned char)*q))

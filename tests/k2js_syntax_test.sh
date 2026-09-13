@@ -849,6 +849,38 @@ assert.deepEqual(paths, [
 ]);
 EOF
 
+cat > "$work/src/parenthesized_widget_nodes.kry" <<'EOF'
+#import "kryon.h"
+ParenthesizedWidgetNodes :: () #ui {
+    local: bool = (Button((ButtonProps){.label="Declare"}))
+    if (Button((ButtonProps){.label="If"})) {
+    }
+    (Button((ButtonProps){.label="Standalone"}))
+    unused local
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_widget_nodes.kry"
+parenthesized_widget_out="$work/out/src/parenthesized_widget_nodes.js"
+grep -q 'let local = kryon.copyValue(kryon.widget(\$rt, "Button"' "$parenthesized_widget_out"
+grep -q 'if (kryon.widget(\$rt, "Button"' "$parenthesized_widget_out"
+grep -q '^  kryon.widget(\$rt, "Button"' "$parenthesized_widget_out"
+grep -q '"path": "ParenthesizedWidgetNodes/Button@3"' "$parenthesized_widget_out"
+grep -q '"path": "ParenthesizedWidgetNodes/Button@4-2"' "$parenthesized_widget_out"
+grep -q '"path": "ParenthesizedWidgetNodes/Button@6-3"' "$parenthesized_widget_out"
+node --input-type=module - "$parenthesized_widget_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.ParenthesizedWidgetNodes_ParenthesizedWidgetNodes(rt, module.createState(), {});
+assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
+  "ParenthesizedWidgetNodes/Button@3",
+  "ParenthesizedWidgetNodes/Button@4-2",
+  "ParenthesizedWidgetNodes/Button@6-3"
+]);
+EOF
+
 cat > "$work/src/while_widget_nodes.kry" <<'EOF'
 #import "kryon.h"
 WhileWidgetNodes :: () #ui {

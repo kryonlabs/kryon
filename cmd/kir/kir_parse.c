@@ -374,6 +374,50 @@ classify_stmt(const char *s)
 }
 
 static int
+unwrap_outer_parentheses(const char *text, char *out, size_t out_size)
+{
+    const char *p = text;
+    const char *open;
+    const char *close = NULL;
+    int depth = 0;
+    int in_string = 0;
+
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(*p != '(')
+        return 0;
+    open = p++;
+    depth = 1;
+    while(*p != '\0') {
+        if(in_string) {
+            if(*p == '\\' && p[1] != '\0')
+                p++;
+            else if(*p == '"')
+                in_string = 0;
+        } else if(*p == '"') {
+            in_string = 1;
+        } else if(*p == '(') {
+            depth++;
+        } else if(*p == ')' && --depth == 0) {
+            close = p;
+            break;
+        }
+        p++;
+    }
+    if(close == NULL)
+        return 0;
+    p = close + 1;
+    while(*p == ' ' || *p == '\t' || *p == ';')
+        p++;
+    if(*p != '\0' || (size_t)(close - open) >= out_size)
+        return 0;
+    memcpy(out, open + 1, (size_t)(close - open - 1));
+    out[close - open - 1] = '\0';
+    kir_trim_in_place(out);
+    return out[0] != '\0';
+}
+
+static int
 parse_widget_statement(const char *text, char *name, size_t name_size,
                        char *args, size_t args_size)
 {
@@ -402,9 +446,13 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     int known = 0;
     int depth = 0;
     int in_string = 0;
+    char inner[KIR_TEXT_MAX];
 
     while(*p == ' ' || *p == '\t')
         p++;
+    if(unwrap_outer_parentheses(p, inner, sizeof(inner)))
+        return parse_widget_statement(inner, name, name_size, args,
+                                      args_size);
     open = p;
     while(isalnum((unsigned char)*p) || *p == '_')
         p++;

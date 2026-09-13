@@ -101,7 +101,8 @@ source line. Source references support both
 in declarations, assignments, returns, and control-flow conditions receive
 source-derived path components such as `Text@42`; repeated anonymous widgets under the same
 parent receive deterministic occurrence suffixes such as `Text@42-2` so every
-DOM object remains individually addressable.
+DOM object remains individually addressable. Harmless outer parentheses around
+single widget expressions do not change this identity contract.
 
 Supported metadata fields:
 
