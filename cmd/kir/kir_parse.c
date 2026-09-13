@@ -670,17 +670,17 @@ is_web_native_block_widget(const char *name)
 {
     static const char *const widgets[] = {
         "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
-        "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "ColGroup",
+        "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
         "Data", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
-        "DescriptionTerm", "Details", "Dialog", "Em", "Emphasis",
+        "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
         "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame",
         "Iframe", "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label",
         "List", "ListItem", "Main", "Mark", "Nav", "Navigation",
         "OrderedList", "Option", "Output", "Pre", "Quote",
-        "Samp", "Sample", "Select", "Small", "Strong", "Sub", "Subscript",
+        "Samp", "Sample", "Select", "Small", "Source", "Strong", "Sub", "Subscript",
         "Summary", "Sup", "Superscript", "Table", "TableBody",
         "TableCaption", "TableColumnGroup", "TableFoot", "TableHead",
-        "TableRow", "Tbody", "Tfoot", "Thead", "Time", "Tr",
+        "TableRow", "Tbody", "Tfoot", "Thead", "Time", "Tr", "Track",
         "UnorderedList", "Var", "Variable", "Video"
     };
 
@@ -860,8 +860,55 @@ ui_block_append_prop(UiBlock *block, const char *field, const char *value,
 }
 
 static int
+ui_block_append_extra_attr(UiBlock *block, const char *attr, const char *value)
+{
+    size_t used = strlen(block->dom_extra_attrs);
+    int written;
+
+    if(attr == NULL || attr[0] == '\0')
+        return 0;
+    written = snprintf(block->dom_extra_attrs + used,
+                       sizeof(block->dom_extra_attrs) - used,
+                       "%s\t%s\n", attr, value);
+    if(written < 0 || (size_t)written >= sizeof(block->dom_extra_attrs) - used)
+        return 0;
+    return 1;
+}
+
+static int
 ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
 {
+    if(block != NULL && is_web_native_block_widget(block->widget)) {
+        if(strcmp(field, "src") == 0 || strcmp(field, "dom_src") == 0 ||
+           strcmp(field, "html_src") == 0)
+            return ui_block_append_extra_attr(block, "src", value);
+        if(strcmp(field, "type") == 0 || strcmp(field, "mime_type") == 0 ||
+           strcmp(field, "dom_type") == 0 || strcmp(field, "html_type") == 0)
+            return ui_block_append_extra_attr(block, "type", value);
+        if(strcmp(field, "media") == 0 || strcmp(field, "dom_media") == 0 ||
+           strcmp(field, "html_media") == 0)
+            return ui_block_append_extra_attr(block, "media", value);
+        if(strcmp(field, "kind") == 0 || strcmp(field, "track_kind") == 0 ||
+           strcmp(field, "dom_kind") == 0 || strcmp(field, "html_kind") == 0)
+            return ui_block_append_extra_attr(block, "kind", value);
+        if(strcmp(field, "srclang") == 0 || strcmp(field, "src_lang") == 0 ||
+           strcmp(field, "dom_srclang") == 0 ||
+           strcmp(field, "html_srclang") == 0)
+            return ui_block_append_extra_attr(block, "srclang", value);
+        if(strcmp(field, "track_label") == 0 ||
+           strcmp(field, "dom_label") == 0 ||
+           strcmp(field, "html_label") == 0 ||
+           (strcmp(block->widget, "Track") == 0 &&
+            strcmp(field, "label") == 0))
+            return ui_block_append_extra_attr(block, "label", value);
+        if(strcmp(field, "default") == 0 ||
+           strcmp(field, "dom_default") == 0 ||
+           strcmp(field, "html_default") == 0)
+            return ui_block_append_extra_attr(block, "default", value);
+        if(strcmp(field, "span") == 0 || strcmp(field, "dom_span") == 0 ||
+           strcmp(field, "html_span") == 0)
+            return ui_block_append_extra_attr(block, "span", value);
+    }
     if(strcmp(field, "dom") == 0 || strcmp(field, "dom_tag") == 0 ||
        strcmp(field, "html_tag") == 0 || strcmp(field, "tag") == 0) {
         snprintf(block->dom_tag, sizeof(block->dom_tag), "%s", value);

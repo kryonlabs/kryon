@@ -39,9 +39,10 @@ the browser receives normal elements, attributes, CSS, and events.
   related DOM widgets get compiler-owned Web Document metadata instead of
   falling through as opaque logic calls.
 - Named browser-native alias blocks such as `Article story: { ... }`,
-  `Figure chart: { ... }`, and `Table grid: { ... }` emit compiler-owned Web
-  Document nodes, preserving source names, paths, DOM metadata, and child
-  nesting for KSS and browser DOM tooling.
+  `Figure chart: { ... }`, `Source webm: { ... }`, and `Table grid: { ... }`
+  emit compiler-owned Web Document nodes across the browser-native alias
+  inventory, preserving source names, paths, DOM metadata, and child nesting
+  for KSS and browser DOM tooling.
 - Browser-backed coverage now compiles named browser-native alias blocks from
   `.kry`, mounts the generated JavaScript in Chromium, and verifies native DOM
   tags, source annotations, KSS selector/style traces, child traversal, and

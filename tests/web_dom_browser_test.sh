@@ -45,6 +45,29 @@ NativeBlocks :: () #ui {
             Text((TextProps){.text="Chart"})
         }
     }
+    Video hero: {
+        Source webm: {
+            src = "intro.webm"
+            type = "video/webm"
+        }
+        Track captions: {
+            src = "captions.vtt"
+            kind = "captions"
+            srclang = "en"
+            label = "English"
+        }
+    }
+    Embed chartEmbed: {
+        src = "chart.svg"
+        type = "image/svg+xml"
+    }
+    Table cols: {
+        ColGroup metrics: {
+            Col quarter: {
+                span = 1
+            }
+        }
+    }
 }
 EOF
     "$k2js_bin" --no-main --root "$work/compiled" -o "$work/compiled/out" \
@@ -801,6 +824,10 @@ try {
     kryon.renderWebDocument(compiledRt, compiledTarget);
     const compiledStory = kryon.findWebElement(compiledTarget, "NativeBlocks/story");
     const compiledCaption = kryon.findWebElement(compiledTarget, "NativeBlocks/chart/caption");
+    const compiledSource = kryon.findWebElement(compiledTarget, "NativeBlocks/hero/webm");
+    const compiledTrack = kryon.findWebElement(compiledTarget, "NativeBlocks/hero/captions");
+    const compiledEmbed = kryon.findWebElement(compiledTarget, "NativeBlocks/chartEmbed");
+    const compiledCol = kryon.findWebElement(compiledTarget, "NativeBlocks/cols/metrics/quarter");
     assert(compiledStory?.tagName === "ARTICLE",
       "compiled named Article did not render native article");
     assert(compiledStory.dataset.kryName === "story",
@@ -822,6 +849,22 @@ try {
       "NativeBlocks/chart", "compiled Figure :has query failed");
     assert(compiledCaption?.tagName === "FIGCAPTION",
       "compiled Figcaption native tag missing");
+    assert(compiledSource?.tagName === "SOURCE",
+      "compiled Source native tag missing");
+    assert(compiledSource.getAttribute("type") === "video/webm",
+      "compiled Source type attribute missing");
+    assert(compiledTrack?.tagName === "TRACK",
+      "compiled Track native tag missing");
+    assert(compiledTrack.getAttribute("srclang") === "en",
+      "compiled Track srclang attribute missing");
+    assert(compiledEmbed?.tagName === "EMBED",
+      "compiled Embed native tag missing");
+    assert(compiledEmbed.getAttribute("type") === "image/svg+xml",
+      "compiled Embed type attribute missing");
+    assert(compiledCol?.tagName === "COL",
+      "compiled Col native tag missing");
+    assert(compiledCol.getAttribute("span") === "1",
+      "compiled Col span attribute missing");
     assert(kryon.webDOMRelations(compiledTarget, "NativeBlocks/chart/caption")
       .captionOwner.ref === "NativeBlocks/chart",
       "compiled caption relation missing");

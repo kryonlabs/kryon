@@ -679,6 +679,29 @@ NativeAliasBlocks :: () #ui {
             Text((TextProps){.text="Chart"})
         }
     }
+    Video hero: {
+        Source webm: {
+            src = "intro.webm"
+            type = "video/webm"
+        }
+        Track captions: {
+            src = "captions.vtt"
+            kind = "captions"
+            srclang = "en"
+            label = "English"
+        }
+    }
+    Embed chartEmbed: {
+        src = "chart.svg"
+        type = "image/svg+xml"
+    }
+    Table cols: {
+        ColGroup metrics: {
+            Col quarter: {
+                span = 1
+            }
+        }
+    }
     Table grid: {
         TableCaption caption: {
             Text((TextProps){.text="Totals"})
@@ -698,6 +721,10 @@ grep -q '"path": "NativeAliasBlocks/story"' "$native_alias_blocks_out"
 grep -q '"class": "feature"' "$native_alias_blocks_out"
 grep -q '"nodeName": "chart"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/chart/caption"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/hero/webm"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/hero/captions"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/chartEmbed"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/cols/metrics/quarter"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/grid/head/labels"' "$native_alias_blocks_out"
 node --input-type=module - "$native_alias_blocks_out" "$work/out/kryon-runtime.js" <<'EOF'
 import assert from "node:assert/strict";
@@ -736,6 +763,20 @@ assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/chart/caption").cap
   "NativeAliasBlocks/chart");
 assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/grid/caption").captionOwner.path,
   "NativeAliasBlocks/grid");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/webm").tag, "source");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/webm").extraAttrs.src,
+  "intro.webm");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/webm").extraAttrs.type,
+  "video/webm");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/captions").tag, "track");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/captions").extraAttrs.srclang,
+  "en");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/chartEmbed").tag, "embed");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/chartEmbed").extraAttrs.type,
+  "image/svg+xml");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/cols/metrics/quarter").tag, "col");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/cols/metrics/quarter").extraAttrs.span,
+  "1");
 assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/grid/head/labels").tag, "tr");
 assert.equal(caption.sourceLine, 8);
 assert.equal(caption.sourceEndLine, 10);
