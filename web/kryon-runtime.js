@@ -1731,7 +1731,8 @@ const webKssLiteralProperties = new Set([
   "text-decoration", "text-transform", "text-overflow", "white-space",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
-  "hyphens", "line-clamp",
+  "hyphens", "line-clamp", "list-style", "list-style-type",
+  "list-style-position", "list-style-image",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "overscroll-behavior-inline",
   "overscroll-behavior-block", "scroll-snap-type", "scroll-snap-align",
@@ -2344,6 +2345,10 @@ const webCSSPropertyNames = new Map([
   ["tab-size", "tab-size"],
   ["hyphens", "hyphens"],
   ["line-clamp", "line-clamp"],
+  ["list-style", "list-style"],
+  ["list-style-type", "list-style-type"],
+  ["list-style-position", "list-style-position"],
+  ["list-style-image", "list-style-image"],
   ["scroll-behavior", "scroll-behavior"],
   ["overscroll-behavior", "overscroll-behavior"],
   ["overscroll-behavior-x", "overscroll-behavior-x"],
@@ -3274,6 +3279,10 @@ function applyResolvedWebStyle(el, style) {
   set("hyphens", style.hyphens);
   set("lineClamp", style["line-clamp"]);
   set("webkitLineClamp", style["line-clamp"]);
+  set("listStyle", style["list-style"]);
+  set("listStyleType", style["list-style-type"]);
+  set("listStylePosition", style["list-style-position"]);
+  set("listStyleImage", style["list-style-image"]);
   set("scrollBehavior", style["scroll-behavior"]);
   set("overscrollBehavior", style["overscroll-behavior"]);
   set("overscrollBehaviorX", style["overscroll-behavior-x"]);

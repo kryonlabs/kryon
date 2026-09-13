@@ -133,6 +133,10 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     tab-size: 4;
     hyphens: auto;
     line-clamp: 2;
+    list-style: square inside;
+    list-style-type: square;
+    list-style-position: inside;
+    list-style-image: none;
   }
   TextField[maxlength=64] {
     offset-x: 4;
@@ -449,6 +453,10 @@ assert.match(webStyleCSS, /text-overflow: ellipsis;/);
 assert.match(webStyleCSS, /white-space: nowrap;/);
 assert.match(webStyleCSS, /word-break: keep-all;/);
 assert.match(webStyleCSS, /overflow-wrap: anywhere;/);
+assert.match(webStyleCSS, /list-style: square inside;/);
+assert.match(webStyleCSS, /list-style-type: square;/);
+assert.match(webStyleCSS, /list-style-position: inside;/);
+assert.match(webStyleCSS, /list-style-image: none;/);
 assert.match(webStyleCSS, /display: flex;/);
 assert.match(webStyleCSS, /position: relative;/);
 assert.match(webStyleCSS, /z-index: 3;/);
@@ -1054,6 +1062,10 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["writing-mo
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["tab-size"], 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).hyphens, "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["line-clamp"], 2);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style"], "square inside");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-type"], "square");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-position"], "inside");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-image"], "none");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).display, "flex");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).position, "relative");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["z-index"], 3);
@@ -3178,6 +3190,10 @@ function fakeDocument() {
     assert.equal(firstField.style.hyphens, "auto");
     assert.equal(firstField.style.lineClamp, "2");
     assert.equal(firstField.style.webkitLineClamp, "2");
+    assert.equal(firstField.style.listStyle, "square inside");
+    assert.equal(firstField.style.listStyleType, "square");
+    assert.equal(firstField.style.listStylePosition, "inside");
+    assert.equal(firstField.style.listStyleImage, "none");
     assert.equal(firstField.style.display, "flex");
     assert.equal(firstField.style.position, "relative");
     assert.equal(firstField.style.zIndex, "3");
