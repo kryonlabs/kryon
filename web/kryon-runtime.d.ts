@@ -439,6 +439,7 @@ export interface WebDOMObject {
   readonly relations: WebDOMRelations | null;
   readonly relationRefs: WebDOMRelationRefs | null;
   readonly eventRefs: WebNodeEventRefs;
+  readonly styleFacts: WebNodeStyleFacts;
   readonly descendants: WebDOMObject[];
   query(selector: string): WebDOMObject | null;
   queryAll(selector: string): WebDOMObject[];
@@ -639,6 +640,7 @@ declare global {
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
+    readonly kryStyleFacts?: WebNodeStyleFacts | null;
     readonly kryParent?: WebDOMObject | null;
     readonly kryChildren?: WebDOMObject[];
     readonly kryRelations?: WebDOMRelations | null;
@@ -655,6 +657,7 @@ declare global {
     kryObject?(query: string): WebDOMObject | null;
     kryIdentity?(query: string): WebNodeIdentity | null;
     krySnapshot?(query: string): WebDOMSnapshot | null;
+    kryStyleFacts?(query: string): WebNodeStyleFacts | null;
     kryRelations?(query: string): WebDOMRelations | null;
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
     kryEventRefs?(query: string): WebNodeEventRefs | null;
@@ -967,6 +970,7 @@ export function findWebElement(target: Element | string | null, query: string): 
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;
+export function webDOMStyleFacts(target: Element | string | null, query: string): WebNodeStyleFacts | null;
 export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
 export function webDOMRelationRefs(target: Element | string | null, query: string): WebDOMRelationRefs | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;

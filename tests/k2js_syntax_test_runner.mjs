@@ -3059,6 +3059,10 @@ function fakeDocument() {
       "tap-button"
     ]);
     assert.equal(buttonObject.snapshot.identity.sourceRangeRef, tapSourceRangeRef);
+    assert.equal(buttonObject.styleFacts.kind, "Button");
+    assert.equal(firstButton.kryStyleFacts.kind, "Button");
+    assert.equal(root.kryStyleFacts("tap-button").kind, "Button");
+    assert.equal(runtime.webDOMStyleFacts(target, "tap-button").kind, "Button");
     assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
     assert.deepEqual(buttonObject.snapshot.relationRefs.owns, ["search-box"]);
     assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");

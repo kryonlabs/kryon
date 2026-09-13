@@ -82,7 +82,9 @@ the browser receives normal elements, attributes, CSS, and events.
   attributes, source-range annotations, Kry object lookup, KSS application, and
   decorated event dispatch in Chromium when available.
 - Mounted DOM snapshots include effective role and `webNodeStyleFacts(...)`
-  data, so devtools can inspect Kry identity and KSS selector facts together.
+  data, with direct mounted `webDOMStyleFacts(...)` and root/element/object
+  accessors so devtools can inspect Kry identity and KSS selector facts
+  together.
 - Web runtime TypeScript declarations expose the native DOM facts used by KSS
   and DOM queries, including global attribute facts such as title and tab index.
 - Web runtime TypeScript declarations expose parsed KSS conditional groups for

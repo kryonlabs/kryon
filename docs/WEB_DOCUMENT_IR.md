@@ -587,11 +587,13 @@ generated JS owning DOM structure.
 
 `webDOMIdentity(target, query)` returns the same plain identity projection for
 a mounted Kry DOM object. Mounted roots expose `kryIdentity(query)` and
-`krySnapshot(query)` for browser tooling. Rendered elements expose the native
+`krySnapshot(query)` for browser tooling. `webDOMStyleFacts(target, query)`
+and `root.kryStyleFacts(query)` expose the same KSS facts used for mounted
+style resolution. Rendered elements expose the native
 bridge directly as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
 scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryRoot`, `element.kryIdentity`, `element.krySnapshot`,
-`element.kryParent`, and
+`element.kryStyleFacts`, `element.kryParent`, and
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,

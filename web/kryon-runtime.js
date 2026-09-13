@@ -4937,6 +4937,13 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMObjectSnapshot(root, makeWebDOMObject(root, node, this)) : null;
       }
     },
+    kryStyleFacts: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode ? webNodeStyleFacts(this.__kryDocNode) : null;
+      }
+    },
     kryParent: {
       configurable: true,
       enumerable: false,
@@ -5434,6 +5441,13 @@ function makeWebDOMObject(root, node, element, ref = "") {
       enumerable: false,
       get() {
         return webNodeEventRefs(this.node);
+      }
+    },
+    styleFacts: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeStyleFacts(this.node);
       }
     },
     descendants: {
@@ -6350,6 +6364,13 @@ function bindWebRootProperties(root) {
         return webDOMSnapshot(this, query);
       }
     },
+    kryStyleFacts: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMStyleFacts(this, query);
+      }
+    },
     kryRelations: {
       configurable: true,
       enumerable: false,
@@ -7046,6 +7067,11 @@ export function webDOMIdentity(target, query) {
 export function webDOMEventRefs(target, query) {
   const object = webDOMObject(target, query);
   return object ? webNodeEventRefs(object.node) : null;
+}
+
+export function webDOMStyleFacts(target, query) {
+  const object = webDOMObject(target, query);
+  return object ? webNodeStyleFacts(object.node) : null;
 }
 
 export function webDOMRelations(target, query) {
