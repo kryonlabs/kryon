@@ -1263,7 +1263,6 @@ include/theme.h enum THEME_SOURCE_SYSTEM
 include/theme.h function AggregateAllThemes
 include/theme.h function ApplyThemeAggregate
 include/theme.h function DrawThemeTKBorder
-include/theme.h function ExportTheme
 include/theme.h function GetCurrentThemeColor
 include/theme.h function GetDefaultPlatformThemeMode
 include/theme.h function GetDefaultPlatformThemeSource
@@ -1308,7 +1307,6 @@ include/theme.h function GetThemeStyleLabel
 include/theme.h function GetThemeSurface
 include/theme.h function GetThemeSurfaceAlt
 include/theme.h function GetThemeText
-include/theme.h function ImportTheme
 include/theme.h function IsSystemThemeAvailable
 include/theme.h function IsThemeColorDark
 include/theme.h function MixThemeColor

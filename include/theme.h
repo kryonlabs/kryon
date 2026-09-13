@@ -116,8 +116,6 @@ int GetThemeAggregateCount(void);
 void ApplyThemeAggregate(const char *key, Color color);
 bool SyncThemeFromScope(const char *src_scope);
 bool SyncThemeToApps(const char *src_scope);
-bool ExportTheme(const char *path);
-bool ImportTheme(const char *path);
 
 void SetThemeDarkMode(bool dark);
 bool GetThemeDarkMode(void);

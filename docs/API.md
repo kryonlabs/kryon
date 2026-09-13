@@ -835,13 +835,6 @@ bool SaveThemeScope(const char *scope);
 bool SaveAllThemes(void);
 ```
 
-#### Theme Export/Import
-
-```c
-bool ExportTheme(const char *path);
-bool ImportTheme(const char *path);
-```
-
 #### Dark Mode
 
 ```c
