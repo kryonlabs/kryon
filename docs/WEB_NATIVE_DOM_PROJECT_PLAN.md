@@ -226,7 +226,8 @@ the browser receives normal elements, attributes, CSS, and events.
   style, and color fields.
 - KSS web transform styling supports native transform longhands and 3D
   transform fields such as translate, rotate, scale, transform-box,
-  transform-style, perspective, perspective-origin, and backface visibility.
+  transform-style, perspective, perspective-origin, backface visibility, and
+  motion-path offset fields.
 - KSS web containment styling supports native containment, content visibility,
   intrinsic containment sizing, and container query naming/type properties.
 - KSS web overlay and transition styling supports native anchor positioning

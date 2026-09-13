@@ -356,6 +356,11 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     animation-play-state: running;
     transform: scale(1.1);
     transform-origin: center;
+    offset-path: path("M 0 0 L 10 10");
+    offset-distance: 50%;
+    offset-rotate: auto 45deg;
+    offset-anchor: center;
+    offset-position: normal;
     filter: contrast(1.1);
     backdrop-filter: blur(2px);
     clip-path: inset(0 round 4px);
@@ -760,6 +765,11 @@ assert.match(webStyleCSS, /animation-fill-mode: both;/);
 assert.match(webStyleCSS, /animation-play-state: running;/);
 assert.match(webStyleCSS, /transform: translate\(var\(--kry-offset-x, 0px\), var\(--kry-offset-y, 0px\)\) scale\(1\.1\);/);
 assert.match(webStyleCSS, /transform-origin: center;/);
+assert.match(webStyleCSS, /offset-path: path\("M 0 0 L 10 10"\);/);
+assert.match(webStyleCSS, /offset-distance: 50%;/);
+assert.match(webStyleCSS, /offset-rotate: auto 45deg;/);
+assert.match(webStyleCSS, /offset-anchor: center;/);
+assert.match(webStyleCSS, /offset-position: normal;/);
 assert.match(webStyleCSS, /filter: contrast\(1\.1\);/);
 assert.match(webStyleCSS, /backdrop-filter: blur\(2px\);/);
 assert.match(webStyleCSS, /clip-path: inset\(0 round 4px\);/);
@@ -1763,6 +1773,11 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["animation-
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["animation-play-state"], "running");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).transform, "scale(1.1)");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["transform-origin"], "center");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-path"], "path(\"M 0 0 L 10 10\")");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-distance"], "50%");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-rotate"], "auto 45deg");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-anchor"], "center");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-position"], "normal");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).filter, "contrast(1.1)");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["backdrop-filter"], "blur(2px)");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["clip-path"], "inset(0 round 4px)");
@@ -4826,6 +4841,11 @@ function fakeDocument() {
     assert.equal(firstField.style.transform,
       "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px)) scale(1.1)");
     assert.equal(firstField.style.transformOrigin, "center");
+    assert.equal(firstField.style.offsetPath, "path(\"M 0 0 L 10 10\")");
+    assert.equal(firstField.style.offsetDistance, "50%");
+    assert.equal(firstField.style.offsetRotate, "auto 45deg");
+    assert.equal(firstField.style.offsetAnchor, "center");
+    assert.equal(firstField.style.offsetPosition, "normal");
     assert.equal(firstField.style.filter, "contrast(1.1)");
     assert.equal(firstField.style.backdropFilter, "blur(2px)");
     assert.equal(firstField.style.clipPath, "inset(0 round 4px)");

@@ -2150,7 +2150,7 @@ const webKssLengthProperties = new Set([
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
   "flex-basis",
   "text-indent", "text-decoration-thickness", "text-underline-offset",
-  "vertical-align", "perspective",
+  "vertical-align", "perspective", "offset-distance",
   "outline-width", "outline-offset", "tab-size",
   "column-count", "column-width", "column-rule-width", "border-spacing",
   "contain-intrinsic-size", "contain-intrinsic-width",
@@ -2237,6 +2237,7 @@ const webKssLiteralProperties = new Set([
   "view-timeline-axis", "view-timeline-inset", "timeline-scope",
   "transform", "transform-origin", "transform-box", "transform-style",
   "translate", "rotate", "scale", "perspective-origin", "backface-visibility",
+  "offset-path", "offset-rotate", "offset-anchor", "offset-position",
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "mask-origin", "mask-clip", "mask-composite", "mask-mode",
@@ -3178,6 +3179,11 @@ const webCSSPropertyNames = new Map([
   ["perspective", "perspective"],
   ["perspective-origin", "perspective-origin"],
   ["backface-visibility", "backface-visibility"],
+  ["offset-path", "offset-path"],
+  ["offset-distance", "offset-distance"],
+  ["offset-rotate", "offset-rotate"],
+  ["offset-anchor", "offset-anchor"],
+  ["offset-position", "offset-position"],
   ["filter", "filter"],
   ["backdrop-filter", "backdrop-filter"],
   ["clip-path", "clip-path"],
@@ -4619,6 +4625,11 @@ function applyResolvedWebStyle(el, style) {
   set("perspective", style.perspective);
   set("perspectiveOrigin", style["perspective-origin"]);
   set("backfaceVisibility", style["backface-visibility"]);
+  set("offsetPath", style["offset-path"]);
+  set("offsetDistance", style["offset-distance"]);
+  set("offsetRotate", style["offset-rotate"]);
+  set("offsetAnchor", style["offset-anchor"]);
+  set("offsetPosition", style["offset-position"]);
   set("filter", style.filter);
   set("backdropFilter", style["backdrop-filter"]);
   set("clipPath", style["clip-path"]);
