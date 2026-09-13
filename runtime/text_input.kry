@@ -1,4 +1,5 @@
 #module "text_input"
+#import "control_props"
 #import "drawing_props"
 
 TextInputMetrics :: struct {
@@ -119,7 +120,15 @@ TextDeleteForward :: () -> i32 #export {
     return 2
 }
 
-TextInputMetricsFor :: (font: i32, padding_x: i32, padding_y: i32,
+TextInputMetric :: (fields: u32, field: u32, value: i32,
+    fallback: i32) -> i32 {
+    if (fields & field) == (u32)0 || value < 0 {
+        return fallback
+    }
+    return value
+}
+
+TextInputMetricsFor :: (fields: u32, font: i32, padding_x: i32, padding_y: i32,
     line_gap: i32, default_font: i32, default_padding_x: i32,
     default_padding_y: i32, default_line_gap: i32) -> TextInputMetrics #export {
     metrics: TextInputMetrics
@@ -127,18 +136,12 @@ TextInputMetricsFor :: (font: i32, padding_x: i32, padding_y: i32,
     if metrics.font <= 0 {
         metrics.font = default_font
     }
-    metrics.padding_x = padding_x
-    if metrics.padding_x <= 0 {
-        metrics.padding_x = default_padding_x
-    }
-    metrics.padding_y = padding_y
-    if metrics.padding_y <= 0 {
-        metrics.padding_y = default_padding_y
-    }
-    metrics.line_gap = line_gap
-    if metrics.line_gap < 0 {
-        metrics.line_gap = default_line_gap
-    }
+    metrics.padding_x = TextInputMetric(fields, (u32)StylePaddingX,
+        padding_x, default_padding_x)
+    metrics.padding_y = TextInputMetric(fields, (u32)StylePaddingY,
+        padding_y, default_padding_y)
+    metrics.line_gap = TextInputMetric(fields, (u32)StyleGap,
+        line_gap, default_line_gap)
     metrics.line_height = metrics.font + metrics.line_gap
     if metrics.line_height <= 0 {
         metrics.line_height = 1

@@ -1033,8 +1033,11 @@ test_popup_policy(void)
 static void
 test_text_input_policy(void)
 {
-    TextInputMetrics metrics = TextInputMetricsFor(0, 0, 0, -1,
+    TextInputMetrics metrics = TextInputMetricsFor(0, 0, 0, 0, -1,
                                                    16, 10, 8, 6);
+    TextInputMetrics zero_metrics = TextInputMetricsFor(
+        StylePaddingX | StylePaddingY | StyleGap,
+        0, 0, 0, 0, 16, 10, 8, 6);
     TextFieldScroll scroll = TextFieldScrollFor(20.0f, 100.0f,
                                                 metrics.padding_x, 180, 999);
 
@@ -1042,6 +1045,9 @@ test_text_input_policy(void)
     check_int("text input padding x default", metrics.padding_x, 10);
     check_int("text input padding y default", metrics.padding_y, 8);
     check_int("text input line gap default", metrics.line_gap, 6);
+    check_int("text input explicit zero padding x", zero_metrics.padding_x, 0);
+    check_int("text input explicit zero padding y", zero_metrics.padding_y, 0);
+    check_int("text input explicit zero line gap", zero_metrics.line_gap, 0);
     check_int("text input content width",
               TextInputContentWidth(100.0f, metrics.padding_x), 80);
     check_int("text area page rows",

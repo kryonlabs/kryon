@@ -1882,9 +1882,10 @@ ui_resolve_text_input_style(TextInputStyle style, int style_kind,
                                              : resolved.foreground;
     if(style.radius <= 0.0f)
         style.radius = resolved.radius;
-    if(style.padding_x <= 0 && resolved.padding_x > 0.0f)
+    style.fields = resolved.fields;
+    if((resolved.fields & StylePaddingX) != 0 && resolved.padding_x >= 0.0f)
         style.padding_x = Scale((int)(resolved.padding_x + 0.5f));
-    if(style.padding_y <= 0 && resolved.padding_y > 0.0f)
+    if((resolved.fields & StylePaddingY) != 0 && resolved.padding_y >= 0.0f)
         style.padding_y = Scale((int)(resolved.padding_y + 0.5f));
     if((resolved.fields & StyleGap) != 0)
         style.line_gap = resolved.gap > 0.0f
@@ -4333,7 +4334,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     layout_style = ui_resolve_text_input_style((TextInputStyle){0},
                                                StyleKindTextField(),
                                                field.class_name);
-    metrics = TextInputMetricsFor(0, layout_style.padding_x,
+    metrics = TextInputMetricsFor(layout_style.fields, 0, layout_style.padding_x,
                                   layout_style.padding_y, 0,
                                   ui_text_input_default_font(StyleKindTextField(),
                                                              field.class_name),

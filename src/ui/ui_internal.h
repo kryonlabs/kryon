@@ -133,6 +133,7 @@ typedef struct {
 } UIInfoRow;
 
 typedef struct TextInputStyle {
+    uint32_t fields;
     Color background;
     Color border;
     Color focus_border;

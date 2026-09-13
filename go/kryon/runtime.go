@@ -5613,7 +5613,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 func (r *runtime) textAreaPageRows(props TextAreaProps) int {
 	style := r.textInputStyle(FrameOpTextArea, false, r.contentDisabled(), props.ClassName)
 	defaultFont := r.textInputDefaultFont(FrameOpTextArea, false, r.contentDisabled(), props.ClassName, Text16)
-	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
+	metrics := TextInput_TextInputMetricsFor(style.Fields, 0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
 	return int(TextInput_TextAreaPageRows(props.Bounds.Height, metrics.Font, metrics.LineGap, metrics.PaddingY))
 }
 
@@ -6508,7 +6508,7 @@ func (r *runtime) TextField(props TextFieldProps) {
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), props.ClassName, Text16)
 	style := r.textInputStyle(FrameOpTextField, focused, r.contentDisabled(), props.ClassName)
-	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), 0, defaultFont, 10, 8, 0)
+	metrics := TextInput_TextInputMetricsFor(style.Fields, 0, int32(style.PaddingX), int32(style.PaddingY), 0, defaultFont, 10, 8, 0)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
 		secure:        props.Secure,
@@ -6662,7 +6662,7 @@ func (r *runtime) recordTextArea(props TextAreaProps) {
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName, Text16)
 	style := r.textInputStyle(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName)
-	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
+	metrics := TextInput_TextInputMetricsFor(style.Fields, 0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY

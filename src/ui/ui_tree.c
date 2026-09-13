@@ -1385,8 +1385,10 @@ RouteInput(void)
                 TextInputStyle style = ui_resolve_text_input_style(
                     (TextInputStyle){0}, StyleKindTextField(),
                     field->class_name);
-                int padding = style.padding_x > 0 ? style.padding_x
-                                                  : Scale(10);
+                TextInputMetrics metrics = TextInputMetricsFor(
+                    style.fields, 0, style.padding_x, style.padding_y, 0,
+                    font, Scale(10), Scale(8), 0);
+                int padding = metrics.padding_x;
                 double now = GetTime();
                 KeyID click_key = field->focus_id > 0
                     ? (KeyID)field->focus_id : node->key;
@@ -1441,7 +1443,10 @@ RouteInput(void)
             TextInputStyle style = ui_resolve_text_input_style(
                 (TextInputStyle){0}, StyleKindTextField(),
                 field->class_name);
-            int padding = style.padding_x > 0 ? style.padding_x : Scale(10);
+            TextInputMetrics metrics = TextInputMetricsFor(
+                style.fields, 0, style.padding_x, style.padding_y, 0,
+                font, Scale(10), Scale(8), 0);
+            int padding = metrics.padding_x;
             int cursor;
 
             if(node->kind == WIDGET_TEXT_AREA)

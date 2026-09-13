@@ -30,8 +30,10 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    TextInputMetrics metrics = TextInputMetricsFor(0, 0, -1, -1,
+    TextInputMetrics metrics = TextInputMetricsFor(0, 0, 0, -1, -1,
                                                    16, 6, 8, 4);
+    TextInputMetrics zero_metrics = TextInputMetricsFor(
+        StylePaddingX | StylePaddingY | StyleGap, 0, 0, 0, 0, 16, 6, 8, 4);
     TextNavigationDecision decision;
     TextDeleteDecision delete_decision;
     TextInsertDecision insert_decision;
@@ -46,6 +48,10 @@ main(void)
     assert(metrics.padding_y == 8);
     assert(metrics.line_gap == 4);
     assert(metrics.line_height == 20);
+    assert(zero_metrics.padding_x == 0);
+    assert(zero_metrics.padding_y == 0);
+    assert(zero_metrics.line_gap == 0);
+    assert(zero_metrics.line_height == 16);
     assert(TextInputContentWidth(40.0f, 8) == 24);
     assert(TextInputContentWidth(10.0f, 8) == 0);
     assert(TextAreaPageRows(72.0f, metrics.font, metrics.line_gap,
