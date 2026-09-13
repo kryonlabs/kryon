@@ -1705,24 +1705,43 @@ const webKssLengthProperties = new Set([
   "inset-inline", "inset-block",
   "inset-inline-start", "inset-inline-end",
   "inset-block-start", "inset-block-end",
-  "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height", "outline-width",
+  "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
+  "text-indent", "outline-width", "outline-offset",
+  "scroll-margin", "scroll-margin-top", "scroll-margin-right",
+  "scroll-margin-bottom", "scroll-margin-left",
+  "scroll-margin-inline", "scroll-margin-block",
+  "scroll-margin-inline-start", "scroll-margin-inline-end",
+  "scroll-margin-block-start", "scroll-margin-block-end",
+  "scroll-padding", "scroll-padding-top", "scroll-padding-right",
+  "scroll-padding-bottom", "scroll-padding-left",
+  "scroll-padding-inline", "scroll-padding-block",
+  "scroll-padding-inline-start", "scroll-padding-inline-end",
+  "scroll-padding-block-start", "scroll-padding-block-end",
   "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
 ]);
 
 const webKssMaterialProperties = new Set(["material"]);
 
 const webKssLiteralProperties = new Set([
-  "typeface", "font-weight", "text-align", "text-decoration", "white-space",
+  "typeface", "font-weight", "font-style", "font-variant", "text-align",
+  "text-decoration", "text-transform", "text-overflow", "white-space",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "overflow-x", "overflow-y", "box-sizing",
+  "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
+  "overscroll-behavior-y", "scroll-snap-type", "scroll-snap-align",
+  "scroll-snap-stop", "touch-action",
   "align-items", "justify-content", "align-self", "justify-self",
   "flex-direction", "flex-wrap", "flex", "grid-template-columns",
   "grid-template-rows", "grid-auto-flow", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
-  "background-size", "background-position", "background-repeat", "visibility",
-  "transition", "transition-duration", "filter", "backdrop-filter",
+  "background-size", "background-position", "background-repeat",
+  "background-clip", "background-origin", "background-attachment", "visibility",
+  "transition", "transition-duration", "transform", "transform-origin",
+  "filter", "backdrop-filter",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
-  "border-style", "outline-style", "box-shadow"
+  "border-style", "outline-style", "box-shadow",
+  "contain", "container-type", "container-name", "will-change",
+  "isolation", "mix-blend-mode"
 ]);
 
 function stripKssComments(source) {
@@ -2249,10 +2268,15 @@ const webCSSPropertyNames = new Map([
   ["font-size", "font-size"],
   ["typeface", "font-family"],
   ["font-weight", "font-weight"],
+  ["font-style", "font-style"],
+  ["font-variant", "font-variant"],
   ["letter-spacing", "letter-spacing"],
   ["line-height", "line-height"],
+  ["text-indent", "text-indent"],
   ["text-align", "text-align"],
   ["text-decoration", "text-decoration"],
+  ["text-transform", "text-transform"],
+  ["text-overflow", "text-overflow"],
   ["white-space", "white-space"],
   ["word-break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
@@ -2263,6 +2287,36 @@ const webCSSPropertyNames = new Map([
   ["overflow-x", "overflow-x"],
   ["overflow-y", "overflow-y"],
   ["box-sizing", "box-sizing"],
+  ["scroll-behavior", "scroll-behavior"],
+  ["overscroll-behavior", "overscroll-behavior"],
+  ["overscroll-behavior-x", "overscroll-behavior-x"],
+  ["overscroll-behavior-y", "overscroll-behavior-y"],
+  ["scroll-snap-type", "scroll-snap-type"],
+  ["scroll-snap-align", "scroll-snap-align"],
+  ["scroll-snap-stop", "scroll-snap-stop"],
+  ["scroll-margin", "scroll-margin"],
+  ["scroll-margin-top", "scroll-margin-top"],
+  ["scroll-margin-right", "scroll-margin-right"],
+  ["scroll-margin-bottom", "scroll-margin-bottom"],
+  ["scroll-margin-left", "scroll-margin-left"],
+  ["scroll-margin-inline", "scroll-margin-inline"],
+  ["scroll-margin-block", "scroll-margin-block"],
+  ["scroll-margin-inline-start", "scroll-margin-inline-start"],
+  ["scroll-margin-inline-end", "scroll-margin-inline-end"],
+  ["scroll-margin-block-start", "scroll-margin-block-start"],
+  ["scroll-margin-block-end", "scroll-margin-block-end"],
+  ["scroll-padding", "scroll-padding"],
+  ["scroll-padding-top", "scroll-padding-top"],
+  ["scroll-padding-right", "scroll-padding-right"],
+  ["scroll-padding-bottom", "scroll-padding-bottom"],
+  ["scroll-padding-left", "scroll-padding-left"],
+  ["scroll-padding-inline", "scroll-padding-inline"],
+  ["scroll-padding-block", "scroll-padding-block"],
+  ["scroll-padding-inline-start", "scroll-padding-inline-start"],
+  ["scroll-padding-inline-end", "scroll-padding-inline-end"],
+  ["scroll-padding-block-start", "scroll-padding-block-start"],
+  ["scroll-padding-block-end", "scroll-padding-block-end"],
+  ["touch-action", "touch-action"],
   ["align-items", "align-items"],
   ["justify-content", "justify-content"],
   ["align-self", "align-self"],
@@ -2283,9 +2337,14 @@ const webCSSPropertyNames = new Map([
   ["background-size", "background-size"],
   ["background-position", "background-position"],
   ["background-repeat", "background-repeat"],
+  ["background-clip", "background-clip"],
+  ["background-origin", "background-origin"],
+  ["background-attachment", "background-attachment"],
   ["visibility", "visibility"],
   ["transition", "transition"],
   ["transition-duration", "transition-duration"],
+  ["transform", "transform"],
+  ["transform-origin", "transform-origin"],
   ["filter", "filter"],
   ["backdrop-filter", "backdrop-filter"],
   ["cursor", "cursor"],
@@ -2294,8 +2353,15 @@ const webCSSPropertyNames = new Map([
   ["user-select", "user-select"],
   ["resize", "resize"],
   ["outline-width", "outline-width"],
+  ["outline-offset", "outline-offset"],
   ["outline-style", "outline-style"],
   ["box-shadow", "box-shadow"],
+  ["contain", "contain"],
+  ["container-type", "container-type"],
+  ["container-name", "container-name"],
+  ["will-change", "will-change"],
+  ["isolation", "isolation"],
+  ["mix-blend-mode", "mix-blend-mode"],
   ["focus", "outline-color"]
 ]);
 
@@ -2352,6 +2418,10 @@ function webStyleRuleToCSS(rule) {
     }
     if (name === "offset-x" || name === "offset-y")
       continue;
+    if (name === "transform" &&
+        ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
+         (offsetY !== undefined && offsetY !== null && offsetY !== "")))
+      continue;
     if (name === "content-offset-y") {
       lines.push(`  --kry-content-offset-y: ${webStyleCSSValue("--kry-content-offset-y", value)};`);
       continue;
@@ -2380,8 +2450,10 @@ function webStyleRuleToCSS(rule) {
   if (offsetY !== undefined && offsetY !== null && offsetY !== "")
     lines.push(`  --kry-offset-y: ${webStyleCSSValue("--kry-offset-y", offsetY)};`);
   if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
-      (offsetY !== undefined && offsetY !== null && offsetY !== ""))
-    lines.push("  transform: translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px));");
+      (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
+    const transform = style.transform ? ` ${webStyleCSSValue("transform", style.transform)}` : "";
+    lines.push(`  transform: translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))${transform};`);
+  }
   if (!lines.length)
     return "";
   return `${selector} {\n${lines.join("\n")}\n}`;
@@ -2955,6 +3027,8 @@ function applyResolvedWebStyle(el, style) {
   }
   const backgroundStart = style.background;
   const backgroundEnd = style["background-end"];
+  const offsetX = style["offset-x"];
+  const offsetY = style["offset-y"];
   set("background", backgroundStart);
   set("--kry-background-end", backgroundEnd);
   if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
@@ -3029,10 +3103,15 @@ function applyResolvedWebStyle(el, style) {
   set("fontSize", style["font-size"]);
   set("fontFamily", style.typeface);
   set("fontWeight", style["font-weight"]);
+  set("fontStyle", style["font-style"]);
+  set("fontVariant", style["font-variant"]);
   set("letterSpacing", style["letter-spacing"]);
   set("lineHeight", style["line-height"]);
+  set("textIndent", style["text-indent"]);
   set("textAlign", style["text-align"]);
   set("textDecoration", style["text-decoration"]);
+  set("textTransform", style["text-transform"]);
+  set("textOverflow", style["text-overflow"]);
   set("whiteSpace", style["white-space"]);
   set("wordBreak", style["word-break"]);
   set("overflowWrap", style["overflow-wrap"]);
@@ -3043,6 +3122,36 @@ function applyResolvedWebStyle(el, style) {
   set("overflowX", style["overflow-x"]);
   set("overflowY", style["overflow-y"]);
   set("boxSizing", style["box-sizing"]);
+  set("scrollBehavior", style["scroll-behavior"]);
+  set("overscrollBehavior", style["overscroll-behavior"]);
+  set("overscrollBehaviorX", style["overscroll-behavior-x"]);
+  set("overscrollBehaviorY", style["overscroll-behavior-y"]);
+  set("scrollSnapType", style["scroll-snap-type"]);
+  set("scrollSnapAlign", style["scroll-snap-align"]);
+  set("scrollSnapStop", style["scroll-snap-stop"]);
+  set("scrollMargin", style["scroll-margin"]);
+  set("scrollMarginTop", style["scroll-margin-top"]);
+  set("scrollMarginRight", style["scroll-margin-right"]);
+  set("scrollMarginBottom", style["scroll-margin-bottom"]);
+  set("scrollMarginLeft", style["scroll-margin-left"]);
+  set("scrollMarginInline", style["scroll-margin-inline"]);
+  set("scrollMarginBlock", style["scroll-margin-block"]);
+  set("scrollMarginInlineStart", style["scroll-margin-inline-start"]);
+  set("scrollMarginInlineEnd", style["scroll-margin-inline-end"]);
+  set("scrollMarginBlockStart", style["scroll-margin-block-start"]);
+  set("scrollMarginBlockEnd", style["scroll-margin-block-end"]);
+  set("scrollPadding", style["scroll-padding"]);
+  set("scrollPaddingTop", style["scroll-padding-top"]);
+  set("scrollPaddingRight", style["scroll-padding-right"]);
+  set("scrollPaddingBottom", style["scroll-padding-bottom"]);
+  set("scrollPaddingLeft", style["scroll-padding-left"]);
+  set("scrollPaddingInline", style["scroll-padding-inline"]);
+  set("scrollPaddingBlock", style["scroll-padding-block"]);
+  set("scrollPaddingInlineStart", style["scroll-padding-inline-start"]);
+  set("scrollPaddingInlineEnd", style["scroll-padding-inline-end"]);
+  set("scrollPaddingBlockStart", style["scroll-padding-block-start"]);
+  set("scrollPaddingBlockEnd", style["scroll-padding-block-end"]);
+  set("touchAction", style["touch-action"]);
   set("alignItems", style["align-items"]);
   set("justifyContent", style["justify-content"]);
   set("alignSelf", style["align-self"]);
@@ -3063,9 +3172,16 @@ function applyResolvedWebStyle(el, style) {
   set("backgroundSize", style["background-size"]);
   set("backgroundPosition", style["background-position"]);
   set("backgroundRepeat", style["background-repeat"]);
+  set("backgroundClip", style["background-clip"]);
+  set("backgroundOrigin", style["background-origin"]);
+  set("backgroundAttachment", style["background-attachment"]);
   set("visibility", style.visibility);
   set("transition", style.transition);
   set("transitionDuration", style["transition-duration"]);
+  if (!((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
+        (offsetY !== undefined && offsetY !== null && offsetY !== "")))
+    set("transform", style.transform);
+  set("transformOrigin", style["transform-origin"]);
   set("filter", style.filter);
   set("backdropFilter", style["backdrop-filter"]);
   set("cursor", style.cursor);
@@ -3074,18 +3190,24 @@ function applyResolvedWebStyle(el, style) {
   set("userSelect", style["user-select"]);
   set("resize", style.resize);
   set("outlineWidth", style["outline-width"]);
+  set("outlineOffset", style["outline-offset"]);
   set("outlineStyle", style["outline-style"]);
   set("boxShadow", style["box-shadow"]);
+  set("contain", style.contain);
+  set("containerType", style["container-type"]);
+  set("containerName", style["container-name"]);
+  set("willChange", style["will-change"]);
+  set("isolation", style.isolation);
+  set("mixBlendMode", style["mix-blend-mode"]);
   set("--kry-content-offset-x", style["content-offset-x"]);
   set("--kry-content-offset-y", style["content-offset-y"]);
   set("--kry-icon-size", style["icon-size"]);
-  const offsetX = style["offset-x"];
-  const offsetY = style["offset-y"];
   if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
       (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
     set("--kry-offset-x", offsetX ?? "0px");
     set("--kry-offset-y", offsetY ?? "0px");
-    set("transform", "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))");
+    const transform = style.transform ? ` ${webStyleCSSValue("transform", style.transform)}` : "";
+    set("transform", `translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))${transform}`);
   }
   set("outlineColor", style.focus);
   if (style.border || style["border-width"]) {

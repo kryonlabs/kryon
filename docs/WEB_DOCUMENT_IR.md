@@ -419,9 +419,12 @@ layers, colors, padding,
 margin, logical spacing, per-edge spacing, size constraints, positioning insets,
 logical insets, radius,
 border styles, per-side border widths, per-corner radii, opacity, font size, offsets,
-font family, font weight, letter spacing, text alignment, content offsets,
-line height, text decoration/wrapping, display/layout keywords, box sizing,
-flex flow, grid tracks, grid auto-flow, row/column gaps, placement/self alignment,
+font family, font weight/style/variant, letter spacing, text alignment/indent,
+content offsets, line height, text transform/overflow/decoration/wrapping,
+display/layout keywords, box sizing, scroll behavior/snap/margins/padding,
+overscroll and touch-action controls, flex flow, grid tracks, grid auto-flow,
+row/column gaps, placement/self alignment, transforms, containment/container
+queries, will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
