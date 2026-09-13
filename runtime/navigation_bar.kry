@@ -97,14 +97,11 @@ NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
 }
 
 NavigationBarMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
-    return (i32)(value * scale)
-}
-
-NavigationBarMetricExplicitZero :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
     return (i32)(value * scale)
 }
 
@@ -113,39 +110,39 @@ NavigationBarConfigMetricsFor :: (scale: float, panel: StyleFrame,
     if scale <= 0.0 { scale = 1.0 }
     metrics: NavigationBarConfigMetrics
     metrics.frame_width = NavigationBarMetric(panel.value.fields,
-        (u32)StyleContentOffset, panel.value.offset_x, 340.0, scale)
+        (u32)StyleContentOffset, panel.value.offset_x, 340.0, scale, false)
     metrics.frame_base_height = NavigationBarMetric(panel.value.fields,
-        (u32)StyleIconSize, panel.value.icon_size, 128.0, scale)
+        (u32)StyleIconSize, panel.value.icon_size, 128.0, scale, false)
     metrics.frame_bottom_extra = NavigationBarMetric(panel.value.fields,
-        (u32)StylePaddingY, panel.value.padding_y, 58.0, scale)
+        (u32)StylePaddingY, panel.value.padding_y, 58.0, scale, true)
     metrics.row_height = NavigationBarMetric(row.value.fields,
-        (u32)StyleIconSize, row.value.icon_size, 58.0, scale)
+        (u32)StyleIconSize, row.value.icon_size, 58.0, scale, false)
     metrics.row_control_y = NavigationBarMetric(row.value.fields,
-        (u32)StyleContentOffset, row.value.offset_y, 22.0, scale)
+        (u32)StyleContentOffset, row.value.offset_y, 22.0, scale, true)
     metrics.dropdown_height = NavigationBarMetric(row.value.fields,
-        (u32)StylePaddingY, row.value.padding_y, 36.0, scale)
+        (u32)StylePaddingY, row.value.padding_y, 36.0, scale, false)
     metrics.remove_width = NavigationBarMetric(row.value.fields,
-        (u32)StylePaddingX, row.value.padding_x, 36.0, scale)
+        (u32)StylePaddingX, row.value.padding_x, 36.0, scale, true)
     metrics.add_height = NavigationBarMetric(action.value.fields,
-        (u32)StyleIconSize, action.value.icon_size, 34.0, scale)
+        (u32)StyleIconSize, action.value.icon_size, 34.0, scale, false)
     metrics.add_max_width = NavigationBarMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_x, 180.0, scale)
+        (u32)StyleContentOffset, action.value.offset_x, 180.0, scale, false)
     metrics.button_height = NavigationBarMetric(action.value.fields,
-        (u32)StylePaddingY, action.value.padding_y, 36.0, scale)
+        (u32)StylePaddingY, action.value.padding_y, 36.0, scale, false)
     metrics.button_gap = NavigationBarMetric(action.value.fields,
-        (u32)StyleGap, action.value.gap, 8.0, scale)
+        (u32)StyleGap, action.value.gap, 8.0, scale, true)
     metrics.button_max_width = NavigationBarMetric(action.value.fields,
-        (u32)StylePaddingX, action.value.padding_x, 92.0, scale)
+        (u32)StylePaddingX, action.value.padding_x, 92.0, scale, false)
     metrics.button_bottom_gap = NavigationBarMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_y, 16.0, scale)
+        (u32)StyleContentOffset, action.value.offset_y, 16.0, scale, true)
     metrics.route_top_gap = NavigationBarMetric(route.value.fields,
-        (u32)StylePaddingY, route.value.padding_y, 12.0, scale)
+        (u32)StylePaddingY, route.value.padding_y, 12.0, scale, true)
     metrics.route_bottom_gap = NavigationBarMetric(route.value.fields,
-        (u32)StyleGap, route.value.gap, 8.0, scale)
+        (u32)StyleGap, route.value.gap, 8.0, scale, true)
     metrics.route_min_height = NavigationBarMetric(route.value.fields,
-        (u32)StyleIconSize, route.value.icon_size, 48.0, scale)
+        (u32)StyleIconSize, route.value.icon_size, 48.0, scale, false)
     metrics.scrollbar_width = NavigationBarMetric(route.value.fields,
-        (u32)StyleContentOffset, route.value.offset_y, 8.0, scale)
+        (u32)StyleContentOffset, route.value.offset_y, 8.0, scale, true)
     return metrics
 }
 
@@ -237,7 +234,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     height: i32 = spec.height
     if height <= 0 {
         height = NavigationBarMetric(spec.bar.value.fields,
-            (u32)StyleIconSize, spec.bar.value.icon_size, 86.0, scale)
+            (u32)StyleIconSize, spec.bar.value.icon_size, 86.0, scale, false)
     }
     bottom_margin: i32 = spec.bottom_margin
     if bottom_margin < 0 { bottom_margin = 0 }
@@ -249,12 +246,12 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     y: i32 = spec.view_height - bottom_margin - height
     available_w: i32 = spec.view_width - side_margin * 2
     min_available: i32 = NavigationBarMetric(spec.bar.value.fields,
-        (u32)StyleContentOffset, spec.bar.value.offset_x, 96.0, scale)
+        (u32)StyleContentOffset, spec.bar.value.offset_x, 96.0, scale, false)
     if available_w < min_available { available_w = min_available }
     tab_w: i32 = available_w
     if count > 0 { tab_w = available_w / count }
     min_tab: i32 = NavigationBarMetric(spec.bar.value.fields,
-        (u32)StyleContentOffset, spec.bar.value.offset_y, 56.0, scale)
+        (u32)StyleContentOffset, spec.bar.value.offset_y, 56.0, scale, false)
     if tab_w < min_tab { tab_w = min_tab }
     group_w: i32 = tab_w * count
     if group_w > available_w { group_w = available_w }
@@ -265,7 +262,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     paint.bounds.width = (float)spec.view_width
     paint.bounds.height = (float)height
     inset: i32 = NavigationBarMetric(spec.bar.value.fields,
-        (u32)StyleBorderWidth, spec.bar.value.border_width, 1.0, scale)
+        (u32)StyleBorderWidth, spec.bar.value.border_width, 1.0, scale, true)
     paint.bar_bounds.x = (float)(side_margin + inset)
     paint.bar_bounds.y = (float)(y + inset)
     paint.bar_bounds.width = (float)(available_w - inset * 2)
@@ -292,22 +289,22 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     w: i32 = spec.bar.tab_width
     if index == spec.bar.count - 1 { w = spec.bar.start_x + spec.bar.group_width - x }
     if w < 0 { w = 0 }
-    state_w: i32 = NavigationBarMetricExplicitZero(spec.face.value.fields,
-        (u32)StylePaddingX, spec.face.value.padding_x, 58.0, scale)
-    state_h: i32 = NavigationBarMetricExplicitZero(spec.face.value.fields,
-        (u32)StylePaddingY, spec.face.value.padding_y, 58.0, scale)
-    icon_breathing: i32 = NavigationBarMetricExplicitZero(spec.face.value.fields,
-        (u32)StyleContentOffset, spec.face.value.offset_x, 16.0, scale)
+    state_w: i32 = NavigationBarMetric(spec.face.value.fields,
+        (u32)StylePaddingX, spec.face.value.padding_x, 58.0, scale, true)
+    state_h: i32 = NavigationBarMetric(spec.face.value.fields,
+        (u32)StylePaddingY, spec.face.value.padding_y, 58.0, scale, true)
+    icon_breathing: i32 = NavigationBarMetric(spec.face.value.fields,
+        (u32)StyleContentOffset, spec.face.value.offset_x, 16.0, scale, true)
     if state_w < spec.bar.icon_size + icon_breathing {
         state_w = spec.bar.icon_size + icon_breathing
     }
     if state_h < spec.bar.icon_size + icon_breathing {
         state_h = spec.bar.icon_size + icon_breathing
     }
-    label_gap: i32 = NavigationBarMetricExplicitZero(spec.base.value.fields,
-        (u32)StyleGap, spec.base.value.gap, 4.0, scale)
-    edge_inset: i32 = NavigationBarMetricExplicitZero(spec.base.value.fields,
-        (u32)StylePaddingY, spec.base.value.padding_y, 2.0, scale)
+    label_gap: i32 = NavigationBarMetric(spec.base.value.fields,
+        (u32)StyleGap, spec.base.value.gap, 4.0, scale, true)
+    edge_inset: i32 = NavigationBarMetric(spec.base.value.fields,
+        (u32)StylePaddingY, spec.base.value.padding_y, 2.0, scale, true)
     stack_h: i32 = state_h + label_gap + spec.label_height
     state_y: i32 = spec.bar.y + (spec.bar.height - stack_h) / 2
     if state_y < spec.bar.y + edge_inset {
@@ -335,8 +332,8 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.icon_bounds.y = (float)icon_y
     paint.icon_bounds.width = (float)spec.bar.icon_size
     paint.icon_bounds.height = (float)spec.bar.icon_size
-    label_inset: i32 = NavigationBarMetricExplicitZero(spec.base.value.fields,
-        (u32)StylePaddingX, spec.base.value.padding_x, 3.0, scale)
+    label_inset: i32 = NavigationBarMetric(spec.base.value.fields,
+        (u32)StylePaddingX, spec.base.value.padding_x, 3.0, scale, true)
     paint.label_bounds.x = (float)(x + label_inset)
     paint.label_bounds.y = (float)label_y
     paint.label_bounds.width = (float)(w - label_inset * 2)

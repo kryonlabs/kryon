@@ -253,6 +253,27 @@ main(void)
         check_int("compact navigation bar label width uses KSS",
                   (int)item_paint.label_bounds.width, 205);
 
+        item.value.padding_x = 0.0f;
+        item.value.padding_y = 0.0f;
+        item.value.gap = 0.0f;
+        item.value.offset_x = 0.0f;
+        item_paint = NavigationBarItemPaintFor((NavigationBarItemSpec){
+            .bar = paint,
+            .index = 1,
+            .active = true,
+            .label_height = TextLineHeight(GetSmallFontSize()),
+            .base = item,
+            .face = item,
+        });
+        check_int("compact navigation bar zero badge width uses KSS",
+                  (int)item_paint.state_bounds.width, 32);
+        check_int("compact navigation bar zero badge height uses KSS",
+                  (int)item_paint.state_bounds.height, 32);
+        check_int("compact navigation bar zero label inset uses KSS",
+                  (int)item_paint.label_bounds.x, 225);
+        check_int("compact navigation bar zero label width uses KSS",
+                  (int)item_paint.label_bounds.width, 225);
+
         bar.value.fields |= StyleIconSize | StyleContentOffset |
                             StyleBorderWidth;
         bar.value.icon_size = 72.0f;
@@ -272,6 +293,18 @@ main(void)
                   (int)paint.bar_bounds.width, 172);
         check_int("compact navigation bar inset uses KSS",
                   (int)paint.bar_bounds.x, 4);
+        bar.value.border_width = 0.0f;
+        paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 120,
+            .view_height = 200,
+            .count = 2,
+            .scale = 1.0f,
+            .bar = bar,
+        });
+        check_int("compact navigation bar zero inset uses KSS",
+                  (int)paint.bar_bounds.x, 0);
+        check_int("compact navigation bar zero inset width uses KSS",
+                  (int)paint.bar_bounds.width, 180);
     }
     {
         StyleFrame panel = {.value = {.fields = StyleContentOffset |
@@ -351,6 +384,27 @@ main(void)
                   metrics.button_gap, 10);
         check_int("navigation config scrollbar width uses KSS",
                   metrics.scrollbar_width, 12);
+
+        panel.value.padding_y = 0.0f;
+        row_frame.value.offset_y = 0.0f;
+        row_frame.value.padding_x = 0.0f;
+        action.value.offset_y = 0.0f;
+        action.value.gap = 0.0f;
+        route.value.padding_y = 0.0f;
+        route.value.gap = 0.0f;
+        route.value.offset_y = 0.0f;
+        metrics = NavigationBarConfigMetricsFor(1.0f, panel, row_frame,
+                                                action, route);
+        check_int("navigation config zero bottom extra uses KSS",
+                  metrics.frame_bottom_extra, 0);
+        check_int("navigation config zero row control y uses KSS",
+                  metrics.row_control_y, 0);
+        check_int("navigation config zero remove width uses KSS",
+                  metrics.remove_width, 0);
+        check_int("navigation config zero button gap uses KSS",
+                  metrics.button_gap, 0);
+        check_int("navigation config zero scrollbar width uses KSS",
+                  metrics.scrollbar_width, 0);
     }
 
     BeginInterfaceFrame(900, 720, 1.0f);
