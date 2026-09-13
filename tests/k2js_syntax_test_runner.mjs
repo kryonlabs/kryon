@@ -1048,6 +1048,8 @@ function fakeDocument() {
       { nodeName: "choice", path: "Page/choice" });
     runtime.widget(nativeRt, "ListBox", {}, null,
       { nodeName: "items", path: "Page/items" });
+    runtime.widget(nativeRt, "ColorPicker", { value: "#336699" }, null,
+      { nodeName: "accent", path: "Page/accent" });
     runtime.widget(nativeRt, "TableView", {}, null,
       { nodeName: "table", path: "Page/table" });
     runtime.widget(nativeRt, "CanvasGrid", {}, null,
@@ -1106,7 +1108,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
-      ["Slider", "Spinbox", "Dropdown", "ListBox"].map((kind) => {
+      ["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
         return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
       }),
@@ -1114,10 +1116,13 @@ function fakeDocument() {
         ["Slider", "input", "range", "0", "10", "4"],
         ["Spinbox", "input", "number", "1", "8", "3"],
         ["Dropdown", "select", "", "", "", ""],
-        ["ListBox", "select", "", "", "", ""]
+        ["ListBox", "select", "", "", "", ""],
+        ["ColorPicker", "input", "color", "", "", "#336699"]
       ]);
-    assert.deepEqual(runtime.webAccessibilitySnapshot(nativeRt).nodes.slice(4, 9)
-      .map((node) => node.role), ["slider", "spinbutton", "combobox", "listbox", "table"]);
+    assert.deepEqual(["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker", "TableView"]
+      .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
+        .find((node) => node.kind === kind)?.role),
+      ["slider", "spinbutton", "combobox", "listbox", "", "table"]);
     assert.deepEqual(["Toolbar", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
@@ -1134,6 +1139,7 @@ function fakeDocument() {
     const copies = runtime.findWebElement(nativeTarget, "copies");
     const choice = runtime.findWebElement(nativeTarget, "choice");
     const items = runtime.findWebElement(nativeTarget, "items");
+    const accent = runtime.findWebElement(nativeTarget, "accent");
     const table = runtime.findWebElement(nativeTarget, "table");
     const grid = runtime.findWebElement(nativeTarget, "grid");
     const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
@@ -1160,6 +1166,9 @@ function fakeDocument() {
     assert.equal(copies.attributes.type, "number");
     assert.equal(choice.tagName, "SELECT");
     assert.equal(items.tagName, "SELECT");
+    assert.equal(accent.tagName, "INPUT");
+    assert.equal(accent.attributes.type, "color");
+    assert.equal(accent.attributes.value, "#336699");
     assert.equal(table.tagName, "TABLE");
     assert.equal(grid.tagName, "CANVAS");
     assert.equal(grid.attributes.role, "img");

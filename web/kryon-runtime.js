@@ -1068,6 +1068,8 @@ function widgetTag(item) {
     return "input";
   case "TextArea":
     return "textarea";
+  case "ColorPicker":
+    return "input";
   case "Slider":
   case "Spinbox":
     return "input";
@@ -1127,6 +1129,8 @@ function widgetInputType(item) {
     return "checkbox";
   case "Radio":
     return "radio";
+  case "ColorPicker":
+    return "color";
   case "Slider":
     return "range";
   case "Spinbox":
@@ -1147,6 +1151,8 @@ function progressPositionalProp(args, index, fallback = "") {
 }
 
 function widgetDOMValue(item) {
+  if (item.name === "ColorPicker")
+    return propString(item.args, "value", "");
   if (item.name === "Slider" || item.name === "Spinbox")
     return propString(item.args, "value", "");
   if (item.name !== "Progress")
@@ -1588,6 +1594,8 @@ function implicitRole(node) {
       return "checkbox";
     if (node.inputType === "radio")
       return "radio";
+    if (node.inputType === "color")
+      return "";
     if (node.inputType === "range")
       return "slider";
     if (node.inputType === "number")

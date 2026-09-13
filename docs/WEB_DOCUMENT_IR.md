@@ -324,6 +324,7 @@ The initial tag mapping is intentionally conservative:
 | `TextArea` | `textarea` |
 | `Slider` | `input type=range` |
 | `Spinbox` | `input type=number` |
+| `ColorPicker` | `input type=color` |
 | `Dropdown` | `select` |
 | `ListBox` | `select` |
 | `Image` with `alt_text` | `img` |
