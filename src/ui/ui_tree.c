@@ -2033,6 +2033,18 @@ GetNode(NodeId id)
     return ui_tree_node(id);
 }
 
+int
+GetNodeId(const WidgetNode *node)
+{
+    return node != NULL ? node->id : 0;
+}
+
+int
+GetNodeKind(const WidgetNode *node)
+{
+    return node != NULL ? node->kind : -1;
+}
+
 const char *
 GetNodeKindName(int kind)
 {
@@ -2071,6 +2083,30 @@ GetNodeKindName(int kind)
     if(kind < 0 || kind >= WIDGET_KIND_COUNT || names[kind] == NULL)
         return "";
     return names[kind];
+}
+
+Rectangle
+GetNodeBounds(const WidgetNode *node)
+{
+    return node != NULL ? node->bounds : (Rectangle){0};
+}
+
+int
+GetNodeParent(const WidgetNode *node)
+{
+    return node != NULL ? node->parent : -1;
+}
+
+int
+GetNodeFirstChild(const WidgetNode *node)
+{
+    return node != NULL ? node->first_child : -1;
+}
+
+int
+GetNodeNextSibling(const WidgetNode *node)
+{
+    return node != NULL ? node->next_sibling : -1;
 }
 
 NodeId

@@ -504,7 +504,7 @@ Recent retained-tree public C cleanup:
 | `UIEvent` | `Event` |
 | `UIInvalidation`, `UI_INVALIDATE_*` | `Invalidation`, `INVALIDATE_*` |
 | `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `int` as an opaque integer plus `GetNodeKindName(kind)` |
-| `UIWidgetNode` | Opaque `WidgetNode` inspection handle |
+| `UIWidgetNode` | Opaque `WidgetNode` inspection handle plus `GetNode*` accessors |
 | `UIWidgetData` | Internal `WidgetData`; public code uses clean node inspection helpers |
 | text input paint snapshot | Internal `TextInputPaint` host snapshot. |
 | `UIAccessibilitySink` | `AccessibilitySink` |
