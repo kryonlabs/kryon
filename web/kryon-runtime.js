@@ -1305,8 +1305,29 @@ function widgetTag(item) {
     return "hr";
   case "Menu":
     return "menu";
+  case "Table":
   case "TableView":
     return "table";
+  case "TableCaption":
+    return "caption";
+  case "TableHead":
+  case "Thead":
+    return "thead";
+  case "TableBody":
+  case "Tbody":
+    return "tbody";
+  case "TableFoot":
+  case "Tfoot":
+    return "tfoot";
+  case "TableRow":
+  case "Tr":
+    return "tr";
+  case "TableColumnGroup":
+  case "ColGroup":
+    return "colgroup";
+  case "TableColumn":
+  case "Col":
+    return "col";
   case "TableCell":
     return /^(col|row|colgroup|rowgroup)$/i.test(
       metaString(item.meta, "scope") || propStringAny(args, ["scope", "dom_scope", "html_scope"]))
@@ -1402,6 +1423,7 @@ function widgetText(item) {
   case "TextField":
   case "TextArea":
     return propString(args, "text", propString(args, "value", ""));
+  case "TableCaption":
   case "TableCell":
     return propString(args, "text", "");
   default:
@@ -1677,6 +1699,13 @@ function widgetNativeAttrs(item, meta, args) {
   case "ListItem":
     setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
       propStringAny(args, ["value", "dom_value", "html_value"]));
+    break;
+  case "TableColumnGroup":
+  case "ColGroup":
+  case "TableColumn":
+  case "Col":
+    setWidgetNativeAttr(out, "span", metaString(meta, "span") ||
+      propStringAny(args, ["span", "dom_span", "html_span"]));
     break;
   case "Video":
     setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
@@ -2369,6 +2398,10 @@ function implicitRole(node) {
     return "option";
   if (node.tag === "table")
     return "table";
+  if (node.tag === "thead" || node.tag === "tbody" || node.tag === "tfoot")
+    return "rowgroup";
+  if (node.tag === "tr")
+    return "row";
   if (node.tag === "th") {
     const scope = String(node.scope || "").toLowerCase();
     if (scope === "row" || scope === "rowgroup")

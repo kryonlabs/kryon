@@ -95,6 +95,10 @@ the browser receives normal elements, attributes, CSS, and events.
   `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, and `Cite` render
   to matching browser elements, including native data values, citations, and
   datetime attributes.
+- Native table structure aliases such as `Table`, `TableCaption`, `TableHead`,
+  `TableBody`, `TableRow`, `TableColumnGroup`, and `TableColumn` render to
+  browser table elements, including column span attributes and rowgroup/row
+  accessibility facts.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

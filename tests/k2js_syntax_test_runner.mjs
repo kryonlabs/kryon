@@ -2866,6 +2866,26 @@ function fakeDocument() {
       { nodeName: "nativeFrame", path: "Page/frame" });
     runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
       { nodeName: "nativeEmbed", path: "Page/embed" });
+    runtime.widget(nativeRt, "Table", {}, null,
+      { nodeName: "nativeTable", path: "Page/nativeTable" });
+    runtime.widget(nativeRt, "TableCaption", { text: "Totals" }, null,
+      { nodeName: "nativeTableCaption", path: "Page/nativeTable/caption", parentPath: "Page/nativeTable" });
+    runtime.widget(nativeRt, "TableColumnGroup", { span: 2 }, null,
+      { nodeName: "nativeColumns", path: "Page/nativeTable/columns", parentPath: "Page/nativeTable" });
+    runtime.widget(nativeRt, "TableColumn", { span: 1 }, null,
+      { nodeName: "nativeColumn", path: "Page/nativeTable/columns/first", parentPath: "Page/nativeTable/columns" });
+    runtime.widget(nativeRt, "TableHead", {}, null,
+      { nodeName: "nativeTableHead", path: "Page/nativeTable/head", parentPath: "Page/nativeTable" });
+    runtime.widget(nativeRt, "TableRow", {}, null,
+      { nodeName: "nativeTableHeadRow", path: "Page/nativeTable/head/row", parentPath: "Page/nativeTable/head" });
+    runtime.widget(nativeRt, "TableCell", { text: "Name", scope: "col" }, null,
+      { nodeName: "nativeHeaderCell", path: "Page/nativeTable/head/row/name", parentPath: "Page/nativeTable/head/row" });
+    runtime.widget(nativeRt, "TableBody", {}, null,
+      { nodeName: "nativeTableBody", path: "Page/nativeTable/body", parentPath: "Page/nativeTable" });
+    runtime.widget(nativeRt, "TableRow", {}, null,
+      { nodeName: "nativeTableBodyRow", path: "Page/nativeTable/body/row", parentPath: "Page/nativeTable/body" });
+    runtime.widget(nativeRt, "TableCell", { text: "Kryon", headers: "nativeHeaderCell" }, null,
+      { nodeName: "nativeBodyCell", path: "Page/nativeTable/body/row/name", parentPath: "Page/nativeTable/body/row" });
     runtime.widget(nativeRt, "Form", { form_action: "/signup", form_method: "post" }, null,
       { nodeName: "nativeForm", path: "Page/nativeForm" });
     runtime.widget(nativeRt, "Label", { text: "Email", for: "form-email" }, null,
@@ -3050,6 +3070,13 @@ function fakeDocument() {
       .find((node) => node.kind === "Summary")?.role, "button");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Output")?.role, "status");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "TableHead")?.role, "rowgroup");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.path === "Page/nativeTable/head/row")?.role, "row");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.path === "Page/nativeTable/head/row/name")?.role,
+      "columnheader");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nav/home").landmarkOwner.path,
       "Page/nav");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nav").landmarkMembers,
@@ -3102,6 +3129,20 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").tag, "iframe");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.loading, "lazy");
     assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Table").tag, "table");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableCaption").tag, "caption");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableCaption").text, "Totals");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableColumnGroup").tag, "colgroup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableColumnGroup").extraAttrs.span, "2");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableColumn").tag, "col");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableColumn").extraAttrs.span, "1");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableHead").tag, "thead");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableBody").tag, "tbody");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/nativeTable/head/row").tag, "tr");
+    assert.equal(runtime.webNodeQuery(nativeRt, "nativeHeaderCell").tag, "th");
+    assert.equal(runtime.webNodeQuery(nativeRt, "nativeBodyCell").tag, "td");
+    assert.equal(runtime.webNodeRelations(nativeRt, "nativeBodyCell").headers[0].path,
+      "Page/nativeTable/head/row/name");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"intro.mp4\"]").path, "Page/video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Form").tag, "form");
     assert.equal(runtime.webNodeQuery(nativeRt, "Label").tag, "label");
@@ -3292,6 +3333,16 @@ function fakeDocument() {
     const nativePicture = runtime.findWebElement(nativeTarget, "nativePicture");
     const nativeFrame = runtime.findWebElement(nativeTarget, "nativeFrame");
     const nativeEmbed = runtime.findWebElement(nativeTarget, "nativeEmbed");
+    const nativeTable = runtime.findWebElement(nativeTarget, "nativeTable");
+    const nativeTableCaption = runtime.findWebElement(nativeTarget, "nativeTableCaption");
+    const nativeColumns = runtime.findWebElement(nativeTarget, "nativeColumns");
+    const nativeColumn = runtime.findWebElement(nativeTarget, "nativeColumn");
+    const nativeTableHead = runtime.findWebElement(nativeTarget, "nativeTableHead");
+    const nativeTableHeadRow = runtime.findWebElement(nativeTarget, "nativeTableHeadRow");
+    const nativeHeaderCell = runtime.findWebElement(nativeTarget, "nativeHeaderCell");
+    const nativeTableBody = runtime.findWebElement(nativeTarget, "nativeTableBody");
+    const nativeTableBodyRow = runtime.findWebElement(nativeTarget, "nativeTableBodyRow");
+    const nativeBodyCell = runtime.findWebElement(nativeTarget, "nativeBodyCell");
     const nativeForm = runtime.findWebElement(nativeTarget, "nativeForm");
     const nativeLabel = runtime.findWebElement(nativeTarget, "nativeLabel");
     const nativeEmail = runtime.findWebElement(nativeTarget, "nativeEmail");
@@ -3413,6 +3464,24 @@ function fakeDocument() {
     assert.equal(nativeEmbed.tagName, "EMBED");
     assert.equal(nativeEmbed.attributes.src, "chart.svg");
     assert.equal(nativeEmbed.attributes.type, "image/svg+xml");
+    assert.equal(nativeTable.tagName, "TABLE");
+    assert.equal(nativeTableCaption.tagName, "CAPTION");
+    assert.equal(nativeTableCaption.textContent, "Totals");
+    assert.equal(nativeColumns.tagName, "COLGROUP");
+    assert.equal(nativeColumns.attributes.span, "2");
+    assert.equal(nativeColumn.tagName, "COL");
+    assert.equal(nativeColumn.attributes.span, "1");
+    assert.equal(nativeTableHead.tagName, "THEAD");
+    assert.equal(nativeTableHeadRow.tagName, "TR");
+    assert.equal(nativeHeaderCell.tagName, "TH");
+    assert.equal(nativeHeaderCell.attributes.scope, "col");
+    assert.equal(nativeHeaderCell.textContent, "Name");
+    assert.equal(nativeTableBody.tagName, "TBODY");
+    assert.equal(nativeTableBodyRow.tagName, "TR");
+    assert.equal(nativeBodyCell.tagName, "TD");
+    assert.equal(nativeBodyCell.textContent, "Kryon");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "nativeBodyCell").headers[0].ref,
+      "Page/nativeTable/head/row/name");
     assert.equal(nativeForm.tagName, "FORM");
     assert.equal(nativeForm.attributes.action, "/signup");
     assert.equal(nativeForm.attributes.method, "post");
