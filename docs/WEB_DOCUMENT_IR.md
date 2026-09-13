@@ -115,9 +115,9 @@ Supported metadata fields:
 | `dom_name`, `html_name`, `name_attr` | `domName` |
 | `class`, `classes`, `class_name` | `classes` |
 | `title`, `dom_title`, `html_title` | `title` |
-| `dom_href`, `html_href` | `href` |
-| `dom_target`, `html_target` | `target` |
-| `dom_rel`, `html_rel` | `rel` |
+| `href`, `url`, `link`, `dom_href`, `html_href` | `href` |
+| `target`, `dom_target`, `html_target` | `target` |
+| `rel`, `dom_rel`, `html_rel` | `rel` |
 | `part`, `dom_part`, `html_part` | `part` |
 | `slot`, `dom_slot`, `html_slot` | `slot` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |

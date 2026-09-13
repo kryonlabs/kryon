@@ -1222,7 +1222,7 @@ function widgetText(item) {
 function widgetLinkURL(item) {
   if (item.name !== "Link")
     return "";
-  return propString(item.args, "href", propString(item.args, "url", ""));
+  return propStringAny(item.args, ["href", "url", "link", "dom_href", "html_href"]);
 }
 
 function widgetInputType(item) {
@@ -1407,8 +1407,12 @@ function webNodeFromWidget(item, index) {
     domValue: metaString(meta, "domValue") || widgetDOMValue(item),
     level: widgetLevel(item),
     href: meta.href === undefined || meta.href === null ? widgetLinkURL(item) : String(meta.href),
-    target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
-    rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
+    target: meta.target === undefined || meta.target === null
+      ? propStringAny(args, ["target", "dom_target", "html_target"])
+      : String(meta.target),
+    rel: meta.rel === undefined || meta.rel === null
+      ? propStringAny(args, ["rel", "dom_rel", "html_rel"])
+      : String(meta.rel),
     htmlFor: metaString(meta, "htmlFor"),
     part: metaString(meta, "part"),
     slot: metaString(meta, "slot"),
@@ -1439,7 +1443,8 @@ function webNodeFromWidget(item, index) {
     autoCapitalize: metaString(meta, "autoCapitalize"),
     enterKeyHint: metaString(meta, "enterKeyHint") ||
       propStringAny(args, ["enterkeyhint", "enter_key_hint", "dom_enterkeyhint", "html_enterkeyhint"]),
-    download: metaString(meta, "download"),
+    download: metaString(meta, "download") ||
+      propStringAny(args, ["download", "dom_download", "html_download"]),
     formNoValidate: metaBool(meta, "formNoValidate"),
     noValidate: metaBool(meta, "noValidate"),
     popover: metaString(meta, "popover"),

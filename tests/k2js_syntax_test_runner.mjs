@@ -2516,12 +2516,16 @@ function fakeDocument() {
 
     const linkRt = runtime.createRuntime();
     runtime.beginFrame(linkRt);
-    runtime.widget(linkRt, "Link", { text: "Manual" }, null,
+    runtime.widget(linkRt, "Link", {
+      text: "Manual",
+      link: "/manual.pdf",
+      target: "_blank",
+      rel: "noopener",
+      download: "manual.pdf"
+    }, null,
       {
         nodeName: "manual",
         path: "Page/manual",
-        href: "/manual.pdf",
-        download: "manual.pdf",
         hidden: true,
         draggable: "false",
         contentEditable: "false",
@@ -2529,7 +2533,16 @@ function fakeDocument() {
         slot: "resource-link"
       });
     runtime.endFrame(linkRt);
+    assert.equal(runtime.webNodeQuery(linkRt, "Link").href, "/manual.pdf");
+    assert.equal(runtime.webNodeQuery(linkRt, "Link").target, "_blank");
+    assert.equal(runtime.webNodeQuery(linkRt, "Link").rel, "noopener");
     assert.equal(runtime.webNodeQuery(linkRt, "[download=\"manual.pdf\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[href=\"/manual.pdf\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[target=\"_blank\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[rel=\"noopener\"]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[hidden]").path,
       "Page/manual");
@@ -2543,6 +2556,8 @@ function fakeDocument() {
     runtime.renderWebDocument(linkRt, linkTarget);
     const manual = runtime.findWebElement(linkTarget, "manual");
     assert.equal(manual.attributes.href, "/manual.pdf");
+    assert.equal(manual.attributes.target, "_blank");
+    assert.equal(manual.attributes.rel, "noopener");
     assert.equal(manual.attributes.download, "manual.pdf");
     assert.equal(manual.attributes.hidden, "");
     assert.equal(manual.hidden, true);
