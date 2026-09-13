@@ -503,7 +503,7 @@ Recent retained-tree public C cleanup:
 | `UIEventKind`, `UI_EVENT_*` | `EventKind`, `EVENT_*` |
 | `UIEvent` | `Event` |
 | `UIInvalidation`, `UI_INVALIDATE_*` | `Invalidation`, `INVALIDATE_*` |
-| `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `WidgetKind` as an opaque integer plus `GetNodeKindName(kind)` |
+| `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `int` as an opaque integer plus `GetNodeKindName(kind)` |
 | `UIWidgetNode` | `WidgetNode` |
 | `UIWidgetData` | `WidgetData` |
 | text input paint snapshot | Internal `TextInputPaint` host snapshot. |

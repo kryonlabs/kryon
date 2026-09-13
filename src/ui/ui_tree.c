@@ -365,7 +365,7 @@ ui_tree_reserve_ints(int **items, int *capacity, int needed)
 }
 
 static unsigned long long
-ui_reconcile_hash(KeyID parent, KeyID key, WidgetKind kind)
+ui_reconcile_hash(KeyID parent, KeyID key, int kind)
 {
     unsigned long long hash = key ^ (parent + 0x9e3779b97f4a7c15ULL +
                                      (key << 6) + (key >> 2));
@@ -407,7 +407,7 @@ ui_tree_owned_text_size(const WidgetNode *node)
 }
 
 static int
-ui_tree_button_like_kind(WidgetKind kind)
+ui_tree_button_like_kind(int kind)
 {
     return kind == WIDGET_BUTTON || kind == WIDGET_CARD;
 }
@@ -500,7 +500,7 @@ ui_layout_grid_children(WidgetNode *nodes, WidgetNode *parent)
 
 
 static NodeId
-ui_tree_add(int id, WidgetKind kind, Rectangle bounds, const void *props)
+ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
 {
     WidgetNode *node;
     WidgetNode *parent;
@@ -585,7 +585,7 @@ ui_tree_node(NodeId id)
 }
 
 static WidgetNode
-ui_node(int id, WidgetKind kind, Rectangle bounds)
+ui_node(int id, int kind, Rectangle bounds)
 {
     WidgetNode node;
 
@@ -2034,7 +2034,7 @@ GetNode(NodeId id)
 }
 
 const char *
-GetNodeKindName(WidgetKind kind)
+GetNodeKindName(int kind)
 {
     static const char *const names[WIDGET_KIND_COUNT] = {
         [WIDGET_SCREEN] = "Screen",
@@ -2095,7 +2095,7 @@ HitTestNode(Vector2 point)
 }
 
 static const char *
-ui_accessibility_role(WidgetKind kind)
+ui_accessibility_role(int kind)
 {
     switch(kind) {
     case WIDGET_SCREEN: return "main";
@@ -3586,7 +3586,7 @@ Bullet(Rectangle bounds)
 /* Retained layout containers. Every container closes with End(). */
 
 static NodeId
-ui_begin_layout_node(WidgetKind kind, KeyID key, Rectangle bounds,
+ui_begin_layout_node(int kind, KeyID key, Rectangle bounds,
                      int gap, int padding)
 {
     NodeId node;

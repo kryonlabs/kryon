@@ -239,10 +239,13 @@ Button[class=primary]:pressed { focus: #2f6bff; }
 ```
 
 Native code uses `StyleClassId` to assign the same stable class id to
-`StyleFacts.class_name` when resolving a stylesheet:
+`StyleFacts.class_name` when resolving a stylesheet. Widgets expose the same
+field on their props, so a button can opt into `Button.primary` without a
+legacy theme hook:
 
 ```c
 int32_t primary = StyleClassId("primary");
+Button((ButtonProps){.label = "Save", .class_name = primary});
 ```
 
 Use canonical widget names when declaring controls from C:
@@ -1293,6 +1296,7 @@ typedef struct {
     const char *label;
     int font;
     int id;
+    int class_name;
     ButtonTone tone;
     ButtonEmphasis emphasis;
     ControlSize size;
@@ -1688,7 +1692,7 @@ generated/runtime code and are not public widget names.
 #### Node Measurement
 
 ```c
-const char *GetNodeKindName(WidgetKind kind);
+const char *GetNodeKindName(int kind);
 int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 ```

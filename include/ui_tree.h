@@ -47,8 +47,6 @@ typedef enum Invalidation {
     INVALIDATE_TREE = 1 << 2
 } Invalidation;
 
-typedef int WidgetKind;
-
 typedef union WidgetData {
     struct {
         unsigned long long words[16];
@@ -110,7 +108,7 @@ typedef union WidgetData {
 typedef struct WidgetNode {
     int id;
     KeyID key;
-    WidgetKind kind;
+    int kind;
     Rectangle bounds;
     Rectangle declared_bounds;
     Rectangle input_clip;
@@ -150,7 +148,7 @@ void RouteInput(void);
 void UpdateTree(void);
 void Overlays(void);
 const WidgetNode *GetTreeNodes(int *count);
-const char *GetNodeKindName(WidgetKind kind);
+const char *GetNodeKindName(int kind);
 int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 const WidgetNode *GetNode(NodeId id);

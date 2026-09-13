@@ -1915,7 +1915,6 @@ include/ui_tree.h function UpdateTree
 include/ui_tree.h typedef AccessibilitySink
 include/ui_tree.h typedef KeyID
 include/ui_tree.h typedef NodeId
-include/ui_tree.h typedef WidgetKind
 include/ui_window.h enum NATIVE_WINDOW_ALWAYS_ON_TOP
 include/ui_window.h enum NATIVE_WINDOW_BORDERLESS
 include/ui_window.h enum NATIVE_WINDOW_CENTER
