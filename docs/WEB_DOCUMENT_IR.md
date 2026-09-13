@@ -128,6 +128,9 @@ Supported metadata fields:
 | `ping`, `dom_ping`, `html_ping` | `extraAttrs.ping` |
 | `hreflang`, `href_lang`, `dom_hreflang`, `html_hreflang` | `extraAttrs.hreflang` |
 | `referrerpolicy`, `referrer_policy`, `dom_referrerpolicy`, `html_referrerpolicy` | `extraAttrs.referrerpolicy` |
+| `sandbox`, `dom_sandbox`, `html_sandbox` | `extraAttrs.sandbox` |
+| `credentialless`, `dom_credentialless`, `html_credentialless` | `extraAttrs.credentialless` |
+| `frame_name`, `iframe_name`, `dom_frame_name`, `html_frame_name` | `extraAttrs.name` |
 | `part`, `dom_part`, `html_part` | `part` |
 | `slot`, `dom_slot`, `html_slot` | `slot` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |

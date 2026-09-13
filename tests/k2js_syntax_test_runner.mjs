@@ -2918,7 +2918,19 @@ function fakeDocument() {
       { nodeName: "nativeVideoTrack", path: "Page/video/captions", parentPath: "Page/video" });
     runtime.widget(nativeRt, "Audio", { src: "theme.mp3", controls: true, loop: true }, null,
       { nodeName: "nativeAudio", path: "Page/audio" });
-    runtime.widget(nativeRt, "IFrame", { src: "/embed", loading: "lazy", allow: "fullscreen", allow_fullscreen: true, text: "Embedded content" }, null,
+    runtime.widget(nativeRt, "IFrame", {
+      src: "/embed",
+      loading: "lazy",
+      allow: "fullscreen",
+      allow_fullscreen: true,
+      sandbox: "allow-scripts",
+      referrer_policy: "strict-origin",
+      credentialless: true,
+      frame_name: "preview",
+      width: 640,
+      height: 360,
+      text: "Embedded content"
+    }, null,
       { nodeName: "nativeFrame", path: "Page/frame" });
     runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
       { nodeName: "nativeEmbed", path: "Page/embed" });
@@ -3267,6 +3279,14 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Audio").tag, "audio");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").tag, "iframe");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.loading, "lazy");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.sandbox, "allow-scripts");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.referrerpolicy, "strict-origin");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.credentialless, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.name, "preview");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.width, "640");
+    assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.height, "360");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[sandbox=\"allow-scripts\"]").path, "Page/frame");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[credentialless]").path, "Page/frame");
     assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").tag, "source");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").extraAttrs.srcset,
@@ -3729,6 +3749,12 @@ function fakeDocument() {
     assert.equal(nativeFrame.attributes.loading, "lazy");
     assert.equal(nativeFrame.attributes.allow, "fullscreen");
     assert.equal(nativeFrame.attributes.allowfullscreen, "");
+    assert.equal(nativeFrame.attributes.sandbox, "allow-scripts");
+    assert.equal(nativeFrame.attributes.referrerpolicy, "strict-origin");
+    assert.equal(nativeFrame.attributes.credentialless, "");
+    assert.equal(nativeFrame.attributes.name, "preview");
+    assert.equal(nativeFrame.attributes.width, "640");
+    assert.equal(nativeFrame.attributes.height, "360");
     assert.equal(nativeFrame.textContent, "Embedded content");
     assert.equal(nativeEmbed.tagName, "EMBED");
     assert.equal(nativeEmbed.attributes.src, "chart.svg");

@@ -115,8 +115,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Native media/embed aliases such as `Video`, `Audio`, `Source`,
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
   standard source, source-set, preload, controls, poster, track, loading,
-  allow, and MIME attributes available to snapshots, selectors, and mounted
-  DOM.
+  allow, sandbox, referrer policy, credentialless, frame-name, sizing, and MIME
+  attributes available to snapshots, selectors, and mounted DOM.
 - Native document-composition aliases such as `Template` and `Slot` render to
   matching browser elements and remain addressable through Kry DOM identity,
   selector, snapshot, and mounted object APIs.

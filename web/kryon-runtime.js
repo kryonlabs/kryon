@@ -1864,6 +1864,18 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["allow", "dom_allow", "html_allow"]));
     setWidgetNativeAttr(out, "allowfullscreen", metaBool(meta, "allowFullscreen") ||
       isTruthyPropAny(args, ["allowfullscreen", "allow_fullscreen", "dom_allowfullscreen", "html_allowfullscreen"]));
+    setWidgetNativeAttr(out, "sandbox", metaString(meta, "sandbox") ||
+      propStringAny(args, ["sandbox", "dom_sandbox", "html_sandbox"]));
+    setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
+      propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
+    setWidgetNativeAttr(out, "credentialless", metaBool(meta, "credentialless") ||
+      isTruthyPropAny(args, ["credentialless", "dom_credentialless", "html_credentialless"]));
+    setWidgetNativeAttr(out, "name", metaString(meta, "frameName") ||
+      propStringAny(args, ["frame_name", "iframe_name", "dom_frame_name", "html_frame_name"]));
+    setWidgetNativeAttr(out, "width", metaString(meta, "width") ||
+      propStringAny(args, ["width", "dom_width", "html_width"]));
+    setWidgetNativeAttr(out, "height", metaString(meta, "height") ||
+      propStringAny(args, ["height", "dom_height", "html_height"]));
     break;
   case "Embed":
     setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
