@@ -385,8 +385,12 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   ariaAttrs: { current: "page", pressed: "false" },
   extraAttrs: { fetchpriority: "high", part: "primary-action" },
   role: "button",
+  ariaLabel: "Tap the action",
+  ariaDescription: "Runs the host action",
+  ariaDescribedBy: "",
   ariaLabelledBy: "",
   ariaActiveDescendant: "",
+  ariaControls: "search-box",
   ariaOwns: "search-box",
   ariaSort: "",
   ariaOrientation: "",
@@ -399,6 +403,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   ariaColIndex: "",
   ariaRowCount: "",
   ariaColCount: "",
+  ariaLive: "",
   state: {
     disabled: false,
     loading: false,
@@ -504,6 +509,11 @@ assert.equal(runtime.webNodeQuery(rt, `[sourceRangeRef="${tapSourceRangeRef}"]`)
 assert.equal(runtime.webNodeMatches(rt, "primary-action", "Button.primary"), true);
 assert.equal(runtime.webNodeQuery(rt, "[ref=\"primary-action\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "[webRef=\"primary-action\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[aria-label=\"Tap the action\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[aria-description=\"Runs the host action\"]").path,
+  "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[aria-controls=\"search-box\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[aria-owns=\"search-box\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), true);
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
 assert.equal(webDoc.nodes.every((node) => !!node.path), true);
@@ -2363,6 +2373,11 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-box\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"Scene/root/search_label\"]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[aria-label=\"Tap the action\"]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[aria-description=\"Runs the host action\"]").ref,
+      "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[aria-controls=\"search-box\"]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[aria-owns=\"search-box\"]").ref, "primary-action");
     const resolvedSearchLabel = runtime.findWebElement(target, "Scene/root/search_label");
     assert.equal(resolvedSearchLabel.id, "kry-Scene-root-search_label");
     assert.equal(resolvedSearchLabel.attributes.for, "search-field");

@@ -354,7 +354,8 @@ semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
 
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
-`sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`, `part`, `slot`,
+`sourceEndLine`, `sourceEndColumn`, `sourceRef`, `sourceColumnRef`, `sourceRangeRef`,
+`id`, `domName`, `href`, `target`, `rel`, `part`, `slot`,
 `inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `inert`, `autoCapitalize`, `enterKeyHint`,
@@ -362,10 +363,13 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
 `multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,
-`dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaSort`,
+`dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaLabel`,
+`ariaDescription`, `ariaDescribedBy`, `ariaLabelledBy`, `ariaActiveDescendant`,
+`ariaControls`, `ariaOwns`, `ariaSort`,
 `ariaOrientation`, `ariaLevel`, `ariaPosInSet`, `ariaSetSize`,
 `ariaHasPopup`, `ariaMultiSelectable`, `ariaRowIndex`, `ariaColIndex`,
-`ariaRowCount`, `ariaColCount`, `open`, `scrollLeft`, `scrollTop`, and `state`. The DOM
+`ariaRowCount`, `ariaColCount`, `ariaLive`, `open`, `scrollLeft`, `scrollTop`,
+and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.

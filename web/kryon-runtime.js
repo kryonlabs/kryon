@@ -1506,8 +1506,12 @@ export function webNodeStyleFacts(node) {
     ariaAttrs: { ...(node?.ariaAttrs || {}) },
     extraAttrs: { ...(node?.extraAttrs || {}) },
     role: node?.role || "",
+    ariaLabel: node?.ariaLabel || "",
+    ariaDescription: node?.ariaDescription || "",
+    ariaDescribedBy: node?.ariaDescribedBy || "",
     ariaLabelledBy: node?.ariaLabelledBy || "",
     ariaActiveDescendant: node?.ariaActiveDescendant || "",
+    ariaControls: node?.ariaControls || "",
     ariaOwns: node?.ariaOwns || "",
     ariaSort: node?.ariaSort || "",
     ariaOrientation: node?.ariaOrientation || "",
@@ -1520,6 +1524,7 @@ export function webNodeStyleFacts(node) {
     ariaColIndex: node?.ariaColIndex || "",
     ariaRowCount: node?.ariaRowCount || "",
     ariaColCount: node?.ariaColCount || "",
+    ariaLive: node?.ariaLive || "",
     state: { ...(node?.state || {}) }
   };
 }
@@ -2272,6 +2277,28 @@ function selectorDataAttrPresent(key, facts) {
 }
 
 function selectorAriaAttrValue(key, facts) {
+  if (key === "aria-label" || key === "aria.label")
+    return facts.ariaLabel || facts.ariaAttrs?.label || facts.extraAttrs?.["aria-label"];
+  if (key === "aria-description" || key === "aria.description")
+    return facts.ariaDescription || facts.ariaAttrs?.description ||
+      facts.extraAttrs?.["aria-description"];
+  if (key === "aria-describedby" || key === "aria.describedby" ||
+      key === "aria.described_by")
+    return facts.ariaDescribedBy || facts.ariaAttrs?.describedby ||
+      facts.extraAttrs?.["aria-describedby"];
+  if (key === "aria-labelledby" || key === "aria.labelledby" ||
+      key === "aria.labelled_by")
+    return facts.ariaLabelledBy || facts.ariaAttrs?.labelledby ||
+      facts.extraAttrs?.["aria-labelledby"];
+  if (key === "aria-activedescendant" || key === "aria.activedescendant" ||
+      key === "aria.active_descendant")
+    return facts.ariaActiveDescendant || facts.ariaAttrs?.activedescendant ||
+      facts.extraAttrs?.["aria-activedescendant"];
+  if (key === "aria-controls" || key === "aria.controls")
+    return facts.ariaControls || facts.ariaAttrs?.controls ||
+      facts.extraAttrs?.["aria-controls"];
+  if (key === "aria-owns" || key === "aria.owns")
+    return facts.ariaOwns || facts.ariaAttrs?.owns || facts.extraAttrs?.["aria-owns"];
   if (key === "aria-sort" || key === "aria.sort")
     return facts.ariaSort || facts.ariaAttrs?.sort || facts.extraAttrs?.["aria-sort"];
   if (key === "aria-orientation" || key === "aria.orientation")
@@ -2312,6 +2339,8 @@ function selectorAriaAttrValue(key, facts) {
       key === "aria.col_count")
     return facts.ariaColCount || facts.ariaAttrs?.colcount ||
       facts.extraAttrs?.["aria-colcount"];
+  if (key === "aria-live" || key === "aria.live")
+    return facts.ariaLive || facts.ariaAttrs?.live || facts.extraAttrs?.["aria-live"];
   if (key.startsWith("aria-"))
     return facts.ariaAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("aria."))
@@ -2321,6 +2350,37 @@ function selectorAriaAttrValue(key, facts) {
 }
 
 function selectorAriaAttrPresent(key, facts) {
+  if (key === "aria-label" || key === "aria.label")
+    return !!facts.ariaLabel ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "label") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-label");
+  if (key === "aria-description" || key === "aria.description")
+    return !!facts.ariaDescription ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "description") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-description");
+  if (key === "aria-describedby" || key === "aria.describedby" ||
+      key === "aria.described_by")
+    return !!facts.ariaDescribedBy ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "describedby") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-describedby");
+  if (key === "aria-labelledby" || key === "aria.labelledby" ||
+      key === "aria.labelled_by")
+    return !!facts.ariaLabelledBy ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "labelledby") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-labelledby");
+  if (key === "aria-activedescendant" || key === "aria.activedescendant" ||
+      key === "aria.active_descendant")
+    return !!facts.ariaActiveDescendant ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "activedescendant") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-activedescendant");
+  if (key === "aria-controls" || key === "aria.controls")
+    return !!facts.ariaControls ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "controls") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-controls");
+  if (key === "aria-owns" || key === "aria.owns")
+    return !!facts.ariaOwns ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "owns") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-owns");
   if (key === "aria-sort" || key === "aria.sort")
     return !!facts.ariaSort ||
       Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "sort") ||
@@ -2373,6 +2433,10 @@ function selectorAriaAttrPresent(key, facts) {
     return !!facts.ariaColCount ||
       Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "colcount") ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-colcount");
+  if (key === "aria-live" || key === "aria.live")
+    return !!facts.ariaLive ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "live") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-live");
   if (key.startsWith("aria-"))
     return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5)) ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);

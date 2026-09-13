@@ -309,8 +309,12 @@ export interface WebNodeStyleFacts {
   ariaAttrs: Record<string, string>;
   extraAttrs: Record<string, string>;
   role: string;
+  ariaLabel: string;
+  ariaDescription: string;
+  ariaDescribedBy: string;
   ariaLabelledBy: string;
   ariaActiveDescendant: string;
+  ariaControls: string;
   ariaOwns: string;
   ariaSort: string;
   ariaOrientation: string;
@@ -323,6 +327,7 @@ export interface WebNodeStyleFacts {
   ariaColIndex: string;
   ariaRowCount: string;
   ariaColCount: string;
+  ariaLive: string;
   state: Record<string, boolean>;
 }
 
