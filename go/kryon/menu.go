@@ -21,6 +21,13 @@ type MenuMetrics struct {
 	BarLabelInset         int32
 }
 
+type MenuLine struct {
+	X1 int32
+	Y1 int32
+	X2 int32
+	Y2 int32
+}
+
 func Menu_MenuHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -370,6 +377,40 @@ func Menu_MenuSubmenuOrigin(row Rectangle) Vector2 {
 	origin.Y = value_3
 	var value_4 Vector2 = origin
 	return value_4
+}
+
+func Menu_MenuSeparatorLineFor(row Rectangle, metrics MenuMetrics) MenuLine {
+	var line MenuLine = MenuLine{}
+	var value_0 float32 = row.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = metrics.SeparatorInset
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	line.X1 = value_3
+	var value_4 float32 = row.Y
+	var value_5 float32 = row.Height
+	var value_6 float32 = 2.0
+	var value_7 float32 = value_5 / value_6
+	var value_8 float32 = value_4 + value_7
+	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
+	line.Y1 = value_9
+	var value_10 float32 = row.X
+	var value_11 float32 = row.Width
+	var value_12 float32 = value_10 + value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var value_14 int32 = metrics.SeparatorInset
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
+	line.X2 = value_15
+	var value_16 int32 = line.Y1
+	line.Y2 = value_16
+	var value_17 int32 = line.X2
+	var value_18 int32 = line.X1
+	var value_19 bool = value_17 < value_18
+	if value_19 {
+		var value_20 int32 = line.X1
+		line.X2 = value_20
+	}
+	var value_21 MenuLine = line
+	return value_21
 }
 
 func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {

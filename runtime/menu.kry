@@ -20,6 +20,13 @@ MenuMetrics :: struct {
     bar_label_inset: i32
 }
 
+MenuLine :: struct {
+    x1: i32
+    y1: i32
+    x2: i32
+    y2: i32
+}
+
 MenuHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -128,6 +135,18 @@ MenuSubmenuOrigin :: (row: Rectangle) -> Vector2 #export {
     origin.x = row.x + row.width
     origin.y = row.y
     return origin
+}
+
+MenuSeparatorLineFor :: (row: Rectangle, metrics: MenuMetrics) -> MenuLine #export {
+    line: MenuLine
+    line.x1 = (i32)row.x + metrics.separator_inset
+    line.y1 = (i32)(row.y + row.height / 2.0)
+    line.x2 = (i32)(row.x + row.width) - metrics.separator_inset
+    line.y2 = line.y1
+    if line.x2 < line.x1 {
+        line.x2 = line.x1
+    }
+    return line
 }
 
 MenuGroupItemBounds :: (x: i32, bar: Rectangle, width: i32,

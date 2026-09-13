@@ -24,6 +24,7 @@ main(void)
     Rectangle row;
     Rectangle bar_item;
     Vector2 origin;
+    MenuLine line;
     int width;
 
     assert(metrics.row_height == 60);
@@ -110,6 +111,11 @@ main(void)
     origin = MenuSubmenuOrigin(row);
     assert(fabsf(origin.x - 178.0f) < 0.001f);
     assert(fabsf(origin.y - 34.0f) < 0.001f);
+    line = MenuSeparatorLineFor(row, metrics);
+    assert(line.x1 == 12);
+    assert(line.y1 == 49);
+    assert(line.x2 == 170);
+    assert(line.y2 == 49);
     assert(MenuGroupItemWidth(50, metrics) == 74);
     bar_item = MenuGroupItemBounds(10, (Rectangle){0, 0, 240, 30}, 74,
                                    metrics);

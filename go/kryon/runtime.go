@@ -5384,7 +5384,8 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 	for i, item := range items {
 		row := Menu_MenuRowBounds(panel, int32(i), metrics)
 		if item.Kind == MenuSeparator {
-			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16}, Color: separatorStyle.Border})
+			line := Menu_MenuSeparatorLineFor(row, metrics)
+			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: float32(line.X1), Y: float32(line.Y1), Width: float32(line.X2 - line.X1)}, Color: separatorStyle.Border})
 			continue
 		}
 		hovered := !r.contentDisabled() && pointInRect(r.mousePos.X, r.mousePos.Y, row)

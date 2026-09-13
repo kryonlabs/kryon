@@ -1272,10 +1272,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                     StyleKindMenuSeparator(), StyleAny());
                 Style separator_style = ui_unpack_style(
                     ui_style_apply_effects_frame(separator_frame).value);
-                Line((int)row.x + metrics.separator_inset,
-                     (int)(row.y + row.height / 2.0f),
-                     (int)(row.x + row.width) - metrics.separator_inset,
-                     (int)(row.y + row.height / 2.0f),
+                MenuLine line = MenuSeparatorLineFor(row, metrics);
+                Line(line.x1, line.y1, line.x2, line.y2,
                      separator_style.border);
             }
             continue;
