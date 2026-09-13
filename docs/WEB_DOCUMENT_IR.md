@@ -165,6 +165,12 @@ Supported metadata fields:
 | `aria_controls` | `ariaControls` |
 | `aria_owns`, `aria_own` | `ariaOwns` |
 | `aria_sort`, `aria_sorted` | `ariaSort` |
+| `aria_orientation` | `ariaOrientation` |
+| `aria_level` | `ariaLevel` |
+| `aria_posinset`, `aria_pos_in_set` | `ariaPosInSet` |
+| `aria_setsize`, `aria_set_size` | `ariaSetSize` |
+| `aria_haspopup`, `aria_has_popup` | `ariaHasPopup` |
+| `aria_multiselectable`, `aria_multi_selectable` | `ariaMultiSelectable` |
 | `aria_live`, `live` | `ariaLive` |
 | `aria_*`, `dom_aria_*`, `html_aria_*` | `ariaAttrs` |
 | `on_click` | `onClick`, `action` |
@@ -261,6 +267,12 @@ Supported metadata fields:
       role,
       ariaLabel,
       ariaSort,
+      ariaOrientation,
+      ariaLevel,
+      ariaPosInSet,
+      ariaSetSize,
+      ariaHasPopup,
+      ariaMultiSelectable,
       onClick,
       onInput,
       onBeforeInput,
@@ -342,8 +354,10 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
 `multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,
-`dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaSort`, `open`,
-`scrollLeft`, `scrollTop`, and `state`. The DOM
+`dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaSort`,
+`ariaOrientation`, `ariaLevel`, `ariaPosInSet`, `ariaSetSize`,
+`ariaHasPopup`, `ariaMultiSelectable`, `open`, `scrollLeft`, `scrollTop`,
+and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -377,7 +391,9 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[max=...]`, `[step=...]`, `[minlength=...]`, `[maxlength=...]`,
 `[pattern=...]`, `[accept=...]`, `[multiple=true]`, `[inputmode=...]`,
 `[headers=...]`, `[scope=...]`, `[colspan=...]`, `[rowspan=...]`,
-`[aria-sort=...]`,
+`[aria-sort=...]`, `[aria-orientation=...]`, `[aria-level=...]`,
+`[aria-posinset=...]`, `[aria-setsize=...]`, `[aria-haspopup=...]`,
+`[aria-multiselectable=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, spacing,
 radius, border width, opacity, font size, offsets, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.

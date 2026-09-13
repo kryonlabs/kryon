@@ -1406,6 +1406,10 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_aria_activedescendant[0] ||
            st->dom_aria_controls[0] || st->dom_aria_owns[0] ||
            st->dom_aria_sort[0] ||
+           st->dom_aria_orientation[0] || st->dom_aria_level[0] ||
+           st->dom_aria_posinset[0] || st->dom_aria_setsize[0] ||
+           st->dom_aria_haspopup[0] ||
+           st->dom_aria_multiselectable[0] ||
            st->dom_aria_live[0] || st->dom_aria_attrs[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
            st->dom_on_before_input[0] ||
@@ -1668,6 +1672,18 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                              &emitted);
     emit_metadata_expr_field(f, m, "ariaOwns", st->dom_aria_owns, &emitted);
     emit_metadata_expr_field(f, m, "ariaSort", st->dom_aria_sort, &emitted);
+    emit_metadata_expr_field(f, m, "ariaOrientation",
+                             st->dom_aria_orientation, &emitted);
+    emit_metadata_expr_field(f, m, "ariaLevel", st->dom_aria_level,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaPosInSet", st->dom_aria_posinset,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaSetSize", st->dom_aria_setsize,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaHasPopup", st->dom_aria_haspopup,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaMultiSelectable",
+                             st->dom_aria_multiselectable, &emitted);
     emit_metadata_expr_field(f, m, "ariaLive", st->dom_aria_live, &emitted);
     emit_metadata_attr_map(f, m, "aria", st->dom_aria_attrs, &emitted);
     emit_web_action(f, m, "onClick", "action", st->dom_on_click, "", &emitted);

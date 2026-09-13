@@ -190,6 +190,12 @@ typedef struct KirStmt {
     char dom_aria_controls[KIR_TEXT_MAX];    /* requested controlled element ids */
     char dom_aria_owns[KIR_TEXT_MAX];        /* requested owned element ids */
     char dom_aria_sort[KIR_NAME_MAX];        /* requested table/list sort order */
+    char dom_aria_orientation[KIR_NAME_MAX]; /* requested widget orientation */
+    char dom_aria_level[KIR_NAME_MAX];       /* requested tree/list level */
+    char dom_aria_posinset[KIR_NAME_MAX];    /* requested item position */
+    char dom_aria_setsize[KIR_NAME_MAX];     /* requested set size */
+    char dom_aria_haspopup[KIR_NAME_MAX];    /* requested popup relationship type */
+    char dom_aria_multiselectable[KIR_NAME_MAX]; /* requested multi-select state */
     char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
     char dom_aria_attrs[KIR_TEXT_MAX];  /* requested arbitrary aria-* attributes */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */

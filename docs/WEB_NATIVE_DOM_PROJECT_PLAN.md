@@ -37,6 +37,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `headers`,
   `dom_for`, `form`, and `popover_target`, while preserving authored Kry refs
   in Web Document facts.
+- First-class ARIA structure facts for menus, lists, trees, and grouped
+  controls: orientation, level, position in set, set size, popup type, sort
+  order, and multiselect state.
 - Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
   wheel, drag/drop, clipboard, dialog, and popover events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
@@ -54,8 +57,8 @@ the browser receives normal elements, attributes, CSS, and events.
   choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
-- Add more semantic relationship facts where widgets need them, such as grouped
-  controls, menu/list relationships, and table/grid headers.
+- Add more semantic relationship facts where widgets need them, such as richer
+  grid headers and row/column grouping.
 - Build browser-backed integration tests once a real DOM harness is available,
   keeping the fake DOM tests as fast contract tests.
 

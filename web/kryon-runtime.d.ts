@@ -146,6 +146,12 @@ export interface WebDocumentNode {
   ariaControls: string;
   ariaOwns: string;
   ariaSort: string;
+  ariaOrientation: string;
+  ariaLevel: string;
+  ariaPosInSet: string;
+  ariaSetSize: string;
+  ariaHasPopup: string;
+  ariaMultiSelectable: string;
   ariaLive: string;
   ariaAttrs: Record<string, string>;
   onClick: string;
@@ -301,6 +307,12 @@ export interface WebNodeStyleFacts {
   ariaActiveDescendant: string;
   ariaOwns: string;
   ariaSort: string;
+  ariaOrientation: string;
+  ariaLevel: string;
+  ariaPosInSet: string;
+  ariaSetSize: string;
+  ariaHasPopup: string;
+  ariaMultiSelectable: string;
   state: Record<string, boolean>;
 }
 

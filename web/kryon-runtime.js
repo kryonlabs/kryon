@@ -1342,6 +1342,12 @@ function webNodeFromWidget(item, index) {
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
     ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
     ariaSort: metaString(meta, "ariaSort"),
+    ariaOrientation: metaString(meta, "ariaOrientation"),
+    ariaLevel: metaString(meta, "ariaLevel"),
+    ariaPosInSet: metaString(meta, "ariaPosInSet"),
+    ariaSetSize: metaString(meta, "ariaSetSize"),
+    ariaHasPopup: metaString(meta, "ariaHasPopup"),
+    ariaMultiSelectable: metaString(meta, "ariaMultiSelectable"),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
@@ -1489,6 +1495,12 @@ export function webNodeStyleFacts(node) {
     ariaActiveDescendant: node?.ariaActiveDescendant || "",
     ariaOwns: node?.ariaOwns || "",
     ariaSort: node?.ariaSort || "",
+    ariaOrientation: node?.ariaOrientation || "",
+    ariaLevel: node?.ariaLevel || "",
+    ariaPosInSet: node?.ariaPosInSet || "",
+    ariaSetSize: node?.ariaSetSize || "",
+    ariaHasPopup: node?.ariaHasPopup || "",
+    ariaMultiSelectable: node?.ariaMultiSelectable || "",
     state: { ...(node?.state || {}) }
   };
 }
@@ -2107,6 +2119,18 @@ function selectorNativeAttrValue(key, facts) {
     case "rowspan": return facts.rowSpan;
     case "aria-sort":
     case "ariaSort": return facts.ariaSort;
+    case "aria-orientation":
+    case "ariaOrientation": return facts.ariaOrientation;
+    case "aria-level":
+    case "ariaLevel": return facts.ariaLevel;
+    case "aria-posinset":
+    case "ariaPosInSet": return facts.ariaPosInSet;
+    case "aria-setsize":
+    case "ariaSetSize": return facts.ariaSetSize;
+    case "aria-haspopup":
+    case "ariaHasPopup": return facts.ariaHasPopup;
+    case "aria-multiselectable":
+    case "ariaMultiSelectable": return facts.ariaMultiSelectable;
     case "multiple": return facts.multiple;
     case "for": return facts.htmlFor;
     default: return facts[key] ?? facts.extraAttrs?.[key];
@@ -2128,6 +2152,28 @@ function selectorDataAttrPresent(key, facts) {
 function selectorAriaAttrValue(key, facts) {
   if (key === "aria-sort" || key === "aria.sort")
     return facts.ariaSort || facts.ariaAttrs?.sort || facts.extraAttrs?.["aria-sort"];
+  if (key === "aria-orientation" || key === "aria.orientation")
+    return facts.ariaOrientation || facts.ariaAttrs?.orientation ||
+      facts.extraAttrs?.["aria-orientation"];
+  if (key === "aria-level" || key === "aria.level")
+    return facts.ariaLevel || facts.ariaAttrs?.level ||
+      facts.extraAttrs?.["aria-level"];
+  if (key === "aria-posinset" || key === "aria.posinset" ||
+      key === "aria.pos_in_set")
+    return facts.ariaPosInSet || facts.ariaAttrs?.posinset ||
+      facts.extraAttrs?.["aria-posinset"];
+  if (key === "aria-setsize" || key === "aria.setsize" ||
+      key === "aria.set_size")
+    return facts.ariaSetSize || facts.ariaAttrs?.setsize ||
+      facts.extraAttrs?.["aria-setsize"];
+  if (key === "aria-haspopup" || key === "aria.haspopup" ||
+      key === "aria.has_popup")
+    return facts.ariaHasPopup || facts.ariaAttrs?.haspopup ||
+      facts.extraAttrs?.["aria-haspopup"];
+  if (key === "aria-multiselectable" || key === "aria.multiselectable" ||
+      key === "aria.multi_selectable")
+    return facts.ariaMultiSelectable || facts.ariaAttrs?.multiselectable ||
+      facts.extraAttrs?.["aria-multiselectable"];
   if (key.startsWith("aria-"))
     return facts.ariaAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("aria."))
@@ -2141,6 +2187,34 @@ function selectorAriaAttrPresent(key, facts) {
     return !!facts.ariaSort ||
       Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "sort") ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-sort");
+  if (key === "aria-orientation" || key === "aria.orientation")
+    return !!facts.ariaOrientation ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "orientation") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-orientation");
+  if (key === "aria-level" || key === "aria.level")
+    return !!facts.ariaLevel ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "level") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-level");
+  if (key === "aria-posinset" || key === "aria.posinset" ||
+      key === "aria.pos_in_set")
+    return !!facts.ariaPosInSet ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "posinset") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-posinset");
+  if (key === "aria-setsize" || key === "aria.setsize" ||
+      key === "aria.set_size")
+    return !!facts.ariaSetSize ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "setsize") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-setsize");
+  if (key === "aria-haspopup" || key === "aria.haspopup" ||
+      key === "aria.has_popup")
+    return !!facts.ariaHasPopup ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "haspopup") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-haspopup");
+  if (key === "aria-multiselectable" || key === "aria.multiselectable" ||
+      key === "aria.multi_selectable")
+    return !!facts.ariaMultiSelectable ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "multiselectable") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-multiselectable");
   if (key.startsWith("aria-"))
     return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5)) ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);
@@ -4197,6 +4271,11 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-selected", docNode.state.selected ? "true" : "");
   setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : "");
   setAttr(el, "aria-expanded", docNode.state.expanded ? "true" : "");
+  setAttr(el, "aria-orientation", docNode.ariaOrientation);
+  setAttr(el, "aria-posinset", docNode.ariaPosInSet);
+  setAttr(el, "aria-setsize", docNode.ariaSetSize);
+  setAttr(el, "aria-haspopup", docNode.ariaHasPopup);
+  setAttr(el, "aria-multiselectable", docNode.ariaMultiSelectable);
   if (docNode.tag === "details" || docNode.tag === "dialog") {
     setAttr(el, "open", docNode.state.open);
     el.open = !!docNode.state.open;
@@ -4210,7 +4289,8 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-current",
     docNode.tag === "a" && docNode.state.selected ? "page" : "");
   setAttr(el, "aria-level",
-    docNode.role === "heading" && docNode.level ? String(docNode.level) : "");
+    docNode.ariaLevel ||
+    (docNode.role === "heading" && docNode.level ? String(docNode.level) : ""));
   applyAriaAttrs(el, docNode.ariaAttrs);
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
@@ -5335,7 +5415,9 @@ const webDOMInternalAttributeNames = new Set([
   "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
   "aria-activedescendant",
-  "aria-controls", "aria-owns", "aria-sort", "aria-live",
+  "aria-controls", "aria-owns", "aria-sort", "aria-orientation",
+  "aria-level", "aria-posinset", "aria-setsize", "aria-haspopup",
+  "aria-multiselectable", "aria-live",
   "href", "target", "rel", "for", "form", "part", "slot", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
   "autofocus", "inert", "autocapitalize", "enterkeyhint", "download", "formnovalidate", "novalidate", "popover",
@@ -5434,6 +5516,13 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.colSpan = attrs.colspan ?? docNode.colSpan ?? "";
   docNode.rowSpan = attrs.rowspan ?? docNode.rowSpan ?? "";
   docNode.ariaSort = attrs["aria-sort"] ?? docNode.ariaSort ?? "";
+  docNode.ariaOrientation = attrs["aria-orientation"] ?? docNode.ariaOrientation ?? "";
+  docNode.ariaLevel = attrs["aria-level"] ?? docNode.ariaLevel ?? "";
+  docNode.ariaPosInSet = attrs["aria-posinset"] ?? docNode.ariaPosInSet ?? "";
+  docNode.ariaSetSize = attrs["aria-setsize"] ?? docNode.ariaSetSize ?? "";
+  docNode.ariaHasPopup = attrs["aria-haspopup"] ?? docNode.ariaHasPopup ?? "";
+  docNode.ariaMultiSelectable = attrs["aria-multiselectable"] ??
+    docNode.ariaMultiSelectable ?? "";
   docNode.tabIndex = attrs.tabindex !== undefined && Number.isFinite(Number(attrs.tabindex))
     ? Math.trunc(Number(attrs.tabindex)) : docNode.tabIndex;
   const dataAttrs = {};
@@ -5449,7 +5538,9 @@ function syncWebDOMElementFromNative(root, el) {
     }
     if (attr.startsWith("aria-")) {
       const ariaName = attr.slice(5);
-      if (!["label", "description", "describedby", "controls", "owns", "sort", "live"].includes(ariaName))
+      if (!["label", "description", "describedby", "controls", "owns",
+             "sort", "orientation", "level", "posinset", "setsize",
+             "haspopup", "multiselectable", "live"].includes(ariaName))
         ariaAttrs[ariaName] = value;
       continue;
     }

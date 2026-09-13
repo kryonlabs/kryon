@@ -299,6 +299,12 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   ariaActiveDescendant: "",
   ariaOwns: "search-box",
   ariaSort: "",
+  ariaOrientation: "",
+  ariaLevel: "",
+  ariaPosInSet: "",
+  ariaSetSize: "",
+  ariaHasPopup: "",
+  ariaMultiSelectable: "",
   state: {
     disabled: false,
     loading: false,
@@ -976,6 +982,52 @@ function fakeDocument() {
       "Page/prices/priceHeader");
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,
       ["Page/prices/priceHeader"]);
+
+    const menuRt = runtime.createRuntime();
+    runtime.beginFrame(menuRt);
+    runtime.widget(menuRt, "Menu", {}, null,
+      {
+        nodeName: "choices",
+        path: "Page/choices",
+        ariaOrientation: "vertical",
+        ariaMultiSelectable: true
+      });
+    runtime.widget(menuRt, "Button", { label: "One" }, null,
+      {
+        nodeName: "choiceOne",
+        path: "Page/choices/choiceOne",
+        parentPath: "Page/choices",
+        role: "menuitem",
+        ariaLevel: 2,
+        ariaPosInSet: 1,
+        ariaSetSize: 3,
+        ariaHasPopup: "menu"
+      });
+    runtime.endFrame(menuRt);
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-orientation=vertical]").path,
+      "Page/choices");
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-multiselectable=true]").path,
+      "Page/choices");
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-level=2]").path,
+      "Page/choices/choiceOne");
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-posinset=1]").path,
+      "Page/choices/choiceOne");
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-setsize=3]").path,
+      "Page/choices/choiceOne");
+    assert.equal(runtime.webNodeQuery(menuRt, "[aria-haspopup=menu]").path,
+      "Page/choices/choiceOne");
+    const menuTarget = document.createElement("div");
+    runtime.renderWebDocument(menuRt, menuTarget);
+    const choices = runtime.findWebElement(menuTarget, "choices");
+    const choiceOne = runtime.findWebElement(menuTarget, "choiceOne");
+    assert.equal(choices.attributes["aria-orientation"], "vertical");
+    assert.equal(choices.attributes["aria-multiselectable"], "true");
+    assert.equal(choiceOne.attributes["aria-level"], "2");
+    assert.equal(choiceOne.attributes["aria-posinset"], "1");
+    assert.equal(choiceOne.attributes["aria-setsize"], "3");
+    assert.equal(choiceOne.attributes["aria-haspopup"], "menu");
+    assert.equal(runtime.webDOMQuery(menuTarget, "[aria-level=2]").element,
+      choiceOne);
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);

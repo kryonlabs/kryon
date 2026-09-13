@@ -577,6 +577,40 @@ grep -q '"headers": "price_header"' "$table_headers_out"
 grep -q '"colSpan": 2' "$table_headers_out"
 grep -q '"rowSpan": 1' "$table_headers_out"
 
+cat > "$work/src/menu_semantics.kry" <<'EOF'
+#import "kryon.h"
+
+app "Menu Semantics" {
+    size 80 60
+}
+
+MenuSemanticScreen :: () #ui {
+    Screen root: {
+        Column choices: {
+            role = "menu"
+            aria_orientation = "vertical"
+            aria_multiselectable = true
+        }
+        Button choice_one: {
+            label = "One"
+            role = "menuitem"
+            aria_level = 2
+            aria_posinset = 1
+            aria_setsize = 3
+            aria_haspopup = "menu"
+        }
+    }
+}
+EOF
+"$k2js" --root "$work" -o "$work/out" "$work/src/menu_semantics.kry"
+menu_semantics_out="$work/out/src/menu_semantics.js"
+grep -q '"ariaOrientation": "vertical"' "$menu_semantics_out"
+grep -q '"ariaMultiSelectable": true' "$menu_semantics_out"
+grep -q '"ariaLevel": 2' "$menu_semantics_out"
+grep -q '"ariaPosInSet": 1' "$menu_semantics_out"
+grep -q '"ariaSetSize": 3' "$menu_semantics_out"
+grep -q '"ariaHasPopup": "menu"' "$menu_semantics_out"
+
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
     value: i32

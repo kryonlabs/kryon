@@ -508,6 +508,12 @@ typedef struct UiBlock {
     char dom_aria_controls[KIR_TEXT_MAX];
     char dom_aria_owns[KIR_TEXT_MAX];
     char dom_aria_sort[KIR_NAME_MAX];
+    char dom_aria_orientation[KIR_NAME_MAX];
+    char dom_aria_level[KIR_NAME_MAX];
+    char dom_aria_posinset[KIR_NAME_MAX];
+    char dom_aria_setsize[KIR_NAME_MAX];
+    char dom_aria_haspopup[KIR_NAME_MAX];
+    char dom_aria_multiselectable[KIR_NAME_MAX];
     char dom_aria_live[KIR_NAME_MAX];
     char dom_aria_attrs[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
@@ -1132,6 +1138,40 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "aria_orientation") == 0) {
+        snprintf(block->dom_aria_orientation,
+                 sizeof(block->dom_aria_orientation), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_level") == 0) {
+        snprintf(block->dom_aria_level, sizeof(block->dom_aria_level), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "aria_posinset") == 0 ||
+       strcmp(field, "aria_pos_in_set") == 0) {
+        snprintf(block->dom_aria_posinset,
+                 sizeof(block->dom_aria_posinset), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_setsize") == 0 ||
+       strcmp(field, "aria_set_size") == 0) {
+        snprintf(block->dom_aria_setsize, sizeof(block->dom_aria_setsize),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_haspopup") == 0 ||
+       strcmp(field, "aria_has_popup") == 0) {
+        snprintf(block->dom_aria_haspopup,
+                 sizeof(block->dom_aria_haspopup), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_multiselectable") == 0 ||
+       strcmp(field, "aria_multi_selectable") == 0) {
+        snprintf(block->dom_aria_multiselectable,
+                 sizeof(block->dom_aria_multiselectable), "%s", value);
+        return 1;
+    }
     if(strcmp(field, "aria_live") == 0 || strcmp(field, "live") == 0) {
         snprintf(block->dom_aria_live, sizeof(block->dom_aria_live), "%s",
                  value);
@@ -1454,6 +1494,22 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_aria_owns);
     snprintf(statement->dom_aria_sort, sizeof(statement->dom_aria_sort), "%s",
              block->dom_aria_sort);
+    snprintf(statement->dom_aria_orientation,
+             sizeof(statement->dom_aria_orientation), "%s",
+             block->dom_aria_orientation);
+    snprintf(statement->dom_aria_level, sizeof(statement->dom_aria_level),
+             "%s", block->dom_aria_level);
+    snprintf(statement->dom_aria_posinset,
+             sizeof(statement->dom_aria_posinset), "%s",
+             block->dom_aria_posinset);
+    snprintf(statement->dom_aria_setsize, sizeof(statement->dom_aria_setsize),
+             "%s", block->dom_aria_setsize);
+    snprintf(statement->dom_aria_haspopup,
+             sizeof(statement->dom_aria_haspopup), "%s",
+             block->dom_aria_haspopup);
+    snprintf(statement->dom_aria_multiselectable,
+             sizeof(statement->dom_aria_multiselectable), "%s",
+             block->dom_aria_multiselectable);
     snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
              block->dom_aria_live);
     snprintf(statement->dom_aria_attrs, sizeof(statement->dom_aria_attrs),
