@@ -135,7 +135,8 @@ try {
   kryon.widget(rt, "ListBox", {}, null, {
     nodeName: "choices",
     path: "Page/article/choices",
-    parentPath: "Page/article"
+    parentPath: "Page/article",
+    ariaActiveDescendant: "Page/article/choices/beta"
   });
   kryon.widget(rt, "TextField", {
     aria_activedescendant: "Page/article/choices/beta",
@@ -461,10 +462,10 @@ try {
   assert(kryon.webDOMSnapshot(target, "newsletterOptIn").relationRefs.labelledBy
     .join(" ") === "newsletterLabel", "implicit labelledBy snapshot missing");
   assert(kryon.webDOMRelations(target, "choiceBeta").activeDescendantOf
-    .map((object) => object.ref).join(" ") === "Page/article/choiceSearch",
+    .map((object) => object.ref).join(" ") === "Page/article/choices Page/article/choiceSearch",
     "active descendant reverse relation missing");
   assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.activeDescendantOf
-    .join(" ") === "Page/article/choiceSearch",
+    .join(" ") === "Page/article/choices Page/article/choiceSearch",
     "active descendant reverse relation refs missing");
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
@@ -523,6 +524,11 @@ try {
     "selected collection items relation refs missing");
   assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.selectedCollectionOwner ===
     "Page/article/choices", "selected collection owner snapshot missing");
+  assert(kryon.webDOMRelationRefs(target, "choices").activeCollectionItems
+    .join(" ") === "Page/article/choices/beta",
+    "active collection item relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.activeCollectionOwner ===
+    "Page/article/choices", "active collection owner snapshot missing");
   assert(menuItem.tagName === "BUTTON", "menu item button not rendered");
   assert(menuItem.getAttribute("role") === "menuitem", "menu item role missing");
   assert(kryon.webDOMSnapshot(target, "archiveItem").role === "menuitem",
