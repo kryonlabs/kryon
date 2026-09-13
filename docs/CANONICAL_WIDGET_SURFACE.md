@@ -709,19 +709,21 @@ The public surface is now guarded: `canonical-surface-test` and
 `public-api-names-check` reject old public widget names such as `Href`,
 `Picture`, `Combo`, `MenuButton`, `SplitButton`, `InfoButton`, `ArrowButton`,
 typed `Drag`/`Slider` splits, and public `UI*` prefixes in the exported API.
-Remaining work is not "choose the names again"; it is finishing the migration
-of internal policy and host plumbing behind the canonical names.
+The implementation source has also had the old internal `UI*` type, enum,
+capacity, node-flag, inspect, guard, and log prefixes removed. Remaining work is
+not "choose the names again"; it is finishing the migration of internal policy
+and host plumbing behind the canonical names.
 
 1. Finish C geometry-to-`.kry` migration:
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
    widgets already have `.kry` policy, but raw widget constants still remain in
    native files. The next focused audits are popup placement in `src/ui/ui_tk.c`
    and any remaining row/form host placement in `src/ui/rows.c`.
-2. Finish internal `UI*` cleanup:
-   Public headers/docs are clean, but internal implementation structs still use
-   old names such as popup input, paint layers, numeric input state, blend
-   state, and tree layout scopes. Rename these only after their public aliases
-   are already gone, and keep them internal while doing it.
+2. Keep prefix cleanup verified:
+   Guard tests intentionally mention old names so they can reject regressions,
+   but `src/ui` and public headers should stay free of Kryon-owned `UI*` and
+   `UI_*` surface names. Re-run the prefix scans after each widget migration so
+   compatibility shims do not creep back in.
 3. Finish text editing policy migration:
    `TextField` and `TextArea` already own metrics, paint geometry,
    buffer-limit, navigation, edit-intent, and selection range policy in
