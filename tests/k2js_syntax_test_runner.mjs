@@ -1882,6 +1882,16 @@ function fakeDocument() {
       { nodeName: "items", path: "Page/items" });
     runtime.widget(nativeRt, "ColorPicker", { value: "#336699" }, null,
       { nodeName: "accent", path: "Page/accent" });
+    runtime.widget(nativeRt, "Checkbox", { checked: true }, null,
+      { nodeName: "agree", path: "Page/agree" });
+    runtime.widget(nativeRt, "Toggle", { checked: false }, null,
+      { nodeName: "enabled", path: "Page/enabled" });
+    runtime.widget(nativeRt, "Radio", { checked: true }, null,
+      { nodeName: "choiceRadio", path: "Page/choiceRadio" });
+    runtime.widget(nativeRt, "Progress", { value: 42, max: 100 }, null,
+      { nodeName: "upload", path: "Page/upload" });
+    runtime.widget(nativeRt, "Separator", {}, null,
+      { nodeName: "rule", path: "Page/rule" });
     runtime.widget(nativeRt, "TableView", {}, null,
       { nodeName: "table", path: "Page/table" });
     runtime.widget(nativeRt, "CanvasGrid", {}, null,
@@ -1948,7 +1958,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
-      ["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker"].map((kind) => {
+      ["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
+       "Checkbox", "Toggle", "Radio", "Progress", "Separator"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
         return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
       }),
@@ -1957,12 +1968,19 @@ function fakeDocument() {
         ["Spinbox", "input", "number", "1", "8", "3"],
         ["Dropdown", "select", "", "", "", ""],
         ["ListBox", "select", "", "", "", ""],
-        ["ColorPicker", "input", "color", "", "", "#336699"]
+        ["ColorPicker", "input", "color", "", "", "#336699"],
+        ["Checkbox", "input", "checkbox", "", "", ""],
+        ["Toggle", "input", "checkbox", "", "", ""],
+        ["Radio", "input", "radio", "", "", ""],
+        ["Progress", "progress", "", "", "100", "42"],
+        ["Separator", "hr", "", "", "", ""]
       ]);
-    assert.deepEqual(["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker", "TableView"]
+    assert.deepEqual(["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
+      "Checkbox", "Toggle", "Radio", "Progress", "Separator", "TableView"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
-      ["slider", "spinbutton", "combobox", "listbox", "", "table"]);
+      ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
+       "switch", "radio", "progressbar", "separator", "table"]);
     assert.deepEqual(["Toolbar", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
@@ -1982,6 +2000,11 @@ function fakeDocument() {
     const choice = runtime.findWebElement(nativeTarget, "choice");
     const items = runtime.findWebElement(nativeTarget, "items");
     const accent = runtime.findWebElement(nativeTarget, "accent");
+    const agree = runtime.findWebElement(nativeTarget, "agree");
+    const enabled = runtime.findWebElement(nativeTarget, "enabled");
+    const choiceRadio = runtime.findWebElement(nativeTarget, "choiceRadio");
+    const upload = runtime.findWebElement(nativeTarget, "upload");
+    const rule = runtime.findWebElement(nativeTarget, "rule");
     const table = runtime.findWebElement(nativeTarget, "table");
     const grid = runtime.findWebElement(nativeTarget, "grid");
     const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
@@ -2013,6 +2036,16 @@ function fakeDocument() {
     assert.equal(accent.tagName, "INPUT");
     assert.equal(accent.attributes.type, "color");
     assert.equal(accent.attributes.value, "#336699");
+    assert.equal(agree.tagName, "INPUT");
+    assert.equal(agree.attributes.type, "checkbox");
+    assert.equal(enabled.tagName, "INPUT");
+    assert.equal(enabled.attributes.type, "checkbox");
+    assert.equal(choiceRadio.tagName, "INPUT");
+    assert.equal(choiceRadio.attributes.type, "radio");
+    assert.equal(upload.tagName, "PROGRESS");
+    assert.equal(upload.attributes.max, "100");
+    assert.equal(upload.attributes.value, "42");
+    assert.equal(rule.tagName, "HR");
     assert.equal(table.tagName, "TABLE");
     assert.equal(grid.tagName, "CANVAS");
     assert.equal(grid.attributes.role, "img");

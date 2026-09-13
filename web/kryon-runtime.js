@@ -1696,6 +1696,8 @@ function implicitRole(node) {
   if (node.tag === "a" && node.href)
     return "link";
   if (node.tag === "input") {
+    if (node.kind === "Toggle")
+      return "switch";
     if (node.inputType === "checkbox")
       return "checkbox";
     if (node.inputType === "radio")
@@ -1714,6 +1716,8 @@ function implicitRole(node) {
     return "textbox";
   if (node.tag === "progress")
     return "progressbar";
+  if (node.tag === "hr")
+    return "separator";
   if (node.tag === "table")
     return "table";
   if (/^h[1-6]$/.test(node.tag))
