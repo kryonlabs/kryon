@@ -201,6 +201,9 @@ try {
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
   assert(kryon.webDOMSnapshot(target, "article-ref").eventRefs.click === "article_click",
     "snapshot event refs missing click hook");
+  assert(article.kryEventRefs.click === "article_click", "element event refs missing click hook");
+  assert(root.kryEventRefs("article-ref").click === "article_click",
+    "root event refs missing click hook");
   assert(kryon.webDOMEventRefs(target, "article-ref").click === "article_click",
     "mounted event refs missing click hook");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
@@ -229,6 +232,8 @@ try {
     "reverse controlledBy relation missing");
   assert(kryon.webDOMRelationRefs(target, "save").controlledBy.join(" ") === "article-ref",
     "reverse controlledBy relation refs missing");
+  assert(root.kryRelationRefs("save").controlledBy.join(" ") === "article-ref",
+    "root relation refs missing");
   assert(kryon.webDOMRemoveAttribute(target, "article-ref", "aria-controls"),
     "aria-controls removal failed");
   assert(kryon.webDOMSync(target, "article-ref")?.ref === "article-ref",

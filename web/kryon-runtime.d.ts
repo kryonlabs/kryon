@@ -437,6 +437,8 @@ export interface WebDOMObject {
   readonly parent: WebDOMObject | null;
   readonly children: WebDOMObject[];
   readonly relations: WebDOMRelations | null;
+  readonly relationRefs: WebDOMRelationRefs | null;
+  readonly eventRefs: WebNodeEventRefs;
   readonly descendants: WebDOMObject[];
   query(selector: string): WebDOMObject | null;
   queryAll(selector: string): WebDOMObject[];
@@ -620,6 +622,8 @@ declare global {
     readonly kryParent?: WebDOMObject | null;
     readonly kryChildren?: WebDOMObject[];
     readonly kryRelations?: WebDOMRelations | null;
+    readonly kryRelationRefs?: WebDOMRelationRefs | null;
+    readonly kryEventRefs?: WebNodeEventRefs | null;
     kryDescendants?(): WebDOMObject[];
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
@@ -629,6 +633,8 @@ declare global {
     kryClosest?(selector: string): WebDOMObject | null;
     kryElement?(query: string): Element | null;
     kryObject?(query: string): WebDOMObject | null;
+    kryRelationRefs?(query: string): WebDOMRelationRefs | null;
+    kryEventRefs?(query: string): WebNodeEventRefs | null;
     kryQuery?(selector: string): WebDOMObject | null;
     kryQueryAll?(selector: string): WebDOMObject[];
     kryQueryWithin?(query: string, selector: string): WebDOMObject | null;

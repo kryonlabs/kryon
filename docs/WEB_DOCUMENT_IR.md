@@ -607,6 +607,9 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 other nodes, and reverse `labelledBy` links for controls targeted by
 `dom_for`; `webNodeRelationRefs(rt, query)`, `webDOMRelationRefs(target,
 query)`, and snapshots expose the same links as serializable `relationRefs`.
+Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
+`kryRelationRefs`, and `WebDOMObject` exposes `relationRefs` for the same
+serializable packet.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: the complete
@@ -615,7 +618,8 @@ relation refs, event refs, attributes, dataset, style, text/value, state,
 geometry, and scroll without live DOM references.
 `webNodeEventRefs(node)` and `webDOMEventRefs(target, query)` return the same
 event-ref packet directly for unmounted Web Document nodes or mounted DOM
-objects.
+objects. Mounted roots expose `kryEventRefs(query)`, mounted elements expose
+`kryEventRefs`, and `WebDOMObject` exposes `eventRefs`.
 `webDOMSnapshotFromElement(element)` and `webDOMSnapshotFromEvent(...)` provide
 the same serializable projection from native DOM elements and events.
 

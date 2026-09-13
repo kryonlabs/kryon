@@ -3058,6 +3058,9 @@ function fakeDocument() {
     assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");
     assert.equal(buttonObject.snapshot.eventRefs.click, "call_host");
     assert.equal(buttonObject.snapshot.eventRefs.keyUp, "");
+    assert.equal(buttonObject.eventRefs.click, "call_host");
+    assert.equal(firstButton.kryEventRefs.click, "call_host");
+    assert.equal(root.kryEventRefs("tap-button").click, "call_host");
     assert.equal(runtime.webDOMEventRefs(target, "tap-button").click, "call_host");
     assert.equal(runtime.webDOMEventRefs(target, "tap-button").keyUp, "");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
@@ -3066,6 +3069,9 @@ function fakeDocument() {
     assert.deepEqual(buttonObject.relations.owns.map((object) => object.ref), ["search-box"]);
     assert.equal(buttonObject.relations.popoverTarget.ref, "Scene/root/search_label");
     assert.equal(firstButton.kryRelations.controls[0].ref, "search-box");
+    assert.deepEqual(buttonObject.relationRefs.controls, ["search-box"]);
+    assert.deepEqual(firstButton.kryRelationRefs.controls, ["search-box"]);
+    assert.deepEqual(root.kryRelationRefs("tap-button").controls, ["search-box"]);
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").controlledBy
       .map((object) => object.ref), ["primary-action"]);
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").ownedBy

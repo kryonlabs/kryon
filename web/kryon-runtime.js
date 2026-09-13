@@ -4964,6 +4964,22 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMRelationsForNode(root, node) : null;
       }
     },
+    kryRelationRefs: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMRelationRefs(root, webNodeRef(node)) : null;
+      }
+    },
+    kryEventRefs: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode ? webNodeEventRefs(this.__kryDocNode) : null;
+      }
+    },
     kryDescendants: {
       configurable: true,
       enumerable: false,
@@ -5403,6 +5419,21 @@ function makeWebDOMObject(root, node, element, ref = "") {
       get() {
         const target = webDOMObjectRoot(this);
         return target ? webDOMRelationsForNode(target, this.node) : null;
+      }
+    },
+    relationRefs: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMRelationRefs(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    eventRefs: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeEventRefs(this.node);
       }
     },
     descendants: {
@@ -6303,6 +6334,20 @@ function bindWebRootProperties(root) {
       enumerable: false,
       value(query) {
         return webDOMObject(this, query);
+      }
+    },
+    kryRelationRefs: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMRelationRefs(this, query);
+      }
+    },
+    kryEventRefs: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMEventRefs(this, query);
       }
     },
     kryQuery: {
