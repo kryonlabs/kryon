@@ -304,9 +304,12 @@ App :: () #ui {
     Menu((MenuProps){.id = 46, .mode = MenuModeBar, .bounds = {Scale(4),Scale(834),Scale(220),Scale(30)}, .menus = menus, .menu_count = 1, .open_index = &menu_open})
     Menu((MenuProps){.id = 47, .mode = MenuModePopup, .bounds = {Scale(4),Scale(868),0,0}, .items = menu_items, .item_count = 2})
     Menu((MenuProps){.id = 48, .mode = MenuModeContext, .trigger = {Scale(230),Scale(834),Scale(100),Scale(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
-    if BeginPopup((PopupProps){.bounds={Scale(220),Scale(934),Scale(176),Scale(42)},.id=58,.trigger={Scale(230),Scale(900),Scale(100),Scale(30)},.flags=PopupTooltip}) {
+    Popup tooltip: {
+        bounds = {Scale(220),Scale(934),Scale(176),Scale(42)}
+        id = 58
+        trigger = {Scale(230),Scale(900),Scale(100),Scale(30)}
+        flags = PopupTooltip
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
-        EndPopup()
     }
     choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,IMAGE_FIT_CONTAIN,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
