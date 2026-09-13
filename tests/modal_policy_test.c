@@ -125,9 +125,9 @@ main(void)
     assert(placement.start_x == 10);
     assert(ModalButtonsHeight(0, metrics) == 0);
     assert(ModalButtonsHeight(3, metrics) == 296);
-    assert(ModalFontFor(14, 0, 0) == 14);
-    assert(ModalFontFor(14, 18, 1) == 18);
-    assert(ModalFontFor(14, 0, 1) == 14);
+    assert(ModalFontFor(14, 0) == 14);
+    assert(ModalFontFor(14, 18) == 18);
+    assert(ModalFontFor(14, 0) == 14);
     assert(ModalPromptFocusIdFor(42, 7301) == 42);
     assert(ModalPromptFocusIdFor(0, 7301) == 7301);
     assert(ModalPromptCommitResult(1) == 1);

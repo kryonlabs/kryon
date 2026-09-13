@@ -193,9 +193,8 @@ ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {
     return rows * metrics.button_height + (rows - 1) * metrics.button_gap
 }
 
-ModalFontFor :: (default_font: i32, style_font: i32,
-    style_has_font: bool) -> i32 #export {
-    if style_has_font && style_font > 0 { return style_font }
+ModalFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
+    if style_font > 0 { return style_font }
     return default_font
 }
 

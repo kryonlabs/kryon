@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/guide.h"
+#include "runtime/style.h"
 #include <stdio.h>
 
 static GuideOverlayDebug g_guide_debug;
@@ -134,9 +135,8 @@ RenderGuideOverlay(GuideOverlayProps guide)
     paragraph.text = guide.steps[step].text;
     paragraph.width = tip_w - metrics.pad * 2;
     paragraph.font = GuideParagraphFontFor(
-        guide.paragraph_font, (int)(label_style.font_size + 0.5f),
-        (label_style.fields & (uint32_t)StyleFontSize) != 0,
-        Text16);
+        guide.paragraph_font,
+        StyleFontValue(label_style.fields, label_style.font_size), Text16);
     label_font = paragraph.font;
     paragraph.line_gap = line_gap;
     label_color = GetColor(Opacity(ColorToInt(label_style.foreground),

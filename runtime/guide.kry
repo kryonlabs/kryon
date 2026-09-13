@@ -184,10 +184,10 @@ GuideLineGapFor :: (requested_line_gap: i32, metrics: GuideMetrics) -> i32 #expo
 }
 
 GuideParagraphFontFor :: (requested_font: i32, style_font: i32,
-    style_has_font: bool, default_font: i32) -> i32 #export {
+    default_font: i32) -> i32 #export {
     font: i32 = default_font
     if requested_font > 0 { font = requested_font }
-    if style_has_font && style_font > 0 { font = style_font }
+    if style_font > 0 { font = style_font }
     return font
 }
 

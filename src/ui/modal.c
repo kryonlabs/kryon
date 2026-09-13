@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/modal.h"
+#include "runtime/style.h"
 
 static int
 ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon,
@@ -250,11 +251,11 @@ RenderActionModal(ModalProps modal)
     modal_w = ModalClampWidth(ui_view_width, modal_max_w, metrics);
     msg_w = ModalContentWidth(modal_w, metrics);
     msg_font = ModalFontFor(
-        msg_font, (int)(message_style.font_size + 0.5f),
-        (message_style.fields & (uint32_t)StyleFontSize) != 0);
+        msg_font, StyleFontValue(message_style.fields,
+                                 message_style.font_size));
     btn_font = ModalFontFor(
-        btn_font, (int)(action_style.font_size + 0.5f),
-        (action_style.fields & (uint32_t)StyleFontSize) != 0);
+        btn_font, StyleFontValue(action_style.fields,
+                                 action_style.font_size));
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -304,8 +305,7 @@ RenderActionModal(ModalProps modal)
 
     title_font = ModalFontFor(
         GetTitleFontSize(modal.title, msg_w),
-        (int)(title_style.font_size + 0.5f),
-        (title_style.fields & (uint32_t)StyleFontSize) != 0);
+        StyleFontValue(title_style.fields, title_style.font_size));
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
@@ -435,8 +435,7 @@ RenderModalFrame(int width, int height, const char *title,
                      panel_style.material);
 
     title_font = ModalFontFor(
-        title_font, (int)(title_style.font_size + 0.5f),
-        (title_style.fields & (uint32_t)StyleFontSize) != 0);
+        title_font, StyleFontValue(title_style.fields, title_style.font_size));
     title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
                layout.title_y, title_font,

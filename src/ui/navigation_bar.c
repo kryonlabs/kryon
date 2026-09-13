@@ -2,6 +2,7 @@
 #include "ui_style_internal.h"
 #include "dropdown_store.h"
 #include "runtime/navigation_bar.h"
+#include "runtime/style.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -166,7 +167,8 @@ RenderNavigationBar(NavigationBarProps nav)
                                                              nav.class_name);
         Style text_style = base_style;
         int label_font = NavigationBarFontFor(
-            GetSmallFontSize(), (int)(base_style.font_size + 0.5f));
+            GetSmallFontSize(),
+            StyleFontValue(base_style.fields, base_style.font_size));
         int label_h = TextLineHeight(label_font);
         NavigationBarItemPaint item_paint;
 
@@ -204,7 +206,8 @@ RenderNavigationBar(NavigationBarProps nav)
             Style face_style = ui_unpack_style(face_frame.value);
             text_style = face_style;
             label_font = NavigationBarFontFor(
-                label_font, (int)(face_style.font_size + 0.5f));
+                label_font,
+                StyleFontValue(face_style.fields, face_style.font_size));
             ui_draw_material(item_paint.state_bounds, (Rectangle){0},
                              face_style.background, face_style.border,
                              face_style.border, face_style.radius,
@@ -305,7 +308,8 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
                                     0.0f, 0.0f, 0.0f,
                                     StyleKindNavigationBarItem())).value);
     label_font = NavigationBarFontFor(
-        GetSmallFontSize(), (int)(label_style.font_size + 0.5f));
+        GetSmallFontSize(),
+        StyleFontValue(label_style.fields, label_style.font_size));
     for(i = 0; i < route_count; i++)
         selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);

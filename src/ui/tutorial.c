@@ -2,6 +2,7 @@
 #include "ui_style_internal.h"
 #include "ui_image_internal.h"
 #include "runtime/image.h"
+#include "runtime/style.h"
 
 static Style
 tutorial_image_style(int role)
@@ -17,7 +18,7 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
     Style image = tutorial_image_style(StyleAny());
     Style text = tutorial_image_style(6);
     int font = ImagePlaceholderFontFor(
-        GetFontSize(), (int)(text.font_size + 0.5f));
+        GetFontSize(), StyleFontValue(text.fields, text.font_size));
     int font_token = PushTextFont(text.typeface);
     int tw = TextWidth(label, font);
     ImagePlaceholderLayout layout =
