@@ -158,6 +158,9 @@ the browser receives normal elements, attributes, CSS, and events.
   snapshots.
 - Semantic legend relationship facts expose `legendOwner` and `legendItems`
   for authored native fieldset legends in pre-mount and mounted DOM snapshots.
+- Semantic description-list relationship facts expose `descriptionListOwner`
+  and `descriptionListItems` for native `dl`, `dt`, and `dd` nodes in
+  pre-mount and mounted DOM snapshots.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, pre-mount and mounted DOM
   snapshots, and accessibility snapshots.

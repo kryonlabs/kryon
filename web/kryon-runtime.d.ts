@@ -550,6 +550,8 @@ export interface WebDOMRelations {
   summaryItems: WebDOMObject[];
   legendOwner: WebDOMObject | null;
   legendItems: WebDOMObject[];
+  descriptionListOwner: WebDOMObject | null;
+  descriptionListItems: WebDOMObject[];
   selectedCollectionOwner: WebDOMObject | null;
   selectedCollectionItems: WebDOMObject[];
   activeCollectionOwner: WebDOMObject | null;
@@ -599,6 +601,8 @@ export interface WebNodeRelations {
   summaryItems: WebDocumentNode[];
   legendOwner: WebDocumentNode | null;
   legendItems: WebDocumentNode[];
+  descriptionListOwner: WebDocumentNode | null;
+  descriptionListItems: WebDocumentNode[];
   selectedCollectionOwner: WebDocumentNode | null;
   selectedCollectionItems: WebDocumentNode[];
   activeCollectionOwner: WebDocumentNode | null;
@@ -648,6 +652,8 @@ export interface WebDOMRelationRefs {
   summaryItems: string[];
   legendOwner: string;
   legendItems: string[];
+  descriptionListOwner: string;
+  descriptionListItems: string[];
   selectedCollectionOwner: string;
   selectedCollectionItems: string[];
   activeCollectionOwner: string;

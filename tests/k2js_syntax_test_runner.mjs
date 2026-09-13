@@ -3158,6 +3158,12 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").text, "DOM");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionDetails").tag, "dd");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionDetails").text, "Document Object Model");
+    assert.equal(runtime.webNodeRelations(nativeRt, "DescriptionTerm").descriptionListOwner.path,
+      "Page/descriptions");
+    assert.equal(runtime.webNodeRelations(nativeRt, "DescriptionDetails").descriptionListOwner.path,
+      "Page/descriptions");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "DescriptionList").descriptionListItems,
+      ["Page/descriptions/dom", "Page/descriptions/dom/details"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").tag, "video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.src, "intro.mp4");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.controls, true);
@@ -3501,6 +3507,11 @@ function fakeDocument() {
     assert.equal(nativeDescriptionTerm.textContent, "DOM");
     assert.equal(nativeDescriptionDetails.tagName, "DD");
     assert.equal(nativeDescriptionDetails.textContent, "Document Object Model");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "DescriptionTerm").descriptionListOwner.ref,
+      "Page/descriptions");
+    assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "DescriptionList")
+      .relationRefs.descriptionListItems,
+      ["Page/descriptions/dom", "Page/descriptions/dom/details"]);
     assert.equal(nativeVideo.tagName, "VIDEO");
     assert.equal(nativeVideo.attributes.src, "intro.mp4");
     assert.equal(nativeVideo.attributes.poster, "intro.jpg");

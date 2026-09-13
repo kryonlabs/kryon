@@ -700,6 +700,7 @@ active collection owner/item links for composite widgets with an active
 descendant,
 native details summary owner/item links for disclosure summary nodes,
 native fieldset legend owner/item links for authored legend nodes,
+native description-list owner/item links for `dt` and `dd` nodes,
 structural `previousSibling`/`nextSibling` links for adjacent Kry DOM objects,
 reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
 `errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for

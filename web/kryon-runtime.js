@@ -7280,6 +7280,12 @@ function webNodeCanOwnLegend(owner, legend) {
     String(legend?.tag || "").toLowerCase() === "legend";
 }
 
+function webNodeCanOwnDescriptionItem(owner, item) {
+  const ownerTag = String(owner?.tag || "").toLowerCase();
+  const itemTag = String(item?.tag || "").toLowerCase();
+  return ownerTag === "dl" && (itemTag === "dt" || itemTag === "dd");
+}
+
 function webNodeCaptionOwner(rt, node) {
   if (!rt || !node)
     return null;
@@ -7361,6 +7367,38 @@ function webNodeLegendItems(rt, node) {
         String(candidate.tag || "").toLowerCase() !== "legend")
       return false;
     const owner = webNodeLegendOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
+function webNodeDescriptionListOwner(rt, node) {
+  const tag = String(node?.tag || "").toLowerCase();
+  if (!rt || !node || (tag !== "dt" && tag !== "dd"))
+    return null;
+  const nodes = webFrameNodeMap(webDocumentFrame(rt));
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = nodes.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnDescriptionItem(parent, node))
+      return parent;
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webNodeDescriptionListItems(rt, node) {
+  if (!rt || !node || String(node.tag || "").toLowerCase() !== "dl")
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    const tag = String(candidate?.tag || "").toLowerCase();
+    if (!candidate || candidate === node || (tag !== "dt" && tag !== "dd"))
+      return false;
+    const owner = webNodeDescriptionListOwner(rt, candidate);
     return owner === node || (ref && webNodeRef(owner) === ref);
   });
 }
@@ -7610,6 +7648,42 @@ function webDOMLegendItems(target, node) {
   return out;
 }
 
+function webDOMDescriptionListOwner(target, node) {
+  const root = mountedRoot(target);
+  const tag = String(node?.tag || "").toLowerCase();
+  if (!root || !node || (tag !== "dt" && tag !== "dd"))
+    return null;
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnDescriptionItem(parent, node))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMDescriptionListItems(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node || String(node.tag || "").toLowerCase() !== "dl")
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    const tag = String(object?.node?.tag || "").toLowerCase();
+    if (!object?.node || object.node === node || (tag !== "dt" && tag !== "dd"))
+      continue;
+    const owner = webDOMDescriptionListOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMSelectedCollectionOwner(target, node) {
   return webNodeIsSelectedCollectionMember(node)
     ? webDOMCollectionOwner(target, node)
@@ -7663,6 +7737,8 @@ function webDOMRelationsForNode(target, node) {
     summaryItems: webDOMSummaryItems(target, node),
     legendOwner: webDOMLegendOwner(target, node),
     legendItems: webDOMLegendItems(target, node),
+    descriptionListOwner: webDOMDescriptionListOwner(target, node),
+    descriptionListItems: webDOMDescriptionListItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
     selectedCollectionItems: webDOMSelectedCollectionItems(target, node),
     activeCollectionOwner: webDOMActiveCollectionOwner(target, node),
@@ -9084,6 +9160,8 @@ function webDOMRelationRefsForRelations(relations) {
     summaryItems: (relations?.summaryItems || []).map((relation) => relation.ref),
     legendOwner: relations?.legendOwner?.ref || "",
     legendItems: (relations?.legendItems || []).map((relation) => relation.ref),
+    descriptionListOwner: relations?.descriptionListOwner?.ref || "",
+    descriptionListItems: (relations?.descriptionListItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
     selectedCollectionItems: (relations?.selectedCollectionItems || []).map((relation) => relation.ref),
     activeCollectionOwner: relations?.activeCollectionOwner?.ref || "",
@@ -9996,6 +10074,8 @@ function webNodeRelationsForNode(rt, node) {
     summaryItems: webNodeSummaryItems(rt, node),
     legendOwner: webNodeLegendOwner(rt, node),
     legendItems: webNodeLegendItems(rt, node),
+    descriptionListOwner: webNodeDescriptionListOwner(rt, node),
+    descriptionListItems: webNodeDescriptionListItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
     selectedCollectionItems: webNodeSelectedCollectionItems(rt, node),
     activeCollectionOwner: webNodeActiveCollectionOwner(rt, node),
@@ -10085,6 +10165,8 @@ function webNodeRelationRefsForNode(rt, node) {
     summaryItems: webNodeRefs(webNodeSummaryItems(rt, node)),
     legendOwner: webNodeRef(webNodeLegendOwner(rt, node)) || "",
     legendItems: webNodeRefs(webNodeLegendItems(rt, node)),
+    descriptionListOwner: webNodeRef(webNodeDescriptionListOwner(rt, node)) || "",
+    descriptionListItems: webNodeRefs(webNodeDescriptionListItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
     selectedCollectionItems: webNodeRefs(webNodeSelectedCollectionItems(rt, node)),
     activeCollectionOwner: webNodeRef(webNodeActiveCollectionOwner(rt, node)) || "",
