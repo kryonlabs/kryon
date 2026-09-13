@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct LinkProps {
     Rectangle bounds;
+    int32_t class_name;
     const char* text;
     const char* link;
     int32_t font;

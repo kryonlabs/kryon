@@ -1593,6 +1593,119 @@ ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius
 	}
 }
 
+func TestUtilityWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.utility.classes;
+tokens {
+  color {
+    canvas: #18222d;
+    shell: #233142;
+    value: #d9c5ff;
+    swatch: #56c2a8;
+    ink: #171022;
+    link: #1b6fd9;
+    button: #364a63;
+    rule: #667788;
+  }
+  length { radius: 7; border: 3; }
+  material { flat: Flat; }
+}
+Canvas.panel { background: canvas; border: rule; radius: radius; border-width: border; material: flat; }
+Link.panel { foreground: link; font-size: 19; opacity: 0.62; }
+ColorPickerSwatch.panel { foreground: ink; border: swatch; radius: radius; border-width: border; padding-x: 9; font-size: 18; material: flat; opacity: 0.66; }
+Spinbox.panel { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+SpinboxValue.panel { background: value; foreground: ink; border: value; radius: radius; border-width: border; font-size: 20; material: flat; opacity: 0.7; }
+Button.panel { background: button; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Utility Classes", "") || !SetActiveStylePack("test.utility.classes") {
+		t.Fatal("utility class style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 240}).(*runtime)
+	className := StyleClassID("panel")
+	values := []float32{0.1, 0.2, 0.3, 1}
+	spinValue := int32(3)
+
+	rt.BeginFrame()
+	rt.BeginCanvas(Canvas{
+		Bounds:    Rectangle{X: 8, Y: 8, Width: 120, Height: 50},
+		ClassName: className,
+	})
+	rt.EndCanvas(Canvas{Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 50}, ClassName: className})
+	rt.Link(LinkProps{
+		Bounds:    Rectangle{X: 144, Y: 8, Width: 120, Height: 28},
+		ClassName: className,
+		Text:      "Docs",
+		Link:      "/docs",
+	})
+	rt.ColorPicker(ColorPickerProps{
+		Bounds:     Rectangle{X: 8, Y: 76, Width: 120, Height: 160},
+		ID:         601,
+		ClassName:  className,
+		Label:      "Preview",
+		Values:     values,
+		ValueCount: 4,
+		Picker:     true,
+	})
+	rt.Spinbox(SpinboxProps{
+		Bounds:    Rectangle{X: 160, Y: 76, Width: 120, Height: 30},
+		ID:        602,
+		ClassName: className,
+		Min:       0,
+		Max:       10,
+		Value:     &spinValue,
+	})
+	rt.EndFrame()
+
+	var sawCanvas, sawLink, sawSwatch, sawSpinbox, sawSpinValue, sawSpinButton bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 50}):
+			sawCanvas = true
+			if op.Color != (Color{R: 0x18, G: 0x22, B: 0x2d, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x66, G: 0x77, B: 0x88, A: 0xff}) ||
+				op.BorderWidth != 3 || op.Radius != 7 {
+				t.Fatalf("canvas class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Docs":
+			sawLink = true
+			if op.Color != (Color{R: 0x1b, G: 0x6f, B: 0xd9, A: 0xff}) ||
+				op.FontSize != 19 || op.Opacity != 0.62 {
+				t.Fatalf("link class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 601 && op.Bounds == (Rectangle{X: 8, Y: 200, Width: 120, Height: 36}):
+			sawSwatch = true
+			if op.BorderColor != (Color{R: 0x56, G: 0xc2, B: 0xa8, A: 0xff}) ||
+				op.BorderWidth != 3 || op.Radius != 7 {
+				t.Fatalf("color picker class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 602 && op.Bounds == (Rectangle{X: 160, Y: 76, Width: 120, Height: 30}):
+			sawSpinbox = true
+			if op.Color != (Color{R: 0x23, G: 0x31, B: 0x42, A: 0xff}) ||
+				op.BorderWidth != 3 || op.Radius != 7 {
+				t.Fatalf("spinbox class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.ID == 602 && op.Text == "3":
+			sawSpinValue = true
+			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) ||
+				op.FontSize != 20 || op.Opacity != 0.7 {
+				t.Fatalf("spinbox value class op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.ID == 602*10+1:
+			sawSpinButton = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x36, G: 0x4a, B: 0x63, A: 0xff}) ||
+				style.Foreground != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("spinbox child button class op = %+v", op)
+			}
+		}
+	}
+	if !sawCanvas || !sawLink || !sawSwatch || !sawSpinbox || !sawSpinValue || !sawSpinButton {
+		t.Fatalf("missing utility class ops: canvas=%v link=%v swatch=%v spinbox=%v value=%v button=%v ops=%+v",
+			sawCanvas, sawLink, sawSwatch, sawSpinbox, sawSpinValue, sawSpinButton, rt.FrameOps())
+	}
+}
+
 func TestSliderPaintUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

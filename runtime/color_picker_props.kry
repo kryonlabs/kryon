@@ -4,6 +4,7 @@
 ColorPickerProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     label: const char*
     values: *float
     value_count: i32

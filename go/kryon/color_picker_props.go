@@ -5,6 +5,7 @@ package kryon
 type ColorPickerProps struct {
 	Bounds     Rectangle
 	ID         int32
+	ClassName  int32
 	Label      string
 	Values     []float32
 	ValueCount int32

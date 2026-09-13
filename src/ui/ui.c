@@ -2330,6 +2330,7 @@ RenderLink(LinkProps link)
     LinkAppearance appearance;
     Color color;
 
+    style_props.class_name = link.class_name;
     style_props.emphasis = ButtonEmphasisLink;
     style_props.size = ControlSizeMedium;
     style_props.disabled = link.disabled;

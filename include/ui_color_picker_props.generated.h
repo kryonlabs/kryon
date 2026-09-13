@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct ColorPickerProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     const char* label;
     float* values;
     int32_t value_count;

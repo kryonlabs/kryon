@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct Canvas {
     Rectangle bounds;
+    int32_t class_name;
     int32_t* scroll_x;
     int32_t* scroll_y;
     float* zoom;

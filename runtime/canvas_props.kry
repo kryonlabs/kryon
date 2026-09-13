@@ -3,6 +3,7 @@
 
 Canvas :: struct {
     bounds: Rectangle
+    class_name: i32
     scroll_x: *i32
     scroll_y: *i32
     zoom: *f32

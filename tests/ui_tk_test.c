@@ -4735,7 +4735,7 @@ main(void)
         int sx = 10;
         int sy = 20;
         float zoom = 2.0f;
-        Canvas canvas = {{40, 50, 200, 100}, &sx, &sy, &zoom};
+        Canvas canvas = {{40, 50, 200, 100}, 0, &sx, &sy, &zoom};
         Vector2 p = CanvasToScreen(canvas, (Vector2){50, 70});
         Rectangle rr = CanvasRectToScreen(canvas, (Rectangle){50, 70, 20, 10});
         check_int("canvas screen x", (int)p.x, 40);

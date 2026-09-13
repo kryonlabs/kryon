@@ -90,7 +90,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Toggle((ToggleProps){.bounds = {Scale(350), Scale(274), Scale(120), Scale(34)}, .id = 34, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
         Checkbox((CheckboxProps){.bounds = {Scale(350), Scale(314), Scale(110), Scale(34)}, .id = 35, .label = "Check", .value = &checkbox_value})
         Radio((RadioProps){.bounds = {Scale(350), Scale(350), Scale(120), Scale(24)}, .label = "Radio", .id = 1, .checked = pick == 1})
-        Spinbox((SpinboxProps){{Scale(350), Scale(382), Scale(120), Scale(28)}, 36, 0, 100, 1, &slider_value, 0, ""})
+        Spinbox((SpinboxProps){{Scale(350), Scale(382), Scale(120), Scale(28)}, 36, 0, 0, 100, 1, &slider_value, 0, ""})
         Dropdown((DropdownProps){.bounds = {Scale(350), Scale(418), Scale(160), Scale(28)}, .id = 37,
             .options = choices[:], .option_count = 3, .selected_index = &pick})
         Progress((ProgressProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})

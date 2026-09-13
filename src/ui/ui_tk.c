@@ -507,10 +507,10 @@ ui_row_text_y(Rectangle bounds, int font)
 }
 
 static StyleFrame
-ui_canvas_frame(void)
+ui_canvas_frame(int class_name)
 {
-    return ui_tk_simple_style_frame(ButtonToneNeutral, ButtonStateNormal, 0, 0,
-                                    StyleKindCanvas());
+    return ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, class_name, StyleKindCanvas(), StyleAny());
 }
 
 static void
@@ -1023,9 +1023,10 @@ ui_color_edit(ColorPickerProps edit, int channels)
 {
     if(edit.values == NULL || edit.value_count < channels)
         return 0;
-    return ui_slider_scalar((SliderScalarProps){edit.bounds, edit.id, edit.label,
-                                               edit.values, channels, 0.0f, 1.0f,
-                                               "%.3f", edit.disabled, 0}, 0);
+    return ui_slider_scalar((SliderScalarProps){edit.bounds, edit.id,
+                                               edit.label, edit.values, channels,
+                                               0.0f, 1.0f, "%.3f",
+                                               edit.disabled, edit.class_name}, 0);
 }
 
 static Color
@@ -1056,15 +1057,16 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
         SliderScalarProps channel = {
             row,
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
-            0.0f, 1.0f, "%.3f", picker.disabled
+            0.0f, 1.0f, "%.3f", picker.disabled, picker.class_name
         };
         changed |= ui_slider_scalar(channel, 0);
     }
     if(IsWindowReady()) {
         Rectangle swatch = layout.swatch_bounds;
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             picker.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            picker.disabled, 0, StyleKindColorPickerSwatch());
+            picker.disabled, 0, picker.class_name,
+            StyleKindColorPickerSwatch(), StyleAny());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
@@ -3046,12 +3048,12 @@ RenderSpinbox(SpinboxProps spinbox)
     else
         snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     if(IsWindowReady()) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-            StyleKindSpinbox());
-        StyleFrame value_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            spinbox.class_name, StyleKindSpinbox(), StyleAny());
+        StyleFrame value_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-            StyleKindSpinboxValue());
+            spinbox.class_name, StyleKindSpinboxValue(), StyleAny());
         Style value_style = ui_unpack_style(
             ui_style_apply_effects_frame(value_frame).value);
         int value_font = value_style.font_size > 0.0f
@@ -3066,7 +3068,8 @@ RenderSpinbox(SpinboxProps spinbox)
                            Fade(value_style.foreground, value_style.opacity));
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
-        .id = spinbox.id * 10 + 1, .disabled = disabled},
+        .id = spinbox.id * 10 + 1, .class_name = spinbox.class_name,
+        .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {
@@ -3078,7 +3081,8 @@ RenderSpinbox(SpinboxProps spinbox)
         changed |= step.changed;
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
-        .id = spinbox.id * 10 + 2, .disabled = disabled},
+        .id = spinbox.id * 10 + 2, .class_name = spinbox.class_name,
+        .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {
@@ -4059,8 +4063,8 @@ BeginCanvas(Canvas canvas)
     Vector2 mouse = ui_mouse_world();
     CanvasPolicyResult policy;
 
-    ui_tk_draw_style_frame(canvas.bounds, canvas.bounds, ui_canvas_frame(),
-                           0, 0, 0, 0);
+    ui_tk_draw_style_frame(canvas.bounds, canvas.bounds,
+                           ui_canvas_frame(canvas.class_name), 0, 0, 0, 0);
     policy = CanvasBeginResultFor(canvas.bounds, mouse,
                                   canvas.scroll_x != NULL ? *canvas.scroll_x : 0,
                                   canvas.scroll_y != NULL ? *canvas.scroll_y : 0,
@@ -4100,7 +4104,7 @@ EndCanvas(Canvas canvas)
         EndClip();
     }
     Style style = ui_unpack_style(
-        ui_style_apply_effects_frame(ui_canvas_frame()).value);
+        ui_style_apply_effects_frame(ui_canvas_frame(canvas.class_name)).value);
     DrawRectangleLinesEx(canvas.bounds, 1.0f, style.border);
 }
 

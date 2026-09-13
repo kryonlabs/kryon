@@ -2270,7 +2270,7 @@ func (r *runtime) colorEdit(props ColorPickerProps, channels int) bool {
 	if len(props.Values) < channels || int(props.ValueCount) > 0 && int(props.ValueCount) < channels {
 		return false
 	}
-	return r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: props.Values[:channels], ValueCount: int32(channels), Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false)
+	return r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, ClassName: props.ClassName, Label: props.Label, Values: props.Values[:channels], ValueCount: int32(channels), Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false)
 }
 
 func colorFromFloats(values []float32, channels int) Color {
@@ -2290,15 +2290,15 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 	changed := false
 	for i := 0; i < channels; i++ {
 		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1)
-		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
+		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, ClassName: props.ClassName, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
 	}
 	disabled := props.Disabled || r.contentDisabled()
-	frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled
 		}
 		return ButtonStateNormal
-	}(), disabled, false, StyleSheet_StyleKindColorPickerSwatch())
+	}(), disabled, false, props.ClassName, StyleSheet_StyleKindColorPickerSwatch(), StyleSheet_StyleAny())
 	style := unpackStyle(frame.Value)
 	op := styleFrameRectOp(layout.SwatchBounds, props.Bounds, frame)
 	op.ID = props.ID
@@ -4334,7 +4334,8 @@ func (r *runtime) Link(props LinkProps) bool {
 	if props.Disabled {
 		state = ButtonStateDisabled
 	}
-	frame := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, false, StyleSheet_StyleKindLink())
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindLink(), StyleSheet_StyleAny())
 	linkStyle := unpackStyle(frame.Value)
 	font, fontID := styleTextFace(linkStyle, Text16)
 	if props.Font > 0 {
@@ -5684,20 +5685,20 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	l := layout.Left
 	rr := layout.Right
 	disabled := p.Disabled || r.contentDisabled()
-	frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled
 		}
 		return ButtonStateNormal
-	}(), disabled, false, StyleSheet_StyleKindSpinbox())
+	}(), disabled, false, p.ClassName, StyleSheet_StyleKindSpinbox(), StyleSheet_StyleAny())
 	op := styleFrameRectOp(p.Bounds, Rectangle{}, frame)
 	op.ID = p.ID
 	op.Disabled = disabled
 	r.record(op)
 	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-",
-		ID: p.ID*10 + 1, Disabled: disabled})
+		ID: p.ID*10 + 1, ClassName: p.ClassName, Disabled: disabled})
 	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+",
-		ID: p.ID*10 + 2, Disabled: disabled})
+		ID: p.ID*10 + 2, ClassName: p.ClassName, Disabled: disabled})
 	step := Spinbox_SpinboxEffectiveStep(p.Step)
 	changed := false
 	if p.Value != nil && minus {
@@ -5719,12 +5720,12 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 		}
 		txt = fmt.Sprint(v)
 	}
-	valueFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	valueFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled
 		}
 		return ButtonStateNormal
-	}(), disabled, false, StyleSheet_StyleKindSpinboxValue())
+	}(), disabled, false, p.ClassName, StyleSheet_StyleKindSpinboxValue(), StyleSheet_StyleAny())
 	valueStyle := unpackStyle(valueFrame.Value)
 	valueOp := styleFrameRectOp(center, p.Bounds, valueFrame)
 	valueOp.ID = p.ID
@@ -6285,7 +6286,8 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
 	var scrollX, scrollY int32
 	zoom := float32(1)
-	frame := defaultStyleFrame(StyleSheet_StyleKindCanvas())
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, canvas.ClassName, StyleSheet_StyleKindCanvas(), StyleSheet_StyleAny())
 	r.record(styleFrameRectOp(canvas.Bounds, canvas.Bounds, frame))
 	if canvas.ScrollX != nil {
 		scrollX = *canvas.ScrollX

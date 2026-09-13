@@ -263,7 +263,7 @@ App :: () #ui {
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
     Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Radio((RadioProps){.bounds = {Scale(4), Scale(270), Scale(120), Scale(24)}, .label = "one", .id = 1, .checked = pick == 1})
-    Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
+    Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 0, 10, 1, &slider_val, 0, ""})
     Dropdown((DropdownProps){.bounds = {Scale(240), Scale(270), Scale(70), Scale(28)}, .id = 25, .options = choices, .option_count = 3, .selected_index = &pick})
     Fieldset((FieldsetProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
     tab_result: int = TabBar((TabBarProps){.bounds = {Scale(140), Scale(300), Scale(120), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = pick, .id = 260})

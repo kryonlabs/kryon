@@ -4,6 +4,7 @@ package kryon
 // #import kryon_compat.generated.h
 type LinkProps struct {
 	Bounds     Rectangle
+	ClassName  int32
 	Text       string
 	Link       string
 	Font       int32

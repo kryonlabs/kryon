@@ -3,10 +3,11 @@ package kryon
 
 // #import kryon_compat.generated.h
 type Canvas struct {
-	Bounds  Rectangle
-	ScrollX *int32
-	ScrollY *int32
-	Zoom    *float32
+	Bounds    Rectangle
+	ClassName int32
+	ScrollX   *int32
+	ScrollY   *int32
+	Zoom      *float32
 }
 
 type CanvasResult struct {

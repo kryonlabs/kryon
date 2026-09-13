@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct SpinboxProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     int32_t min;
     int32_t max;
     int32_t step;

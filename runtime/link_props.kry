@@ -3,6 +3,7 @@
 
 LinkProps :: struct {
     bounds: Rectangle
+    class_name: i32
     text: const char*
     link: const char*
     font: i32

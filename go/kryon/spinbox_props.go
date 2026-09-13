@@ -5,6 +5,7 @@ package kryon
 type SpinboxProps struct {
 	Bounds    Rectangle
 	ID        int32
+	ClassName int32
 	Min       int32
 	Max       int32
 	Step      int32
