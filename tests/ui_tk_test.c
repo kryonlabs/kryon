@@ -1808,7 +1808,7 @@ test_step_button_keyboard_navigation(void)
     check_int("spinbox keyboard increment",value,3);
 
     {
-        UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
+        NumericInputState *state = ui_numeric_input_state(1,field.id,0);
         SetFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginInterfaceFrame(240,140,1); RenderSpinbox(spin);
         check_int("numeric step keyboard changed",RenderInputDiscrete(field),1);
@@ -5100,14 +5100,14 @@ main(void)
         }
         InjectReset();
     }
-    UINumericInputState *editors[129];
+    NumericInputState *editors[129];
     {
         int identities[396];
         int identity_count = 0;
         for(int kind = 0; kind < 3; kind++) {
             for(int id = -1; id <= 2; id++) {
                 for(int component = 0; component < 33; component++) {
-                    UINumericInputState *state = ui_numeric_input_state(kind, id, component);
+                    NumericInputState *state = ui_numeric_input_state(kind, id, component);
                     check_int("numeric exact identity", state == ui_numeric_input_state(kind,id,component), 1);
                     for(int previous = 0; previous < identity_count; previous++) {
                         int delta = state->token-identities[previous];
@@ -5127,7 +5127,7 @@ main(void)
     }
     for(int i = 0; i < 129; i++) {
         char expected[64];
-        UINumericInputState *state = ui_numeric_input_state(0, 1 + i*128, 0);
+        NumericInputState *state = ui_numeric_input_state(0, 1 + i*128, 0);
         snprintf(expected, sizeof(expected), "edit-%d", i);
         check_int("numeric editor stable address", state == editors[i], 1);
         check_int("numeric editor text isolation", strcmp(state->text, expected), 0);

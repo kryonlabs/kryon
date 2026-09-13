@@ -52,15 +52,15 @@ ui_tab_roundness(Rectangle bounds, float radius)
     return radius;
 }
 
-typedef struct UITabBarState {
-    struct UITabBarState *next;
+typedef struct TabBarState {
+    struct TabBarState *next;
     int id;
     int scroll;
     unsigned long frame_seen;
-} UITabBarState;
+} TabBarState;
 
 struct TabBarStore {
-    UITabBarState *states;
+    TabBarState *states;
     Vector2 last_drag_position;
     int dragging_scroll;
     int scroll_drag_bar_id;
@@ -102,7 +102,7 @@ tab_bar_store_new(void)
 void
 tab_bar_store_free(TabBarStore *store)
 {
-    UITabBarState *state;
+    TabBarState *state;
 
     if(store == NULL)
         return;
@@ -110,7 +110,7 @@ tab_bar_store_free(TabBarStore *store)
         abort();
     state = store->states;
     while(state != NULL) {
-        UITabBarState *next = state->next;
+        TabBarState *next = state->next;
 
         free(state);
         state = next;
@@ -147,7 +147,7 @@ ui_tab_bar_same_identity(int id, Rectangle bounds, int other_id,
 int *
 ui_tab_bar_owned_scroll(int id, int *fallback)
 {
-    UITabBarState *state;
+    TabBarState *state;
 
     if(id <= 0)
         return fallback;
@@ -170,11 +170,11 @@ ui_tab_bar_owned_scroll(int id, int *fallback)
 void
 ui_tab_bar_finish_frame(void)
 {
-    UITabBarState **link = &tab_bar_store->states;
+    TabBarState **link = &tab_bar_store->states;
 
     ui_tab_scope_finish_frame();
     while(*link != NULL) {
-        UITabBarState *state = *link;
+        TabBarState *state = *link;
 
         if(state->frame_seen != g_ui_frame_serial) {
             *link = state->next;

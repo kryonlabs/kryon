@@ -195,23 +195,23 @@ ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
 #define UI_INSTANCE_BUCKETS 512
 #define UI_DRAG_DROP_DATA_MAX 1024
 #define UI_NUMERIC_INPUT_BUCKETS 128
-typedef struct UINumericClickState {
+typedef struct NumericClickState {
     int valid;
     int kind;
     int widget_id;
     int component;
     Vector2 position;
     double time;
-} UINumericClickState;
-typedef struct UIDragDropState {
+} NumericClickState;
+typedef struct DragDropState {
     int active;
     int source_id;
     char type[32];
     unsigned char data[UI_DRAG_DROP_DATA_MAX];
     int data_size;
-} UIDragDropState;
+} DragDropState;
 static int ui_slider_continuous(SliderContinuousProps slider, int vertical);
-typedef struct UIMenuOverlayState {
+typedef struct MenuOverlayState {
     int active;
     int bar_id;
     int menu_id;
@@ -220,9 +220,9 @@ typedef struct UIMenuOverlayState {
     int y;
     int item_count;
     MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
-} UIMenuOverlayState;
+} MenuOverlayState;
 
-typedef struct UIContextMenuOverlayState {
+typedef struct ContextMenuOverlayState {
     int active;
     int id;
     int class_name;
@@ -231,28 +231,28 @@ typedef struct UIContextMenuOverlayState {
     int item_count;
     int suppress_close;
     MenuItem items[UI_TK_CONTEXT_MENU_MAX_ITEMS];
-} UIContextMenuOverlayState;
+} ContextMenuOverlayState;
 
-typedef struct UIMenuNavigation {
+typedef struct MenuNavigationState {
     int focus_id;
     int top;
     int depth;
     int path[UI_TK_MENU_DEPTH_MAX];
     int key_handled;
     unsigned long key_frame;
-} UIMenuNavigation;
+} MenuNavigationState;
 
-typedef struct UIRadioAnimState {
+typedef struct RadioAnimState {
     unsigned int key;
     float selected;
     float press;
     unsigned long frame_seen;
-} UIRadioAnimState;
+} RadioAnimState;
 
-typedef struct UITreeHeaderNav {
+typedef struct TreeHeaderNavState {
     int id;
     int depth;
-} UITreeHeaderNav;
+} TreeHeaderNavState;
 
 typedef struct InstanceEntry {
     uint64_t key;
@@ -269,11 +269,11 @@ struct ToolkitStore {
     PopupInputOwner drag_owner;
     int slider_active;
     PopupInputOwner slider_owner;
-    UINumericClickState numeric_click;
-    UIDragDropState drag_drop;
+    NumericClickState numeric_click;
+    DragDropState drag_drop;
     int canvas_depth;
     int canvas_mode_depth;
-    UIRadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
+    RadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
     InstanceEntry *instances[UI_INSTANCE_BUCKETS];
     unsigned long instance_frame;
     int last_table_id;
@@ -287,10 +287,10 @@ struct ToolkitStore {
     PopupInputOwner resize_owner;
     int *active_split;
     PopupInputOwner active_split_owner;
-    UINumericInputState *numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
+    NumericInputState *numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
     int numeric_next_token;
-    UITreeHeaderNav *tree_headers;
-    UITreeHeaderNav *tree_previous;
+    TreeHeaderNavState *tree_headers;
+    TreeHeaderNavState *tree_previous;
     int tree_header_count;
     int tree_previous_count;
     int tree_header_capacity;
@@ -301,8 +301,8 @@ struct ToolkitStore {
     int submenu_id;
     Rectangle panel_bounds;
     int panel_valid;
-    UIMenuOverlayState overlay;
-    UIContextMenuOverlayState context_overlay;
+    MenuOverlayState overlay;
+    ContextMenuOverlayState context_overlay;
     int pending_bar_id;
     int pending_activated;
     int pending_closed_bar_id;
@@ -310,7 +310,7 @@ struct ToolkitStore {
     int context_pending_id;
     int context_pending_activated;
     int context_pending_closed_id;
-    UIMenuNavigation navigation;
+    MenuNavigationState navigation;
 };
 
 static ToolkitStore fallback_toolkit_store = {
@@ -352,10 +352,10 @@ toolkit_store_free(ToolkitStore *store)
         }
     }
     for(int i = 0; i < UI_NUMERIC_INPUT_BUCKETS; i++) {
-        UINumericInputState *state = store->numeric_inputs[i];
+        NumericInputState *state = store->numeric_inputs[i];
 
         while(state != NULL) {
-            UINumericInputState *next = state->next;
+            NumericInputState *next = state->next;
 
             free(state);
             state = next;
@@ -653,7 +653,7 @@ RenderDragDrop(DragDropProps drag_drop)
            toolkit->drag_drop.source_id, drag_drop.id,
            IsMouseButtonDown(MOUSE_BUTTON_LEFT),
            IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
-            toolkit->drag_drop = (UIDragDropState){0};
+            toolkit->drag_drop = (DragDropState){0};
         valid = DragDropSourceValid(drag_drop.disabled, ContentDisabled(),
                                     drag_drop.type != NULL &&
                                     drag_drop.type[0] != '\0',
@@ -666,7 +666,7 @@ RenderDragDrop(DragDropProps drag_drop)
             MarkClickable();
         if(DragDropSourceStarts(valid, hot,
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
-            toolkit->drag_drop = (UIDragDropState){0};
+            toolkit->drag_drop = (DragDropState){0};
             toolkit->drag_drop.active = 1;
             toolkit->drag_drop.source_id = drag_drop.id;
             snprintf(toolkit->drag_drop.type, sizeof(toolkit->drag_drop.type),
@@ -711,7 +711,7 @@ RenderDragDrop(DragDropProps drag_drop)
         if(drag_drop.accepted_size != NULL)
             *drag_drop.accepted_size = copied;
     }
-    toolkit->drag_drop = (UIDragDropState){0};
+    toolkit->drag_drop = (DragDropState){0};
     ConsumeRelease();
     return 1;
 }
@@ -1844,7 +1844,7 @@ RenderRadio(RadioProps radio)
     if(!IsWindowReady())
         return activated ? radio.id : 0;
     if(ui_default_style()) {
-        UIRadioAnimState *anim;
+        RadioAnimState *anim;
         Rectangle state_bounds = {
             paint.center.x - paint.touch / 2.0f,
             paint.center.y - paint.touch / 2.0f,
@@ -2149,7 +2149,7 @@ ui_numeric_focus_id(int id, int component, int integer)
 
 static int ui_slider_keyboard_direction(int vertical);
 static int ui_numeric_input_filter(int codepoint, void *user_data);
-static UINumericInputState *ui_numeric_input_find(int kind, int widget_id,
+static NumericInputState *ui_numeric_input_find(int kind, int widget_id,
                                                    int component);
 
 enum {
@@ -2182,13 +2182,13 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
         now - toolkit->numeric_click.time <= 0.30 &&
         dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
     int activate = pressed && (control || double_click);
-    UINumericInputState *state =
+    NumericInputState *state =
         ui_numeric_input_find(kind, widget_id, component);
     int commit = 0;
     int changed = 0;
 
     if(pressed) {
-        toolkit->numeric_click = (UINumericClickState){
+        toolkit->numeric_click = (NumericClickState){
             1, kind, widget_id, component, mouse, now
         };
         if(activate)
@@ -2461,7 +2461,7 @@ ui_paint_drag_continuous(DragContinuousProps drag)
         Rectangle cell = DragCellBoundsFor(drag.bounds, drag.value_count, i);
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
-        UINumericInputState *state = ui_numeric_input_find(
+        NumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_DRAG_FLOAT, drag.id, i);
         int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
@@ -2484,7 +2484,7 @@ ui_paint_drag_discrete(DragDiscreteProps drag)
         Rectangle cell = DragCellBoundsFor(drag.bounds, drag.value_count, i);
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
-        UINumericInputState *state = ui_numeric_input_find(
+        NumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_DRAG_INT, drag.id, i);
         int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
@@ -2755,7 +2755,7 @@ ui_paint_slider_continuous(SliderContinuousProps slider, int vertical)
                                        slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
-        UINumericInputState *state = ui_numeric_input_find(
+        NumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_SLIDER_FLOAT, slider.id, i);
         if(state != NULL && state->focused)
             continue;
@@ -2780,7 +2780,7 @@ ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
                                      slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
-        UINumericInputState *state = ui_numeric_input_find(
+        NumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_SLIDER_INT, slider.id, i);
         if(state != NULL && state->focused)
             continue;
@@ -2838,13 +2838,13 @@ ui_paint_slider_angle(SliderAngleProps slider)
     ui_paint_slider_continuous(value_slider, 0);
 }
 
-static UINumericInputState *
+static NumericInputState *
 ui_numeric_input_find(int kind, int widget_id, int component)
 {
     ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
                        (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
-    for(UINumericInputState *state = toolkit->numeric_inputs[bucket];
+    for(NumericInputState *state = toolkit->numeric_inputs[bucket];
         state != NULL; state = state->next)
         if(state->kind == kind && state->widget_id == widget_id &&
            state->component == component)
@@ -2852,18 +2852,18 @@ ui_numeric_input_find(int kind, int widget_id, int component)
     return NULL;
 }
 
-UINumericInputState *
+NumericInputState *
 ui_numeric_input_state(int kind, int widget_id, int component)
 {
     ToolkitStore *toolkit = toolkit_state();
     unsigned bucket = ((unsigned)widget_id * 31u + (unsigned)component * 17u +
                        (unsigned)kind) % UI_NUMERIC_INPUT_BUCKETS;
-    UINumericInputState *existing =
+    NumericInputState *existing =
         ui_numeric_input_find(kind, widget_id, component);
     if(existing != NULL)
         return existing;
 
-    UINumericInputState *state = calloc(1, sizeof(*state));
+    NumericInputState *state = calloc(1, sizeof(*state));
     if(state == NULL)
         abort();
     if(toolkit->numeric_next_token > INT_MAX - 3)
@@ -2932,7 +2932,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         return 0;
     DisabledScope(disabled);
     for(int i = 0; i < count; i++) {
-        UINumericInputState *state = ui_numeric_input_state(kind, id, i);
+        NumericInputState *state = ui_numeric_input_state(kind, id, i);
         int token = state->token;
         InputCellLayout layout = InputCellLayoutFor(
             bounds, count, i, ui_numeric_step_button_width(), step != 0.0);
@@ -4235,7 +4235,7 @@ ui_tree_header_register(CollapsibleProps section, int enabled)
     ToolkitStore *toolkit = toolkit_state();
 
     if(toolkit->tree_header_frame != g_ui_frame_serial) {
-        UITreeHeaderNav *swap = toolkit->tree_previous;
+        TreeHeaderNavState *swap = toolkit->tree_previous;
         int capacity = toolkit->tree_previous_capacity;
         toolkit->tree_previous = toolkit->tree_headers;
         toolkit->tree_previous_count =
@@ -4251,14 +4251,14 @@ ui_tree_header_register(CollapsibleProps section, int enabled)
     if(toolkit->tree_header_count == toolkit->tree_header_capacity) {
         int capacity = toolkit->tree_header_capacity
             ? toolkit->tree_header_capacity * 2 : 32;
-        UITreeHeaderNav *items = realloc(toolkit->tree_headers,
+        TreeHeaderNavState *items = realloc(toolkit->tree_headers,
                                         sizeof(*items) * capacity);
         if(items == NULL) return;
         toolkit->tree_headers = items;
         toolkit->tree_header_capacity = capacity;
     }
     toolkit->tree_headers[toolkit->tree_header_count++] =
-        (UITreeHeaderNav){section.id, section.depth > 0 ? section.depth : 0};
+        (TreeHeaderNavState){section.id, section.depth > 0 ? section.depth : 0};
 }
 
 static int
