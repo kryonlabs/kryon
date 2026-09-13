@@ -254,9 +254,9 @@ export const SyntaxNone = 0;
 export const SyntaxKry = 1;
 export const SyntaxC = 2;
 export const SyntaxMake = 3;
-export const IMAGE_FIT_STRETCH = 0;
-export const IMAGE_FIT_CONTAIN = 1;
-export const IMAGE_FIT_COVER = 2;
+export const ImageFitStretch = 0;
+export const ImageFitContain = 1;
+export const ImageFitCover = 2;
 
 export function createRuntime(options = {}) {
   ensureRouteListeners();
@@ -271,6 +271,7 @@ export function createRuntime(options = {}) {
     instanceFrame: 0,
     instances: new Map(),
     disabledStack: [],
+    webCompositeStack: [],
     input: {
       events: [],
       focus: 0,
@@ -328,6 +329,7 @@ export function beginFrame(rt) {
   rt.statements = [];
   rt.hostCalls = [];
   rt.disabledStack = [];
+  rt.webCompositeStack = [];
   for (const [type, instances] of rt.instances) {
     for (const [key, entry] of instances) {
       if (Instance_InstanceExpired(null, null, null, BigInt(rt.instanceFrame - entry.frameSeen)))
@@ -374,11 +376,69 @@ export function viewport(rt, app = null) {
 }
 
 export function widget(rt, name, args, state = null, meta = null) {
-  const item = { kind: "widget", name, args, meta };
+  const item = { kind: "widget", name, args, meta: remapWebCompositeMeta(rt, meta) };
   if (name === "Disabled" && String(args || "").trim() === "end")
     return handleWidget(rt, name, args, state);
   rt.frame.push(item);
   return handleWidget(rt, name, args, state);
+}
+
+function remapCompositePath(value, sourceRoot, targetRoot) {
+  const text = String(value || "");
+  if (!text || !sourceRoot || !targetRoot)
+    return text;
+  if (text === sourceRoot)
+    return targetRoot;
+  if (text.startsWith(sourceRoot + "/"))
+    return targetRoot + text.slice(sourceRoot.length);
+  return text;
+}
+
+function remapWebCompositeMeta(rt, meta) {
+  const context = rt?.webCompositeStack?.[rt.webCompositeStack.length - 1];
+  if (!context || !meta || typeof meta !== "object")
+    return meta;
+  const sourceRoot = context.name || "";
+  const targetRoot = context.path || "";
+  if (!sourceRoot || !targetRoot)
+    return meta;
+  const next = { ...meta };
+  const oldPath = next.path === undefined || next.path === null ? "" : String(next.path);
+  const oldParentPath = next.parentPath === undefined || next.parentPath === null ? "" : String(next.parentPath);
+  const oldKey = next.key === undefined || next.key === null ? "" : String(next.key);
+  next.path = remapCompositePath(oldPath, sourceRoot, targetRoot);
+  if (oldParentPath) {
+    next.parentPath = remapCompositePath(oldParentPath, sourceRoot, targetRoot);
+  } else if (next.path && next.path !== oldPath) {
+    next.parentPath = targetRoot;
+  }
+  if (oldKey === oldPath || oldKey.startsWith(sourceRoot + "/"))
+    next.key = remapCompositePath(oldKey, sourceRoot, targetRoot);
+  return next;
+}
+
+export function beginWebComposite(rt, name, meta = null) {
+  if (!rt)
+    return null;
+  const context = {
+    name: String(name || ""),
+    path: meta?.path === undefined || meta?.path === null ? "" : String(meta.path)
+  };
+  if (!rt.webCompositeStack)
+    rt.webCompositeStack = [];
+  rt.webCompositeStack.push(context);
+  return context;
+}
+
+export function endWebComposite(rt, context = null) {
+  if (!rt?.webCompositeStack?.length)
+    return null;
+  if (context == null)
+    return rt.webCompositeStack.pop();
+  const index = rt.webCompositeStack.lastIndexOf(context);
+  if (index < 0)
+    return null;
+  return rt.webCompositeStack.splice(index, 1)[0] || null;
 }
 
 export function statement(rt, text) {

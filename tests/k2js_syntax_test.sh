@@ -801,7 +801,11 @@ const panel = frame.nodes.find((node) => node.path === "DeclaredWidgetBlockNodes
 assert(panel);
 assert.equal(panel.kind, "Panel");
 assert.deepEqual(panel.classes, ["surface"]);
-assert(frame.nodes.some((node) => node.kind === "Text" && node.text === "Composite"));
+assert(frame.nodes.some((node) => node.kind === "Text" && node.text === "Composite" &&
+  node.path === "DeclaredWidgetBlockNodes/card/Text@6" &&
+  node.parentPath === "DeclaredWidgetBlockNodes/card"));
+assert.equal(runtime.webNodeQuery(rt, "Panel > Text").path,
+  "DeclaredWidgetBlockNodes/card/Text@6");
 EOF
 
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'

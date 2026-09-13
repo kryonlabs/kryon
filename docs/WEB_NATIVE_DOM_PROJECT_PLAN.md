@@ -31,6 +31,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `TableCell`, `Popup`, and `Disabled`.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
+- Declared `.kry` widget blocks emit a call-site Web Document node and remap
+  child nodes from the component definition path into that call-site subtree, so
+  KSS selectors and native DOM nesting see composed widgets as real structure.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
 - Native tags and fallback ARIA roles for widgets with clear browser
@@ -55,9 +58,8 @@ the browser receives normal elements, attributes, CSS, and events.
 
 ## Remaining Work
 
-- Finish all-node compiler metadata for remaining expression-backed or
-  generated composite nodes that should have a DOM surface without runtime
-  fallback synthesis.
+- Finish all-node compiler metadata for remaining expression-backed nodes that
+  should have a DOM surface without runtime fallback synthesis.
 - Extend compiler source ranges beyond UI blocks to full multiline AST spans
   for every expression-backed DOM node editors and devtools need.
 - Expand native tag contracts for remaining widgets that still render as `div`,

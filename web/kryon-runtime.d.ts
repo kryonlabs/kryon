@@ -36,6 +36,7 @@ export interface Runtime {
   statements: RuntimeItem[];
   hostCalls: RuntimeItem[];
   mounted: boolean;
+  webCompositeStack?: WebCompositeContext[];
   webStyleSheets?: Array<string | WebStyleSheet>;
   instanceFrame: number;
   instances: Map<string, Map<bigint, { value: unknown; frameSeen: number }>>;
@@ -58,6 +59,11 @@ export interface Runtime {
   SetSelection(focusID: number, anchor: number, cursor: number): void;
   SetFocus(id: number): void;
   Focus(): number;
+}
+
+export interface WebCompositeContext {
+  name: string;
+  path: string;
 }
 
 export interface RuntimeItem {
@@ -787,6 +793,10 @@ export function snapshot(rt: Runtime): {
 };
 export function widget(rt: Runtime, name: string, args: string,
   state?: Record<string, unknown> | null, meta?: Record<string, unknown> | null): unknown;
+export function beginWebComposite(rt: Runtime, name: string,
+  meta?: Record<string, unknown> | null): WebCompositeContext | null;
+export function endWebComposite(rt: Runtime,
+  context?: WebCompositeContext | null): WebCompositeContext | null;
 export function statement(rt: Runtime, text: string): RuntimeItem;
 export function expr(text: string): { kind: "expr"; text: string };
 export function struct(type: string, value: unknown): { type: string; value: unknown };

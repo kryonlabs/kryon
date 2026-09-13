@@ -2389,17 +2389,37 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 if(known_call && st->declared_widget &&
                    stmt_has_web_metadata(st) &&
                    call_is_ui_function(m, name)) {
+                    fprintf(f, "const $kryMeta%d = ", j);
+                    emit_web_metadata(f, m, st);
+                    fprintf(f, ";\n");
+                    emit_indent(f, indent);
                     fprintf(f, "kryon.widget($rt, ");
                     js_string(f, name);
                     fprintf(f, ", ");
                     emit_first_argument_value(f, m, args);
-                    fprintf(f, ", $state, ");
-                    emit_web_metadata(f, m, st);
-                    fprintf(f, ");\n");
+                    fprintf(f, ", $state, $kryMeta%d);\n", j);
                     emit_indent(f, indent);
+                    fprintf(f, "const $kryComposite%d = kryon.beginWebComposite($rt, ", j);
+                    js_string(f, name);
+                    fprintf(f, ", $kryMeta%d);\n", j);
+                    emit_indent(f, indent);
+                    fprintf(f, "try {\n");
+                    indent++;
+                    emit_indent(f, indent);
+                    tx_expr(m, raw, out, sizeof(out));
+                    fprintf(f, "%s;\n", out);
+                    if(--indent < 1)
+                        indent = 1;
+                    emit_indent(f, indent);
+                    fprintf(f, "} finally {\n");
+                    emit_indent(f, indent + 1);
+                    fprintf(f, "kryon.endWebComposite($rt, $kryComposite%d);\n", j);
+                    emit_indent(f, indent);
+                    fprintf(f, "}\n");
+                } else {
+                    tx_expr(m, raw, out, sizeof(out));
+                    fprintf(f, "%s;\n", out);
                 }
-                tx_expr(m, raw, out, sizeof(out));
-                fprintf(f, "%s;\n", out);
             } else {
                 emit_statement_record(f, indent, raw);
             }
