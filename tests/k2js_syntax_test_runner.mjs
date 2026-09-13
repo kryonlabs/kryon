@@ -788,9 +788,11 @@ assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
   ["TextField", "input"],
   ["Text", "label"],
   ["Selectable", "div"],
-  ["Input", "div"],
-  ["Input", "div"]
+  ["Input", "input"],
+  ["Input", "input"]
 ]);
+assert.equal(webDoc.nodes[6].inputType, "number");
+assert.equal(webDoc.nodes[7].inputType, "number");
 assert.equal(webDoc.nodes[2].text, "Tap");
 assert.deepEqual(webDoc.nodes[2].bounds, { x: 10, y: 50, width: 120, height: 28 });
 assert.equal(webDoc.nodes[2].key, "tap");
@@ -2257,6 +2259,8 @@ function fakeDocument() {
       { nodeName: "volume", path: "Page/volume" });
     runtime.widget(nativeRt, "Spinbox", { min: 1, max: 8, value: 3 }, null,
       { nodeName: "copies", path: "Page/copies" });
+    runtime.widget(nativeRt, "Input", { min: -10, max: 10, step: 0.5, value: 2.5 }, null,
+      { nodeName: "amount", path: "Page/amount" });
     runtime.widget(nativeRt, "Dropdown", {}, null,
       { nodeName: "choice", path: "Page/choice" });
     runtime.widget(nativeRt, "Selectable", { label: "Alpha", value: "a" }, null,
@@ -2377,6 +2381,12 @@ function fakeDocument() {
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").valueNow, "4");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").min, "0");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").max, "10");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/amount").tag, "input");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/amount").inputType, "number");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/amount").domValue, "2.5");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/amount").valueNow, "2.5");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/amount").min, "-10");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/amount").max, "10");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Slider")?.valueNow, "4");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
@@ -2389,7 +2399,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Plot").tag, "canvas");
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
-      ["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
+      ["Slider", "Spinbox", "Input", "Dropdown", "ListBox", "ColorPicker",
        "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
         return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
@@ -2397,6 +2407,7 @@ function fakeDocument() {
       [
         ["Slider", "input", "range", "0", "10", "4"],
         ["Spinbox", "input", "number", "1", "8", "3"],
+        ["Input", "input", "number", "-10", "10", "2.5"],
         ["Dropdown", "select", "", "", "", ""],
         ["ListBox", "select", "", "", "", ""],
         ["ColorPicker", "input", "color", "", "", "#336699"],
@@ -2407,11 +2418,11 @@ function fakeDocument() {
         ["Line", "hr", "", "", "", ""],
         ["Separator", "hr", "", "", "", ""]
       ]);
-    assert.deepEqual(["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
+    assert.deepEqual(["Slider", "Spinbox", "Input", "Dropdown", "ListBox", "ColorPicker",
       "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator", "TableView"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
-      ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
+      ["slider", "spinbutton", "spinbutton", "combobox", "listbox", "", "checkbox",
        "switch", "radio", "progressbar", "separator", "separator", "table"]);
     assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Selectable", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -2442,6 +2453,7 @@ function fakeDocument() {
     const email = runtime.findWebElement(nativeTarget, "email");
     const volume = runtime.findWebElement(nativeTarget, "volume");
     const copies = runtime.findWebElement(nativeTarget, "copies");
+    const amount = runtime.findWebElement(nativeTarget, "amount");
     const choice = runtime.findWebElement(nativeTarget, "choice");
     const items = runtime.findWebElement(nativeTarget, "items");
     const accent = runtime.findWebElement(nativeTarget, "accent");
@@ -2500,6 +2512,16 @@ function fakeDocument() {
       .some((node) => node.role === "option"), true);
     assert.equal(copies.tagName, "INPUT");
     assert.equal(copies.attributes.type, "number");
+    assert.equal(copies.attributes.min, "1");
+    assert.equal(copies.attributes.max, "8");
+    assert.equal(copies.attributes.value, "3");
+    assert.equal(amount.tagName, "INPUT");
+    assert.equal(amount.attributes.type, "number");
+    assert.equal(amount.attributes.min, "-10");
+    assert.equal(amount.attributes.max, "10");
+    assert.equal(amount.attributes.step, "0.5");
+    assert.equal(amount.attributes.value, "2.5");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "amount").valueNow, "2.5");
     assert.equal(choice.tagName, "SELECT");
     assert.equal(items.tagName, "SELECT");
     assert.equal(accent.tagName, "INPUT");

@@ -1165,6 +1165,7 @@ function widgetTag(item) {
     return isTruthyProp(args, "clickable") || isTruthyProp(args, "Clickable")
       ? "button" : "div";
   case "TextField":
+  case "Input":
     return "input";
   case "TextArea":
     return "textarea";
@@ -1252,6 +1253,8 @@ function widgetInputType(item) {
     return "number";
   case "TextField":
     return propStringAny(item.args, ["input_type", "type", "dom_type", "html_type", "dom_input_type"], "text");
+  case "Input":
+    return propStringAny(item.args, ["input_type", "type", "dom_type", "html_type", "dom_input_type"], "number");
   default:
     return "";
   }
@@ -1268,7 +1271,7 @@ function progressPositionalProp(args, index, fallback = "") {
 function widgetDOMValue(item) {
   if (item.name === "ColorPicker")
     return propString(item.args, "value", "");
-  if (item.name === "Slider" || item.name === "Spinbox")
+  if (item.name === "Slider" || item.name === "Spinbox" || item.name === "Input")
     return propString(item.args, "value", "");
   if (item.name === "Selectable")
     return propStringAny(item.args, ["value", "dom_value", "html_value"]);
@@ -1282,7 +1285,7 @@ function widgetDOMValue(item) {
 }
 
 function widgetMin(item) {
-  if (item.name === "Slider" || item.name === "Spinbox")
+  if (item.name === "Slider" || item.name === "Spinbox" || item.name === "Input")
     return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
   if (item.name === "TextField")
     return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
@@ -1296,7 +1299,7 @@ function widgetMin(item) {
 }
 
 function widgetMax(item) {
-  if (item.name === "Slider" || item.name === "Spinbox")
+  if (item.name === "Slider" || item.name === "Spinbox" || item.name === "Input")
     return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);
   if (item.name === "TextField")
     return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);

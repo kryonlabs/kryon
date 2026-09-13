@@ -352,6 +352,7 @@ The initial tag mapping is intentionally conservative:
 | `TextArea` | `textarea` |
 | `Slider` | `input type=range` |
 | `Spinbox` | `input type=number` |
+| `Input` | `input type=number`, or authored `input_type`/`type` |
 | `ColorPicker` | `input type=color` |
 | `Dropdown` | `select` |
 | `ListBox` | `select` |
