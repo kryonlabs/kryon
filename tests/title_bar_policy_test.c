@@ -83,5 +83,8 @@ main(void)
     assert(TitleBarShouldShrinkTitleFont(200, 160, 18, 12));
     assert(!TitleBarShouldShrinkTitleFont(160, 160, 18, 12));
     assert(!TitleBarShouldShrinkTitleFont(200, 160, 12, 12));
+    assert(TitleBarShrinkTitleFontStep(200, 160, 18, 12) == 17);
+    assert(TitleBarShrinkTitleFontStep(160, 160, 18, 12) == 18);
+    assert(TitleBarShrinkTitleFontStep(200, 160, 12, 12) == 12);
     return 0;
 }

@@ -92,7 +92,7 @@ RenderTitleBarCenteredTitle(const char *title, int height,
         : GetTitleFontSize(title, max_w);
     title_w = TextWidth(title, font);
     while(TitleBarShouldShrinkTitleFont(title_w, max_w, font, Text12)) {
-        font--;
+        font = TitleBarShrinkTitleFontStep(title_w, max_w, font, Text12);
         title_w = TextWidth(title, font);
     }
     paint = TitleBarTitlePaintFor(layout, title_w, TextLineHeight(font));

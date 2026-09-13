@@ -139,3 +139,11 @@ TitleBarShouldShrinkTitleFont :: (title_width: i32, max_width: i32,
     font: i32, min_font: i32) -> bool #export {
     return font > min_font && title_width > max_width
 }
+
+TitleBarShrinkTitleFontStep :: (title_width: i32, max_width: i32,
+    font: i32, min_font: i32) -> i32 #export {
+    if TitleBarShouldShrinkTitleFont(title_width, max_width, font, min_font) {
+        return font - 1
+    }
+    return font
+}
