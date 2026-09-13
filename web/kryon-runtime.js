@@ -1759,6 +1759,26 @@ function widgetNativeAttrs(item, meta, args) {
     setWidgetNativeAttr(out, "coords", metaString(meta, "coords") ||
       propStringAny(args, ["coords", "coordinates", "dom_coords", "html_coords"]));
     break;
+  case "Image":
+    setWidgetNativeAttr(out, "srcset", metaString(meta, "srcSet") ||
+      propStringAny(args, ["srcset", "src_set", "dom_srcset", "html_srcset"]));
+    setWidgetNativeAttr(out, "sizes", metaString(meta, "sizes") ||
+      propStringAny(args, ["sizes", "dom_sizes", "html_sizes"]));
+    setWidgetNativeAttr(out, "loading", metaString(meta, "loading") ||
+      propStringAny(args, ["loading", "dom_loading", "html_loading"]));
+    setWidgetNativeAttr(out, "decoding", metaString(meta, "decoding") ||
+      propStringAny(args, ["decoding", "dom_decoding", "html_decoding"]));
+    setWidgetNativeAttr(out, "fetchpriority", metaString(meta, "fetchPriority") ||
+      propStringAny(args, ["fetchpriority", "fetch_priority", "dom_fetchpriority", "html_fetchpriority"]));
+    setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
+      propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
+    setWidgetNativeAttr(out, "crossorigin", metaString(meta, "crossOrigin") ||
+      propStringAny(args, ["crossorigin", "cross_origin", "dom_crossorigin", "html_crossorigin"]));
+    setWidgetNativeAttr(out, "width", metaString(meta, "width") ||
+      propStringAny(args, ["width", "dom_width", "html_width"]));
+    setWidgetNativeAttr(out, "height", metaString(meta, "height") ||
+      propStringAny(args, ["height", "dom_height", "html_height"]));
+    break;
   case "TableColumnGroup":
   case "ColGroup":
   case "TableColumn":

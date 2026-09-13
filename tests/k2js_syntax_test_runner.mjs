@@ -3036,7 +3036,20 @@ function fakeDocument() {
       { nodeName: "rule", path: "Page/rule" });
     runtime.widget(nativeRt, "TableView", {}, null,
       { nodeName: "table", path: "Page/table" });
-    runtime.widget(nativeRt, "Image", { asset_path: "hero.png", alt_text: "Hero", use_map: "heroMap" }, null,
+    runtime.widget(nativeRt, "Image", {
+      asset_path: "hero.png",
+      alt_text: "Hero",
+      use_map: "heroMap",
+      srcset: "hero-small.png 480w, hero.png 960w",
+      sizes: "(max-width: 600px) 480px, 960px",
+      loading: "lazy",
+      decoding: "async",
+      fetch_priority: "high",
+      referrer_policy: "no-referrer",
+      crossorigin: "anonymous",
+      width: 960,
+      height: 540
+    }, null,
       { nodeName: "hero", path: "Page/hero" });
     runtime.widget(nativeRt, "ImageMap", { dom_name: "hero-map" }, null,
       { nodeName: "heroMap", path: "Page/heroMap" });
@@ -3383,6 +3396,17 @@ function fakeDocument() {
       .find((node) => node.kind === "Slider")?.valueNow, "4");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.srcset,
+      "hero-small.png 480w, hero.png 960w");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.sizes,
+      "(max-width: 600px) 480px, 960px");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.loading, "lazy");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.decoding, "async");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.fetchpriority, "high");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.referrerpolicy, "no-referrer");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.crossorigin, "anonymous");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.width, "960");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Image").extraAttrs.height, "540");
     assert.equal(runtime.webNodeQuery(nativeRt, "Image").useMap, "heroMap");
     assert.equal(runtime.webNodeRelations(nativeRt, "Image").imageMap.path, "Page/heroMap");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "ImageMap").mappedImages,
@@ -3898,6 +3922,15 @@ function fakeDocument() {
     assert.equal(hero.attributes.src, "hero.png");
     assert.equal(hero.attributes.alt, "Hero");
     assert.equal(hero.attributes.usemap, "#hero-map");
+    assert.equal(hero.attributes.srcset, "hero-small.png 480w, hero.png 960w");
+    assert.equal(hero.attributes.sizes, "(max-width: 600px) 480px, 960px");
+    assert.equal(hero.attributes.loading, "lazy");
+    assert.equal(hero.attributes.decoding, "async");
+    assert.equal(hero.attributes.fetchpriority, "high");
+    assert.equal(hero.attributes.referrerpolicy, "no-referrer");
+    assert.equal(hero.attributes.crossorigin, "anonymous");
+    assert.equal(hero.attributes.width, "960");
+    assert.equal(hero.attributes.height, "540");
     assert.equal(heroMap.tagName, "MAP");
     assert.equal(heroMap.attributes.name, "hero-map");
     assert.equal(heroArea.tagName, "AREA");

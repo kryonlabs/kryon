@@ -169,9 +169,11 @@ the browser receives normal elements, attributes, CSS, and events.
 - Semantic description-list relationship facts expose `descriptionListOwner`
   and `descriptionListItems` for native `dl`, `dt`, and `dd` nodes in
   pre-mount and mounted DOM snapshots.
-- Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
-  through DOM attributes, KSS selector facts, pre-mount and mounted DOM
-  snapshots, and accessibility snapshots.
+- Canonical `Image(ImageProps)` nodes expose native `img` source, alt text,
+  responsive source candidates, sizing hints, loading, decoding, fetch
+  priority, referrer policy, and CORS attributes through DOM attributes, KSS
+  selector facts, pre-mount and mounted DOM snapshots, and accessibility
+  snapshots.
 - Native image-map aliases expose `ImageMap` as `<map>` and `Area` as
   `<area>`, with `Image` `usemap` relations resolving to browser `#map-name`
   attributes and reverse `mappedImages` facts for inspectors.
