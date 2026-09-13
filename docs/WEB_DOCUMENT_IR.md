@@ -195,11 +195,17 @@ Supported metadata fields:
 | `on_focus` | `onFocus`, `focusAction()` |
 | `on_blur` | `onBlur`, `blurAction()` |
 | `on_scroll` | `onScroll`, `scrollAction(value)` |
-| `on_mouse_enter`, `on_pointer_enter` | `onMouseEnter`, `mouseEnterAction()` |
-| `on_mouse_leave`, `on_pointer_leave` | `onMouseLeave`, `mouseLeaveAction()` |
-| `on_mouse_move`, `on_pointer_move` | `onMouseMove`, `mouseMoveAction()` |
-| `on_mouse_down`, `on_pointer_down` | `onMouseDown`, `mouseDownAction()` |
-| `on_mouse_up`, `on_pointer_up` | `onMouseUp`, `mouseUpAction()` |
+| `on_mouse_enter` | `onMouseEnter`, `mouseEnterAction()` |
+| `on_mouse_leave` | `onMouseLeave`, `mouseLeaveAction()` |
+| `on_mouse_move` | `onMouseMove`, `mouseMoveAction()` |
+| `on_mouse_down` | `onMouseDown`, `mouseDownAction()` |
+| `on_mouse_up` | `onMouseUp`, `mouseUpAction()` |
+| `on_pointer_enter` | `onPointerEnter`, `pointerEnterAction()` |
+| `on_pointer_leave` | `onPointerLeave`, `pointerLeaveAction()` |
+| `on_pointer_move` | `onPointerMove`, `pointerMoveAction()` |
+| `on_pointer_down` | `onPointerDown`, `pointerDownAction()` |
+| `on_pointer_up` | `onPointerUp`, `pointerUpAction()` |
+| `on_pointer_cancel` | `onPointerCancel`, `pointerCancelAction()` |
 | `on_wheel` | `onWheel`, `wheelAction(value)` |
 | `on_drag_start`, `on_dragstart` | `onDragStart`, `dragStartAction(value)` |
 | `on_drag_end`, `on_dragend` | `onDragEnd`, `dragEndAction(value)` |

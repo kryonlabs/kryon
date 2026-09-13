@@ -1649,6 +1649,12 @@ function fakeDocument() {
       mousemove() { if (this.onmousemove) this.onmousemove(); },
       mousedown() { if (this.onmousedown) this.onmousedown(); },
       mouseup() { if (this.onmouseup) this.onmouseup(); },
+      pointerenter() { if (this.onpointerenter) this.onpointerenter(); },
+      pointerleave() { if (this.onpointerleave) this.onpointerleave(); },
+      pointermove() { if (this.onpointermove) this.onpointermove(); },
+      pointerdown() { if (this.onpointerdown) this.onpointerdown(); },
+      pointerup() { if (this.onpointerup) this.onpointerup(); },
+      pointercancel() { if (this.onpointercancel) this.onpointercancel(); },
       wheel(deltaY) { if (this.onwheel) this.onwheel({ deltaY }); },
       contextmenu() {
         const event = { defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
@@ -2335,6 +2341,12 @@ function fakeDocument() {
         onMouseMove: "move",
         onMouseDown: "down",
         onMouseUp: "up",
+        onPointerEnter: "p-enter",
+        onPointerLeave: "p-leave",
+        onPointerMove: "p-move",
+        onPointerDown: "p-down",
+        onPointerUp: "p-up",
+        onPointerCancel: "p-cancel",
         onWheel: "wheel",
         onContextMenu: "context",
         doubleClickAction() { pointerEvents.push("double"); },
@@ -2343,6 +2355,12 @@ function fakeDocument() {
         mouseMoveAction() { pointerEvents.push("move"); },
         mouseDownAction() { pointerEvents.push("down"); },
         mouseUpAction() { pointerEvents.push("up"); },
+        pointerEnterAction() { pointerEvents.push("p-enter"); },
+        pointerLeaveAction() { pointerEvents.push("p-leave"); },
+        pointerMoveAction() { pointerEvents.push("p-move"); },
+        pointerDownAction() { pointerEvents.push("p-down"); },
+        pointerUpAction() { pointerEvents.push("p-up"); },
+        pointerCancelAction() { pointerEvents.push("p-cancel"); },
         wheelAction(value) { pointerEvents.push("wheel:" + value); },
         contextMenuAction() { pointerEvents.push("context"); }
       });
@@ -2356,6 +2374,12 @@ function fakeDocument() {
     assert.equal(pointerButton.dataset.kryOnMouseMove, "move");
     assert.equal(pointerButton.dataset.kryOnMouseDown, "down");
     assert.equal(pointerButton.dataset.kryOnMouseUp, "up");
+    assert.equal(pointerButton.dataset.kryOnPointerEnter, "p-enter");
+    assert.equal(pointerButton.dataset.kryOnPointerLeave, "p-leave");
+    assert.equal(pointerButton.dataset.kryOnPointerMove, "p-move");
+    assert.equal(pointerButton.dataset.kryOnPointerDown, "p-down");
+    assert.equal(pointerButton.dataset.kryOnPointerUp, "p-up");
+    assert.equal(pointerButton.dataset.kryOnPointerCancel, "p-cancel");
     assert.equal(pointerButton.dataset.kryOnWheel, "wheel");
     assert.equal(pointerButton.dataset.kryOnContextMenu, "context");
     pointerButton.mouseenter();
@@ -2367,7 +2391,17 @@ function fakeDocument() {
     const contextEvent = pointerButton.contextmenu();
     assert.equal(contextEvent.defaultPrevented, true);
     pointerButton.dblclick();
-    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave", "move", "wheel:12", "context", "double"]);
+    pointerButton.pointerenter();
+    pointerButton.pointerdown();
+    pointerButton.pointermove();
+    pointerButton.pointerup();
+    pointerButton.pointerdown();
+    pointerButton.pointercancel();
+    pointerButton.pointerleave();
+    assert.deepEqual(pointerEvents, [
+      "enter", "down", "up", "leave", "move", "wheel:12", "context", "double",
+      "p-enter", "p-down", "p-move", "p-up", "p-down", "p-cancel", "p-leave"
+    ]);
 
     const dragEvents = [];
     const dragRt = runtime.createRuntime();

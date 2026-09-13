@@ -1474,6 +1474,12 @@ function webNodeFromWidget(item, index) {
     onMouseMove: meta.onMouseMove === undefined || meta.onMouseMove === null ? "" : String(meta.onMouseMove),
     onMouseDown: meta.onMouseDown === undefined || meta.onMouseDown === null ? "" : String(meta.onMouseDown),
     onMouseUp: meta.onMouseUp === undefined || meta.onMouseUp === null ? "" : String(meta.onMouseUp),
+    onPointerEnter: meta.onPointerEnter === undefined || meta.onPointerEnter === null ? "" : String(meta.onPointerEnter),
+    onPointerLeave: meta.onPointerLeave === undefined || meta.onPointerLeave === null ? "" : String(meta.onPointerLeave),
+    onPointerMove: meta.onPointerMove === undefined || meta.onPointerMove === null ? "" : String(meta.onPointerMove),
+    onPointerDown: meta.onPointerDown === undefined || meta.onPointerDown === null ? "" : String(meta.onPointerDown),
+    onPointerUp: meta.onPointerUp === undefined || meta.onPointerUp === null ? "" : String(meta.onPointerUp),
+    onPointerCancel: meta.onPointerCancel === undefined || meta.onPointerCancel === null ? "" : String(meta.onPointerCancel),
     onWheel: meta.onWheel === undefined || meta.onWheel === null ? "" : String(meta.onWheel),
     onContextMenu: meta.onContextMenu === undefined || meta.onContextMenu === null ? "" : String(meta.onContextMenu),
     onDragStart: meta.onDragStart === undefined || meta.onDragStart === null ? "" : String(meta.onDragStart),
@@ -1504,6 +1510,12 @@ function webNodeFromWidget(item, index) {
     mouseMoveAction: typeof meta.mouseMoveAction === "function" ? meta.mouseMoveAction : null,
     mouseDownAction: typeof meta.mouseDownAction === "function" ? meta.mouseDownAction : null,
     mouseUpAction: typeof meta.mouseUpAction === "function" ? meta.mouseUpAction : null,
+    pointerEnterAction: typeof meta.pointerEnterAction === "function" ? meta.pointerEnterAction : null,
+    pointerLeaveAction: typeof meta.pointerLeaveAction === "function" ? meta.pointerLeaveAction : null,
+    pointerMoveAction: typeof meta.pointerMoveAction === "function" ? meta.pointerMoveAction : null,
+    pointerDownAction: typeof meta.pointerDownAction === "function" ? meta.pointerDownAction : null,
+    pointerUpAction: typeof meta.pointerUpAction === "function" ? meta.pointerUpAction : null,
+    pointerCancelAction: typeof meta.pointerCancelAction === "function" ? meta.pointerCancelAction : null,
     wheelAction: typeof meta.wheelAction === "function" ? meta.wheelAction : null,
     contextMenuAction: typeof meta.contextMenuAction === "function" ? meta.contextMenuAction : null,
     dragStartAction: typeof meta.dragStartAction === "function" ? meta.dragStartAction : null,
@@ -3954,6 +3966,41 @@ function bindNodeEvents(el) {
     if (docNode?.mouseUpAction)
       docNode.mouseUpAction();
   });
+  el.addEventListener("pointerenter", () => {
+    interactiveState({ hover: true });
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerEnterAction)
+      docNode.pointerEnterAction();
+  });
+  el.addEventListener("pointerleave", () => {
+    interactiveState({ hover: false, pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerLeaveAction)
+      docNode.pointerLeaveAction();
+  });
+  el.addEventListener("pointermove", () => {
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerMoveAction)
+      docNode.pointerMoveAction();
+  });
+  el.addEventListener("pointerdown", () => {
+    interactiveState({ pressed: true });
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerDownAction)
+      docNode.pointerDownAction();
+  });
+  el.addEventListener("pointerup", () => {
+    interactiveState({ pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerUpAction)
+      docNode.pointerUpAction();
+  });
+  el.addEventListener("pointercancel", () => {
+    interactiveState({ pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.pointerCancelAction)
+      docNode.pointerCancelAction();
+  });
   el.addEventListener("wheel", (event) => {
     const docNode = el.__kryDocNode;
     const value = Number.isFinite(Number(event?.deltaY)) ? Number(event.deltaY) :
@@ -5653,6 +5700,30 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnMouseUp = docNode.onMouseUp;
   else
     delete el.dataset.kryOnMouseUp;
+  if (docNode.onPointerEnter)
+    el.dataset.kryOnPointerEnter = docNode.onPointerEnter;
+  else
+    delete el.dataset.kryOnPointerEnter;
+  if (docNode.onPointerLeave)
+    el.dataset.kryOnPointerLeave = docNode.onPointerLeave;
+  else
+    delete el.dataset.kryOnPointerLeave;
+  if (docNode.onPointerMove)
+    el.dataset.kryOnPointerMove = docNode.onPointerMove;
+  else
+    delete el.dataset.kryOnPointerMove;
+  if (docNode.onPointerDown)
+    el.dataset.kryOnPointerDown = docNode.onPointerDown;
+  else
+    delete el.dataset.kryOnPointerDown;
+  if (docNode.onPointerUp)
+    el.dataset.kryOnPointerUp = docNode.onPointerUp;
+  else
+    delete el.dataset.kryOnPointerUp;
+  if (docNode.onPointerCancel)
+    el.dataset.kryOnPointerCancel = docNode.onPointerCancel;
+  else
+    delete el.dataset.kryOnPointerCancel;
   if (docNode.onWheel)
     el.dataset.kryOnWheel = docNode.onWheel;
   else
