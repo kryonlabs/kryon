@@ -7,7 +7,6 @@ app "Text Area and Slider" {
 }
 
 state {
-    material_ready: int = 0
     hue: int = 215
     note: [4096] char = ""
     note_cursor: int = 0
@@ -16,10 +15,6 @@ state {
 }
 
 TextAreaSliderExample :: (viewport: Rectangle) #ui {
-    if !material_ready {
-        SetThemeStyle(THEME_STYLE_DEFAULT)
-        material_ready = 1
-    }
     bg: Color = ColorFromHSV((float)hue, 0.12f, 0.96f)
     accent: Color = ColorFromHSV((float)hue, 0.68f, 0.92f)
     panel: Rectangle = {48.0f, viewport.height - 82.0f, viewport.width - 96.0f, 54.0f}

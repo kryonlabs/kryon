@@ -10,7 +10,6 @@ state {
     theme_source: int = THEME_SOURCE_SYSTEM
     theme_mode: int = THEME_MODE_SYSTEM
     theme_id: int = THEME_SKY
-    theme_style: int = THEME_STYLE_SYSTEM
     slider_value: int = 64
     toggle_value: int = 1
     check_value: int = 1
@@ -43,11 +42,9 @@ ThemeDarkMode :: () -> int {
 ApplyThemeState :: () {
     theme_source = ClampInt(theme_source, THEME_SOURCE_APP, THEME_SOURCE_SYSTEM)
     theme_mode = ClampInt(theme_mode, THEME_MODE_SYSTEM, THEME_MODE_DARK)
-    theme_style = ClampInt(theme_style, THEME_STYLE_SYSTEM, THEME_STYLE_DEFAULT)
     theme_id = ClampInt(theme_id, 0, THEME_COUNT - 1)
     SetThemeSource((ThemeSource)theme_source)
     SetThemeMode((ThemeMode)theme_mode)
-    SetThemeStyle((ThemeStyle)theme_style)
     SetCurrentTheme(theme_id, ThemeDarkMode())
 }
 
@@ -65,16 +62,6 @@ ThemeModeText :: () -> const char * {
     return "System"
 }
 
-ThemeStyleText :: () -> const char * {
-    if theme_style == THEME_STYLE_CLASSIC {
-        return "Classic"
-    }
-    if theme_style == THEME_STYLE_DEFAULT {
-        return "Default"
-    }
-    return "System style"
-}
-
 ThemePanel :: (x: int, y: int, w: int) -> int {
     changed: int = 0
     Text((TextProps){.bounds={x, y, 0, 0}, .text="Theme controls", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
@@ -89,12 +76,6 @@ ThemePanel :: (x: int, y: int, w: int) -> int {
         theme_source = THEME_SOURCE_APP
         theme_id += 1
         if theme_id >= THEME_COUNT { theme_id = 0 }
-        changed = 1
-    }
-    y += Scale(54)
-    if Button((ButtonProps){.bounds={x, y, w, Scale(38)}, .label=TextFormat("Style: %s", ThemeStyleText()), .id=103, .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft}) {
-        theme_style += 1
-        if theme_style > THEME_STYLE_DEFAULT { theme_style = THEME_STYLE_SYSTEM }
         changed = 1
     }
     return changed

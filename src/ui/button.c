@@ -14,10 +14,12 @@ static StyleData
 ui_minimal_control_style_data(void)
 {
     return (StyleData){
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize),
+        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
+                             StyleMaterial),
         .opacity = 1.0f,
         .font_size = 16.0f,
-        .icon_size = 20.0f
+        .icon_size = 20.0f,
+        .material = MaterialFlat
     };
 }
 

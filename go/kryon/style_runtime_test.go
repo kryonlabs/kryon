@@ -60,8 +60,8 @@ func TestButtonWithoutStylePackHasNoVisualDefaults(t *testing.T) {
 			style.Focus != 0 || style.Radius != 0 || style.BorderWidth != 0 {
 			t.Fatalf("unstyled button leaked visual defaults: %+v", style)
 		}
-		if style.Fields&uint32(StyleMaterial) != 0 {
-			t.Fatalf("unstyled button leaked material styling: %+v", style)
+		if style.Fields&uint32(StyleMaterial) == 0 || style.Material != int32(MaterialFlat) {
+			t.Fatalf("unstyled button must use flat material fallback: %+v", style)
 		}
 		if style.Opacity != 1 || style.FontSize == 0 {
 			t.Fatalf("unstyled button lost minimal behavior metrics: %+v", style)
@@ -254,8 +254,8 @@ func TestButtonUsesDeclaredThemeSurfaces(t *testing.T) {
 
 func TestPlainAppUsesDefaultThemeFamily(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
-	if r.themeStyle != ThemeStyleDefault || r.GetThemeFamily().Name != "Default" {
-		t.Fatal("plain app did not select the shared default style and family")
+	if r.GetThemeFamily().Name != "Default" {
+		t.Fatal("plain app did not select the shared default theme family")
 	}
 	for _, mode := range []ThemeMode{ThemeModeLight, ThemeModeDark} {
 		r.SetThemeMode(mode)

@@ -33,7 +33,6 @@ type Font struct {
 type KeyID uint64
 type SyntaxMode int32
 type ThemeId int32
-type ThemeStyle int32
 type ThemeSource int32
 type ThemeMode int32
 type ImageFit int32
@@ -105,12 +104,6 @@ const (
 )
 
 const (
-	ThemeStyleSystem ThemeStyle = iota
-	ThemeStyleClassic
-	ThemeStyleDefault
-)
-
-const (
 	ThemeSourceApp ThemeSource = iota
 	ThemeSourceSystem
 )
@@ -136,9 +129,6 @@ const (
 	Text32 int32 = 32
 	Text48 int32 = 48
 
-	THEME_STYLE_SYSTEM  = 0
-	THEME_STYLE_CLASSIC = 1
-	THEME_STYLE_DEFAULT = 2
 	THEME_SOURCE_APP    = 0
 	THEME_SOURCE_SYSTEM = 1
 	THEME_MODE_SYSTEM   = 0
@@ -1346,7 +1336,6 @@ type Runtime interface {
 	EndCanvas(canvas Canvas)
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeDarkMode(dark int32)
-	SetThemeStyle(style ThemeStyle)
 	SetThemeSource(source ThemeSource)
 	SetThemeMode(mode ThemeMode)
 	GetThemeMode() ThemeMode
@@ -1430,7 +1419,6 @@ type runtime struct {
 	currentThemeID    ThemeId
 	themeSource       ThemeSource
 	themeMode         ThemeMode
-	themeStyle        ThemeStyle
 	defaultTheme      bool
 	activeTheme       *Theme
 	activeThemeFamily *ThemeFamily
@@ -1604,7 +1592,6 @@ func New(config AppConfig) Runtime {
 		currentThemeID: ThemeMono,
 		themeSource:    ThemeSourceSystem,
 		themeMode:      ThemeModeSystem,
-		themeStyle:     ThemeStyle(Theme_DefaultStyleValue()),
 	}
 	r.SetThemeFamily(ThemeFamily{Name: "Default", Light: ThemeDefaultLight(), Dark: ThemeDefaultDark()})
 	r.defaultTheme = true
@@ -2471,10 +2458,11 @@ func resolveButtonFrameForKind(theme themePalette, dark bool, active *Theme, pro
 
 func minimalControlStyleData() StyleData {
 	return StyleData{
-		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize),
+		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize | StyleMaterial),
 		Opacity:  1,
 		FontSize: 16,
 		IconSize: 20,
+		Material: int32(MaterialFlat),
 	}
 }
 
@@ -7025,12 +7013,6 @@ func (r *runtime) SetThemeDarkMode(dark int32) {
 	}
 	r.applyThemeFamily()
 }
-func (r *runtime) SetThemeStyle(style ThemeStyle) {
-	if style < ThemeStyleSystem || style > ThemeStyleDefault {
-		style = ThemeStyleSystem
-	}
-	r.themeStyle = style
-}
 func (r *runtime) SetThemeSource(source ThemeSource) {
 	if r.defaultTheme {
 		r.defaultTheme = false
@@ -7086,19 +7068,6 @@ func themeLabel(id int32) string {
 		return "Sweet"
 	default:
 		return "Mono"
-	}
-}
-
-// DefaultThemeForThemeStyle mirrors GetDefaultThemeForThemeStyle(): the
-// palette an app should pair with a widget style when it has no opinion.
-func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
-	switch style {
-	case ThemeStyleClassic:
-		return ThemeMono
-	case ThemeStyleDefault:
-		return ThemeSweet
-	default:
-		return ThemeMono
 	}
 }
 

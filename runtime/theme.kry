@@ -1,8 +1,4 @@
 #module "theme"
-DefaultStyleValue :: () -> i32 #export {
-    return 2
-}
-
 Mode :: enum {
     PolicyModeSystem = 0
     PolicyModeLight = 1

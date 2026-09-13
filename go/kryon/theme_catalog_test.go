@@ -146,18 +146,6 @@ func TestDefaultSchemeMirrorsCDerivation(t *testing.T) {
 	}
 }
 
-func TestDefaultThemeForThemeStylePairsPaletteWithStyle(t *testing.T) {
-	if DefaultThemeForThemeStyle(ThemeStyleDefault) != ThemeSweet {
-		t.Fatal("Default style should pair with the Sweet palette")
-	}
-	if DefaultThemeForThemeStyle(ThemeStyleClassic) != ThemeMono {
-		t.Fatal("Classic style should pair with the Mono palette")
-	}
-	if DefaultThemeForThemeStyle(ThemeStyleSystem) != ThemeMono {
-		t.Fatal("System style should fall back to the Mono palette")
-	}
-}
-
 func TestRuntimeAppliesSweetThemeAndScheme(t *testing.T) {
 	rt := New(AppConfig{Width: 100, Height: 100}).(*runtime)
 	rt.SetThemeSource(ThemeSourceApp)

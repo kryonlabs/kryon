@@ -82,12 +82,9 @@ static UIDefaultRipple g_default_ripples[UI_DEFAULT_RIPPLE_MAX];
 #endif
 
 ThemeMetrics
-GetThemeMetricsForThemeStyle(ThemeStyle style)
+GetDefaultThemeMetrics(void)
 {
     ThemeMetrics tokens;
-
-    if(style == THEME_STYLE_SYSTEM)
-        style = GetDefaultPlatformThemeStyle();
 
     memset(&tokens, 0, sizeof(tokens));
     Metrics defaults = DefaultMetrics();
@@ -133,22 +130,19 @@ GetThemeMetricsForThemeStyle(ThemeStyle style)
     tokens.border_alpha = 255;
     tokens.shadow_alpha = 0;
     tokens.shine_alpha = 0;
-    tokens.bevel_enabled = 1;
+    tokens.bevel_enabled = 0;
     tokens.touch_target_min = 36;
     tokens.shadow_offset_y = 0;
-    if(style != THEME_STYLE_CLASSIC) {
-        tokens.control_radius = 4.0f;
-        tokens.panel_radius = 8.0f;
-        tokens.control_alpha = 222;
-        tokens.panel_alpha = 235;
-        tokens.title_bar_alpha = 222;
-        tokens.border_alpha = 118;
-        tokens.shadow_alpha = 28;
-        tokens.shine_alpha = 0;
-        tokens.bevel_enabled = 0;
-        tokens.touch_target_min = 48;
-        tokens.shadow_offset_y = 2;
-    }
+    tokens.control_radius = 4.0f;
+    tokens.panel_radius = 8.0f;
+    tokens.control_alpha = 222;
+    tokens.panel_alpha = 235;
+    tokens.title_bar_alpha = 222;
+    tokens.border_alpha = 118;
+    tokens.shadow_alpha = 28;
+    tokens.shine_alpha = 0;
+    tokens.touch_target_min = 48;
+    tokens.shadow_offset_y = 2;
     return tokens;
 }
 
@@ -157,7 +151,7 @@ GetThemeMetrics(void)
 {
     if(g_ui_style_override_enabled)
         return ui_apply_effects_metrics(g_ui_style_override);
-    return ui_apply_effects_metrics(GetThemeMetricsForThemeStyle(GetEffectiveThemeStyle()));
+    return ui_apply_effects_metrics(GetDefaultThemeMetrics());
 }
 
 void
@@ -256,10 +250,12 @@ Style
 ui_surface_style(void)
 {
     StyleData base = {
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize),
+        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
+                             StyleMaterial),
         .opacity = 1.0f,
         .font_size = 16.0f,
-        .icon_size = 20.0f
+        .icon_size = 20.0f,
+        .material = MaterialFlat
     };
     StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindSurface()),
                                          ButtonStateNormal);
@@ -451,7 +447,7 @@ ui_alpha(Color color, unsigned char alpha)
 int
 ui_default_style(void)
 {
-    return GetEffectiveThemeStyle() == THEME_STYLE_DEFAULT;
+    return 1;
 }
 
 static int

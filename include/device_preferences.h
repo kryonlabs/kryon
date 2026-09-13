@@ -15,7 +15,6 @@ typedef struct KryThemePreference {
     int theme_id;
     ThemeSource source;
     ThemeMode mode;
-    ThemeStyle style;
     KrySystemDarkModeFn system_dark_mode;
     void *user;
 } KryThemePreference;

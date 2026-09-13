@@ -129,7 +129,6 @@ main(int argc, char **argv)
     SetTargetFPS(60);
     LoadExampleTextFont();
     InitInterface(WIDTH, HEIGHT, 1.0f);
-    SetThemeStyle(THEME_STYLE_DEFAULT);
     RenderTexture2D target = LoadRenderTexture(WIDTH, HEIGHT);
     Image panels[2];
     for(int dark = 0; dark < 2; dark++) {

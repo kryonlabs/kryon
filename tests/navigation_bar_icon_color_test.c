@@ -167,7 +167,6 @@ main(void)
     SetScale(1.0f);
     SetDefaultFontAutoLoad(0);
     SetThemeSource(THEME_SOURCE_APP);
-    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
     ClearStylePacks();
     if(!RegisterBuiltInStylePacks()) {

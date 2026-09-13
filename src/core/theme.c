@@ -18,18 +18,15 @@ static int current_theme_id = THEME_MONO;
 #if defined(KRYON_PLATFORM_PLAN9)
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = (ThemeStyle)-1;
 #else
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = (ThemeStyle)-1;
 #endif
 
 #else
 static int current_theme_id = THEME_MONO;
 static ThemeSource theme_source = THEME_SOURCE_SYSTEM;
 static ThemeMode theme_mode = THEME_MODE_SYSTEM;
-static ThemeStyle theme_style = (ThemeStyle)-1;
 #endif
 
 static Theme active_theme;
@@ -43,7 +40,6 @@ static char active_theme_light_name[THEME_NAME_SIZE];
 static char active_theme_dark_name[THEME_NAME_SIZE];
 
 bool SystemThemeColor(const char *key, Color *color);
-ThemeStyle GetSystemThemeStyle(void);
 
 void ResetTheme(void)
 {
@@ -156,40 +152,6 @@ GetThemeMode(void)
     return theme_mode;
 }
 
-void
-SetThemeStyle(ThemeStyle style)
-{
-    if(style < THEME_STYLE_SYSTEM || style > THEME_STYLE_DEFAULT)
-        style = THEME_STYLE_SYSTEM;
-    theme_style = style;
-    ApplyCurrentTheme();
-}
-
-ThemeStyle
-GetThemeStyle(void)
-{
-    return (int)theme_style < 0 ? (ThemeStyle)DefaultStyleValue() : theme_style;
-}
-
-ThemeStyle
-GetEffectiveThemeStyle(void)
-{
-    ThemeStyle style = GetThemeStyle();
-    if(style == THEME_STYLE_SYSTEM)
-        return GetDefaultPlatformThemeStyle();
-    return style;
-}
-
-ThemeStyle
-GetDefaultPlatformThemeStyle(void)
-{
-#if defined(KRYON_PLATFORM_PLAN9)
-    return GetSystemThemeStyle();
-#else
-    return THEME_STYLE_DEFAULT;
-#endif
-}
-
 ThemeSource
 GetDefaultPlatformThemeSource(void)
 {
@@ -205,56 +167,6 @@ GetDefaultPlatformThemeMode(void)
     if(GetDefaultPlatformThemeSource() == THEME_SOURCE_SYSTEM)
         return THEME_MODE_SYSTEM;
     return THEME_MODE_LIGHT;
-}
-
-int
-GetDefaultThemeForThemeStyle(ThemeStyle style)
-{
-#if defined(KRYON_PLATFORM_PLAN9)
-    if(style == THEME_STYLE_SYSTEM)
-        return THEME_MONO;
-#endif
-    if(style == THEME_STYLE_SYSTEM)
-        style = GetDefaultPlatformThemeStyle();
-
-    switch(style) {
-    case THEME_STYLE_CLASSIC:
-        return THEME_MONO;
-    case THEME_STYLE_DEFAULT:
-        return THEME_SWEET;
-    case THEME_STYLE_SYSTEM:
-    default:
-        return THEME_MONO;
-    }
-}
-
-const char *
-GetThemeStyleLabel(ThemeStyle style)
-{
-    const char *key = NULL;
-    const char *fallback = "System";
-    const char *text;
-
-    switch(style) {
-    case THEME_STYLE_SYSTEM:
-        key = "theme_style_system";
-        fallback = "System";
-        break;
-    case THEME_STYLE_CLASSIC:
-        key = "theme_style_classic";
-        fallback = "Classic";
-        break;
-    case THEME_STYLE_DEFAULT:
-        key = "theme_style_default";
-        fallback = "Default";
-        break;
-    default:
-        return "System";
-    }
-    text = GetLocaleText(key);
-    if(text == NULL || text[0] == '\0' || strcmp(text, key) == 0)
-        return fallback;
-    return text;
 }
 
 bool
@@ -319,7 +231,7 @@ theme_default(int dark)
     memset(&theme, 0, sizeof(theme));
     theme.name = dark ? "Default dark" : "Default light";
     theme.mode = dark ? THEME_MODE_DARK : THEME_MODE_LIGHT;
-    theme.metrics = GetThemeMetricsForThemeStyle(THEME_STYLE_DEFAULT);
+    theme.metrics = GetDefaultThemeMetrics();
     theme.colors.background = GetColor(palette.background);
     theme.colors.surface = GetColor(palette.surface);
     theme.colors.surface_raised = GetColor(palette.surface_raised);

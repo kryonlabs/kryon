@@ -2,7 +2,6 @@
 #define THEME_H
 
 #include "kryon.h"
-#include "theme_style.h"
 #include <stdbool.h>
 
 #define THEME_NAME_SIZE 64
@@ -83,19 +82,11 @@ void SetThemeSource(ThemeSource source);
 ThemeSource GetThemeSource(void);
 void SetThemeMode(ThemeMode mode);
 ThemeMode GetThemeMode(void);
-void SetThemeStyle(ThemeStyle style);
-ThemeStyle GetThemeStyle(void);
-ThemeStyle GetEffectiveThemeStyle(void);
-ThemeStyle GetDefaultPlatformThemeStyle(void);
 ThemeSource GetDefaultPlatformThemeSource(void);
 ThemeMode GetDefaultPlatformThemeMode(void);
-int GetDefaultThemeForThemeStyle(ThemeStyle style);
-const char *GetThemeStyleLabel(ThemeStyle style);
 bool IsSystemThemeAvailable(void);
 const char *GetSystemThemeName(void);
 const char *GetSystemThemeNameCached(void);
-ThemeStyle GetSystemThemeStyle(void);
-ThemeStyle GetSystemThemeStyleCached(void);
 bool GetSystemTextFontName(char *out, int out_size);
 bool GetSystemTextFontFile(char *out, int out_size);
 bool RefreshSystemTheme(void);

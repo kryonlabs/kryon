@@ -55,7 +55,7 @@ scaffold_title(const char *title, int height, void *user_data)
     ScaffoldFixture *fixture = user_data;
 
     check_int("scaffold title text", strcmp(title, "Settings"), 0);
-    check_int("scaffold title height", height, Scale(36));
+    check_int("scaffold title height", height, Scale(48));
     return fixture != NULL ? fixture->closed : 0;
 }
 
@@ -104,8 +104,6 @@ main(void)
     Event event;
     int count = 0;
     ScaffoldFixture scaffold_fixture = {.closed = 1};
-
-    SetThemeStyle(THEME_STYLE_CLASSIC);
 
     BeginTree(7000);
     BeginButton((ButtonProps){
@@ -187,17 +185,8 @@ main(void)
               Scale(54));
     check_int("navigation bar",
               GetNodeHeight(NodeNavigationBar(nav)),
-              Scale(40));
-    SetThemeStyle(THEME_STYLE_DEFAULT);
-    check_int("material navigation bar",
-              GetNodeHeight(NodeNavigationBar(nav)),
               NavigationBarDefaultHeight(1.0f));
-    SetThemeStyle(THEME_STYLE_CLASSIC);
-    check_int("retro tab bar",
-              GetNodeHeight(NodeTabBar(tabs)),
-              Scale(36));
-    SetThemeStyle(THEME_STYLE_DEFAULT);
-    check_int("material tab bar",
+    check_int("tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
               Scale(48));
     check_int("title bar custom",
@@ -298,7 +287,6 @@ main(void)
     check_int("route fallback version", GetRouteVersion(), 0);
 
     SetViewSize(320, 240);
-    SetThemeStyle(THEME_STYLE_CLASSIC);
     BeginTree(37);
     scaffold = BeginScreenScaffold((ScreenScaffoldSpec){
         .title = "Settings",
@@ -310,9 +298,9 @@ main(void)
         .draw_title = scaffold_title
     });
     check_int("scaffold closed", scaffold.closed, 1);
-    check_int("scaffold content y", scaffold.content_y, Scale(36));
+    check_int("scaffold content y", scaffold.content_y, Scale(48));
     check_int("scaffold content h", scaffold.content_h,
-              240 - Scale(36) - 12);
+              240 - Scale(48) - 12);
     check_int("scaffold content w", scaffold.content_w,
               scaffold_fixture.seen_w);
     EndScreenScaffold(scaffold);

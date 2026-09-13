@@ -884,32 +884,14 @@ Color GetThemeIcon(void);
 Color GetThemeLink(void);
 ```
 
-#### Theme Styles
+#### Theme Metrics
 
-Kryon supports three concrete widget styles plus a system selector:
-
-```c
-typedef enum ThemeStyle {
-    THEME_STYLE_SYSTEM = 0,
-    THEME_STYLE_CLASSIC,
-    THEME_STYLE_DEFAULT
-} ThemeStyle;
-
-void SetThemeStyle(ThemeStyle style);
-ThemeStyle GetThemeStyle(void);
-ThemeStyle GetEffectiveThemeStyle(void);
-ThemeStyle GetDefaultPlatformThemeStyle(void);
-int GetDefaultThemeForThemeStyle(ThemeStyle style);
-const char *GetThemeStyleLabel(ThemeStyle style);
-```
-
-`THEME_STYLE_SYSTEM` resolves to Default on Android builds and Classic elsewhere.
-Default uses Default 3 style tokens: 48px touch targets, rounded controls,
-state layers/ripple feedback, elevation shadows, and theme-derived Default color
-roles. Classic keeps the original beveled Kryon look.
+Visual style selection belongs to KSS style packs. Theme metrics are the shared
+layout defaults used by the active pack and by low-level drawing code.
 
 ```c
 ThemeMetrics GetThemeMetrics(void);
+ThemeMetrics GetDefaultThemeMetrics(void);
 ThemeScheme GetThemeScheme(void);
 ```
 

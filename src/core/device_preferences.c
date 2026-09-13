@@ -24,7 +24,6 @@ KryApplyThemePreference(KryThemePreference pref)
 
     SetThemeSource(pref.source);
     SetThemeMode(pref.mode);
-    SetThemeStyle(pref.style);
     if(pref.system_dark_mode != 0)
         SetSystemThemeDarkMode(pref.system_dark_mode(pref.user) != 0);
     dark = KryEffectiveThemeDarkMode(pref);

@@ -273,7 +273,6 @@ func SetThemeFamily(family ThemeFamily)                    { active().SetThemeFa
 func GetThemeFamily() ThemeFamily                          { return active().GetThemeFamily() }
 func GetTheme() Theme                                      { return active().GetTheme() }
 func SetThemeDarkMode(dark int32)                          { active().SetThemeDarkMode(dark) }
-func SetThemeStyle(style ThemeStyle)                       { active().SetThemeStyle(style) }
 func SetThemeSource(source ThemeSource)                    { active().SetThemeSource(source) }
 func SetThemeMode(mode ThemeMode)                          { active().SetThemeMode(mode) }
 func GetThemeMode() ThemeMode                              { return active().GetThemeMode() }

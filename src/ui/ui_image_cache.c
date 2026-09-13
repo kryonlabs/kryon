@@ -337,48 +337,23 @@ static void
 image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
                     float *roundness, int *segments, int *outline_px)
 {
-    ThemeStyle theme_style = GetEffectiveThemeStyle();
     ThemeMetrics tokens = GetThemeMetrics();
+    ThemeScheme scheme = ui_default_scheme();
 
-    if(theme_style == THEME_STYLE_CLASSIC) {
-        Style image_style = image_widget_style();
-        *radius = 0.0f;
-        *roundness = 0.0f;
-        *segments = 1;
-        *outline_px = Scale(2);
-        style->surface_overlay.a = 0;
-        style->scrim_top.a = 0;
-        if(style->scrim_bottom.a > 30)
-            style->scrim_bottom.a = 30;
-        if(style->tonal_overlay.a > 24)
-            style->tonal_overlay.a = 24;
-        style->outline = image_style.border.a != 0
-                           ? image_style.border
-                           : image_style.background;
-        style->outline.a = 255;
-        return;
-    }
-
-    if(theme_style == THEME_STYLE_DEFAULT) {
-        ThemeScheme scheme = ui_default_scheme();
-
-        if(*radius <= 0.0f)
-            *radius = (float)Scale((int)tokens.panel_radius);
-        *roundness = image_roundness_from_radius(bounds, *radius);
-        *segments = *segments < 12 ? 12 : *segments;
-        style->background = scheme.surface_container;
-        style->outline = scheme.outline;
-        if(style->tonal_overlay.a > 30)
-            style->tonal_overlay.a = 30;
-        if(style->surface_overlay.a > 18)
-            style->surface_overlay.a = 18;
-        if(style->scrim_top.a > 8)
-            style->scrim_top.a = 8;
-        if(style->scrim_bottom.a > 42)
-            style->scrim_bottom.a = 42;
-        return;
-    }
-
+    if(*radius <= 0.0f)
+        *radius = (float)Scale((int)tokens.panel_radius);
+    *roundness = image_roundness_from_radius(bounds, *radius);
+    *segments = *segments < 12 ? 12 : *segments;
+    style->background = scheme.surface_container;
+    style->outline = scheme.outline;
+    if(style->tonal_overlay.a > 30)
+        style->tonal_overlay.a = 30;
+    if(style->surface_overlay.a > 18)
+        style->surface_overlay.a = 18;
+    if(style->scrim_top.a > 8)
+        style->scrim_top.a = 8;
+    if(style->scrim_bottom.a > 42)
+        style->scrim_bottom.a = 42;
 }
 
 void
@@ -390,7 +365,6 @@ ImageTexture(Texture2D texture, ImageProps image)
     int segments;
     int outline_px;
     float roundness;
-    ThemeStyle theme_style;
 
     if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
        image.bounds.width <= 0.0f || image.bounds.height <= 0.0f)
@@ -412,13 +386,11 @@ ImageTexture(Texture2D texture, ImageProps image)
     segments = image.style.segments > 0 ? image.style.segments : 10;
     outline_px = image.style.outline_px > 0 ? image.style.outline_px : 1;
     roundness = image.style.roundness > 0.0f ? image.style.roundness : 0.0f;
-    theme_style = GetEffectiveThemeStyle();
     image_apply_style(image.bounds, &image.style, &radius, &roundness, &segments,
                         &outline_px);
 
-    if(theme_style == THEME_STYLE_DEFAULT)
-        ui_default_elevation(image.bounds, roundness,
-                              GetThemeMetrics().shadow_offset_y);
+    ui_default_elevation(image.bounds, roundness,
+                         GetThemeMetrics().shadow_offset_y);
 
     if(image.style.background.a > 0) {
         if(roundness > 0.0f)
@@ -440,16 +412,7 @@ ImageTexture(Texture2D texture, ImageProps image)
         image_draw_rounded_gradient(image.bounds, radius,
                                       image.style.scrim_top,
                                       image.style.scrim_bottom);
-    if(theme_style == THEME_STYLE_CLASSIC) {
-        Style image_style = image_widget_style();
-        RenderBevel((int)image.bounds.x, (int)image.bounds.y,
-                    (int)image.bounds.width, (int)image.bounds.height,
-                    image_style.border,
-                    image_style.background);
-        if(image.style.outline.a > 0)
-            DrawRectangleLinesEx(image.bounds, (float)outline_px,
-                                 image.style.outline);
-    } else if(roundness > 0.0f && image.style.outline.a > 0)
+    if(roundness > 0.0f && image.style.outline.a > 0)
         DrawRectangleRoundedLinesEx(image.bounds, roundness, segments,
                                     (float)outline_px, image.style.outline);
     else if(image.style.outline.a > 0)

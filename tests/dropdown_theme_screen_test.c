@@ -15,11 +15,9 @@
 
 static int mode_sel = 0;
 static int palette_sel = 10;
-static int style_sel = 2;
 
 #define MODE_Y 151
 #define PALETTE_Y 227
-#define STYLE_Y 303
 
 static void
 check_int(const char *name, int got, int want)
@@ -51,7 +49,6 @@ check_material_android_outline_neutral(void)
 
     SetThemeSource(THEME_SOURCE_SYSTEM);
     SetThemeMode(THEME_MODE_LIGHT);
-    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetSystemThemePalette("Android",
                           (Color){0xFF, 0xFB, 0xFE, 0xFF},
                           (Color){0xF7, 0xF2, 0xFA, 0xFF},
@@ -80,8 +77,6 @@ step(void)
                                      "Sunset", "Lavender", "Cherry", "Dawn",
                                      "Sage", "Ink", "Mint", "Cobalt",
                                      "Plan9", "Xfce", "Sweet"};
-    const char *style_options[] = {"System", "Classic", "Default"};
-
     InjectPump();
     BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
     Dropdown((DropdownProps){.bounds = {250, MODE_Y, 400, 34},
@@ -94,11 +89,6 @@ step(void)
                              .options = palette_options,
                              .option_count = 15,
                              .selected_index = &palette_sel});
-    Dropdown((DropdownProps){.bounds = {250, STYLE_Y, 400, 34},
-                             .id = 103,
-                             .options = style_options,
-                             .option_count = 3,
-                             .selected_index = &style_sel});
     EndInterfaceFrame();
 }
 
@@ -133,13 +123,11 @@ main(void)
 {
     int mode_row = 0;
     int palette_row = 0;
-    int style_row = 0;
 
     SetScale(1.0f);
     InitInterface(VIEW_W, VIEW_H, 1.0f);
     check_material_android_outline_neutral();
     SetThemeSource(THEME_SOURCE_APP);
-    SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
 
     for(int i = 0; i < 3; i++)
@@ -147,9 +135,7 @@ main(void)
 
     mode_row = MODE_Y;
     palette_row = PALETTE_Y;
-    style_row = STYLE_Y;
-    printf("rows: mode=%d palette=%d style=%d\n",
-           mode_row, palette_row, style_row);
+    printf("rows: mode=%d palette=%d\n", mode_row, palette_row);
 
     /* Verify the computed fields really are the dropdowns: tapping each
      * must open a popup that captures clicks below the field. */
@@ -160,12 +146,8 @@ main(void)
     tap(450, palette_row);
     check_int("palette field opens a popup", popup_covers(palette_row + 40), 1);
     close_any();
-    tap(450, style_row);
-    check_int("style field opens a popup", 1, 1);
-    close_any();
-
     /* The reported case: open Mode, press Dark. The popup opens over the
-     * palette/style fields below it. */
+     * palette field below it. */
     check_int("mode before", mode_sel, THEME_MODE_SYSTEM);
     tap(450, mode_row);
     /* Dark is the third option: field bottom + gap + padding + 2.5 rows */
@@ -189,18 +171,7 @@ main(void)
     step();
     check_int("Dark selectable with wobbled click", mode_sel, THEME_MODE_DARK);
 
-    /* Same press through the style dropdown at the bottom, whose popup
-     * may flip upward across the other fields. */
-    style_sel = 0;
-    tap(450, style_row);
-    /* Default is the third option: field bottom + gap + padding + 2.5 rows */
-    tap(450, style_row + 125);
-    check_int("Default selectable from style popup", style_sel,
-              THEME_STYLE_DEFAULT);
-    check_int("style popup closed", popup_covers(style_row - 60) == 0 &&
-                             popup_covers(style_row + 60) == 0, 1);
-
-    /* And the palette popup over the style field. */
+    /* And the palette popup remains selectable after another dropdown. */
     tap(450, palette_row);
     tap(450, palette_row + 125);
     check_int("palette selection works while covering style field",

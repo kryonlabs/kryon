@@ -4462,7 +4462,6 @@ test_control_style_resolution(void)
 int
 main(void)
 {
-    check_int("default control style", GetThemeStyle(), THEME_STYLE_DEFAULT);
     SetThemeMode(THEME_MODE_LIGHT);
     check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
     check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);
@@ -4614,17 +4613,11 @@ main(void)
     test_semantic_font_sizes_follow_ui_scale();
     test_circle_click_uses_ui_release_path();
 
-    SetThemeStyle(THEME_STYLE_CLASSIC);
-    check_int("classic style", GetThemeStyle(), THEME_STYLE_CLASSIC);
-    check_int("classic effective style", GetEffectiveThemeStyle(), THEME_STYLE_CLASSIC);
-    check_int("retro bevel", GetThemeMetrics().bevel_enabled, 1);
-
     /* Theme-section locale keys must resolve to real strings (the
      * settings picker wires these as fallbacks). */
     {
         static const char *keys[] = {
-            "theme_style_label", "theme_style_system", "theme_style_classic",
-            "theme_style_default", "theme_label",
+            "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"
@@ -4641,16 +4634,9 @@ main(void)
         }
     }
 
-    SetThemeStyle(THEME_STYLE_DEFAULT);
-    check_int("default style", GetThemeStyle(), THEME_STYLE_DEFAULT);
-    check_int("default effective style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
     check_int("material bevel", GetThemeMetrics().bevel_enabled, 0);
     check_int("material touch target", GetThemeMetrics().touch_target_min, 48);
 
-    SetThemeStyle((ThemeStyle)3);
-    check_int("out-of-range style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
-    check_int("out-of-range effective style", GetEffectiveThemeStyle(),
-              GetDefaultPlatformThemeStyle());
     check_int("theme count", THEME_COUNT, THEME_SWEET + 1);
     check_int("out-of-range theme normalizes", NormalizeTheme(THEME_COUNT),
               THEME_MONO);
@@ -4658,8 +4644,7 @@ main(void)
      * settings picker wires these as fallbacks). */
     {
         static const char *keys[] = {
-            "theme_style_label", "theme_style_system", "theme_style_classic",
-            "theme_style_default", "theme_label",
+            "theme_label",
             "theme_app", "theme_system", "theme_mode_label",
             "theme_follow_device", "theme_light", "theme_dark",
             "theme_color_label", "theme_picker_title"
@@ -4675,19 +4660,6 @@ main(void)
             }
         }
     }
-
-    SetThemeStyle(THEME_STYLE_DEFAULT);
-
-    SetThemeStyle((ThemeStyle)99);
-    check_int("invalid style clamps", GetThemeStyle(), THEME_STYLE_SYSTEM);
-    SetThemeStyle(THEME_STYLE_SYSTEM);
-#if defined(ANDROID_BUILD) && ANDROID_BUILD
-    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
-#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
-    check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
-#else
-    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
-#endif
 
     check_int("topmost hit", CanvasHitTest((Vector2){15, 15}, hits, 3), 1);
     check_int("miss", CanvasHitTest((Vector2){80, 80}, hits, 3), -1);

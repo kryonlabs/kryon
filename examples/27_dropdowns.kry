@@ -29,7 +29,6 @@ state {
 DropdownExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        SetThemeStyle(THEME_STYLE_DEFAULT)
         dark_mode: int = 0
         if mode == 1 { dark_mode = 1 }
         if mode == 2 && SystemThemePrefersDark() { dark_mode = 1 }

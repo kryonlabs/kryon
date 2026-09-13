@@ -2,7 +2,6 @@
 #define KRYON_CONTROLS_H
 
 #include "kryon_compat.generated.h"
-#include "theme_style.h"
 #include "ui_control_props.generated.h"
 #include "ui_button_props.generated.h"
 #include "ui_icon_types.h"
@@ -34,7 +33,6 @@ typedef struct {
     int padding_x;
     int padding_y;
 } TextInputStyle;
-
 
 Style MergeStyle(Style base, Style overrides);
 
@@ -99,8 +97,8 @@ typedef struct {
     int wrap;
 } TextAreaProps;
 
-/* Public control style ABI. Apps can select a named ThemeStyle or override
- * these tokens directly when they need full control. */
+/* Public control metric tokens. Visual style selection belongs to KSS packs;
+ * apps override these metrics only when they need full control. */
 typedef struct ThemeMetrics {
     float radius_small;
     float radius_medium;
@@ -203,7 +201,7 @@ typedef struct {
 } SegmentedControlResult;
 
 ThemeMetrics GetThemeMetrics(void);
-ThemeMetrics GetThemeMetricsForThemeStyle(ThemeStyle style);
+ThemeMetrics GetDefaultThemeMetrics(void);
 ThemeScheme GetThemeScheme(void);
 void SetFancyEffectsEnabled(int enabled);
 int FancyEffectsEnabled(void);

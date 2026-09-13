@@ -42,7 +42,6 @@ state {
     nav_items: [3] NavigationBarItem = {{.route = 0,.label = "Home"},{.route = 1,.label = "Explore"},{.route = 2,.label = "Settings"}}
     theme_source: int = 0
     theme_mode: int = 2
-    theme_style: int = 1
     theme_initialized: int = 0
     menu_command: int = 0
     picker_choice: int = -1
@@ -107,7 +106,6 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     if theme_initialized == 0 {
         dark_mode = GetEffectiveThemeDarkMode()
         theme_mode = GetThemeMode()
-        theme_style = GetThemeStyle()
         theme_source = GetThemeSource()
         theme_initialized = 1
     }
@@ -506,15 +504,9 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
                 if theme_id >= THEME_COUNT { theme_id = 0 }
                 theme_changed = 1
             }
-            if Button((ButtonProps){.bounds={right,y + Scale(206),Scale(340),Scale(36)},.label=TextFormat("Style %d", theme_style),.id=982,.tone=ButtonToneNeutral,.emphasis=ButtonEmphasisSoft}) {
-                theme_style += 1
-                if theme_style > THEME_STYLE_DEFAULT { theme_style = THEME_STYLE_SYSTEM }
-                theme_changed = 1
-            }
             if theme_changed {
                 SetThemeSource((ThemeSource)theme_source)
                 SetThemeMode((ThemeMode)theme_mode)
-                SetThemeStyle((ThemeStyle)theme_style)
                 dark_mode = GetEffectiveThemeDarkMode()
                 SetCurrentTheme(theme_id, dark_mode)
             }

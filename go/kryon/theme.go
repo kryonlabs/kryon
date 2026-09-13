@@ -76,11 +76,6 @@ type Metrics struct {
 	TransitionNormalMs   float32
 }
 
-func Theme_DefaultStyleValue() int32 {
-	var value_0 int32 = 2
-	return value_0
-}
-
 func Theme_ResolveDark(mode int32, system_dark bool) bool {
 	var value_0 int32 = mode
 	var value_1 int32 = ModePolicyModeLight
