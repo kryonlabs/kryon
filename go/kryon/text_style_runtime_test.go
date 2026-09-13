@@ -79,6 +79,7 @@ Plot { typeface: test-retained-semibold; font-size: 13; foreground: #8090a0; }
 Slider[role=Label] { typeface: test-retained-semibold; font-size: 12; foreground: #90a0b0; }
 Toggle[role=Label] { typeface: test-retained-semibold; font-size: 11; foreground: #a0b0c0; }
 Drag { typeface: test-retained-semibold; font-size: 10; foreground: #b0c0d0; }
+DragValue { typeface: test-retained-semibold; font-size: 16; foreground: #b0c0e0; }
 Tab { typeface: test-retained-semibold; font-size: 16; foreground: #b1c1d1; }
 ColorPickerSwatch { typeface: test-retained-semibold; font-size: 16; foreground: #b2c2d2; }
 Modal[role=Title] { typeface: test-retained-semibold; font-size: 16; foreground: #b3c3d3; }
@@ -161,6 +162,7 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 		"Off":         false,
 		"On":          false,
 		"Drag":        false,
+		"2.000":       false,
 		"Tab One":     false,
 		"×":           false,
 		"Swatch":      false,

@@ -3800,13 +3800,13 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 	button := Button_BuildFrame(props, ButtonInput{}, frame, InteractionMotion{},
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1, Text14, Text14)
 	style := unpackStyle(button.Appearance.Value)
-	font := styleFont(style, Text14)
+	font, fontID := styleTextFace(style, Text14)
 	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button,
 		Opacity: style.Opacity, BorderWidth: style.BorderWidth, Radius: style.Radius,
 		Material: MaterialKind(style.Material), FillStates: styleFill(style),
 		FillStatesValid: true, AmbientColor: r.appAmbientColor(), FocusColor: style.Focus,
 		Bounds: bounds, Text: text, Color: style.Background, BorderColor: style.Border,
-		TextColor: style.Foreground, FontSize: font, ID: id, Row: component,
+		TextColor: style.Foreground, FontSize: font, FontID: fontID, ID: id, Row: component,
 		Disabled: disabled, Pressed: pressed, Focused: focused})
 }
 
@@ -3816,8 +3816,7 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 	}
 	style := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false,
 		false, StyleSheet_StyleKindDrag()).Value)
-	font := styleFont(style, Text14)
-	fontID := styleFontID(style)
+	font, fontID := styleTextFace(style, Text14)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID})
 }
 
