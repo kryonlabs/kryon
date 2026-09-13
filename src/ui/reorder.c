@@ -244,9 +244,11 @@ RenderReorderPlaceholder(Rectangle bounds)
             return;
         DrawRectangleRounded(paint.slot_bounds, paint.radius, paint.segments,
                              Fade(color, paint.fill_alpha));
-        DrawRectangleRoundedLinesEx(paint.slot_bounds, paint.radius,
-                                    paint.segments, paint.stroke_width,
-                                    color);
+        if(paint.stroke_width > 0.0f) {
+            DrawRectangleRoundedLinesEx(paint.slot_bounds, paint.radius,
+                                        paint.segments, paint.stroke_width,
+                                        color);
+        }
         return;
     }
     if(paint.line_bounds.width <= 0 || paint.line_bounds.height <= 0)

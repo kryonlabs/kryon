@@ -73,7 +73,7 @@ ReorderHandlePaintFor :: (bounds: Rectangle, scale: float,
         handle.value.gap, 4.0, scale)
     col_gap: i32 = ReorderMetric(handle.value.fields, (u32)StylePaddingX,
         handle.value.padding_x, 8.0, scale)
-    if dot < 1 { dot = 1 }
+    if dot <= 0 { return paint }
     if gap < 0 { gap = 0 }
     if col_gap < 0 { col_gap = 0 }
 
@@ -112,7 +112,7 @@ ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float,
 
     line_h: i32 = ReorderMetric(placeholder.value.fields,
         (u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
-    if line_h < 1 { line_h = 1 }
+    if line_h < 0 { line_h = 0 }
 
     threshold: i32 = ReorderMetric(placeholder.value.fields,
         (u32)StyleIconSize, placeholder.value.icon_size, 32.0, scale)
@@ -128,7 +128,7 @@ ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float,
         paint.slot_bounds.height = (float)slot_h
         paint.stroke_width = ReorderMetricFloat(placeholder.value.fields,
             (u32)StyleBorderWidth, placeholder.value.border_width, 2.0, scale)
-        if paint.stroke_width < 1.0 { paint.stroke_width = 1.0 }
+        if paint.stroke_width < 0.0 { paint.stroke_width = 0.0 }
         paint.radius = 0.12
         if (placeholder.value.fields & (u32)StyleRadius) != (u32)0 &&
            placeholder.value.radius >= 0.0 {

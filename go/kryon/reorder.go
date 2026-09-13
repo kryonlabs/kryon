@@ -191,11 +191,11 @@ func Reorder_ReorderHandlePaintFor(bounds Rectangle, scale float32, handle Style
 	var value_32 int32 = Reorder_ReorderMetric(value_26, value_28, value_29, value_30, value_31)
 	var col_gap int32 = value_32
 	var value_33 int32 = dot
-	var value_34 int32 = 1
-	var value_35 bool = value_33 < value_34
+	var value_34 int32 = 0
+	var value_35 bool = value_33 <= value_34
 	if value_35 {
-		var value_36 int32 = 1
-		dot = value_36
+		var value_36 ReorderHandlePaint = paint
+		return value_36
 	}
 	var value_37 int32 = gap
 	var value_38 int32 = 0
@@ -366,10 +366,10 @@ func Reorder_ReorderPlaceholderPaintFor(bounds Rectangle, scale float32, placeho
 	var value_22 int32 = Reorder_ReorderMetric(value_16, value_18, value_19, value_20, value_21)
 	var line_h int32 = value_22
 	var value_23 int32 = line_h
-	var value_24 int32 = 1
+	var value_24 int32 = 0
 	var value_25 bool = value_23 < value_24
 	if value_25 {
-		var value_26 int32 = 1
+		var value_26 int32 = 0
 		line_h = value_26
 	}
 	var value_27 uint32 = placeholder.Value.Fields
@@ -443,10 +443,10 @@ func Reorder_ReorderPlaceholderPaintFor(bounds Rectangle, scale float32, placeho
 		var value_80 float32 = Reorder_ReorderMetricFloat(value_74, value_76, value_77, value_78, value_79)
 		paint.StrokeWidth = value_80
 		var value_81 float32 = paint.StrokeWidth
-		var value_82 float32 = 1.0
+		var value_82 float32 = 0.0
 		var value_83 bool = value_81 < value_82
 		if value_83 {
-			var value_84 float32 = 1.0
+			var value_84 float32 = 0.0
 			paint.StrokeWidth = value_84
 		}
 		var value_85 float32 = 0.12

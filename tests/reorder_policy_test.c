@@ -88,6 +88,12 @@ main(void)
     check_rect(handle_paint.dot4, 21.0f, 45.0f, 3.0f, 3.0f);
     check_rect(handle_paint.dot5, 32.0f, 45.0f, 3.0f, 3.0f);
 
+    handle_frame.value.icon_size = 0.0f;
+    handle_paint = ReorderHandlePaintFor((Rectangle){10, 20, 36, 40}, 1.0f,
+                                         handle_frame);
+    assert(handle_paint.dot_count == 0);
+    handle_frame.value.icon_size = 3.0f;
+
     placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 40},
                                              1.0f, placeholder_frame);
     assert(placeholder.use_slot == 1);
@@ -101,6 +107,17 @@ main(void)
                                              1.0f, placeholder_frame);
     assert(placeholder.use_slot == 0);
     check_rect(placeholder.line_bounds, 10.0f, 31.0f, 100.0f, 2.0f);
+
+    placeholder_frame.value.border_width = 0.0f;
+    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 40},
+                                             1.0f, placeholder_frame);
+    assert(placeholder.use_slot == 1);
+    assert(placeholder.stroke_width == 0.0f);
+    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 24},
+                                             1.0f, placeholder_frame);
+    assert(placeholder.use_slot == 0);
+    check_rect(placeholder.line_bounds, 10.0f, 32.0f, 100.0f, 0.0f);
+    placeholder_frame.value.border_width = 2.0f;
 
     assert(ReorderDraggedCenterY(90, 20, 40.0f) == 90);
     assert(ReorderTargetIncludesItem(51, (Rectangle){0, 20, 100, 60}));
