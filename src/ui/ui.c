@@ -4052,22 +4052,15 @@ ui_text_area_render(TextAreaProps area)
             if(g_ui_text_input_codepoint_count > 0)
                 g_ui_text_input_codepoint_count = 0;
             if(enter_requested) {
-                int len;
-
                 if(!deleted_selection) {
                     ui_text_delete_range(area.text, area.text_size,
                                          area.cursor_position,
                                          selection_start, selection_end);
                     deleted_selection = 1;
                 }
-                len = (int)strlen(area.text);
-                *area.cursor_position = ui_clampi(*area.cursor_position, 0, len);
-                if((size_t)(len + 2) <= area.text_size) {
-                    memmove(area.text + *area.cursor_position + 1,
-                            area.text + *area.cursor_position,
-                            (size_t)(len - *area.cursor_position + 1));
-                    area.text[*area.cursor_position] = '\n';
-                    (*area.cursor_position)++;
+                if(ui_text_insert_newline(area.text, area.text_size,
+                                          area.cursor_position,
+                                          area.max_codepoints)) {
                     changed = 1;
                 }
                 g_ui_text_input_enter_count = 0;
@@ -4114,14 +4107,9 @@ ui_text_area_render(TextAreaProps area)
             changed |= EditText(area_edit);
         }
         if(!area.read_only && enter_requested) {
-            int len = (int)strlen(area.text);
-            *area.cursor_position = ui_clampi(*area.cursor_position, 0, len);
-            if((size_t)(len + 2) <= area.text_size) {
-                memmove(area.text + *area.cursor_position + 1,
-                        area.text + *area.cursor_position,
-                        (size_t)(len - *area.cursor_position + 1));
-                area.text[*area.cursor_position] = '\n';
-                (*area.cursor_position)++;
+            if(ui_text_insert_newline(area.text, area.text_size,
+                                      area.cursor_position,
+                                      area.max_codepoints)) {
                 changed = 1;
             }
             g_ui_text_input_enter_count = 0;
