@@ -59,7 +59,7 @@ Box Line Bevel Icon Image Button Card Selectable Audio Bdi Bdo
 BidirectionalIsolate BidirectionalOverride BlockQuote Bold Cite Code
 CodeBlock Col ColGroup Data Datalist DataList Del Deleted DescriptionDetails DescriptionList
 DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form
-Header Hgroup HGroup IFrame Iframe ImageMap Ins Inserted Italic Kbd Keyboard Label Legend List
+Header Hgroup HGroup IFrame Iframe Ins Inserted Italic ImageMap Kbd Keyboard Label Legend List
 ListItem Main Mark Meter Nav Navigation OrderedList OptionGroup OptGroup Option
 Output Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Search Select Slot Small Source Strong Sub Subscript Summary Sup Superscript Table
 TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow

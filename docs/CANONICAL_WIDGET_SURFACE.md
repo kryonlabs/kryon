@@ -692,38 +692,57 @@ Recent retained-tree public C cleanup:
 
 ## Cleanup Queue
 
-1. Finish text editing policy migration:
+The public surface is now guarded: `canonical-surface-test` and
+`public-api-names-check` reject old public widget names such as `Href`,
+`Picture`, `Combo`, `MenuButton`, `SplitButton`, `InfoButton`, `ArrowButton`,
+typed `Drag`/`Slider` splits, and public `UI*` prefixes in the exported API.
+Remaining work is not "choose the names again"; it is finishing the migration
+of internal policy and host plumbing behind the canonical names.
+
+1. Finish C geometry-to-`.kry` migration:
+   `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
+   widgets already have `.kry` policy, but raw widget constants still remain in
+   native files. The next focused audits are menu rows and popup placement in
+   `src/ui/ui_tk.c`, option-row/separator details in `src/ui/dropdown.c`,
+   slider/toggle paint offsets in `src/ui/ui_slider.c`, row/forms metrics in
+   `src/ui/rows.c`, and button/icon fallback metrics in `src/ui/button.c`.
+2. Finish internal `UI*` cleanup:
+   Public headers/docs are clean, but internal implementation structs still use
+   old names such as popup input, paint layers, numeric input state, blend
+   state, and tree layout scopes. Rename these only after their public aliases
+   are already gone, and keep them internal while doing it.
+3. Finish text editing policy migration:
    `TextField` and `TextArea` already own metrics, paint geometry,
    buffer-limit, navigation, edit-intent, and selection range policy in
    `.kry`; remaining native work is buffer mutation, IME/composition,
    selection ownership/painting, and the final decision about how much of that
    can become reusable `.kry` policy.
-2. Finish rich text migration:
+4. Finish rich text migration:
    `Paragraph` has `.kry` metrics/default policy and generated
    `ParagraphSpec` data, but parsing, reflow, icon shaping, and rendering are
    still host work.
-3. Audit host-owned input/state lifecycles:
+5. Audit host-owned input/state lifecycles:
    retained menu open/focus/input state, drag/drop payload storage, reorder and
    swipe pointer ownership, paned-view drag ownership, tree/table selection
    mutation, table resizing/clipboard, modal input capture, and toast message
    storage/timing are still native support around `.kry` policy.
-4. Finish lowered block backend cleanup:
+6. Finish lowered block backend cleanup:
    `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
    blocks are canonical `.kry` syntax, but their lowered host scopes still
    require backend support until generated backends own the whole block path.
-5. Separate pure host services from widget policy:
+7. Separate pure host services from widget policy:
    image cache/loading/drawing, icon sheet/type lookup, URL dispatch, text
    measurement, focus registration, paint layers, clipping, and platform
    services should stay native only when they are true host services and not
    widget policy.
-6. Decide the Game2D boundary:
+8. Decide the Game2D boundary:
    Game2D props/enums are generated from `runtime/node2d_props.kry`, but
    `Scene`/`Node2D` declarations, scene lifecycle, physics/audio handles,
    asset playback, and rendering remain native scene support. Either keep this
    as an explicit non-widget domain or add `.kry` scene declaration support.
-7. Keep lowered host scopes out of public `.kry` documentation:
+9. Keep lowered host scopes out of public `.kry` documentation:
    immediate-mode `Begin*`/`End*` wrappers are native support, not widget names.
    Tutorial image helpers remain internal and route through canonical `Image`
    policy.
-8. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
-   as the naming and migration review surface.
+10. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
+    as the naming and migration review surface.
