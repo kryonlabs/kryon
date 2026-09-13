@@ -73,6 +73,7 @@ Link { typeface: test-retained-semibold; font-size: 19; foreground: #304050; }
 Toast[role=Label] { typeface: test-retained-semibold; font-size: 18; foreground: #405060; }
 Checkbox[role=Label] { typeface: test-retained-semibold; font-size: 16; foreground: #506070; }
 Separator[role=Label] { typeface: test-retained-semibold; font-size: 15; foreground: #607080; }
+Segment { typeface: test-retained-semibold; font-size: 16; foreground: #687888; }
 Progress[role=Label] { typeface: test-retained-semibold; font-size: 14; foreground: #708090; }
 Plot { typeface: test-retained-semibold; font-size: 13; foreground: #8090a0; }
 Slider[role=Label] { typeface: test-retained-semibold; font-size: 12; foreground: #90a0b0; }
@@ -114,12 +115,16 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 	collapsibleOpen := true
 	collapsibleVisible := true
 	treeSelected := int32(1)
+	segmentSelected := int32(0)
+	paragraphY := int32(0)
 	rt.BeginFrame()
 	rt.Heading(HeadingProps{Text: "Title"})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
+	rt.Paragraph(ParagraphSpec{Text: "Spec Body", Width: 180}, 0, &paragraphY)
 	rt.Link(LinkProps{Text: "Docs"})
 	rt.Separator(SeparatorProps{Bounds: Rectangle{Width: 160, Height: 24}, Label: "Group"})
 	rt.Checkbox(CheckboxProps{Bounds: Rectangle{Width: 160, Height: 32}, Label: "Check", Value: &checked})
+	rt.SegmentedControl(SegmentedControlProps{Bounds: Rectangle{Width: 180, Height: 32}, ID: 312, Options: []SegmentOption{{Label: "Segment"}}, OptionCount: 1, SelectedIndex: &segmentSelected})
 	rt.Progress(ProgressProps{Bounds: Rectangle{Width: 180, Height: 24}, Min: 0, Max: 100, Value: 35, Label: "Loading"})
 	rt.Plot(PlotProps{Bounds: Rectangle{Width: 180, Height: 60}, Label: "Trend", Overlay: "Now", Values: []float32{1, 3}, ValueCount: 2})
 	rt.Slider(SliderProps{Bounds: Rectangle{Width: 180, Height: 42}, ID: 301, Label: "Gain", FloatValues: sliderValues, ValueCount: 1, Min: 0, Max: 1})
@@ -144,9 +149,11 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 	want := map[string]bool{
 		"Title":       false,
 		"Body":        false,
+		"Spec Body":   false,
 		"Docs":        false,
 		"Group":       false,
 		"Check":       false,
+		"Segment":     false,
 		"Loading":     false,
 		"Trend":       false,
 		"Now":         false,

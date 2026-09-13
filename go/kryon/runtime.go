@@ -4677,15 +4677,20 @@ func (r *runtime) segmentedControlMetrics(props SegmentedControlProps) Segmented
 }
 
 func (r *runtime) segmentedControlFont(font int32) int32 {
+	size, _ := r.segmentedControlTextFace(font)
+	return size
+}
+
+func (r *runtime) segmentedControlTextFace(font int32) (int32, uint32) {
 	if font > 0 {
-		return font
+		return font, 0
 	}
-	return styleFont(defaultTextStyleForKind(Text14, StyleSheet_StyleKindSegment()), Text14)
+	return styleTextFace(defaultTextStyleForKind(Text14, StyleSheet_StyleKindSegment()), Text14)
 }
 
 func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, metrics SegmentedMetrics) int32 {
-	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidth(option.Label,
-		r.segmentedControlFont(font))), metrics, r.Scale(20))
+	size, fontID := r.segmentedControlTextFace(font)
+	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidthWithFont(option.Label, size, fontID)), metrics, r.Scale(20))
 }
 
 func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
@@ -5153,27 +5158,37 @@ func (r *runtime) Image(props ImageProps) {
 	r.record(op)
 }
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
+	style := unpackStyle(ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleOpacity), Opacity: 1}),
+		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindParagraphText()),
+		int32(ButtonStateNormal)))
+	textStyle := defaultTextStyle(Text16)
+	font, fontID := styleTextFace(style, styleFont(textStyle, Text16))
+	if fontID == 0 {
+		fontID = styleFontID(textStyle)
+	}
+	if spec.Font > 0 {
+		font = spec.Font
+	}
 	color := spec.Color
 	if color.A == 0 {
-		font := spec.Font
-		if font <= 0 {
-			font = Text16
+		color = textStyle.Foreground
+		if style.Fields&StyleForeground != 0 {
+			color = style.Foreground
 		}
-		color = defaultTextStyle(font).Foreground
 	}
 	textY := int32(0)
 	if y != nil {
 		textY = *y
 	}
 	fallbackWidth := int32(r.config.Width) - x
-	metrics := Paragraph_ParagraphResolveMetrics(spec.Font, Text16,
+	metrics := Paragraph_ParagraphResolveMetrics(font, Text16,
 		spec.LineGap, 4, spec.IconSize, spec.Width, fallbackWidth, 0, textY)
 	if !Paragraph_ParagraphCanLayout(metrics.Width) {
 		return
 	}
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY),
 		Width: float32(metrics.Width), Height: float32(metrics.Height)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: metrics.Font})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: metrics.Font, FontID: fontID})
 	if y != nil {
 		*y = metrics.NextY
 	}
