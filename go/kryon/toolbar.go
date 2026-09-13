@@ -21,6 +21,8 @@ type ToolbarSpec struct {
 	DropdownMaxWidth  int32
 	DropdownHeight    int32
 	Scale             float32
+	Bar               StyleFrame
+	Action            StyleFrame
 }
 
 type ToolbarLayout struct {
@@ -171,6 +173,34 @@ func Toolbar_ToolbarSidePadding(value int32, fields uint32, scale float32) int32
 	return value_10
 }
 
+func Toolbar_ToolbarSpecMetric(value int32, fields uint32, field uint32, frame StyleFrame, frame_value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 != value_4
+	var value_6 bool = value_5
+	if value_6 {
+		var value_7 int32 = value
+		var value_8 int32 = 0
+		var value_9 bool = value_7 >= value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 int32 = value
+		return value_10
+	}
+	var value_11 uint32 = frame.Value.Fields
+	var value_12 uint32 = field
+	var value_13 float32 = frame_value
+	var value_14 float32 = fallback
+	var value_15 float32 = scale
+	var value_16 bool = true
+	var value_17 int32 = Toolbar_ToolbarStyleMetric(value_11, value_12, value_13, value_14, value_15, value_16)
+	return value_17
+}
+
 func Toolbar_ToolbarLayoutFor(spec ToolbarSpec) ToolbarLayout {
 	var layout ToolbarLayout = ToolbarLayout{}
 	var value_0 float32 = spec.Scale
@@ -223,149 +253,160 @@ func Toolbar_ToolbarLayoutFor(spec ToolbarSpec) ToolbarLayout {
 	layout.Bounds.Height = value_27
 	var value_28 int32 = spec.SidePadding
 	var value_29 uint32 = spec.BarFields
-	var value_30 float32 = scale
-	var value_31 int32 = Toolbar_ToolbarSidePadding(value_28, value_29, value_30)
-	layout.SidePadding = value_31
-	var value_32 uint32 = spec.ActionFields
-	var value_33 int32 = int32(StyleIconSize)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 int32 = spec.ActionIconSize
-	var value_36 float32 = 20.0
-	var value_37 float32 = scale
-	var value_38 int32 = Toolbar_ToolbarMetric(value_32, value_34, value_35, value_36, value_37)
-	layout.ActionIconSize = value_38
-	var value_39 uint32 = spec.ActionFields
-	var value_40 int32 = int32(StylePaddingX)
-	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 int32 = spec.ActionIconPadding
-	var value_43 float32 = 8.0
+	var value_30 int32 = int32(StylePaddingX)
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
+	var value_32 StyleFrame = spec.Bar
+	var value_33 float32 = spec.Bar.Value.PaddingX
+	var value_34 float32 = 12.0
+	var value_35 float32 = scale
+	var value_36 int32 = Toolbar_ToolbarSpecMetric(value_28, value_29, value_31, value_32, value_33, value_34, value_35)
+	layout.SidePadding = value_36
+	var value_37 int32 = spec.ActionIconSize
+	var value_38 uint32 = spec.ActionFields
+	var value_39 int32 = int32(StyleIconSize)
+	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
+	var value_41 StyleFrame = spec.Action
+	var value_42 float32 = spec.Action.Value.IconSize
+	var value_43 float32 = 20.0
 	var value_44 float32 = scale
-	var value_45 int32 = Toolbar_ToolbarMetric(value_39, value_41, value_42, value_43, value_44)
-	layout.ActionIconPadding = value_45
-	var value_46 uint32 = spec.ActionFields
-	var value_47 int32 = int32(StyleGap)
-	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
-	var value_49 int32 = spec.ActionGap
-	var value_50 float32 = 6.0
-	var value_51 float32 = scale
-	var value_52 int32 = Toolbar_ToolbarMetric(value_46, value_48, value_49, value_50, value_51)
-	layout.ActionGap = value_52
-	var value_53 int32 = layout.ActionIconSize
-	var value_54 int32 = layout.ActionIconPadding
-	var value_55 int32 = 2
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 3))
-	var value_57 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_56), 32, true, 1))
-	layout.ActionWidth = value_57
-	var value_58 int32 = spec.Y
-	var value_59 int32 = height
-	var value_60 int32 = layout.ActionWidth
-	var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
-	var value_62 int32 = 2
-	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 4))
-	var value_64 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_63), 32, true, 1))
-	layout.ActionY = value_64
-	var value_65 int32 = spec.X
-	var value_66 int32 = width
-	var value_67 int32 = int32(number_runtime_bits(uint64(value_65), uint64(value_66), 32, true, 1))
-	var value_68 int32 = layout.SidePadding
-	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 2))
-	layout.ControlsX = value_69
-	var value_70 int32 = layout.ControlsX
-	var controls_after_actions int32 = value_70
-	var value_71 int32 = action_count
-	var value_72 int32 = 0
-	var value_73 bool = value_71 > value_72
-	if value_73 {
-		var value_74 int32 = controls_after_actions
-		var value_75 int32 = action_count
-		var value_76 int32 = layout.ActionWidth
-		var value_77 int32 = layout.ActionGap
-		var value_78 int32 = int32(number_runtime_bits(uint64(value_76), uint64(value_77), 32, true, 1))
-		var value_79 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_78), 32, true, 3))
-		controls_after_actions = int32(number_runtime_bits(uint64(value_74), uint64(value_79), 32, true, 2))
-	}
-	var value_80 int32 = controls_after_actions
-	var value_81 int32 = spec.X
-	var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 2))
-	var dropdown_width int32 = value_82
-	var value_83 int32 = action_count
-	var value_84 int32 = 0
-	var value_85 bool = value_83 > value_84
-	if value_85 {
-		var value_86 int32 = dropdown_width
-		var value_87 int32 = layout.SidePadding
+	var value_45 int32 = Toolbar_ToolbarSpecMetric(value_37, value_38, value_40, value_41, value_42, value_43, value_44)
+	layout.ActionIconSize = value_45
+	var value_46 int32 = spec.ActionIconPadding
+	var value_47 uint32 = spec.ActionFields
+	var value_48 int32 = int32(StylePaddingX)
+	var value_49 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(0), 32, false, 0))
+	var value_50 StyleFrame = spec.Action
+	var value_51 float32 = spec.Action.Value.PaddingX
+	var value_52 float32 = 8.0
+	var value_53 float32 = scale
+	var value_54 int32 = Toolbar_ToolbarSpecMetric(value_46, value_47, value_49, value_50, value_51, value_52, value_53)
+	layout.ActionIconPadding = value_54
+	var value_55 int32 = spec.ActionGap
+	var value_56 uint32 = spec.ActionFields
+	var value_57 int32 = int32(StyleGap)
+	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
+	var value_59 StyleFrame = spec.Action
+	var value_60 float32 = spec.Action.Value.Gap
+	var value_61 float32 = 6.0
+	var value_62 float32 = scale
+	var value_63 int32 = Toolbar_ToolbarSpecMetric(value_55, value_56, value_58, value_59, value_60, value_61, value_62)
+	layout.ActionGap = value_63
+	var value_64 int32 = layout.ActionIconSize
+	var value_65 int32 = layout.ActionIconPadding
+	var value_66 int32 = 2
+	var value_67 int32 = int32(number_runtime_bits(uint64(value_65), uint64(value_66), 32, true, 3))
+	var value_68 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_67), 32, true, 1))
+	layout.ActionWidth = value_68
+	var value_69 int32 = spec.Y
+	var value_70 int32 = height
+	var value_71 int32 = layout.ActionWidth
+	var value_72 int32 = int32(number_runtime_bits(uint64(value_70), uint64(value_71), 32, true, 2))
+	var value_73 int32 = 2
+	var value_74 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_73), 32, true, 4))
+	var value_75 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_74), 32, true, 1))
+	layout.ActionY = value_75
+	var value_76 int32 = spec.X
+	var value_77 int32 = width
+	var value_78 int32 = int32(number_runtime_bits(uint64(value_76), uint64(value_77), 32, true, 1))
+	var value_79 int32 = layout.SidePadding
+	var value_80 int32 = int32(number_runtime_bits(uint64(value_78), uint64(value_79), 32, true, 2))
+	layout.ControlsX = value_80
+	var value_81 int32 = layout.ControlsX
+	var controls_after_actions int32 = value_81
+	var value_82 int32 = action_count
+	var value_83 int32 = 0
+	var value_84 bool = value_82 > value_83
+	if value_84 {
+		var value_85 int32 = controls_after_actions
+		var value_86 int32 = action_count
+		var value_87 int32 = layout.ActionWidth
 		var value_88 int32 = layout.ActionGap
-		var value_89 int32 = int32(number_runtime_bits(uint64(value_87), uint64(value_88), 32, true, 2))
-		dropdown_width = int32(number_runtime_bits(uint64(value_86), uint64(value_89), 32, true, 2))
+		var value_89 int32 = int32(number_runtime_bits(uint64(value_87), uint64(value_88), 32, true, 1))
+		var value_90 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_89), 32, true, 3))
+		controls_after_actions = int32(number_runtime_bits(uint64(value_85), uint64(value_90), 32, true, 2))
 	}
-	var value_90 int32 = dropdown_width
-	var available_width int32 = value_90
-	var value_91 int32 = spec.DropdownMinWidth
-	var value_92 int32 = 0
-	var value_93 bool = value_91 > value_92
-	var value_94 bool = value_93
-	if value_94 {
-		var value_95 int32 = dropdown_width
-		var value_96 int32 = spec.DropdownMinWidth
-		var value_97 bool = value_95 < value_96
-		value_94 = value_97
+	var value_91 int32 = controls_after_actions
+	var value_92 int32 = spec.X
+	var value_93 int32 = int32(number_runtime_bits(uint64(value_91), uint64(value_92), 32, true, 2))
+	var dropdown_width int32 = value_93
+	var value_94 int32 = action_count
+	var value_95 int32 = 0
+	var value_96 bool = value_94 > value_95
+	if value_96 {
+		var value_97 int32 = dropdown_width
+		var value_98 int32 = layout.SidePadding
+		var value_99 int32 = layout.ActionGap
+		var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 2))
+		dropdown_width = int32(number_runtime_bits(uint64(value_97), uint64(value_100), 32, true, 2))
 	}
-	if value_94 {
-		var value_98 int32 = spec.DropdownMinWidth
-		dropdown_width = value_98
+	var value_101 int32 = dropdown_width
+	var available_width int32 = value_101
+	var value_102 int32 = spec.DropdownMinWidth
+	var value_103 int32 = 0
+	var value_104 bool = value_102 > value_103
+	var value_105 bool = value_104
+	if value_105 {
+		var value_106 int32 = dropdown_width
+		var value_107 int32 = spec.DropdownMinWidth
+		var value_108 bool = value_106 < value_107
+		value_105 = value_108
 	}
-	var value_99 int32 = spec.DropdownMaxWidth
-	var value_100 int32 = 0
-	var value_101 bool = value_99 > value_100
-	var value_102 bool = value_101
-	if value_102 {
-		var value_103 int32 = dropdown_width
-		var value_104 int32 = spec.DropdownMaxWidth
-		var value_105 bool = value_103 > value_104
-		value_102 = value_105
+	if value_105 {
+		var value_109 int32 = spec.DropdownMinWidth
+		dropdown_width = value_109
 	}
-	if value_102 {
-		var value_106 int32 = spec.DropdownMaxWidth
-		dropdown_width = value_106
+	var value_110 int32 = spec.DropdownMaxWidth
+	var value_111 int32 = 0
+	var value_112 bool = value_110 > value_111
+	var value_113 bool = value_112
+	if value_113 {
+		var value_114 int32 = dropdown_width
+		var value_115 int32 = spec.DropdownMaxWidth
+		var value_116 bool = value_114 > value_115
+		value_113 = value_116
 	}
-	var value_107 int32 = available_width
-	var value_108 int32 = 0
-	var value_109 bool = value_107 > value_108
-	var value_110 bool = value_109
-	if value_110 {
-		var value_111 int32 = dropdown_width
-		var value_112 int32 = available_width
-		var value_113 bool = value_111 > value_112
-		value_110 = value_113
+	if value_113 {
+		var value_117 int32 = spec.DropdownMaxWidth
+		dropdown_width = value_117
 	}
-	if value_110 {
-		var value_114 int32 = available_width
-		dropdown_width = value_114
+	var value_118 int32 = available_width
+	var value_119 int32 = 0
+	var value_120 bool = value_118 > value_119
+	var value_121 bool = value_120
+	if value_121 {
+		var value_122 int32 = dropdown_width
+		var value_123 int32 = available_width
+		var value_124 bool = value_122 > value_123
+		value_121 = value_124
 	}
-	var value_115 int32 = dropdown_width
-	var value_116 int32 = 0
-	var value_117 bool = value_115 < value_116
-	if value_117 {
-		var value_118 int32 = 0
-		dropdown_width = value_118
+	if value_121 {
+		var value_125 int32 = available_width
+		dropdown_width = value_125
 	}
-	var value_119 int32 = spec.X
-	var value_120 float32 = float32(value_119)
-	layout.DropdownBounds.X = value_120
-	var value_121 int32 = spec.Y
-	var value_122 float32 = float32(value_121)
-	layout.DropdownBounds.Y = value_122
-	var value_123 int32 = dropdown_width
-	var value_124 float32 = float32(value_123)
-	layout.DropdownBounds.Width = value_124
-	var value_125 int32 = spec.DropdownHeight
-	var value_126 float32 = 36.0
-	var value_127 float32 = scale
-	var value_128 int32 = Toolbar_ToolbarPropMetric(value_125, value_126, value_127)
-	var value_129 float32 = float32(value_128)
-	layout.DropdownBounds.Height = value_129
-	var value_130 ToolbarLayout = layout
-	return value_130
+	var value_126 int32 = dropdown_width
+	var value_127 int32 = 0
+	var value_128 bool = value_126 < value_127
+	if value_128 {
+		var value_129 int32 = 0
+		dropdown_width = value_129
+	}
+	var value_130 int32 = spec.X
+	var value_131 float32 = float32(value_130)
+	layout.DropdownBounds.X = value_131
+	var value_132 int32 = spec.Y
+	var value_133 float32 = float32(value_132)
+	layout.DropdownBounds.Y = value_133
+	var value_134 int32 = dropdown_width
+	var value_135 float32 = float32(value_134)
+	layout.DropdownBounds.Width = value_135
+	var value_136 int32 = spec.DropdownHeight
+	var value_137 float32 = 36.0
+	var value_138 float32 = scale
+	var value_139 int32 = Toolbar_ToolbarPropMetric(value_136, value_137, value_138)
+	var value_140 float32 = float32(value_139)
+	layout.DropdownBounds.Height = value_140
+	var value_141 ToolbarLayout = layout
+	return value_141
 }
 
 func Toolbar_ToolbarActionBoundsFor(layout ToolbarLayout, index int32, action_count int32) Rectangle {

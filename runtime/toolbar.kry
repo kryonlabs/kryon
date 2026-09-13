@@ -20,6 +20,8 @@ ToolbarSpec :: struct {
     dropdown_max_width: i32
     dropdown_height: i32
     scale: float
+    bar: StyleFrame
+    action: StyleFrame
 }
 
 ToolbarLayout :: struct {
@@ -62,6 +64,16 @@ ToolbarSidePadding :: (value: i32, fields: u32, scale: float) -> i32 #export {
     return ToolbarMetric(fields, (u32)StylePaddingX, value, 12.0, scale)
 }
 
+ToolbarSpecMetric :: (value: i32, fields: u32, field: u32,
+    frame: StyleFrame, frame_value: float, fallback: float,
+    scale: float) -> i32 {
+    if (fields & field) != (u32)0 && value >= 0 {
+        return value
+    }
+    return ToolbarStyleMetric(frame.value.fields, field, frame_value,
+        fallback, scale, true)
+}
+
 ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
     layout: ToolbarLayout
     scale: float = spec.scale
@@ -77,13 +89,18 @@ ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
     layout.bounds.y = (float)spec.y
     layout.bounds.width = (float)width
     layout.bounds.height = (float)height
-    layout.side_padding = ToolbarSidePadding(spec.side_padding, spec.bar_fields, scale)
-    layout.action_icon_size = ToolbarMetric(spec.action_fields,
-        (u32)StyleIconSize, spec.action_icon_size, 20.0, scale)
-    layout.action_icon_padding = ToolbarMetric(spec.action_fields,
-        (u32)StylePaddingX, spec.action_icon_padding, 8.0, scale)
-    layout.action_gap = ToolbarMetric(spec.action_fields,
-        (u32)StyleGap, spec.action_gap, 6.0, scale)
+    layout.side_padding = ToolbarSpecMetric(spec.side_padding,
+        spec.bar_fields, (u32)StylePaddingX, spec.bar,
+        spec.bar.value.padding_x, 12.0, scale)
+    layout.action_icon_size = ToolbarSpecMetric(spec.action_icon_size,
+        spec.action_fields, (u32)StyleIconSize, spec.action,
+        spec.action.value.icon_size, 20.0, scale)
+    layout.action_icon_padding = ToolbarSpecMetric(spec.action_icon_padding,
+        spec.action_fields, (u32)StylePaddingX, spec.action,
+        spec.action.value.padding_x, 8.0, scale)
+    layout.action_gap = ToolbarSpecMetric(spec.action_gap,
+        spec.action_fields, (u32)StyleGap, spec.action,
+        spec.action.value.gap, 6.0, scale)
     layout.action_width = layout.action_icon_size + layout.action_icon_padding * 2
     layout.action_y = spec.y + (height - layout.action_width) / 2
     layout.controls_x = spec.x + width - layout.side_padding

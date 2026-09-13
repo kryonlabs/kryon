@@ -36,16 +36,16 @@ RenderToolbar(ToolbarProps toolbar)
         .width = toolbar.width,
         .height = toolbar.height,
         .action_count = toolbar.action_count,
-        .action_icon_size = (int)(action_style.icon_size + 0.5f),
-        .action_icon_padding = (int)(action_style.padding_x + 0.5f),
-        .action_gap = (int)(action_style.gap + 0.5f),
-        .side_padding = (int)(bar.padding_x + 0.5f),
-        .action_fields = action_style.fields,
-        .bar_fields = bar.fields,
+        .action_icon_size = -1,
+        .action_icon_padding = -1,
+        .action_gap = -1,
+        .side_padding = -1,
         .dropdown_min_width = toolbar.dropdown_min_width,
         .dropdown_max_width = toolbar.dropdown_max_width,
         .dropdown_height = toolbar.dropdown_height,
-        .scale = (float)Scale(1000) / 1000.0f
+        .scale = (float)Scale(1000) / 1000.0f,
+        .bar = bar_frame,
+        .action = action_frame
     });
 
     Rectangle bar_bounds = {(float)toolbar.x, (float)toolbar.y,

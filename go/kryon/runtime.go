@@ -5072,26 +5072,24 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	}
 	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		props.ClassName, StyleSheet_StyleKindToolbar(), 1)
-	barStyle := unpackStyle(barFrame.Value)
 	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		props.ClassName, StyleSheet_StyleKindToolbar(), 17)
-	actionStyle := unpackStyle(actionFrame.Value)
 	layout := Toolbar_ToolbarLayoutFor(ToolbarSpec{
 		X:                 props.X,
 		Y:                 props.Y,
 		Width:             props.Width,
 		Height:            props.Height,
 		ActionCount:       actionCount,
-		ActionIconSize:    int32(actionStyle.IconSize + 0.5),
-		ActionIconPadding: int32(actionStyle.PaddingX + 0.5),
-		ActionGap:         int32(actionStyle.Gap + 0.5),
-		SidePadding:       int32(barStyle.PaddingX + 0.5),
-		ActionFields:      actionStyle.Fields,
-		BarFields:         barStyle.Fields,
+		ActionIconSize:    -1,
+		ActionIconPadding: -1,
+		ActionGap:         -1,
+		SidePadding:       -1,
 		DropdownMinWidth:  props.DropdownMinWidth,
 		DropdownMaxWidth:  props.DropdownMaxWidth,
 		DropdownHeight:    props.DropdownHeight,
 		Scale:             1,
+		Bar:               barFrame,
+		Action:            actionFrame,
 	})
 	bounds := layout.Bounds
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))

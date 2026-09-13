@@ -39,6 +39,54 @@ test_toolbar_action_bounds(void)
     assert(layout.side_padding == 7);
     assert(first.x == 85.0f);
     assert(first.y == 2.0f);
+
+    StyleFrame bar = {.value = {.fields = StylePaddingX,
+                                .padding_x = 9.0f}};
+    StyleFrame action = {.value = {.fields = StyleIconSize |
+                                             StylePaddingX | StyleGap,
+                                   .icon_size = 22.0f,
+                                   .padding_x = 6.0f,
+                                   .gap = 5.0f}};
+    layout = ToolbarLayoutFor((ToolbarSpec){
+        .x = 4, .y = 10, .width = 140, .height = 40,
+        .action_count = 1,
+        .action_icon_size = -1,
+        .action_icon_padding = -1,
+        .action_gap = -1,
+        .side_padding = -1,
+        .bar = bar,
+        .action = action,
+        .scale = 1.0f
+    });
+    first = ToolbarActionBoundsFor(layout, 0, 1);
+    assert(layout.action_icon_size == 22);
+    assert(layout.action_icon_padding == 6);
+    assert(layout.action_width == 34);
+    assert(layout.action_gap == 5);
+    assert(layout.side_padding == 9);
+    assert(first.x == 101.0f);
+    assert(first.y == 13.0f);
+
+    bar.value.padding_x = 0.0f;
+    action.value.icon_size = 0.0f;
+    action.value.padding_x = 0.0f;
+    action.value.gap = 0.0f;
+    layout = ToolbarLayoutFor((ToolbarSpec){
+        .x = 0, .y = 0, .width = 80, .height = 12,
+        .action_count = 1,
+        .action_icon_size = -1,
+        .action_icon_padding = -1,
+        .action_gap = -1,
+        .side_padding = -1,
+        .bar = bar,
+        .action = action,
+        .scale = 1.0f
+    });
+    assert(layout.action_icon_size == 0);
+    assert(layout.action_icon_padding == 0);
+    assert(layout.action_width == 0);
+    assert(layout.action_gap == 0);
+    assert(layout.side_padding == 0);
 }
 
 static void
