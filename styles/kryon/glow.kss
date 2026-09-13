@@ -357,6 +357,9 @@ Menu[role=Bar] {
   background-end: surface-end;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
@@ -364,6 +367,9 @@ Menu[role=Popup] {
   background-end: card-end;
   foreground: text;
   border: border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -381,7 +387,8 @@ MenuItem {
   radius: radius.sm;
   border-width: border.none;
   padding-x: space.3;
-  padding-y: space.2;
+  padding-y: 7;
+  offset-x: 88;
   font-size: font.md;
   opacity: 1;
   material: glow;

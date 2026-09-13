@@ -1,5 +1,6 @@
 #module "menu"
 #import "drawing_props"
+#import "style"
 
 MenuMetrics :: struct {
     row_height: i32
@@ -13,18 +14,35 @@ MenuMetrics :: struct {
     bar_item_y_padding: i32
 }
 
-MenuMetricsFor :: (scale: float) -> MenuMetrics #export {
+MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
+    bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: MenuMetrics
-    metrics.row_height = (i32)(30.0 * scale)
-    metrics.panel_min_width = (i32)(180.0 * scale)
-    metrics.panel_padding = (i32)(12.0 * scale)
-    metrics.panel_margin = (i32)(4.0 * scale)
-    metrics.accelerator_gap = (i32)(88.0 * scale)
+    row_height: float = item.value.font_size + item.value.padding_y * 2.0
+    panel_min_width: float = panel.value.offset_x
+    panel_padding: float = panel.value.padding_x
+    panel_margin: float = panel.value.gap
+    accelerator_gap: float = item.value.offset_x
+    bar_item_padding: float = bar.value.padding_x * 2.0
+    bar_item_gap: float = bar.value.gap
+    bar_item_y_padding: float = bar.value.padding_y
+    if row_height <= 0.0 { row_height = 30.0 }
+    if panel_min_width <= 0.0 { panel_min_width = 180.0 }
+    if panel_padding <= 0.0 { panel_padding = 12.0 }
+    if panel_margin <= 0.0 { panel_margin = 4.0 }
+    if accelerator_gap <= 0.0 { accelerator_gap = 88.0 }
+    if bar_item_padding <= 0.0 { bar_item_padding = 24.0 }
+    if bar_item_gap <= 0.0 { bar_item_gap = 2.0 }
+    if bar_item_y_padding <= 0.0 { bar_item_y_padding = 3.0 }
+    metrics.row_height = (i32)(row_height * scale)
+    metrics.panel_min_width = (i32)(panel_min_width * scale)
+    metrics.panel_padding = (i32)(panel_padding * scale)
+    metrics.panel_margin = (i32)(panel_margin * scale)
+    metrics.accelerator_gap = (i32)(accelerator_gap * scale)
     metrics.bar_item_min_width = 0
-    metrics.bar_item_padding = (i32)(24.0 * scale)
-    metrics.bar_item_gap = (i32)(2.0 * scale)
-    metrics.bar_item_y_padding = (i32)(3.0 * scale)
+    metrics.bar_item_padding = (i32)(bar_item_padding * scale)
+    metrics.bar_item_gap = (i32)(bar_item_gap * scale)
+    metrics.bar_item_y_padding = (i32)(bar_item_y_padding * scale)
     return metrics
 }
 

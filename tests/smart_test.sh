@@ -37,6 +37,7 @@ needs_bevel=0
 needs_icon=0
 needs_transition_fade=0
 needs_modal=0
+needs_menu=0
 needs_tree_view=0
 needs_table_view=0
 needs_primitive=0
@@ -322,6 +323,13 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
+        runtime/menu.kry|tests/menu_policy_test.c)
+            needs_menu=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
         runtime/text_input.kry|src/ui/ui.c|tests/text_input_policy_test.c)
             needs_text_input_policy=1
             interesting=1
@@ -486,6 +494,9 @@ if [ "$needs_transition_fade" -eq 1 ]; then
 fi
 if [ "$needs_modal" -eq 1 ]; then
     targets="$targets modal-policy-test"
+fi
+if [ "$needs_menu" -eq 1 ]; then
+    targets="$targets menu-policy-test"
 fi
 if [ "$needs_tree_view" -eq 1 ]; then
     targets="$targets tree-view-policy-test"

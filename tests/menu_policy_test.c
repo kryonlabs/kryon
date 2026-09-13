@@ -1,0 +1,72 @@
+#include <assert.h>
+#include <math.h>
+
+#include "runtime/menu.h"
+#include "runtime/style.h"
+
+static void
+check_rect(Rectangle got, float x, float y, float width, float height)
+{
+    assert(fabsf(got.x - x) < 0.001f);
+    assert(fabsf(got.y - y) < 0.001f);
+    assert(fabsf(got.width - width) < 0.001f);
+    assert(fabsf(got.height - height) < 0.001f);
+}
+
+int
+main(void)
+{
+    StyleFrame panel = {0};
+    StyleFrame item = {0};
+    StyleFrame bar = {0};
+    MenuMetrics metrics = MenuMetricsFor(2.0f, panel, item, bar);
+    Rectangle bounds;
+    Rectangle row;
+    Rectangle bar_item;
+    int width;
+
+    assert(metrics.row_height == 60);
+    assert(metrics.panel_min_width == 360);
+    assert(metrics.panel_padding == 24);
+    assert(metrics.panel_margin == 8);
+    assert(metrics.accelerator_gap == 176);
+    assert(metrics.bar_item_padding == 48);
+    assert(metrics.bar_item_gap == 4);
+    assert(metrics.bar_item_y_padding == 6);
+
+    panel.value.padding_x = 10.0f;
+    panel.value.gap = 3.0f;
+    panel.value.offset_x = 160.0f;
+    item.value.font_size = 18.0f;
+    item.value.padding_y = 6.0f;
+    item.value.offset_x = 70.0f;
+    bar.value.padding_x = 9.0f;
+    bar.value.padding_y = 2.0f;
+    bar.value.gap = 5.0f;
+    metrics = MenuMetricsFor(1.0f, panel, item, bar);
+    assert(metrics.row_height == 30);
+    assert(metrics.panel_min_width == 160);
+    assert(metrics.panel_padding == 10);
+    assert(metrics.panel_margin == 3);
+    assert(metrics.accelerator_gap == 70);
+    assert(metrics.bar_item_padding == 18);
+    assert(metrics.bar_item_gap == 5);
+    assert(metrics.bar_item_y_padding == 2);
+
+    panel = (StyleFrame){0};
+    item = (StyleFrame){0};
+    bar = (StyleFrame){0};
+    metrics = MenuMetricsFor(1.0f, panel, item, bar);
+    width = MenuPanelWidthStep(0, 50, 20, true, metrics);
+    assert(width == 182);
+    bounds = MenuPanelBounds(0, 0, width, 3, metrics);
+    check_rect(bounds, 0, 0, 182, 98);
+    row = MenuRowBounds(bounds, 1, metrics);
+    check_rect(row, 4, 34, 174, 30);
+    assert(MenuSubmenuX(row) == 178);
+    assert(MenuGroupItemWidth(50, metrics) == 74);
+    bar_item = MenuGroupItemBounds(10, (Rectangle){0, 0, 240, 30}, 74,
+                                   metrics);
+    check_rect(bar_item, 10, 3, 74, 24);
+    return 0;
+}

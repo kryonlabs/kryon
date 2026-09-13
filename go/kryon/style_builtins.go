@@ -333,12 +333,18 @@ Menu[role=Bar] {
   background: surface;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
   background: card;
   foreground: text;
   border: border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -356,6 +362,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  offset-x: 88;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2080,12 +2087,18 @@ Menu[role=Bar] {
   background: surface;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
   background: card;
   foreground: text;
   border: outline-border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -2102,7 +2115,8 @@ MenuItem {
   radius: radius;
   border-width: border.none;
   padding-x: space.2;
-  padding-y: space.1;
+  padding-y: 8;
+  offset-x: 88;
   font-size: font;
   opacity: 1;
   material: default;
@@ -3809,12 +3823,18 @@ Menu[role=Bar] {
   background: surface;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
   background: card;
   foreground: text;
   border: border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -3831,7 +3851,8 @@ MenuItem {
   radius: radius.sm;
   border-width: border.none;
   padding-x: space.3;
-  padding-y: space.2;
+  padding-y: 7;
+  offset-x: 88;
   font-size: font.md;
   opacity: 1;
   material: default;
@@ -5590,6 +5611,9 @@ Menu[role=Bar] {
   background-end: surface-end;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
@@ -5597,6 +5621,9 @@ Menu[role=Popup] {
   background-end: card-end;
   foreground: text;
   border: border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -5614,7 +5641,8 @@ MenuItem {
   radius: radius.sm;
   border-width: border.none;
   padding-x: space.3;
-  padding-y: space.2;
+  padding-y: 7;
+  offset-x: 88;
   font-size: font.md;
   opacity: 1;
   material: glow;
@@ -7433,6 +7461,9 @@ Menu[role=Bar] {
   background-end: surface-end;
   foreground: text;
   border: border-soft;
+  padding-x: 12;
+  padding-y: 3;
+  gap: 2;
 }
 
 Menu[role=Popup] {
@@ -7440,6 +7471,9 @@ Menu[role=Popup] {
   background-end: card-end;
   foreground: text;
   border: card-border;
+  padding-x: 12;
+  gap: 4;
+  offset-x: 180;
 }
 
 Menu[role=Context] {
@@ -7457,7 +7491,9 @@ MenuItem {
   radius: radius;
   border-width: 0;
   padding-x: space.3;
-  padding-y: 8;
+  padding-y: 7;
+  offset-x: 88;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

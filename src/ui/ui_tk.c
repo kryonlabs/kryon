@@ -1140,10 +1140,18 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         StyleKindMenuItem(), StyleAny());
     Style base_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(base_item_frame).value);
+    StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 2);
+    StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 1);
     int font = base_item_style.font_size > 0.0f
         ? (int)(base_item_style.font_size + 0.5f)
         : GetFontSize();
-    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
+                                         panel_frame, base_item_frame,
+                                         bar_frame);
     int w = metrics.panel_min_width;
     int activated = 0;
     Rectangle panel;
@@ -1349,10 +1357,17 @@ menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count,
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
         StyleKindMenuItem(), StyleAny());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 2);
+    StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 1);
     int font = style.font_size > 0.0f
         ? (int)(style.font_size + 0.5f)
         : GetFontSize();
-    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
+                                         panel_frame, frame, bar_frame);
     int w = metrics.panel_min_width;
 
     if(items == NULL || item_count <= 0)
@@ -1438,10 +1453,18 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         StyleKindMenuItem(), StyleAny());
     Style base_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(base_item_frame).value);
+    StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 1);
+    StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 2);
     int font = base_item_style.font_size > 0.0f
         ? (int)(base_item_style.font_size + 0.5f)
         : GetFontSize();
-    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
+                                         panel_frame, base_item_frame,
+                                         bar_frame);
     int x = (int)bounds.x + Scale(4);
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
@@ -1527,9 +1550,6 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
     }
     state->overlay.active = 0;
     if(can_draw) {
-        StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
-            ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-            StyleKindMenu(), 1);
         ui_tk_draw_style_frame(bounds, (Rectangle){0}, bar_frame, 0, 0, 0, 0);
     }
 

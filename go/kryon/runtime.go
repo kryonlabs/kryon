@@ -5135,7 +5135,13 @@ func resetMenuPath(state *menuNavigation, items []MenuItem) {
 func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []MenuGroup, openIndex *int32) MenuResult {
 	result := MenuResult{OpenIndex: -1}
 	state := r.menuNav(id)
-	metrics := Menu_MenuMetricsFor(1)
+	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 1)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 2)
+	menuItemBaseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
+	metrics := Menu_MenuMetricsFor(1, panelFrame, menuItemBaseFrame, barFrame)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(r.GetScreenWidth()) - bounds.X
 	}
@@ -5204,14 +5210,11 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 			}
 		}
 	}
-	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 1)
 	barStyle := unpackStyle(barFrame.Value)
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: barStyle.Border})
 	x := bounds.X + 4
-	menuItemBaseStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny()).Value)
+	menuItemBaseStyle := unpackStyle(menuItemBaseFrame.Value)
 	font, fontID := styleTextFace(menuItemBaseStyle, Text14)
 	for i, menu := range menus {
 		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
@@ -5295,10 +5298,15 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 }
 
 func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
-	baseStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny()).Value)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 2)
+	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 1)
+	baseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
+	baseStyle := unpackStyle(baseFrame.Value)
 	font, fontID := styleTextFace(baseStyle, Text14)
-	metrics := Menu_MenuMetricsFor(1)
+	metrics := Menu_MenuMetricsFor(1, panelFrame, baseFrame, barFrame)
 	width := metrics.PanelMinWidth
 	for _, item := range items {
 		accelWidth := int32(0)
@@ -5354,8 +5362,6 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 			}
 		}
 	}
-	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 2)
 	separatorStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, className, StyleSheet_StyleKindMenuSeparator(), StyleSheet_StyleAny()).Value)
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
