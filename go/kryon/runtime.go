@@ -4446,8 +4446,27 @@ func (r *runtime) Icon(id, x, y, size int32, iconType int32, tint Color) {
 }
 func (r *runtime) Image(props ImageProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	if props.Style.Enabled && props.Style.Background.A > 0 {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: props.Style.Background})
+	if props.Style.Enabled || props.ClassName != 0 {
+		frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+			false, false, props.ClassName, StyleSheet_StyleKindImage(), StyleSheet_StyleAny())
+		style := unpackStyle(frame.Value)
+		if props.Style.Background.A > 0 {
+			style.Background = props.Style.Background
+		}
+		if props.Style.Outline.A > 0 {
+			style.Border = props.Style.Outline
+		}
+		if props.Style.RadiusPx > 0 {
+			style.Radius = float32(props.Style.RadiusPx)
+		}
+		if props.Style.OutlinePx > 0 {
+			style.BorderWidth = float32(props.Style.OutlinePx)
+		}
+		op := styleFrameRectOp(props.Bounds, Rectangle{}, StyleFrame{
+			Value: packStyle(style),
+			Fill:  styleFill(style),
+		})
+		r.record(op)
 	}
 	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint}
 	if props.AltText != "" {

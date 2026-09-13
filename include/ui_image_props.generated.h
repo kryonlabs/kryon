@@ -51,6 +51,7 @@ typedef struct ImageProps {
     Color tint;
     ImageFit fit;
     ImageStyle style;
+    int32_t class_name;
 } ImageProps;
 
 #endif /* K_RUNTIME_IMAGE_PROPS_H */

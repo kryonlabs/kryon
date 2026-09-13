@@ -1706,6 +1706,48 @@ Button.panel { background: button; foreground: ink; border: rule; radius: radius
 	}
 }
 
+func TestImageResolvesClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.image.classes;
+tokens {
+  color {
+    panel: #243140;
+    edge: #7a8da0;
+  }
+  length { radius: 9; border: 2; }
+  material { flat: Flat; }
+}
+Image.hero { background: panel; border: edge; radius: radius; border-width: border; material: flat; opacity: 0.75; }
+`, "Image Classes", "") || !SetActiveStylePack("test.image.classes") {
+		t.Fatal("test image class style did not activate")
+	}
+	rt := New(AppConfig{Width: 180, Height: 120}).(*runtime)
+
+	rt.BeginFrame()
+	rt.Image(ImageProps{
+		AssetPath: "hero.png",
+		Bounds:    Rectangle{X: 10, Y: 20, Width: 80, Height: 40},
+		Tint:      White,
+		Fit:       ImageFitCover,
+		ClassName: StyleClassID("hero"),
+	})
+	rt.EndFrame()
+
+	ops := rt.FrameOps()
+	if len(ops) != 2 || ops[0].Kind != FrameOpRect || ops[1].Kind != FrameOpImage {
+		t.Fatalf("image class ops = %#v", ops)
+	}
+	style := ops[0]
+	if style.Color != (Color{0x24, 0x31, 0x40, 0xff}) ||
+		style.BorderColor != (Color{0x7a, 0x8d, 0xa0, 0xff}) ||
+		style.Radius != 9 || style.BorderWidth != 2 ||
+		style.Material != MaterialFlat || style.Opacity != 0.75 {
+		t.Fatalf("image class style op = %+v", style)
+	}
+}
+
 func TestSliderPaintUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

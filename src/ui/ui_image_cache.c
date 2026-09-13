@@ -22,11 +22,12 @@ typedef struct ImageCacheEntry {
 static ImageCacheEntry image_cache[KRY_IMAGE_CACHE_MAX];
 
 static Style
-image_widget_style(void)
+image_widget_style(int class_name)
 {
     return ui_unpack_style(ui_control_style_frame_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft},
+                      .emphasis = ButtonEmphasisSoft,
+                      .class_name = class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindImage()).value);
 }
@@ -335,17 +336,21 @@ image_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
 
 static void
 image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
-                    float *roundness, int *segments, int *outline_px)
+                    float *roundness, int *segments, int *outline_px,
+                    int class_name)
 {
-    ThemeMetrics tokens = GetThemeMetrics();
-    ThemeScheme scheme = ui_default_scheme();
+    Style resolved = image_widget_style(class_name);
 
-    if(*radius <= 0.0f)
-        *radius = (float)Scale((int)tokens.panel_radius);
+    if(*radius <= 0.0f && resolved.radius > 0.0f)
+        *radius = resolved.radius;
     *roundness = image_roundness_from_radius(bounds, *radius);
     *segments = *segments < 12 ? 12 : *segments;
-    style->background = scheme.surface_container;
-    style->outline = scheme.outline;
+    if(style->background.a == 0)
+        style->background = resolved.background;
+    if(style->outline.a == 0)
+        style->outline = resolved.border;
+    if(*outline_px <= 0 && resolved.border_width > 0.0f)
+        *outline_px = (int)(resolved.border_width + 0.5f);
     if(style->tonal_overlay.a > 30)
         style->tonal_overlay.a = 30;
     if(style->surface_overlay.a > 18)
@@ -387,7 +392,7 @@ ImageTexture(Texture2D texture, ImageProps image)
     outline_px = image.style.outline_px > 0 ? image.style.outline_px : 1;
     roundness = image.style.roundness > 0.0f ? image.style.roundness : 0.0f;
     image_apply_style(image.bounds, &image.style, &radius, &roundness, &segments,
-                        &outline_px);
+                        &outline_px, image.class_name);
 
     ui_default_elevation(image.bounds, roundness,
                          GetThemeMetrics().shadow_offset_y);

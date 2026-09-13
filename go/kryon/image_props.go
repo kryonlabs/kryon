@@ -34,4 +34,5 @@ type ImageProps struct {
 	Tint      Color
 	Fit       ImageFit
 	Style     ImageStyle
+	ClassName int32
 }

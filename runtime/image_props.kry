@@ -31,4 +31,5 @@ ImageProps :: struct {
     tint: Color
     fit: ImageFit
     style: ImageStyle
+    class_name: i32
 }

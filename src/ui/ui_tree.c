@@ -2305,12 +2305,14 @@ RenderImage(ImageProps image)
     if(texture.id == 0) {
         Style image_style = ui_unpack_style(ui_control_style_frame_kind(
             (ButtonProps){.tone = ButtonToneNeutral,
-                          .emphasis = ButtonEmphasisSoft},
+                          .emphasis = ButtonEmphasisSoft,
+                          .class_name = image.class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindImage()).value);
         Style label_style = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){.tone = ButtonToneNeutral,
-                          .emphasis = ButtonEmphasisSoft},
+                          .emphasis = ButtonEmphasisSoft,
+                          .class_name = image.class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindImage(), 6).value);
         int label_font = label_style.font_size > 0.0f
