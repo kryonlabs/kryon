@@ -23,6 +23,7 @@ main(void)
     Rectangle bounds;
     Rectangle row;
     Rectangle bar_item;
+    Vector2 origin;
     int width;
 
     assert(metrics.row_height == 60);
@@ -106,6 +107,9 @@ main(void)
     row = MenuRowBounds(bounds, 1, metrics);
     check_rect(row, 4, 34, 174, 30);
     assert(MenuSubmenuX(row) == 178);
+    origin = MenuSubmenuOrigin(row);
+    assert(fabsf(origin.x - 178.0f) < 0.001f);
+    assert(fabsf(origin.y - 34.0f) < 0.001f);
     assert(MenuGroupItemWidth(50, metrics) == 74);
     bar_item = MenuGroupItemBounds(10, (Rectangle){0, 0, 240, 30}, 74,
                                    metrics);

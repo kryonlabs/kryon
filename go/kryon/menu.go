@@ -360,6 +360,18 @@ func Menu_MenuSubmenuX(row Rectangle) int32 {
 	return value_3
 }
 
+func Menu_MenuSubmenuOrigin(row Rectangle) Vector2 {
+	var origin Vector2 = Vector2{}
+	var value_0 float32 = row.X
+	var value_1 float32 = row.Width
+	var value_2 float32 = value_0 + value_1
+	origin.X = value_2
+	var value_3 float32 = row.Y
+	origin.Y = value_3
+	var value_4 Vector2 = origin
+	return value_4
+}
+
 func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
 	var item Rectangle = Rectangle{}
 	var value_0 int32 = x

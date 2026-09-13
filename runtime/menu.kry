@@ -123,6 +123,13 @@ MenuSubmenuX :: (row: Rectangle) -> i32 #export {
     return (i32)(row.x + row.width)
 }
 
+MenuSubmenuOrigin :: (row: Rectangle) -> Vector2 #export {
+    origin: Vector2
+    origin.x = row.x + row.width
+    origin.y = row.y
+    return origin
+}
+
 MenuGroupItemBounds :: (x: i32, bar: Rectangle, width: i32,
     metrics: MenuMetrics) -> Rectangle #export {
     item: Rectangle

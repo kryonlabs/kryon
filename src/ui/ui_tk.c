@@ -1331,7 +1331,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 ? selected && state->navigation.depth > depth
                 : state->submenu_id == item->id) &&
            item->submenu != NULL && item->submenu_count > 0) {
-            int sub = draw_menu_items((int)(row.x + row.width), (int)row.y,
+            Vector2 origin = MenuSubmenuOrigin(row);
+            int sub = draw_menu_items((int)origin.x, (int)origin.y,
                                       item->submenu, item->submenu_count,
                                       focus_id, depth+1, class_name);
             if(sub != 0)

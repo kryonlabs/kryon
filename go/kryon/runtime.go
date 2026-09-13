@@ -5446,7 +5446,8 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 			}
 			if submenuOpen {
 				subitems := limitedMenuItems(item.Submenu, item.SubmenuCount)
-				activated, _ := r.drawPopupMenu(item.ID, className, Menu_MenuSubmenuX(row), int32(row.Y), subitems, focusID, depth+1, handled)
+				origin := Menu_MenuSubmenuOrigin(row)
+				activated, _ := r.drawPopupMenu(item.ID, className, int32(origin.X), int32(origin.Y), subitems, focusID, depth+1, handled)
 				if activated != 0 {
 					return activated, panel
 				}
