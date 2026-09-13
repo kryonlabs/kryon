@@ -16,6 +16,8 @@ const sheet = runtime.parseWebStyleSheet(`
     color: caret;
     background-color: #101820;
     background-image: linear-gradient(#101820, #203040);
+    background-position-x: left;
+    background-position-y: top;
     font-family: system-ui;
     border-radius: 6;
     text-decoration-line: underline;
@@ -33,6 +35,8 @@ assert.match(css, /--control-ring: 2px solid #3366ff;/);
 assert.match(css, /color: #ff6633;/);
 assert.match(css, /background-color: #101820;/);
 assert.match(css, /background-image: linear-gradient\(#101820, #203040\);/);
+assert.match(css, /background-position-x: left;/);
+assert.match(css, /background-position-y: top;/);
 assert.match(css, /font-family: system-ui;/);
 assert.match(css, /border-radius: 6px;/);
 assert.match(css, /text-decoration-line: underline;/);
@@ -53,6 +57,8 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   color: "#ff6633",
   "background-color": "#101820",
   "background-image": "linear-gradient(#101820, #203040)",
+  "background-position-x": "left",
+  "background-position-y": "top",
   "font-family": "system-ui",
   "border-radius": 6,
   "text-decoration-line": "underline",
@@ -183,6 +189,8 @@ assert.equal(field.style["--control-ring"], "2px solid #3366ff");
 assert.equal(field.style.color, "#ff6633");
 assert.equal(field.style.backgroundColor, "#101820");
 assert.equal(field.style.backgroundImage, "linear-gradient(#101820, #203040)");
+assert.equal(field.style.backgroundPositionX, "left");
+assert.equal(field.style.backgroundPositionY, "top");
 assert.equal(field.style.fontFamily, "system-ui");
 assert.equal(field.style.borderRadius, "6px");
 assert.equal(field.style.textDecorationLine, "underline");

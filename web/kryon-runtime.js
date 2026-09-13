@@ -2039,6 +2039,7 @@ const webKssLiteralProperties = new Set([
   "align-content", "justify-items", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-image", "background-size", "background-position",
+  "background-position-x", "background-position-y",
   "background-repeat", "background-clip", "background-origin",
   "background-attachment", "background-blend-mode", "visibility",
   "transition", "transition-property", "transition-duration",
@@ -2833,6 +2834,8 @@ const webCSSPropertyNames = new Map([
   ["background-image", "background-image"],
   ["background-size", "background-size"],
   ["background-position", "background-position"],
+  ["background-position-x", "background-position-x"],
+  ["background-position-y", "background-position-y"],
   ["background-repeat", "background-repeat"],
   ["background-clip", "background-clip"],
   ["background-origin", "background-origin"],
@@ -3855,6 +3858,8 @@ function applyResolvedWebStyle(el, style) {
   set("imageRendering", style["image-rendering"]);
   set("backgroundSize", style["background-size"]);
   set("backgroundPosition", style["background-position"]);
+  set("backgroundPositionX", style["background-position-x"]);
+  set("backgroundPositionY", style["background-position-y"]);
   set("backgroundRepeat", style["background-repeat"]);
   set("backgroundClip", style["background-clip"]);
   set("backgroundOrigin", style["background-origin"]);
