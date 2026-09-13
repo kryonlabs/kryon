@@ -2030,9 +2030,9 @@ const webKssLiteralProperties = new Set([
   "scrollbar-gutter", "touch-action",
   "align-items", "justify-content", "align-self", "justify-self",
   "flex-direction", "flex-wrap", "flex", "flex-grow", "flex-shrink",
-  "grid-template-columns", "grid-template-rows",
+  "grid-template-columns", "grid-template-rows", "grid-template-areas",
   "grid-auto-columns", "grid-auto-rows", "grid-auto-flow",
-  "grid-column", "grid-column-start", "grid-column-end",
+  "grid-column", "grid-column-start", "grid-column-end", "grid-area",
   "grid-row", "grid-row-start", "grid-row-end",
   "align-content", "justify-items", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
@@ -2802,12 +2802,14 @@ const webCSSPropertyNames = new Map([
   ["flex-basis", "flex-basis"],
   ["grid-template-columns", "grid-template-columns"],
   ["grid-template-rows", "grid-template-rows"],
+  ["grid-template-areas", "grid-template-areas"],
   ["grid-auto-columns", "grid-auto-columns"],
   ["grid-auto-rows", "grid-auto-rows"],
   ["grid-auto-flow", "grid-auto-flow"],
   ["grid-column", "grid-column"],
   ["grid-column-start", "grid-column-start"],
   ["grid-column-end", "grid-column-end"],
+  ["grid-area", "grid-area"],
   ["grid-row", "grid-row"],
   ["grid-row-start", "grid-row-start"],
   ["grid-row-end", "grid-row-end"],
@@ -3815,12 +3817,14 @@ function applyResolvedWebStyle(el, style) {
   set("flexBasis", style["flex-basis"]);
   set("gridTemplateColumns", style["grid-template-columns"]);
   set("gridTemplateRows", style["grid-template-rows"]);
+  set("gridTemplateAreas", style["grid-template-areas"]);
   set("gridAutoColumns", style["grid-auto-columns"]);
   set("gridAutoRows", style["grid-auto-rows"]);
   set("gridAutoFlow", style["grid-auto-flow"]);
   set("gridColumn", style["grid-column"]);
   set("gridColumnStart", style["grid-column-start"]);
   set("gridColumnEnd", style["grid-column-end"]);
+  set("gridArea", style["grid-area"]);
   set("gridRow", style["grid-row"]);
   set("gridRowStart", style["grid-row-start"]);
   set("gridRowEnd", style["grid-row-end"]);

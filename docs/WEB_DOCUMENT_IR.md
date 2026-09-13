@@ -451,7 +451,7 @@ content offsets, line height, text transform/overflow/decoration/wrapping,
 display/layout keywords, box sizing, scroll behavior/snap/margins/padding,
 overscroll including logical inline/block controls, touch-action controls,
 list-style and table layout controls, flex flow/grow/shrink/basis/order,
-grid tracks/auto tracks/auto-flow/line placement,
+grid tracks/areas/auto tracks/auto-flow/line placement,
 row/column gaps, placement/content/self alignment, transforms, containment/container
 queries, will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,

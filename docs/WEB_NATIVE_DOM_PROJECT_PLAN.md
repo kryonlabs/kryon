@@ -95,6 +95,8 @@ the browser receives normal elements, attributes, CSS, and events.
   properties.
 - KSS web sizing supports logical `inline-size`/`block-size` and min/max
   variants for writing-mode-aware layouts.
+- KSS web grid styling supports named template areas and per-node grid-area
+  placement in addition to tracks and line placement.
 - KSS web outline styling supports the native shorthand plus width, offset,
   style, and color fields.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
