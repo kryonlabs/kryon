@@ -231,8 +231,42 @@ main(void)
                   (int)item_paint.face.value.radius, 29);
     }
     {
+        StyleFrame panel = {.value = {.fields = StyleContentOffset |
+                                                StyleIconSize |
+                                                StylePaddingY,
+                                       .offset_x = 340.0f,
+                                       .icon_size = 128.0f,
+                                       .padding_y = 58.0f}};
+        StyleFrame row_frame = {.value = {.fields = StyleIconSize |
+                                                    StyleContentOffset |
+                                                    StylePaddingX |
+                                                    StylePaddingY,
+                                           .icon_size = 58.0f,
+                                           .offset_y = 22.0f,
+                                           .padding_x = 36.0f,
+                                           .padding_y = 36.0f}};
+        StyleFrame action = {.value = {.fields = StyleIconSize |
+                                                 StyleContentOffset |
+                                                 StylePaddingX |
+                                                 StylePaddingY |
+                                                 StyleGap,
+                                        .icon_size = 34.0f,
+                                        .offset_x = 180.0f,
+                                        .offset_y = 16.0f,
+                                        .padding_x = 92.0f,
+                                        .padding_y = 36.0f,
+                                        .gap = 8.0f}};
+        StyleFrame route = {.value = {.fields = StyleIconSize |
+                                                StyleContentOffset |
+                                                StylePaddingY |
+                                                StyleGap,
+                                       .icon_size = 48.0f,
+                                       .offset_y = 8.0f,
+                                       .padding_y = 12.0f,
+                                       .gap = 8.0f}};
         NavigationBarConfigMetrics metrics =
-            NavigationBarConfigMetricsFor(1.0f);
+            NavigationBarConfigMetricsFor(1.0f, panel, row_frame, action,
+                                          route);
         NavigationBarConfigLayout layout =
             NavigationBarConfigLayoutFor((Rectangle){100, 80, 340, 360},
                                          (Rectangle){118, 138, 304, 286},
@@ -256,6 +290,24 @@ main(void)
                   (int)row.dropdown_bounds.width, 260);
         check_int("navigation config row remove x",
                   (int)row.remove_bounds.x, 386);
+
+        panel.value.offset_x = 360.0f;
+        row_frame.value.icon_size = 62.0f;
+        row_frame.value.padding_x = 40.0f;
+        action.value.gap = 10.0f;
+        route.value.offset_y = 12.0f;
+        metrics = NavigationBarConfigMetricsFor(1.0f, panel, row_frame,
+                                                action, route);
+        check_int("navigation config frame width uses KSS",
+                  metrics.frame_width, 360);
+        check_int("navigation config row height uses KSS",
+                  metrics.row_height, 62);
+        check_int("navigation config remove width uses KSS",
+                  metrics.remove_width, 40);
+        check_int("navigation config button gap uses KSS",
+                  metrics.button_gap, 10);
+        check_int("navigation config scrollbar width uses KSS",
+                  metrics.scrollbar_width, 12);
     }
 
     BeginInterfaceFrame(900, 720, 1.0f);

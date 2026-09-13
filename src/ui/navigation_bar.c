@@ -251,6 +251,28 @@ navigation_bar_option_index(const NavigationBarOption *options, int option_count
     return 0;
 }
 
+static StyleFrame
+ui_navigation_bar_metric_frame(int class_name, int role)
+{
+    StyleFrame frame = {0};
+    frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name, role,
+            ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+            ButtonStateNormal),
+        ButtonStateNormal);
+    return frame;
+}
+
+static NavigationBarConfigMetrics
+ui_navigation_bar_config_metrics(int class_name, float scale)
+{
+    return NavigationBarConfigMetricsFor(scale,
+        ui_navigation_bar_metric_frame(class_name, 2),
+        ui_navigation_bar_metric_frame(class_name, 21),
+        ui_navigation_bar_metric_frame(class_name, 17),
+        ui_navigation_bar_metric_frame(class_name, 18));
+}
+
 NavigationBarConfigResult
 RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
 {
@@ -266,7 +288,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     int selected[16] = {0};
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     NavigationBarConfigMetrics metrics =
-        NavigationBarConfigMetricsFor(runtime_scale);
+        ui_navigation_bar_config_metrics(0, runtime_scale);
     NavigationBarConfigLayout layout;
     int y;
     int dropdown_blocks_buttons;

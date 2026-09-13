@@ -96,26 +96,50 @@ NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     return (i32)(86.0 * scale)
 }
 
-NavigationBarConfigMetricsFor :: (scale: float) -> NavigationBarConfigMetrics #export {
+NavigationBarMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
+NavigationBarConfigMetricsFor :: (scale: float, panel: StyleFrame,
+    row: StyleFrame, action: StyleFrame, route: StyleFrame) -> NavigationBarConfigMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: NavigationBarConfigMetrics
-    metrics.frame_width = (i32)(340.0 * scale)
-    metrics.frame_base_height = (i32)(128.0 * scale)
-    metrics.frame_bottom_extra = (i32)(58.0 * scale)
-    metrics.row_height = (i32)(58.0 * scale)
-    metrics.row_control_y = (i32)(22.0 * scale)
-    metrics.dropdown_height = (i32)(36.0 * scale)
-    metrics.remove_width = (i32)(36.0 * scale)
-    metrics.add_height = (i32)(34.0 * scale)
-    metrics.add_max_width = (i32)(180.0 * scale)
-    metrics.button_height = (i32)(36.0 * scale)
-    metrics.button_gap = (i32)(8.0 * scale)
-    metrics.button_max_width = (i32)(92.0 * scale)
-    metrics.button_bottom_gap = (i32)(16.0 * scale)
-    metrics.route_top_gap = (i32)(12.0 * scale)
-    metrics.route_bottom_gap = (i32)(8.0 * scale)
-    metrics.route_min_height = (i32)(48.0 * scale)
-    metrics.scrollbar_width = (i32)(8.0 * scale)
+    metrics.frame_width = NavigationBarMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_x, 340.0, scale)
+    metrics.frame_base_height = NavigationBarMetric(panel.value.fields,
+        (u32)StyleIconSize, panel.value.icon_size, 128.0, scale)
+    metrics.frame_bottom_extra = NavigationBarMetric(panel.value.fields,
+        (u32)StylePaddingY, panel.value.padding_y, 58.0, scale)
+    metrics.row_height = NavigationBarMetric(row.value.fields,
+        (u32)StyleIconSize, row.value.icon_size, 58.0, scale)
+    metrics.row_control_y = NavigationBarMetric(row.value.fields,
+        (u32)StyleContentOffset, row.value.offset_y, 22.0, scale)
+    metrics.dropdown_height = NavigationBarMetric(row.value.fields,
+        (u32)StylePaddingY, row.value.padding_y, 36.0, scale)
+    metrics.remove_width = NavigationBarMetric(row.value.fields,
+        (u32)StylePaddingX, row.value.padding_x, 36.0, scale)
+    metrics.add_height = NavigationBarMetric(action.value.fields,
+        (u32)StyleIconSize, action.value.icon_size, 34.0, scale)
+    metrics.add_max_width = NavigationBarMetric(action.value.fields,
+        (u32)StyleContentOffset, action.value.offset_x, 180.0, scale)
+    metrics.button_height = NavigationBarMetric(action.value.fields,
+        (u32)StylePaddingY, action.value.padding_y, 36.0, scale)
+    metrics.button_gap = NavigationBarMetric(action.value.fields,
+        (u32)StyleGap, action.value.gap, 8.0, scale)
+    metrics.button_max_width = NavigationBarMetric(action.value.fields,
+        (u32)StylePaddingX, action.value.padding_x, 92.0, scale)
+    metrics.button_bottom_gap = NavigationBarMetric(action.value.fields,
+        (u32)StyleContentOffset, action.value.offset_y, 16.0, scale)
+    metrics.route_top_gap = NavigationBarMetric(route.value.fields,
+        (u32)StylePaddingY, route.value.padding_y, 12.0, scale)
+    metrics.route_bottom_gap = NavigationBarMetric(route.value.fields,
+        (u32)StyleGap, route.value.gap, 8.0, scale)
+    metrics.route_min_height = NavigationBarMetric(route.value.fields,
+        (u32)StyleIconSize, route.value.icon_size, 48.0, scale)
+    metrics.scrollbar_width = NavigationBarMetric(route.value.fields,
+        (u32)StyleContentOffset, route.value.offset_y, 8.0, scale)
     return metrics
 }
 

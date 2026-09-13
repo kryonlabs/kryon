@@ -179,6 +179,35 @@ NavigationBar {
   material: default;
 }
 
+NavigationBar[role=Panel] {
+  offset-x: 340;
+  icon-size: 128;
+  padding-y: 58;
+}
+
+NavigationBar[role=Row] {
+  icon-size: 58;
+  offset-y: 22;
+  padding-x: 36;
+  padding-y: 36;
+}
+
+NavigationBar[role=Action] {
+  icon-size: 34;
+  offset-x: 180;
+  offset-y: 16;
+  padding-x: 92;
+  padding-y: 36;
+  gap: 8;
+}
+
+NavigationBar[role=Divider] {
+  icon-size: 48;
+  offset-y: 8;
+  padding-y: 12;
+  gap: 8;
+}
+
 NavigationBarItem {
   background: transparent;
   foreground: muted;
@@ -1959,6 +1988,35 @@ NavigationBar {
   material: default;
 }
 
+NavigationBar[role=Panel] {
+  offset-x: 340;
+  icon-size: 128;
+  padding-y: 58;
+}
+
+NavigationBar[role=Row] {
+  icon-size: 58;
+  offset-y: 22;
+  padding-x: 36;
+  padding-y: 36;
+}
+
+NavigationBar[role=Action] {
+  icon-size: 34;
+  offset-x: 180;
+  offset-y: 16;
+  padding-x: 92;
+  padding-y: 36;
+  gap: 8;
+}
+
+NavigationBar[role=Divider] {
+  icon-size: 48;
+  offset-y: 8;
+  padding-y: 12;
+  gap: 8;
+}
+
 NavigationBarItem {
   background: transparent;
   foreground: muted;
@@ -3727,6 +3785,35 @@ NavigationBar {
   gap: gap;
   opacity: 1;
   material: default;
+}
+
+NavigationBar[role=Panel] {
+  offset-x: 340;
+  icon-size: 128;
+  padding-y: 58;
+}
+
+NavigationBar[role=Row] {
+  icon-size: 58;
+  offset-y: 22;
+  padding-x: 36;
+  padding-y: 36;
+}
+
+NavigationBar[role=Action] {
+  icon-size: 34;
+  offset-x: 180;
+  offset-y: 16;
+  padding-x: 92;
+  padding-y: 36;
+  gap: 8;
+}
+
+NavigationBar[role=Divider] {
+  icon-size: 48;
+  offset-y: 8;
+  padding-y: 12;
+  gap: 8;
 }
 
 NavigationBarItem {
@@ -5534,6 +5621,35 @@ NavigationBar {
   gap: gap;
   opacity: 1;
   material: glow;
+}
+
+NavigationBar[role=Panel] {
+  offset-x: 340;
+  icon-size: 128;
+  padding-y: 58;
+}
+
+NavigationBar[role=Row] {
+  icon-size: 58;
+  offset-y: 22;
+  padding-x: 36;
+  padding-y: 36;
+}
+
+NavigationBar[role=Action] {
+  icon-size: 34;
+  offset-x: 180;
+  offset-y: 16;
+  padding-x: 92;
+  padding-y: 36;
+  gap: 8;
+}
+
+NavigationBar[role=Divider] {
+  icon-size: 48;
+  offset-y: 8;
+  padding-y: 12;
+  gap: 8;
 }
 
 NavigationBarItem {
@@ -7414,6 +7530,35 @@ NavigationBar {
   gap: gap;
   opacity: 1;
   material: premium;
+}
+
+NavigationBar[role=Panel] {
+  offset-x: 340;
+  icon-size: 128;
+  padding-y: 58;
+}
+
+NavigationBar[role=Row] {
+  icon-size: 58;
+  offset-y: 22;
+  padding-x: 36;
+  padding-y: 36;
+}
+
+NavigationBar[role=Action] {
+  icon-size: 34;
+  offset-x: 180;
+  offset-y: 16;
+  padding-x: 92;
+  padding-y: 36;
+  gap: 8;
+}
+
+NavigationBar[role=Divider] {
+  icon-size: 48;
+  offset-y: 8;
+  padding-y: 12;
+  gap: 8;
 }
 
 NavigationBarItem {
