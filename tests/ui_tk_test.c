@@ -417,6 +417,9 @@ test_separator_policy(void)
     Rectangle bounds = {10, 20, 100, 30};
     StyleFrame frame = test_style_frame(0x05060708, 0x01020304,
                                         0x11223344);
+    SeparatorLabelPaint zero_gap;
+    SeparatorLabelPaint fallback_gap;
+    frame.value.fields |= StyleGap;
     frame.value.gap = 12.0f;
     SeparatorLine horizontal = SeparatorLineFor(bounds, 0, frame);
     SeparatorLine vertical = SeparatorLineFor(bounds, 1, frame);
@@ -434,6 +437,12 @@ test_separator_policy(void)
     check_int("separator text line x", (int)text.line.x, 62);
     check_int("separator text line width", (int)text.line.width, 48);
     check_int("separator text visible", text.show_text, 1);
+    frame.value.gap = 0.0f;
+    zero_gap = SeparatorLabelPaintFor(bounds, 40, 1, 14, 1.0f, frame);
+    check_int("separator explicit zero gap", (int)zero_gap.line.x, 50);
+    frame.value.fields &= ~StyleGap;
+    fallback_gap = SeparatorLabelPaintFor(bounds, 40, 1, 14, 1.0f, frame);
+    check_int("separator missing gap fallback", (int)fallback_gap.line.x, 62);
     check_int("separator no-text line x", (int)no_text.line.x, 10);
     check_int("separator no-text hidden", no_text.show_text, 0);
     check_int("bullet bounds x", (int)bullet.bounds.x, 17);
