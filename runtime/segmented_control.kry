@@ -56,7 +56,8 @@ SegmentedDefaultMetrics :: (row_height: i32, min_item_width: i32,
         metrics.max_item_width = metrics.min_item_width
     }
     label_padding: float = segment.value.padding_x * 2.0
-    if (segment.value.fields & (u32)StylePaddingX) == (u32)0 {
+    if (segment.value.fields & (u32)StylePaddingX) == (u32)0 ||
+       segment.value.padding_x < 0.0 {
         label_padding = 20.0
     }
     metrics.label_padding = SegmentedMetric(segment.value.fields,

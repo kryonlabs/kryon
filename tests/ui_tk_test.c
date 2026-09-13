@@ -998,6 +998,17 @@ test_segmented_control_policy(void)
     control.value.gap = 0.0f;
     zero_gap = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
     check_int("segmented explicit zero gap", zero_gap.gap, 0);
+
+    segment.value.fields = StylePaddingX;
+    segment.value.padding_x = 0.0f;
+    metrics = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
+    check_int("segmented explicit zero label padding",
+              metrics.label_padding, 0);
+
+    segment.value.padding_x = -4.0f;
+    metrics = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
+    check_int("segmented negative label padding fallback",
+              metrics.label_padding, 20);
 }
 
 static void
