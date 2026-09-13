@@ -2,6 +2,8 @@
 #define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_separator_props.generated.h"
+#include "ui_toggle_props.generated.h"
 #include "ui_controls.h"
 #include "ui_menu_types.h"
 
@@ -29,15 +31,6 @@ typedef struct {
     int checked;
     int disabled;
 } RadioProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    int *value;
-    const char *off_label;
-    const char *on_label;
-    int disabled;
-} ToggleProps;
 
 typedef struct {
     Rectangle bounds;
@@ -148,14 +141,6 @@ typedef struct {
     const char *typeface;
     Style style;
 } TextProps;
-
-typedef struct {
-    Rectangle bounds;
-    int vertical;
-    const char *label;
-    int font;
-    int disabled;
-} SeparatorProps;
 
 typedef enum {
     DragDropRoleSource = 0,

@@ -81,6 +81,7 @@ surface review:
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
 | `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
+| `runtime/separator_props.kry` | Separator props | `.kry canonical` |
 | `runtime/slider.kry` | Slider composition plus value/keyboard policy | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
@@ -93,6 +94,7 @@ surface review:
 | `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout policy | `.kry canonical` |
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
+| `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar metrics and geometry policy | `.kry canonical` |
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | Native support |
@@ -348,7 +350,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
-| `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
+| `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
@@ -373,7 +375,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Stack` | `.kry canonical` | Content/child fill policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Screen` | `.kry canonical` | Top-level screen container; viewport fallback bounds policy is in `.kry`. |
 | `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
-| `Separator` | `.kry canonical` | Line, label, and bullet layout/paint policy are in `.kry`; label typography is KSS-owned; host handles text measurement and drawing. |
+| `Separator` | `.kry canonical` | Public props live in `runtime/separator_props.kry`; line, label, and bullet layout/paint policy are in `.kry`; label typography is KSS-owned; host handles text measurement and drawing. |
 | `Fieldset` | `.kry canonical` | Titled border group. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `.kry canonical` | Header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |

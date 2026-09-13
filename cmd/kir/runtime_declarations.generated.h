@@ -266,4 +266,29 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "}\n"
     },
+    {"runtime/separator_props.kry",
+        "#module \"separator_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "SeparatorProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    vertical: bool\n"
+        "    label: const char*\n"
+        "    font: i32\n"
+        "    disabled: bool\n"
+        "}\n"
+    },
+    {"runtime/toggle_props.kry",
+        "#module \"toggle_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "ToggleProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    value: *i32\n"
+        "    off_label: const char*\n"
+        "    on_label: const char*\n"
+        "    disabled: bool\n"
+        "}\n"
+    },
 };

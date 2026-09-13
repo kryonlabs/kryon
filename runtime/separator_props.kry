@@ -1,0 +1,10 @@
+#module "separator_props"
+#import "kryon_compat.generated.h"
+
+SeparatorProps :: struct {
+    bounds: Rectangle
+    vertical: bool
+    label: const char*
+    font: i32
+    disabled: bool
+}

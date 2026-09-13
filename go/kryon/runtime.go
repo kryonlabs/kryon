@@ -378,15 +378,6 @@ type ThemeFamily struct {
 	Dark  Theme
 }
 
-type ToggleProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Value    *int32
-	OffLabel string
-	OnLabel  string
-	Disabled bool
-}
-
 type Tab struct {
 	Label     string
 	Icon      Texture2D
@@ -415,14 +406,6 @@ type TabBarProps struct {
 	MiddleClickedIndex *int32
 	ID                 int32
 	Disabled           bool
-}
-
-type SeparatorProps struct {
-	Bounds   Rectangle
-	Vertical bool
-	Label    string
-	Font     int32
-	Disabled bool
 }
 
 type DragDropRole int32

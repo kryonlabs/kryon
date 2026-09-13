@@ -1,0 +1,11 @@
+#module "toggle_props"
+#import "kryon_compat.generated.h"
+
+ToggleProps :: struct {
+    bounds: Rectangle
+    id: i32
+    value: *i32
+    off_label: const char*
+    on_label: const char*
+    disabled: bool
+}

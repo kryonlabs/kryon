@@ -1680,6 +1680,7 @@ include/ui_scroll.h function GetScrollbarContentWidth
 include/ui_scroll.h function GetScrollbarReservedWidth
 include/ui_scroll.h function GetScrollbarSafeContentWidth
 include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_separator_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks
 include/ui_style_sheet.h function FindStylePack
@@ -1802,6 +1803,7 @@ include/ui_tk.h function WriteClipboardTextPaste
 include/ui_tk.h macro CLIPBOARD_BUFFER_SIZE
 include/ui_tk.h typedef ClipboardOSC52WriteFn
 include/ui_tk.h typedef ClipboardPasteWriteFn
+include/ui_toggle_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_toast.h function Toast
 include/ui_transition.h enum TRANSITION_IN
 include/ui_transition.h enum TRANSITION_NONE
