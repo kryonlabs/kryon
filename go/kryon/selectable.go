@@ -3,6 +3,7 @@ package kryon
 
 // #import drawing_props
 // #import style
+// #import control_props
 type SelectableSpec struct {
 	Bounds     Rectangle
 	Selected   bool
@@ -19,6 +20,40 @@ type SelectablePaint struct {
 	TextColor uint32
 	LabelX    float32
 	DrawFill  bool
+}
+
+func Selectable_SelectableLabelInset(scale float32, face StyleFrame) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = face.Value.PaddingX
+	var inset float32 = value_4
+	var value_5 uint32 = face.Value.Fields
+	var value_6 int32 = int32(StylePaddingX)
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
+	var value_9 int32 = 0
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 bool = value_8 == value_10
+	var value_12 bool = value_11
+	if !value_12 {
+		var value_13 float32 = inset
+		var value_14 float32 = 0.0
+		var value_15 bool = value_13 < value_14
+		value_12 = value_15
+	}
+	if value_12 {
+		var value_16 float32 = 8.0
+		inset = value_16
+	}
+	var value_17 float32 = inset
+	var value_18 float32 = scale
+	var value_19 float32 = value_17 * value_18
+	return value_19
 }
 
 func Selectable_SelectablePaintFor(spec SelectableSpec) SelectablePaint {

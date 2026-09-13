@@ -1,6 +1,7 @@
 #module "selectable"
 #import "drawing_props"
 #import "style"
+#import "control_props"
 
 SelectableSpec :: struct {
     bounds: Rectangle
@@ -18,6 +19,16 @@ SelectablePaint :: struct {
     text_color: u32
     label_x: float
     draw_fill: bool
+}
+
+SelectableLabelInset :: (scale: float, face: StyleFrame) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    inset: float = face.value.padding_x
+    if (face.value.fields & (u32)StylePaddingX) == (u32)0 ||
+       inset < 0.0 {
+        inset = 8.0
+    }
+    return inset * scale
 }
 
 SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {

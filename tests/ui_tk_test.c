@@ -686,6 +686,13 @@ test_selectable_paint_policy(void)
 
     check_int("selectable idle fill", idle.draw_fill, 0);
     check_int("selectable label inset", (int)idle.label_x, 18);
+    check_int("selectable default label inset",
+              (int)SelectableLabelInset(1.0f, (StyleFrame){0}), 8);
+    check_int("selectable explicit zero label inset",
+              (int)SelectableLabelInset(1.0f, (StyleFrame){.value = {
+                  .fields = StylePaddingX,
+                  .padding_x = 0.0f
+              }}), 0);
     check_int("selectable selected fill", selected.draw_fill, 1);
     check_int("selectable selected color", (int)selected.fill_color, 0x11223344);
     check_int("selectable hovered color", (int)hovered.fill_color, 0x55667788);

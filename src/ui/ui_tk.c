@@ -884,9 +884,8 @@ RenderSelectable(SelectableProps selectable)
     StyleFrame face = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         state, disabled, selected, selectable.class_name,
         StyleKindSelectable(), StyleAny());
-    float label_inset = face.value.padding_x > 0.0f
-        ? face.value.padding_x
-        : (float)Scale(8);
+    float label_inset = SelectableLabelInset(
+        (float)Scale(1000) / 1000.0f, face);
     int font = face.value.font_size > 0.0f
         ? (int)(face.value.font_size + 0.5f)
         : GetFontSize();
