@@ -166,6 +166,7 @@ export interface WebDocumentNode {
   ariaLive: string;
   ariaAttrs: Record<string, string>;
   onClick: string;
+  onDoubleClick: string;
   onInput: string;
   onBeforeInput: string;
   onChange: string;
@@ -195,6 +196,7 @@ export interface WebDocumentNode {
   onCut: string;
   onPaste: string;
   action: (() => unknown) | null;
+  doubleClickAction: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   beforeInputAction: ((value: string) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;

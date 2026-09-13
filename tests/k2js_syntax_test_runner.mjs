@@ -1533,6 +1533,7 @@ function fakeDocument() {
         return !event.defaultPrevented;
       },
       click() { if (this.onclick) this.onclick(); },
+      dblclick() { if (this.ondblclick) this.ondblclick(); },
       dragstart(dataTransfer) {
         const transfer = dataTransfer || fakeDataTransfer();
         if (this.ondragstart)
@@ -2328,6 +2329,7 @@ function fakeDocument() {
       {
         nodeName: "hover",
         path: "Page/hover",
+        onDoubleClick: "double",
         onMouseEnter: "enter",
         onMouseLeave: "leave",
         onMouseMove: "move",
@@ -2335,6 +2337,7 @@ function fakeDocument() {
         onMouseUp: "up",
         onWheel: "wheel",
         onContextMenu: "context",
+        doubleClickAction() { pointerEvents.push("double"); },
         mouseEnterAction() { pointerEvents.push("enter"); },
         mouseLeaveAction() { pointerEvents.push("leave"); },
         mouseMoveAction() { pointerEvents.push("move"); },
@@ -2347,6 +2350,7 @@ function fakeDocument() {
     const pointerTarget = document.createElement("div");
     runtime.renderWebDocument(pointerRt, pointerTarget);
     const pointerButton = runtime.findWebElement(pointerTarget, "hover");
+    assert.equal(pointerButton.dataset.kryOnDoubleClick, "double");
     assert.equal(pointerButton.dataset.kryOnMouseEnter, "enter");
     assert.equal(pointerButton.dataset.kryOnMouseLeave, "leave");
     assert.equal(pointerButton.dataset.kryOnMouseMove, "move");
@@ -2362,7 +2366,8 @@ function fakeDocument() {
     pointerButton.wheel(12);
     const contextEvent = pointerButton.contextmenu();
     assert.equal(contextEvent.defaultPrevented, true);
-    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave", "move", "wheel:12", "context"]);
+    pointerButton.dblclick();
+    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave", "move", "wheel:12", "context", "double"]);
 
     const dragEvents = [];
     const dragRt = runtime.createRuntime();

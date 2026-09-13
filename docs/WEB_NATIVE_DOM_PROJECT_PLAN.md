@@ -59,8 +59,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - First-class ARIA structure facts for menus, lists, trees, and grouped
   controls: orientation, level, position in set, set size, popup type, sort
   order, and multiselect state.
-- Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
-  wheel/context menu, drag/drop, clipboard, dialog, and popover events.
+- Event bridge for click/tap/double-click, form/text/key, focus/blur, scroll,
+  pointer/mouse, wheel/context menu, drag/drop, clipboard, dialog, and popover
+  events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring.

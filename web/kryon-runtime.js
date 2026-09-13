@@ -1454,6 +1454,7 @@ function webNodeFromWidget(item, index) {
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
+    onDoubleClick: meta.onDoubleClick === undefined || meta.onDoubleClick === null ? "" : String(meta.onDoubleClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
     onBeforeInput: meta.onBeforeInput === undefined || meta.onBeforeInput === null ? "" : String(meta.onBeforeInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
@@ -1483,6 +1484,7 @@ function webNodeFromWidget(item, index) {
     onCut: meta.onCut === undefined || meta.onCut === null ? "" : String(meta.onCut),
     onPaste: meta.onPaste === undefined || meta.onPaste === null ? "" : String(meta.onPaste),
     action: typeof meta.action === "function" ? meta.action : null,
+    doubleClickAction: typeof meta.doubleClickAction === "function" ? meta.doubleClickAction : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     beforeInputAction: typeof meta.beforeInputAction === "function" ? meta.beforeInputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
@@ -4005,6 +4007,11 @@ function bindNodeEvents(el) {
     if (docNode.action)
       docNode.action();
   });
+  el.addEventListener("dblclick", () => {
+    const docNode = el.__kryDocNode;
+    if (docNode?.doubleClickAction)
+      docNode.doubleClickAction();
+  });
   el.addEventListener("dragstart", (event) => {
     const docNode = el.__kryDocNode;
     if (!docNode)
@@ -5566,6 +5573,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnClick = docNode.onClick;
   else
     delete el.dataset.kryOnClick;
+  if (docNode.onDoubleClick)
+    el.dataset.kryOnDoubleClick = docNode.onDoubleClick;
+  else
+    delete el.dataset.kryOnDoubleClick;
   if (docNode.onInput)
     el.dataset.kryOnInput = docNode.onInput;
   else
