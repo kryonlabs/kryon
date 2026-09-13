@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/style.h"
 #include "runtime/toast.h"
 
 #define TOAST_MESSAGE_SIZE 256
@@ -83,8 +84,7 @@ RenderToast(void)
     Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
     int font_token;
     metrics = ToastMetricsFor(scale, surface_frame);
-    if(text.font_size > 0.0f)
-        font = (int)(text.font_size + 0.5f);
+    font = ResolveFont(0, (int)(text.font_size + 0.5f), font);
 
     font_token = PushTextFont(text.typeface);
     snprintf(display, sizeof(display), "%s", toast_message);
