@@ -753,6 +753,7 @@ k2go-syntax-test: $(K2GO)
 
 k2js-syntax-test: $(K2JS)
 	sh tests/k2js_syntax_test.sh $(K2JS)
+	node tests/web_kss_control_style_test.mjs web/kryon-runtime.js
 
 clean-text-api-check:
 	python3 tests/clean_text_api_test.py
