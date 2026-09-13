@@ -14,6 +14,11 @@ LabelTextFieldMetrics :: struct {
     bottom_gap: i32
 }
 
+LabelTextFieldLayout :: struct {
+    label_bounds: Rectangle
+    field_bounds: Rectangle
+}
+
 SectionLabelMetrics :: struct {
     height: i32
     icon_diameter: i32
@@ -103,6 +108,27 @@ LabelTextFieldMetricsFor :: (label_height: i32, field_height: i32,
     metrics.bottom_gap = RowsRequestedMetric(bottom_gap, field.value.fields,
         (u32)StyleGap, field.value.gap, 24.0, scale, true)
     return metrics
+}
+
+LabelTextFieldLayoutFor :: (x: i32, y: i32, width: i32,
+    requested_bounds: Rectangle, metrics: LabelTextFieldMetrics) -> LabelTextFieldLayout #export {
+    layout: LabelTextFieldLayout
+
+    layout.label_bounds.x = (float)x
+    layout.label_bounds.y = (float)y
+    layout.label_bounds.width = (float)width
+    layout.label_bounds.height = (float)metrics.label_height
+
+    if requested_bounds.width > 0.0 && requested_bounds.height > 0.0 {
+        layout.field_bounds = requested_bounds
+        return layout
+    }
+
+    layout.field_bounds.x = (float)x
+    layout.field_bounds.y = (float)(y + metrics.label_height + metrics.gap)
+    layout.field_bounds.width = (float)width
+    layout.field_bounds.height = (float)metrics.field_height
+    return layout
 }
 
 SectionLabelMetricsFor :: (height: i32, icon_diameter: i32, scale: float,

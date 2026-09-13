@@ -10,6 +10,7 @@ main(void)
     StyleFrame item = {0};
     InfoRowsMetrics info;
     LabelTextFieldMetrics field;
+    LabelTextFieldLayout field_layout;
     SectionLabelMetrics section;
     CheckboxRowMetrics checkbox;
     ButtonRowMetrics buttons;
@@ -55,6 +56,22 @@ main(void)
     assert(field.field_height == 12);
     assert(field.gap == 13);
     assert(field.bottom_gap == 14);
+    requested = (Rectangle){0};
+    field_layout = LabelTextFieldLayoutFor(8, 20, 160, requested, field);
+    assert((int)field_layout.label_bounds.x == 8);
+    assert((int)field_layout.label_bounds.y == 20);
+    assert((int)field_layout.label_bounds.width == 160);
+    assert((int)field_layout.label_bounds.height == 11);
+    assert((int)field_layout.field_bounds.x == 8);
+    assert((int)field_layout.field_bounds.y == 44);
+    assert((int)field_layout.field_bounds.width == 160);
+    assert((int)field_layout.field_bounds.height == 12);
+    requested = (Rectangle){30, 40, 90, 28};
+    field_layout = LabelTextFieldLayoutFor(8, 20, 160, requested, field);
+    assert((int)field_layout.field_bounds.x == 30);
+    assert((int)field_layout.field_bounds.y == 40);
+    assert((int)field_layout.field_bounds.width == 90);
+    assert((int)field_layout.field_bounds.height == 28);
 
     row = (StyleFrame){0};
     section = SectionLabelMetricsFor(0, 0, 1.0f, row);

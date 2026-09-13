@@ -137,6 +137,7 @@ int
 RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     LabelTextFieldMetrics metrics = label_text_field_metrics(row);
+    LabelTextFieldLayout layout;
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
@@ -151,12 +152,12 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
         label_color.a = (unsigned char)(label_color.a * 0.72f);
     TextFieldProps field = row.field;
 
+    layout = LabelTextFieldLayoutFor(x, y, w, (Rectangle){0}, metrics);
     font_token = PushTextFont(text_style.typeface);
-    RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
+    RenderText(row.label != NULL ? row.label : "", (int)layout.label_bounds.x,
+               (int)layout.label_bounds.y, label_font, label_color);
     PopTextFont(font_token);
-    field.bounds = (Rectangle){(float)x,
-                               (float)(y + metrics.label_height + metrics.gap),
-                               (float)w, (float)metrics.field_height};
+    field.bounds = layout.field_bounds;
     return ui_text_field_render(field);
 }
 
@@ -339,6 +340,7 @@ FormTextField(Form *form, LabelTextFieldProps row)
     int height;
     int result;
     Rectangle field_bounds;
+    LabelTextFieldMetrics metrics;
 
     if(form == NULL)
         return 0;
@@ -347,15 +349,10 @@ FormTextField(Form *form, LabelTextFieldProps row)
     FormTakeRect(form, height);
     result = RenderLabelTextField(row, form->x, y, form->width);
 
-    field_bounds = row.field.bounds;
-    if(field_bounds.width <= 0 || field_bounds.height <= 0) {
-        LabelTextFieldMetrics metrics = label_text_field_metrics(row);
-        field_bounds = (Rectangle){(float)form->x,
-                                   (float)(y + metrics.label_height +
-                                           metrics.gap),
-                                   (float)form->width,
-                                   (float)metrics.field_height};
-    }
+    metrics = label_text_field_metrics(row);
+    field_bounds = LabelTextFieldLayoutFor(form->x, y, form->width,
+                                           row.field.bounds, metrics)
+                       .field_bounds;
     FormNoteFocus(form, row.field.focus_id, field_bounds);
     return result;
 }
