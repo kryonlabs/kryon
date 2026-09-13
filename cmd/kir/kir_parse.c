@@ -3949,10 +3949,18 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 while(*eq == ' ' || *eq == '\t')
                     eq++;
                 if(depth > 1 && starts_word(eq, "else")) {
+                    KirSourceSpan span = KirSpan(rel, line_no,
+                                                 pending_start_column +
+                                                 (int)(eq - t));
+                    KirStmt *st;
+
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));
-                    KirFunctionAddStmt(fn, KIR_STMT_IF, eq, "",
-                                       KirSpan(rel, line_no, 1));
+                    st = KirFunctionAddStmt(fn, KIR_STMT_IF, eq, "", span);
+                    ui_stmt_apply_expression_widget_metadata(st, fn,
+                        ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                        &root_anonymous_widget_count,
+                        eq, KIR_STMT_IF, span);
                 } else {
                     if(depth > 0)
                         depth--;

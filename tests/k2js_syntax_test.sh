@@ -511,6 +511,19 @@ grep -q '"autoComplete": "off"' "$anon_out"
 grep -q '"noValidate": true' "$anon_out"
 grep -q '"onReset": "pointer_leave"' "$anon_out"
 
+cat > "$work/src/conditional_widgets.kry" <<'EOF'
+#import "kryon.h"
+Conditional :: () #ui {
+    if Button((ButtonProps){.label="First"}) {
+    } else if Toggle((ToggleProps){.label="Second"}) {
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/conditional_widgets.kry"
+conditional_out="$work/out/src/conditional_widgets.js"
+grep -Eq '"path": "Conditional/Button@[0-9]+(-[0-9]+)?"' "$conditional_out"
+grep -Eq '"path": "Conditional/Toggle@[0-9]+(-[0-9]+)?"' "$conditional_out"
+
 cat > "$work/src/form_owner.kry" <<'EOF'
 #import "kryon.h"
 
