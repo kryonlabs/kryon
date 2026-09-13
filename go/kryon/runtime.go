@@ -5092,12 +5092,6 @@ func (r *runtime) GetThemeSurfaceVariant() Color {
 func (r *runtime) GetThemeScheme() DefaultScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
 }
-func wrapRuntimeText(text string, width float32, fontSize int32) []string {
-	return wrapRuntimeTextMeasured(text, width, func(value string) int {
-		return runtimeTextWidth(value, fontSize)
-	})
-}
-
 func wrapRuntimeTextMeasured(text string, width float32, measure func(string) int) []string {
 	if width <= 0 || text == "" {
 		return []string{text}
