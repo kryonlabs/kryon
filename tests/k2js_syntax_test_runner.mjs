@@ -151,6 +151,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     font-weight: 600;
     font-style: italic;
     font-variant: small-caps;
+    font-variant-alternates: historical-forms;
     font-variant-caps: small-caps;
     font-variant-east-asian: ruby;
     font-variant-ligatures: common-ligatures;
@@ -650,6 +651,7 @@ assert.match(webStyleCSS, /font-family: ui-sans-serif;/);
 assert.match(webStyleCSS, /font-weight: 600;/);
 assert.match(webStyleCSS, /font-style: italic;/);
 assert.match(webStyleCSS, /font-variant: small-caps;/);
+assert.match(webStyleCSS, /font-variant-alternates: historical-forms;/);
 assert.match(webStyleCSS, /font-variant-caps: small-caps;/);
 assert.match(webStyleCSS, /font-variant-east-asian: ruby;/);
 assert.match(webStyleCSS, /font-variant-ligatures: common-ligatures;/);
@@ -1679,6 +1681,7 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).typeface, "
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-weight"], 600);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-style"], "italic");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-variant"], "small-caps");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-variant-alternates"], "historical-forms");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-variant-caps"], "small-caps");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-variant-east-asian"], "ruby");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-variant-ligatures"], "common-ligatures");
@@ -4786,6 +4789,7 @@ function fakeDocument() {
     assert.equal(firstField.style.fontWeight, "600");
     assert.equal(firstField.style.fontStyle, "italic");
     assert.equal(firstField.style.fontVariant, "small-caps");
+    assert.equal(firstField.style.fontVariantAlternates, "historical-forms");
     assert.equal(firstField.style.fontVariantCaps, "small-caps");
     assert.equal(firstField.style.fontVariantEastAsian, "ruby");
     assert.equal(firstField.style.fontVariantLigatures, "common-ligatures");

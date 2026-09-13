@@ -2178,7 +2178,7 @@ const webKssLiteralProperties = new Set([
   "font-variation-settings", "font-size-adjust", "font-synthesis",
   "font-synthesis-weight", "font-synthesis-style",
   "font-synthesis-small-caps", "font-synthesis-position",
-  "font-variant-caps", "font-variant-east-asian",
+  "font-variant-alternates", "font-variant-caps", "font-variant-east-asian",
   "font-variant-ligatures", "font-variant-numeric",
   "font-variant-position", "font-language-override", "font-palette",
   "text-align", "text-align-last", "text-rendering",
@@ -2993,6 +2993,7 @@ const webCSSPropertyNames = new Map([
   ["font-synthesis-style", "font-synthesis-style"],
   ["font-synthesis-small-caps", "font-synthesis-small-caps"],
   ["font-synthesis-position", "font-synthesis-position"],
+  ["font-variant-alternates", "font-variant-alternates"],
   ["font-variant-caps", "font-variant-caps"],
   ["font-variant-east-asian", "font-variant-east-asian"],
   ["font-variant-ligatures", "font-variant-ligatures"],
@@ -4450,6 +4451,7 @@ function applyResolvedWebStyle(el, style) {
   set("fontSynthesisStyle", style["font-synthesis-style"]);
   set("fontSynthesisSmallCaps", style["font-synthesis-small-caps"]);
   set("fontSynthesisPosition", style["font-synthesis-position"]);
+  set("fontVariantAlternates", style["font-variant-alternates"]);
   set("fontVariantCaps", style["font-variant-caps"]);
   set("fontVariantEastAsian", style["font-variant-east-asian"]);
   set("fontVariantLigatures", style["font-variant-ligatures"]);

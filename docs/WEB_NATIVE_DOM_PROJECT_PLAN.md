@@ -213,8 +213,8 @@ the browser receives normal elements, attributes, CSS, and events.
   origin, clip, attachment, and blend controls.
 - KSS web type styling accepts native `font` shorthand, Kryon's `typeface`
   alias, the native `font-family` property name, font size adjustment, and font
-  synthesis controls, plus native font variant longhands, language override,
-  and font palette selection.
+  synthesis controls, plus native font variant alternates and other longhands,
+  language override, and font palette selection.
 - KSS web text decoration styling covers native line, color, style, thickness,
   underline offset, and skip-ink controls; native text alignment, rendering,
   emphasis, ruby, combine-upright, orientation, size-adjustment, text wrapping,
