@@ -363,7 +363,6 @@ ui_dropdown(DropdownProps props)
     DropdownTriggerMetrics trigger_metrics =
         DropdownTriggerMetricsFor(runtime_scale, trigger_frame);
     int font = (int)content.font;
-    int arrow_pad = trigger_metrics.indicator_padding;
     int arrow_size = trigger_metrics.indicator_size;
     int changed = 0;
     Rectangle btn_bounds = {x, y, w, h};
@@ -415,10 +414,6 @@ ui_dropdown(DropdownProps props)
         state->pending_changed = 0;
         changed = 1;
     }
-
-    /* Calculate arrow position */
-    int arrow_x = x + w - arrow_pad;
-    int arrow_y = y + h / 2;
 
     /* Store state for overlay drawing */
     state->x = x;
@@ -474,25 +469,33 @@ ui_dropdown(DropdownProps props)
     if(current_index < 0 || current_index >= option_count)
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
-    int text_x = x + (int)content.padding;
+    int has_icon = option_count > 0 &&
+                   state->options[current_index].icon_type != ICON_NONE;
+    DropdownTriggerContent trigger_content =
+        DropdownTriggerContentFor(btn_bounds, content, trigger_metrics,
+                                  has_icon != 0);
     if(option_count > 0 && state->options[current_index].icon_type != ICON_NONE) {
         if(can_draw)
             DrawIcon(state->options[current_index].icon_type,
-                (Rectangle){text_x, y + (h - content.icon) / 2, content.icon, content.icon}, button_text);
-        text_x += (int)(content.icon + content.gap);
+                     trigger_content.icon_bounds, button_text);
     }
-    int text_w = arrow_x - arrow_size - trigger_metrics.text_indicator_gap - text_x;
+    int text_w = (int)trigger_content.clip_bounds.width;
     if(can_draw && text_w > 0) {
-        BeginClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
-                         (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
-                         (int)((float)text_w * g_ui_camera.zoom),
-                         (int)((float)h * g_ui_camera.zoom));
-        RenderText(current_name, text_x, ControlTextY(current_name, y, h, font), font, button_text);
+        BeginClip((int)(g_ui_camera.offset.x +
+                        trigger_content.clip_bounds.x * g_ui_camera.zoom),
+                  (int)(g_ui_camera.offset.y +
+                        trigger_content.clip_bounds.y * g_ui_camera.zoom),
+                  (int)(trigger_content.clip_bounds.width * g_ui_camera.zoom),
+                  (int)(trigger_content.clip_bounds.height * g_ui_camera.zoom));
+        RenderText(current_name, (int)trigger_content.text_bounds.x,
+                   (int)trigger_content.text_bounds.y, font, button_text);
         EndClip();
     }
 
     if(can_draw)
-        dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
+        dropdown_draw_indicator(trigger_content.indicator_center_x,
+                                trigger_content.indicator_center_y,
+                                arrow_size,
                                 state->open, button_text);
 
     EndWidget(&widget);

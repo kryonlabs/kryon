@@ -4035,7 +4035,10 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	if len(className) > 0 {
 		styleClass = className[0]
 	}
-	contentMetrics := Dropdown_Content(packStyle(r.dropdownStyle(0, false, ButtonStateNormal, styleClass)), 1)
+	triggerFrame := StyleFrame{Value: packStyle(r.dropdownStyle(0, false,
+		ButtonStateNormal, styleClass))}
+	contentMetrics := Dropdown_Content(triggerFrame.Value, 1)
+	triggerMetrics := Dropdown_DropdownTriggerMetricsFor(1, triggerFrame)
 	disabledRow := func(index int32) bool {
 		return index >= 0 && int(index) < len(items) && items[index].Disabled
 	}
@@ -4116,14 +4119,13 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}
 	focused := !r.contentDisabled() && id > 0 && r.focusID == id
 	foreground := r.dropdownTrigger(id, bounds, open, focused, styleClass)
-	textX := bounds.X + contentMetrics.Padding
-	if selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != IconNone {
-		r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: items[*selected].IconType, Color: foreground, ID: id})
-		textX += contentMetrics.Icon + contentMetrics.Gap
+	hasIcon := selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != IconNone
+	triggerContent := Dropdown_DropdownTriggerContentFor(bounds, contentMetrics, triggerMetrics, hasIcon)
+	if hasIcon {
+		r.record(FrameOp{Kind: FrameOpIcon, Bounds: triggerContent.IconBounds, IconType: items[*selected].IconType, Color: foreground, ID: id})
 	}
-	textClip := Rectangle{X: textX, Y: bounds.Y, Width: max(float32(0), bounds.X+bounds.Width-36-textX), Height: bounds.Height}
-	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Font)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), ID: id, Row: -1})
-	r.dropdownChevron(id, bounds, open, foreground)
+	r.record(FrameOp{Kind: FrameOpText, Clip: triggerContent.ClipBounds, HasClip: true, Bounds: triggerContent.TextBounds, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), ID: id, Row: -1})
+	r.dropdownChevron(id, triggerContent, triggerMetrics.IndicatorSize, open, foreground)
 	if !open {
 		return changed
 	}

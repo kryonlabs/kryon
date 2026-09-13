@@ -30,6 +30,14 @@ DropdownTriggerMetrics :: struct {
     text_indicator_gap: i32
 }
 
+DropdownTriggerContent :: struct {
+    icon_bounds: Rectangle
+    text_bounds: Rectangle
+    clip_bounds: Rectangle
+    indicator_center_x: i32
+    indicator_center_y: i32
+}
+
 # Both native hosts consume Button's resolved content metrics. Geometry does
 # not silently select another size: the standard dropdown uses medium tokens.
 Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
@@ -91,6 +99,36 @@ DropdownIndicatorFor :: (center_x: i32, center_y: i32, size: i32,
     return (DropdownIndicator){.x1 = left, .y1 = upper,
         .x2 = center_x, .y2 = lower, .x3 = center_x, .y3 = lower,
         .x4 = right, .y4 = upper}
+}
+
+DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
+    metrics: DropdownTriggerMetrics, has_icon: bool) -> DropdownTriggerContent #export {
+    layout: DropdownTriggerContent
+    text_x: float = bounds.x + content.padding
+    text_right: float
+
+    layout.indicator_center_x = (i32)(bounds.x + bounds.width) -
+        metrics.indicator_padding
+    layout.indicator_center_y = (i32)bounds.y + (i32)bounds.height / 2
+    if has_icon {
+        layout.icon_bounds.x = text_x
+        layout.icon_bounds.y = bounds.y + (bounds.height - content.icon) / 2.0
+        layout.icon_bounds.width = content.icon
+        layout.icon_bounds.height = content.icon
+        text_x += content.icon + content.gap
+    }
+    text_right = (float)(layout.indicator_center_x -
+        metrics.indicator_size - metrics.text_indicator_gap)
+    layout.clip_bounds.x = text_x
+    layout.clip_bounds.y = bounds.y
+    layout.clip_bounds.width = text_right - text_x
+    layout.clip_bounds.height = bounds.height
+    if layout.clip_bounds.width < 0.0 {
+        layout.clip_bounds.width = 0.0
+    }
+    layout.text_bounds = layout.clip_bounds
+    layout.text_bounds.y = bounds.y + (bounds.height - content.font) / 2.0
+    return layout
 }
 
 # Portable input and popup policy. Hosts supply input samples and option

@@ -64,14 +64,10 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 	return unpackRGBA(resolved.Foreground)
 }
 
-func (r *runtime) dropdownChevron(id int32, bounds Rectangle, open bool, color Color) {
-	x, y := bounds.X+bounds.Width-24, bounds.Y+bounds.Height/2
-	dy := float32(4)
-	if open {
-		dy = -dy
-	}
+func (r *runtime) dropdownChevron(id int32, layout DropdownTriggerContent, size int32, open bool, color Color) {
+	indicator := Dropdown_DropdownIndicatorFor(layout.IndicatorCenterX, layout.IndicatorCenterY, size, open)
 	r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: color,
-		Bounds: Rectangle{X: x - 5, Y: y - dy/2, Width: 5, Height: dy}})
+		Bounds: Rectangle{X: float32(indicator.X1), Y: float32(indicator.Y1), Width: float32(indicator.X2 - indicator.X1), Height: float32(indicator.Y2 - indicator.Y1)}})
 	r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: color,
-		Bounds: Rectangle{X: x, Y: y + dy/2, Width: 5, Height: -dy}})
+		Bounds: Rectangle{X: float32(indicator.X3), Y: float32(indicator.Y3), Width: float32(indicator.X4 - indicator.X3), Height: float32(indicator.Y4 - indicator.Y3)}})
 }

@@ -20,6 +20,14 @@ type DropdownTriggerMetrics struct {
 	TextIndicatorGap int32
 }
 
+type DropdownTriggerContent struct {
+	IconBounds       Rectangle
+	TextBounds       Rectangle
+	ClipBounds       Rectangle
+	IndicatorCenterX int32
+	IndicatorCenterY int32
+}
+
 type DropdownIndicator struct {
 	X1 int32
 	Y1 int32
@@ -298,6 +306,88 @@ func Dropdown_DropdownIndicatorFor(center_x int32, center_y int32, size int32, o
 	var value_41 int32 = upper
 	value_33.Y4 = value_41
 	return value_33
+}
+
+func Dropdown_DropdownTriggerContentFor(bounds Rectangle, content ContentMetrics, metrics DropdownTriggerMetrics, has_icon bool) DropdownTriggerContent {
+	var layout DropdownTriggerContent = DropdownTriggerContent{}
+	var value_0 float32 = bounds.X
+	var value_1 float32 = content.Padding
+	var value_2 float32 = value_0 + value_1
+	var text_x float32 = value_2
+	var text_right float32 = 0
+	var value_3 float32 = bounds.X
+	var value_4 float32 = bounds.Width
+	var value_5 float32 = value_3 + value_4
+	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 32, true)), uint64(0), 32, true, 0))
+	var value_7 int32 = metrics.IndicatorPadding
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
+	layout.IndicatorCenterX = value_8
+	var value_9 float32 = bounds.Y
+	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_9), 32, true)), uint64(0), 32, true, 0))
+	var value_11 float32 = bounds.Height
+	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
+	var value_13 int32 = 2
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 4))
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_14), 32, true, 1))
+	layout.IndicatorCenterY = value_15
+	var value_16 bool = has_icon
+	if value_16 {
+		var value_17 float32 = text_x
+		layout.IconBounds.X = value_17
+		var value_18 float32 = bounds.Y
+		var value_19 float32 = bounds.Height
+		var value_20 float32 = content.Icon
+		var value_21 float32 = value_19 - value_20
+		var value_22 float32 = 2.0
+		var value_23 float32 = value_21 / value_22
+		var value_24 float32 = value_18 + value_23
+		layout.IconBounds.Y = value_24
+		var value_25 float32 = content.Icon
+		layout.IconBounds.Width = value_25
+		var value_26 float32 = content.Icon
+		layout.IconBounds.Height = value_26
+		var value_27 float32 = text_x
+		var value_28 float32 = content.Icon
+		var value_29 float32 = content.Gap
+		var value_30 float32 = value_28 + value_29
+		text_x = value_27 + value_30
+	}
+	var value_31 int32 = layout.IndicatorCenterX
+	var value_32 int32 = metrics.IndicatorSize
+	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 2))
+	var value_34 int32 = metrics.TextIndicatorGap
+	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
+	var value_36 float32 = float32(value_35)
+	text_right = value_36
+	var value_37 float32 = text_x
+	layout.ClipBounds.X = value_37
+	var value_38 float32 = bounds.Y
+	layout.ClipBounds.Y = value_38
+	var value_39 float32 = text_right
+	var value_40 float32 = text_x
+	var value_41 float32 = value_39 - value_40
+	layout.ClipBounds.Width = value_41
+	var value_42 float32 = bounds.Height
+	layout.ClipBounds.Height = value_42
+	var value_43 float32 = layout.ClipBounds.Width
+	var value_44 float32 = 0.0
+	var value_45 bool = value_43 < value_44
+	if value_45 {
+		var value_46 float32 = 0.0
+		layout.ClipBounds.Width = value_46
+	}
+	var value_47 Rectangle = layout.ClipBounds
+	layout.TextBounds = value_47
+	var value_48 float32 = bounds.Y
+	var value_49 float32 = bounds.Height
+	var value_50 float32 = content.Font
+	var value_51 float32 = value_49 - value_50
+	var value_52 float32 = 2.0
+	var value_53 float32 = value_51 / value_52
+	var value_54 float32 = value_48 + value_53
+	layout.TextBounds.Y = value_54
+	var value_55 DropdownTriggerContent = layout
+	return value_55
 }
 
 func Dropdown_ClampIndex(value int32, count int32) int32 {

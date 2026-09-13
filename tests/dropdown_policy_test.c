@@ -51,6 +51,9 @@ test_indicator(void)
     DropdownIndicator open = DropdownIndicatorFor(100, 50, 10, true);
     DropdownIndicator zero = DropdownIndicatorFor(8, 9, -1, false);
     DropdownTriggerMetrics metrics = DropdownTriggerMetricsFor(1.0f, trigger);
+    ContentMetrics content = {.padding = 8.0f, .gap = 4.0f,
+                              .icon = 16.0f, .font = 14.0f};
+    DropdownTriggerContent layout;
 
     assert(closed.x1 == 95);
     assert(closed.y1 == 48);
@@ -99,6 +102,20 @@ test_indicator(void)
     assert(metrics.indicator_padding == 0);
     assert(metrics.indicator_size == 0);
     assert(metrics.text_indicator_gap == 0);
+
+    metrics = DropdownTriggerMetricsFor(1.0f, (StyleFrame){0});
+    layout = DropdownTriggerContentFor((Rectangle){10, 20, 120, 30},
+                                       content, metrics, false);
+    assert(layout.indicator_center_x == 106);
+    assert(layout.indicator_center_y == 35);
+    check_rect(layout.clip_bounds, 18, 20, 70, 30);
+    check_rect(layout.text_bounds, 18, 28, 70, 30);
+
+    layout = DropdownTriggerContentFor((Rectangle){10, 20, 120, 30},
+                                       content, metrics, true);
+    check_rect(layout.icon_bounds, 18, 27, 16, 16);
+    check_rect(layout.clip_bounds, 38, 20, 50, 30);
+    check_rect(layout.text_bounds, 38, 28, 50, 30);
 }
 
 static void
