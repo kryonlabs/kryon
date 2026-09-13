@@ -204,6 +204,8 @@ the browser receives normal elements, attributes, CSS, and events.
   has matching native state.
 - KSS state selector CSS export also targets native ARIA/state attributes for
   pressed, disabled, checked, selected, invalid, and expanded controls.
+- KSS state selectors support `:readonly`/`:read-only` and `:required` against
+  Kry form-control facts and native browser pseudo/attribute selectors.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 

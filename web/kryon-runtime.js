@@ -2343,8 +2343,10 @@ function parseSimpleSelector(text) {
     } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
         pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open")) {
-      const state = pseudo === "focused" ? "focus" : pseudo;
+        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open" ||
+        pseudo === "readonly" || pseudo === "read-only" || pseudo === "required")) {
+      const state = pseudo === "focused" ? "focus" :
+        (pseudo === "read-only" ? "readonly" : pseudo);
       selector.state = state;
       if (!selector.states.includes(state))
         selector.states.push(state);
@@ -2700,7 +2702,7 @@ function webStyleStateSelectorToCSS(state) {
   if (!text)
     return "";
   if (text === "normal")
-    return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,[open],[selected],[aria-pressed=\"true\"],[aria-disabled=\"true\"],[aria-checked=\"true\"],[aria-selected=\"true\"],[aria-invalid=\"true\"],[aria-expanded=\"true\"],[data-kry-state]))";
+    return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,[readonly],[required],[open],[selected],[aria-pressed=\"true\"],[aria-disabled=\"true\"],[aria-checked=\"true\"],[aria-selected=\"true\"],[aria-invalid=\"true\"],[aria-expanded=\"true\"],[data-kry-state]))";
   const key = text === "focused" ? "focus" : text;
   const mirrored = `[data-kry-state~="${cssEscapeString(key)}"]`;
   const native = {
@@ -2712,6 +2714,8 @@ function webStyleStateSelectorToCSS(state) {
     selected: [":checked", "[selected]", "[aria-selected=\"true\"]"],
     invalid: [":invalid", "[aria-invalid=\"true\"]"],
     expanded: ["[aria-expanded=\"true\"]"],
+    readonly: [":read-only", "[readonly]"],
+    required: [":required", "[required]"],
     open: ["[open]"]
   }[key] || [];
   return native.length ? `:is(${[...native, mirrored].join(",")})` : mirrored;
@@ -3336,14 +3340,18 @@ export function installAppWebStyleSheets(app, target = null, id = "kryon-app") {
   }, target, id);
 }
 
-function styleStateMatches(name, state) {
+function styleStateMatches(name, state, facts = {}) {
   if (!name || name === "any")
     return true;
   const key = String(name).toLowerCase();
   if (key === "normal")
-    return !Object.values(state || {}).some(Boolean);
+    return !Object.values(state || {}).some(Boolean) && !facts.readOnly && !facts.required;
   if (key === "hover" || key === "pressed" || key === "focus" || key === "focused")
     return !!state?.[key] || !!state?.[key === "focused" ? "focus" : key];
+  if (key === "readonly" || key === "read-only")
+    return !!facts.readOnly || !!state?.readonly || !!state?.readOnly;
+  if (key === "required")
+    return !!facts.required || !!state?.required;
   return !!state?.[key];
 }
 
@@ -3704,14 +3712,14 @@ function selectorMatchesFacts(selector, facts) {
       if (!selectorAttrPresent(key, facts))
         return false;
     }
-    else if (key === "state" && !styleStateMatches(value, facts.state))
+    else if (key === "state" && !styleStateMatches(value, facts.state, facts))
       return false;
     else if (key !== "state" &&
              !selectorAttrValueMatches(selectorAttrValue(key, facts), value, op))
       return false;
   }
   const states = selector.states?.length ? selector.states : (selector.state ? [selector.state] : []);
-  return states.every((state) => styleStateMatches(state, facts.state));
+  return states.every((state) => styleStateMatches(state, facts.state, facts));
 }
 
 function webNodeParentFromFrame(node) {
