@@ -49,7 +49,7 @@ main(void)
     metrics = ToastMetricsFor(1.0f, frame);
     assert(metrics.pad_x == 0);
     assert(metrics.pad_y == 0);
-    assert(metrics.margin == 18);
+    assert(metrics.margin == 0);
 
     frame = (StyleFrame){0};
     metrics = ToastMetricsFor(1.0f, frame);

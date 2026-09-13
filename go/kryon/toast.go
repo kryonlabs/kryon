@@ -79,7 +79,7 @@ func Toast_ToastMetricsFor(scale float32, frame StyleFrame) ToastMetrics {
 	if !value_38 {
 		var value_39 float32 = margin
 		var value_40 float32 = 0.0
-		var value_41 bool = value_39 <= value_40
+		var value_41 bool = value_39 < value_40
 		value_38 = value_41
 	}
 	if value_38 {
