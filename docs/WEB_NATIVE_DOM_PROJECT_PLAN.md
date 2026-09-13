@@ -26,6 +26,8 @@ the browser receives normal elements, attributes, CSS, and events.
 
 - Stable node identity for named and anonymous `.kry` widgets, including
   multiline compiler source spans for UI blocks.
+- Direct runtime/web widget calls are covered by a compiler contract test that
+  requires source-derived `path`/`key` metadata before runtime fallback.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
 - Native tags and fallback ARIA roles for widgets with clear browser
@@ -43,7 +45,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
   wheel, drag/drop, clipboard, dialog, and popover events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
-  app style loading, project package maps, and `data-kry-state` mirroring.
+  app style loading, project package maps, list/logical scroll styling, and
+  `data-kry-state` mirroring.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 

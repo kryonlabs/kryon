@@ -428,7 +428,8 @@ border styles, per-side border widths, per-corner radii, opacity, font size, off
 font family, font weight/style/variant, letter spacing, text alignment/indent,
 content offsets, line height, text transform/overflow/decoration/wrapping,
 display/layout keywords, box sizing, scroll behavior/snap/margins/padding,
-overscroll and touch-action controls, flex flow/grow/shrink/basis/order,
+overscroll including logical inline/block controls, touch-action controls,
+list-style controls, flex flow/grow/shrink/basis/order,
 grid tracks/auto tracks/auto-flow/line placement,
 row/column gaps, placement/content/self alignment, transforms, containment/container
 queries, will-change, isolation, blend mode,
