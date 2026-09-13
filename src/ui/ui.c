@@ -147,13 +147,13 @@ static int *g_ui_text_field_drag_owner = NULL;
 
 #define UI_TEXT_FIELD_SCROLL_CACHE_SIZE 128
 
-typedef struct UITextFieldScrollCacheEntry {
+typedef struct TextFieldScrollCacheEntry {
     int id;
     int *owner;
     int scroll_x;
-} UITextFieldScrollCacheEntry;
+} TextFieldScrollCacheEntry;
 
-static UITextFieldScrollCacheEntry g_ui_text_field_scroll_cache[UI_TEXT_FIELD_SCROLL_CACHE_SIZE];
+static TextFieldScrollCacheEntry g_ui_text_field_scroll_cache[UI_TEXT_FIELD_SCROLL_CACHE_SIZE];
 static int g_ui_text_field_scroll_cache_next = 0;
 static int g_ui_text_field_pan_id = 0;
 static int *g_ui_text_field_pan_owner = NULL;
@@ -243,12 +243,12 @@ static Rectangle g_ui_input_clip_stack[UI_INPUT_CLIP_STACK_MAX];
 static int g_ui_input_clip_stack_count = 0;
 
 #define UI_INPUT_CAPTURE_STACK_MAX 16
-typedef struct UIInputCapture {
+typedef struct InputCapture {
     Rectangle bounds;
     int allow_inside;
-} UIInputCapture;
+} InputCapture;
 
-static UIInputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
+static InputCapture g_ui_input_capture_stack[UI_INPUT_CAPTURE_STACK_MAX];
 static int g_ui_input_capture_stack_count = 0;
 static Rectangle g_ui_modal_capture_next_frame_bounds;
 static int g_ui_modal_capture_next_frame = 0;
@@ -322,7 +322,7 @@ ui_text_selection_set_collapsed(TextSelection *selection, int id, int *owner,
 }
 
 static int
-ui_text_field_scroll_entry_matches(UITextFieldScrollCacheEntry entry,
+ui_text_field_scroll_entry_matches(TextFieldScrollCacheEntry entry,
                                    int id, int *owner)
 {
     if(id > 0)
@@ -726,7 +726,7 @@ PushInputCapture(Rectangle bounds, int allow_inside)
     if(g_ui_input_capture_stack_count >= UI_INPUT_CAPTURE_STACK_MAX)
         return;
     g_ui_input_capture_stack[g_ui_input_capture_stack_count++] =
-        (UIInputCapture){bounds, allow_inside != 0};
+        (InputCapture){bounds, allow_inside != 0};
 }
 
 void
@@ -779,7 +779,7 @@ ui_base_input_captures_click(Vector2 point, int include_pointer_drag)
         return 1;
 
     if(g_ui_input_capture_stack_count > 0) {
-        UIInputCapture capture =
+        InputCapture capture =
             g_ui_input_capture_stack[g_ui_input_capture_stack_count - 1];
         if(!capture.allow_inside || !CheckCollisionPointRec(point, capture.bounds))
             return 1;

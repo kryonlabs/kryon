@@ -81,24 +81,24 @@ static int g_ui_text_selectable_stack[16];
 static int g_ui_text_selectable_stack_count = 0;
 static int g_ui_text_selectable = 1;
 
-typedef struct UITextSelectionState {
+typedef struct TextSelectionRuntimeState {
     int id;
     int anchor;
     int cursor;
     int dragging;
-} UITextSelectionState;
+} TextSelectionRuntimeState;
 
-static UITextSelectionState g_ui_text_selection = {0};
-static UITextSelectionState g_ui_text_block_selection = {0};
+static TextSelectionRuntimeState g_ui_text_selection = {0};
+static TextSelectionRuntimeState g_ui_text_block_selection = {0};
 static int g_ui_text_block_last_click_id = 0;
 static int g_ui_text_block_last_click_line = -1;
 static Vector2 g_ui_text_block_last_click_position = {0};
 static double g_ui_text_block_last_click_time = -1.0;
 
-typedef struct UITextBlockLine {
+typedef struct TextBlockLine {
     int start;
     int end;
-} UITextBlockLine;
+} TextBlockLine;
 
 static Rectangle
 text_world_rect_to_screen(Rectangle rect)
@@ -1534,9 +1534,9 @@ ui_text_slice(const char *text, int start, int end)
 
 static int
 ui_text_block_lines(const char *text, int width, int font_size,
-                    UITextBlockLine **out_lines)
+                    TextBlockLine **out_lines)
 {
-    UITextBlockLine *lines;
+    TextBlockLine *lines;
     int count = 0;
     int cap = 8;
     int len;
@@ -1548,7 +1548,7 @@ ui_text_block_lines(const char *text, int width, int font_size,
     if(text == NULL)
         return 0;
     len = (int)strlen(text);
-    lines = (UITextBlockLine *)malloc((size_t)cap * sizeof(*lines));
+    lines = (TextBlockLine *)malloc((size_t)cap * sizeof(*lines));
     if(lines == NULL)
         return 0;
 
@@ -1592,16 +1592,16 @@ ui_text_block_lines(const char *text, int width, int font_size,
                 end++;
         }
         if(count == cap) {
-            UITextBlockLine *grown;
+            TextBlockLine *grown;
             cap *= 2;
-            grown = (UITextBlockLine *)realloc(lines, (size_t)cap * sizeof(*lines));
+            grown = (TextBlockLine *)realloc(lines, (size_t)cap * sizeof(*lines));
             if(grown == NULL) {
                 free(lines);
                 return 0;
             }
             lines = grown;
         }
-        lines[count++] = (UITextBlockLine){start, chosen};
+        lines[count++] = (TextBlockLine){start, chosen};
         start = chosen;
         while(start < len && (text[start] == ' ' || text[start] == '\t'))
             start++;
@@ -1618,7 +1618,7 @@ int
 MeasureSelectableTextBlock(const char *text, int width, int font_size,
                              int line_gap)
 {
-    UITextBlockLine *lines = NULL;
+    TextBlockLine *lines = NULL;
     int count = ui_text_block_lines(text, width, font_size, &lines);
     int line_h = TextLineHeight(font_size);
     int height = count > 0 ? count * line_h + (count - 1) * line_gap : 0;
@@ -1630,7 +1630,7 @@ MeasureSelectableTextBlock(const char *text, int width, int font_size,
 int
 RenderSelectableTextBlock(SelectableTextBlock block)
 {
-    UITextBlockLine *lines = NULL;
+    TextBlockLine *lines = NULL;
     Vector2 mouse = ui_mouse_world();
     int count;
     int line_h;
@@ -1672,14 +1672,14 @@ RenderSelectableTextBlock(SelectableTextBlock block)
             if(double_click) {
                 /* A wrapped visual line is the useful unit here. Keep the
                  * completed range stable after the second button release. */
-                g_ui_text_block_selection = (UITextSelectionState){
+                g_ui_text_block_selection = (TextSelectionRuntimeState){
                     block.id, lines[i].start, lines[i].end, 0
                 };
                 g_ui_text_block_last_click_id = 0;
                 g_ui_text_block_last_click_line = -1;
                 g_ui_text_block_last_click_time = -1.0;
             } else {
-                g_ui_text_block_selection = (UITextSelectionState){
+                g_ui_text_block_selection = (TextSelectionRuntimeState){
                     block.id, lines[i].start + local,
                     lines[i].start + local, 1
                 };
