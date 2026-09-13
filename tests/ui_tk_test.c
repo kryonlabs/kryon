@@ -624,7 +624,9 @@ test_radio_paint_policy(void)
 
     check_int("radio size", RadioSize(1.0f), 20);
     check_int("radio touch size", RadioTouchSize(1.0f), 40);
-    check_int("radio label x", (int)unchecked.label_x, 38);
+    check_int("radio styled size", RadioSizeForStyle(frame, 1.0f), 20);
+    check_int("radio styled touch size", RadioTouchSizeForStyle(frame, 1.0f), 40);
+    check_int("radio label x", (int)unchecked.label_x, 58);
     check_int("radio unchecked fill", (int)unchecked.fill_radius, 0);
     check_int("radio unchecked ring", (int)unchecked.ring_color, 0x222222FF);
     check_int("radio checked fill", (int)checked.fill_radius, 8);

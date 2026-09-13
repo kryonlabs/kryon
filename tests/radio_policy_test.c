@@ -29,10 +29,14 @@ int
 main(void)
 {
     RadioPaint paint;
+    StyleFrame styled_ring;
+    StyleFrame zero_ring;
 
     assert(RadioSize(2.0f) == 40);
     assert(RadioTouchSize(2.0f) == 80);
     assert(RadioSize(0.0f) == 20);
+    assert(RadioSizeForStyle((StyleFrame){0}, 2.0f) == 40);
+    assert(RadioTouchSizeForStyle((StyleFrame){0}, 2.0f) == 80);
     assert(strcmp(RadioMarkText(false), "○") == 0);
     assert(strcmp(RadioMarkText(true), "◉") == 0);
 
@@ -42,10 +46,32 @@ main(void)
         .frame = test_radio_frame(0x111111ff, 0x111111ff, 0x222222ff),
         .selected = test_radio_frame(0x444444ff, 0x111111ff, 0x444444ff),
     });
-    check_rect(paint.mark_bounds, 10, 25, 20, 20);
-    check_rect(paint.label_bounds, 38, 20, 132, 30);
+    check_rect(paint.mark_bounds, 20, 25, 20, 20);
+    check_rect(paint.label_bounds, 58, 20, 112, 30);
     assert(paint.ring_color == 0x222222ff);
     assert(paint.fill_radius == 0.0f);
+
+    styled_ring = test_radio_frame(0x111111ff, 0x111111ff, 0x222222ff);
+    styled_ring.value.fields |= StyleIconSize | StylePaddingX | StyleGap;
+    styled_ring.value.icon_size = 12.0f;
+    styled_ring.value.padding_x = 30.0f;
+    styled_ring.value.gap = 3.0f;
+    paint = RadioPaintFor((RadioSpec){
+        .bounds = {10, 20, 160, 30},
+        .scale = 1.0f,
+        .frame = styled_ring,
+        .selected = test_radio_frame(0x444444ff, 0x111111ff, 0x444444ff),
+    });
+    assert(RadioSizeForStyle(styled_ring, 1.0f) == 12);
+    assert(RadioTouchSizeForStyle(styled_ring, 1.0f) == 30);
+    check_rect(paint.mark_bounds, 19, 29, 12, 12);
+    check_rect(paint.label_bounds, 43, 20, 127, 30);
+
+    zero_ring = styled_ring;
+    zero_ring.value.icon_size = 0.0f;
+    zero_ring.value.padding_x = 0.0f;
+    assert(RadioSizeForStyle(zero_ring, 1.0f) == 0);
+    assert(RadioTouchSizeForStyle(zero_ring, 1.0f) == 0);
 
     paint = RadioPaintFor((RadioSpec){
         .bounds = {10, 20, 160, 30},

@@ -1,6 +1,7 @@
 #module "radio"
 #import "drawing_props"
 #import "style"
+#import "control_props"
 
 RadioSpec :: struct {
     bounds: Rectangle
@@ -28,6 +29,19 @@ RadioPaint :: struct {
     label_color: u32
 }
 
+RadioHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+RadioMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !RadioHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
 RadioSize :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(20.0 * scale)
@@ -36,6 +50,18 @@ RadioSize :: (scale: float) -> i32 #export {
 RadioTouchSize :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(40.0 * scale)
+}
+
+RadioSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return RadioMetric(ring.value.fields, (u32)StyleIconSize,
+        ring.value.icon_size, 20.0, scale, true)
+}
+
+RadioTouchSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return RadioMetric(ring.value.fields, (u32)StylePaddingX,
+        ring.value.padding_x, 40.0, scale, true)
 }
 
 RadioMarkText :: (checked: bool) -> const char* #export {
@@ -47,12 +73,12 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     paint: RadioPaint
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
-    diameter: float = (float)RadioSize(scale)
+    diameter: float = (float)RadioSizeForStyle(spec.frame, scale)
     gap: float = spec.frame.value.gap * scale
     if gap <= 0.0 {
         gap = 8.0 * scale
     }
-    slot_width: float = spec.frame.value.padding_x * scale
+    slot_width: float = (float)RadioTouchSizeForStyle(spec.frame, scale)
     if slot_width < diameter {
         slot_width = diameter
     }

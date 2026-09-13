@@ -1837,6 +1837,7 @@ Radio[role=Ring] {
   border: border;
   focus: accent;
   border-width: border;
+  icon-size: 20;
   padding-x: 20;
   gap: gap;
   opacity: 1;
