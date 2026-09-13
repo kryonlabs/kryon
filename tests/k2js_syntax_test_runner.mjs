@@ -254,6 +254,8 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     inset-inline-end: 9;
     inset-block-start: 10;
     inset-block-end: 11;
+    overflow-inline: auto;
+    overflow-block: hidden;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
@@ -668,6 +670,8 @@ assert.match(webStyleCSS, /empty-cells: hide;/);
 assert.match(webStyleCSS, /display: flex;/);
 assert.match(webStyleCSS, /position: relative;/);
 assert.match(webStyleCSS, /z-index: 3;/);
+assert.match(webStyleCSS, /overflow-inline: auto;/);
+assert.match(webStyleCSS, /overflow-block: hidden;/);
 assert.match(webStyleCSS, /overflow-x: auto;/);
 assert.match(webStyleCSS, /overflow-y: hidden;/);
 assert.match(webStyleCSS, /scroll-behavior: smooth;/);
@@ -1666,6 +1670,8 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["empty-cell
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).display, "flex");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).position, "relative");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["z-index"], 3);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-inline"], "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-block"], "hidden");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-x"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-y"], "hidden");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["scroll-behavior"], "smooth");
@@ -4722,6 +4728,8 @@ function fakeDocument() {
     assert.equal(firstField.style.display, "flex");
     assert.equal(firstField.style.position, "relative");
     assert.equal(firstField.style.zIndex, "3");
+    assert.equal(firstField.style.overflowInline, "auto");
+    assert.equal(firstField.style.overflowBlock, "hidden");
     assert.equal(firstField.style.overflowX, "auto");
     assert.equal(firstField.style.overflowY, "hidden");
     assert.equal(firstField.style.scrollBehavior, "smooth");

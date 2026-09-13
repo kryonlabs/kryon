@@ -234,6 +234,9 @@ the browser receives normal elements, attributes, CSS, and events.
   scroll/view timelines, animation ranges, `field-sizing`, `interpolate-size`,
   `overlay`, forced/print color adjustment, SVG paint-order/interpolation, and
   CSS shape/text box controls for browser-native layouts.
+- KSS web overflow styling supports physical `overflow-x`/`overflow-y` and
+  logical `overflow-inline`/`overflow-block` for writing-mode-aware scroll
+  containers.
 - KSS web mask styling supports native mask image, size, position, repeat,
   origin, clip, composite, and mode longhands for browser paint effects.
 - KSS web multicolumn styling supports `columns`, column count/width/fill/span,

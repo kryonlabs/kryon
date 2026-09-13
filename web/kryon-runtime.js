@@ -2192,7 +2192,8 @@ const webKssLiteralProperties = new Set([
   "hanging-punctuation",
   "text-combine-upright", "ruby-align", "ruby-position",
   "text-spacing-trim", "text-autospace", "text-box-trim", "text-box-edge",
-  "word-break", "overflow-wrap", "word-wrap", "display", "position", "z-index", "overflow",
+  "word-break", "overflow-wrap", "word-wrap", "display", "position", "z-index",
+  "overflow", "overflow-inline", "overflow-block",
   "border-top", "border-right", "border-bottom", "border-left",
   "border-inline", "border-block", "border-inline-start",
   "border-inline-end", "border-block-start", "border-block-end",
@@ -3039,6 +3040,8 @@ const webCSSPropertyNames = new Map([
   ["position", "position"],
   ["z-index", "z-index"],
   ["overflow", "overflow"],
+  ["overflow-inline", "overflow-inline"],
+  ["overflow-block", "overflow-block"],
   ["overflow-x", "overflow-x"],
   ["overflow-y", "overflow-y"],
   ["box-sizing", "box-sizing"],
@@ -4472,6 +4475,8 @@ function applyResolvedWebStyle(el, style) {
   set("position", style.position);
   set("zIndex", style["z-index"]);
   set("overflow", style.overflow);
+  set("overflowInline", style["overflow-inline"]);
+  set("overflowBlock", style["overflow-block"]);
   set("overflowX", style["overflow-x"]);
   set("overflowY", style["overflow-y"]);
   set("boxSizing", style["box-sizing"]);
