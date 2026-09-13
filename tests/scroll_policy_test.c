@@ -28,6 +28,10 @@ main(void)
     assert(ScrollReservedWidth(1, metrics) == 32);
     assert(ScrollContentWidth(30, 10, metrics) == 0);
     assert(ScrollContentWidth(100, 10, metrics) == 68);
+    assert(ScrollPageContentWidthFor(320, 0, 0, 24) == 272);
+    assert(ScrollPageContentWidthFor(320, 280, 0, 24) == 272);
+    assert(ScrollPageContentWidthFor(320, 180, 220, 24) == 220);
+    assert(ScrollPageContentWidthFor(40, 0, 0, 30) == 0);
     assert(ScrollSafeContentWidth(10, 200, 260, 0, metrics) == 200);
     assert(ScrollSafeContentWidth(10, 200, 260, 5, metrics) == 200);
     assert(ScrollSafeContentWidth(10, 300, 260, 5, metrics) == 210);

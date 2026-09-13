@@ -74,14 +74,8 @@ BeginScrollPage(ScrollPageSpec spec)
 
     memset(&page, 0, sizeof(page));
 
-    if(max_content_w <= 0)
-        max_content_w = ui_view_width;
-    if(max_content_w > ui_view_width - side_padding * 2)
-        max_content_w = ui_view_width - side_padding * 2;
-    if(min_content_w > 0 && max_content_w < min_content_w)
-        max_content_w = min_content_w;
-    if(max_content_w < 0)
-        max_content_w = 0;
+    max_content_w = ScrollPageContentWidthFor(ui_view_width, max_content_w,
+                                              min_content_w, side_padding);
 
     GetCenteredColumn(max_content_w, side_padding, &content_x, &content_w);
     draw_w = content_w;

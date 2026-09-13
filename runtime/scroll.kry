@@ -87,6 +87,18 @@ ScrollContentWidth :: (content_width: i32, max_scroll: i32,
     return content_width - reserved
 }
 
+ScrollPageContentWidthFor :: (view_width: i32, max_content_width: i32,
+    min_content_width: i32, side_padding: i32) -> i32 #export {
+    if max_content_width <= 0 { max_content_width = view_width }
+    available: i32 = view_width - side_padding * 2
+    if max_content_width > available { max_content_width = available }
+    if min_content_width > 0 && max_content_width < min_content_width {
+        max_content_width = min_content_width
+    }
+    if max_content_width < 0 { max_content_width = 0 }
+    return max_content_width
+}
+
 ScrollSafeContentWidth :: (content_x: i32, content_width: i32,
     scrollbar_x: i32, max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
     safe_width: i32 = content_width
