@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "runtime/text_input.h"
 
 /* The UI has one text-focus owner, so retained and immediate editors share one
  * in-progress platform composition instead of carrying widget-specific
@@ -66,10 +67,11 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
             text_composition.selection_length = event.selection_length;
             result.presentation_changed = 1;
         } else if(event.phase == KRY_TEXT_COMPOSITION_COMMIT) {
-            int start = *anchor < *edit.cursor_position
-                ? *anchor : *edit.cursor_position;
-            int end = *anchor > *edit.cursor_position
-                ? *anchor : *edit.cursor_position;
+            TextSelectionRange range = TextSelectionRangeFor(
+                *anchor, *edit.cursor_position);
+            TextSelectionState collapsed;
+            int start = range.start;
+            int end = range.end;
 
             if(end > start)
                 result.text_changed |= ui_text_delete_range(
@@ -79,7 +81,9 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
                 edit.text, edit.text_size, edit.cursor_position, event.text,
                 allow_newlines, edit.filter, edit.filter_user_data,
                 edit.max_codepoints);
-            *anchor = *edit.cursor_position;
+            collapsed = TextSelectionCollapsed(*edit.cursor_position);
+            *anchor = collapsed.anchor;
+            *edit.cursor_position = collapsed.cursor;
             ui_text_composition_cancel(NULL);
             result.presentation_changed = 1;
             result.selection_changed = 1;

@@ -340,10 +340,9 @@ RenderModalFrame(int width, int height, const char *title,
     char editor_id[96];
     UIPanelFrame frame = {0};
     Widget widget;
+    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
+    ModalFrameLayout layout;
     int title_font;
-    int icon_size = Scale(20);
-    int icon_padding = Scale(8);
-    int icon_w = icon_size + icon_padding * 2;
     int title_w;
     int hover = 0;
     Vector2 mouse_world = ui_mouse_world();
@@ -358,48 +357,35 @@ RenderModalFrame(int width, int height, const char *title,
         (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 19).value);
 
-    if(width > ui_view_width - Scale(24))
-        width = ui_view_width - Scale(24);
-    if(height > ui_view_height - Scale(24))
-        height = ui_view_height - Scale(24);
-
-    frame.w = width;
-    frame.h = height;
-    frame.x = (ui_view_width - width) / 2;
-    frame.y = (ui_view_height - height) / 2;
+    layout = ModalFrameLayoutFor(
+        ModalFramePanelFor(ui_view_width, ui_view_height, width, height,
+                           metrics),
+        metrics);
+    frame.w = (int)layout.panel.width;
+    frame.h = (int)layout.panel.height;
+    frame.x = (int)layout.panel.x;
+    frame.y = (int)layout.panel.y;
     snprintf(editor_id, sizeof(editor_id), "tmp:modal:%s",
              title != NULL && title[0] != '\0' ? title : "untitled");
     {
-        Rectangle bounds = {(float)frame.x, (float)frame.y,
-                            (float)frame.w, (float)frame.h};
+        Rectangle bounds = layout.panel;
         widget = BeginWidget("modal", editor_id, bounds,
                                WIDGET_MOVABLE |
                                WIDGET_RESIZABLE);
-        bounds = widget.bounds;
-        frame.x = (int)bounds.x;
-        frame.y = (int)bounds.y;
-        frame.w = (int)bounds.width;
-        frame.h = (int)bounds.height;
-        if(frame.w < Scale(120))
-            frame.w = Scale(120);
-        if(frame.h < Scale(96))
-            frame.h = Scale(96);
-        bounds.x = (float)frame.x;
-        bounds.y = (float)frame.y;
-        bounds.width = (float)frame.w;
-        bounds.height = (float)frame.h;
-        WidgetSetBounds(&widget, bounds);
+        layout = ModalFrameLayoutFor(widget.bounds, metrics);
+        WidgetSetBounds(&widget, layout.panel);
     }
-    frame.content_x = frame.x + Scale(18);
-    frame.content_y = frame.y + Scale(58);
-    frame.content_w = frame.w - Scale(36);
-    frame.content_h = frame.h - Scale(74);
-    title_font = GetTitleFontSize(title, frame.w - icon_w * 2 - Scale(24));
+    frame.x = (int)layout.panel.x;
+    frame.y = (int)layout.panel.y;
+    frame.w = (int)layout.panel.width;
+    frame.h = (int)layout.panel.height;
+    frame.content_x = (int)layout.content.x;
+    frame.content_y = (int)layout.content.y;
+    frame.content_w = (int)layout.content.width;
+    frame.content_h = (int)layout.content.height;
+    title_font = GetTitleFontSize(title, layout.title_max_width);
     title_w = TextWidth(title, title_font);
-    capture.x = (float)frame.x;
-    capture.y = (float)frame.y;
-    capture.width = (float)frame.w;
-    capture.height = (float)frame.h;
+    capture = layout.panel;
     SetModalCapture(capture);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !ReleaseConsumed() &&
@@ -424,19 +410,21 @@ RenderModalFrame(int width, int height, const char *title,
         title_font = (int)(title_style.font_size + 0.5f);
     title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
-               frame.y + Scale(14), title_font,
+               layout.title_y, title_font,
                Fade(title_style.foreground, title_style.opacity));
 
     if(left_icon.id != 0) {
-        frame.left_clicked = ui_modal_icon_button(frame.x + Scale(6),
-                                                     frame.y + Scale(6),
-                                                     icon_size, icon_padding,
+        frame.left_clicked = ui_modal_icon_button((int)layout.left_button.x,
+                                                     (int)layout.left_button.y,
+                                                     layout.icon_size,
+                                                     layout.icon_padding,
                                                      left_icon, 0, &hover);
     }
     if(frame.right_clicked == 0 && right_icon.id != 0) {
-        frame.right_clicked = ui_modal_icon_button(frame.x + frame.w - icon_w - Scale(6),
-                                                      frame.y + Scale(6),
-                                                      icon_size, icon_padding,
+        frame.right_clicked = ui_modal_icon_button((int)layout.right_button.x,
+                                                      (int)layout.right_button.y,
+                                                      layout.icon_size,
+                                                      layout.icon_padding,
                                                       right_icon, 0, &hover);
     }
 

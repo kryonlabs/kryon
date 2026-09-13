@@ -47,6 +47,313 @@ type SliderWholeStep struct {
 	Changed bool
 }
 
+type SliderEditorLayout struct {
+	EditorBounds Rectangle
+	HitBounds    Rectangle
+	PaintBounds  Rectangle
+}
+
+type SliderTextPaint struct {
+	TextX float32
+	TextY float32
+}
+
+func Slider_SliderCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) SliderTextPaint {
+	var paint SliderTextPaint = SliderTextPaint{}
+	var value_0 float32 = bounds.X
+	var value_1 float32 = inset
+	var value_2 float32 = value_0 + value_1
+	paint.TextX = value_2
+	var value_3 float32 = bounds.Y
+	var value_4 float32 = bounds.Height
+	var value_5 float32 = text_line_height
+	var value_6 float32 = value_4 - value_5
+	var value_7 float32 = 2.0
+	var value_8 float32 = value_6 / value_7
+	var value_9 float32 = value_3 + value_8
+	paint.TextY = value_9
+	var value_10 SliderTextPaint = paint
+	return value_10
+}
+
+func Slider_SliderLabelTextPaintFor(bounds Rectangle, inset float32, font_size int32, gap float32) SliderTextPaint {
+	var paint SliderTextPaint = SliderTextPaint{}
+	var value_0 float32 = bounds.X
+	var value_1 float32 = inset
+	var value_2 float32 = value_0 + value_1
+	paint.TextX = value_2
+	var value_3 float32 = bounds.Y
+	var value_4 int32 = font_size
+	var value_5 float32 = float32(value_4)
+	var value_6 float32 = value_3 - value_5
+	var value_7 float32 = gap
+	var value_8 float32 = value_6 - value_7
+	paint.TextY = value_8
+	var value_9 SliderTextPaint = paint
+	return value_9
+}
+
+func Slider_SliderCenteredHitBounds(x int32, y int32, width int32, height int32, min_width int32, min_height int32) Rectangle {
+	var hit Rectangle = Rectangle{}
+	var value_0 int32 = width
+	var hit_width int32 = value_0
+	var value_1 int32 = height
+	var hit_height int32 = value_1
+	var value_2 int32 = hit_width
+	var value_3 int32 = min_width
+	var value_4 bool = value_2 < value_3
+	if value_4 {
+		var value_5 int32 = min_width
+		hit_width = value_5
+	}
+	var value_6 int32 = hit_height
+	var value_7 int32 = min_height
+	var value_8 bool = value_6 < value_7
+	if value_8 {
+		var value_9 int32 = min_height
+		hit_height = value_9
+	}
+	var value_10 int32 = x
+	var value_11 int32 = width
+	var value_12 int32 = 2
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 4))
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 1))
+	var value_15 int32 = hit_width
+	var value_16 int32 = 2
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 4))
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_17), 32, true, 2))
+	var value_19 float32 = float32(value_18)
+	hit.X = value_19
+	var value_20 int32 = y
+	var value_21 int32 = height
+	var value_22 int32 = 2
+	var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 4))
+	var value_24 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_23), 32, true, 1))
+	var value_25 int32 = hit_height
+	var value_26 int32 = 2
+	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 4))
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_27), 32, true, 2))
+	var value_29 float32 = float32(value_28)
+	hit.Y = value_29
+	var value_30 int32 = hit_width
+	var value_31 float32 = float32(value_30)
+	hit.Width = value_31
+	var value_32 int32 = hit_height
+	var value_33 float32 = float32(value_32)
+	hit.Height = value_33
+	var value_34 Rectangle = hit
+	return value_34
+}
+
+func Slider_SliderHorizontalEditorLayoutFor(x int32, y int32, width int32, min_touch_height int32, scale float32) SliderEditorLayout {
+	var layout SliderEditorLayout = SliderEditorLayout{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 int32 = width
+	var value_5 float32 = scale
+	var value_6 int32 = Slider_SliderMinimumLength(value_5)
+	var value_7 bool = value_4 < value_6
+	if value_7 {
+		var value_8 float32 = scale
+		var value_9 int32 = Slider_SliderMinimumLength(value_8)
+		width = value_9
+	}
+	var value_10 float32 = 56.0
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 * value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var editor_height int32 = value_13
+	var value_14 int32 = y
+	var value_15 float32 = 28.0
+	var value_16 float32 = scale
+	var value_17 float32 = value_15 * value_16
+	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
+	var value_19 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_18), 32, true, 1))
+	var track_y int32 = value_19
+	var value_20 float32 = scale
+	var value_21 int32 = Slider_SliderThumbSize(value_20)
+	var thumb_height int32 = value_21
+	var value_22 bool = false
+	var value_23 float32 = scale
+	var value_24 int32 = Slider_SliderTrackSize(value_22, value_23)
+	var track_height int32 = value_24
+	var value_25 int32 = track_y
+	var value_26 int32 = thumb_height
+	var value_27 int32 = track_height
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
+	var value_29 int32 = 2
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 4))
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_30), 32, true, 2))
+	var thumb_y int32 = value_31
+	var value_32 int32 = x
+	var value_33 float32 = float32(value_32)
+	layout.EditorBounds.X = value_33
+	var value_34 int32 = y
+	var value_35 float32 = float32(value_34)
+	layout.EditorBounds.Y = value_35
+	var value_36 int32 = width
+	var value_37 float32 = float32(value_36)
+	layout.EditorBounds.Width = value_37
+	var value_38 int32 = editor_height
+	var value_39 float32 = float32(value_38)
+	layout.EditorBounds.Height = value_39
+	var value_40 int32 = x
+	var value_41 int32 = thumb_y
+	var value_42 int32 = width
+	var value_43 int32 = thumb_height
+	var value_44 int32 = width
+	var value_45 int32 = min_touch_height
+	var value_46 Rectangle = Slider_SliderCenteredHitBounds(value_40, value_41, value_42, value_43, value_44, value_45)
+	layout.HitBounds = value_46
+	var value_47 int32 = x
+	var value_48 float32 = float32(value_47)
+	layout.PaintBounds.X = value_48
+	var value_49 int32 = thumb_y
+	var value_50 float32 = float32(value_49)
+	layout.PaintBounds.Y = value_50
+	var value_51 int32 = width
+	var value_52 float32 = float32(value_51)
+	layout.PaintBounds.Width = value_52
+	var value_53 int32 = thumb_height
+	var value_54 float32 = float32(value_53)
+	layout.PaintBounds.Height = value_54
+	var value_55 SliderEditorLayout = layout
+	return value_55
+}
+
+func Slider_SliderVerticalEditorLayoutFor(center_x int32, y int32, height int32, min_touch_width int32, scale float32) SliderEditorLayout {
+	var layout SliderEditorLayout = SliderEditorLayout{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 int32 = height
+	var value_5 float32 = scale
+	var value_6 int32 = Slider_SliderMinimumLength(value_5)
+	var value_7 bool = value_4 < value_6
+	if value_7 {
+		var value_8 float32 = scale
+		var value_9 int32 = Slider_SliderMinimumLength(value_8)
+		height = value_9
+	}
+	var value_10 float32 = 36.0
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 * value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var editor_width int32 = value_13
+	var value_14 bool = true
+	var value_15 float32 = scale
+	var value_16 int32 = Slider_SliderTrackSize(value_14, value_15)
+	var track_width int32 = value_16
+	var value_17 float32 = scale
+	var value_18 int32 = Slider_SliderThumbSize(value_17)
+	var thumb_width int32 = value_18
+	var value_19 int32 = center_x
+	var value_20 int32 = track_width
+	var value_21 int32 = 2
+	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 4))
+	var value_23 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_22), 32, true, 2))
+	var track_x int32 = value_23
+	var value_24 int32 = center_x
+	var value_25 int32 = editor_width
+	var value_26 int32 = 2
+	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 4))
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_27), 32, true, 2))
+	var value_29 float32 = float32(value_28)
+	layout.EditorBounds.X = value_29
+	var value_30 int32 = y
+	var value_31 float32 = float32(value_30)
+	layout.EditorBounds.Y = value_31
+	var value_32 int32 = editor_width
+	var value_33 float32 = float32(value_32)
+	layout.EditorBounds.Width = value_33
+	var value_34 int32 = height
+	var value_35 float32 = float32(value_34)
+	layout.EditorBounds.Height = value_35
+	var value_36 int32 = track_x
+	var value_37 int32 = y
+	var value_38 int32 = track_width
+	var value_39 int32 = height
+	var value_40 int32 = min_touch_width
+	var value_41 int32 = height
+	var value_42 Rectangle = Slider_SliderCenteredHitBounds(value_36, value_37, value_38, value_39, value_40, value_41)
+	layout.HitBounds = value_42
+	var value_43 int32 = center_x
+	var value_44 int32 = thumb_width
+	var value_45 int32 = 2
+	var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 4))
+	var value_47 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_46), 32, true, 2))
+	var value_48 float32 = float32(value_47)
+	layout.PaintBounds.X = value_48
+	var value_49 int32 = y
+	var value_50 float32 = float32(value_49)
+	layout.PaintBounds.Y = value_50
+	var value_51 int32 = thumb_width
+	var value_52 float32 = float32(value_51)
+	layout.PaintBounds.Width = value_52
+	var value_53 int32 = height
+	var value_54 float32 = float32(value_53)
+	layout.PaintBounds.Height = value_54
+	var value_55 SliderEditorLayout = layout
+	return value_55
+}
+
+func Slider_SliderCellBoundsFor(bounds Rectangle, count int32, index int32) Rectangle {
+	var cell Rectangle = Rectangle{}
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 Rectangle = cell
+		return value_3
+	}
+	var value_4 int32 = index
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		index = value_7
+	}
+	var value_8 int32 = index
+	var value_9 int32 = count
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		index = value_13
+	}
+	var value_14 float32 = bounds.X
+	var value_15 float32 = bounds.Width
+	var value_16 int32 = index
+	var value_17 float32 = float32(value_16)
+	var value_18 float32 = value_15 * value_17
+	var value_19 int32 = count
+	var value_20 float32 = float32(value_19)
+	var value_21 float32 = value_18 / value_20
+	var value_22 float32 = value_14 + value_21
+	cell.X = value_22
+	var value_23 float32 = bounds.Y
+	cell.Y = value_23
+	var value_24 float32 = bounds.Width
+	var value_25 int32 = count
+	var value_26 float32 = float32(value_25)
+	var value_27 float32 = value_24 / value_26
+	cell.Width = value_27
+	var value_28 float32 = bounds.Height
+	cell.Height = value_28
+	var value_29 Rectangle = cell
+	return value_29
+}
+
 func Slider_SliderMinimumLength(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

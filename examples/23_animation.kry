@@ -22,7 +22,7 @@ scene main {
     NodeSetPosition(scene, sprite_id, CENTER_X, CENTER_Y)
     NodeSetProps(scene, sprite_id, Sprite2DPropsAlloc("tiles/tile.png", 64.0, 64.0))
 
-    player_id = NodeCreate(scene, 0, NODE_TIMER, "animator")
+    player_id = NodeCreate(scene, 0, NODE_ANIMATION_PLAYER, "animator")
     props := AnimationPlayerPropsAlloc()
     NodeSetProps(scene, player_id, props)
 

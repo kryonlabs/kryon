@@ -1242,6 +1242,14 @@ function_returns_u32(const KirFunction *fn)
     return strcmp(KirScalarType(fn->return_type), "u32") == 0;
 }
 
+static int
+function_returns_value(const KirFunction *fn)
+{
+    const char *type = KirScalarType(fn->return_type);
+
+    return type[0] != '\0' && strcmp(type, "void") != 0;
+}
+
 static void
 emit_first_argument_value(FILE *f, const KirModule *m, const char *args)
 {
@@ -2527,7 +2535,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         }
     }
-    fprintf(f, "  return kryon.snapshot($rt);\n");
+    if(!function_returns_value(fn))
+        fprintf(f, "  return kryon.snapshot($rt);\n");
     fprintf(f, "}\n\n");
 }
 

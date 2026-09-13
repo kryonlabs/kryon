@@ -145,6 +145,24 @@ TabBarRevealScroll :: (tab_x: float, tab_width: float, bounds: Rectangle,
     return scroll
 }
 
+TabBarDragMarkerBounds :: (tab_x: i32, tab_width: i32, bar_y: i32,
+    bar_height: i32, after_tab: bool, scale: float) -> Rectangle #export {
+    marker: Rectangle
+    if scale <= 0.0 { scale = 1.0 }
+    marker_x: i32 = tab_x
+    if after_tab {
+        marker_x = tab_x + tab_width
+    }
+    marker.x = (float)marker_x - scale
+    marker.y = (float)bar_y + 4.0 * scale
+    marker.width = 2.0 * scale
+    marker.height = (float)bar_height - 8.0 * scale
+    if marker.height < 0.0 {
+        marker.height = 0.0
+    }
+    return marker
+}
+
 TabBarEqualTabBounds :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
     rect: Rectangle
     if count <= 0 || index < 0 || index >= count {

@@ -1,15 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
-
-typedef struct ReorderState {
-    int list_id;
-    int item_id;
-    int from_index;
-    int press_y;
-    int press_offset_y;
-    int scroll_start;
-    int dragging;
-} ReorderState;
+#include "runtime/reorder.h"
 
 static ReorderState g_ui_reorder_state = {0};
 
@@ -40,12 +31,11 @@ ui_reorder_target_index(const ReorderList *list, int active_index,
 
         if(i == active_index)
             continue;
-        center_y = (int)(item->bounds.y + item->bounds.height / 2.0f);
-        if(pointer_y > center_y)
+        if(ReorderTargetIncludesItem(pointer_y, item->bounds))
             target++;
     }
 
-    return ui_clampi(target, 0, list->item_count - 1);
+    return ReorderTargetIndexFor(target, list->item_count);
 }
 
 static void
@@ -63,8 +53,10 @@ UpdateReorderList(ReorderList list)
     Vector2 mouse = ui_mouse_world();
     int pointer_y = (int)mouse.y;
     int captured = ui_input_captures_click_internal(mouse, 0);
-    int threshold = list.drag_threshold > 0 ? list.drag_threshold : Scale(5);
-    int handle_w = list.handle_width > 0 ? list.handle_width : Scale(36);
+    ReorderMetrics metrics = ReorderMetricsFor(GetScale(), list.handle_width,
+                                               list.drag_threshold,
+                                               list.auto_scroll_margin,
+                                               list.auto_scroll_step);
 
     result.from_index = -1;
     result.to_index = -1;
@@ -100,8 +92,9 @@ UpdateReorderList(ReorderList list)
         result.active_index = active_index;
         result.active_id = g_ui_reorder_state.item_id;
         result.drag_delta_y = dy;
-        dragged_center_y = pointer_y - g_ui_reorder_state.press_offset_y +
-                           (int)(list.items[active_index].bounds.height / 2.0f);
+        dragged_center_y = ReorderDraggedCenterY(
+            pointer_y, g_ui_reorder_state.press_offset_y,
+            list.items[active_index].bounds.height);
         result.target_index = ui_reorder_target_index(&list, active_index,
                                                       dragged_center_y);
         result.to_index = result.target_index;
@@ -109,7 +102,8 @@ UpdateReorderList(ReorderList list)
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             int abs_dy = dy < 0 ? -dy : dy;
 
-            if(!g_ui_reorder_state.dragging && abs_dy >= threshold) {
+            if(!g_ui_reorder_state.dragging &&
+               abs_dy >= metrics.drag_threshold) {
                 g_ui_reorder_state.dragging = 1;
                 g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
             }
@@ -120,22 +114,16 @@ UpdateReorderList(ReorderList list)
                 int view_bottom = list.viewport_bottom > 0
                                       ? list.viewport_bottom
                                       : (int)(list.bounds.y + list.bounds.height);
-                int margin = list.auto_scroll_margin > 0
-                                 ? list.auto_scroll_margin
-                                 : Scale(34);
-                int step = list.auto_scroll_step > 0
-                               ? list.auto_scroll_step
-                               : Scale(12);
-
                 result.dragging = 1;
                 PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                                (float)ui_view_height}, 0);
 
                 if(list.scroll_offset != NULL && list.max_scroll > 0) {
-                    if(pointer_y < view_top + margin)
-                        *list.scroll_offset -= step;
-                    else if(pointer_y > view_bottom - margin)
-                        *list.scroll_offset += step;
+                    if(pointer_y < view_top + metrics.auto_scroll_margin)
+                        *list.scroll_offset -= metrics.auto_scroll_step;
+                    else if(pointer_y >
+                            view_bottom - metrics.auto_scroll_margin)
+                        *list.scroll_offset += metrics.auto_scroll_step;
                     *list.scroll_offset = ui_clampi(*list.scroll_offset, 0,
                                                     list.max_scroll);
                 }
@@ -170,10 +158,8 @@ UpdateReorderList(ReorderList list)
 
         if(item->disabled)
             continue;
-        handle = item->bounds;
-        handle.width = (float)handle_w;
-        if(list.handle_height > 0 && handle.height > list.handle_height)
-            handle.height = (float)list.handle_height;
+        handle = ReorderHandleBounds(item->bounds, metrics.handle_width,
+                                     list.handle_height);
         if(CheckCollisionPointRec(mouse, handle)) {
             g_ui_reorder_state.list_id = list.id;
             g_ui_reorder_state.item_id = item->id;
@@ -202,13 +188,7 @@ UpdateReorderList(ReorderList list)
 void
 RenderReorderHandle(int x, int y, int w, int h, int active)
 {
-    int dot = Scale(3);
-    int gap = Scale(4);
-    int col_gap = Scale(8);
-    int total_w = dot * 2 + col_gap;
-    int total_h = dot * 3 + gap * 2;
-    int start_x = x + (w - total_w) / 2;
-    int start_y = y + (h - total_h) / 2;
+    ReorderHandlePaint paint;
     Style style = ui_resolve_button_style_kind(
         (ButtonProps){.tone = active ? ButtonToneAccent : ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
@@ -220,44 +200,43 @@ RenderReorderHandle(int x, int y, int w, int h, int active)
     if(w <= 0 || h <= 0)
         return;
     MarkClickable();
-    for(int row = 0; row < 3; row++) {
-        for(int col = 0; col < 2; col++) {
-            DrawRectangle(start_x + col * (dot + col_gap),
-                          start_y + row * (dot + gap),
-                          dot, dot, color);
-        }
-    }
+    paint = ReorderHandlePaintFor((Rectangle){(float)x, (float)y,
+                                              (float)w, (float)h},
+                                  (float)GetScale());
+    if(paint.dot_count <= 0)
+        return;
+    DrawRectangleRec(paint.dot0, color);
+    DrawRectangleRec(paint.dot1, color);
+    DrawRectangleRec(paint.dot2, color);
+    DrawRectangleRec(paint.dot3, color);
+    DrawRectangleRec(paint.dot4, color);
+    DrawRectangleRec(paint.dot5, color);
 }
 
 void
 RenderReorderPlaceholder(Rectangle bounds)
 {
-    int x = (int)bounds.x;
-    int y = (int)bounds.y;
-    int w = (int)bounds.width;
-    int h = (int)bounds.height;
-    int line_h = Scale(2);
+    ReorderPlaceholderPaint paint;
     Style style = ui_resolve_button_style_kind(
         (ButtonProps){.tone = ButtonToneAccent,
                       .emphasis = ButtonEmphasisOutline},
         ButtonStateFocus, StyleKindSelectable());
     Color color = style.border.a != 0 ? style.border : style.foreground;
 
-    if(w <= 0 || h <= 0)
+    if(bounds.width <= 0 || bounds.height <= 0)
         return;
-    if(h >= Scale(32)) {
-        int inset = Scale(3);
-        Rectangle slot = {(float)(x + inset), (float)(y + inset),
-                          (float)(w - inset * 2), (float)(h - inset * 2)};
-        float stroke = (float)Scale(2);
-
-        if(slot.width <= 0 || slot.height <= 0)
+    paint = ReorderPlaceholderPaintFor(bounds, (float)GetScale());
+    if(paint.use_slot) {
+        if(paint.slot_bounds.width <= 0 || paint.slot_bounds.height <= 0)
             return;
-        DrawRectangleRounded(slot, 0.12f, 10, Fade(color, 0.10f));
-        DrawRectangleRoundedLinesEx(slot, 0.12f, 10, stroke, color);
+        DrawRectangleRounded(paint.slot_bounds, paint.radius, paint.segments,
+                             Fade(color, paint.fill_alpha));
+        DrawRectangleRoundedLinesEx(paint.slot_bounds, paint.radius,
+                                    paint.segments, paint.stroke_width,
+                                    color);
         return;
     }
-    if(line_h < 1)
-        line_h = 1;
-    DrawRectangle(x, y + h / 2 - line_h / 2, w, line_h, color);
+    if(paint.line_bounds.width <= 0 || paint.line_bounds.height <= 0)
+        return;
+    DrawRectangleRec(paint.line_bounds, color);
 }

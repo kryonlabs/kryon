@@ -30,6 +30,15 @@ GuideScrim :: struct {
     right: Rectangle
 }
 
+GuideArrow :: struct {
+    line_start: Vector2
+    line_end: Vector2
+    tip0: Vector2
+    tip1: Vector2
+    tip2: Vector2
+    stroke_width: float
+}
+
 GuideLayout :: struct {
     tip: Rectangle
     text: Rectangle
@@ -202,6 +211,63 @@ GuideScrimFor :: (view_width: i32, view_height: i32,
     scrim.right = (Rectangle){(float)right, (float)top,
         (float)(view_width - right), (float)(bottom - top)}
     return scrim
+}
+
+GuideArrowFor :: (tip: Rectangle, anchor: Rectangle,
+    metrics: GuideMetrics) -> GuideArrow #export {
+    arrow: GuideArrow
+    anchor_cx: i32 = (i32)(anchor.x + anchor.width / 2.0)
+    anchor_cy: i32 = (i32)(anchor.y + anchor.height / 2.0)
+    tip_left: i32 = (i32)tip.x
+    tip_right: i32 = (i32)(tip.x + tip.width)
+    tip_top: i32 = (i32)tip.y
+    tip_bottom: i32 = (i32)(tip.y + tip.height)
+    arrow_size: i32 = metrics.gap / 2
+    if arrow_size < 1 { arrow_size = 1 }
+    arrow.stroke_width = (float)metrics.anchor_stroke
+
+    if anchor_cy < tip_top {
+        arrow.line_start.x = (float)anchor_cx
+        arrow.line_start.y = (float)(anchor_cy + (i32)(anchor.height / 2.0))
+        arrow.line_end.x = (float)anchor_cx
+        arrow.line_end.y = (float)tip_top
+        arrow.tip0 = arrow.line_end
+        arrow.tip1.x = arrow.line_end.x - (float)arrow_size
+        arrow.tip1.y = arrow.line_end.y - (float)arrow_size
+        arrow.tip2.x = arrow.line_end.x + (float)arrow_size
+        arrow.tip2.y = arrow.line_end.y - (float)arrow_size
+    } else if anchor_cy > tip_bottom {
+        arrow.line_start.x = (float)anchor_cx
+        arrow.line_start.y = (float)(anchor_cy - (i32)(anchor.height / 2.0))
+        arrow.line_end.x = (float)anchor_cx
+        arrow.line_end.y = (float)tip_bottom
+        arrow.tip0 = arrow.line_end
+        arrow.tip1.x = arrow.line_end.x + (float)arrow_size
+        arrow.tip1.y = arrow.line_end.y + (float)arrow_size
+        arrow.tip2.x = arrow.line_end.x - (float)arrow_size
+        arrow.tip2.y = arrow.line_end.y + (float)arrow_size
+    } else if anchor_cx < tip_left {
+        arrow.line_start.x = (float)(anchor_cx + (i32)(anchor.width / 2.0))
+        arrow.line_start.y = (float)anchor_cy
+        arrow.line_end.x = (float)tip_left
+        arrow.line_end.y = (float)anchor_cy
+        arrow.tip0 = arrow.line_end
+        arrow.tip1.x = arrow.line_end.x - (float)arrow_size
+        arrow.tip1.y = arrow.line_end.y - (float)arrow_size
+        arrow.tip2.x = arrow.line_end.x - (float)arrow_size
+        arrow.tip2.y = arrow.line_end.y + (float)arrow_size
+    } else {
+        arrow.line_start.x = (float)(anchor_cx - (i32)(anchor.width / 2.0))
+        arrow.line_start.y = (float)anchor_cy
+        arrow.line_end.x = (float)tip_right
+        arrow.line_end.y = (float)anchor_cy
+        arrow.tip0 = arrow.line_end
+        arrow.tip1.x = arrow.line_end.x + (float)arrow_size
+        arrow.tip1.y = arrow.line_end.y - (float)arrow_size
+        arrow.tip2.x = arrow.line_end.x + (float)arrow_size
+        arrow.tip2.y = arrow.line_end.y + (float)arrow_size
+    }
+    return arrow
 }
 
 GuideLayoutFor :: (tip: Rectangle, paragraph_width: i32,

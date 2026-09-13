@@ -109,12 +109,26 @@ type frameOpController interface {
 // Legacy control producers convert their operation once, before it enters the
 // frame stream. Button itself records the shared frame without this adapter.
 func buttonOperation(op FrameOp) FrameOp {
+	props := op.Button.Props
+	props.Bounds = op.Bounds
+	props.ID = op.ID
+	props.Label = op.Text
+	props.Disabled = op.Disabled
+	props.Loading = op.Loading
+	props.IconType = op.IconType
+	props.IconOnly = op.IconOnly
+	props.IconPlacement = IconPlacement(op.IconPlacement)
+	material := frameMaterial(op)
+	appearance := StyleFrame{Value: material.Value, Fill: op.FillStates}
+	appearance.Value.Foreground = packRGBA(op.TextColor)
+	appearance.Value.IconSize = op.IconSize
+	appearance.Value.Gap = op.Gap
+	appearance.Value.OffsetX = op.ContentOffset.X
+	appearance.Value.OffsetY = op.ContentOffset.Y
 	op.Button = ButtonFrame{
-		Props: ButtonProps{Bounds: op.Bounds, ID: op.ID, Label: op.Text, Disabled: op.Disabled, Loading: op.Loading, IconType: op.IconType,
-			IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)},
-		Appearance: StyleFrame{Value: StyleData{IconSize: op.IconSize, Gap: op.Gap,
-			OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}},
-		Material: frameMaterial(op), Font: op.FontSize,
+		Props:      props,
+		Appearance: appearance,
+		Material:   material, Font: op.FontSize,
 		Foreground: Surface_Opacity(packRGBA(op.TextColor), op.Opacity),
 	}
 	return op

@@ -21,6 +21,13 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "kryon_compat.generated.h"
 
+typedef struct StylePackOption {
+    const char* id;
+    const char* label;
+    const char* description;
+    bool active;
+} StylePackOption;
+
 typedef struct StylePickerProps {
     Rectangle bounds;
     int32_t id;

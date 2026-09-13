@@ -203,21 +203,19 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                  const char *value_text_override)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)Scale(56)};
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    SliderEditorLayout layout = SliderHorizontalEditorLayoutFor(
+        x, y, w, ui_touch_target_min(), runtime_scale);
+    Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
     int label_font = GetFontSize();
     int value_font = GetFontSize();
-    float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int track_y = y + Scale(28);
-    int knob_h = SliderThumbSize(runtime_scale);
-    int knob_y = track_y - (knob_h - SliderTrackSize(0, runtime_scale)) / 2;
-    int min_touch_h = ui_touch_target_min();
     int changed = 0;
     int can_draw = IsWindowReady();
     char value_text[48];
-    Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
+    Rectangle hit = layout.hit_bounds;
     float t;
 
     widget = BeginWidget("slider",
@@ -230,12 +228,10 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
-    if(w < SliderMinimumLength(runtime_scale))
-        w = SliderMinimumLength(runtime_scale);
-    track_y = y + Scale(28);
-    knob_y = track_y - (knob_h - SliderTrackSize(0, runtime_scale)) / 2;
-    hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
-    editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)Scale(56)};
+    layout = SliderHorizontalEditorLayoutFor(
+        x, y, w, ui_touch_target_min(), runtime_scale);
+    editor_bounds = layout.editor_bounds;
+    hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -307,7 +303,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
-            .bounds = {(float)x, (float)knob_y, (float)w, (float)knob_h},
+            .bounds = layout.paint_bounds,
             .ratio = t,
             .vertical = false,
             .active = active,
@@ -333,20 +329,15 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
                                  int active_visual)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
-                               (float)Scale(36), (float)h};
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
+        x, y, h, ui_touch_target_min(), runtime_scale);
+    Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int track_w = SliderTrackSize(1, runtime_scale);
-    int knob_w = SliderThumbSize(runtime_scale);
-    int knob_h = SliderThumbSize(runtime_scale);
-    int track_x = x - track_w / 2;
-    int min_touch_w = ui_touch_target_min();
     int changed = 0;
-    Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
-                                             min_touch_w, h);
+    Rectangle hit = layout.hit_bounds;
 
     widget = BeginWidget("vertical_slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -358,13 +349,10 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < SliderMinimumLength(runtime_scale))
-        h = SliderMinimumLength(runtime_scale);
-    track_x = x - track_w / 2;
-    hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
-                                   min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
-                                (float)Scale(36), (float)h};
+    layout = SliderVerticalEditorLayoutFor(
+        x, y, h, ui_touch_target_min(), runtime_scale);
+    editor_bounds = layout.editor_bounds;
+    hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -407,8 +395,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
-            .bounds = {(float)(x - knob_w / 2), (float)y,
-                       (float)knob_w, (float)h},
+            .bounds = layout.paint_bounds,
             .ratio = t,
             .vertical = true,
             .active = active,
@@ -449,20 +436,15 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                                      void *callback_user_data)
 {
     char editor_id[96];
-    Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
-                               (float)Scale(36), (float)h};
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
+        x, y, h, ui_touch_target_min(), runtime_scale);
+    Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int track_w = SliderTrackSize(1, runtime_scale);
-    int knob_w = SliderThumbSize(runtime_scale);
-    int knob_h = SliderThumbSize(runtime_scale);
-    int track_x = x - track_w / 2;
-    int min_touch_w = ui_touch_target_min();
     int changed = 0;
-    Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
-                                             min_touch_w, h);
+    Rectangle hit = layout.hit_bounds;
 
     widget = BeginWidget("vertical_slider_marks",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -475,13 +457,10 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < SliderMinimumLength(runtime_scale))
-        h = SliderMinimumLength(runtime_scale);
-    track_x = x - track_w / 2;
-    hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
-                                   min_touch_w, h);
-    editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
-                                (float)Scale(36), (float)h};
+    layout = SliderVerticalEditorLayoutFor(
+        x, y, h, ui_touch_target_min(), runtime_scale);
+    editor_bounds = layout.editor_bounds;
+    hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
@@ -527,8 +506,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
-            .bounds = {(float)(x - knob_w / 2), (float)y,
-                       (float)knob_w, (float)h},
+            .bounds = layout.paint_bounds,
             .ratio = t,
             .vertical = true,
             .active = active,
@@ -749,8 +727,6 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     char editor_id[96];
     Widget widget;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int slot_size = CheckboxSlotSize(runtime_scale);
-    int label_gap = Scale(10);
     int checked = value != NULL && *value;
     StyleFrame label_frame = ui_checkbox_label_style_frame(
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, checked);
@@ -760,9 +736,11 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         ? (int)(label_style.font_size + 0.5f)
         : GetFontSize();
     int label_w = TextWidth(label, font);
-    int label_h = TextLineHeight(font);
-    int row_h = slot_size > label_h ? slot_size : label_h;
-    Rectangle bounds = {x, y, slot_size + label_gap + label_w, row_h};
+    CheckboxLayout layout = CheckboxLayoutForText((float)x, (float)y,
+                                                  (float)label_w,
+                                                  (float)TextLineHeight(font),
+                                                  runtime_scale);
+    Rectangle bounds = layout.bounds;
     Vector2 mouse_world = ui_mouse_world();
     int pressed;
     int can_draw = IsWindowReady();
@@ -810,6 +788,9 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             ui_style_apply_effects_frame(label_frame).value);
         if(label_style.font_size > 0.0f)
             font = (int)(label_style.font_size + 0.5f);
+        layout = CheckboxLayoutForText((float)x, (float)y, (float)label_w,
+                                       (float)TextLineHeight(font),
+                                       runtime_scale);
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = bounds,
             .checked = checked,
@@ -846,8 +827,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                        GetColor(paint.mark_color));
         }
 
-        RenderText(label, x + slot_size + label_gap,
-                   GetUIControlTextY(label, y, row_h, font),
+        RenderText(label, (int)layout.label_x, (int)layout.label_y,
                    font, GetColor(paint.label_color));
     }
 

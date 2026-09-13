@@ -91,7 +91,7 @@ check_absent "core frame/focus/input legacy names" \
     $surface_paths
 
 check_absent "text font legacy names" \
-    '\bUIFont[A-Za-z0-9_]*\b|\bUIFonts\b|\bUI_FONT_|\bRegisterUISmallFont\b|\bRegisterUIFixedFontSource\b' \
+    '\bUIFont[A-Za-z0-9_]*\b|\bUIFonts\b|\bUI_FONT_|\bEnsureUIDefaultFont\b|\bRegisterUISmallFont\b|\bRegisterUIFixedFontSource\b' \
     $surface_paths
 
 check_absent "clipboard legacy names" \

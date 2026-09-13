@@ -19,6 +19,10 @@ main(void)
     TreeViewMetrics metrics = TreeViewMetricsFor(2.0f);
     TreeViewScrollLayout scroll;
     Rectangle row;
+    Rectangle marker;
+    Rectangle text;
+    TreeViewTextPaint paint;
+    Rectangle scrollbar;
 
     assert(metrics.default_row_height == 56);
     assert(metrics.indent_x == 16);
@@ -42,7 +46,16 @@ main(void)
     check_rect(row, 10, 39, 180, 28);
     assert(TreeViewIndent(-2, metrics) == 8);
     assert(TreeViewIndent(2, metrics) == 44);
-    check_rect(TreeViewMarkerBounds(row, 2, metrics), 54, 39, 16, 28);
-    check_rect(TreeViewTextBounds(row, 2, metrics), 72, 39, 118, 28);
+    marker = TreeViewMarkerBounds(row, 2, metrics);
+    text = TreeViewTextBounds(row, 2, metrics);
+    check_rect(marker, 54, 39, 16, 28);
+    check_rect(text, 72, 39, 118, 28);
+    paint = TreeViewTextPaintFor(marker, text, 18);
+    assert(paint.marker_x == 54);
+    assert(paint.marker_y == 44);
+    assert(paint.text_x == 72);
+    assert(paint.text_y == 44);
+    scrollbar = TreeViewScrollbarBoundsFor(bounds, 8);
+    check_rect(scrollbar, 182, 20, 8, 90);
     return 0;
 }

@@ -18,6 +18,11 @@ type ListBoxNavigation struct {
 	Changed  bool
 }
 
+type ListBoxItemPaint struct {
+	TextX int32
+	TextY int32
+}
+
 func ListBox_ListBoxRowHeight(row_height int32) int32 {
 	var value_0 int32 = row_height
 	var value_1 int32 = 0
@@ -333,4 +338,52 @@ func ListBox_ListBoxRowBounds(bounds Rectangle, row_index int32, layout ListBoxL
 	row.Height = value_11
 	var value_12 Rectangle = row
 	return value_12
+}
+
+func ListBox_ListBoxItemPaintFor(row Rectangle, label_inset int32, text_line_height int32) ListBoxItemPaint {
+	var paint ListBoxItemPaint = ListBoxItemPaint{}
+	var value_0 float32 = row.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = label_inset
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	paint.TextX = value_3
+	var value_4 float32 = row.Y
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	var value_6 float32 = row.Height
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = text_line_height
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
+	var value_10 int32 = 2
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 4))
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_11), 32, true, 1))
+	paint.TextY = value_12
+	var value_13 ListBoxItemPaint = paint
+	return value_13
+}
+
+func ListBox_ListBoxScrollbarBoundsFor(bounds Rectangle, scrollbar_width int32) Rectangle {
+	var bar Rectangle = Rectangle{}
+	var value_0 int32 = scrollbar_width
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 8
+		scrollbar_width = value_3
+	}
+	var value_4 float32 = bounds.X
+	var value_5 float32 = bounds.Width
+	var value_6 float32 = value_4 + value_5
+	var value_7 int32 = scrollbar_width
+	var value_8 float32 = float32(value_7)
+	var value_9 float32 = value_6 - value_8
+	bar.X = value_9
+	var value_10 float32 = bounds.Y
+	bar.Y = value_10
+	var value_11 int32 = scrollbar_width
+	var value_12 float32 = float32(value_11)
+	bar.Width = value_12
+	var value_13 float32 = bounds.Height
+	bar.Height = value_13
+	var value_14 Rectangle = bar
+	return value_14
 }

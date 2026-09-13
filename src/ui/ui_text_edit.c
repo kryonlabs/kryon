@@ -292,13 +292,16 @@ ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
                    int action, int modifier, int secure)
 {
     TextDeleteDecision decision;
+    TextSelectionRange range;
+    TextSelectionState collapsed;
     int start;
     int end;
 
     if(text == NULL || anchor == NULL || cursor == NULL)
         return 0;
-    start = *anchor < *cursor ? *anchor : *cursor;
-    end = *anchor > *cursor ? *anchor : *cursor;
+    range = TextSelectionRangeFor(*anchor, *cursor);
+    start = range.start;
+    end = range.end;
     decision = TextDeleteDecisionFor(action, modifier != 0, secure != 0,
                                      start != end);
     if(!decision.consumed)
@@ -319,7 +322,9 @@ ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
     }
     if(!ui_text_delete_range(text, text_size, cursor, start, end))
         return 0;
-    *anchor = *cursor;
+    collapsed = TextSelectionCollapsed(*cursor);
+    *anchor = collapsed.anchor;
+    *cursor = collapsed.cursor;
     return 1;
 }
 

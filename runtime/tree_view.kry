@@ -14,6 +14,13 @@ TreeViewScrollLayout :: struct {
     y_offset: i32
 }
 
+TreeViewTextPaint :: struct {
+    marker_x: i32
+    marker_y: i32
+    text_x: i32
+    text_y: i32
+}
+
 TreeViewMetricsFor :: (scale: float) -> TreeViewMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TreeViewMetrics
@@ -98,4 +105,24 @@ TreeViewTextBounds :: (row: Rectangle, depth: i32,
     if text.width < 0.0 { text.width = 0.0 }
     text.height = row.height
     return text
+}
+
+TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
+    text_line_height: i32) -> TreeViewTextPaint #export {
+    paint: TreeViewTextPaint
+    paint.marker_x = (i32)marker.x
+    paint.marker_y = (i32)marker.y + ((i32)marker.height - text_line_height) / 2
+    paint.text_x = (i32)text.x
+    paint.text_y = (i32)text.y + ((i32)text.height - text_line_height) / 2
+    return paint
+}
+
+TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
+    bar: Rectangle
+    if scrollbar_width <= 0 { scrollbar_width = 8 }
+    bar.x = bounds.x + bounds.width - (float)scrollbar_width
+    bar.y = bounds.y
+    bar.width = (float)scrollbar_width
+    bar.height = bounds.height
+    return bar
 }

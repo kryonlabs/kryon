@@ -21,6 +21,16 @@ TitleBarLayout :: struct {
     side_reserved: i32
 }
 
+TitleBarPaint :: struct {
+    bounds: Rectangle
+    divider: Rectangle
+}
+
+TitleBarTitlePaint :: struct {
+    x: i32
+    y: i32
+}
+
 TitleBarMetricsFor :: (scale: float) -> TitleBarMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TitleBarMetrics
@@ -87,8 +97,29 @@ TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
     return layout
 }
 
+TitleBarPaintFor :: (view_width: i32, height: i32) -> TitleBarPaint #export {
+    paint: TitleBarPaint
+    paint.bounds.width = (float)view_width
+    paint.bounds.height = (float)height
+    paint.divider.x = 0.0
+    paint.divider.y = (float)(height - 1)
+    paint.divider.width = (float)view_width
+    paint.divider.height = 1.0
+    return paint
+}
+
 TitleBarTitleX :: (view_width: i32, title_width: i32) -> i32 #export {
     return (view_width - title_width) / 2
+}
+
+TitleBarTitlePaintFor :: (layout: TitleBarLayout, title_width: i32,
+    title_line_height: i32) -> TitleBarTitlePaint #export {
+    paint: TitleBarTitlePaint
+    paint.x = (i32)(layout.title_bounds.x +
+        (layout.title_bounds.width - (float)title_width) / 2.0)
+    paint.y = (i32)(layout.title_bounds.y +
+        (layout.title_bounds.height - (float)title_line_height) / 2.0)
+    return paint
 }
 
 TitleBarShouldShrinkTitleFont :: (title_width: i32, max_width: i32,

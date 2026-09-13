@@ -1,0 +1,38 @@
+#module "swipe_props"
+#import "ui_drawing_props.generated.h"
+
+SwipeDirection :: enum {
+    SwipeNone = 0
+    SwipeLeft = 1
+    SwipeRight = 2
+    SwipeUp = 4
+    SwipeDown = 8
+    SwipeHorizontal = 3
+    SwipeVertical = 12
+    SwipeAll = 15
+}
+
+SwipeSpec :: struct {
+    bounds: Rectangle
+    directions: u32
+    min_distance: float
+    axis_bias: float
+    max_duration: float
+}
+
+SwipeGesture :: struct {
+    active: i32
+    dragging: i32
+    cancelled: i32
+    start: Vector2
+    started_at: double
+}
+
+SwipeResult :: struct {
+    direction: SwipeDirection
+    delta: Vector2
+    progress: float
+    active: i32
+    dragging: i32
+    cancelled: i32
+}

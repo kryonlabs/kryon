@@ -190,6 +190,19 @@ TableViewViewport :: (bounds: Rectangle, layout: TableViewLayout,
     return viewport
 }
 
+TableViewScrollbarBoundsFor :: (bounds: Rectangle, layout: TableViewLayout,
+    scrollbar_width: i32) -> Rectangle #export {
+    scrollbar: Rectangle
+    scrollbar.x = bounds.x + bounds.width - (float)scrollbar_width
+    scrollbar.y = bounds.y + (float)(layout.header_height +
+        layout.frozen_rows * layout.row_height)
+    scrollbar.width = (float)scrollbar_width
+    scrollbar.height = (float)layout.scroll_body_height
+    if scrollbar.width < 0.0 { scrollbar.width = 0.0 }
+    if scrollbar.height < 0.0 { scrollbar.height = 0.0 }
+    return scrollbar
+}
+
 TableViewMinimumColumnWidth :: (requested_min_width: i32, scale: float,
     metrics: TableViewMetrics) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }

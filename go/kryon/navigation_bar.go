@@ -53,6 +53,45 @@ type NavigationBarItemPaint struct {
 	IconAlpha   int32
 }
 
+type NavigationBarConfigMetrics struct {
+	FrameWidth       int32
+	FrameBaseHeight  int32
+	FrameBottomExtra int32
+	RowHeight        int32
+	RowControlY      int32
+	DropdownHeight   int32
+	RemoveWidth      int32
+	AddHeight        int32
+	AddMaxWidth      int32
+	ButtonHeight     int32
+	ButtonGap        int32
+	ButtonMaxWidth   int32
+	ButtonBottomGap  int32
+	RouteTopGap      int32
+	RouteBottomGap   int32
+	RouteMinHeight   int32
+	ScrollbarWidth   int32
+}
+
+type NavigationBarConfigLayout struct {
+	RouteBounds        Rectangle
+	RouteContentHeight int32
+	WheelStep          int32
+	ScrollbarX         int32
+	AddBounds          Rectangle
+	ResetBounds        Rectangle
+	CancelBounds       Rectangle
+	SaveBounds         Rectangle
+	ClipY              int32
+	ClipHeight         int32
+}
+
+type NavigationBarConfigRowLayout struct {
+	LabelBounds    Rectangle
+	DropdownBounds Rectangle
+	RemoveBounds   Rectangle
+}
+
 func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -66,6 +105,383 @@ func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	var value_6 float32 = value_4 * value_5
 	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
 	return value_7
+}
+
+func NavigationBar_NavigationBarConfigMetricsFor(scale float32) NavigationBarConfigMetrics {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var metrics NavigationBarConfigMetrics = NavigationBarConfigMetrics{}
+	var value_4 float32 = 340.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	metrics.FrameWidth = value_7
+	var value_8 float32 = 128.0
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	metrics.FrameBaseHeight = value_11
+	var value_12 float32 = 58.0
+	var value_13 float32 = scale
+	var value_14 float32 = value_12 * value_13
+	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
+	metrics.FrameBottomExtra = value_15
+	var value_16 float32 = 58.0
+	var value_17 float32 = scale
+	var value_18 float32 = value_16 * value_17
+	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
+	metrics.RowHeight = value_19
+	var value_20 float32 = 22.0
+	var value_21 float32 = scale
+	var value_22 float32 = value_20 * value_21
+	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
+	metrics.RowControlY = value_23
+	var value_24 float32 = 36.0
+	var value_25 float32 = scale
+	var value_26 float32 = value_24 * value_25
+	var value_27 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_26), 32, true)), uint64(0), 32, true, 0))
+	metrics.DropdownHeight = value_27
+	var value_28 float32 = 36.0
+	var value_29 float32 = scale
+	var value_30 float32 = value_28 * value_29
+	var value_31 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_30), 32, true)), uint64(0), 32, true, 0))
+	metrics.RemoveWidth = value_31
+	var value_32 float32 = 34.0
+	var value_33 float32 = scale
+	var value_34 float32 = value_32 * value_33
+	var value_35 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_34), 32, true)), uint64(0), 32, true, 0))
+	metrics.AddHeight = value_35
+	var value_36 float32 = 180.0
+	var value_37 float32 = scale
+	var value_38 float32 = value_36 * value_37
+	var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
+	metrics.AddMaxWidth = value_39
+	var value_40 float32 = 36.0
+	var value_41 float32 = scale
+	var value_42 float32 = value_40 * value_41
+	var value_43 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_42), 32, true)), uint64(0), 32, true, 0))
+	metrics.ButtonHeight = value_43
+	var value_44 float32 = 8.0
+	var value_45 float32 = scale
+	var value_46 float32 = value_44 * value_45
+	var value_47 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_46), 32, true)), uint64(0), 32, true, 0))
+	metrics.ButtonGap = value_47
+	var value_48 float32 = 92.0
+	var value_49 float32 = scale
+	var value_50 float32 = value_48 * value_49
+	var value_51 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_50), 32, true)), uint64(0), 32, true, 0))
+	metrics.ButtonMaxWidth = value_51
+	var value_52 float32 = 16.0
+	var value_53 float32 = scale
+	var value_54 float32 = value_52 * value_53
+	var value_55 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_54), 32, true)), uint64(0), 32, true, 0))
+	metrics.ButtonBottomGap = value_55
+	var value_56 float32 = 12.0
+	var value_57 float32 = scale
+	var value_58 float32 = value_56 * value_57
+	var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
+	metrics.RouteTopGap = value_59
+	var value_60 float32 = 8.0
+	var value_61 float32 = scale
+	var value_62 float32 = value_60 * value_61
+	var value_63 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_62), 32, true)), uint64(0), 32, true, 0))
+	metrics.RouteBottomGap = value_63
+	var value_64 float32 = 48.0
+	var value_65 float32 = scale
+	var value_66 float32 = value_64 * value_65
+	var value_67 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_66), 32, true)), uint64(0), 32, true, 0))
+	metrics.RouteMinHeight = value_67
+	var value_68 float32 = 8.0
+	var value_69 float32 = scale
+	var value_70 float32 = value_68 * value_69
+	var value_71 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_70), 32, true)), uint64(0), 32, true, 0))
+	metrics.ScrollbarWidth = value_71
+	var value_72 NavigationBarConfigMetrics = metrics
+	return value_72
+}
+
+func NavigationBar_NavigationBarConfigFrameHeight(route_count int32, metrics NavigationBarConfigMetrics) int32 {
+	var value_0 int32 = route_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		route_count = value_3
+	}
+	var value_4 int32 = metrics.FrameBaseHeight
+	var value_5 int32 = metrics.RowHeight
+	var value_6 int32 = route_count
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
+	var value_9 int32 = metrics.AddHeight
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
+	var value_11 int32 = metrics.FrameBottomExtra
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	return value_12
+}
+
+func NavigationBar_NavigationBarConfigLayoutFor(frame Rectangle, content Rectangle, route_count int32, metrics NavigationBarConfigMetrics) NavigationBarConfigLayout {
+	var layout NavigationBarConfigLayout = NavigationBarConfigLayout{}
+	var value_0 int32 = route_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		route_count = value_3
+	}
+	var value_4 float32 = content.Width
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	var value_6 int32 = metrics.ButtonGap
+	var value_7 int32 = 2
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 3))
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_8), 32, true, 2))
+	var value_10 int32 = 3
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 4))
+	var button_w int32 = value_11
+	var value_12 int32 = button_w
+	var value_13 int32 = metrics.ButtonMaxWidth
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 int32 = metrics.ButtonMaxWidth
+		button_w = value_15
+	}
+	var value_16 int32 = button_w
+	var value_17 int32 = 1
+	var value_18 bool = value_16 < value_17
+	if value_18 {
+		var value_19 int32 = 1
+		button_w = value_19
+	}
+	var value_20 int32 = button_w
+	var value_21 int32 = 3
+	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 3))
+	var value_23 int32 = metrics.ButtonGap
+	var value_24 int32 = 2
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
+	var value_26 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_25), 32, true, 1))
+	var total_button_w int32 = value_26
+	var value_27 float32 = frame.Y
+	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
+	var value_29 float32 = frame.Height
+	var value_30 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_29), 32, true)), uint64(0), 32, true, 0))
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_30), 32, true, 1))
+	var value_32 int32 = metrics.ButtonHeight
+	var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 2))
+	var value_34 int32 = metrics.ButtonBottomGap
+	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 2))
+	var button_y int32 = value_35
+	var value_36 float32 = frame.X
+	var value_37 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_36), 32, true)), uint64(0), 32, true, 0))
+	var value_38 float32 = frame.Width
+	var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
+	var value_40 int32 = total_button_w
+	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 2))
+	var value_42 int32 = 2
+	var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 4))
+	var value_44 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_43), 32, true, 1))
+	var button_x int32 = value_44
+	var value_45 int32 = button_y
+	var value_46 int32 = metrics.ButtonGap
+	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 2))
+	var value_48 int32 = metrics.AddHeight
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 2))
+	var add_y int32 = value_49
+	var value_50 int32 = add_y
+	var value_51 float32 = content.Y
+	var value_52 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_51), 32, true)), uint64(0), 32, true, 0))
+	var value_53 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_52), 32, true, 2))
+	var value_54 int32 = metrics.RouteTopGap
+	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 2))
+	var route_h int32 = value_55
+	var value_56 int32 = route_h
+	var value_57 int32 = metrics.RowHeight
+	var value_58 bool = value_56 < value_57
+	if value_58 {
+		var value_59 int32 = metrics.RowHeight
+		route_h = value_59
+	}
+	var value_60 float32 = content.Y
+	var value_61 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_60), 32, true)), uint64(0), 32, true, 0))
+	var value_62 int32 = route_h
+	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 1))
+	var value_64 int32 = add_y
+	var value_65 int32 = metrics.RouteBottomGap
+	var value_66 int32 = int32(number_runtime_bits(uint64(value_64), uint64(value_65), 32, true, 2))
+	var value_67 bool = value_63 > value_66
+	if value_67 {
+		var value_68 int32 = add_y
+		var value_69 float32 = content.Y
+		var value_70 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_69), 32, true)), uint64(0), 32, true, 0))
+		var value_71 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_70), 32, true, 2))
+		var value_72 int32 = metrics.RouteBottomGap
+		var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 2))
+		route_h = value_73
+	}
+	var value_74 int32 = route_h
+	var value_75 int32 = metrics.RouteMinHeight
+	var value_76 bool = value_74 < value_75
+	if value_76 {
+		var value_77 int32 = metrics.RouteMinHeight
+		route_h = value_77
+	}
+	var value_78 float32 = content.Width
+	var value_79 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_78), 32, true)), uint64(0), 32, true, 0))
+	var add_w int32 = value_79
+	var value_80 int32 = add_w
+	var value_81 int32 = metrics.AddMaxWidth
+	var value_82 bool = value_80 > value_81
+	if value_82 {
+		var value_83 int32 = metrics.AddMaxWidth
+		add_w = value_83
+	}
+	var value_84 int32 = add_w
+	var value_85 int32 = 1
+	var value_86 bool = value_84 < value_85
+	if value_86 {
+		var value_87 int32 = 1
+		add_w = value_87
+	}
+	var value_88 float32 = content.X
+	layout.RouteBounds.X = value_88
+	var value_89 float32 = content.Y
+	layout.RouteBounds.Y = value_89
+	var value_90 float32 = content.Width
+	layout.RouteBounds.Width = value_90
+	var value_91 int32 = route_h
+	var value_92 float32 = float32(value_91)
+	layout.RouteBounds.Height = value_92
+	var value_93 int32 = metrics.RowHeight
+	var value_94 int32 = route_count
+	var value_95 int32 = int32(number_runtime_bits(uint64(value_93), uint64(value_94), 32, true, 3))
+	layout.RouteContentHeight = value_95
+	var value_96 int32 = metrics.RowHeight
+	layout.WheelStep = value_96
+	var value_97 float32 = content.X
+	var value_98 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_97), 32, true)), uint64(0), 32, true, 0))
+	var value_99 float32 = content.Width
+	var value_100 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_99), 32, true)), uint64(0), 32, true, 0))
+	var value_101 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_100), 32, true, 1))
+	var value_102 int32 = metrics.ScrollbarWidth
+	var value_103 int32 = int32(number_runtime_bits(uint64(value_101), uint64(value_102), 32, true, 2))
+	layout.ScrollbarX = value_103
+	var value_104 float32 = content.X
+	var value_105 float32 = content.Width
+	var value_106 int32 = add_w
+	var value_107 float32 = float32(value_106)
+	var value_108 float32 = value_105 - value_107
+	var value_109 float32 = 2.0
+	var value_110 float32 = value_108 / value_109
+	var value_111 float32 = value_104 + value_110
+	layout.AddBounds.X = value_111
+	var value_112 int32 = add_y
+	var value_113 float32 = float32(value_112)
+	layout.AddBounds.Y = value_113
+	var value_114 int32 = add_w
+	var value_115 float32 = float32(value_114)
+	layout.AddBounds.Width = value_115
+	var value_116 int32 = metrics.AddHeight
+	var value_117 float32 = float32(value_116)
+	layout.AddBounds.Height = value_117
+	var value_118 int32 = button_x
+	var value_119 float32 = float32(value_118)
+	layout.ResetBounds.X = value_119
+	var value_120 int32 = button_y
+	var value_121 float32 = float32(value_120)
+	layout.ResetBounds.Y = value_121
+	var value_122 int32 = button_w
+	var value_123 float32 = float32(value_122)
+	layout.ResetBounds.Width = value_123
+	var value_124 int32 = metrics.ButtonHeight
+	var value_125 float32 = float32(value_124)
+	layout.ResetBounds.Height = value_125
+	var value_126 Rectangle = layout.ResetBounds
+	layout.CancelBounds = value_126
+	var value_127 float32 = layout.CancelBounds.X
+	var value_128 int32 = button_w
+	var value_129 int32 = metrics.ButtonGap
+	var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 1))
+	var value_131 float32 = float32(value_130)
+	layout.CancelBounds.X = value_127 + value_131
+	var value_132 Rectangle = layout.CancelBounds
+	layout.SaveBounds = value_132
+	var value_133 float32 = layout.SaveBounds.X
+	var value_134 int32 = button_w
+	var value_135 int32 = metrics.ButtonGap
+	var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 1))
+	var value_137 float32 = float32(value_136)
+	layout.SaveBounds.X = value_133 + value_137
+	var value_138 float32 = content.Y
+	var value_139 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_138), 32, true)), uint64(0), 32, true, 0))
+	layout.ClipY = value_139
+	var value_140 int32 = add_y
+	var value_141 int32 = metrics.RouteBottomGap
+	var value_142 int32 = int32(number_runtime_bits(uint64(value_140), uint64(value_141), 32, true, 2))
+	layout.ClipHeight = value_142
+	var value_143 NavigationBarConfigLayout = layout
+	return value_143
+}
+
+func NavigationBar_NavigationBarConfigRowLayoutFor(content Rectangle, row_y int32, label_height int32, metrics NavigationBarConfigMetrics) NavigationBarConfigRowLayout {
+	var row NavigationBarConfigRowLayout = NavigationBarConfigRowLayout{}
+	var value_0 int32 = row_y
+	var value_1 int32 = metrics.RowControlY
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
+	var control_y int32 = value_2
+	var value_3 float32 = content.X
+	row.LabelBounds.X = value_3
+	var value_4 int32 = row_y
+	var value_5 float32 = float32(value_4)
+	row.LabelBounds.Y = value_5
+	var value_6 float32 = content.Width
+	row.LabelBounds.Width = value_6
+	var value_7 int32 = label_height
+	var value_8 float32 = float32(value_7)
+	row.LabelBounds.Height = value_8
+	var value_9 float32 = content.X
+	row.DropdownBounds.X = value_9
+	var value_10 int32 = control_y
+	var value_11 float32 = float32(value_10)
+	row.DropdownBounds.Y = value_11
+	var value_12 float32 = content.Width
+	var value_13 int32 = metrics.RemoveWidth
+	var value_14 int32 = metrics.ButtonGap
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
+	var value_16 float32 = float32(value_15)
+	var value_17 float32 = value_12 - value_16
+	row.DropdownBounds.Width = value_17
+	var value_18 float32 = row.DropdownBounds.Width
+	var value_19 float32 = 1.0
+	var value_20 bool = value_18 < value_19
+	if value_20 {
+		var value_21 float32 = 1.0
+		row.DropdownBounds.Width = value_21
+	}
+	var value_22 int32 = metrics.DropdownHeight
+	var value_23 float32 = float32(value_22)
+	row.DropdownBounds.Height = value_23
+	var value_24 float32 = content.X
+	var value_25 float32 = content.Width
+	var value_26 float32 = value_24 + value_25
+	var value_27 int32 = metrics.RemoveWidth
+	var value_28 float32 = float32(value_27)
+	var value_29 float32 = value_26 - value_28
+	row.RemoveBounds.X = value_29
+	var value_30 int32 = control_y
+	var value_31 float32 = float32(value_30)
+	row.RemoveBounds.Y = value_31
+	var value_32 int32 = metrics.RemoveWidth
+	var value_33 float32 = float32(value_32)
+	row.RemoveBounds.Width = value_33
+	var value_34 int32 = metrics.RemoveWidth
+	var value_35 float32 = float32(value_34)
+	row.RemoveBounds.Height = value_35
+	var value_36 NavigationBarConfigRowLayout = row
+	return value_36
 }
 
 func NavigationBar_NavigationBarPaintFor(spec NavigationBarSpec) NavigationBarPaint {

@@ -6,6 +6,21 @@ ColorPickerLayout :: struct {
     swatch_bounds: Rectangle
 }
 
+ColorPickerSwatchPaint :: struct {
+    bounds: Rectangle
+    label_x: float
+    label_y: float
+}
+
+ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
+    text_line_height: float) -> ColorPickerSwatchPaint #export {
+    paint: ColorPickerSwatchPaint
+    paint.bounds = bounds
+    paint.label_x = bounds.x + label_inset
+    paint.label_y = bounds.y + (bounds.height - text_line_height) / 2.0
+    return paint
+}
+
 ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
     channels: i32, scale: float) -> Rectangle #export {
     row: Rectangle

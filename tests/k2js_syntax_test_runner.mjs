@@ -2160,6 +2160,12 @@ function fakeDocument() {
         path: "Page/choices/choiceTwo",
         parentPath: "Page/choices"
       });
+    runtime.widget(menuRt, "Selectable", { label: "Three" }, null,
+      {
+        nodeName: "choiceThree",
+        path: "Page/choices/choiceThree",
+        parentPath: "Page/choices"
+      });
     runtime.endFrame(menuRt);
     assert.equal(runtime.webNodeQuery(menuRt, "[aria-orientation=vertical]").path,
       "Page/choices");
@@ -2177,6 +2183,26 @@ function fakeDocument() {
       "menuitem");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(menuRt,
       "Page/choices/choiceTwo")).role, "menuitem");
+    assert.equal(runtime.webNodeQuery(menuRt, "Page/choices/choiceThree").role,
+      "menuitem");
+
+    const treeItemRt = runtime.createRuntime();
+    runtime.beginFrame(treeItemRt);
+    runtime.widget(treeItemRt, "TreeView", {}, null,
+      { nodeName: "tree", path: "Page/tree" });
+    runtime.widget(treeItemRt, "Selectable", { label: "Branch" }, null,
+      { nodeName: "branch", path: "Page/tree/branch", parentPath: "Page/tree" });
+    runtime.widget(treeItemRt, "Button", { label: "Leaf" }, null,
+      { nodeName: "leaf", path: "Page/tree/leaf", parentPath: "Page/tree" });
+    runtime.widget(treeItemRt, "Button", { label: "Custom" }, null,
+      { nodeName: "custom", path: "Page/tree/custom", parentPath: "Page/tree", role: "button" });
+    runtime.endFrame(treeItemRt);
+    assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/branch").role,
+      "treeitem");
+    assert.equal(runtime.webNodeSnapshot(treeItemRt, "Page/tree/leaf").role,
+      "treeitem");
+    assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/custom").role,
+      "button");
     const menuTarget = document.createElement("div");
     runtime.renderWebDocument(menuRt, menuTarget);
     const choices = runtime.findWebElement(menuTarget, "choices");

@@ -115,7 +115,7 @@ builtin_kind_name(int kind)
     case NODE_COLLISION_SHAPE2D: return "CollisionShape2D";
     case NODE_AREA2D: return "Area2D";
     case NODE_BODY2D: return "Body2D";
-    case NODE_TIMER: return "Timer";
+    case NODE_ANIMATION_PLAYER: return "AnimationPlayer";
     case NODE_AUDIO_SOURCE: return "AudioSource";
     case NODE_LIGHT2D: return "Light2D";
     case NODE_CUSTOM: return "Custom";

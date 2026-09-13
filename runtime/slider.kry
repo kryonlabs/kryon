@@ -46,6 +46,108 @@ SliderWholeStep :: struct {
     changed: bool
 }
 
+SliderEditorLayout :: struct {
+    editor_bounds: Rectangle
+    hit_bounds: Rectangle
+    paint_bounds: Rectangle
+}
+
+SliderTextPaint :: struct {
+    text_x: float
+    text_y: float
+}
+
+SliderCellTextPaintFor :: (bounds: Rectangle, inset: float,
+    text_line_height: float) -> SliderTextPaint #export {
+    paint: SliderTextPaint
+    paint.text_x = bounds.x + inset
+    paint.text_y = bounds.y + (bounds.height - text_line_height) / 2.0
+    return paint
+}
+
+SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float, font_size: i32,
+    gap: float) -> SliderTextPaint #export {
+    paint: SliderTextPaint
+    paint.text_x = bounds.x + inset
+    paint.text_y = bounds.y - (float)font_size - gap
+    return paint
+}
+
+SliderCenteredHitBounds :: (x: i32, y: i32, width: i32, height: i32,
+    min_width: i32, min_height: i32) -> Rectangle #export {
+    hit: Rectangle
+    hit_width: i32 = width
+    hit_height: i32 = height
+    if hit_width < min_width { hit_width = min_width }
+    if hit_height < min_height { hit_height = min_height }
+    hit.x = (float)(x + width / 2 - hit_width / 2)
+    hit.y = (float)(y + height / 2 - hit_height / 2)
+    hit.width = (float)hit_width
+    hit.height = (float)hit_height
+    return hit
+}
+
+SliderHorizontalEditorLayoutFor :: (x: i32, y: i32, width: i32,
+    min_touch_height: i32, scale: float) -> SliderEditorLayout #export {
+    layout: SliderEditorLayout
+    if scale <= 0.0 { scale = 1.0 }
+    if width < SliderMinimumLength(scale) {
+        width = SliderMinimumLength(scale)
+    }
+    editor_height: i32 = (i32)(56.0 * scale)
+    track_y: i32 = y + (i32)(28.0 * scale)
+    thumb_height: i32 = SliderThumbSize(scale)
+    track_height: i32 = SliderTrackSize(false, scale)
+    thumb_y: i32 = track_y - (thumb_height - track_height) / 2
+    layout.editor_bounds.x = (float)x
+    layout.editor_bounds.y = (float)y
+    layout.editor_bounds.width = (float)width
+    layout.editor_bounds.height = (float)editor_height
+    layout.hit_bounds = SliderCenteredHitBounds(x, thumb_y, width,
+        thumb_height, width, min_touch_height)
+    layout.paint_bounds.x = (float)x
+    layout.paint_bounds.y = (float)thumb_y
+    layout.paint_bounds.width = (float)width
+    layout.paint_bounds.height = (float)thumb_height
+    return layout
+}
+
+SliderVerticalEditorLayoutFor :: (center_x: i32, y: i32, height: i32,
+    min_touch_width: i32, scale: float) -> SliderEditorLayout #export {
+    layout: SliderEditorLayout
+    if scale <= 0.0 { scale = 1.0 }
+    if height < SliderMinimumLength(scale) {
+        height = SliderMinimumLength(scale)
+    }
+    editor_width: i32 = (i32)(36.0 * scale)
+    track_width: i32 = SliderTrackSize(true, scale)
+    thumb_width: i32 = SliderThumbSize(scale)
+    track_x: i32 = center_x - track_width / 2
+    layout.editor_bounds.x = (float)(center_x - editor_width / 2)
+    layout.editor_bounds.y = (float)y
+    layout.editor_bounds.width = (float)editor_width
+    layout.editor_bounds.height = (float)height
+    layout.hit_bounds = SliderCenteredHitBounds(track_x, y, track_width,
+        height, min_touch_width, height)
+    layout.paint_bounds.x = (float)(center_x - thumb_width / 2)
+    layout.paint_bounds.y = (float)y
+    layout.paint_bounds.width = (float)thumb_width
+    layout.paint_bounds.height = (float)height
+    return layout
+}
+
+SliderCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
+    cell: Rectangle
+    if count <= 0 { return cell }
+    if index < 0 { index = 0 }
+    if index >= count { index = count - 1 }
+    cell.x = bounds.x + bounds.width * (float)index / (float)count
+    cell.y = bounds.y
+    cell.width = bounds.width / (float)count
+    cell.height = bounds.height
+    return cell
+}
+
 SliderMinimumLength :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(32.0 * scale)

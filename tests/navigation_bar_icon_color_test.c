@@ -220,6 +220,33 @@ main(void)
         check_int("compact navigation bar active badge uses KSS radius",
                   (int)item_paint.face.value.radius, 29);
     }
+    {
+        NavigationBarConfigMetrics metrics =
+            NavigationBarConfigMetricsFor(1.0f);
+        NavigationBarConfigLayout layout =
+            NavigationBarConfigLayoutFor((Rectangle){100, 80, 340, 360},
+                                         (Rectangle){118, 138, 304, 286},
+                                         3, metrics);
+        NavigationBarConfigRowLayout row =
+            NavigationBarConfigRowLayoutFor((Rectangle){118, 138, 304, 286},
+                                            196, 18, metrics);
+
+        check_int("navigation config frame width", metrics.frame_width, 340);
+        check_int("navigation config frame height",
+                  NavigationBarConfigFrameHeight(3, metrics), 394);
+        check_int("navigation config route view height",
+                  (int)layout.route_bounds.height, 196);
+        check_int("navigation config route content height",
+                  layout.route_content_height, 174);
+        check_int("navigation config add x", (int)layout.add_bounds.x, 180);
+        check_int("navigation config add y", (int)layout.add_bounds.y, 346);
+        check_int("navigation config reset x", (int)layout.reset_bounds.x, 124);
+        check_int("navigation config save x", (int)layout.save_bounds.x, 324);
+        check_int("navigation config row dropdown width",
+                  (int)row.dropdown_bounds.width, 260);
+        check_int("navigation config row remove x",
+                  (int)row.remove_bounds.x, 386);
+    }
 
     BeginInterfaceFrame(900, 720, 1.0f);
     result = NavigationBar((NavigationBarProps){

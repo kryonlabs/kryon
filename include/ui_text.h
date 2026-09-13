@@ -15,7 +15,7 @@
 #define TextBaseSize 16
 
 Font GetTextFont(void);
-int EnsureUIDefaultFont(void);
+int EnsureDefaultFont(void);
 int RegisterTextFont(const char *name, Font font);
 int RegisterSmallTextFont(const char *name, Font font);
 int RegisterTextFontSource(const char *name, const char *file_type,

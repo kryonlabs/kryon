@@ -12,6 +12,17 @@ type ContentMetrics struct {
 	Font    float32
 }
 
+type DropdownIndicator struct {
+	X1 int32
+	Y1 int32
+	X2 int32
+	Y2 int32
+	X3 int32
+	Y3 int32
+	X4 int32
+	Y4 int32
+}
+
 type Navigation struct {
 	Index     int32
 	Previous  int32
@@ -20,6 +31,20 @@ type Navigation struct {
 	Phase     int32
 	Searching bool
 	Result    int32
+}
+
+type MenuLayout struct {
+	ContentBounds   Rectangle
+	ScrollbarBounds Rectangle
+	OptionWidth     int32
+	ContentHeight   int32
+	MaxScroll       int32
+}
+
+type OptionPaint struct {
+	OptionY         int32
+	VisibleBounds   Rectangle
+	HighlightBounds Rectangle
 }
 
 type VisibleRows struct {
@@ -85,6 +110,79 @@ func Dropdown_Content(paint StyleData, scale float32) ContentMetrics {
 	var value_16 float32 = value_14 * value_15
 	value_4.Font = value_16
 	return value_4
+}
+
+func Dropdown_DropdownIndicatorFor(center_x int32, center_y int32, size int32, open bool) DropdownIndicator {
+	var value_0 int32 = size
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		size = value_3
+	}
+	var value_4 int32 = size
+	var value_5 int32 = 2
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 4))
+	var half int32 = value_6
+	var value_7 int32 = center_x
+	var value_8 int32 = half
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
+	var left int32 = value_9
+	var value_10 int32 = center_x
+	var value_11 int32 = half
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	var right int32 = value_12
+	var value_13 int32 = center_y
+	var value_14 int32 = half
+	var value_15 int32 = 2
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 4))
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_16), 32, true, 2))
+	var upper int32 = value_17
+	var value_18 int32 = center_y
+	var value_19 int32 = half
+	var value_20 int32 = 2
+	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 4))
+	var value_22 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_21), 32, true, 1))
+	var lower int32 = value_22
+	var value_23 bool = open
+	if value_23 {
+		var value_24 DropdownIndicator = DropdownIndicator{}
+		var value_25 int32 = left
+		value_24.X1 = value_25
+		var value_26 int32 = lower
+		value_24.Y1 = value_26
+		var value_27 int32 = center_x
+		value_24.X2 = value_27
+		var value_28 int32 = upper
+		value_24.Y2 = value_28
+		var value_29 int32 = center_x
+		value_24.X3 = value_29
+		var value_30 int32 = upper
+		value_24.Y3 = value_30
+		var value_31 int32 = right
+		value_24.X4 = value_31
+		var value_32 int32 = lower
+		value_24.Y4 = value_32
+		return value_24
+	}
+	var value_33 DropdownIndicator = DropdownIndicator{}
+	var value_34 int32 = left
+	value_33.X1 = value_34
+	var value_35 int32 = upper
+	value_33.Y1 = value_35
+	var value_36 int32 = center_x
+	value_33.X2 = value_36
+	var value_37 int32 = lower
+	value_33.Y2 = value_37
+	var value_38 int32 = center_x
+	value_33.X3 = value_38
+	var value_39 int32 = lower
+	value_33.Y3 = value_39
+	var value_40 int32 = right
+	value_33.X4 = value_40
+	var value_41 int32 = upper
+	value_33.Y4 = value_41
+	return value_33
 }
 
 func Dropdown_ClampIndex(value int32, count int32) int32 {
@@ -400,6 +498,246 @@ func Dropdown_ContentHeight(count int32, row float32, padding float32) int32 {
 	var value_16 float64 = height
 	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
 	return value_17
+}
+
+func Dropdown_MenuLayoutFor(bounds Rectangle, count int32, row_height int32, padding_top int32, padding_bottom int32, scrollbar_width int32, scrollbar_gap int32) MenuLayout {
+	var layout MenuLayout = MenuLayout{}
+	var value_0 int32 = count
+	var value_1 int32 = row_height
+	var value_2 float32 = float32(value_1)
+	var value_3 int32 = padding_top
+	var value_4 int32 = padding_bottom
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
+	var value_6 float32 = float32(value_5)
+	var value_7 int32 = Dropdown_ContentHeight(value_0, value_2, value_6)
+	layout.ContentHeight = value_7
+	var value_8 int32 = layout.ContentHeight
+	var value_9 float32 = bounds.Height
+	var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_9), 32, true)), uint64(0), 32, true, 0))
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_10), 32, true, 2))
+	layout.MaxScroll = value_11
+	var value_12 int32 = layout.MaxScroll
+	var value_13 int32 = 0
+	var value_14 bool = value_12 < value_13
+	if value_14 {
+		var value_15 int32 = 0
+		layout.MaxScroll = value_15
+	}
+	var value_16 float32 = bounds.Width
+	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
+	layout.OptionWidth = value_17
+	var value_18 int32 = layout.MaxScroll
+	var value_19 int32 = 0
+	var value_20 bool = value_18 > value_19
+	if value_20 {
+		var value_21 int32 = layout.OptionWidth
+		var value_22 int32 = scrollbar_width
+		var value_23 int32 = scrollbar_gap
+		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
+		layout.OptionWidth = int32(number_runtime_bits(uint64(value_21), uint64(value_24), 32, true, 2))
+		var value_25 int32 = layout.OptionWidth
+		var value_26 int32 = 0
+		var value_27 bool = value_25 < value_26
+		if value_27 {
+			var value_28 int32 = 0
+			layout.OptionWidth = value_28
+		}
+	}
+	var value_29 float32 = bounds.X
+	layout.ContentBounds.X = value_29
+	var value_30 float32 = bounds.Y
+	var value_31 int32 = padding_top
+	var value_32 float32 = float32(value_31)
+	var value_33 float32 = value_30 + value_32
+	layout.ContentBounds.Y = value_33
+	var value_34 int32 = layout.OptionWidth
+	var value_35 float32 = float32(value_34)
+	layout.ContentBounds.Width = value_35
+	var value_36 float32 = bounds.Height
+	var value_37 int32 = padding_top
+	var value_38 int32 = padding_bottom
+	var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 1))
+	var value_40 float32 = float32(value_39)
+	var value_41 float32 = value_36 - value_40
+	layout.ContentBounds.Height = value_41
+	var value_42 float32 = layout.ContentBounds.Height
+	var value_43 float32 = 0.0
+	var value_44 bool = value_42 < value_43
+	if value_44 {
+		var value_45 float32 = 0.0
+		layout.ContentBounds.Height = value_45
+	}
+	var value_46 float32 = bounds.X
+	var value_47 float32 = bounds.Width
+	var value_48 float32 = value_46 + value_47
+	var value_49 int32 = scrollbar_width
+	var value_50 float32 = float32(value_49)
+	var value_51 float32 = value_48 - value_50
+	layout.ScrollbarBounds.X = value_51
+	var value_52 float32 = bounds.Y
+	layout.ScrollbarBounds.Y = value_52
+	var value_53 int32 = scrollbar_width
+	var value_54 float32 = float32(value_53)
+	layout.ScrollbarBounds.Width = value_54
+	var value_55 float32 = bounds.Height
+	layout.ScrollbarBounds.Height = value_55
+	var value_56 float32 = layout.ScrollbarBounds.Width
+	var value_57 float32 = 0.0
+	var value_58 bool = value_56 < value_57
+	if value_58 {
+		var value_59 float32 = 0.0
+		layout.ScrollbarBounds.Width = value_59
+	}
+	var value_60 float32 = layout.ScrollbarBounds.Height
+	var value_61 float32 = 0.0
+	var value_62 bool = value_60 < value_61
+	if value_62 {
+		var value_63 float32 = 0.0
+		layout.ScrollbarBounds.Height = value_63
+	}
+	var value_64 MenuLayout = layout
+	return value_64
+}
+
+func Dropdown_ScrollbarTrackBounds(scrollbar Rectangle, inset int32) Rectangle {
+	var value_0 Rectangle = scrollbar
+	var track Rectangle = value_0
+	var value_1 float32 = track.Y
+	var value_2 int32 = inset
+	var value_3 float32 = float32(value_2)
+	track.Y = value_1 + value_3
+	var value_4 float32 = track.Height
+	var value_5 int32 = inset
+	var value_6 int32 = 2
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
+	var value_8 float32 = float32(value_7)
+	track.Height = value_4 - value_8
+	var value_9 float32 = track.Height
+	var value_10 float32 = 0.0
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 float32 = 0.0
+		track.Height = value_12
+	}
+	var value_13 Rectangle = track
+	return value_13
+}
+
+func Dropdown_OptionPaintFor(menu Rectangle, option_width int32, index int32, row_height int32, scroll_offset int32, padding_top int32, padding_bottom int32, highlight_inset_x int32, highlight_inset_y int32) OptionPaint {
+	var paint OptionPaint = OptionPaint{}
+	var option_bottom int32 = 0
+	var visible_bottom int32 = 0
+	var value_0 float32 = menu.Y
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = padding_top
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	var content_top int32 = value_3
+	var value_4 float32 = menu.Y
+	var value_5 float32 = menu.Height
+	var value_6 float32 = value_4 + value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = padding_bottom
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
+	var content_bottom int32 = value_9
+	var value_10 float32 = menu.Y
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var value_12 int64 = int64(number_runtime_bits(uint64(value_11), uint64(0), 64, true, 0))
+	var value_13 int32 = padding_top
+	var value_14 int64 = int64(number_runtime_bits(uint64(value_13), uint64(0), 64, true, 0))
+	var value_15 int64 = int64(number_runtime_bits(uint64(value_12), uint64(value_14), 64, true, 1))
+	var value_16 int32 = index
+	var value_17 int64 = int64(number_runtime_bits(uint64(value_16), uint64(0), 64, true, 0))
+	var value_18 int32 = row_height
+	var value_19 int64 = int64(number_runtime_bits(uint64(value_18), uint64(0), 64, true, 0))
+	var value_20 int64 = int64(number_runtime_bits(uint64(value_17), uint64(value_19), 64, true, 3))
+	var value_21 int64 = int64(number_runtime_bits(uint64(value_15), uint64(value_20), 64, true, 1))
+	var value_22 int32 = scroll_offset
+	var value_23 int64 = int64(number_runtime_bits(uint64(value_22), uint64(0), 64, true, 0))
+	var value_24 int64 = int64(number_runtime_bits(uint64(value_21), uint64(value_23), 64, true, 2))
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_24), uint64(0), 32, true, 0))
+	paint.OptionY = value_25
+	var value_26 int32 = paint.OptionY
+	var value_27 int32 = row_height
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
+	option_bottom = value_28
+	var value_29 float32 = menu.X
+	paint.VisibleBounds.X = value_29
+	var value_30 int32 = paint.OptionY
+	var value_31 float32 = float32(value_30)
+	paint.VisibleBounds.Y = value_31
+	var value_32 float32 = paint.VisibleBounds.Y
+	var value_33 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_32), 32, true)), uint64(0), 32, true, 0))
+	var value_34 int32 = content_top
+	var value_35 bool = value_33 < value_34
+	if value_35 {
+		var value_36 int32 = content_top
+		var value_37 float32 = float32(value_36)
+		paint.VisibleBounds.Y = value_37
+	}
+	var value_38 int32 = option_bottom
+	visible_bottom = value_38
+	var value_39 int32 = visible_bottom
+	var value_40 int32 = content_bottom
+	var value_41 bool = value_39 > value_40
+	if value_41 {
+		var value_42 int32 = content_bottom
+		visible_bottom = value_42
+	}
+	var value_43 int32 = option_width
+	var value_44 float32 = float32(value_43)
+	paint.VisibleBounds.Width = value_44
+	var value_45 int32 = visible_bottom
+	var value_46 float32 = float32(value_45)
+	var value_47 float32 = paint.VisibleBounds.Y
+	var value_48 float32 = value_46 - value_47
+	paint.VisibleBounds.Height = value_48
+	var value_49 float32 = paint.VisibleBounds.Height
+	var value_50 float32 = 0.0
+	var value_51 bool = value_49 < value_50
+	if value_51 {
+		var value_52 float32 = 0.0
+		paint.VisibleBounds.Height = value_52
+	}
+	var value_53 float32 = menu.X
+	var value_54 int32 = highlight_inset_x
+	var value_55 float32 = float32(value_54)
+	var value_56 float32 = value_53 + value_55
+	paint.HighlightBounds.X = value_56
+	var value_57 int32 = paint.OptionY
+	var value_58 int32 = highlight_inset_y
+	var value_59 int32 = int32(number_runtime_bits(uint64(value_57), uint64(value_58), 32, true, 1))
+	var value_60 float32 = float32(value_59)
+	paint.HighlightBounds.Y = value_60
+	var value_61 int32 = option_width
+	var value_62 int32 = highlight_inset_x
+	var value_63 int32 = 2
+	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 3))
+	var value_65 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_64), 32, true, 2))
+	var value_66 float32 = float32(value_65)
+	paint.HighlightBounds.Width = value_66
+	var value_67 int32 = row_height
+	var value_68 int32 = highlight_inset_y
+	var value_69 int32 = 2
+	var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 3))
+	var value_71 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_70), 32, true, 2))
+	var value_72 float32 = float32(value_71)
+	paint.HighlightBounds.Height = value_72
+	var value_73 float32 = paint.HighlightBounds.Width
+	var value_74 float32 = 0.0
+	var value_75 bool = value_73 < value_74
+	if value_75 {
+		var value_76 float32 = 0.0
+		paint.HighlightBounds.Width = value_76
+	}
+	var value_77 float32 = paint.HighlightBounds.Height
+	var value_78 float32 = 0.0
+	var value_79 bool = value_77 < value_78
+	if value_79 {
+		var value_80 float32 = 0.0
+		paint.HighlightBounds.Height = value_80
+	}
+	var value_81 OptionPaint = paint
+	return value_81
 }
 
 func Dropdown_PopupBounds(button Rectangle, view Rectangle, count int32, scale float32) Rectangle {

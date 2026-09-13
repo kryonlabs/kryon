@@ -2,6 +2,13 @@
 package kryon
 
 // #import kryon_compat.generated.h
+type StylePackOption struct {
+	ID          string
+	Label       string
+	Description string
+	Active      bool
+}
+
 type StylePickerProps struct {
 	Bounds    Rectangle
 	ID        int32

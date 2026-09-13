@@ -16,6 +16,23 @@ TextFieldScroll :: struct {
     text_origin_x: i32
 }
 
+TextFieldPaint :: struct {
+    clip_bounds: Rectangle
+    text_x: i32
+    cursor_y: i32
+    cursor_height: i32
+}
+
+TextAreaPaint :: struct {
+    clip_bounds: Rectangle
+    wrap_width: i32
+    viewport_height: i32
+    max_scroll: i32
+    scroll_y: i32
+    placeholder_x: i32
+    placeholder_y: i32
+}
+
 TextNavigationDecision :: struct {
     consumed: bool
     collapse_selection_start: bool
@@ -40,6 +57,18 @@ TextInsertDecision :: struct {
     accept: bool
     skip: bool
     stop: bool
+}
+
+TextSelectionRange :: struct {
+    start: i32
+    end: i32
+    has_selection: bool
+}
+
+TextSelectionState :: struct {
+    anchor: i32
+    cursor: i32
+    has_selection: bool
 }
 
 TextNavNone :: () -> i32 #export {
@@ -139,6 +168,51 @@ TextAreaPageRows :: (bounds_height: float, font: i32, line_gap: i32,
     return rows
 }
 
+TextAreaWrapWidthFor :: (bounds_width: float, padding_x: i32,
+    wrap: bool, min_wrap_width: i32) -> i32 #export {
+    if !wrap { return 0 }
+    width: i32 = (i32)bounds_width - padding_x * 2
+    if width < min_wrap_width { return 0 }
+    return width
+}
+
+TextAreaPaintFor :: (bounds: Rectangle, font: i32, line_gap: i32,
+    padding_x: i32, padding_y: i32, wrap: bool, content_height: i32,
+    scroll_y: i32, text_line_height: i32, min_wrap_width: i32) -> TextAreaPaint #export {
+    paint: TextAreaPaint
+    line_height: i32 = font + line_gap
+    paint.viewport_height = (i32)bounds.height - padding_y * 2
+    if paint.viewport_height < 0 { paint.viewport_height = 0 }
+    paint.max_scroll = content_height - paint.viewport_height
+    if paint.max_scroll < 0 { paint.max_scroll = 0 }
+    paint.scroll_y = scroll_y
+    if paint.scroll_y < 0 { paint.scroll_y = 0 }
+    if paint.scroll_y > paint.max_scroll { paint.scroll_y = paint.max_scroll }
+    paint.wrap_width = TextAreaWrapWidthFor(bounds.width, padding_x, wrap,
+                                            min_wrap_width)
+    paint.clip_bounds.x = bounds.x + (float)padding_x
+    paint.clip_bounds.y = bounds.y + (float)padding_y
+    paint.clip_bounds.width = bounds.width - (float)(padding_x * 2)
+    paint.clip_bounds.height = bounds.height - (float)(padding_y * 2)
+    if paint.clip_bounds.width < 0.0 { paint.clip_bounds.width = 0.0 }
+    if paint.clip_bounds.height < 0.0 { paint.clip_bounds.height = 0.0 }
+    paint.placeholder_x = (i32)bounds.x + padding_x
+    paint.placeholder_y = (i32)bounds.y + padding_y +
+        (line_height - text_line_height) / 2
+    return paint
+}
+
+TextInputBufferLimit :: (text_size: i32, max_codepoints: i32) -> i32 #export {
+    limit: i32 = text_size - 1
+    if max_codepoints > 0 && max_codepoints < limit {
+        limit = max_codepoints
+    }
+    if limit < 0 {
+        return 0
+    }
+    return limit
+}
+
 TextFieldScrollFor :: (bounds_x: float, bounds_width: float, padding_x: i32,
     text_width: i32, scroll: i32) -> TextFieldScroll #export {
     result: TextFieldScroll
@@ -176,6 +250,87 @@ TextFieldRevealScroll :: (scroll: i32, max_scroll: i32, clip_width: i32,
         return max_scroll
     }
     return scroll
+}
+
+TextFieldCursorHeightFor :: (font: i32, bounds_height: float,
+    text_line_height: i32, min_height: i32, vertical_padding: i32) -> i32 #export {
+    height: i32 = text_line_height
+    max_height: i32 = (i32)bounds_height - vertical_padding
+    if height < font { height = font }
+    if max_height < min_height { max_height = (i32)bounds_height }
+    if height > max_height { height = max_height }
+    if height < min_height { height = min_height }
+    return height
+}
+
+TextFieldPaintFor :: (bounds: Rectangle, padding_x: i32, scroll_x: i32,
+    font: i32, text_line_height: i32, min_cursor_height: i32,
+    cursor_vertical_padding: i32, clip_guard: i32) -> TextFieldPaint #export {
+    paint: TextFieldPaint
+    clip_width: i32 = TextInputContentWidth(bounds.width, padding_x)
+
+    paint.clip_bounds.x = bounds.x + (float)padding_x
+    paint.clip_bounds.y = bounds.y - (float)clip_guard
+    paint.clip_bounds.width = (float)clip_width
+    paint.clip_bounds.height = bounds.height + (float)(clip_guard * 2)
+    if paint.clip_bounds.height < 0.0 { paint.clip_bounds.height = 0.0 }
+    paint.text_x = (i32)bounds.x + padding_x - scroll_x
+    paint.cursor_height = TextFieldCursorHeightFor(
+        font, bounds.height, text_line_height, min_cursor_height,
+        cursor_vertical_padding)
+    paint.cursor_y = (i32)bounds.y +
+        ((i32)bounds.height - paint.cursor_height) / 2
+    return paint
+}
+
+TextSelectionRangeFor :: (anchor: i32, cursor: i32) -> TextSelectionRange #export {
+    out: TextSelectionRange
+    if anchor < cursor {
+        out.start = anchor
+        out.end = cursor
+    } else {
+        out.start = cursor
+        out.end = anchor
+    }
+    out.has_selection = out.start != out.end
+    return out
+}
+
+TextSelectionAfterMove :: (anchor: i32, cursor: i32, target: i32,
+    extend: bool) -> TextSelectionState #export {
+    out: TextSelectionState
+    if extend {
+        if anchor == cursor {
+            out.anchor = cursor
+        } else {
+            out.anchor = anchor
+        }
+        out.cursor = target
+    } else {
+        out.anchor = target
+        out.cursor = target
+    }
+    out.has_selection = out.anchor != out.cursor
+    return out
+}
+
+TextSelectionCollapsed :: (cursor: i32) -> TextSelectionState #export {
+    out: TextSelectionState
+    out.anchor = cursor
+    out.cursor = cursor
+    out.has_selection = false
+    return out
+}
+
+TextSelectionAll :: (length: i32) -> TextSelectionState #export {
+    out: TextSelectionState
+    if length < 0 {
+        length = 0
+    }
+    out.anchor = 0
+    out.cursor = length
+    out.has_selection = length > 0
+    return out
 }
 
 TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,

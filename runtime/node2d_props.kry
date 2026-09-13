@@ -1,0 +1,106 @@
+#module "node2d_props"
+#import "kryon_compat.generated.h"
+#import "ui_image.h"
+#import "kry_animation.h"
+
+Body2DType :: enum {
+    Body2DStatic = 0
+    Body2DKinematic = 1
+    Body2DDynamic = 2
+}
+
+Shape2DKind :: enum {
+    Shape2DBox = 0
+    Shape2DCircle = 1
+}
+
+AudioKind :: enum {
+    AudioSound = 0
+    AudioMusic = 1
+}
+
+Camera2DProps :: struct {
+    zoom: float
+    rotation: float
+    active: i32
+}
+
+Sprite2DProps :: struct {
+    asset_path: const char*
+    source: Rectangle
+    size: Vector2
+    tint: Color
+    fit: ImageFit
+}
+
+Light2DProps :: struct {
+    radius: float
+    color: Color
+    energy: float
+    enabled: i32
+}
+
+Body2DProps :: struct {
+    body_type: Body2DType
+    fixed_rotation: i32
+    gravity_scale: float
+    body_id_index: i32
+    body_id_world: i16
+    body_id_gen: i16
+}
+
+CollisionShape2DProps :: struct {
+    shape_kind: Shape2DKind
+    size: Vector2
+    is_sensor: i32
+}
+
+Area2DProps :: struct {
+    monitoring: i32
+    last_enter_body: i32
+    last_exit_body: i32
+}
+
+AnimationPlayerProps :: struct {
+    anims: [4] Animation
+    anim_count: i32
+    current: i32
+    time: float
+    playing: i32
+}
+
+AnimatedSprite2DProps :: struct {
+    asset_path: const char*
+    frame_count: i32
+    frames_per_row: i32
+    frame_w: i32
+    frame_h: i32
+    fps: float
+    size: Vector2
+    tint: Color
+    time: float
+}
+
+TileMapProps :: struct {
+    asset_path: const char*
+    tile_w: i32
+    tile_h: i32
+    tiles_per_row: i32
+    map_w: i32
+    map_h: i32
+    tile_px_w: i32
+    tile_px_h: i32
+    tiles: const int*
+    tint: Color
+}
+
+AudioSourceProps :: struct {
+    asset_path: const char*
+    kind: AudioKind
+    volume: float
+    pitch: float
+    loop: i32
+    playing: i32
+    loaded: i32
+    handle: void*
+}

@@ -191,7 +191,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Scene / Node2D / Camera2D | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Sprite2D / AnimatedSprite2D / TileMap / Light2D | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | CollisionShape2D / Area2D / Body2D (box2d) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Timer / AudioSource / AnimationPlayer | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| AnimationPlayer / AudioSource | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Signals (`KrySignal`) / keyframe animation | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### KRB cartridge vocabulary (no C widget equivalent)

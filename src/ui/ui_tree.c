@@ -49,6 +49,30 @@ typedef struct TextFieldState {
     int dragging;
 } TextFieldState;
 
+static void
+ui_tree_text_collapse(TextFieldState *state, int cursor)
+{
+    TextSelectionState collapsed;
+
+    if(state == NULL)
+        return;
+    collapsed = TextSelectionCollapsed(cursor);
+    state->anchor = collapsed.anchor;
+    state->cursor = collapsed.cursor;
+}
+
+static void
+ui_tree_text_select_all(TextFieldState *state, int length)
+{
+    TextSelectionState all;
+
+    if(state == NULL)
+        return;
+    all = TextSelectionAll(length);
+    state->anchor = all.anchor;
+    state->cursor = all.cursor;
+}
+
 static TreeNode *ui_tree_nodes = NULL;
 static int ui_tree_node_count = 0;
 static int ui_tree_node_capacity = 0;
@@ -309,10 +333,10 @@ ui_text_field_event(TreeNode *node, EventKind kind, double timestamp)
     event.kind = kind;
     event.timestamp = timestamp;
     if(kind == EVENT_SELECTION_CHANGED && state != NULL) {
-        event.data.selection.start = state->anchor < state->cursor
-            ? state->anchor : state->cursor;
-        event.data.selection.end = state->anchor > state->cursor
-            ? state->anchor : state->cursor;
+        TextSelectionRange range = TextSelectionRangeFor(state->anchor,
+                                                         state->cursor);
+        event.data.selection.start = range.start;
+        event.data.selection.end = range.end;
     } else if(kind == EVENT_TEXT_CHANGED &&
               node->data.text_field.text != NULL) {
         event.data.text.bytes = (int)strlen(node->data.text_field.text);
@@ -1062,9 +1086,8 @@ ReconcileTree(void)
                     ? node->data.text_field.focused : node->data.text_area.focused;
                 int length = text != NULL ? (int)strlen(text) : 0;
 
-                state->cursor = cursor_position != NULL
-                    ? *cursor_position : length;
-                state->anchor = state->cursor;
+                ui_tree_text_collapse(state, cursor_position != NULL
+                    ? *cursor_position : length);
                 state->focused = focused != NULL ? *focused != 0 : 0;
                 node->state = state;
                 node->flags |= UI_NODE_OWNS_STATE;
@@ -1360,9 +1383,8 @@ RouteInput(void)
                     abs(click_dy) <= Scale(6);
 
                 if(double_click) {
-                    state->anchor = 0;
-                    state->cursor = field->text != NULL
-                        ? (int)strlen(field->text) : 0;
+                    ui_tree_text_select_all(state, field->text != NULL
+                        ? (int)strlen(field->text) : 0);
                     state->dragging = 0;
                 } else {
                     if(node->kind == WIDGET_TEXT_AREA)
@@ -1372,7 +1394,7 @@ RouteInput(void)
                         state->cursor = ui_text_cursor_at_x(
                             field->text, font, (int)node->bounds.x + padding,
                             (int)mouse.x);
-                    state->anchor = state->cursor;
+                    ui_tree_text_collapse(state, state->cursor);
                     state->dragging = 1;
                 }
                 ui_tree_text_last_click_key = click_key;
@@ -1417,15 +1439,18 @@ RouteInput(void)
         }
         if(state->dragging && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             state->dragging = 0;
-        start = state->anchor < state->cursor ? state->anchor : state->cursor;
-        end = state->anchor > state->cursor ? state->anchor : state->cursor;
+        {
+            TextSelectionRange range = TextSelectionRangeFor(state->anchor,
+                                                             state->cursor);
+            start = range.start;
+            end = range.end;
+        }
         modifier = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
                    IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
         if(modifier && IsKeyPressed(KEY_A)) {
-            state->anchor = 0;
-            state->cursor = (int)strlen(field->text);
+            ui_tree_text_select_all(state, (int)strlen(field->text));
             selection_changed = 1;
-            start = 0;
+            start = state->anchor;
             end = state->cursor;
         }
         if(modifier && IsKeyPressed(KEY_C) && !field->secure) {
@@ -1446,7 +1471,7 @@ RouteInput(void)
                 state->cursor = 0;
                 changed = 1;
             }
-            state->anchor = state->cursor;
+            ui_tree_text_collapse(state, state->cursor);
             selection_changed = 1;
             start = end = state->cursor;
         }
@@ -1466,7 +1491,7 @@ RouteInput(void)
                 edit.max_codepoints = field->max_codepoints;
                 changed |= ui_text_paste_clipboard(edit, allow_newlines);
             }
-            state->anchor = state->cursor;
+            ui_tree_text_collapse(state, state->cursor);
             selection_changed = 1;
             start = end = state->cursor;
         }
@@ -1486,11 +1511,11 @@ RouteInput(void)
             };
 
             if(ui_text_navigate(navigation, &state->anchor, &state->cursor)) {
+                TextSelectionRange range = TextSelectionRangeFor(
+                    state->anchor, state->cursor);
                 selection_changed = 1;
-                start = state->anchor < state->cursor
-                    ? state->anchor : state->cursor;
-                end = state->anchor > state->cursor
-                    ? state->anchor : state->cursor;
+                start = range.start;
+                end = range.end;
             }
         }
         codepoint = GetCharPressed();
@@ -1499,13 +1524,13 @@ RouteInput(void)
             if(end > start) {
                 changed |= ui_text_delete_range(field->text, field->text_size,
                                                  &state->cursor, start, end);
-                state->anchor = state->cursor;
+                ui_tree_text_collapse(state, state->cursor);
                 start = end = state->cursor;
             }
             if(ui_text_insert_codepoint(field->text, field->text_size,
                                         &state->cursor, codepoint,
                                         field->max_codepoints)) {
-                state->anchor = state->cursor;
+                ui_tree_text_collapse(state, state->cursor);
                 changed = 1;
                 selection_changed = 1;
             }
@@ -1555,7 +1580,7 @@ RouteInput(void)
                                         &state->cursor, '\n',
                                         field->max_codepoints))
                     changed = 1;
-                state->anchor = state->cursor;
+                ui_tree_text_collapse(state, state->cursor);
                 selection_changed = 1;
             } else {
                 if(field->commit_pressed != NULL)
@@ -1847,6 +1872,7 @@ DrawTree(void)
             TextAreaProps area = node->data.text_area;
             int cursor = state != NULL ? state->cursor : 0;
             int anchor = state != NULL ? state->anchor : cursor;
+            TextSelectionRange range = TextSelectionRangeFor(anchor, cursor);
             int previous_font = ui_active_font_token();
             TextCompositionView composition = {0};
             const char *preedit = NULL;
@@ -1860,8 +1886,8 @@ DrawTree(void)
             PopTextFont(node->font_token);
             if(composing && ui_text_composition_view(
                     area.text,
-                    anchor < cursor ? anchor : cursor,
-                    anchor > cursor ? anchor : cursor,
+                    range.start,
+                    range.end,
                     preedit, preedit_cursor,
                     preedit_selection_length, &composition)) {
                 area.text = composition.text;
@@ -1875,8 +1901,8 @@ DrawTree(void)
             } else {
                 ui_paint_text_area(area, cursor,
                     state != NULL ? state->focused : 0,
-                    anchor < cursor ? anchor : cursor,
-                    anchor > cursor ? anchor : cursor);
+                    range.start,
+                    range.end);
             }
             PopTextFont(previous_font);
             break;
@@ -1899,10 +1925,12 @@ DrawTree(void)
             field = node->data.text_field;
             display = field.text != NULL ? field.text : "";
             cursor = state != NULL ? state->cursor : 0;
-            selection_start = state != NULL && state->anchor < cursor
-                ? state->anchor : cursor;
-            selection_end = state != NULL && state->anchor > cursor
-                ? state->anchor : cursor;
+            {
+                TextSelectionRange range = TextSelectionRangeFor(
+                    state != NULL ? state->anchor : cursor, cursor);
+                selection_start = range.start;
+                selection_end = range.end;
+            }
 
             if(state != NULL && !field.secure &&
                ui_text_composition_get(state, &preedit, &preedit_cursor,

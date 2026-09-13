@@ -1,4 +1,5 @@
 #module "input"
+#import "input_props"
 
 InputScalarStep :: struct {
     value: float
@@ -13,6 +14,47 @@ InputWholeStep :: struct {
 InputDoubleStep :: struct {
     value: f64
     changed: bool
+}
+
+InputCellLayout :: struct {
+    cell: Rectangle
+    field: Rectangle
+    minus: Rectangle
+    plus: Rectangle
+    has_step_buttons: bool
+}
+
+InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
+    requested_button_width: i32, has_step: bool) -> InputCellLayout #export {
+    layout: InputCellLayout
+    if count <= 0 { return layout }
+
+    if index < 0 { index = 0 }
+    if index >= count { index = count - 1 }
+
+    layout.cell.x = bounds.x + bounds.width * (float)index / (float)count
+    layout.cell.y = bounds.y
+    layout.cell.width = bounds.width / (float)count
+    layout.cell.height = bounds.height
+    layout.field = layout.cell
+    layout.minus = layout.cell
+    layout.plus = layout.cell
+
+    if has_step {
+        button_width: i32 = requested_button_width
+        if button_width < 0 { button_width = 0 }
+        max_button: i32 = (i32)(layout.cell.width / 2.0)
+        if button_width > max_button { button_width = max_button }
+        layout.field.width = layout.field.width - (float)(button_width * 2)
+        if layout.field.width < 0.0 { layout.field.width = 0.0 }
+        layout.minus.x = layout.field.x + layout.field.width
+        layout.minus.width = (float)button_width
+        layout.plus.x = layout.minus.x + layout.minus.width
+        layout.plus.width = (float)button_width
+        layout.has_step_buttons = button_width > 0
+    }
+
+    return layout
 }
 
 InputScalarEffectiveStep :: (step: float, step_fast: float, fast: bool) -> float #export {

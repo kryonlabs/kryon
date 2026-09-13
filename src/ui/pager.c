@@ -51,20 +51,20 @@ GuidePager(GuidePagerProps pager)
     if(pager.swipe != NULL && page_count > 1) {
         result.swipe = UpdateSwipe(pager.swipe, (SwipeSpec){
             .bounds = pager.content_bounds,
-            .directions = SWIPE_HORIZONTAL,
+            .directions = SwipeHorizontal,
             .min_distance = metrics.swipe_min_distance,
             .axis_bias = metrics.swipe_axis_bias,
             .max_duration = metrics.swipe_max_duration
         });
-        previous = result.swipe.direction == SWIPE_RIGHT;
-        next = result.swipe.direction == SWIPE_LEFT;
+        previous = result.swipe.direction == SwipeRight;
+        next = result.swipe.direction == SwipeLeft;
     }
 
     if(IsKeyPressed(KEY_LEFT))
         previous = 1;
     if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER)) {
         next = 1;
-        keyboard_finish = result.swipe.direction == SWIPE_NONE;
+        keyboard_finish = result.swipe.direction == SwipeNone;
     }
     if(IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE)) {
         close_requested = 1;

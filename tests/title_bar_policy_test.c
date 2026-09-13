@@ -16,6 +16,8 @@ int
 main(void)
 {
     TitleBarMetrics metrics = TitleBarMetricsFor(2.0f);
+    TitleBarPaint paint;
+    TitleBarTitlePaint title_paint;
     assert(metrics.side_margin == 24);
     assert(metrics.leading_reserved == 120);
     assert(metrics.leading_icon_size == 40);
@@ -39,6 +41,12 @@ main(void)
                                TitleBarMetricsFor(1.0f));
     check_rect(layout.dropdown_bounds, 12, 6, 78, 20);
     assert(TitleBarTitleX(360, 144) == 108);
+    paint = TitleBarPaintFor(360, 88);
+    check_rect(paint.bounds, 0, 0, 360, 88);
+    check_rect(paint.divider, 0, 87, 360, 1);
+    title_paint = TitleBarTitlePaintFor(layout, 40, 16);
+    assert(title_paint.x == 25);
+    assert(title_paint.y == 8);
     assert(TitleBarShouldShrinkTitleFont(200, 160, 18, 12));
     assert(!TitleBarShouldShrinkTitleFont(160, 160, 18, 12));
     assert(!TitleBarShouldShrinkTitleFont(200, 160, 12, 12));

@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import toolbar_props
 type ToolbarSpec struct {
 	X                 int32
 	Y                 int32
@@ -28,6 +29,25 @@ type ToolbarLayout struct {
 	ActionIconPadding int32
 	ActionGap         int32
 	SidePadding       int32
+}
+
+type BottomIconRowLayout struct {
+	Y           int32
+	ButtonWidth int32
+	IconSize    int32
+	IconPadding int32
+	Gap         int32
+	StartX      int32
+	Count       int32
+}
+
+type IconSliderPopupLayout struct {
+	ButtonBounds Rectangle
+	PopupBounds  Rectangle
+	SliderX      int32
+	SliderY      int32
+	SliderHeight int32
+	IconSize     int32
 }
 
 func Toolbar_ToolbarMetric(value int32, fallback float32, scale float32) int32 {
@@ -307,4 +327,399 @@ func Toolbar_ToolbarActionBoundsFor(layout ToolbarLayout, index int32, action_co
 	bounds.Height = value_34
 	var value_35 Rectangle = bounds
 	return value_35
+}
+
+func Toolbar_BottomIconRowLayoutFor(row BottomIconRowProps, scale float32) BottomIconRowLayout {
+	var layout BottomIconRowLayout = BottomIconRowLayout{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 int32 = row.Count
+	var count int32 = value_4
+	var value_5 int32 = count
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = 0
+		count = value_8
+	}
+	var value_9 int32 = row.IconSize
+	var value_10 float32 = 24.0
+	var value_11 float32 = scale
+	var value_12 int32 = Toolbar_ToolbarMetric(value_9, value_10, value_11)
+	var icon_size int32 = value_12
+	var value_13 int32 = row.IconPadding
+	var value_14 float32 = 10.0
+	var value_15 float32 = scale
+	var value_16 int32 = Toolbar_ToolbarMetric(value_13, value_14, value_15)
+	var icon_padding int32 = value_16
+	var value_17 int32 = row.Gap
+	var value_18 float32 = 12.0
+	var value_19 float32 = scale
+	var value_20 int32 = Toolbar_ToolbarMetric(value_17, value_18, value_19)
+	var gap int32 = value_20
+	var value_21 int32 = row.SideMargin
+	var value_22 float32 = 24.0
+	var value_23 float32 = scale
+	var value_24 int32 = Toolbar_ToolbarMetric(value_21, value_22, value_23)
+	var side_margin int32 = value_24
+	var value_25 int32 = row.BottomMargin
+	var value_26 float32 = 6.0
+	var value_27 float32 = scale
+	var value_28 int32 = Toolbar_ToolbarMetric(value_25, value_26, value_27)
+	var bottom_margin int32 = value_28
+	var value_29 int32 = row.MinIconSize
+	var value_30 float32 = 16.0
+	var value_31 float32 = scale
+	var value_32 int32 = Toolbar_ToolbarMetric(value_29, value_30, value_31)
+	var min_icon_size int32 = value_32
+	var value_33 int32 = row.MinIconPadding
+	var value_34 float32 = 6.0
+	var value_35 float32 = scale
+	var value_36 int32 = Toolbar_ToolbarMetric(value_33, value_34, value_35)
+	var min_icon_padding int32 = value_36
+	var value_37 int32 = row.MinGap
+	var value_38 float32 = 8.0
+	var value_39 float32 = scale
+	var value_40 int32 = Toolbar_ToolbarMetric(value_37, value_38, value_39)
+	var min_gap int32 = value_40
+	var value_41 int32 = row.ViewWidth
+	var value_42 int32 = side_margin
+	var value_43 int32 = 2
+	var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 3))
+	var value_45 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_44), 32, true, 2))
+	var available_w int32 = value_45
+	var value_46 float32 = 120.0
+	var value_47 float32 = scale
+	var value_48 float32 = value_46 * value_47
+	var value_49 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_48), 32, true)), uint64(0), 32, true, 0))
+	var min_available int32 = value_49
+	var value_50 int32 = available_w
+	var value_51 int32 = min_available
+	var value_52 bool = value_50 < value_51
+	if value_52 {
+		var value_53 int32 = min_available
+		available_w = value_53
+	}
+	var value_54 int32 = row.MaxButtonWidth
+	var max_btn_w int32 = value_54
+	var value_55 int32 = max_btn_w
+	var value_56 int32 = 0
+	var value_57 bool = value_55 <= value_56
+	var value_58 bool = value_57
+	if !value_58 {
+		var value_59 int32 = max_btn_w
+		var value_60 int32 = available_w
+		var value_61 bool = value_59 > value_60
+		value_58 = value_61
+	}
+	if value_58 {
+		var value_62 int32 = available_w
+		max_btn_w = value_62
+	}
+	var value_63 int32 = count
+	var value_64 int32 = 1
+	var value_65 bool = value_63 > value_64
+	if value_65 {
+		var value_66 int32 = available_w
+		var value_67 int32 = gap
+		var value_68 int32 = count
+		var value_69 int32 = 1
+		var value_70 int32 = int32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, true, 2))
+		var value_71 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_70), 32, true, 3))
+		var value_72 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_71), 32, true, 2))
+		var value_73 int32 = count
+		var value_74 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_73), 32, true, 4))
+		var fit_btn_w int32 = value_74
+		var value_75 int32 = max_btn_w
+		var value_76 int32 = 0
+		var value_77 bool = value_75 <= value_76
+		var value_78 bool = value_77
+		if !value_78 {
+			var value_79 int32 = max_btn_w
+			var value_80 int32 = fit_btn_w
+			var value_81 bool = value_79 > value_80
+			value_78 = value_81
+		}
+		if value_78 {
+			var value_82 int32 = fit_btn_w
+			max_btn_w = value_82
+		}
+	}
+	var value_83 int32 = icon_size
+	var value_84 int32 = icon_padding
+	var value_85 int32 = 2
+	var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 3))
+	var value_87 int32 = int32(number_runtime_bits(uint64(value_83), uint64(value_86), 32, true, 1))
+	var button_w int32 = value_87
+	var value_88 int32 = button_w
+	var value_89 int32 = max_btn_w
+	var value_90 bool = value_88 > value_89
+	if value_90 {
+		var value_91 int32 = max_btn_w
+		button_w = value_91
+		var value_92 int32 = button_w
+		var value_93 int32 = 4
+		var value_94 int32 = int32(number_runtime_bits(uint64(value_92), uint64(value_93), 32, true, 4))
+		icon_padding = value_94
+		var value_95 int32 = button_w
+		var value_96 int32 = icon_padding
+		var value_97 int32 = 2
+		var value_98 int32 = int32(number_runtime_bits(uint64(value_96), uint64(value_97), 32, true, 3))
+		var value_99 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_98), 32, true, 2))
+		icon_size = value_99
+	}
+	var value_100 int32 = icon_padding
+	var value_101 int32 = min_icon_padding
+	var value_102 bool = value_100 < value_101
+	if value_102 {
+		var value_103 int32 = min_icon_padding
+		icon_padding = value_103
+	}
+	var value_104 int32 = icon_size
+	var value_105 int32 = min_icon_size
+	var value_106 bool = value_104 < value_105
+	if value_106 {
+		var value_107 int32 = min_icon_size
+		icon_size = value_107
+	}
+	var value_108 int32 = icon_size
+	var value_109 int32 = icon_padding
+	var value_110 int32 = 2
+	var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 3))
+	var value_112 int32 = int32(number_runtime_bits(uint64(value_108), uint64(value_111), 32, true, 1))
+	button_w = value_112
+	var value_113 int32 = button_w
+	var value_114 int32 = 4
+	var value_115 int32 = int32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, true, 4))
+	gap = value_115
+	var value_116 int32 = gap
+	var value_117 int32 = min_gap
+	var value_118 bool = value_116 < value_117
+	if value_118 {
+		var value_119 int32 = min_gap
+		gap = value_119
+	}
+	var value_120 int32 = button_w
+	var value_121 int32 = count
+	var value_122 int32 = int32(number_runtime_bits(uint64(value_120), uint64(value_121), 32, true, 3))
+	var row_w int32 = value_122
+	var value_123 int32 = count
+	var value_124 int32 = 1
+	var value_125 bool = value_123 > value_124
+	if value_125 {
+		var value_126 int32 = row_w
+		var value_127 int32 = gap
+		var value_128 int32 = count
+		var value_129 int32 = 1
+		var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 2))
+		var value_131 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_130), 32, true, 3))
+		row_w = int32(number_runtime_bits(uint64(value_126), uint64(value_131), 32, true, 1))
+	}
+	var value_132 int32 = row.ViewHeight
+	var value_133 int32 = bottom_margin
+	var value_134 int32 = int32(number_runtime_bits(uint64(value_132), uint64(value_133), 32, true, 2))
+	var value_135 int32 = button_w
+	var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 2))
+	layout.Y = value_136
+	var value_137 int32 = button_w
+	layout.ButtonWidth = value_137
+	var value_138 int32 = icon_size
+	layout.IconSize = value_138
+	var value_139 int32 = icon_padding
+	layout.IconPadding = value_139
+	var value_140 int32 = gap
+	layout.Gap = value_140
+	var value_141 int32 = row.CenterX
+	var value_142 int32 = row_w
+	var value_143 int32 = 2
+	var value_144 int32 = int32(number_runtime_bits(uint64(value_142), uint64(value_143), 32, true, 4))
+	var value_145 int32 = int32(number_runtime_bits(uint64(value_141), uint64(value_144), 32, true, 2))
+	layout.StartX = value_145
+	var value_146 int32 = count
+	layout.Count = value_146
+	var value_147 BottomIconRowLayout = layout
+	return value_147
+}
+
+func Toolbar_BottomIconRowButtonBoundsFor(layout BottomIconRowLayout, index int32) Rectangle {
+	var bounds Rectangle = Rectangle{}
+	var value_0 int32 = layout.Count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 Rectangle = bounds
+		return value_3
+	}
+	var value_4 int32 = index
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		index = value_7
+	}
+	var value_8 int32 = index
+	var value_9 int32 = layout.Count
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = layout.Count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		index = value_13
+	}
+	var value_14 int32 = layout.StartX
+	var value_15 int32 = index
+	var value_16 int32 = layout.ButtonWidth
+	var value_17 int32 = layout.Gap
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
+	var value_19 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_18), 32, true, 3))
+	var value_20 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_19), 32, true, 1))
+	var value_21 float32 = float32(value_20)
+	bounds.X = value_21
+	var value_22 int32 = layout.Y
+	var value_23 float32 = float32(value_22)
+	bounds.Y = value_23
+	var value_24 int32 = layout.ButtonWidth
+	var value_25 float32 = float32(value_24)
+	bounds.Width = value_25
+	var value_26 int32 = layout.ButtonWidth
+	var value_27 float32 = float32(value_26)
+	bounds.Height = value_27
+	var value_28 Rectangle = bounds
+	return value_28
+}
+
+func Toolbar_IconSliderPopupLayoutFor(x int32, y int32, icon_size int32, icon_padding int32, popup_width int32, popup_height int32, scale float32) IconSliderPopupLayout {
+	var layout IconSliderPopupLayout = IconSliderPopupLayout{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 int32 = icon_size
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		icon_size = value_7
+	}
+	var value_8 int32 = icon_padding
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		icon_padding = value_11
+	}
+	var value_12 int32 = icon_size
+	var value_13 int32 = icon_padding
+	var value_14 int32 = 2
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 1))
+	var button_w int32 = value_16
+	var value_17 int32 = popup_width
+	var popup_w int32 = value_17
+	var value_18 int32 = popup_w
+	var value_19 int32 = 0
+	var value_20 bool = value_18 <= value_19
+	if value_20 {
+		var value_21 int32 = button_w
+		popup_w = value_21
+	}
+	var value_22 int32 = popup_w
+	var value_23 int32 = button_w
+	var value_24 bool = value_22 < value_23
+	if value_24 {
+		var value_25 int32 = button_w
+		popup_w = value_25
+	}
+	var value_26 int32 = popup_height
+	var popup_h int32 = value_26
+	var value_27 int32 = popup_h
+	var value_28 int32 = 0
+	var value_29 bool = value_27 <= value_28
+	if value_29 {
+		var value_30 float32 = 200.0
+		var value_31 float32 = scale
+		var value_32 float32 = value_30 * value_31
+		var value_33 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_32), 32, true)), uint64(0), 32, true, 0))
+		popup_h = value_33
+	}
+	var value_34 int32 = x
+	var value_35 float32 = float32(value_34)
+	layout.ButtonBounds.X = value_35
+	var value_36 int32 = y
+	var value_37 float32 = float32(value_36)
+	layout.ButtonBounds.Y = value_37
+	var value_38 int32 = button_w
+	var value_39 float32 = float32(value_38)
+	layout.ButtonBounds.Width = value_39
+	var value_40 int32 = button_w
+	var value_41 float32 = float32(value_40)
+	layout.ButtonBounds.Height = value_41
+	var value_42 int32 = x
+	var value_43 int32 = button_w
+	var value_44 int32 = 2
+	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 4))
+	var value_46 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_45), 32, true, 1))
+	var value_47 int32 = popup_w
+	var value_48 int32 = 2
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 4))
+	var value_50 int32 = int32(number_runtime_bits(uint64(value_46), uint64(value_49), 32, true, 2))
+	var value_51 float32 = float32(value_50)
+	layout.PopupBounds.X = value_51
+	var value_52 int32 = y
+	var value_53 int32 = button_w
+	var value_54 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_53), 32, true, 1))
+	var value_55 float32 = 4.0
+	var value_56 float32 = scale
+	var value_57 float32 = value_55 * value_56
+	var value_58 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_57), 32, true)), uint64(0), 32, true, 0))
+	var value_59 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_58), 32, true, 1))
+	var value_60 float32 = float32(value_59)
+	layout.PopupBounds.Y = value_60
+	var value_61 int32 = popup_w
+	var value_62 float32 = float32(value_61)
+	layout.PopupBounds.Width = value_62
+	var value_63 int32 = popup_h
+	var value_64 float32 = float32(value_63)
+	layout.PopupBounds.Height = value_64
+	var value_65 float32 = layout.PopupBounds.X
+	var value_66 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_65), 32, true)), uint64(0), 32, true, 0))
+	var value_67 int32 = popup_w
+	var value_68 int32 = 2
+	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 4))
+	var value_70 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_69), 32, true, 1))
+	layout.SliderX = value_70
+	var value_71 float32 = layout.PopupBounds.Y
+	var value_72 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_71), 32, true)), uint64(0), 32, true, 0))
+	var value_73 float32 = 14.0
+	var value_74 float32 = scale
+	var value_75 float32 = value_73 * value_74
+	var value_76 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_75), 32, true)), uint64(0), 32, true, 0))
+	var value_77 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_76), 32, true, 1))
+	layout.SliderY = value_77
+	var value_78 int32 = popup_h
+	var value_79 float32 = 24.0
+	var value_80 float32 = scale
+	var value_81 float32 = value_79 * value_80
+	var value_82 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_81), 32, true)), uint64(0), 32, true, 0))
+	var value_83 int32 = int32(number_runtime_bits(uint64(value_78), uint64(value_82), 32, true, 2))
+	layout.SliderHeight = value_83
+	var value_84 int32 = layout.SliderHeight
+	var value_85 int32 = 0
+	var value_86 bool = value_84 < value_85
+	if value_86 {
+		var value_87 int32 = 0
+		layout.SliderHeight = value_87
+	}
+	var value_88 int32 = icon_size
+	layout.IconSize = value_88
+	var value_89 IconSliderPopupLayout = layout
+	return value_89
 }

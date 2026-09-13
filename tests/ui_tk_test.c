@@ -213,6 +213,7 @@ test_checkbox_paint_geometry_is_stable(void)
     CheckboxPaint checked;
     CheckboxPaint unstyled;
     CheckboxLayout layout = CheckboxLayoutFor(10, 20, 64, 1.0f);
+    CheckboxLayout tall_layout = CheckboxLayoutForText(10, 20, 64, 30, 1.0f);
     CheckboxFlagResult flags_on = CheckboxFlagApply(1, 4, true);
     CheckboxFlagResult flags_off = CheckboxFlagApply(5, 4, true);
     CheckboxFlagResult flags_idle = CheckboxFlagApply(5, 4, false);
@@ -224,6 +225,13 @@ test_checkbox_paint_geometry_is_stable(void)
     check_int("checkbox box size", CheckboxBoxSize(1.0f), 20);
     check_int("checkbox layout width", (int)layout.bounds.width, 96);
     check_int("checkbox layout label x", (int)layout.label_x, 42);
+    check_int("checkbox layout label y", (int)layout.label_y, 20);
+    check_int("checkbox tall layout height", (int)tall_layout.bounds.height, 30);
+    check_int("checkbox tall layout label y", (int)tall_layout.label_y, 20);
+    check_int("checkbox label x helper",
+              (int)CheckboxLabelXFor(layout.slot_bounds, 1.0f), 42);
+    check_int("checkbox label y helper",
+              (int)CheckboxLabelYFor((Rectangle){10, 20, 96, 30}, 14), 28);
     check_int("checkbox checked keeps box x", (int)checked.box_bounds.x,
               (int)unchecked.box_bounds.x);
     check_int("checkbox checked keeps box y", (int)checked.box_bounds.y,
@@ -303,6 +311,8 @@ test_color_picker_policy(void)
     Rectangle bounds = {10, 20, 120, 160};
     ColorPickerLayout layout = ColorPickerLayoutFor(bounds, 4, 1.0f);
     Rectangle row = ColorPickerChannelBounds(bounds, 2, 4, 1.0f);
+    ColorPickerSwatchPaint swatch = ColorPickerSwatchPaintFor(
+        layout.swatch_bounds, 8.0f, 14.0f);
     Color rgba = ColorPickerColorFor(-0.5f, 0.5f, 2.0f, 0.25f, 4);
     Color rgb = ColorPickerColorFor(1.0f, 0.0f, 0.5f, 0.0f, 3);
 
@@ -311,6 +321,8 @@ test_color_picker_policy(void)
     check_float("color picker swatch height", layout.swatch_bounds.height, 36.0f);
     check_float("color picker channel y", row.y, 80.0f);
     check_float("color picker channel height", row.height, 28.0f);
+    check_float("color picker swatch label x", swatch.label_x, 18.0f);
+    check_float("color picker swatch label y", swatch.label_y, 155.0f);
     check_int("color picker clamp low", ColorPickerChannelByte(-1.0f), 0);
     check_int("color picker clamp high", ColorPickerChannelByte(2.0f), 255);
     check_color("color picker rgba", rgba, (Color){0, 128, 255, 64});
@@ -572,6 +584,8 @@ test_list_box_layout_policy(void)
     Rectangle bounds = {10, 20, 100, 95};
     ListBoxLayout layout = ListBoxLayoutFor(bounds, 10, 24, 0, 50);
     Rectangle row = ListBoxRowBounds(bounds, 1, layout);
+    ListBoxItemPaint paint = ListBoxItemPaintFor(row, 8, 14);
+    Rectangle scrollbar = ListBoxScrollbarBoundsFor(bounds, 8);
     ListBoxNavigation down = ListBoxNavigate(2, 10, 4, 0, 24,
                                              bounds.height, layout.max_scroll);
     ListBoxNavigation end = ListBoxNavigate(2, 10, 2, 0, 24,
@@ -584,6 +598,10 @@ test_list_box_layout_policy(void)
     check_int("list y offset", layout.y_offset, 2);
     check_int("list visible rows", layout.visible_rows, 3);
     check_int("list row y", (int)row.y, 42);
+    check_int("list paint text x", paint.text_x, 18);
+    check_int("list paint text y", paint.text_y, 47);
+    check_int("list scrollbar x", (int)scrollbar.x, 102);
+    check_int("list scrollbar height", (int)scrollbar.height, 95);
     check_int("list down selected", down.selected, 3);
     check_int("list down changed", down.changed, 1);
     check_int("list end selected", end.selected, 9);
@@ -642,6 +660,7 @@ test_tab_bar_policy(void)
                                  3, metrics.gap);
     TabBarScroll scroll = TabBarScrollFor(bounds.width, total, 999);
     Rectangle equal_last = TabBarEqualTabBounds(bounds, 3, 2);
+    Rectangle marker = TabBarDragMarkerBounds(40, 80, 20, 32, 1, 1.0f);
 
     check_int("tab bar height", TabBarPolicyHeight(1.0f), 32);
     check_int("tab label width min", label_width, 80);
@@ -652,6 +671,9 @@ test_tab_bar_policy(void)
     check_int("tab equal scroll", scroll.scroll, 0);
     check_int("tab equal last x", (int)equal_last.x, 170);
     check_int("tab equal last w", (int)equal_last.width, 80);
+    check_int("tab reorder marker x", (int)marker.x, 119);
+    check_int("tab reorder marker y", (int)marker.y, 24);
+    check_int("tab reorder marker h", (int)marker.height, 24);
 }
 
 static void
@@ -781,6 +803,11 @@ test_slider_value_policy(void)
 {
     SliderScalarStep float_step;
     SliderWholeStep int_step;
+    SliderEditorLayout horizontal_layout;
+    SliderEditorLayout vertical_layout;
+    SliderTextPaint cell_paint;
+    SliderTextPaint label_paint;
+    Rectangle cell;
 
     check_float("slider clamp low", SliderClampRatio(-0.5f), 0.0f);
     check_float("slider clamp high", SliderClampRatio(1.5f), 1.0f);
@@ -808,6 +835,41 @@ test_slider_value_policy(void)
     check_int("slider int keyboard fast", int_step.value, 150);
     int_step = SliderWholeKeyboardValue(5, 0, 10, 0, 0, 1, 0, 0);
     check_int("slider int keyboard end", int_step.value, 10);
+
+    cell = SliderCellBoundsFor((Rectangle){10, 20, 120, 30}, 4, 2);
+    check_int("slider cell x", (int)cell.x, 70);
+    check_int("slider cell width", (int)cell.width, 30);
+    cell = SliderCellBoundsFor((Rectangle){10, 20, 120, 30}, 4, -1);
+    check_int("slider clamped cell x", (int)cell.x, 10);
+
+    horizontal_layout = SliderHorizontalEditorLayoutFor(10, 20, 20, 44, 1.0f);
+    check_int("slider horizontal editor min width",
+              (int)horizontal_layout.editor_bounds.width, 32);
+    check_int("slider horizontal editor height",
+              (int)horizontal_layout.editor_bounds.height, 56);
+    check_int("slider horizontal hit y",
+              (int)horizontal_layout.hit_bounds.y, 29);
+    check_int("slider horizontal paint y",
+              (int)horizontal_layout.paint_bounds.y, 40);
+
+    vertical_layout = SliderVerticalEditorLayoutFor(50, 20, 20, 44, 1.0f);
+    check_int("slider vertical editor x",
+              (int)vertical_layout.editor_bounds.x, 32);
+    check_int("slider vertical editor min height",
+              (int)vertical_layout.editor_bounds.height, 32);
+    check_int("slider vertical hit x",
+              (int)vertical_layout.hit_bounds.x, 28);
+    check_int("slider vertical paint x",
+              (int)vertical_layout.paint_bounds.x, 39);
+
+    cell_paint = SliderCellTextPaintFor((Rectangle){10, 20, 80, 30},
+                                        6.0f, 14.0f);
+    label_paint = SliderLabelTextPaintFor((Rectangle){10, 20, 80, 30},
+                                          6.0f, 16, 2.0f);
+    check_int("slider cell text x", (int)cell_paint.text_x, 16);
+    check_int("slider cell text y", (int)cell_paint.text_y, 28);
+    check_int("slider label text x", (int)label_paint.text_x, 16);
+    check_int("slider label text y", (int)label_paint.text_y, 2);
 }
 
 static void
@@ -815,6 +877,9 @@ test_drag_value_policy(void)
 {
     DragScalarStep float_step;
     DragWholeStep int_step;
+    DragTextPaint cell_paint;
+    DragTextPaint label_paint;
+    Rectangle cell;
 
     check_float("drag default speed", DragEffectiveSpeed(0.0f), 1.0f);
     check_float("drag float clamp", DragScalarClamp(12.0f, 0.0f, 10.0f), 10.0f);
@@ -844,6 +909,20 @@ test_drag_value_policy(void)
     check_int("drag int small delta unchanged", int_step.changed ? 1 : 0, 0);
     int_step = DragWholeDeltaValue(3, -2.0f, 1.0f, 0, 10);
     check_int("drag int delta value", int_step.value, 1);
+
+    cell = DragCellBoundsFor((Rectangle){10, 20, 120, 30}, 3, 1);
+    check_int("drag cell x", (int)cell.x, 50);
+    check_int("drag cell width", (int)cell.width, 40);
+    cell = DragCellBoundsFor((Rectangle){10, 20, 120, 30}, 3, 9);
+    check_int("drag clamped cell x", (int)cell.x, 90);
+    cell_paint = DragCellTextPaintFor((Rectangle){10, 20, 80, 30},
+                                      6.0f, 14.0f);
+    label_paint = DragLabelTextPaintFor((Rectangle){10, 20, 80, 30},
+                                        6.0f, 16, 2.0f);
+    check_int("drag cell text x", (int)cell_paint.text_x, 16);
+    check_int("drag cell text y", (int)cell_paint.text_y, 28);
+    check_int("drag label text x", (int)label_paint.text_x, 16);
+    check_int("drag label text y", (int)label_paint.text_y, 2);
 }
 
 static void
@@ -852,6 +931,7 @@ test_input_value_policy(void)
     InputScalarStep float_step;
     InputWholeStep int_step;
     InputDoubleStep double_step;
+    InputCellLayout layout;
 
     check_float("input float effective step",
                 InputScalarEffectiveStep(0.1f, 1.0f, 0), 0.1f);
@@ -876,6 +956,23 @@ test_input_value_policy(void)
     double_step = InputDoubleStepValue(2.125, 0.125, 1.0, 1, 0);
     check_int("input double changed", double_step.changed ? 1 : 0, 1);
     check_float("input double step value", (float)double_step.value, 2.25f);
+
+    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 1, 0, 24, 1);
+    check_int("input layout field width", (int)layout.field.width, 72);
+    check_int("input layout minus x", (int)layout.minus.x, 82);
+    check_int("input layout plus x", (int)layout.plus.x, 106);
+    check_int("input layout has buttons", layout.has_step_buttons ? 1 : 0, 1);
+
+    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 3, 1, 12, 1);
+    check_int("input multi cell x", (int)layout.cell.x, 50);
+    check_int("input multi cell width", (int)layout.cell.width, 40);
+    check_int("input multi field width", (int)layout.field.width, 16);
+    check_int("input multi plus x", (int)layout.plus.x, 78);
+
+    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 2, 1, 24, 0);
+    check_int("input no-step field x", (int)layout.field.x, 70);
+    check_int("input no-step field width", (int)layout.field.width, 60);
+    check_int("input no-step has buttons", layout.has_step_buttons ? 1 : 0, 0);
 }
 
 static void
@@ -3166,7 +3263,10 @@ test_popup_active_drag_ownership(void)
     TableRow rows[] = {{cells,2,NULL,NULL}};
     int widths[] = {70,70};
     TableViewProps table = {0};
-    PanedViewProps panes = {{30,30,100,80},416,1,&split,20,20};
+    PanedViewProps panes = {
+        .bounds = {30,30,100,80}, .id = 416, .vertical = true,
+        .split = &split, .min_first = 20, .min_second = 20
+    };
 
     table.bounds = (Rectangle){25,25,140,90};
     table.id = 421;
@@ -4340,7 +4440,10 @@ test_paned_drag_outside_handle(void)
 {
     FrameState saved = SaveFrameState();
     int split = 90;
-    PanedViewProps panes = {{10,10,240,80}, 9450, 1, &split, 40, 40};
+    PanedViewProps panes = {
+        .bounds = {10,10,240,80}, .id = 9450, .vertical = true,
+        .split = &split, .min_first = 40, .min_second = 40
+    };
     InjectReset();
     for(int frame = 0; frame < 3; frame++) {
         InjectMousePosition(frame == 0 ? 100 : 190, 30);
@@ -4361,8 +4464,23 @@ test_drag_drop_accepts_dragged_release(void)
 {
     FrameState saved = SaveFrameState();
     int payload = 42, output = 0, accepted = 0;
-    DragDropProps source = {{10,10,80,40}, 9401, DragDropRoleSource, "integer", &payload, sizeof(payload), NULL, 0, NULL, 0};
-    DragDropProps target = {{150,10,80,40}, 9402, DragDropRoleTarget, "integer", NULL, 0, &output, sizeof(output), &accepted, 0};
+    DragDropProps source = {
+        .bounds = {10,10,80,40},
+        .id = 9401,
+        .role = DragDropRoleSource,
+        .type = "integer",
+        .data = &payload,
+        .data_size = sizeof(payload)
+    };
+    DragDropProps target = {
+        .bounds = {150,10,80,40},
+        .id = 9402,
+        .role = DragDropRoleTarget,
+        .type = "integer",
+        .output = &output,
+        .output_size = sizeof(output),
+        .accepted_size = &accepted
+    };
 
     InjectReset();
     for(int frame = 0; frame < 3; frame++) {

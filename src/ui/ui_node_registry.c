@@ -64,7 +64,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"CollisionShape2D", "Collision Shape 2D", "Game2D/Physics", "Node2D", "Collider", 0},
     {"Area2D", "Area2D", "Game2D/Physics", "Node2D", "Trigger", 0},
     {"Body2D", "Body2D", "Game2D/Physics", "Node2D", "Body", 0},
-    {"Timer", "Timer", "Game2D/Runtime", "Node", "Timer", 0},
+    {"AnimationPlayer", "Animation Player", "Game2D/Runtime", "Node", "Animation", 0},
     {"AudioSource", "Audio Source", "Game2D/Audio", "Node2D", "Sound", 0},
     {"Light2D", "Light2D", "Game2D/Rendering", "Node2D", "Point light", 0}
 };

@@ -52,9 +52,149 @@ NavigationBarItemPaint :: struct {
     icon_alpha: i32
 }
 
+NavigationBarConfigMetrics :: struct {
+    frame_width: i32
+    frame_base_height: i32
+    frame_bottom_extra: i32
+    row_height: i32
+    row_control_y: i32
+    dropdown_height: i32
+    remove_width: i32
+    add_height: i32
+    add_max_width: i32
+    button_height: i32
+    button_gap: i32
+    button_max_width: i32
+    button_bottom_gap: i32
+    route_top_gap: i32
+    route_bottom_gap: i32
+    route_min_height: i32
+    scrollbar_width: i32
+}
+
+NavigationBarConfigLayout :: struct {
+    route_bounds: Rectangle
+    route_content_height: i32
+    wheel_step: i32
+    scrollbar_x: i32
+    add_bounds: Rectangle
+    reset_bounds: Rectangle
+    cancel_bounds: Rectangle
+    save_bounds: Rectangle
+    clip_y: i32
+    clip_height: i32
+}
+
+NavigationBarConfigRowLayout :: struct {
+    label_bounds: Rectangle
+    dropdown_bounds: Rectangle
+    remove_bounds: Rectangle
+}
+
 NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(86.0 * scale)
+}
+
+NavigationBarConfigMetricsFor :: (scale: float) -> NavigationBarConfigMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: NavigationBarConfigMetrics
+    metrics.frame_width = (i32)(340.0 * scale)
+    metrics.frame_base_height = (i32)(128.0 * scale)
+    metrics.frame_bottom_extra = (i32)(58.0 * scale)
+    metrics.row_height = (i32)(58.0 * scale)
+    metrics.row_control_y = (i32)(22.0 * scale)
+    metrics.dropdown_height = (i32)(36.0 * scale)
+    metrics.remove_width = (i32)(36.0 * scale)
+    metrics.add_height = (i32)(34.0 * scale)
+    metrics.add_max_width = (i32)(180.0 * scale)
+    metrics.button_height = (i32)(36.0 * scale)
+    metrics.button_gap = (i32)(8.0 * scale)
+    metrics.button_max_width = (i32)(92.0 * scale)
+    metrics.button_bottom_gap = (i32)(16.0 * scale)
+    metrics.route_top_gap = (i32)(12.0 * scale)
+    metrics.route_bottom_gap = (i32)(8.0 * scale)
+    metrics.route_min_height = (i32)(48.0 * scale)
+    metrics.scrollbar_width = (i32)(8.0 * scale)
+    return metrics
+}
+
+NavigationBarConfigFrameHeight :: (route_count: i32,
+    metrics: NavigationBarConfigMetrics) -> i32 #export {
+    if route_count < 0 { route_count = 0 }
+    return metrics.frame_base_height + metrics.row_height * route_count +
+        metrics.add_height + metrics.frame_bottom_extra
+}
+
+NavigationBarConfigLayoutFor :: (frame: Rectangle, content: Rectangle,
+    route_count: i32, metrics: NavigationBarConfigMetrics) -> NavigationBarConfigLayout #export {
+    layout: NavigationBarConfigLayout
+    if route_count < 0 { route_count = 0 }
+    button_w: i32 = ((i32)content.width - metrics.button_gap * 2) / 3
+    if button_w > metrics.button_max_width { button_w = metrics.button_max_width }
+    if button_w < 1 { button_w = 1 }
+    total_button_w: i32 = button_w * 3 + metrics.button_gap * 2
+    button_y: i32 = (i32)frame.y + (i32)frame.height - metrics.button_height -
+        metrics.button_bottom_gap
+    button_x: i32 = (i32)frame.x + ((i32)frame.width - total_button_w) / 2
+    add_y: i32 = button_y - metrics.button_gap - metrics.add_height
+
+    route_h: i32 = add_y - (i32)content.y - metrics.route_top_gap
+    if route_h < metrics.row_height { route_h = metrics.row_height }
+    if (i32)content.y + route_h > add_y - metrics.route_bottom_gap {
+        route_h = add_y - (i32)content.y - metrics.route_bottom_gap
+    }
+    if route_h < metrics.route_min_height { route_h = metrics.route_min_height }
+
+    add_w: i32 = (i32)content.width
+    if add_w > metrics.add_max_width { add_w = metrics.add_max_width }
+    if add_w < 1 { add_w = 1 }
+
+    layout.route_bounds.x = content.x
+    layout.route_bounds.y = content.y
+    layout.route_bounds.width = content.width
+    layout.route_bounds.height = (float)route_h
+    layout.route_content_height = metrics.row_height * route_count
+    layout.wheel_step = metrics.row_height
+    layout.scrollbar_x = (i32)content.x + (i32)content.width - metrics.scrollbar_width
+
+    layout.add_bounds.x = content.x + (content.width - (float)add_w) / 2.0
+    layout.add_bounds.y = (float)add_y
+    layout.add_bounds.width = (float)add_w
+    layout.add_bounds.height = (float)metrics.add_height
+
+    layout.reset_bounds.x = (float)button_x
+    layout.reset_bounds.y = (float)button_y
+    layout.reset_bounds.width = (float)button_w
+    layout.reset_bounds.height = (float)metrics.button_height
+    layout.cancel_bounds = layout.reset_bounds
+    layout.cancel_bounds.x += (float)(button_w + metrics.button_gap)
+    layout.save_bounds = layout.cancel_bounds
+    layout.save_bounds.x += (float)(button_w + metrics.button_gap)
+
+    layout.clip_y = (i32)content.y
+    layout.clip_height = add_y - metrics.route_bottom_gap
+    return layout
+}
+
+NavigationBarConfigRowLayoutFor :: (content: Rectangle, row_y: i32,
+    label_height: i32, metrics: NavigationBarConfigMetrics) -> NavigationBarConfigRowLayout #export {
+    row: NavigationBarConfigRowLayout
+    control_y: i32 = row_y + metrics.row_control_y
+    row.label_bounds.x = content.x
+    row.label_bounds.y = (float)row_y
+    row.label_bounds.width = content.width
+    row.label_bounds.height = (float)label_height
+    row.dropdown_bounds.x = content.x
+    row.dropdown_bounds.y = (float)control_y
+    row.dropdown_bounds.width = content.width - (float)(metrics.remove_width + metrics.button_gap)
+    if row.dropdown_bounds.width < 1.0 { row.dropdown_bounds.width = 1.0 }
+    row.dropdown_bounds.height = (float)metrics.dropdown_height
+    row.remove_bounds.x = content.x + content.width - (float)metrics.remove_width
+    row.remove_bounds.y = (float)control_y
+    row.remove_bounds.width = (float)metrics.remove_width
+    row.remove_bounds.height = (float)metrics.remove_width
+    return row
 }
 
 NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export {

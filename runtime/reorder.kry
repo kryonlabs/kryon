@@ -1,0 +1,133 @@
+#module "reorder"
+#import "reorder_props"
+
+ReorderMetricsFor :: (scale: float, handle_width: i32, drag_threshold: i32,
+    auto_scroll_margin: i32, auto_scroll_step: i32) -> ReorderMetrics #export {
+    metrics: ReorderMetrics
+
+    metrics.handle_width = handle_width
+    if metrics.handle_width <= 0 {
+        metrics.handle_width = (i32)(36.0 * scale)
+    }
+
+    metrics.drag_threshold = drag_threshold
+    if metrics.drag_threshold <= 0 {
+        metrics.drag_threshold = (i32)(5.0 * scale)
+    }
+
+    metrics.auto_scroll_margin = auto_scroll_margin
+    if metrics.auto_scroll_margin <= 0 {
+        metrics.auto_scroll_margin = (i32)(34.0 * scale)
+    }
+
+    metrics.auto_scroll_step = auto_scroll_step
+    if metrics.auto_scroll_step <= 0 {
+        metrics.auto_scroll_step = (i32)(12.0 * scale)
+    }
+
+    return metrics
+}
+
+ReorderHandleBounds :: (item_bounds: Rectangle, handle_width: i32,
+    handle_height: i32) -> Rectangle #export {
+    handle: Rectangle = item_bounds
+    handle.width = (float)handle_width
+    if handle_height > 0 {
+        limit: float = (float)handle_height
+        if handle.height > limit {
+            handle.height = limit
+        }
+    }
+    return handle
+}
+
+ReorderHandlePaintFor :: (bounds: Rectangle, scale: float) -> ReorderHandlePaint #export {
+    paint: ReorderHandlePaint
+    w: i32 = (i32)bounds.width
+    h: i32 = (i32)bounds.height
+    if w <= 0 || h <= 0 { return paint }
+
+    dot: i32 = (i32)(3.0 * scale)
+    gap: i32 = (i32)(4.0 * scale)
+    col_gap: i32 = (i32)(8.0 * scale)
+    if dot < 1 { dot = 1 }
+    if gap < 0 { gap = 0 }
+    if col_gap < 0 { col_gap = 0 }
+
+    total_w: i32 = dot * 2 + col_gap
+    total_h: i32 = dot * 3 + gap * 2
+    start_x: i32 = (i32)bounds.x + (w - total_w) / 2
+    start_y: i32 = (i32)bounds.y + (h - total_h) / 2
+
+    paint.dot0 = ReorderDotBounds(start_x, start_y, dot)
+    paint.dot1 = ReorderDotBounds(start_x + dot + col_gap, start_y, dot)
+    paint.dot2 = ReorderDotBounds(start_x, start_y + dot + gap, dot)
+    paint.dot3 = ReorderDotBounds(start_x + dot + col_gap, start_y + dot + gap, dot)
+    paint.dot4 = ReorderDotBounds(start_x, start_y + (dot + gap) * 2, dot)
+    paint.dot5 = ReorderDotBounds(start_x + dot + col_gap, start_y + (dot + gap) * 2, dot)
+    paint.dot_count = 6
+    return paint
+}
+
+ReorderDotBounds :: (x: i32, y: i32, size: i32) -> Rectangle {
+    bounds: Rectangle
+    bounds.x = (float)x
+    bounds.y = (float)y
+    bounds.width = (float)size
+    bounds.height = (float)size
+    return bounds
+}
+
+ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float) -> ReorderPlaceholderPaint #export {
+    paint: ReorderPlaceholderPaint
+    x: i32 = (i32)bounds.x
+    y: i32 = (i32)bounds.y
+    w: i32 = (i32)bounds.width
+    h: i32 = (i32)bounds.height
+    if w <= 0 || h <= 0 { return paint }
+
+    line_h: i32 = (i32)(2.0 * scale)
+    if line_h < 1 { line_h = 1 }
+
+    if h >= (i32)(32.0 * scale) {
+        inset: i32 = (i32)(3.0 * scale)
+        slot_w: i32 = w - inset * 2
+        slot_h: i32 = h - inset * 2
+        if slot_w <= 0 || slot_h <= 0 { return paint }
+        paint.slot_bounds.x = (float)(x + inset)
+        paint.slot_bounds.y = (float)(y + inset)
+        paint.slot_bounds.width = (float)slot_w
+        paint.slot_bounds.height = (float)slot_h
+        paint.stroke_width = 2.0 * scale
+        if paint.stroke_width < 1.0 { paint.stroke_width = 1.0 }
+        paint.radius = 0.12
+        paint.segments = 10
+        paint.fill_alpha = 0.10
+        paint.use_slot = 1
+        return paint
+    }
+
+    paint.line_bounds.x = (float)x
+    paint.line_bounds.y = (float)(y + h / 2 - line_h / 2)
+    paint.line_bounds.width = (float)w
+    paint.line_bounds.height = (float)line_h
+    return paint
+}
+
+ReorderDraggedCenterY :: (pointer_y: i32, press_offset_y: i32,
+    item_height: float) -> i32 #export {
+    return pointer_y - press_offset_y + (i32)(item_height / 2.0)
+}
+
+ReorderTargetIncludesItem :: (pointer_y: i32, item_bounds: Rectangle) -> bool #export {
+    center_y: i32 = (i32)(item_bounds.y + item_bounds.height / 2.0)
+    return pointer_y > center_y
+}
+
+ReorderTargetIndexFor :: (target: i32, item_count: i32) -> i32 #export {
+    if item_count <= 0 { return -1 }
+    if target < 0 { return 0 }
+    limit: i32 = item_count - 1
+    if target > limit { return limit }
+    return target
+}

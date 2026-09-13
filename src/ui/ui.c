@@ -305,6 +305,22 @@ ui_text_selection_set(TextSelection *selection, int id, int *owner,
     selection->dragging = dragging;
 }
 
+static TextSelectionState
+ui_text_selection_collapsed(int cursor)
+{
+    return TextSelectionCollapsed(cursor);
+}
+
+static void
+ui_text_selection_set_collapsed(TextSelection *selection, int id, int *owner,
+                                int cursor, int dragging)
+{
+    TextSelectionState collapsed = ui_text_selection_collapsed(cursor);
+
+    ui_text_selection_set(selection, id, owner, collapsed.anchor,
+                          collapsed.cursor, dragging);
+}
+
 static int
 ui_text_field_scroll_entry_matches(UITextFieldScrollCacheEntry entry,
                                    int id, int *owner)
@@ -1052,22 +1068,13 @@ ui_selection_range(TextSelection selection, const char *text,
                    int *start, int *end)
 {
     int len = text != NULL ? (int)strlen(text) : 0;
+    TextSelectionRange range = TextSelectionRangeFor(selection.anchor,
+                                                     selection.cursor);
 
     if(start != NULL)
-        *start = 0;
+        *start = ui_clampi(range.start, 0, len);
     if(end != NULL)
-        *end = 0;
-    if(selection.anchor <= selection.cursor) {
-        if(start != NULL)
-            *start = ui_clampi(selection.anchor, 0, len);
-        if(end != NULL)
-            *end = ui_clampi(selection.cursor, 0, len);
-    } else {
-        if(start != NULL)
-            *start = ui_clampi(selection.cursor, 0, len);
-        if(end != NULL)
-            *end = ui_clampi(selection.anchor, 0, len);
-    }
+        *end = ui_clampi(range.end, 0, len);
 }
 
 static int
@@ -1387,23 +1394,6 @@ ui_inspect_control_id(char *buf, size_t buf_size, const char *kind,
     }
     snprintf(buf, buf_size, "tmp:%s", kind);
     return buf;
-}
-
-static int
-ui_control_cursor_height(int font, int box_h)
-{
-    int h = TextLineHeight(font);
-    int max_h = box_h - Scale(8);
-
-    if(h < font)
-        h = font;
-    if(max_h < Scale(8))
-        max_h = box_h;
-    if(h > max_h)
-        h = max_h;
-    if(h < Scale(8))
-        h = Scale(8);
-    return h;
 }
 
 static int
@@ -2032,17 +2022,17 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     style = ui_resolve_text_input_style(style, StyleKindTextField(),
                                         class_name);
     const char *value = text ? text : "";
-    int x = (int)bounds.x;
     int y = (int)bounds.y;
-    int w = (int)bounds.width;
     int h = (int)bounds.height;
     int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
-    int clip_w = w - padding_x * 2;
     int clip_guard = 1;
-    int text_x = x + padding_x - scroll_x;
+    TextFieldPaint paint = TextFieldPaintFor(bounds, padding_x, scroll_x, font,
+                                             TextLineHeight(font), Scale(8),
+                                             Scale(8), clip_guard);
+    int text_x = paint.text_x;
     int text_y = GetUIControlTextY(value, y, h, font);
-    int cursor_h = ui_control_cursor_height(font, h);
-    int cursor_y = y + (h - cursor_h) / 2;
+    int cursor_h = paint.cursor_height;
+    int cursor_y = paint.cursor_y;
     Color text_color = style.text.a != 0 ? style.text : c_text;
     Color cursor_color = style.cursor.a != 0 ? style.cursor : c_circle;
 
@@ -2053,11 +2043,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                                 focus_id, "text_input", requested_style,
                                 class_name);
 
-    if(clip_w < 0)
-        clip_w = 0;
-    ui_begin_world_clip((Rectangle){(float)(x + padding_x), (float)(y - clip_guard),
-                                    (float)clip_w,
-                                    (float)(h + clip_guard * 2)});
+    ui_begin_world_clip(paint.clip_bounds);
     if(selection_end > selection_start) {
         char prefix[1024];
         char selected_text[1024];
@@ -2596,11 +2582,14 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
     int end;
     int target;
     TextNavigationDecision decision;
+    TextSelectionRange range;
+    TextSelectionState next;
 
     if(input.text == NULL || anchor == NULL || cursor == NULL)
         return 0;
-    start = *anchor < *cursor ? *anchor : *cursor;
-    end = *anchor > *cursor ? *anchor : *cursor;
+    range = TextSelectionRangeFor(*anchor, *cursor);
+    start = range.start;
+    end = range.end;
     target = *cursor;
     decision = TextNavigationDecisionFor(
         input.key, input.area != NULL, input.shift != 0, input.modifier != 0,
@@ -2641,9 +2630,10 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
     } else {
         return 0;
     }
-    *cursor = target;
-    if(!decision.extend_selection)
-        *anchor = target;
+    next = TextSelectionAfterMove(*anchor, *cursor, target,
+                                  decision.extend_selection);
+    *anchor = next.anchor;
+    *cursor = next.cursor;
     return 1;
 }
 static int
@@ -3302,8 +3292,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     int padding_y;
     int wrap_width;
     int scroll_y;
-    int line_h;
-    int first_line_y;
+    TextAreaPaint paint;
 
     if(area.text == NULL)
         return;
@@ -3312,40 +3301,33 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     font = area.font > 0 ? area.font
         : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
-    line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0
         ? area.style.padding_x : Scale(10);
     padding_y = area.style.padding_y > 0
         ? area.style.padding_y : Scale(8);
-    wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < Scale(24))
-        wrap_width = 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
     {
+        wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
+                                          area.wrap != 0, Scale(24));
         int content_h = ui_text_area_content_height(
             area.text, font, line_gap, wrap_width,
             area.content_version, 0);
-        int viewport_h = (int)area.bounds.height - padding_y * 2;
-        int max_scroll = content_h - viewport_h;
-
-        if(max_scroll < 0)
-            max_scroll = 0;
-        scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+        paint = TextAreaPaintFor(area.bounds, font, line_gap, padding_x,
+                                 padding_y, area.wrap != 0, content_h,
+                                 scroll_y, TextLineHeight(font),
+                                 Scale(24));
+        scroll_y = paint.scroll_y;
+        wrap_width = paint.wrap_width;
         if(area.scroll_y != NULL)
             *area.scroll_y = scroll_y;
     }
-    first_line_y = GetUIControlTextY(
-        "Hg", (int)area.bounds.y + padding_y, line_h, font);
     (void)ui_text_input_surface(area.bounds, area.style, focused,
                                 !area.read_only, area.focus_id, "text_area",
                                 requested_style, area.class_name);
-    ui_begin_world_clip((Rectangle){
-        area.bounds.x + padding_x, area.bounds.y + padding_y,
-        area.bounds.width - padding_x * 2,
-        area.bounds.height - padding_y * 2});
+    ui_begin_world_clip(paint.clip_bounds);
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        RenderText(area.placeholder, (int)area.bounds.x + padding_x,
-                   first_line_y, font, area.style.border);
+        RenderText(area.placeholder, paint.placeholder_x,
+                   paint.placeholder_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, cursor,
                                focused && !area.read_only,
@@ -3863,13 +3845,10 @@ ui_text_area_render(TextAreaProps area)
         *area.focused = 1;
     }
     if((focused || context_active) && has_selection) {
-        selection_start = g_ui_text_area_selection.anchor;
-        selection_end = g_ui_text_area_selection.cursor;
-        if(selection_start > selection_end) {
-            int tmp = selection_start;
-            selection_start = selection_end;
-            selection_end = tmp;
-        }
+        TextSelectionRange range = TextSelectionRangeFor(
+            g_ui_text_area_selection.anchor, g_ui_text_area_selection.cursor);
+        selection_start = range.start;
+        selection_end = range.end;
         selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
         selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
     }
@@ -3882,22 +3861,25 @@ ui_text_area_render(TextAreaProps area)
 
         changed |= composition_result.text_changed;
         if(composition_result.selection_changed) {
+            TextSelectionState collapsed = ui_text_selection_collapsed(
+                *area.cursor_position);
             ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                   area.focused, anchor,
                                   *area.cursor_position, 0);
             has_selection = 1;
-            selection_start = selection_end = *area.cursor_position;
+            selection_start = collapsed.anchor;
+            selection_end = collapsed.cursor;
         }
     }
     if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
-            int len = (int)strlen(area.text);
+            TextSelectionState all = TextSelectionAll((int)strlen(area.text));
 
             ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                  area.focused, 0, len, 0);
-            *area.cursor_position = len;
-            selection_start = 0;
-            selection_end = len;
+                                  area.focused, all.anchor, all.cursor, 0);
+            *area.cursor_position = all.cursor;
+            selection_start = all.anchor;
+            selection_end = all.cursor;
             selection_key_handled = 1;
         }
         if(ui_mod_key_down() && copy_pressed &&
@@ -3911,9 +3893,9 @@ ui_text_area_render(TextAreaProps area)
                ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
                                     selection_end)) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                                                drag_id, area.focused,
+                                                *area.cursor_position, 0);
                 changed = 1;
             }
             selection_key_handled = 1;
@@ -3926,15 +3908,15 @@ ui_text_area_render(TextAreaProps area)
             if(ui_text_paste_clipboard(area_edit, 1)) {
                 changed = 1;
             }
-            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                  area.focused, *area.cursor_position,
-                                  *area.cursor_position, 0);
+            ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                                            drag_id, area.focused,
+                                            *area.cursor_position, 0);
             selection_key_handled = 1;
         } else if(!area.read_only && ui_mod_key_down() && paste_pressed) {
             if(ui_text_paste_clipboard(area_edit, 1)) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                                                drag_id, area.focused,
+                                                *area.cursor_position, 0);
                 changed = 1;
             }
             selection_key_handled = 1;
@@ -3956,9 +3938,9 @@ ui_text_area_render(TextAreaProps area)
                 changed |= ui_text_delete_key(
                     area.text, area.text_size, &anchor, area.cursor_position,
                     TextDeleteForward(), ui_mod_key_down(), 0);
-            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                  area.focused, *area.cursor_position,
-                                  *area.cursor_position, 0);
+            ui_text_selection_set_collapsed(&g_ui_text_area_selection, drag_id,
+                                            area.focused,
+                                            *area.cursor_position, 0);
             g_ui_text_input_backspace_count = 0;
             selection_key_handled = 1;
         }
@@ -4026,9 +4008,9 @@ ui_text_area_render(TextAreaProps area)
                 inserted = 1;
             }
             if(inserted) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                                                drag_id, area.focused,
+                                                *area.cursor_position, 0);
                 selection_key_handled = 1;
             }
         }
@@ -4051,11 +4033,13 @@ ui_text_area_render(TextAreaProps area)
                                          area.focused))
                 anchor = g_ui_text_area_selection.anchor;
             if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                TextSelectionRange range = TextSelectionRangeFor(anchor,
+                                                                 cursor);
                 *area.cursor_position = cursor;
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, anchor, cursor, 0);
-                selection_start = anchor < cursor ? anchor : cursor;
-                selection_end = anchor > cursor ? anchor : cursor;
+                selection_start = range.start;
+                selection_end = range.end;
                 selection_key_handled = 1;
             }
         }
@@ -4077,9 +4061,9 @@ ui_text_area_render(TextAreaProps area)
         }
         if(changed && !selection_key_handled) {
             if(!g_ui_text_area_selection.dragging) {
-                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                      area.focused, *area.cursor_position,
-                                      *area.cursor_position, 0);
+                ui_text_selection_set_collapsed(&g_ui_text_area_selection,
+                                                drag_id, area.focused,
+                                                *area.cursor_position, 0);
             }
         }
     } else {
@@ -4092,7 +4076,12 @@ ui_text_area_render(TextAreaProps area)
         ui_selection_range(g_ui_text_area_selection, area.text,
                            &selection_start, &selection_end);
     else
-        selection_start = selection_end = *area.cursor_position;
+    {
+        TextSelectionState collapsed = ui_text_selection_collapsed(
+            *area.cursor_position);
+        selection_start = collapsed.anchor;
+        selection_end = collapsed.cursor;
+    }
 
     committed_selection_start = selection_start;
     committed_selection_end = selection_end;
@@ -4201,8 +4190,7 @@ ui_text_area_render(TextAreaProps area)
 int
 GetTextAreaSelection(int focus_id, int *start, int *end)
 {
-    int selection_start;
-    int selection_end;
+    TextSelectionRange selection;
 
     if(start != NULL)
         *start = 0;
@@ -4210,20 +4198,14 @@ GetTextAreaSelection(int focus_id, int *start, int *end)
         *end = 0;
     if(focus_id <= 0 || g_ui_text_area_selection.id != focus_id)
         return 0;
-    selection_start = g_ui_text_area_selection.anchor;
-    selection_end = g_ui_text_area_selection.cursor;
-    if(selection_start > selection_end) {
-        int tmp = selection_start;
-
-        selection_start = selection_end;
-        selection_end = tmp;
-    }
-    if(selection_end <= selection_start)
+    selection = TextSelectionRangeFor(g_ui_text_area_selection.anchor,
+                                      g_ui_text_area_selection.cursor);
+    if(!selection.has_selection)
         return 0;
     if(start != NULL)
-        *start = selection_start;
+        *start = selection.start;
     if(end != NULL)
-        *end = selection_end;
+        *end = selection.end;
     return 1;
 }
 
@@ -4554,22 +4536,25 @@ ui_text_field_render_filtered(TextFieldProps field,
 
         changed |= composition_result.text_changed;
         if(composition_result.selection_changed) {
+            TextSelectionState collapsed = ui_text_selection_collapsed(
+                *field.cursor_position);
             ui_text_selection_set(&g_ui_text_field_selection,
                                   field.focus_id, field.focused, anchor,
                                   *field.cursor_position, 0);
-            selection_start = selection_end = *field.cursor_position;
+            selection_start = collapsed.anchor;
+            selection_end = collapsed.cursor;
         }
     }
 
     if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
-            int len = (int)strlen(field.text);
+            TextSelectionState all = TextSelectionAll((int)strlen(field.text));
 
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, 0, len, 0);
-            *field.cursor_position = len;
-            selection_start = 0;
-            selection_end = len;
+                                  field.focused, all.anchor, all.cursor, 0);
+            *field.cursor_position = all.cursor;
+            selection_start = all.anchor;
+            selection_end = all.cursor;
             selection_handled = 1;
         }
         if(!field.secure && ui_mod_key_down() && IsKeyPressed(KEY_C)) {
@@ -4594,10 +4579,15 @@ ui_text_field_render_filtered(TextFieldProps field,
                 *field.cursor_position = 0;
                 changed = 1;
             }
-            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, *field.cursor_position,
-                                  *field.cursor_position, 0);
-            selection_start = selection_end = *field.cursor_position;
+            {
+                TextSelectionState collapsed = ui_text_selection_collapsed(
+                    *field.cursor_position);
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                                                field.focus_id, field.focused,
+                                                *field.cursor_position, 0);
+                selection_start = collapsed.anchor;
+                selection_end = collapsed.cursor;
+            }
             selection_handled = 1;
         }
         if(!field.read_only && ui_mod_key_down() && IsKeyPressed(KEY_V)) {
@@ -4607,10 +4597,15 @@ ui_text_field_render_filtered(TextFieldProps field,
                                      selection_end);
             if(ui_text_paste_clipboard(field_edit, 0))
                 changed = 1;
-            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, *field.cursor_position,
-                                  *field.cursor_position, 0);
-            selection_start = selection_end = *field.cursor_position;
+            {
+                TextSelectionState collapsed = ui_text_selection_collapsed(
+                    *field.cursor_position);
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                                                field.focus_id, field.focused,
+                                                *field.cursor_position, 0);
+                selection_start = collapsed.anchor;
+                selection_end = collapsed.cursor;
+            }
             selection_handled = 1;
         }
         if(!field.read_only &&
@@ -4634,10 +4629,15 @@ ui_text_field_render_filtered(TextFieldProps field,
                     field.cursor_position, TextDeleteForward(),
                     ui_mod_key_down(), field.secure);
             g_ui_text_input_backspace_count = 0;
-            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, *field.cursor_position,
-                                  *field.cursor_position, 0);
-            selection_start = selection_end = *field.cursor_position;
+            {
+                TextSelectionState collapsed = ui_text_selection_collapsed(
+                    *field.cursor_position);
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                                                field.focus_id, field.focused,
+                                                *field.cursor_position, 0);
+                selection_start = collapsed.anchor;
+                selection_end = collapsed.cursor;
+            }
             selection_handled = 1;
         }
         if(!selection_handled) {
@@ -4657,12 +4657,14 @@ ui_text_field_render_filtered(TextFieldProps field,
                                          field.focus_id, field.focused))
                 anchor = g_ui_text_field_selection.anchor;
             if(ui_text_navigate(navigation, &anchor, &cursor)) {
+                TextSelectionRange range = TextSelectionRangeFor(anchor,
+                                                                 cursor);
                 *field.cursor_position = cursor;
                 ui_text_selection_set(&g_ui_text_field_selection,
                                       field.focus_id, field.focused,
                                       anchor, cursor, 0);
-                selection_start = anchor < cursor ? anchor : cursor;
-                selection_end = anchor > cursor ? anchor : cursor;
+                selection_start = range.start;
+                selection_end = range.end;
                 selection_handled = 1;
             }
         }
@@ -4708,11 +4710,13 @@ ui_text_field_render_filtered(TextFieldProps field,
             if(g_ui_text_input_codepoint_count > 0)
                 g_ui_text_input_codepoint_count = 0;
             if(inserted) {
-                ui_text_selection_set(&g_ui_text_field_selection,
-                                      field.focus_id, field.focused,
-                                      *field.cursor_position,
-                                      *field.cursor_position, 0);
-                selection_start = selection_end = *field.cursor_position;
+                TextSelectionState collapsed = ui_text_selection_collapsed(
+                    *field.cursor_position);
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                                                field.focus_id, field.focused,
+                                                *field.cursor_position, 0);
+                selection_start = collapsed.anchor;
+                selection_end = collapsed.cursor;
                 selection_handled = 1;
             }
         }
@@ -4729,11 +4733,13 @@ ui_text_field_render_filtered(TextFieldProps field,
         if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
            IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
             if(!g_ui_text_field_selection.dragging) {
-                ui_text_selection_set(&g_ui_text_field_selection,
-                                      field.focus_id, field.focused,
-                                      *field.cursor_position,
-                                      *field.cursor_position, 0);
-                selection_start = selection_end = *field.cursor_position;
+                TextSelectionState collapsed = ui_text_selection_collapsed(
+                    *field.cursor_position);
+                ui_text_selection_set_collapsed(&g_ui_text_field_selection,
+                                                field.focus_id, field.focused,
+                                                *field.cursor_position, 0);
+                selection_start = collapsed.anchor;
+                selection_end = collapsed.cursor;
             }
         }
     } else {
@@ -4746,7 +4752,12 @@ ui_text_field_render_filtered(TextFieldProps field,
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
     else
-        selection_start = selection_end = *field.cursor_position;
+    {
+        TextSelectionState collapsed = ui_text_selection_collapsed(
+            *field.cursor_position);
+        selection_start = collapsed.anchor;
+        selection_end = collapsed.cursor;
+    }
 
     committed_selection_start = selection_start;
     committed_selection_end = selection_end;
@@ -4988,7 +4999,7 @@ InitInterface(int width, int height, float dpi)
     EnsureBuiltInStylePacks();
     ApplyCurrentTheme();
     if(ui_default_font_auto_load)
-        EnsureUIDefaultFont();
+        EnsureDefaultFont();
 }
 
 int

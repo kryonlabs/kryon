@@ -1,0 +1,93 @@
+#module "swipe"
+#import "swipe_props"
+
+SwipeAbs :: (value: float) -> float #export {
+    if value < 0.0 { return -value }
+    return value
+}
+
+SwipeDirectionsFor :: (directions: u32) -> u32 #export {
+    if directions != (u32)0 { return directions }
+    return (u32)SwipeAll
+}
+
+SwipeMinDistanceFor :: (scale: float, min_distance: float) -> float #export {
+    if min_distance > 0.0 { return min_distance }
+    return 48.0 * scale
+}
+
+SwipeAxisBiasFor :: (axis_bias: float) -> float #export {
+    if axis_bias >= 1.0 { return axis_bias }
+    return 1.25
+}
+
+SwipeDecisionDistanceFor :: (scale: float) -> float #export {
+    return 8.0 * scale
+}
+
+SwipeDirectionFor :: (delta: Vector2, directions: u32,
+    axis_bias: float) -> SwipeDirection #export {
+    dx: float = SwipeAbs(delta.x)
+    dy: float = SwipeAbs(delta.y)
+    direction: SwipeDirection = (SwipeDirection)SwipeNone
+
+    if dx >= dy * axis_bias {
+        if delta.x < 0.0 {
+            direction = (SwipeDirection)SwipeLeft
+        } else {
+            direction = (SwipeDirection)SwipeRight
+        }
+    } else if dy >= dx * axis_bias {
+        if delta.y < 0.0 {
+            direction = (SwipeDirection)SwipeUp
+        } else {
+            direction = (SwipeDirection)SwipeDown
+        }
+    } else {
+        return (SwipeDirection)SwipeNone
+    }
+
+    if (directions & (u32)direction) != (u32)0 {
+        return direction
+    }
+    return (SwipeDirection)SwipeNone
+}
+
+SwipePrimaryDistanceFor :: (delta: Vector2, direction: SwipeDirection) -> float #export {
+    if direction == (SwipeDirection)SwipeLeft ||
+       direction == (SwipeDirection)SwipeRight {
+        return SwipeAbs(delta.x)
+    }
+    return SwipeAbs(delta.y)
+}
+
+SwipeMaxDistanceFor :: (delta: Vector2) -> float #export {
+    dx: float = SwipeAbs(delta.x)
+    dy: float = SwipeAbs(delta.y)
+    if dx > dy { return dx }
+    return dy
+}
+
+SwipeProgressFor :: (primary: float, min_distance: float) -> float #export {
+    if min_distance <= 0.0 { return 0.0 }
+    progress: float = primary / min_distance
+    if progress > 1.0 { return 1.0 }
+    if progress < 0.0 { return 0.0 }
+    return progress
+}
+
+SwipeShouldCancelForAxis :: (delta: Vector2, directions: u32,
+    axis_bias: float) -> bool #export {
+    dx: float = SwipeAbs(delta.x)
+    dy: float = SwipeAbs(delta.y)
+    horizontal_allowed: bool = (directions & (u32)SwipeHorizontal) != (u32)0
+    vertical_allowed: bool = (directions & (u32)SwipeVertical) != (u32)0
+
+    if horizontal_allowed && !vertical_allowed && dy >= dx * axis_bias {
+        return true
+    }
+    if vertical_allowed && !horizontal_allowed && dx >= dy * axis_bias {
+        return true
+    }
+    return false
+}

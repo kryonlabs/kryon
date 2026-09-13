@@ -7,7 +7,7 @@
 static SwipeGesture gesture;
 static SwipeSpec spec = {
     .bounds = {0.0f, 0.0f, 320.0f, 480.0f},
-    .directions = SWIPE_HORIZONTAL,
+    .directions = SwipeHorizontal,
     .min_distance = 48.0f,
     .axis_bias = 1.25f
 };
@@ -54,14 +54,14 @@ test_horizontal_swipes(void)
     check_int("left drag claimed", result.dragging, 1);
     check_int("left drag progress", result.progress == 1.0f, 1);
     result = swipe_frame(170.0f, 204.0f, 0);
-    check_int("left direction", result.direction, SWIPE_LEFT);
+    check_int("left direction", result.direction, SwipeLeft);
     check_int("left release consumed", ReleaseConsumed(), 1);
 
     reset_test();
     swipe_frame(80.0f, 200.0f, 1);
     swipe_frame(145.0f, 197.0f, 1);
     result = swipe_frame(145.0f, 197.0f, 0);
-    check_int("right direction", result.direction, SWIPE_RIGHT);
+    check_int("right direction", result.direction, SwipeRight);
 }
 
 static void
@@ -73,7 +73,7 @@ test_threshold_and_axis_lock(void)
     swipe_frame(200.0f, 200.0f, 1);
     swipe_frame(170.0f, 201.0f, 1);
     result = swipe_frame(170.0f, 201.0f, 0);
-    check_int("short drag has no direction", result.direction, SWIPE_NONE);
+    check_int("short drag has no direction", result.direction, SwipeNone);
     check_int("short claimed drag consumes release", ReleaseConsumed(), 1);
 
     reset_test();
@@ -82,7 +82,7 @@ test_threshold_and_axis_lock(void)
     check_int("vertical motion cancels horizontal gesture", result.cancelled, 1);
     result = swipe_frame(163.0f, 190.0f, 0);
     check_int("cancelled gesture has no direction", result.direction,
-              SWIPE_NONE);
+              SwipeNone);
     check_int("cancelled release remains available", ReleaseConsumed(), 0);
 }
 
@@ -95,16 +95,16 @@ test_bounds_and_allowed_directions(void)
     swipe_frame(400.0f, 200.0f, 1);
     swipe_frame(300.0f, 200.0f, 1);
     result = swipe_frame(300.0f, 200.0f, 0);
-    check_int("outside press ignored", result.direction, SWIPE_NONE);
+    check_int("outside press ignored", result.direction, SwipeNone);
 
     reset_test();
-    spec.directions = SWIPE_LEFT;
+    spec.directions = SwipeLeft;
     swipe_frame(80.0f, 200.0f, 1);
     swipe_frame(150.0f, 200.0f, 1);
     result = swipe_frame(150.0f, 200.0f, 0);
     check_int("disabled right direction ignored", result.direction,
-              SWIPE_NONE);
-    spec.directions = SWIPE_HORIZONTAL;
+              SwipeNone);
+    spec.directions = SwipeHorizontal;
 }
 
 static void
@@ -113,18 +113,18 @@ test_vertical_swipes(void)
     SwipeResult result;
 
     reset_test();
-    spec.directions = SWIPE_VERTICAL;
+    spec.directions = SwipeVertical;
     swipe_frame(160.0f, 220.0f, 1);
     swipe_frame(157.0f, 150.0f, 1);
     result = swipe_frame(157.0f, 150.0f, 0);
-    check_int("up direction", result.direction, SWIPE_UP);
+    check_int("up direction", result.direction, SwipeUp);
 
     reset_test();
     swipe_frame(160.0f, 120.0f, 1);
     swipe_frame(164.0f, 190.0f, 1);
     result = swipe_frame(164.0f, 190.0f, 0);
-    check_int("down direction", result.direction, SWIPE_DOWN);
-    spec.directions = SWIPE_HORIZONTAL;
+    check_int("down direction", result.direction, SwipeDown);
+    spec.directions = SwipeHorizontal;
 }
 
 int

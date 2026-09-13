@@ -1,35 +1,5 @@
 #include "ui_internal.h"
-
-static float
-ui_swipe_abs(float value)
-{
-    return value < 0.0f ? -value : value;
-}
-
-static unsigned int
-ui_swipe_directions(SwipeSpec spec)
-{
-    return spec.directions != 0 ? spec.directions : SWIPE_ALL;
-}
-
-static SwipeDirection
-ui_swipe_direction(Vector2 delta, unsigned int directions, float axis_bias)
-{
-    float dx = ui_swipe_abs(delta.x);
-    float dy = ui_swipe_abs(delta.y);
-    SwipeDirection direction;
-
-    if(dx >= dy * axis_bias)
-        direction = delta.x < 0.0f ? SWIPE_LEFT : SWIPE_RIGHT;
-    else if(dy >= dx * axis_bias)
-        direction = delta.y < 0.0f ? SWIPE_UP : SWIPE_DOWN;
-    else
-        return SWIPE_NONE;
-
-    return (directions & (unsigned int)direction) != 0
-               ? direction
-               : SWIPE_NONE;
-}
+#include "runtime/swipe.h"
 
 void
 ResetSwipe(SwipeGesture *gesture)
@@ -47,12 +17,10 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
     SwipeResult result = {0};
     Vector2 pointer = ui_mouse_world();
     Vector2 delta = {0};
-    unsigned int directions = ui_swipe_directions(spec);
-    float min_distance = spec.min_distance > 0.0f
-                             ? spec.min_distance
-                             : (float)Scale(48);
-    float axis_bias = spec.axis_bias >= 1.0f ? spec.axis_bias : 1.25f;
-    float decision_distance = (float)Scale(8);
+    unsigned int directions = SwipeDirectionsFor(spec.directions);
+    float min_distance = SwipeMinDistanceFor(GetScale(), spec.min_distance);
+    float axis_bias = SwipeAxisBiasFor(spec.axis_bias);
+    float decision_distance = SwipeDecisionDistanceFor(GetScale());
     double now = GetTime();
 
     if(gesture == NULL || spec.bounds.width <= 0.0f ||
@@ -93,20 +61,12 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
             return result;
         }
 
-        direction = ui_swipe_direction(delta, directions, axis_bias);
-        distance = ui_swipe_abs(delta.x) > ui_swipe_abs(delta.y)
-                       ? ui_swipe_abs(delta.x)
-                       : ui_swipe_abs(delta.y);
+        direction = SwipeDirectionFor(delta, directions, axis_bias);
+        distance = SwipeMaxDistanceFor(delta);
 
         if(!gesture->dragging && distance >= decision_distance) {
-            if(direction == SWIPE_NONE) {
-                float dx = ui_swipe_abs(delta.x);
-                float dy = ui_swipe_abs(delta.y);
-                int horizontal_allowed = (directions & SWIPE_HORIZONTAL) != 0;
-                int vertical_allowed = (directions & SWIPE_VERTICAL) != 0;
-
-                if((horizontal_allowed && !vertical_allowed && dy >= dx * axis_bias) ||
-                   (vertical_allowed && !horizontal_allowed && dx >= dy * axis_bias)) {
+            if(direction == SwipeNone) {
+                if(SwipeShouldCancelForAxis(delta, directions, axis_bias)) {
                     gesture->active = 0;
                     gesture->cancelled = 1;
                     result.active = 0;
@@ -120,12 +80,8 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 
         result.dragging = gesture->dragging;
         if(gesture->dragging) {
-            float primary = direction == SWIPE_LEFT || direction == SWIPE_RIGHT
-                                ? ui_swipe_abs(delta.x)
-                                : ui_swipe_abs(delta.y);
-            result.progress = primary / min_distance;
-            if(result.progress > 1.0f)
-                result.progress = 1.0f;
+            float primary = SwipePrimaryDistanceFor(delta, direction);
+            result.progress = SwipeProgressFor(primary, min_distance);
             PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
@@ -135,10 +91,8 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         SwipeDirection direction =
-            ui_swipe_direction(delta, directions, axis_bias);
-        float primary = direction == SWIPE_LEFT || direction == SWIPE_RIGHT
-                            ? ui_swipe_abs(delta.x)
-                            : ui_swipe_abs(delta.y);
+            SwipeDirectionFor(delta, directions, axis_bias);
+        float primary = SwipePrimaryDistanceFor(delta, direction);
         double elapsed = now - gesture->started_at;
         int within_time = spec.max_duration <= 0.0f ||
                           elapsed <= (double)spec.max_duration;
@@ -151,9 +105,7 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
         }
         if(gesture->dragging && within_time && primary >= min_distance)
             result.direction = direction;
-        result.progress = min_distance > 0.0f ? primary / min_distance : 0.0f;
-        if(result.progress > 1.0f)
-            result.progress = 1.0f;
+        result.progress = SwipeProgressFor(primary, min_distance);
         result.dragging = 0;
         result.active = 0;
         ResetSwipe(gesture);

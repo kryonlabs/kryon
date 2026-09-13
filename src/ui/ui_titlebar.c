@@ -9,18 +9,20 @@
 static void
 RenderTitleBarBackground(int height, int class_name)
 {
+    TitleBarPaint paint = TitleBarPaintFor(ui_view_width, height);
     StyleFrame bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .class_name = class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
     Style bar = ui_unpack_style(bar_frame.value);
-    Rectangle bounds = {0, 0, (float)ui_view_width, (float)height};
 
-    ui_draw_material(bounds, (Rectangle){0}, bar.background, bar.border,
+    ui_draw_material(paint.bounds, (Rectangle){0}, bar.background, bar.border,
                      bar.border, bar.radius, bar.border_width, 0.0f, 0.0f,
                      0, bar.focus, 0.0f, bar.opacity, ui_style_fill(bar),
                      bar.material);
-    DrawLine(0, height - 1, ui_view_width, height - 1, bar.border);
+    DrawLine((int)paint.divider.x, (int)paint.divider.y,
+             (int)(paint.divider.x + paint.divider.width),
+             (int)paint.divider.y, bar.border);
 }
 
 static int
@@ -53,6 +55,7 @@ RenderTitleBarCenteredTitle(const char *title, int height,
 {
     int font;
     int title_w;
+    TitleBarTitlePaint paint;
     TitleBarMetrics metrics = TitleBarMetricsFor((float)GetScale());
     TitleBarLayout layout = TitleBarLayoutFor(ui_view_width, height,
                                               side_reserved > Scale(12),
@@ -73,9 +76,9 @@ RenderTitleBarCenteredTitle(const char *title, int height,
         font--;
         title_w = TextWidth(title, font);
     }
-    RenderText(title, TitleBarTitleX(ui_view_width, title_w),
-               GetUIControlTextY(title, 0, height, font),
-               font, Fade(text.foreground, text.opacity));
+    paint = TitleBarTitlePaintFor(layout, title_w, TextLineHeight(font));
+    RenderText(title, paint.x, paint.y, font,
+               Fade(text.foreground, text.opacity));
 }
 
 int

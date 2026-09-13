@@ -47,6 +47,7 @@ CheckboxLayout :: struct {
     bounds: Rectangle
     slot_bounds: Rectangle
     label_x: float
+    label_y: float
 }
 
 CheckboxFlagResult :: struct {
@@ -65,19 +66,38 @@ CheckboxBoxSize :: (scale: float) -> i32 #export {
     return (i32)(20.0 * scale)
 }
 
-CheckboxLayoutFor :: (x: float, y: float, label_width: float,
-    scale: float) -> CheckboxLayout #export {
+CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return slot_bounds.x + (float)CheckboxSlotSize(scale) + 10.0 * scale
+}
+
+CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float) -> float #export {
+    return bounds.y + (bounds.height - text_line_height) / 2.0
+}
+
+CheckboxLayoutForText :: (x: float, y: float, label_width: float,
+    text_line_height: float, scale: float) -> CheckboxLayout #export {
     layout: CheckboxLayout
+    if scale <= 0.0 { scale = 1.0 }
     slot_size: float = (float)CheckboxSlotSize(scale)
-    gap: float = 10.0 * (scale <= 0.0 ? 1.0 : scale)
     layout.bounds.x = x
     layout.bounds.y = y
-    layout.bounds.width = slot_size + gap + label_width
+    layout.bounds.width = slot_size + 10.0 * scale + label_width
     layout.bounds.height = slot_size
+    if layout.bounds.height < text_line_height {
+        layout.bounds.height = text_line_height
+    }
     layout.slot_bounds = layout.bounds
     layout.slot_bounds.width = slot_size
-    layout.label_x = x + slot_size + gap
+    layout.label_x = CheckboxLabelXFor(layout.slot_bounds, scale)
+    layout.label_y = CheckboxLabelYFor(layout.bounds, text_line_height)
     return layout
+}
+
+CheckboxLayoutFor :: (x: float, y: float, label_width: float,
+    scale: float) -> CheckboxLayout #export {
+    return CheckboxLayoutForText(x, y, label_width,
+        (float)CheckboxSlotSize(scale), scale)
 }
 
 CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult #export {

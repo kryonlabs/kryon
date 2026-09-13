@@ -316,6 +316,58 @@ func TabBar_TabBarRevealScroll(tab_x float32, tab_width float32, bounds Rectangl
 	return value_34
 }
 
+func TabBar_TabBarDragMarkerBounds(tab_x int32, tab_width int32, bar_y int32, bar_height int32, after_tab bool, scale float32) Rectangle {
+	var marker Rectangle = Rectangle{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 int32 = tab_x
+	var marker_x int32 = value_4
+	var value_5 bool = after_tab
+	if value_5 {
+		var value_6 int32 = tab_x
+		var value_7 int32 = tab_width
+		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
+		marker_x = value_8
+	}
+	var value_9 int32 = marker_x
+	var value_10 float32 = float32(value_9)
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 - value_11
+	marker.X = value_12
+	var value_13 int32 = bar_y
+	var value_14 float32 = float32(value_13)
+	var value_15 float32 = 4.0
+	var value_16 float32 = scale
+	var value_17 float32 = value_15 * value_16
+	var value_18 float32 = value_14 + value_17
+	marker.Y = value_18
+	var value_19 float32 = 2.0
+	var value_20 float32 = scale
+	var value_21 float32 = value_19 * value_20
+	marker.Width = value_21
+	var value_22 int32 = bar_height
+	var value_23 float32 = float32(value_22)
+	var value_24 float32 = 8.0
+	var value_25 float32 = scale
+	var value_26 float32 = value_24 * value_25
+	var value_27 float32 = value_23 - value_26
+	marker.Height = value_27
+	var value_28 float32 = marker.Height
+	var value_29 float32 = 0.0
+	var value_30 bool = value_28 < value_29
+	if value_30 {
+		var value_31 float32 = 0.0
+		marker.Height = value_31
+	}
+	var value_32 Rectangle = marker
+	return value_32
+}
+
 func TabBar_TabBarEqualTabBounds(bounds Rectangle, count int32, index int32) Rectangle {
 	var rect Rectangle = Rectangle{}
 	var value_0 int32 = count

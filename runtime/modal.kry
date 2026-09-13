@@ -19,6 +19,15 @@ ModalMetrics :: struct {
     action_max_width: i32
     content_min_width: i32
     min_height: i32
+    frame_min_width: i32
+    frame_min_height: i32
+    frame_title_y: i32
+    frame_content_y: i32
+    frame_content_bottom_pad: i32
+    frame_icon_size: i32
+    frame_icon_padding: i32
+    frame_icon_edge_gap: i32
+    frame_title_side_padding: i32
 }
 
 ModalLayout :: struct {
@@ -30,6 +39,17 @@ ModalLayout :: struct {
     prompt_y: i32
     prompt_height: i32
     buttons_height: i32
+}
+
+ModalFrameLayout :: struct {
+    panel: Rectangle
+    content: Rectangle
+    left_button: Rectangle
+    right_button: Rectangle
+    title_y: i32
+    title_max_width: i32
+    icon_size: i32
+    icon_padding: i32
 }
 
 ModalMetricsFor :: (scale: float) -> ModalMetrics #export {
@@ -52,6 +72,15 @@ ModalMetricsFor :: (scale: float) -> ModalMetrics #export {
     metrics.action_max_width = (i32)(150.0 * scale)
     metrics.content_min_width = (i32)(120.0 * scale)
     metrics.min_height = (i32)(160.0 * scale)
+    metrics.frame_min_width = (i32)(120.0 * scale)
+    metrics.frame_min_height = (i32)(96.0 * scale)
+    metrics.frame_title_y = (i32)(14.0 * scale)
+    metrics.frame_content_y = (i32)(58.0 * scale)
+    metrics.frame_content_bottom_pad = (i32)(16.0 * scale)
+    metrics.frame_icon_size = (i32)(20.0 * scale)
+    metrics.frame_icon_padding = (i32)(8.0 * scale)
+    metrics.frame_icon_edge_gap = (i32)(6.0 * scale)
+    metrics.frame_title_side_padding = (i32)(24.0 * scale)
     return metrics
 }
 
@@ -134,5 +163,55 @@ ModalLayoutFor :: (view_width: i32, view_height: i32, max_width: i32,
         buttons_height - metrics.padding_bottom
     layout.prompt_y = layout.message_y + message_height + prompt_gap
     layout.prompt_height = prompt_height
+    return layout
+}
+
+ModalFramePanelFor :: (view_width: i32, view_height: i32, width: i32,
+    height: i32, metrics: ModalMetrics) -> Rectangle #export {
+    panel: Rectangle
+    max_width: i32 = view_width - metrics.screen_pad
+    max_height: i32 = view_height - metrics.screen_pad
+    if width > max_width { width = max_width }
+    if height > max_height { height = max_height }
+    if width < 1 { width = 1 }
+    if height < 1 { height = 1 }
+    panel.x = (float)((view_width - width) / 2)
+    panel.y = (float)((view_height - height) / 2)
+    panel.width = (float)width
+    panel.height = (float)height
+    return panel
+}
+
+ModalFrameLayoutFor :: (panel: Rectangle, metrics: ModalMetrics) -> ModalFrameLayout #export {
+    layout: ModalFrameLayout
+    if panel.width < (float)metrics.frame_min_width {
+        panel.width = (float)metrics.frame_min_width
+    }
+    if panel.height < (float)metrics.frame_min_height {
+        panel.height = (float)metrics.frame_min_height
+    }
+    icon_w: i32 = metrics.frame_icon_size + metrics.frame_icon_padding * 2
+    layout.panel = panel
+    layout.content.x = panel.x + (float)metrics.padding_x
+    layout.content.y = panel.y + (float)metrics.frame_content_y
+    layout.content.width = panel.width - (float)(metrics.padding_x * 2)
+    layout.content.height = panel.height -
+        (float)(metrics.frame_content_y + metrics.frame_content_bottom_pad)
+    if layout.content.width < 1.0 { layout.content.width = 1.0 }
+    if layout.content.height < 1.0 { layout.content.height = 1.0 }
+
+    layout.left_button.x = panel.x + (float)metrics.frame_icon_edge_gap
+    layout.left_button.y = panel.y + (float)metrics.frame_icon_edge_gap
+    layout.left_button.width = (float)icon_w
+    layout.left_button.height = (float)icon_w
+    layout.right_button = layout.left_button
+    layout.right_button.x = panel.x + panel.width - (float)(icon_w + metrics.frame_icon_edge_gap)
+
+    layout.title_y = (i32)panel.y + metrics.frame_title_y
+    layout.title_max_width = (i32)panel.width - icon_w * 2 -
+        metrics.frame_title_side_padding
+    if layout.title_max_width < 1 { layout.title_max_width = 1 }
+    layout.icon_size = metrics.frame_icon_size
+    layout.icon_padding = metrics.frame_icon_padding
     return layout
 }

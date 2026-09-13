@@ -829,6 +829,7 @@ include/scene_property.h function SceneRegisterProperties
 include/scene_property.h typedef ScenePropertyGetFn
 include/scene_property.h typedef ScenePropertySetFn
 include/scene_tree.h enum NODE_ANIMATED_SPRITE2D
+include/scene_tree.h enum NODE_ANIMATION_PLAYER
 include/scene_tree.h enum NODE_AREA2D
 include/scene_tree.h enum NODE_AUDIO_SOURCE
 include/scene_tree.h enum NODE_BODY2D
@@ -843,7 +844,6 @@ include/scene_tree.h enum NODE_NODE2D
 include/scene_tree.h enum NODE_ROOT
 include/scene_tree.h enum NODE_SPRITE2D
 include/scene_tree.h enum NODE_TILEMAP
-include/scene_tree.h enum NODE_TIMER
 include/scene_tree.h function KryBody2DGetVelocity
 include/scene_tree.h function KryBody2DSetTransform
 include/scene_tree.h function KryBody2DSetVelocity
@@ -1614,6 +1614,7 @@ include/ui_nav.h function GetPaneDropZone
 include/ui_nav.h function GetTabBarHeight
 include/ui_nav.h function TabBarHeight
 include/ui_navigation_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_node2d_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_node_registry.h enum KRYON_NODE_INSERTABLE
 include/ui_node_registry.h enum KRYON_NODE_MOVABLE
 include/ui_node_registry.h enum KRYON_NODE_RESIZABLE
@@ -1691,6 +1692,7 @@ include/ui_profile.h function GetSyncIDForProfileImageIconType
 include/ui_progress_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_radio_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_reorder.h function UpdateReorderList
+include/ui_reorder_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_router_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_scaling.h function ClampPx
 include/ui_scaling.h function GetScale
@@ -1724,20 +1726,13 @@ include/ui_style_sheet.h function StyleClassId
 include/ui_style_sheet.h function StylePackVersion
 include/ui_style_sheet.h function StylePicker
 include/ui_style_sheet.h macro STYLE_PACK_MAX
-include/ui_swipe.h enum SWIPE_ALL
-include/ui_swipe.h enum SWIPE_DOWN
-include/ui_swipe.h enum SWIPE_HORIZONTAL
-include/ui_swipe.h enum SWIPE_LEFT
-include/ui_swipe.h enum SWIPE_NONE
-include/ui_swipe.h enum SWIPE_RIGHT
-include/ui_swipe.h enum SWIPE_UP
-include/ui_swipe.h enum SWIPE_VERTICAL
 include/ui_swipe.h function ResetSwipe
 include/ui_swipe.h function UpdateSwipe
+include/ui_swipe_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_tab_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_table_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_text.h function ClearTextFonts
-include/ui_text.h function EnsureUIDefaultFont
+include/ui_text.h function EnsureDefaultFont
 include/ui_text.h function GetTextFont
 include/ui_text.h function GetTextFontForCodepoint
 include/ui_text.h function GetTextFontScale

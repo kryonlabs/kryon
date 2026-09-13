@@ -6731,7 +6731,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	sel := r.normalizedSelection(focusID, text, pos)
 	if tapped {
 		pos = cursorAtTap(text, bounds, tapX)
-		sel = selection{Anchor: pos, Cursor: pos}
+		sel = collapsedSelection(pos)
 	}
 	changed := false
 	for _, event := range r.inputEvents {
@@ -6743,7 +6743,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			text, pos, inserted = insertText(text, pos, sel, event.text, textLimit(buf, options.maxCodepoints))
 			if inserted {
 				changed = true
-				sel = selection{Anchor: pos, Cursor: pos}
+				sel = collapsedSelection(pos)
 			}
 			continue
 		}
@@ -6751,7 +6751,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		if event.shortcut {
 			switch event.key {
 			case KeyA:
-				sel = selection{Anchor: 0, Cursor: len(text)}
+				sel = selectAllSelection(len(text))
 			case KeyC:
 				if !options.secure && sel.Anchor != sel.Cursor {
 					start, end := selectionRange(sel)
@@ -6766,7 +6766,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					r.clipboard = text[start:end]
 					text = text[:start] + text[end:]
 					pos = start
-					sel = selection{Anchor: pos, Cursor: pos}
+					sel = collapsedSelection(pos)
 					changed = true
 				}
 			case KeyV:
@@ -6777,7 +6777,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, options.maxCodepoints))
 				if inserted {
 					changed = true
-					sel = selection{Anchor: pos, Cursor: pos}
+					sel = collapsedSelection(pos)
 				}
 			case KeyHome:
 				pos, sel = textMoveSelection(sel, pos, 0, textSelection)
@@ -6816,7 +6816,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		switch event.key {
 		case KeyTab:
 			r.setFocus(r.nextFocus(focusID, event.shift))
-			sel = selection{Anchor: pos, Cursor: pos}
+			sel = collapsedSelection(pos)
 		case KeyLeft:
 			target := prevRune(text, pos)
 			if !textSelection && sel.Anchor != sel.Cursor {
@@ -6876,7 +6876,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 				var inserted bool
 				text, pos, inserted = insertText(text, pos, sel, "\n", textLimit(buf, options.maxCodepoints))
 				changed = changed || inserted
-				sel = selection{Anchor: pos, Cursor: pos}
+				sel = collapsedSelection(pos)
 			} else if commit != nil {
 				*commit = true
 			}
@@ -7148,7 +7148,7 @@ func (r *runtime) nextFocus(current int32, reverse bool) int32 {
 func (r *runtime) normalizedSelection(focusID int32, text string, pos int) selection {
 	s, ok := r.selection[focusID]
 	if !ok {
-		return selection{Anchor: pos, Cursor: pos}
+		return collapsedSelection(pos)
 	}
 	s.Anchor = clampCursor(text, s.Anchor)
 	s.Cursor = clampCursor(text, s.Cursor)
@@ -7156,10 +7156,18 @@ func (r *runtime) normalizedSelection(focusID int32, text string, pos int) selec
 }
 
 func selectionRange(sel selection) (int, int) {
-	if sel.Anchor < sel.Cursor {
-		return sel.Anchor, sel.Cursor
-	}
-	return sel.Cursor, sel.Anchor
+	result := TextInput_TextSelectionRangeFor(int32(sel.Anchor), int32(sel.Cursor))
+	return int(result.Start), int(result.End)
+}
+
+func collapsedSelection(pos int) selection {
+	result := TextInput_TextSelectionCollapsed(int32(pos))
+	return selection{Anchor: int(result.Anchor), Cursor: int(result.Cursor)}
+}
+
+func selectAllSelection(length int) selection {
+	result := TextInput_TextSelectionAll(int32(length))
+	return selection{Anchor: int(result.Anchor), Cursor: int(result.Cursor)}
 }
 
 func deleteSelection(text string, sel selection) (string, int, bool) {
@@ -7192,14 +7200,7 @@ func insertText(text string, pos int, sel selection, value string, limit int) (s
 }
 
 func textLimit(buf []byte, maxCodepoints int32) int {
-	limit := len(buf) - 1
-	if maxCodepoints > 0 && int(maxCodepoints) < limit {
-		limit = int(maxCodepoints)
-	}
-	if limit < 0 {
-		return 0
-	}
-	return limit
+	return int(TextInput_TextInputBufferLimit(int32(len(buf)), maxCodepoints))
 }
 
 func trimUTF8Bytes(text string, limit int) string {
@@ -7374,7 +7375,7 @@ func textDeleteKey(
 		return text, pos, current, false
 	}
 	text = text[:start] + text[end:]
-	current = selection{Anchor: start, Cursor: start}
+	current = collapsedSelection(start)
 	return text, start, current, true
 }
 
@@ -7422,14 +7423,10 @@ func textMoveVertical(text string, pos, direction, rows int) int {
 }
 
 func textMoveSelection(current selection, cursor, target int, extend bool) (int, selection) {
-	if extend {
-		if current.Anchor == current.Cursor {
-			current.Anchor = cursor
-		}
-		current.Cursor = target
-		return target, current
-	}
-	return target, selection{Anchor: target, Cursor: target}
+	next := TextInput_TextSelectionAfterMove(
+		int32(current.Anchor), int32(cursor), int32(target), extend,
+	)
+	return int(next.Cursor), selection{Anchor: int(next.Anchor), Cursor: int(next.Cursor)}
 }
 
 func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {

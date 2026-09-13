@@ -17,6 +17,7 @@ main(void)
 {
     ModalMetrics metrics = ModalMetricsFor(2.0f);
     ModalLayout layout;
+    ModalFrameLayout frame_layout;
 
     assert(metrics.screen_pad == 48);
     assert(metrics.min_width == 560);
@@ -35,6 +36,12 @@ main(void)
     assert(metrics.action_max_width == 300);
     assert(metrics.content_min_width == 240);
     assert(metrics.min_height == 320);
+    assert(metrics.frame_min_width == 240);
+    assert(metrics.frame_min_height == 192);
+    assert(metrics.frame_title_y == 28);
+    assert(metrics.frame_content_y == 116);
+    assert(metrics.frame_icon_size == 40);
+    assert(metrics.frame_icon_padding == 16);
 
     assert(ModalClampWidth(900, 0, metrics) == 840);
     assert(ModalClampWidth(500, 0, metrics) == 484);
@@ -59,5 +66,18 @@ main(void)
     assert(layout.prompt_y == 226);
     assert(layout.prompt_height == 38);
     assert(layout.buttons_height == 44);
+
+    check_rect(ModalFramePanelFor(640, 480, 900, 900, metrics),
+               12, 12, 616, 456);
+    frame_layout = ModalFrameLayoutFor((Rectangle){100, 80, 80, 70},
+                                       metrics);
+    check_rect(frame_layout.panel, 100, 80, 120, 96);
+    check_rect(frame_layout.content, 118, 138, 84, 22);
+    check_rect(frame_layout.left_button, 106, 86, 36, 36);
+    check_rect(frame_layout.right_button, 178, 86, 36, 36);
+    assert(frame_layout.title_y == 94);
+    assert(frame_layout.title_max_width == 24);
+    assert(frame_layout.icon_size == 20);
+    assert(frame_layout.icon_padding == 8);
     return 0;
 }

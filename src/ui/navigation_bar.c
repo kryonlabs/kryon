@@ -251,20 +251,11 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     int route_count = modal.route_count != NULL ? *modal.route_count : 0;
     int max_route_count = modal.max_route_count > 0 ? modal.max_route_count : route_count;
     int selected[16] = {0};
-    int row_h = Scale(58);
-    int dropdown_h = Scale(36);
-    int remove_w = Scale(36);
-    int add_h = Scale(34);
-    int button_h = Scale(36);
-    int button_gap = Scale(8);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    NavigationBarConfigMetrics metrics =
+        NavigationBarConfigMetricsFor(runtime_scale);
+    NavigationBarConfigLayout layout;
     int y;
-    int button_w;
-    int total_button_w;
-    int button_y;
-    int add_y;
-    int add_w;
-    int route_view_h;
-    int route_content_h;
     int dropdown_blocks_buttons;
     int i;
     int j;
@@ -292,8 +283,9 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
-    frame = RenderModalFrame(Scale(340),
-                                Scale(128) + row_h * route_count + add_h + Scale(58),
+    frame = RenderModalFrame(metrics.frame_width,
+                                NavigationBarConfigFrameHeight(route_count,
+                                                               metrics),
                                 modal.title,
                                 kryon_zero_texture2d,
                                 modal.close_icon);
@@ -302,52 +294,45 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         return result;
     }
 
-    button_w = (frame.content_w - button_gap * 2) / 3;
-    if(button_w > Scale(92))
-        button_w = Scale(92);
-    total_button_w = button_w * 3 + button_gap * 2;
-    button_y = frame.y + frame.h - button_h - Scale(16);
-    add_y = button_y - button_gap - add_h;
-    route_view_h = add_y - frame.content_y - Scale(12);
-    if(route_view_h < row_h)
-        route_view_h = row_h;
-    if(frame.content_y + route_view_h > add_y - Scale(8))
-        route_view_h = add_y - frame.content_y - Scale(8);
-    if(route_view_h < Scale(48))
-        route_view_h = Scale(48);
-    route_content_h = row_h * route_count;
+    layout = NavigationBarConfigLayoutFor(
+        (Rectangle){(float)frame.x, (float)frame.y,
+                    (float)frame.w, (float)frame.h},
+        (Rectangle){(float)frame.content_x, (float)frame.content_y,
+                    (float)frame.content_w, (float)frame.content_h},
+        route_count, metrics);
     memset(&route_area, 0, sizeof(route_area));
-    route_area.bounds.x = (float)frame.content_x;
-    route_area.bounds.y = (float)frame.content_y;
-    route_area.bounds.width = (float)frame.content_w;
-    route_area.bounds.height = (float)route_view_h;
-    route_area.content_height = route_content_h;
+    route_area.bounds = layout.route_bounds;
+    route_area.content_height = layout.route_content_height;
     route_area.content_x = frame.content_x;
     route_area.content_width = frame.content_w;
     route_area.scroll_offset = &route_scroll_offset;
-    route_area.wheel_step = row_h;
-    route_area.scrollbar_x = frame.content_x + frame.content_w - Scale(8);
+    route_area.wheel_step = layout.wheel_step;
+    route_area.scrollbar_x = layout.scrollbar_x;
 
     route_view = BeginScrollContainer(route_area);
     y = route_view.content_y;
     for(i = 0; i < route_count; i++) {
+        NavigationBarConfigRowLayout row = NavigationBarConfigRowLayoutFor(
+            (Rectangle){(float)frame.content_x, (float)frame.content_y,
+                        (float)frame.content_w, (float)frame.content_h},
+            y, TextLineHeight(label_font), metrics);
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
-        RenderTextStyled(slot_label, frame.content_x, y,
+        RenderTextStyled(slot_label, (int)row.label_bounds.x,
+                         (int)row.label_bounds.y,
                          (TextStyle){label_font,
                                      Fade(label_style.foreground,
                                           label_style.opacity),
                                      1, 0});
-        if(Dropdown((DropdownProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
+        if(Dropdown((DropdownProps){.id = modal.id + i, .bounds = row.dropdown_bounds,
             .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
             modal.routes[i] = modal.options[selected[i]].route;
             result.changed = 1;
         }
         if(Button((ButtonProps){
-            .bounds = {frame.content_x + frame.content_w - remove_w,
-                       y + Scale(22), remove_w, remove_w},
+            .bounds = row.remove_bounds,
             .icon = modal.close_icon, .icon_only = true,
             .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
             .style = {.normal = {.fields = StyleIconSize, .icon_size = 20}}
@@ -360,19 +345,16 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
             result.changed = 1;
             break;
         }
-        y += row_h;
+        y += metrics.row_height;
     }
     EndScrollContainer(route_area, route_view);
 
-    dropdown_store_clip(frame.content_y, add_y - Scale(8));
+    dropdown_store_clip(layout.clip_y, layout.clip_height);
 
-    y = add_y;
     dropdown_blocks_buttons = dropdown_captures(ui_mouse_world());
     if(route_count < max_route_count && modal.routes != NULL) {
-        add_w = frame.content_w < Scale(180) ? frame.content_w : Scale(180);
         if(Button((ButtonProps){
-               .bounds = {(float)(frame.content_x + (frame.content_w - add_w) / 2),
-                          (float)y, (float)add_w, (float)add_h},
+               .bounds = layout.add_bounds,
                .label = modal.add_label,
                .tone = ButtonToneNeutral,
                .emphasis = ButtonEmphasisSoft,
@@ -387,18 +369,15 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     }
 
     {
-        int x = frame.x + (frame.w - total_button_w) / 2;
-        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+        if(Button((ButtonProps){.bounds=layout.reset_bounds,
                                .label=modal.reset_label,.tone=ButtonToneNeutral,
                                .emphasis=ButtonEmphasisSoft,.disabled=dropdown_blocks_buttons}))
             result.action = 3;
-        x += button_w + button_gap;
-        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+        if(Button((ButtonProps){.bounds=layout.cancel_bounds,
                                .label=modal.cancel_label,.tone=ButtonToneNeutral,
                                .emphasis=ButtonEmphasisSoft,.disabled=dropdown_blocks_buttons}))
             result.action = 1;
-        x += button_w + button_gap;
-        if(Button((ButtonProps){.bounds={(float)x,(float)button_y,(float)button_w,(float)button_h},
+        if(Button((ButtonProps){.bounds=layout.save_bounds,
                                .label=modal.save_label,.disabled=dropdown_blocks_buttons}))
             result.action = 2;
     }

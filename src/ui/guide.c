@@ -17,68 +17,11 @@ guide_draw_scrim(GuideScrim scrim, Color color)
 static void
 guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color)
 {
-    int anchor_cx = (int)(anchor.x + anchor.width / 2);
-    int anchor_cy = (int)(anchor.y + anchor.height / 2);
-    int tip_left = (int)tip.x;
-    int tip_right = (int)(tip.x + tip.width);
-    int tip_top = (int)tip.y;
-    int tip_bottom = (int)(tip.y + tip.height);
-    int arrow_size = Scale(10);
-    Vector2 start, end;
-    Vector2 tip0, tip1, tip2;
-    if(anchor_cy < tip_top) {
-        start.x = (float)anchor_cx;
-        start.y = (float)(anchor_cy + anchor.height / 2);
-        end.x = (float)anchor_cx;
-        end.y = (float)tip_top;
-        DrawLineEx(start, end, (float)Scale(2), color);
-        tip0.x = end.x;
-        tip0.y = end.y;
-        tip1.x = end.x - arrow_size;
-        tip1.y = end.y - arrow_size;
-        tip2.x = end.x + arrow_size;
-        tip2.y = end.y - arrow_size;
-        DrawTriangle(tip0, tip1, tip2, color);
-    } else if(anchor_cy > tip_bottom) {
-        start.x = (float)anchor_cx;
-        start.y = (float)(anchor_cy - anchor.height / 2);
-        end.x = (float)anchor_cx;
-        end.y = (float)tip_bottom;
-        DrawLineEx(start, end, (float)Scale(2), color);
-        tip0.x = end.x;
-        tip0.y = end.y;
-        tip1.x = end.x + arrow_size;
-        tip1.y = end.y + arrow_size;
-        tip2.x = end.x - arrow_size;
-        tip2.y = end.y + arrow_size;
-        DrawTriangle(tip0, tip1, tip2, color);
-    } else if(anchor_cx < tip_left) {
-        start.x = (float)(anchor_cx + anchor.width / 2);
-        start.y = (float)anchor_cy;
-        end.x = (float)tip_left;
-        end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)Scale(2), color);
-        tip0.x = end.x;
-        tip0.y = end.y;
-        tip1.x = end.x - arrow_size;
-        tip1.y = end.y - arrow_size;
-        tip2.x = end.x - arrow_size;
-        tip2.y = end.y + arrow_size;
-        DrawTriangle(tip0, tip1, tip2, color);
-    } else {
-        start.x = (float)(anchor_cx - anchor.width / 2);
-        start.y = (float)anchor_cy;
-        end.x = (float)tip_right;
-        end.y = (float)anchor_cy;
-        DrawLineEx(start, end, (float)Scale(2), color);
-        tip0.x = end.x;
-        tip0.y = end.y;
-        tip1.x = end.x + arrow_size;
-        tip1.y = end.y - arrow_size;
-        tip2.x = end.x + arrow_size;
-        tip2.y = end.y + arrow_size;
-        DrawTriangle(tip0, tip1, tip2, color);
-    }
+    GuideArrow arrow = GuideArrowFor(tip, anchor,
+                                     GuideMetricsFor((float)GetScale()));
+
+    DrawLineEx(arrow.line_start, arrow.line_end, arrow.stroke_width, color);
+    DrawTriangle(arrow.tip0, arrow.tip1, arrow.tip2, color);
 }
 
 static Style

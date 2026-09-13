@@ -16,13 +16,6 @@ typedef struct StylePack {
     const StyleSheet *sheet;
 } StylePack;
 
-typedef struct StylePackOption {
-    const char *id;
-    const char *label;
-    const char *description;
-    bool active;
-} StylePackOption;
-
 bool RegisterStylePack(StylePack pack);
 bool RegisterStylePackSource(const char *source, const char *label,
                              const char *description);

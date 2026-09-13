@@ -48,6 +48,7 @@ type CheckboxLayout struct {
 	Bounds     Rectangle
 	SlotBounds Rectangle
 	LabelX     float32
+	LabelY     float32
 }
 
 type CheckboxFlagResult struct {
@@ -86,50 +87,97 @@ func Checkbox_CheckboxBoxSize(scale float32) int32 {
 	return value_7
 }
 
-func Checkbox_CheckboxLayoutFor(x float32, y float32, label_width float32, scale float32) CheckboxLayout {
+func Checkbox_CheckboxLabelXFor(slot_bounds Rectangle, scale float32) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = slot_bounds.X
+	var value_5 float32 = scale
+	var value_6 int32 = Checkbox_CheckboxSlotSize(value_5)
+	var value_7 float32 = float32(value_6)
+	var value_8 float32 = value_4 + value_7
+	var value_9 float32 = 10.0
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 * value_10
+	var value_12 float32 = value_8 + value_11
+	return value_12
+}
+
+func Checkbox_CheckboxLabelYFor(bounds Rectangle, text_line_height float32) float32 {
+	var value_0 float32 = bounds.Y
+	var value_1 float32 = bounds.Height
+	var value_2 float32 = text_line_height
+	var value_3 float32 = value_1 - value_2
+	var value_4 float32 = 2.0
+	var value_5 float32 = value_3 / value_4
+	var value_6 float32 = value_0 + value_5
+	return value_6
+}
+
+func Checkbox_CheckboxLayoutForText(x float32, y float32, label_width float32, text_line_height float32, scale float32) CheckboxLayout {
 	var layout CheckboxLayout = CheckboxLayout{}
 	var value_0 float32 = scale
-	var value_1 int32 = Checkbox_CheckboxSlotSize(value_0)
-	var value_2 float32 = float32(value_1)
-	var slot_size float32 = value_2
-	var value_3 float32 = 10.0
-	var value_4 float32 = scale
-	var value_5 float32 = 0.0
-	var value_6 bool = value_4 <= value_5
-	var value_7 float32 = 0
-	if value_6 {
-		var value_8 float32 = 1.0
-		value_7 = value_8
-	} else {
-		var value_9 float32 = scale
-		value_7 = value_9
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
 	}
-	var value_10 float32 = value_3 * value_7
-	var gap float32 = value_10
-	var value_11 float32 = x
-	layout.Bounds.X = value_11
-	var value_12 float32 = y
-	layout.Bounds.Y = value_12
-	var value_13 float32 = slot_size
-	var value_14 float32 = gap
+	var value_4 float32 = scale
+	var value_5 int32 = Checkbox_CheckboxSlotSize(value_4)
+	var value_6 float32 = float32(value_5)
+	var slot_size float32 = value_6
+	var value_7 float32 = x
+	layout.Bounds.X = value_7
+	var value_8 float32 = y
+	layout.Bounds.Y = value_8
+	var value_9 float32 = slot_size
+	var value_10 float32 = 10.0
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 * value_11
+	var value_13 float32 = value_9 + value_12
+	var value_14 float32 = label_width
 	var value_15 float32 = value_13 + value_14
-	var value_16 float32 = label_width
-	var value_17 float32 = value_15 + value_16
-	layout.Bounds.Width = value_17
-	var value_18 float32 = slot_size
-	layout.Bounds.Height = value_18
-	var value_19 Rectangle = layout.Bounds
-	layout.SlotBounds = value_19
-	var value_20 float32 = slot_size
-	layout.SlotBounds.Width = value_20
-	var value_21 float32 = x
+	layout.Bounds.Width = value_15
+	var value_16 float32 = slot_size
+	layout.Bounds.Height = value_16
+	var value_17 float32 = layout.Bounds.Height
+	var value_18 float32 = text_line_height
+	var value_19 bool = value_17 < value_18
+	if value_19 {
+		var value_20 float32 = text_line_height
+		layout.Bounds.Height = value_20
+	}
+	var value_21 Rectangle = layout.Bounds
+	layout.SlotBounds = value_21
 	var value_22 float32 = slot_size
-	var value_23 float32 = value_21 + value_22
-	var value_24 float32 = gap
-	var value_25 float32 = value_23 + value_24
+	layout.SlotBounds.Width = value_22
+	var value_23 Rectangle = layout.SlotBounds
+	var value_24 float32 = scale
+	var value_25 float32 = Checkbox_CheckboxLabelXFor(value_23, value_24)
 	layout.LabelX = value_25
-	var value_26 CheckboxLayout = layout
-	return value_26
+	var value_26 Rectangle = layout.Bounds
+	var value_27 float32 = text_line_height
+	var value_28 float32 = Checkbox_CheckboxLabelYFor(value_26, value_27)
+	layout.LabelY = value_28
+	var value_29 CheckboxLayout = layout
+	return value_29
+}
+
+func Checkbox_CheckboxLayoutFor(x float32, y float32, label_width float32, scale float32) CheckboxLayout {
+	var value_0 float32 = x
+	var value_1 float32 = y
+	var value_2 float32 = label_width
+	var value_3 float32 = scale
+	var value_4 int32 = Checkbox_CheckboxSlotSize(value_3)
+	var value_5 float32 = float32(value_4)
+	var value_6 float32 = scale
+	var value_7 CheckboxLayout = Checkbox_CheckboxLayoutForText(value_0, value_1, value_2, value_5, value_6)
+	return value_7
 }
 
 func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) CheckboxFlagResult {

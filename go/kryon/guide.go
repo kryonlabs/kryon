@@ -31,6 +31,15 @@ type GuideScrim struct {
 	Right  Rectangle
 }
 
+type GuideArrow struct {
+	LineStart   Vector2
+	LineEnd     Vector2
+	Tip0        Vector2
+	Tip1        Vector2
+	Tip2        Vector2
+	StrokeWidth float32
+}
+
 type GuideLayout struct {
 	Tip            Rectangle
 	Text           Rectangle
@@ -606,6 +615,230 @@ func Guide_GuideScrimFor(view_width int32, view_height int32, anchor Rectangle, 
 	scrim.Right = value_59
 	var value_72 GuideScrim = scrim
 	return value_72
+}
+
+func Guide_GuideArrowFor(tip Rectangle, anchor Rectangle, metrics GuideMetrics) GuideArrow {
+	var arrow GuideArrow = GuideArrow{}
+	var value_0 float32 = anchor.X
+	var value_1 float32 = anchor.Width
+	var value_2 float32 = 2.0
+	var value_3 float32 = value_1 / value_2
+	var value_4 float32 = value_0 + value_3
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	var anchor_cx int32 = value_5
+	var value_6 float32 = anchor.Y
+	var value_7 float32 = anchor.Height
+	var value_8 float32 = 2.0
+	var value_9 float32 = value_7 / value_8
+	var value_10 float32 = value_6 + value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var anchor_cy int32 = value_11
+	var value_12 float32 = tip.X
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var tip_left int32 = value_13
+	var value_14 float32 = tip.X
+	var value_15 float32 = tip.Width
+	var value_16 float32 = value_14 + value_15
+	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
+	var tip_right int32 = value_17
+	var value_18 float32 = tip.Y
+	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
+	var tip_top int32 = value_19
+	var value_20 float32 = tip.Y
+	var value_21 float32 = tip.Height
+	var value_22 float32 = value_20 + value_21
+	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
+	var tip_bottom int32 = value_23
+	var value_24 int32 = metrics.Gap
+	var value_25 int32 = 2
+	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 4))
+	var arrow_size int32 = value_26
+	var value_27 int32 = arrow_size
+	var value_28 int32 = 1
+	var value_29 bool = value_27 < value_28
+	if value_29 {
+		var value_30 int32 = 1
+		arrow_size = value_30
+	}
+	var value_31 int32 = metrics.AnchorStroke
+	var value_32 float32 = float32(value_31)
+	arrow.StrokeWidth = value_32
+	var value_33 int32 = anchor_cy
+	var value_34 int32 = tip_top
+	var value_35 bool = value_33 < value_34
+	if value_35 {
+		var value_36 int32 = anchor_cx
+		var value_37 float32 = float32(value_36)
+		arrow.LineStart.X = value_37
+		var value_38 int32 = anchor_cy
+		var value_39 float32 = anchor.Height
+		var value_40 float32 = 2.0
+		var value_41 float32 = value_39 / value_40
+		var value_42 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_41), 32, true)), uint64(0), 32, true, 0))
+		var value_43 int32 = int32(number_runtime_bits(uint64(value_38), uint64(value_42), 32, true, 1))
+		var value_44 float32 = float32(value_43)
+		arrow.LineStart.Y = value_44
+		var value_45 int32 = anchor_cx
+		var value_46 float32 = float32(value_45)
+		arrow.LineEnd.X = value_46
+		var value_47 int32 = tip_top
+		var value_48 float32 = float32(value_47)
+		arrow.LineEnd.Y = value_48
+		var value_49 Vector2 = arrow.LineEnd
+		arrow.Tip0 = value_49
+		var value_50 float32 = arrow.LineEnd.X
+		var value_51 int32 = arrow_size
+		var value_52 float32 = float32(value_51)
+		var value_53 float32 = value_50 - value_52
+		arrow.Tip1.X = value_53
+		var value_54 float32 = arrow.LineEnd.Y
+		var value_55 int32 = arrow_size
+		var value_56 float32 = float32(value_55)
+		var value_57 float32 = value_54 - value_56
+		arrow.Tip1.Y = value_57
+		var value_58 float32 = arrow.LineEnd.X
+		var value_59 int32 = arrow_size
+		var value_60 float32 = float32(value_59)
+		var value_61 float32 = value_58 + value_60
+		arrow.Tip2.X = value_61
+		var value_62 float32 = arrow.LineEnd.Y
+		var value_63 int32 = arrow_size
+		var value_64 float32 = float32(value_63)
+		var value_65 float32 = value_62 - value_64
+		arrow.Tip2.Y = value_65
+	} else {
+		var value_66 int32 = anchor_cy
+		var value_67 int32 = tip_bottom
+		var value_68 bool = value_66 > value_67
+		if value_68 {
+			var value_69 int32 = anchor_cx
+			var value_70 float32 = float32(value_69)
+			arrow.LineStart.X = value_70
+			var value_71 int32 = anchor_cy
+			var value_72 float32 = anchor.Height
+			var value_73 float32 = 2.0
+			var value_74 float32 = value_72 / value_73
+			var value_75 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_74), 32, true)), uint64(0), 32, true, 0))
+			var value_76 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_75), 32, true, 2))
+			var value_77 float32 = float32(value_76)
+			arrow.LineStart.Y = value_77
+			var value_78 int32 = anchor_cx
+			var value_79 float32 = float32(value_78)
+			arrow.LineEnd.X = value_79
+			var value_80 int32 = tip_bottom
+			var value_81 float32 = float32(value_80)
+			arrow.LineEnd.Y = value_81
+			var value_82 Vector2 = arrow.LineEnd
+			arrow.Tip0 = value_82
+			var value_83 float32 = arrow.LineEnd.X
+			var value_84 int32 = arrow_size
+			var value_85 float32 = float32(value_84)
+			var value_86 float32 = value_83 + value_85
+			arrow.Tip1.X = value_86
+			var value_87 float32 = arrow.LineEnd.Y
+			var value_88 int32 = arrow_size
+			var value_89 float32 = float32(value_88)
+			var value_90 float32 = value_87 + value_89
+			arrow.Tip1.Y = value_90
+			var value_91 float32 = arrow.LineEnd.X
+			var value_92 int32 = arrow_size
+			var value_93 float32 = float32(value_92)
+			var value_94 float32 = value_91 - value_93
+			arrow.Tip2.X = value_94
+			var value_95 float32 = arrow.LineEnd.Y
+			var value_96 int32 = arrow_size
+			var value_97 float32 = float32(value_96)
+			var value_98 float32 = value_95 + value_97
+			arrow.Tip2.Y = value_98
+		} else {
+			var value_99 int32 = anchor_cx
+			var value_100 int32 = tip_left
+			var value_101 bool = value_99 < value_100
+			if value_101 {
+				var value_102 int32 = anchor_cx
+				var value_103 float32 = anchor.Width
+				var value_104 float32 = 2.0
+				var value_105 float32 = value_103 / value_104
+				var value_106 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_105), 32, true)), uint64(0), 32, true, 0))
+				var value_107 int32 = int32(number_runtime_bits(uint64(value_102), uint64(value_106), 32, true, 1))
+				var value_108 float32 = float32(value_107)
+				arrow.LineStart.X = value_108
+				var value_109 int32 = anchor_cy
+				var value_110 float32 = float32(value_109)
+				arrow.LineStart.Y = value_110
+				var value_111 int32 = tip_left
+				var value_112 float32 = float32(value_111)
+				arrow.LineEnd.X = value_112
+				var value_113 int32 = anchor_cy
+				var value_114 float32 = float32(value_113)
+				arrow.LineEnd.Y = value_114
+				var value_115 Vector2 = arrow.LineEnd
+				arrow.Tip0 = value_115
+				var value_116 float32 = arrow.LineEnd.X
+				var value_117 int32 = arrow_size
+				var value_118 float32 = float32(value_117)
+				var value_119 float32 = value_116 - value_118
+				arrow.Tip1.X = value_119
+				var value_120 float32 = arrow.LineEnd.Y
+				var value_121 int32 = arrow_size
+				var value_122 float32 = float32(value_121)
+				var value_123 float32 = value_120 - value_122
+				arrow.Tip1.Y = value_123
+				var value_124 float32 = arrow.LineEnd.X
+				var value_125 int32 = arrow_size
+				var value_126 float32 = float32(value_125)
+				var value_127 float32 = value_124 - value_126
+				arrow.Tip2.X = value_127
+				var value_128 float32 = arrow.LineEnd.Y
+				var value_129 int32 = arrow_size
+				var value_130 float32 = float32(value_129)
+				var value_131 float32 = value_128 + value_130
+				arrow.Tip2.Y = value_131
+			} else {
+				var value_132 int32 = anchor_cx
+				var value_133 float32 = anchor.Width
+				var value_134 float32 = 2.0
+				var value_135 float32 = value_133 / value_134
+				var value_136 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_135), 32, true)), uint64(0), 32, true, 0))
+				var value_137 int32 = int32(number_runtime_bits(uint64(value_132), uint64(value_136), 32, true, 2))
+				var value_138 float32 = float32(value_137)
+				arrow.LineStart.X = value_138
+				var value_139 int32 = anchor_cy
+				var value_140 float32 = float32(value_139)
+				arrow.LineStart.Y = value_140
+				var value_141 int32 = tip_right
+				var value_142 float32 = float32(value_141)
+				arrow.LineEnd.X = value_142
+				var value_143 int32 = anchor_cy
+				var value_144 float32 = float32(value_143)
+				arrow.LineEnd.Y = value_144
+				var value_145 Vector2 = arrow.LineEnd
+				arrow.Tip0 = value_145
+				var value_146 float32 = arrow.LineEnd.X
+				var value_147 int32 = arrow_size
+				var value_148 float32 = float32(value_147)
+				var value_149 float32 = value_146 + value_148
+				arrow.Tip1.X = value_149
+				var value_150 float32 = arrow.LineEnd.Y
+				var value_151 int32 = arrow_size
+				var value_152 float32 = float32(value_151)
+				var value_153 float32 = value_150 - value_152
+				arrow.Tip1.Y = value_153
+				var value_154 float32 = arrow.LineEnd.X
+				var value_155 int32 = arrow_size
+				var value_156 float32 = float32(value_155)
+				var value_157 float32 = value_154 + value_156
+				arrow.Tip2.X = value_157
+				var value_158 float32 = arrow.LineEnd.Y
+				var value_159 int32 = arrow_size
+				var value_160 float32 = float32(value_159)
+				var value_161 float32 = value_158 + value_160
+				arrow.Tip2.Y = value_161
+			}
+		}
+	}
+	var value_162 GuideArrow = arrow
+	return value_162
 }
 
 func Guide_GuideLayoutFor(tip Rectangle, paragraph_width int32, paragraph_height int32, step int32, count int32, metrics GuideMetrics) GuideLayout {

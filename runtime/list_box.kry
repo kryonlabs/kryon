@@ -17,6 +17,11 @@ ListBoxNavigation :: struct {
     changed: bool
 }
 
+ListBoxItemPaint :: struct {
+    text_x: i32
+    text_y: i32
+}
+
 ListBoxRowHeight :: (row_height: i32) -> i32 #export {
     if row_height <= 0 {
         return 30
@@ -147,3 +152,20 @@ ListBoxRowBounds :: (bounds: Rectangle, row_index: i32,
     return row
 }
 
+ListBoxItemPaintFor :: (row: Rectangle, label_inset: i32,
+    text_line_height: i32) -> ListBoxItemPaint #export {
+    paint: ListBoxItemPaint
+    paint.text_x = (i32)row.x + label_inset
+    paint.text_y = (i32)row.y + ((i32)row.height - text_line_height) / 2
+    return paint
+}
+
+ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
+    bar: Rectangle
+    if scrollbar_width <= 0 { scrollbar_width = 8 }
+    bar.x = bounds.x + bounds.width - (float)scrollbar_width
+    bar.y = bounds.y
+    bar.width = (float)scrollbar_width
+    bar.height = bounds.height
+    return bar
+}

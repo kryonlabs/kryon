@@ -472,6 +472,48 @@ func TableView_TableViewViewport(bounds Rectangle, layout TableViewLayout, scrol
 	return value_22
 }
 
+func TableView_TableViewScrollbarBoundsFor(bounds Rectangle, layout TableViewLayout, scrollbar_width int32) Rectangle {
+	var scrollbar Rectangle = Rectangle{}
+	var value_0 float32 = bounds.X
+	var value_1 float32 = bounds.Width
+	var value_2 float32 = value_0 + value_1
+	var value_3 int32 = scrollbar_width
+	var value_4 float32 = float32(value_3)
+	var value_5 float32 = value_2 - value_4
+	scrollbar.X = value_5
+	var value_6 float32 = bounds.Y
+	var value_7 int32 = layout.HeaderHeight
+	var value_8 int32 = layout.FrozenRows
+	var value_9 int32 = layout.RowHeight
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_10), 32, true, 1))
+	var value_12 float32 = float32(value_11)
+	var value_13 float32 = value_6 + value_12
+	scrollbar.Y = value_13
+	var value_14 int32 = scrollbar_width
+	var value_15 float32 = float32(value_14)
+	scrollbar.Width = value_15
+	var value_16 int32 = layout.ScrollBodyHeight
+	var value_17 float32 = float32(value_16)
+	scrollbar.Height = value_17
+	var value_18 float32 = scrollbar.Width
+	var value_19 float32 = 0.0
+	var value_20 bool = value_18 < value_19
+	if value_20 {
+		var value_21 float32 = 0.0
+		scrollbar.Width = value_21
+	}
+	var value_22 float32 = scrollbar.Height
+	var value_23 float32 = 0.0
+	var value_24 bool = value_22 < value_23
+	if value_24 {
+		var value_25 float32 = 0.0
+		scrollbar.Height = value_25
+	}
+	var value_26 Rectangle = scrollbar
+	return value_26
+}
+
 func TableView_TableViewMinimumColumnWidth(requested_min_width int32, scale float32, metrics TableViewMetrics) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

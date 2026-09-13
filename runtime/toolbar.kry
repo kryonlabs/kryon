@@ -1,5 +1,6 @@
 #module "toolbar"
 #import "drawing_props"
+#import "toolbar_props"
 
 ToolbarSpec :: struct {
     x: i32
@@ -103,4 +104,123 @@ ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: i32,
     bounds.width = (float)layout.action_width
     bounds.height = (float)layout.action_width
     return bounds
+}
+
+BottomIconRowLayout :: struct {
+    y: i32
+    button_width: i32
+    icon_size: i32
+    icon_padding: i32
+    gap: i32
+    start_x: i32
+    count: i32
+}
+
+BottomIconRowLayoutFor :: (row: BottomIconRowProps, scale: float) -> BottomIconRowLayout #export {
+    layout: BottomIconRowLayout
+    if scale <= 0.0 { scale = 1.0 }
+
+    count: i32 = row.count
+    if count < 0 { count = 0 }
+    icon_size: i32 = ToolbarMetric(row.icon_size, 24.0, scale)
+    icon_padding: i32 = ToolbarMetric(row.icon_padding, 10.0, scale)
+    gap: i32 = ToolbarMetric(row.gap, 12.0, scale)
+    side_margin: i32 = ToolbarMetric(row.side_margin, 24.0, scale)
+    bottom_margin: i32 = ToolbarMetric(row.bottom_margin, 6.0, scale)
+    min_icon_size: i32 = ToolbarMetric(row.min_icon_size, 16.0, scale)
+    min_icon_padding: i32 = ToolbarMetric(row.min_icon_padding, 6.0, scale)
+    min_gap: i32 = ToolbarMetric(row.min_gap, 8.0, scale)
+    available_w: i32 = row.view_width - side_margin * 2
+    min_available: i32 = (i32)(120.0 * scale)
+    if available_w < min_available { available_w = min_available }
+
+    max_btn_w: i32 = row.max_button_width
+    if max_btn_w <= 0 || max_btn_w > available_w {
+        max_btn_w = available_w
+    }
+    if count > 1 {
+        fit_btn_w: i32 = (available_w - gap * (count - 1)) / count
+        if max_btn_w <= 0 || max_btn_w > fit_btn_w {
+            max_btn_w = fit_btn_w
+        }
+    }
+
+    button_w: i32 = icon_size + icon_padding * 2
+    if button_w > max_btn_w {
+        button_w = max_btn_w
+        icon_padding = button_w / 4
+        icon_size = button_w - icon_padding * 2
+    }
+
+    if icon_padding < min_icon_padding { icon_padding = min_icon_padding }
+    if icon_size < min_icon_size { icon_size = min_icon_size }
+
+    button_w = icon_size + icon_padding * 2
+    gap = button_w / 4
+    if gap < min_gap { gap = min_gap }
+
+    row_w: i32 = button_w * count
+    if count > 1 { row_w += gap * (count - 1) }
+    layout.y = row.view_height - bottom_margin - button_w
+    layout.button_width = button_w
+    layout.icon_size = icon_size
+    layout.icon_padding = icon_padding
+    layout.gap = gap
+    layout.start_x = row.center_x - row_w / 2
+    layout.count = count
+    return layout
+}
+
+BottomIconRowButtonBoundsFor :: (layout: BottomIconRowLayout,
+    index: i32) -> Rectangle #export {
+    bounds: Rectangle
+    if layout.count <= 0 { return bounds }
+    if index < 0 { index = 0 }
+    if index >= layout.count { index = layout.count - 1 }
+    bounds.x = (float)(layout.start_x +
+        index * (layout.button_width + layout.gap))
+    bounds.y = (float)layout.y
+    bounds.width = (float)layout.button_width
+    bounds.height = (float)layout.button_width
+    return bounds
+}
+
+IconSliderPopupLayout :: struct {
+    button_bounds: Rectangle
+    popup_bounds: Rectangle
+    slider_x: i32
+    slider_y: i32
+    slider_height: i32
+    icon_size: i32
+}
+
+IconSliderPopupLayoutFor :: (x: i32, y: i32, icon_size: i32,
+    icon_padding: i32, popup_width: i32, popup_height: i32,
+    scale: float) -> IconSliderPopupLayout #export {
+    layout: IconSliderPopupLayout
+    if scale <= 0.0 { scale = 1.0 }
+    if icon_size < 0 { icon_size = 0 }
+    if icon_padding < 0 { icon_padding = 0 }
+
+    button_w: i32 = icon_size + icon_padding * 2
+    popup_w: i32 = popup_width
+    if popup_w <= 0 { popup_w = button_w }
+    if popup_w < button_w { popup_w = button_w }
+    popup_h: i32 = popup_height
+    if popup_h <= 0 { popup_h = (i32)(200.0 * scale) }
+
+    layout.button_bounds.x = (float)x
+    layout.button_bounds.y = (float)y
+    layout.button_bounds.width = (float)button_w
+    layout.button_bounds.height = (float)button_w
+    layout.popup_bounds.x = (float)(x + button_w / 2 - popup_w / 2)
+    layout.popup_bounds.y = (float)(y + button_w + (i32)(4.0 * scale))
+    layout.popup_bounds.width = (float)popup_w
+    layout.popup_bounds.height = (float)popup_h
+    layout.slider_x = (i32)layout.popup_bounds.x + popup_w / 2
+    layout.slider_y = (i32)layout.popup_bounds.y + (i32)(14.0 * scale)
+    layout.slider_height = popup_h - (i32)(24.0 * scale)
+    if layout.slider_height < 0 { layout.slider_height = 0 }
+    layout.icon_size = icon_size
+    return layout
 }

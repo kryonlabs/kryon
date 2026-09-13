@@ -228,19 +228,11 @@ static void
 dropdown_draw_indicator(int center_x, int center_y, int size, int open,
                         Color color)
 {
-    int half = size / 2;
-    int left = center_x - half;
-    int right = center_x + half;
-    int upper = center_y - half / 2;
-    int lower = center_y + half / 2;
+    DropdownIndicator indicator =
+        DropdownIndicatorFor(center_x, center_y, size, open);
 
-    if(open) {
-        DrawLine(left, lower, center_x, upper, color);
-        DrawLine(center_x, upper, right, lower, color);
-        return;
-    }
-    DrawLine(left, upper, center_x, lower, color);
-    DrawLine(center_x, lower, right, upper, color);
+    DrawLine(indicator.x1, indicator.y1, indicator.x2, indicator.y2, color);
+    DrawLine(indicator.x3, indicator.y3, indicator.x4, indicator.y4, color);
 }
 
 void
@@ -520,32 +512,29 @@ dropdown_paint_menu(int id)
     int can_draw = IsWindowReady();
     int clip_started = 0;
 
-    int dropdown_y = 0;
-    int dropdown_h = 0;
     int padding_top = Scale(4);
     int padding_bottom = Scale(4);
-    int content_h = ContentHeight(option_count, option_h, padding_top + padding_bottom);
+    int content_h;
     int max_scroll;
     int scrollbar_w = Scale(8);
     Rectangle btn_bounds = {x, y, w, h};
     Rectangle menu_bounds = dropdown_menu_bounds(state);
+    MenuLayout menu_layout;
     x = (int)menu_bounds.x;
     w = (int)menu_bounds.width;
-    dropdown_y = (int)menu_bounds.y;
-    dropdown_h = (int)menu_bounds.height;
-    int option_w = w;
-    max_scroll = content_h - dropdown_h;
-    if(max_scroll < 0)
-        max_scroll = 0;
+    menu_layout = MenuLayoutFor(menu_bounds, option_count, option_h,
+                                padding_top, padding_bottom, scrollbar_w,
+                                Scale(2));
+    content_h = menu_layout.content_height;
+    max_scroll = menu_layout.max_scroll;
+    int option_w = menu_layout.option_width;
     state->scroll_offset = ScrollOffset(state->scroll_offset, max_scroll);
-    if(max_scroll > 0)
-        option_w = w - scrollbar_w - Scale(2);
 
     Vector2 mouse = ui_mouse_world();
     int my = (int)mouse.y;
     int pointer_in_dropdown = CheckCollisionPointRec(mouse, btn_bounds) ||
                               CheckCollisionPointRec(mouse, menu_bounds);
-    Rectangle scrollbar_bounds = {x + w - scrollbar_w, dropdown_y, scrollbar_w, dropdown_h};
+    Rectangle scrollbar_bounds = menu_layout.scrollbar_bounds;
     if(max_scroll > 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
        CheckCollisionPointRec(mouse, scrollbar_bounds))
         state->scrollbar_pressed = 1;
@@ -571,7 +560,7 @@ dropdown_paint_menu(int id)
             nav = ScanNavigation(nav, !options[nav.index].disabled);
         state->highlight_index = nav.result;
         state->scroll_offset = RevealRow(state->scroll_offset, nav.result, option_h,
-            dropdown_h - padding_top - padding_bottom, max_scroll);
+            menu_layout.content_bounds.height, max_scroll);
     }
     int highlighted_enabled = state->highlight_index >= 0 &&
         state->highlight_index < option_count && !options[state->highlight_index].disabled;
@@ -601,31 +590,33 @@ dropdown_paint_menu(int id)
 
     /* Resolve thumb input before rows use the offset, so thumb and content
      * paint the same state on the drag frame. The panel is already painted. */
-    if(max_scroll > 0)
-        ui_scrollbar(x + w - scrollbar_w, dropdown_y + Scale(2),
-                     dropdown_h - Scale(4), content_h, &state->scroll_offset, max_scroll, 1);
+    if(max_scroll > 0) {
+        Rectangle track = ScrollbarTrackBounds(scrollbar_bounds, Scale(2));
+        ui_scrollbar((int)track.x, (int)track.y, (int)track.height,
+                     content_h, &state->scroll_offset, max_scroll, 1);
+    }
 
     if(can_draw) {
-        BeginClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
+        BeginClip((int)(g_ui_camera.offset.x +
+                        menu_layout.content_bounds.x * g_ui_camera.zoom),
                     (int)(g_ui_camera.offset.y +
-                          (float)(dropdown_y + padding_top) * g_ui_camera.zoom),
-                    (int)((float)option_w * g_ui_camera.zoom),
-                    (int)((float)(dropdown_h - padding_top - padding_bottom) * g_ui_camera.zoom));
+                          menu_layout.content_bounds.y * g_ui_camera.zoom),
+                    (int)(menu_layout.content_bounds.width * g_ui_camera.zoom),
+                    (int)(menu_layout.content_bounds.height * g_ui_camera.zoom));
         clip_started = 1;
     }
 
     /* Draw options */
     VisibleRows rows = Rows(option_count, state->scroll_offset,
-        dropdown_h - padding_top - padding_bottom, option_h);
+        menu_layout.content_bounds.height, option_h);
     for(int i = rows.first; i < rows.end; i++) {
-        int option_y = (int)((int64_t)dropdown_y + padding_top + (int64_t)i * option_h - state->scroll_offset);
-        int content_top = dropdown_y + padding_top;
-        int content_bottom = dropdown_y + dropdown_h - padding_bottom;
-        int visible_y = option_y > content_top ? option_y : content_top;
-        int option_bottom = option_y + option_h;
-        int visible_bottom = option_bottom < content_bottom ? option_bottom : content_bottom;
-        int visible_h = visible_bottom - visible_y;
-        Rectangle visible_bounds = {x, visible_y, option_w, visible_h};
+        OptionPaint option_paint = OptionPaintFor(menu_bounds, option_w, i,
+            option_h, state->scroll_offset, padding_top, padding_bottom,
+            Scale(4), Scale(2));
+        int option_y = option_paint.option_y;
+        int visible_y = (int)option_paint.visible_bounds.y;
+        int visible_h = (int)option_paint.visible_bounds.height;
+        Rectangle visible_bounds = option_paint.visible_bounds;
 
         /* Skip if outside visible area - use inclusive bounds for last item */
         if(visible_h <= 0)
@@ -644,8 +635,7 @@ dropdown_paint_menu(int id)
                 state->class_name);
             row_text = GetColor(Opacity(ColorToInt(paint.foreground), paint.opacity));
             if(selected || option_hover) {
-                Rectangle row = {x + Scale(4), option_y + Scale(2),
-                    option_w - Scale(8), option_h - Scale(4)};
+                Rectangle row = option_paint.highlight_bounds;
                 if(row.width > 0 && row.height > 0)
                     dropdown_draw_surface(row, paint, option_hover && !selected);
             }

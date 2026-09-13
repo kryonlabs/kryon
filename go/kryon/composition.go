@@ -112,7 +112,7 @@ func (r *runtime) editComposition(id int32, text string, pos int, sel selection,
 			text, pos, inserted = insertText(text, pos, sel, event.Text, limit)
 			if inserted {
 				changed = true
-				sel = selection{Anchor: pos, Cursor: pos}
+				sel = collapsedSelection(pos)
 			}
 			delete(r.preedit, id)
 		case KRY_TEXT_COMPOSITION_CANCEL:

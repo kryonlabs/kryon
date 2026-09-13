@@ -449,7 +449,7 @@ GetTextFont(void)
 }
 
 int
-EnsureUIDefaultFont(void)
+EnsureDefaultFont(void)
 {
     static const char *paths[] = {
         "fonts/noto/NotoSans-Regular.ttf",

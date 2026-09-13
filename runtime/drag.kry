@@ -1,4 +1,5 @@
 #module "drag"
+#import "drawing_props"
 
 DragScalarStep :: struct {
     value: float
@@ -8,6 +9,39 @@ DragScalarStep :: struct {
 DragWholeStep :: struct {
     value: i32
     changed: bool
+}
+
+DragTextPaint :: struct {
+    text_x: float
+    text_y: float
+}
+
+DragCellTextPaintFor :: (bounds: Rectangle, inset: float,
+    text_line_height: float) -> DragTextPaint #export {
+    paint: DragTextPaint
+    paint.text_x = bounds.x + inset
+    paint.text_y = bounds.y + (bounds.height - text_line_height) / 2.0
+    return paint
+}
+
+DragLabelTextPaintFor :: (bounds: Rectangle, inset: float, font_size: i32,
+    gap: float) -> DragTextPaint #export {
+    paint: DragTextPaint
+    paint.text_x = bounds.x + inset
+    paint.text_y = bounds.y - (float)font_size - gap
+    return paint
+}
+
+DragCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
+    cell: Rectangle
+    if count <= 0 { return cell }
+    if index < 0 { index = 0 }
+    if index >= count { index = count - 1 }
+    cell.x = bounds.x + bounds.width * (float)index / (float)count
+    cell.y = bounds.y
+    cell.width = bounds.width / (float)count
+    cell.height = bounds.height
+    return cell
 }
 
 DragEffectiveSpeed :: (speed: float) -> float #export {

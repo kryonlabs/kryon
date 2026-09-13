@@ -7,13 +7,6 @@ type StylePack struct {
 	Sheet       []StyleRule
 }
 
-type StylePackOption struct {
-	ID          string
-	Label       string
-	Description string
-	Active      bool
-}
-
 var stylePacks []StylePack
 var activeStylePack = -1
 var stylePackVersion uint64

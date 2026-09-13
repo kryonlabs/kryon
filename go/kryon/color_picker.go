@@ -7,6 +7,32 @@ type ColorPickerLayout struct {
 	SwatchBounds Rectangle
 }
 
+type ColorPickerSwatchPaint struct {
+	Bounds Rectangle
+	LabelX float32
+	LabelY float32
+}
+
+func ColorPicker_ColorPickerSwatchPaintFor(bounds Rectangle, label_inset float32, text_line_height float32) ColorPickerSwatchPaint {
+	var paint ColorPickerSwatchPaint = ColorPickerSwatchPaint{}
+	var value_0 Rectangle = bounds
+	paint.Bounds = value_0
+	var value_1 float32 = bounds.X
+	var value_2 float32 = label_inset
+	var value_3 float32 = value_1 + value_2
+	paint.LabelX = value_3
+	var value_4 float32 = bounds.Y
+	var value_5 float32 = bounds.Height
+	var value_6 float32 = text_line_height
+	var value_7 float32 = value_5 - value_6
+	var value_8 float32 = 2.0
+	var value_9 float32 = value_7 / value_8
+	var value_10 float32 = value_4 + value_9
+	paint.LabelY = value_10
+	var value_11 ColorPickerSwatchPaint = paint
+	return value_11
+}
+
 func ColorPicker_ColorPickerChannelBounds(bounds Rectangle, index int32, channels int32, scale float32) Rectangle {
 	var row Rectangle = Rectangle{}
 	var value_0 Rectangle = bounds

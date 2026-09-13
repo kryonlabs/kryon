@@ -12,6 +12,13 @@ check_rect(Rectangle got, float x, float y, float width, float height)
     assert(fabsf(got.height - height) < 0.001f);
 }
 
+static void
+check_vec(Vector2 got, float x, float y)
+{
+    assert(fabsf(got.x - x) < 0.001f);
+    assert(fabsf(got.y - y) < 0.001f);
+}
+
 int
 main(void)
 {
@@ -19,6 +26,7 @@ main(void)
     GuidePolicy policy;
     GuideScrim scrim;
     GuideLayout layout;
+    GuideArrow arrow;
     Rectangle tip;
 
     assert(metrics.margin == 12);
@@ -52,6 +60,33 @@ main(void)
     check_rect(scrim.bottom, 0, 84, 320, 156);
     check_rect(scrim.left, 0, 46, 36, 38);
     check_rect(scrim.right, 104, 46, 216, 38);
+
+    arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
+                          (Rectangle){120, 20, 20, 20}, metrics);
+    check_vec(arrow.line_start, 130, 40);
+    check_vec(arrow.line_end, 130, 100);
+    check_vec(arrow.tip0, 130, 100);
+    check_vec(arrow.tip1, 120, 90);
+    check_vec(arrow.tip2, 140, 90);
+    assert(fabsf(arrow.stroke_width - 2.0f) < 0.001f);
+
+    arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
+                          (Rectangle){120, 200, 20, 20}, metrics);
+    check_vec(arrow.line_start, 130, 200);
+    check_vec(arrow.line_end, 130, 140);
+    check_vec(arrow.tip1, 140, 150);
+
+    arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
+                          (Rectangle){20, 105, 20, 20}, metrics);
+    check_vec(arrow.line_start, 40, 115);
+    check_vec(arrow.line_end, 100, 115);
+    check_vec(arrow.tip1, 90, 105);
+
+    arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
+                          (Rectangle){220, 105, 20, 20}, metrics);
+    check_vec(arrow.line_start, 220, 115);
+    check_vec(arrow.line_end, 180, 115);
+    check_vec(arrow.tip1, 190, 105);
 
     layout = GuideLayoutFor((Rectangle){25, 160, 200, 120}, 176, 30, 1, 3,
                             metrics);

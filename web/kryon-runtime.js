@@ -4370,10 +4370,15 @@ function normalizeWebDocumentNodes(nodes) {
     if (node?.kind === "Selectable" &&
         (parent?.kind === "Dropdown" || parent?.kind === "ListBox"))
       node.tag = "option";
-    if (!node?.role && parent?.kind === "Menu" && node?.kind === "Button")
+    if (!node?.role && parent?.kind === "Menu" &&
+        (node?.kind === "Button" || node?.kind === "Selectable"))
       node.role = "menuitem";
-    if (!node?.role && parent?.kind === "TabBar" && node?.kind === "Button")
+    if (!node?.role && parent?.kind === "TabBar" &&
+        (node?.kind === "Button" || node?.kind === "Selectable"))
       node.role = "tab";
+    if (!node?.role && parent?.kind === "TreeView" &&
+        (node?.kind === "Button" || node?.kind === "Selectable"))
+      node.role = "treeitem";
     node.styleFacts = webNodeStyleFacts(node);
   }
 }

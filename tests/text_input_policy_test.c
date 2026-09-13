@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <math.h>
 
 #include "runtime/text_input.h"
 
@@ -17,6 +18,15 @@ check_zero(TextNavigationDecision decision)
     assert(!decision.extend_selection);
 }
 
+static void
+check_rect(Rectangle got, float x, float y, float width, float height)
+{
+    assert(fabsf(got.x - x) < 0.001f);
+    assert(fabsf(got.y - y) < 0.001f);
+    assert(fabsf(got.width - width) < 0.001f);
+    assert(fabsf(got.height - height) < 0.001f);
+}
+
 int
 main(void)
 {
@@ -25,7 +35,11 @@ main(void)
     TextNavigationDecision decision;
     TextDeleteDecision delete_decision;
     TextInsertDecision insert_decision;
+    TextSelectionRange selection;
+    TextSelectionState moved;
     TextFieldScroll scroll;
+    TextFieldPaint field_paint;
+    TextAreaPaint area_paint;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -36,6 +50,21 @@ main(void)
     assert(TextInputContentWidth(10.0f, 8) == 0);
     assert(TextAreaPageRows(72.0f, metrics.font, metrics.line_gap,
                             metrics.padding_y) == 2);
+    assert(TextAreaWrapWidthFor(100.0f, 8, 1, 24) == 84);
+    assert(TextAreaWrapWidthFor(30.0f, 8, 1, 24) == 0);
+    assert(TextAreaWrapWidthFor(100.0f, 8, 0, 24) == 0);
+    area_paint = TextAreaPaintFor((Rectangle){10, 20, 100, 80},
+                                  16, 4, 8, 6, 1, 200, 500, 18, 24);
+    check_rect(area_paint.clip_bounds, 18, 26, 84, 68);
+    assert(area_paint.wrap_width == 84);
+    assert(area_paint.viewport_height == 68);
+    assert(area_paint.max_scroll == 132);
+    assert(area_paint.scroll_y == 132);
+    assert(area_paint.placeholder_x == 18);
+    assert(area_paint.placeholder_y == 27);
+    assert(TextInputBufferLimit(16, 0) == 15);
+    assert(TextInputBufferLimit(16, 4) == 4);
+    assert(TextInputBufferLimit(0, 4) == 0);
 
     scroll = TextFieldScrollFor(20.0f, 100.0f, 8, 180, 500);
     assert(scroll.scroll == 96);
@@ -44,6 +73,60 @@ main(void)
     assert(scroll.text_origin_x == -68);
     assert(TextFieldRevealScroll(50, 100, 80, 4, 8) == 0);
     assert(TextFieldRevealScroll(0, 100, 80, 120, 8) == 48);
+    assert(TextFieldCursorHeightFor(18, 40.0f, 20, 8, 8) == 20);
+    assert(TextFieldCursorHeightFor(30, 24.0f, 20, 8, 8) == 16);
+    assert(TextFieldCursorHeightFor(2, 4.0f, 2, 8, 8) == 8);
+    field_paint = TextFieldPaintFor((Rectangle){20, 30, 100, 40},
+                                    8, 12, 18, 20, 8, 8, 1);
+    check_rect(field_paint.clip_bounds, 28, 29, 84, 42);
+    assert(field_paint.text_x == 16);
+    assert(field_paint.cursor_y == 40);
+    assert(field_paint.cursor_height == 20);
+
+    selection = TextSelectionRangeFor(9, 3);
+    assert(selection.start == 3);
+    assert(selection.end == 9);
+    assert(selection.has_selection);
+
+    selection = TextSelectionRangeFor(5, 5);
+    assert(selection.start == 5);
+    assert(selection.end == 5);
+    assert(!selection.has_selection);
+
+    moved = TextSelectionAfterMove(5, 5, 2, true);
+    assert(moved.anchor == 5);
+    assert(moved.cursor == 2);
+    assert(moved.has_selection);
+
+    moved = TextSelectionAfterMove(9, 3, 1, true);
+    assert(moved.anchor == 9);
+    assert(moved.cursor == 1);
+    assert(moved.has_selection);
+
+    moved = TextSelectionAfterMove(9, 3, 1, false);
+    assert(moved.anchor == 1);
+    assert(moved.cursor == 1);
+    assert(!moved.has_selection);
+
+    moved = TextSelectionCollapsed(7);
+    assert(moved.anchor == 7);
+    assert(moved.cursor == 7);
+    assert(!moved.has_selection);
+
+    moved = TextSelectionAll(4);
+    assert(moved.anchor == 0);
+    assert(moved.cursor == 4);
+    assert(moved.has_selection);
+
+    moved = TextSelectionAll(0);
+    assert(moved.anchor == 0);
+    assert(moved.cursor == 0);
+    assert(!moved.has_selection);
+
+    moved = TextSelectionAll(-2);
+    assert(moved.anchor == 0);
+    assert(moved.cursor == 0);
+    assert(!moved.has_selection);
 
     check_zero(TextNavigationDecisionFor(TextNavNone(), false, false, false,
                                          false, false));

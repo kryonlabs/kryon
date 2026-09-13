@@ -516,12 +516,11 @@ RenderTabBar(TabBarProps bar)
         }
 
         if(can_draw && !ui_default_style() && owns_drag && drag_target == i) {
-            int marker_x = tab_x;
-
-            if(drag_target > tab_bar_store->press_index)
-                marker_x = tab_x + tab_w;
-            DrawRectangle(marker_x - Scale(1), bar_y + Scale(4),
-                          Scale(2), bar_h - Scale(8),
+            Rectangle marker = TabBarDragMarkerBounds(
+                tab_x, tab_w, bar_y, bar_h,
+                drag_target > tab_bar_store->press_index,
+                (float)Scale(1000) / 1000.0f);
+            DrawRectangleRec(marker,
                           GetColor(paint.focus_color));
         }
 

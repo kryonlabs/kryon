@@ -1,0 +1,74 @@
+#module "reorder_props"
+#import "ui_drawing_props.generated.h"
+
+ReorderItem :: struct {
+    id: i32
+    bounds: Rectangle
+    disabled: i32
+}
+
+ReorderList :: struct {
+    id: i32
+    bounds: Rectangle
+    items: const ReorderItem*
+    item_count: i32
+    handle_width: i32
+    handle_height: i32
+    drag_threshold: i32
+    scroll_offset: *i32
+    max_scroll: i32
+    viewport_top: i32
+    viewport_bottom: i32
+    auto_scroll_margin: i32
+    auto_scroll_step: i32
+}
+
+ReorderState :: struct {
+    list_id: i32
+    item_id: i32
+    from_index: i32
+    press_y: i32
+    press_offset_y: i32
+    scroll_start: i32
+    dragging: i32
+}
+
+ReorderMetrics :: struct {
+    handle_width: i32
+    drag_threshold: i32
+    auto_scroll_margin: i32
+    auto_scroll_step: i32
+}
+
+ReorderHandlePaint :: struct {
+    dot0: Rectangle
+    dot1: Rectangle
+    dot2: Rectangle
+    dot3: Rectangle
+    dot4: Rectangle
+    dot5: Rectangle
+    dot_count: i32
+}
+
+ReorderPlaceholderPaint :: struct {
+    slot_bounds: Rectangle
+    line_bounds: Rectangle
+    stroke_width: float
+    radius: float
+    segments: i32
+    fill_alpha: float
+    use_slot: i32
+}
+
+ReorderListResult :: struct {
+    active: i32
+    dragging: i32
+    committed: i32
+    from_index: i32
+    to_index: i32
+    active_index: i32
+    target_index: i32
+    active_id: i32
+    pointer_y: i32
+    drag_delta_y: i32
+}

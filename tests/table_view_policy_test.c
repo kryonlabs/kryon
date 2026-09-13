@@ -60,5 +60,7 @@ main(void)
     check_rect(TableViewCellBounds(row, 40, 90), 40, 97, 90, 28);
     check_rect(TableViewViewport(bounds, layout, false), 10, 50, 300, 56);
     check_rect(TableViewViewport(bounds, layout, true), 10, 106, 300, 74);
+    check_rect(TableViewScrollbarBoundsFor(bounds, layout, 8),
+               302, 106, 8, 74);
     return 0;
 }

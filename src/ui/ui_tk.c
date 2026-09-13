@@ -1001,9 +1001,11 @@ RenderCheckbox(CheckboxProps checkbox)
             DrawLineEx(paint.check_middle, paint.check_end, paint.mark_width,
                        GetColor(paint.mark_color));
         }
+        float label_x = CheckboxLabelXFor(paint.slot_bounds, runtime_scale);
+        float label_y = CheckboxLabelYFor(checkbox.bounds,
+                                          (float)TextLineHeight(label_font));
         RenderText(checkbox.label != NULL ? checkbox.label : "",
-                   (int)paint.slot_bounds.x + CheckboxSlotSize(runtime_scale) + Scale(10),
-                   ui_row_text_y(checkbox.bounds, label_font),
+                   (int)label_x, (int)label_y,
                    label_font, Fade(GetColor(paint.label_color),
                                     label_style.opacity));
     }
@@ -1054,7 +1056,7 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
         changed |= ui_slider_scalar(channel, 0);
     }
     if(IsWindowReady()) {
-        Rectangle swatch = layout.swatch_bounds;
+        ColorPickerSwatchPaint paint;
         StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             picker.disabled ? ButtonStateDisabled : ButtonStateNormal,
             picker.disabled, 0, picker.class_name,
@@ -1066,12 +1068,14 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
         int label_inset = style.padding_x > 0.0f
             ? (int)(style.padding_x + 0.5f)
             : Scale(6);
-        DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
-        ui_tk_draw_style_frame(swatch, picker.bounds, frame, 0, 0,
+        paint = ColorPickerSwatchPaintFor(layout.swatch_bounds,
+                                          (float)label_inset,
+                                          (float)TextLineHeight(font));
+        DrawRectangleRec(paint.bounds, ui_float_color(picker.values, channels));
+        ui_tk_draw_style_frame(paint.bounds, picker.bounds, frame, 0, 0,
                                picker.disabled, 0);
         if(picker.label != NULL)
-            RenderText(picker.label, (int)swatch.x + label_inset,
-                       ui_row_text_y(swatch, font),
+            RenderText(picker.label, (int)paint.label_x, (int)paint.label_y,
                        font, Fade(style.foreground, style.opacity));
     }
     return changed;
@@ -2321,9 +2325,7 @@ ui_update_drag_scalar(DragScalarProps drag)
         return 0;
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
-        Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
-                          drag.bounds.y, drag.bounds.width / count,
-                          drag.bounds.height};
+        Rectangle cell = DragCellBoundsFor(drag.bounds, count, i);
         float delta;
         int enabled = !drag.disabled && !UIContentDisabled();
         int editing = 0;
@@ -2362,9 +2364,7 @@ ui_update_drag_whole(DragWholeProps drag)
         return 0;
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
-        Rectangle cell = {drag.bounds.x + drag.bounds.width * i / count,
-                          drag.bounds.y, drag.bounds.width / count,
-                          drag.bounds.height};
+        Rectangle cell = DragCellBoundsFor(drag.bounds, count, i);
         float delta;
         int enabled = !drag.disabled && !UIContentDisabled();
         int editing = 0;
@@ -2403,10 +2403,11 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled,
     int font = style.font_size > 0.0f
         ? (int)(style.font_size + 0.5f)
         : GetSmallFontSize();
+    DragTextPaint paint = DragCellTextPaintFor(bounds, (float)Scale(6),
+                                               (float)TextLineHeight(font));
 
     ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, disabled, focused);
-    RenderText(text, (int)bounds.x + Scale(6),
-               ui_row_text_y(bounds, font),
+    RenderText(text, (int)paint.text_x, (int)paint.text_y,
                font, Fade(style.foreground, style.opacity));
 }
 
@@ -2423,8 +2424,9 @@ ui_paint_drag_label(Rectangle bounds, const char *label, int class_name)
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
             : GetSmallFontSize();
-        RenderText(label, (int)bounds.x + Scale(6),
-                   (int)bounds.y - font - Scale(2),
+        DragTextPaint paint = DragLabelTextPaintFor(bounds, (float)Scale(6),
+                                                    font, (float)Scale(2));
+        RenderText(label, (int)paint.text_x, (int)paint.text_y,
                    font, Fade(style.foreground, style.opacity));
     }
 }
@@ -2435,9 +2437,7 @@ ui_paint_drag_scalar(DragScalarProps drag)
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
     for(int i = 0; i < drag.value_count; i++) {
-        Rectangle cell = {drag.bounds.x + drag.bounds.width*i/drag.value_count,
-                          drag.bounds.y, drag.bounds.width/drag.value_count,
-                          drag.bounds.height};
+        Rectangle cell = DragCellBoundsFor(drag.bounds, drag.value_count, i);
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
         UINumericInputState *state = ui_numeric_input_find(
@@ -2460,9 +2460,7 @@ ui_paint_drag_whole(DragWholeProps drag)
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
     for(int i = 0; i < drag.value_count; i++) {
-        Rectangle cell = {drag.bounds.x + drag.bounds.width*i/drag.value_count,
-                          drag.bounds.y, drag.bounds.width/drag.value_count,
-                          drag.bounds.height};
+        Rectangle cell = DragCellBoundsFor(drag.bounds, drag.value_count, i);
         char text[64];
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
         UINumericInputState *state = ui_numeric_input_find(
@@ -2597,6 +2595,8 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     int label_font = label_style.font_size > 0.0f
         ? (int)(label_style.font_size + 0.5f)
         : GetSmallFontSize();
+    SliderTextPaint text_paint = SliderCellTextPaintFor(
+        cell, (float)Scale(6), (float)TextLineHeight(label_font));
 
     ui_tk_draw_slider_paint(SliderPaintFor((SliderSpec){
         .bounds = cell,
@@ -2610,8 +2610,7 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
         .active_track = active,
         .thumb = thumb
     }), hovered, focused, disabled);
-    RenderText(text, (int)cell.x + Scale(6),
-               ui_row_text_y(cell, label_font),
+    RenderText(text, (int)text_paint.text_x, (int)text_paint.text_y,
                label_font, Fade(label_style.foreground, label_style.opacity));
     if(focused)
         RenderFocus(cell);
@@ -2627,8 +2626,9 @@ ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
             : GetSmallFontSize();
-        RenderText(label, (int)bounds.x + Scale(6),
-                   (int)bounds.y - font - Scale(2),
+        SliderTextPaint paint = SliderLabelTextPaintFor(
+            bounds, (float)Scale(6), font, (float)Scale(2));
+        RenderText(label, (int)paint.text_x, (int)paint.text_y,
                    font, Fade(style.foreground, style.opacity));
     }
 }
@@ -2643,9 +2643,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
         return 0;
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
-        Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
-                          slider.bounds.y, slider.bounds.width / count,
-                          slider.bounds.height};
+        Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
         float ratio = SliderScalarRatio(slider.values[i], slider.min,
                                        slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
@@ -2688,9 +2686,7 @@ ui_update_slider_whole(SliderWholeProps slider, int vertical)
         return 0;
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
-        Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
-                          slider.bounds.y, slider.bounds.width / count,
-                          slider.bounds.height};
+        Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
         float ratio = SliderWholeRatio(slider.values[i], slider.min,
                                      slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
@@ -2729,9 +2725,7 @@ ui_paint_slider_scalar(SliderScalarProps slider, int vertical)
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
-        Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
-                          slider.bounds.y, slider.bounds.width/slider.value_count,
-                          slider.bounds.height};
+        Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
         float ratio = SliderScalarRatio(slider.values[i], slider.min,
                                        slider.max);
         char text[64];
@@ -2756,9 +2750,7 @@ ui_paint_slider_whole(SliderWholeProps slider, int vertical)
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
-        Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
-                          slider.bounds.y, slider.bounds.width/slider.value_count,
-                          slider.bounds.height};
+        Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
         float ratio = SliderWholeRatio(slider.values[i], slider.min,
                                      slider.max);
         char text[64];
@@ -2899,6 +2891,12 @@ ui_numeric_format(char *text, size_t text_size, const char *format,
 }
 
 static int
+ui_numeric_step_button_width(void)
+{
+    return Scale(24);
+}
+
+static int
 ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                  int count, double step, double step_fast, const char *format,
                  int disabled, int kind)
@@ -2911,11 +2909,11 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
     for(int i = 0; i < count; i++) {
         UINumericInputState *state = ui_numeric_input_state(kind, id, i);
         int token = state->token;
-        Rectangle cell = {bounds.x + bounds.width * i / count, bounds.y,
-                          bounds.width / count, bounds.height};
-        Rectangle field_bounds = cell;
-        Rectangle minus = cell;
-        Rectangle plus = cell;
+        InputCellLayout layout = InputCellLayoutFor(
+            bounds, count, i, ui_numeric_step_button_width(), step != 0.0);
+        Rectangle field_bounds = layout.field;
+        Rectangle minus = layout.minus;
+        Rectangle plus = layout.plus;
         int commit = 0;
         double old_value = ui_numeric_value(values, i, kind);
 
@@ -2926,14 +2924,6 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             ui_numeric_format(state->text, sizeof(state->text), format, kind,
                               old_value);
             state->cursor = (int)strlen(state->text);
-        }
-        if(step != 0.0) {
-            int button_w = Scale(24);
-            field_bounds.width -= button_w * 2;
-            minus.x = field_bounds.x + field_bounds.width;
-            minus.width = button_w;
-            plus.x = minus.x + minus.width;
-            plus.width = button_w;
         }
         if(ui_text_field_render_filtered((TextFieldProps){
                 .bounds = field_bounds,
@@ -3206,9 +3196,11 @@ RenderListBox(ListBoxProps list)
             int label_inset = item_style.padding_x > 0.0f
                 ? (int)(item_style.padding_x + 0.5f)
                 : Scale(8);
+            ListBoxItemPaint item_paint =
+                ListBoxItemPaintFor(row, label_inset,
+                                    TextLineHeight(item_font));
             RenderText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
-                       (int)row.x + label_inset,
-                       ui_row_text_y(row, item_font), item_font,
+                       item_paint.text_x, item_paint.text_y, item_font,
                        Fade(item_style.foreground, item_style.opacity));
         }
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
@@ -3219,10 +3211,13 @@ RenderListBox(ListBoxProps list)
     }
     if(paint)
         EndClip();
-    if(paint && list.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(list.bounds.x + list.bounds.width - Scale(8)),
-                        (int)list.bounds.y, (int)list.bounds.height,
-                        list.item_count * row_h, list.scroll_offset, max_scroll, 0);
+    if(paint && list.scroll_offset != NULL && max_scroll > 0) {
+        Rectangle scrollbar = ListBoxScrollbarBoundsFor(list.bounds, Scale(8));
+        ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
+                     (int)scrollbar.height,
+                     list.item_count * row_h, list.scroll_offset,
+                     max_scroll, 0);
+    }
     if(paint && focused)
         RenderFocus(list.bounds);
     return changed;
@@ -3285,21 +3280,21 @@ RenderTreeView(TreeViewProps tree)
         int item_font = item_style.font_size > 0.0f
             ? (int)(item_style.font_size + 0.5f)
             : font;
+        TreeViewTextPaint text_paint = TreeViewTextPaintFor(
+            marker_bounds, text_bounds, TextLineHeight(item_font));
         Color item_text = Fade(item_style.foreground, item_style.opacity);
         if(paint && (selected || hot || tree.disabled))
             ui_tk_draw_style_frame(row, tree.bounds, item_frame, hot, 0,
                                    tree.disabled, 0);
         if(paint) {
             if(item->expanded)
-                RenderText("v", (int)marker_bounds.x,
-                           ui_row_text_y(marker_bounds, item_font), item_font,
-                           item_text);
+                RenderText("v", text_paint.marker_x, text_paint.marker_y,
+                           item_font, item_text);
             else
-                RenderText(">", (int)marker_bounds.x,
-                           ui_row_text_y(marker_bounds, item_font), item_font,
-                           item_text);
+                RenderText(">", text_paint.marker_x, text_paint.marker_y,
+                           item_font, item_text);
             RenderText(item->label != NULL ? item->label : "",
-                       (int)text_bounds.x, ui_row_text_y(text_bounds, item_font),
+                       text_paint.text_x, text_paint.text_y,
                        item_font, item_text);
         }
         if(hot)
@@ -3312,10 +3307,12 @@ RenderTreeView(TreeViewProps tree)
     }
     if(paint)
         EndClip();
-    if(paint && tree.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - Scale(8)),
-                        (int)tree.bounds.y, (int)tree.bounds.height,
-                        content_h, tree.scroll_offset, max_scroll, 0);
+    if(paint && tree.scroll_offset != NULL && max_scroll > 0) {
+        Rectangle scrollbar = TreeViewScrollbarBoundsFor(tree.bounds, Scale(8));
+        ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
+                     (int)scrollbar.height,
+                     content_h, tree.scroll_offset, max_scroll, 0);
+    }
     return changed;
 }
 
@@ -3607,19 +3604,15 @@ BeginTableCell(TableViewProps table, int row, int column)
             table.row_height, table.header_height, table.freeze_rows,
             (float)GetScale(), metrics);
         int row_h = layout.row_height;
-        int header_h = layout.header_height;
         int frozen = layout.frozen_rows;
         int scroll = table.scroll_offset != NULL ? *table.scroll_offset : 0;
+        TableViewScrollLayout scroll_layout = TableViewScrollFor(
+            scroll, frozen, row_h, layout.scroll_body_height);
         int default_width = (int)table.bounds.width/visible;
-        Rectangle row_bounds = {
-            table.bounds.x,
-            row < frozen
-                ? table.bounds.y + header_h + row * row_h
-                : table.bounds.y + header_h + frozen * row_h +
-                    (row - frozen) * row_h - scroll,
-            table.bounds.width,
-            (float)row_h
-        };
+        Rectangle row_bounds = TableViewRowBounds(
+            table.bounds, layout, row,
+            row < frozen ? row : frozen + row - scroll_layout.first,
+            scroll_layout, row >= frozen);
         cell = TableViewCellBounds(row_bounds,
             ui_table_column_x(table,column,default_width),
             ui_table_column_width(table,column,default_width));
@@ -4019,12 +4012,14 @@ RenderTableView(TableViewProps table)
     }
     if(paint)
         EndClip();
-    if(paint && table.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(table.bounds.x + table.bounds.width - Scale(8)),
-                        (int)(table.bounds.y + header_h + frozen_rows * row_h),
-                        scroll_body_h,
+    if(paint && table.scroll_offset != NULL && max_scroll > 0) {
+        Rectangle scrollbar = TableViewScrollbarBoundsFor(table.bounds, layout,
+                                                          Scale(8));
+        ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
+                        (int)scrollbar.height,
                         (table.row_count - frozen_rows) * row_h,
                         table.scroll_offset, max_scroll, 0);
+    }
     if(paint && focused)
         RenderFocus(table.bounds);
     return changed;

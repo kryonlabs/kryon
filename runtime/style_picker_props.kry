@@ -1,6 +1,13 @@
 #module "style_picker_props"
 #import "kryon_compat.generated.h"
 
+StylePackOption :: struct {
+    id: const char*
+    label: const char*
+    description: const char*
+    active: bool
+}
+
 StylePickerProps :: struct {
     bounds: Rectangle
     id: i32
