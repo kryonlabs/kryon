@@ -3294,6 +3294,8 @@ function fakeDocument() {
     assert.equal(Object.keys(firstButton).includes("kryPath"), false);
     assert.equal(Object.keys(firstButton).includes("kryAliases"), false);
     assert.equal(root.kryElement("primary-action"), firstButton);
+    assert.deepEqual(root.kryElements("primary-action"), [firstButton]);
+    assert.deepEqual(root.kryElements("Button.primary"), [firstButton]);
     assert.equal(root.kryObject("primary-action").element, firstButton);
     assert.equal(root.kryQuery("Button.primary").element, firstButton);
     assert.deepEqual(root.kryQueryAll("Button.primary").map((object) => object.ref), ["primary-action"]);
@@ -3369,6 +3371,8 @@ function fakeDocument() {
     assert.equal(runtime.findWebElement(target, "tap-button"), firstButton);
     assert.equal(runtime.findWebElement(target, tapSourceRef), firstButton);
     assert.equal(runtime.findWebElement(target, tapSourceColumnRef), firstButton);
+    assert.deepEqual(runtime.findWebElements(target, "tap-button"), [firstButton]);
+    assert.deepEqual(runtime.findWebElements(target, "Button.primary"), [firstButton]);
     assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMIdentity(target, "primary-action").domId, "tap-button");

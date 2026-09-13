@@ -716,6 +716,7 @@ declare global {
     kryMatches?(selector: string): boolean;
     kryClosest?(selector: string): WebDOMObject | null;
     kryElement?(query: string): Element | null;
+    kryElements?(query: string): Element[];
     kryObject?(query: string): WebDOMObject | null;
     kryIdentity?(query: string): WebNodeIdentity | null;
     krySnapshot?(query: string): WebDOMSnapshot | null;
@@ -1092,6 +1093,7 @@ export function webNodeAtSourceRange(rt: Runtime, sourcePath: string, sourceLine
 export function webNodesAtSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
 export function webSourceMap(rt: Runtime): WebNodeIdentity[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
+export function findWebElements(target: Element | string | null, query: string): Element[];
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;

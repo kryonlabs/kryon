@@ -6927,6 +6927,13 @@ function bindWebRootProperties(root) {
         return findWebElement(this, query);
       }
     },
+    kryElements: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return findWebElements(this, query);
+      }
+    },
     kryObject: {
       configurable: true,
       enumerable: false,
@@ -7726,6 +7733,10 @@ export function findWebElement(target, query) {
       return el;
   }
   return null;
+}
+
+export function findWebElements(target, query) {
+  return webDOMQueryAll(target, query).map((object) => object.element);
 }
 
 export function webDOMObject(target, query) {
