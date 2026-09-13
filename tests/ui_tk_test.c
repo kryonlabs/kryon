@@ -765,6 +765,19 @@ test_tab_bar_policy(void)
     check_int("tab reorder marker x", (int)marker.x, 119);
     check_int("tab reorder marker y", (int)marker.y, 24);
     check_int("tab reorder marker h", (int)marker.height, 24);
+
+    metrics = TabBarDefaultMetrics(0, 0, 1.0f,
+                                   bar_frame, tab_frame, close_frame);
+    check_int("tab style min width", metrics.min_width, 80);
+    check_int("tab style max width", metrics.max_width, 160);
+    check_int("tab style label padding", metrics.label_padding, 16);
+
+    bar_frame.value.gap = 0.0f;
+    tab_frame.value.padding_x = 0.0f;
+    metrics = TabBarDefaultMetrics(0, 0, 1.0f,
+                                   bar_frame, tab_frame, close_frame);
+    check_int("tab explicit zero gap", metrics.gap, 0);
+    check_int("tab explicit zero label padding", metrics.label_padding, 0);
 }
 
 static void

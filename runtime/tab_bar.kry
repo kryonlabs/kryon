@@ -1,6 +1,7 @@
 #module "tab_bar"
 #import "drawing_props"
 #import "style"
+#import "control_props"
 
 TabBarMetrics :: struct {
     min_width: i32
@@ -54,11 +55,23 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     return paint
 }
 
+TabBarHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+TabBarMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !TabBarHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
 TabBarPolicyHeight :: (scale: float, bar: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    height: float = bar.value.icon_size
-    if height <= 0.0 { height = 32.0 }
-    return (i32)(height * scale)
+    return TabBarMetric(bar.value.fields, (u32)StyleIconSize,
+        bar.value.icon_size, 32.0, scale, false)
 }
 
 TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float,
@@ -67,35 +80,26 @@ TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float,
     metrics: TabBarMetrics
     metrics.min_width = min_width
     if metrics.min_width <= 0 {
-        metrics.min_width = (i32)(bar.value.padding_x * scale)
-        if metrics.min_width <= 0 {
-            metrics.min_width = (i32)(120.0 * scale)
-        }
+        metrics.min_width = TabBarMetric(bar.value.fields,
+            (u32)StylePaddingX, bar.value.padding_x, 120.0, scale, false)
     }
     metrics.max_width = max_width
     if metrics.max_width <= 0 {
-        metrics.max_width = (i32)(bar.value.offset_x * scale)
-        if metrics.max_width <= 0 {
-            metrics.max_width = metrics.min_width
-        }
+        metrics.max_width = TabBarMetric(bar.value.fields,
+            (u32)StyleContentOffset, bar.value.offset_x,
+            (float)metrics.min_width / scale, scale, false)
     }
     if metrics.max_width < metrics.min_width {
         metrics.max_width = metrics.min_width
     }
-    metrics.icon_width = (i32)(tab.value.icon_size * scale)
-    if metrics.icon_width <= 0 {
-        metrics.icon_width = (i32)(44.0 * scale)
-    }
-    metrics.gap = (i32)(bar.value.gap * scale)
-    if metrics.gap < 0 { metrics.gap = 0 }
-    metrics.close_width = (i32)(close.value.icon_size * scale)
-    if metrics.close_width <= 0 {
-        metrics.close_width = (i32)(24.0 * scale)
-    }
-    metrics.label_padding = (i32)(tab.value.padding_x * 2.0 * scale)
-    if metrics.label_padding <= 0 {
-        metrics.label_padding = (i32)(16.0 * scale)
-    }
+    metrics.icon_width = TabBarMetric(tab.value.fields,
+        (u32)StyleIconSize, tab.value.icon_size, 44.0, scale, false)
+    metrics.gap = TabBarMetric(bar.value.fields, (u32)StyleGap,
+        bar.value.gap, 0.0, scale, true)
+    metrics.close_width = TabBarMetric(close.value.fields,
+        (u32)StyleIconSize, close.value.icon_size, 24.0, scale, false)
+    metrics.label_padding = TabBarMetric(tab.value.fields,
+        (u32)StylePaddingX, tab.value.padding_x * 2.0, 16.0, scale, true)
     return metrics
 }
 
