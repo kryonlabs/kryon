@@ -16,9 +16,16 @@ fi
 
 mkdir -p "$work/src" "$work/out" "$work/hierarchy-out" "$work/pure-out"
 
+cat > "$work/src/brand.kss" <<'EOF'
+@pack brand;
+Button { background: #123456; foreground: #ffffff; }
+EOF
+
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 #import "src/helper"
+#style <tk> as tk
+#style "brand.kss" as brand
 
 ANSWER :: #run 21 * 2
 cast_operand_index :: () -> int {
@@ -431,6 +438,10 @@ fi
 grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q '_ValidRuntime = kr.Open(kr.AppConfig{' "$out"
+grep -q 'kr.EnsureBuiltInStylePacks()' "$out"
+grep -q 'kr.SetActiveStylePack("tk")' "$out"
+grep -q 'kr.RegisterStylePackSource("@pack brand;\\nButton { background: #123456; foreground: #ffffff; }\\n", "brand", "")' "$out"
+grep -q 'kr.SetActiveStylePack("brand")' "$out"
 grep -q '_ValidRuntime.BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
 grep -q 'kr.Circle(kr.Scale(120), kr.Scale(120), kr.Scale(30)' "$out"

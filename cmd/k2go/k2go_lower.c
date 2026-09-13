@@ -6,6 +6,7 @@
 #include "kir_emit.h"
 #include "kir_check.h"
 #include "kir_expr.h"
+#include "kir_style_imports.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -41,6 +42,28 @@ mkdir_parent(const char *path)
             tmp[i] = '/';
         }
     }
+}
+
+static void
+go_string(FILE *f, const char *s)
+{
+    fputc('"', f);
+    for(const unsigned char *p = (const unsigned char *)(s != NULL ? s : "");
+        *p != '\0'; p++) {
+        if(*p == '\\' || *p == '"')
+            fprintf(f, "\\%c", *p);
+        else if(*p == '\n')
+            fputs("\\n", f);
+        else if(*p == '\r')
+            fputs("\\r", f);
+        else if(*p == '\t')
+            fputs("\\t", f);
+        else if(*p < 0x20)
+            fprintf(f, "\\x%02x", *p);
+        else
+            fputc(*p, f);
+    }
+    fputc('"', f);
 }
 
 /* stem of "path/app.kry" -> "app": Go output is flat (one package per
@@ -2904,6 +2927,66 @@ uses_runtime(FILE *f, long begin)
     return 0;
 }
 
+static void
+emit_go_style_registration(FILE *f, const KirProgram *const *progs,
+                           int prog_count, const char *root,
+                           const char *func_name)
+{
+    int emitted = 0;
+
+    for(int pi = 0; pi < prog_count; pi++) {
+        const KirProgram *prog = progs[pi];
+
+        if(prog == NULL)
+            continue;
+        for(int mi = 0; mi < prog->module_count; mi++) {
+            const KirModule *m = &prog->modules[mi];
+
+            for(int si = 0; si < m->style_import_count; si++) {
+                const KirStyleImport *style = &m->style_imports[si];
+                char *source;
+
+                if(!emitted) {
+                    fprintf(f, "func %s() {\n", func_name);
+                    emitted = 1;
+                }
+                if(style->kind == KIR_STYLE_IMPORT_BUILTIN &&
+                   KirStyleImportIsBuiltIn(style->target)) {
+                    fprintf(f, "\t%s.EnsureBuiltInStylePacks()\n",
+                            K2GO_RUNTIME_PKG);
+                    fprintf(f, "\t%s.SetActiveStylePack(",
+                            K2GO_RUNTIME_PKG);
+                    go_string(f, style->target);
+                    fprintf(f, ")\n");
+                    continue;
+                }
+                source = KirReadStyleImportSource(m, root, style);
+                if(source == NULL) {
+                    fprintf(stderr, "%s:%d: unable to resolve #style %s\n",
+                            style->span.path, style->span.line, style->target);
+                    continue;
+                }
+                fprintf(f, "\tif %s.RegisterStylePackSource(",
+                        K2GO_RUNTIME_PKG);
+                go_string(f, source);
+                fprintf(f, ", ");
+                go_string(f, style->alias[0] != '\0' ? style->alias
+                                                      : style->target);
+                fprintf(f, ", \"\") {\n");
+                fprintf(f, "\t\t%s.SetActiveStylePack(",
+                        K2GO_RUNTIME_PKG);
+                go_string(f, style->alias[0] != '\0' ? style->alias
+                                                      : style->target);
+                fprintf(f, ")\n\t}\n");
+                free(source);
+            }
+        }
+    }
+    if(!emitted)
+        fprintf(f, "func %s() {\n", func_name);
+    fprintf(f, "}\n\n");
+}
+
 int
 k2go_lower(const KirProgram *const *progs, int prog_count,
           const char *root, const char *out_dir, const char *pkg,
@@ -2917,7 +3000,6 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
         snprintf(seen_stems[seen_count++], sizeof(seen_stems[0]), "numeric_support");
     }
 
-    (void)root;
     k2go_build_global_functions(progs, prog_count);
     for(int pi = 0; pi < prog_count; pi++) {
         const KirProgram *prog = progs[pi];
@@ -3235,6 +3317,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             if(m->app.has_app && !no_main) {
                 char frame[K2GO_NAME_MAX * 2];
                 char app_runtime[K2GO_NAME_MAX * 2];
+                char style_register[K2GO_NAME_MAX * 2];
                 const KirFunction *entry = NULL;
 
                 if(m->app.frame[0] != '\0') {
@@ -3258,6 +3341,10 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 else
                     kir_camel_ident(m->app.frame, frame, sizeof(frame));
                 snprintf(app_runtime, sizeof(app_runtime), "_%sRuntime", guard);
+                snprintf(style_register, sizeof(style_register),
+                         "_%sRegisterStyles", guard);
+                emit_go_style_registration(f, progs, prog_count, root,
+                                           style_register);
                 fprintf(f, "func main() {\n");
                 fprintf(f, "\t%s = %s.Open(%s.AppConfig{\n", app_runtime,
                         K2GO_RUNTIME_PKG, K2GO_RUNTIME_PKG);
@@ -3266,6 +3353,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         m->app.width, m->app.height, m->app.fps);
                 fprintf(f, "\t})\n");
                 fprintf(f, "\tdefer %s.Close()\n", app_runtime);
+                fprintf(f, "\t%s()\n", style_register);
                 fprintf(f, "\tfor !%s.WindowShouldClose() {\n",
                         app_runtime);
                 if(entry != NULL && entry->is_ui) {
