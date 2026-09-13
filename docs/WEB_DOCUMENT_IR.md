@@ -381,6 +381,7 @@ The initial tag mapping is intentionally conservative:
 | `EmbeddedObject` | `object` |
 | `Param` | `param` |
 | `Script` | `script` |
+| `StyleElement` | `style` |
 | `NoScript`/`Noscript` | `noscript` |
 | `Template` | `template` |
 | `Slot` | `slot` |

@@ -1578,6 +1578,7 @@ export function Slider(...args: unknown[]): unknown;
 export function Spinbox(...args: unknown[]): unknown;
 export function Stack(...args: unknown[]): unknown;
 export function Strong(...args: unknown[]): unknown;
+export function StyleElement(...args: unknown[]): unknown;
 export function Sub(...args: unknown[]): unknown;
 export function Subscript(...args: unknown[]): unknown;
 export function Summary(...args: unknown[]): unknown;

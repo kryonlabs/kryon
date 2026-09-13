@@ -1167,6 +1167,8 @@ function widgetTag(item) {
     return "slot";
   case "Script":
     return "script";
+  case "StyleElement":
+    return "style";
   case "NoScript":
   case "Noscript":
     return "noscript";
@@ -1480,6 +1482,7 @@ function widgetText(item) {
   case "NoScript":
   case "Noscript":
   case "Title":
+  case "StyleElement":
     return propString(args, "text", "");
   case "Output":
     return propString(args, "text", propString(args, "value", ""));
@@ -1917,6 +1920,14 @@ function widgetNativeAttrs(item, meta, args) {
       isTruthyPropAny(args, ["nomodule", "no_module", "dom_nomodule", "html_nomodule"]));
     setWidgetNativeAttr(out, "nonce", metaString(meta, "nonce") ||
       propStringAny(args, ["nonce", "dom_nonce", "html_nonce"]));
+    break;
+  case "StyleElement":
+    setWidgetNativeAttr(out, "media", metaString(meta, "media") ||
+      propStringAny(args, ["media", "dom_media", "html_media"]));
+    setWidgetNativeAttr(out, "nonce", metaString(meta, "nonce") ||
+      propStringAny(args, ["nonce", "dom_nonce", "html_nonce"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
+      propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
     break;
   case "IFrame":
   case "Iframe":
@@ -11732,7 +11743,7 @@ const runtimeCallNames = [
   "Legend", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
-  "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
+  "Slot", "Small", "Source", "Strong", "StyleElement", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
   "TableHead", "TableRow", "Tbody", "Template", "Tfoot", "Thead", "Time", "Title",
@@ -11890,6 +11901,7 @@ export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }
 export function Stack(...args) { return struct("Stack", args); }
 export function Strong(...args) { return struct("Strong", args); }
+export function StyleElement(...args) { return struct("StyleElement", args); }
 export function Sub(...args) { return struct("Sub", args); }
 export function Subscript(...args) { return struct("Subscript", args); }
 export function Summary(...args) { return struct("Summary", args); }

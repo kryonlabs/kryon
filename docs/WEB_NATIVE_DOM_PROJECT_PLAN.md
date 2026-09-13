@@ -118,10 +118,11 @@ the browser receives normal elements, attributes, CSS, and events.
   allow, sandbox, referrer policy, credentialless, frame-name, sizing, and MIME
   attributes available to snapshots, selectors, and mounted DOM.
 - Native document-composition aliases such as `Template`, `Slot`, `Script`,
-  `NoScript`, and `Noscript` render to matching browser elements and remain
-  addressable through Kry DOM identity, selector, snapshot, and mounted object
-  APIs. `Script` is a DOM/data element alias only; generated k2js still owns app
-  logic.
+  `StyleElement`, `NoScript`, and `Noscript` render to matching browser
+  elements and remain addressable through Kry DOM identity, selector, snapshot,
+  and mounted object APIs. `Script` is a DOM/data element alias only; generated
+  k2js still owns app logic. `StyleElement` is available for native DOM parity,
+  while KSS remains the primary styling authoring path.
 - Native metadata aliases such as `Base`, `Meta`, and `Title` render to
   matching browser elements with head-style attributes while remaining ordinary
   Kry DOM objects for selectors, snapshots, and devtools.

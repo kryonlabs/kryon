@@ -19,7 +19,7 @@ for (const name of [
   "ListItem", "Main", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
-  "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
+  "Slot", "Small", "Source", "Strong", "StyleElement", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
   "Tbody", "Template", "Tfoot", "Thead", "Time", "Title", "Tr", "Track", "UnorderedList", "Var",
@@ -2918,6 +2918,12 @@ function fakeDocument() {
       { nodeName: "nativeMeta", path: "Page/meta" });
     runtime.widget(nativeRt, "Title", { text: "Kry document title" }, null,
       { nodeName: "nativeTitle", path: "Page/title" });
+    runtime.widget(nativeRt, "StyleElement", {
+      text: ".kry-style-probe { color: rgb(1, 2, 3); }",
+      media: "screen",
+      nonce: "style-nonce"
+    }, null,
+      { nodeName: "nativeStyleElement", path: "Page/styleElement" });
     runtime.widget(nativeRt, "Video", { src: "intro.mp4", poster: "intro.jpg", controls: true, preload: "metadata" }, null,
       { nodeName: "nativeVideo", path: "Page/video" });
     runtime.widget(nativeRt, "Source", { src: "intro.webm", type: "video/webm" }, null,
@@ -3309,6 +3315,12 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Title").tag, "title");
     assert.equal(runtime.webNodeQuery(nativeRt, "Title").text, "Kry document title");
     assert.equal(runtime.webNodeQuery(nativeRt, "[content=\"Kry DOM\"]").path, "Page/meta");
+    assert.equal(runtime.webNodeQuery(nativeRt, "StyleElement").tag, "style");
+    assert.equal(runtime.webNodeQuery(nativeRt, "StyleElement").text,
+      ".kry-style-probe { color: rgb(1, 2, 3); }");
+    assert.equal(runtime.webNodeQuery(nativeRt, "StyleElement").extraAttrs.media, "screen");
+    assert.equal(runtime.webNodeQuery(nativeRt, "StyleElement").extraAttrs.nonce, "style-nonce");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[media=screen]").path, "Page/styleElement");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").tag, "video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.src, "intro.mp4");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.controls, true);
@@ -3636,6 +3648,7 @@ function fakeDocument() {
     const nativeBase = runtime.findWebElement(nativeTarget, "nativeBase");
     const nativeMeta = runtime.findWebElement(nativeTarget, "nativeMeta");
     const nativeTitle = runtime.findWebElement(nativeTarget, "nativeTitle");
+    const nativeStyleElement = runtime.findWebElement(nativeTarget, "nativeStyleElement");
     const nativeVideo = runtime.findWebElement(nativeTarget, "nativeVideo");
     const nativeVideoSource = runtime.findWebElement(nativeTarget, "nativeVideoSource");
     const nativeVideoTrack = runtime.findWebElement(nativeTarget, "nativeVideoTrack");
@@ -3805,6 +3818,10 @@ function fakeDocument() {
     assert.equal(nativeMeta.attributes.charset, "utf-8");
     assert.equal(nativeTitle.tagName, "TITLE");
     assert.equal(nativeTitle.textContent, "Kry document title");
+    assert.equal(nativeStyleElement.tagName, "STYLE");
+    assert.equal(nativeStyleElement.attributes.media, "screen");
+    assert.equal(nativeStyleElement.attributes.nonce, "style-nonce");
+    assert.equal(nativeStyleElement.textContent, ".kry-style-probe { color: rgb(1, 2, 3); }");
     assert.equal(nativeVideo.tagName, "VIDEO");
     assert.equal(nativeVideo.attributes.src, "intro.mp4");
     assert.equal(nativeVideo.attributes.poster, "intro.jpg");

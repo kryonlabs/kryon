@@ -278,7 +278,7 @@ web_native_only = {
     'ListItem', 'Main', 'Mark', 'Meta', 'Meter', 'Nav', 'Navigation', 'NoScript', 'Noscript', 'EmbeddedObject', 'OrderedList',
     'OptionGroup', 'OptGroup', 'Option', 'Output', 'Param', 'Pre', 'Quote',
     'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Script', 'Search', 'Select',
-    'Slot', 'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
+    'Slot', 'Small', 'Source', 'Strong', 'StyleElement', 'Sub', 'Subscript', 'Summary', 'Sup',
     'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
     'Tbody', 'Template', 'Tfoot', 'Thead', 'Time', 'Title', 'Tr', 'Track', 'UnorderedList',

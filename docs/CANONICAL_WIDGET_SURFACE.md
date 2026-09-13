@@ -329,6 +329,7 @@ host roles rather than retained nodes.
 | `Small` | `.kry canonical` | Web-native side-comment/small text element. |
 | `Source` | `.kry canonical` | Web-native media source element. |
 | `Strong` | `.kry canonical` | Web-native strong-importance phrasing element. |
+| `StyleElement` | `.kry canonical` | Web-native style element; KSS remains the primary styling authoring path. |
 | `Sub` | `.kry canonical` | Web-native subscript element. |
 | `Subscript` | `.kry canonical` | Long-form alias for `Sub`. |
 | `Summary` | `.kry canonical` | Web-native summary element for `Details`. |

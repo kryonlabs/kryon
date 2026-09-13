@@ -48,7 +48,7 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 167 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 168 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface;
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
@@ -61,7 +61,7 @@ CodeBlock Col ColGroup Data Datalist DataList Del Deleted DescriptionDetails Des
 DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form
 Header Hgroup HGroup IFrame Iframe Ins Inserted Italic ImageMap Kbd Keyboard Label Legend LineBreak List
 ListItem Main Mark Meta Meter Nav Navigation NoScript Noscript EmbeddedObject OrderedList OptionGroup OptGroup Option
-Output Param Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Script Search Select Slot Small Source Strong Sub Subscript Summary Sup Superscript Table
+Output Param Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Script Search Select Slot Small Source Strong StyleElement Sub Subscript Summary Sup Superscript Table
 TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow
 Tbody Template Tfoot Thead Time Title Tr Track UnorderedList Var Variable Video Wbr
 WordBreakOpportunity Bullet Separator Link
