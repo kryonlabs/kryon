@@ -199,6 +199,8 @@ the browser receives normal elements, attributes, CSS, and events.
   `data-kry-state` annotations, plus real browser pseudo/attribute selectors
   for hover, focus, pressed, disabled, checked, invalid, and open where the DOM
   has matching native state.
+- KSS state selector CSS export also targets native ARIA/state attributes for
+  pressed, disabled, checked, selected, invalid, and expanded controls.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
