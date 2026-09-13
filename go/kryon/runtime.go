@@ -5229,12 +5229,12 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 	barStyle := unpackStyle(barFrame.Value)
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: barStyle.Border})
-	x := bounds.X + 4
+	x := Menu_MenuBarFirstItemX(bounds, metrics)
 	menuItemBaseStyle := unpackStyle(menuItemBaseFrame.Value)
 	font, fontID := styleTextFace(menuItemBaseStyle, Text14)
 	for i, menu := range menus {
 		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
-		item := Menu_MenuGroupItemBounds(int32(x), bounds, w, metrics)
+		item := Menu_MenuGroupItemBounds(x, bounds, w, metrics)
 		if !r.contentDisabled() && r.consumeTap(item) {
 			r.setFocus(id)
 			idx := int32(i)
@@ -5269,8 +5269,10 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 			op.Focused = itemFocused
 			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
-		x += float32(w + metrics.BarItemGap)
+		labelX := Menu_MenuBarLabelX(item, metrics)
+		labelY := Menu_MenuBarLabelY(item, itemFont)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(labelX), Y: float32(labelY), Width: item.X + item.Width - float32(labelX), Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
+		x = Menu_MenuBarNextItemX(x, w, metrics)
 	}
 	if open >= 0 && int(open) < len(menus) {
 		result.OpenIndex = open
@@ -5278,14 +5280,14 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 			*openIndex = open
 		}
 		menu := menus[open]
-		menuX := bounds.X + 4
+		menuX := Menu_MenuBarFirstItemX(bounds, metrics)
 		for i := 0; i < int(open); i++ {
 			w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menus[i].Label, font, fontID)), metrics)
-			menuX += float32(w + metrics.BarItemGap)
+			menuX = Menu_MenuBarNextItemX(menuX, w, metrics)
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
 		handled := openedByKeyboard
-		result.ActivatedID, _ = r.drawPopupMenu(id, className, int32(menuX), int32(bounds.Y+bounds.Height), items, id, 0, &handled)
+		result.ActivatedID, _ = r.drawPopupMenu(id, className, menuX, int32(bounds.Y+bounds.Height), items, id, 0, &handled)
 		if result.ActivatedID != 0 {
 			delete(r.openMenus, id)
 			delete(r.openSubmenus, id)

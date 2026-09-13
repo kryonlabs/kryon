@@ -464,6 +464,38 @@ func Menu_MenuSubmenuIndicatorX(row Rectangle, metrics MenuMetrics) int32 {
 	return value_5
 }
 
+func Menu_MenuBarFirstItemX(bar Rectangle, metrics MenuMetrics) int32 {
+	var value_0 float32 = bar.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = metrics.PanelMargin
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	return value_3
+}
+
+func Menu_MenuBarNextItemX(x int32, width int32, metrics MenuMetrics) int32 {
+	var value_0 int32 = x
+	var value_1 int32 = width
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
+	var value_3 int32 = metrics.BarItemGap
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 1))
+	return value_4
+}
+
+func Menu_MenuBarLabelX(item Rectangle, metrics MenuMetrics) int32 {
+	var value_0 float32 = item.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = metrics.BarLabelInset
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	return value_3
+}
+
+func Menu_MenuBarLabelY(item Rectangle, line_height int32) int32 {
+	var value_0 Rectangle = item
+	var value_1 int32 = line_height
+	var value_2 int32 = Menu_MenuTextY(value_0, value_1)
+	return value_2
+}
+
 func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
 	var item Rectangle = Rectangle{}
 	var value_0 int32 = x

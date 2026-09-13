@@ -125,5 +125,9 @@ main(void)
     bar_item = MenuGroupItemBounds(10, (Rectangle){0, 0, 240, 30}, 74,
                                    metrics);
     check_rect(bar_item, 10, 3, 74, 24);
+    assert(MenuBarFirstItemX((Rectangle){0, 0, 240, 30}, metrics) == 4);
+    assert(MenuBarNextItemX(10, 74, metrics) == 86);
+    assert(MenuBarLabelX(bar_item, metrics) == 22);
+    assert(MenuBarLabelY(bar_item, 16) == 7);
     return 0;
 }

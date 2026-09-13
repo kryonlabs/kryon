@@ -171,6 +171,23 @@ MenuSubmenuIndicatorX :: (row: Rectangle,
     return (i32)(row.x + row.width) - metrics.submenu_indicator_inset
 }
 
+MenuBarFirstItemX :: (bar: Rectangle, metrics: MenuMetrics) -> i32 #export {
+    return (i32)bar.x + metrics.panel_margin
+}
+
+MenuBarNextItemX :: (x: i32, width: i32,
+    metrics: MenuMetrics) -> i32 #export {
+    return x + width + metrics.bar_item_gap
+}
+
+MenuBarLabelX :: (item: Rectangle, metrics: MenuMetrics) -> i32 #export {
+    return (i32)item.x + metrics.bar_label_inset
+}
+
+MenuBarLabelY :: (item: Rectangle, line_height: i32) -> i32 #export {
+    return MenuTextY(item, line_height)
+}
+
 MenuGroupItemBounds :: (x: i32, bar: Rectangle, width: i32,
     metrics: MenuMetrics) -> Rectangle #export {
     item: Rectangle

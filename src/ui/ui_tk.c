@@ -1471,7 +1471,7 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
                                          panel_frame, base_item_frame,
                                          bar_frame);
-    int x = (int)bounds.x + Scale(4);
+    int x = MenuBarFirstItemX(bounds, metrics);
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
     int bar_capture_pushed = 0;
@@ -1583,8 +1583,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             MarkClickable();
         if(can_draw)
             RenderText(menus[i].label != NULL ? menus[i].label : "",
-                       x + metrics.bar_label_inset,
-                       ui_row_text_y(item, item_font),
+                       MenuBarLabelX(item, metrics),
+                       MenuBarLabelY(item, TextLineHeight(item_font)),
                        item_font, item_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             ConsumeRelease();
@@ -1617,7 +1617,7 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             copy_menu_items(state->overlay.items,&used,menus[i].items,
                             menus[i].item_count,&state->overlay.item_count);
         }
-        x += w + metrics.bar_item_gap;
+        x = MenuBarNextItemX(x, w, metrics);
     }
     if(state->open_id != 0 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !ui_contains(bounds, mouse) &&
