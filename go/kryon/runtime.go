@@ -4097,17 +4097,13 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}
 	focused := !r.contentDisabled() && id > 0 && r.focusID == id
 	foreground := r.dropdownTrigger(id, bounds, open, focused, styleClass)
-	selectedFontID := uint32(0)
-	if selected != nil && *selected >= 0 && int(*selected) < len(items) {
-		selectedFontID = registeredTypeface(items[*selected].FontName)
-	}
 	textX := bounds.X + contentMetrics.Padding
 	if selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != IconNone {
 		r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: items[*selected].IconType, Color: foreground, ID: id})
 		textX += contentMetrics.Icon + contentMetrics.Gap
 	}
 	textClip := Rectangle{X: textX, Y: bounds.Y, Width: max(float32(0), bounds.X+bounds.Width-36-textX), Height: bounds.Height}
-	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Font)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), FontID: selectedFontID, ID: id, Row: -1})
+	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Font)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), ID: id, Row: -1})
 	r.dropdownChevron(id, bounds, open, foreground)
 	if !open {
 		return changed
@@ -4187,10 +4183,8 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		}
 		paint.TextColor = unpackRGBA(Surface_Opacity(packRGBA(paint.TextColor), paint.Opacity))
 		textX := row.X + contentMetrics.Padding
-		fontID := uint32(0)
 		if i < len(items) {
 			item := items[i]
-			fontID = registeredTypeface(item.FontName)
 			if item.SeparatorBefore {
 				r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 16, Y: row.Y, Width: row.Width - 32}, Color: r.Fade(paint.TextColor, 0.18), ID: id})
 			}
@@ -4200,7 +4194,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 			}
 		}
 		textClip := Rectangle{X: textX, Y: row.Y, Width: max(float32(0), row.X+row.Width-contentMetrics.Padding-contentMetrics.Icon-contentMetrics.Gap-textX), Height: row.Height}
-		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), FontID: fontID, ID: id, Row: int32(i), Selected: selectedRow})
+		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), ID: id, Row: int32(i), Selected: selectedRow})
 		if selectedRow {
 			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: IconCheck,
 				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon},

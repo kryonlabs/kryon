@@ -123,7 +123,6 @@ dropdown_resize_options(DropdownState *state, int count)
     if(keep > 0) memcpy(options, state->options, (size_t)keep * sizeof(*options));
     for(int i = keep; i < state->option_count; i++) {
         free((void *)state->options[i].label);
-        free((void *)state->options[i].font_name);
     }
     free(state->options);
     state->options = options;
@@ -414,13 +413,6 @@ ui_dropdown(DropdownProps props)
         state->options[i].separator_before = options != NULL && options[i].separator_before;
         dropdown_copy_text(&state->options[i].label, options != NULL ? options[i].label :
             (props.options != NULL ? props.options[i] : NULL));
-        const char *font_name = options != NULL ? options[i].font_name : NULL;
-        if(font_name != NULL && font_name[0] != '\0')
-            dropdown_copy_text(&state->options[i].font_name, font_name);
-        else {
-            free((void *)state->options[i].font_name);
-            state->options[i].font_name = NULL;
-        }
     }
 
     if(active)
@@ -457,7 +449,6 @@ ui_dropdown(DropdownProps props)
     if(current_index < 0 || current_index >= option_count)
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
-    const char *current_font = option_count > 0 ? state->options[current_index].font_name : NULL;
     int text_x = x + (int)content.padding;
     if(option_count > 0 && state->options[current_index].icon_type != ICON_NONE) {
         if(can_draw)
@@ -467,14 +458,12 @@ ui_dropdown(DropdownProps props)
     }
     int text_w = arrow_x - arrow_size - Scale(8) - text_x;
     if(can_draw && text_w > 0) {
-        int font_token = PushTextFont(current_font);
         BeginClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
         RenderText(current_name, text_x, ControlTextY(current_name, y, h, font), font, button_text);
         EndClip();
-        PopTextFont(font_token);
     }
 
     if(can_draw)
@@ -668,7 +657,6 @@ dropdown_paint_menu(int id)
         }
 
         if(can_draw) {
-            int font_token = PushTextFont(options[i].font_name);
             int text_x = x + (int)content.padding;
             if(options[i].separator_before)
                 DrawLine(x + Scale(16), option_y, x + option_w - Scale(16), option_y,
@@ -687,7 +675,6 @@ dropdown_paint_menu(int id)
                        ControlTextY(options[i].label, option_y, option_h, font),
                        font, row_text);
             EndClip();
-            PopTextFont(font_token);
             if(state->selected_index == i) {
                 int cx = x + option_w - (int)(content.padding + content.icon / 2);
                 int cy = option_y + option_h / 2;

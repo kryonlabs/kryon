@@ -92,8 +92,7 @@ color unless the existing icon asset intentionally carries its own colors.
 | Disabled option | Neutral + soft, disabled | Cannot activate; keyboard navigation skips it |
 
 The trigger and rows use the resolved Button font size, icon size, padding, and
-gap. `DropdownOption.font_name` can select a registered typeface for an option;
-labels, leading icons, and checkmarks use the row foreground. A separator is a
+gap. Labels, leading icons, and checkmarks use the row foreground. A separator is a
 subtle rule before its option and does not create an extra selectable row.
 Popup geometry, scrolling, and input capture refer to the same bounds.
 

@@ -4,7 +4,6 @@ package kryon
 // #import kryon_compat.generated.h
 type DropdownOption struct {
 	Label           string
-	FontName        string
 	IconType        int32
 	Disabled        bool
 	SeparatorBefore bool

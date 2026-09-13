@@ -1536,10 +1536,10 @@ from selection. Text, icons, padding, and gaps use resolved Button metrics.
 See [Widget styling](WIDGET_STYLING.md) for the complete role mapping.
 Labels are clipped before the chevron and selection indicator. Theme color
 changes apply to both dropdowns and buttons without a separate dropdown palette.
-`DropdownProps.items` accepts `DropdownOption` records with `label`, optional
-`font_name`, `icon_type`, `disabled`, and `separator_before` (with
-`option_count` in C); Go uses `Items`. When supplied, these replace the plain
-string options. Disabled rows cannot be clicked or
+`DropdownProps.items` accepts `DropdownOption` records with `label`,
+`icon_type`, `disabled`, and `separator_before` (with `option_count` in C);
+Go uses `Items`. When supplied, these replace the plain string options.
+Disabled rows cannot be clicked or
 committed and keyboard navigation skips them; separators precede their row.
 An open `Dropdown` supports Up/Down to move the
 highlight, Home/End to jump to the first/last option, and Enter to commit and

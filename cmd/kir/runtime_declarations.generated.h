@@ -334,7 +334,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "DropdownOption :: struct {\n"
         "    label: const char*\n"
-        "    font_name: const char*\n"
         "    icon_type: i32\n"
         "    disabled: bool\n"
         "    separator_before: bool\n"

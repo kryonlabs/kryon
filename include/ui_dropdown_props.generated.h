@@ -23,7 +23,6 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct DropdownOption {
     const char* label;
-    const char* font_name;
     int32_t icon_type;
     bool disabled;
     bool separator_before;

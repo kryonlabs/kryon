@@ -3,7 +3,6 @@
 
 DropdownOption :: struct {
     label: const char*
-    font_name: const char*
     icon_type: i32
     disabled: bool
     separator_before: bool
