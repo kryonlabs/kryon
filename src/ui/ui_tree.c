@@ -2241,7 +2241,7 @@ RenderImage(ImageProps image)
             StyleKindImage(), 6).value);
         int label_font = label_style.font_size > 0.0f
             ? (int)(label_style.font_size + 0.5f)
-            : Text12;
+            : GetSmallFontSize();
         fallback = image.style.enabled && image.style.background.a > 0
                      ? image.style.background
                      : image_style.background;
@@ -2316,7 +2316,11 @@ Text(TextProps props)
                 inherited_font = button->props.font;
                 if(inherited_font <= 0) {
                     Style style = ResolveButtonStyle(button->props, button->props.state);
-                    inherited_font = ResolveFont(button->props.font, Scale(style.font_size), GetFontSize());
+                    inherited_font = ResolveFont(button->props.font,
+                        style.font_size > 0.0f
+                            ? (int)(style.font_size + 0.5f)
+                            : 0,
+                        GetFontSize());
                 }
                 inherited_color = button->paint.foreground;
                 inherited_color_set = true;
@@ -2336,7 +2340,7 @@ Text(TextProps props)
             .foreground = props.color});
     style = MergeStyle(style, props.style);
     if((style.fields & StyleFontSize) != 0)
-        props.font = Scale((int)style.font_size);
+        props.font = (int)(style.font_size + 0.5f);
     if((typeface == NULL || typeface[0] == '\0') &&
        (style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
@@ -3238,7 +3242,9 @@ resolve_button_bounds_for_kind(ButtonProps button, int disclosure, int style_kin
     Style style = ui_resolve_button_style_kind(button, button.state, style_kind);
     int height = Scale(SizeValue(button.size, metrics.control_height_small,
         metrics.control_height_medium, metrics.control_height_large));
-    int font = ResolveFont(button.font, Scale(style.font_size), GetFontSize());
+    int font = ResolveFont(button.font,
+        style.font_size > 0.0f ? (int)(style.font_size + 0.5f) : 0,
+        GetFontSize());
     float available_width = 0.0f;
     float scale = (float)Scale(1000) / 1000.0f;
     if(button.full_width && bounds.width <= 0) {
