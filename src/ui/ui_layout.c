@@ -1,6 +1,7 @@
 #include "ui_layout.h"
 #include "ui_core.h"
 #include "ui_scaling.h"
+#include "runtime/layout.h"
 #include <stddef.h>
 
 void
@@ -25,29 +26,17 @@ GetViewHeight(void)
 void
 GetCenteredColumn(int max_w, int side_pad, int *x, int *w)
 {
-    int available_w = ui_view_width - side_pad * 2;
-
-    if(available_w < 0)
-        available_w = 0;
-    if(max_w > available_w)
-        max_w = available_w;
-    if(max_w < 0)
-        max_w = 0;
+    CenteredColumnLayout layout =
+        CenteredColumnFor(ui_view_width, max_w, side_pad);
 
     if(x != NULL)
-        *x = (ui_view_width - max_w) / 2;
+        *x = layout.x;
     if(w != NULL)
-        *w = max_w;
+        *w = layout.width;
 }
 
 int
 GetPageSidePadding(void)
 {
-    int padding = ui_view_width / 50;
-
-    if(padding < 12)
-        padding = 12;
-    if(padding > 24)
-        padding = 24;
-    return padding;
+    return PageSidePaddingFor(ui_view_width);
 }

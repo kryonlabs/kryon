@@ -18,7 +18,24 @@ main(void)
     Rectangle bounds = {10, 20, 100, 80};
     Rectangle child = {0, 0, 0, 18};
     LayoutMetrics metrics = LayoutMetricsFor(bounds, 6, 4);
+    CenteredColumnLayout column;
     float cursor;
+
+    column = CenteredColumnFor(800, 480, 24);
+    assert(column.x == 160);
+    assert(column.width == 480);
+    column = CenteredColumnFor(320, 480, 24);
+    assert(column.x == 24);
+    assert(column.width == 272);
+    column = CenteredColumnFor(20, 480, 24);
+    assert(column.x == 10);
+    assert(column.width == 0);
+    column = CenteredColumnFor(320, -1, -2);
+    assert(column.x == 160);
+    assert(column.width == 0);
+    assert(PageSidePaddingFor(400) == 12);
+    assert(PageSidePaddingFor(1000) == 20);
+    assert(PageSidePaddingFor(3000) == 24);
 
     assert(metrics.gap == 6);
     assert(metrics.padding == 4);

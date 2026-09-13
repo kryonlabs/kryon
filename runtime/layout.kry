@@ -7,6 +7,37 @@ LayoutMetrics :: struct {
     padding: i32
 }
 
+CenteredColumnLayout :: struct {
+    x: i32
+    width: i32
+}
+
+LayoutClamp :: (value: i32, min_value: i32, max_value: i32) -> i32 {
+    out: i32 = value
+    if out < min_value { out = min_value }
+    if out > max_value { out = max_value }
+    return out
+}
+
+CenteredColumnFor :: (view_width: i32, max_width: i32,
+    side_padding: i32) -> CenteredColumnLayout #export {
+    layout: CenteredColumnLayout
+    if view_width < 0 { view_width = 0 }
+    if max_width < 0 { max_width = 0 }
+    if side_padding < 0 { side_padding = 0 }
+    available: i32 = view_width - side_padding * 2
+    if available < 0 { available = 0 }
+    layout.width = max_width
+    if layout.width > available { layout.width = available }
+    layout.x = (view_width - layout.width) / 2
+    return layout
+}
+
+PageSidePaddingFor :: (view_width: i32) -> i32 #export {
+    padding: i32 = view_width / 50
+    return LayoutClamp(padding, 12, 24)
+}
+
 LayoutMetricsFor :: (bounds: Rectangle, gap: i32, padding: i32) -> LayoutMetrics #export {
     metrics: LayoutMetrics
     if gap < 0 { gap = 0 }
