@@ -1800,6 +1800,8 @@ const webKssLengthProperties = new Set([
   "border-inline-end-width", "border-block-start-width", "border-block-end-width",
   "border-top-left-radius", "border-top-right-radius",
   "border-bottom-right-radius", "border-bottom-left-radius",
+  "border-start-start-radius", "border-start-end-radius",
+  "border-end-start-radius", "border-end-end-radius",
   "padding", "padding-x", "padding-y",
   "padding-left", "padding-right", "padding-top", "padding-bottom",
   "padding-inline", "padding-block",
@@ -2463,6 +2465,10 @@ const webCSSPropertyNames = new Map([
   ["border-top-right-radius", "border-top-right-radius"],
   ["border-bottom-right-radius", "border-bottom-right-radius"],
   ["border-bottom-left-radius", "border-bottom-left-radius"],
+  ["border-start-start-radius", "border-start-start-radius"],
+  ["border-start-end-radius", "border-start-end-radius"],
+  ["border-end-start-radius", "border-end-start-radius"],
+  ["border-end-end-radius", "border-end-end-radius"],
   ["opacity", "opacity"],
   ["padding", "padding"],
   ["padding-x", "padding-left"],
@@ -3442,6 +3448,10 @@ function applyResolvedWebStyle(el, style) {
   set("borderTopRightRadius", style["border-top-right-radius"]);
   set("borderBottomRightRadius", style["border-bottom-right-radius"]);
   set("borderBottomLeftRadius", style["border-bottom-left-radius"]);
+  set("borderStartStartRadius", style["border-start-start-radius"]);
+  set("borderStartEndRadius", style["border-start-end-radius"]);
+  set("borderEndStartRadius", style["border-end-start-radius"]);
+  set("borderEndEndRadius", style["border-end-end-radius"]);
   set("opacity", style.opacity);
   set("padding", style.padding);
   set("paddingLeft", style["padding-x"]);
