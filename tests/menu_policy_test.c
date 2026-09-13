@@ -116,6 +116,11 @@ main(void)
     assert(line.y1 == 49);
     assert(line.x2 == 170);
     assert(line.y2 == 49);
+    assert(MenuTextY(row, 16) == 41);
+    assert(MenuCheckedMarkX(row, metrics) == 12);
+    assert(MenuLabelX(row, metrics) == 32);
+    assert(MenuAcceleratorX(row, 20, metrics) == 146);
+    assert(MenuSubmenuIndicatorX(row, metrics) == 160);
     assert(MenuGroupItemWidth(50, metrics) == 74);
     bar_item = MenuGroupItemBounds(10, (Rectangle){0, 0, 240, 30}, 74,
                                    metrics);

@@ -149,6 +149,28 @@ MenuSeparatorLineFor :: (row: Rectangle, metrics: MenuMetrics) -> MenuLine #expo
     return line
 }
 
+MenuTextY :: (row: Rectangle, line_height: i32) -> i32 #export {
+    return (i32)row.y + ((i32)row.height - line_height) / 2
+}
+
+MenuCheckedMarkX :: (row: Rectangle, metrics: MenuMetrics) -> i32 #export {
+    return (i32)row.x + metrics.checked_mark_inset
+}
+
+MenuLabelX :: (row: Rectangle, metrics: MenuMetrics) -> i32 #export {
+    return (i32)row.x + metrics.label_inset
+}
+
+MenuAcceleratorX :: (row: Rectangle, text_width: i32,
+    metrics: MenuMetrics) -> i32 #export {
+    return (i32)(row.x + row.width) - text_width - metrics.panel_padding
+}
+
+MenuSubmenuIndicatorX :: (row: Rectangle,
+    metrics: MenuMetrics) -> i32 #export {
+    return (i32)(row.x + row.width) - metrics.submenu_indicator_inset
+}
+
 MenuGroupItemBounds :: (x: i32, bar: Rectangle, width: i32,
     metrics: MenuMetrics) -> Rectangle #export {
     item: Rectangle

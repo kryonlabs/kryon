@@ -1301,26 +1301,24 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         if(item->disabled && row_hot)
             MarkDisabled();
         if(can_draw && item->checked)
-            RenderText("*", (int)row.x + metrics.checked_mark_inset,
-                       ui_row_text_y(row, item_font),
+            RenderText("*", MenuCheckedMarkX(row, metrics),
+                       MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
         if(can_draw)
             RenderText(item->label != NULL ? item->label : "",
-                       (int)row.x + metrics.label_inset,
-                       ui_row_text_y(row, item_font),
+                       MenuLabelX(row, metrics),
+                       MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
         if(can_draw && item->accelerator != NULL) {
             int accel_text_w = TextWidth(item->accelerator, item_font);
             RenderText(item->accelerator,
-                       (int)(row.x + row.width - accel_text_w -
-                             metrics.panel_padding),
-                       ui_row_text_y(row, item_font),
+                       MenuAcceleratorX(row, accel_text_w, metrics),
+                       MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
         }
         if(can_draw && item->kind == MenuSubmenu)
-            RenderText(">", (int)(row.x + row.width -
-                                  metrics.submenu_indicator_inset),
-                       ui_row_text_y(row, item_font),
+            RenderText(">", MenuSubmenuIndicatorX(row, metrics),
+                       MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
         if(hot && item->kind == MenuSubmenu)
             state->submenu_id = item->id;

@@ -5434,13 +5434,17 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 		if (item.Kind == MenuCheck || item.Kind == MenuRadio) && item.Checked {
 			label = "✓ " + label
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
+		labelX := Menu_MenuLabelX(row, metrics)
+		textY := Menu_MenuTextY(row, itemFont)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(labelX), Y: float32(textY), Width: row.X + row.Width - float32(labelX), Height: row.Height}, Text: label, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
 		if item.Accelerator != "" {
 			accelWidth := runtimeTextWidthWithFont(item.Accelerator, itemFont, itemFontID)
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
+			accelX := Menu_MenuAcceleratorX(row, int32(accelWidth), metrics)
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(accelX), Y: float32(textY), Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
 		}
 		if item.Kind == MenuSubmenu {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
+			indicatorX := Menu_MenuSubmenuIndicatorX(row, metrics)
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(indicatorX), Y: float32(textY), Width: 12, Height: row.Height}, Text: ">", Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
 			submenuOpen := r.openSubmenus[id] == item.ID
 			if keyboard {
 				submenuOpen = selected && len(state.Path) > depth+1

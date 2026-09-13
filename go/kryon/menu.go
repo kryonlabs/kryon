@@ -413,6 +413,57 @@ func Menu_MenuSeparatorLineFor(row Rectangle, metrics MenuMetrics) MenuLine {
 	return value_21
 }
 
+func Menu_MenuTextY(row Rectangle, line_height int32) int32 {
+	var value_0 float32 = row.Y
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 float32 = row.Height
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = line_height
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
+	var value_6 int32 = 2
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 4))
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
+func Menu_MenuCheckedMarkX(row Rectangle, metrics MenuMetrics) int32 {
+	var value_0 float32 = row.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = metrics.CheckedMarkInset
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	return value_3
+}
+
+func Menu_MenuLabelX(row Rectangle, metrics MenuMetrics) int32 {
+	var value_0 float32 = row.X
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = metrics.LabelInset
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	return value_3
+}
+
+func Menu_MenuAcceleratorX(row Rectangle, text_width int32, metrics MenuMetrics) int32 {
+	var value_0 float32 = row.X
+	var value_1 float32 = row.Width
+	var value_2 float32 = value_0 + value_1
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = text_width
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
+	var value_6 int32 = metrics.PanelPadding
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
+	return value_7
+}
+
+func Menu_MenuSubmenuIndicatorX(row Rectangle, metrics MenuMetrics) int32 {
+	var value_0 float32 = row.X
+	var value_1 float32 = row.Width
+	var value_2 float32 = value_0 + value_1
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = metrics.SubmenuIndicatorInset
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
+	return value_5
+}
+
 func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
 	var item Rectangle = Rectangle{}
 	var value_0 int32 = x
