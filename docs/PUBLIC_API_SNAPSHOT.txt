@@ -1434,6 +1434,7 @@ include/ui_dpi.h function SetDeviceDensity
 include/ui_dpi.h function UpdateDPI
 include/ui_dpi.h macro DPI_BASE_HEIGHT
 include/ui_dpi.h macro DPI_BASE_WIDTH
+include/ui_drag_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_drawing_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_fieldset_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_grid_props.generated.h macro KIR_STRING_VALUE_DEFINED
@@ -1689,6 +1690,7 @@ include/ui_scroll.h function GetScrollbarSafeContentWidth
 include/ui_scroll_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_separator_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_slider_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_spinbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks

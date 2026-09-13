@@ -792,42 +792,6 @@ type dragIntRangeProps struct {
 	Disabled   bool
 }
 
-type NumericValueKind int32
-
-const (
-	NumericFloat NumericValueKind = iota
-	NumericInt
-	NumericDouble
-)
-
-type DragMode int32
-
-const (
-	DragValue DragMode = iota
-	DragRange
-)
-
-type DragProps struct {
-	Bounds      Rectangle
-	ID          int32
-	Label       string
-	Kind        NumericValueKind
-	Mode        DragMode
-	FloatValues []float32
-	IntValues   []int32
-	ValueCount  int32
-	FloatMin    *float32
-	FloatMax    *float32
-	IntMin      *int32
-	IntMax      *int32
-	Speed       float32
-	Min         float64
-	Max         float64
-	Format      string
-	FormatMax   string
-	Disabled    bool
-}
-
 type sliderFloatProps struct {
 	Bounds     Rectangle
 	ID         int32
@@ -861,23 +825,6 @@ type sliderAngleProps struct {
 	MaxDegrees float32
 	Format     string
 	Disabled   bool
-}
-
-type SliderProps struct {
-	Bounds      Rectangle
-	ID          int32
-	Label       string
-	Kind        NumericValueKind
-	FloatValues []float32
-	IntValues   []int32
-	ValueCount  int32
-	FloatValue  *float32
-	Min         float64
-	Max         float64
-	Format      string
-	Disabled    bool
-	Vertical    bool
-	Angle       bool
 }
 
 type inputFloatProps struct {
@@ -914,21 +861,6 @@ type inputDoubleProps struct {
 	StepFast   float64
 	Format     string
 	Disabled   bool
-}
-
-type InputProps struct {
-	Bounds       Rectangle
-	ID           int32
-	Label        string
-	Kind         NumericValueKind
-	FloatValues  []float32
-	IntValues    []int32
-	DoubleValues []float64
-	ValueCount   int32
-	Step         float64
-	StepFast     float64
-	Format       string
-	Disabled     bool
 }
 
 type DropdownOption struct {

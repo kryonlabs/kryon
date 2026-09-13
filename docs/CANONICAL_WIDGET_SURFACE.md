@@ -52,6 +52,7 @@ surface review:
 | `runtime/dropdown.kry` | Dropdown composition | `.kry canonical` |
 | `runtime/drag_drop.kry` | DragDrop decision policy | `.kry canonical` |
 | `runtime/drag.kry` | Drag value/keyboard policy | `.kry canonical` |
+| `runtime/drag_props.kry` | Drag props | `.kry canonical` |
 | `runtime/grid.kry` | Grid composition | `.kry canonical` |
 | `runtime/grid_props.kry` | Grid props | `.kry canonical` |
 | `runtime/group.kry` | Group bounds/content policy | `.kry canonical` |
@@ -60,7 +61,7 @@ surface review:
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
 | `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
 | `runtime/input.kry` | Input value/step policy | `.kry canonical` |
-| `runtime/input_props.kry` | Input props | `.kry canonical` |
+| `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
@@ -90,6 +91,7 @@ surface review:
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
 | `runtime/separator_props.kry` | Separator props | `.kry canonical` |
 | `runtime/slider.kry` | Slider composition plus value/keyboard policy | `.kry canonical` |
+| `runtime/slider_props.kry` | Slider props | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
 | `runtime/spinbox_props.kry` | Spinbox props | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
@@ -361,9 +363,9 @@ No web runtime widget entries are accepted as public compatibility names.
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module; trigger and option typography use resolved KSS font sizes directly. |
-| `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
-| `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
-| `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
+| `Slider` | `.kry canonical` | Public props live in `runtime/slider_props.kry`; value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
+| `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
+| `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |

@@ -614,15 +614,21 @@ DirectWebNodes :: () #ui {
     Link((LinkProps){.text="Read more", .href="/docs"})
     Flow((FlowProps){.gap=4})
     Grid((GridProps){.columns=2})
-    Scroll()
     Fieldset((FieldsetProps){.legend="Options"})
+    Scroll viewport: {
+        bounds = (Rectangle){0, 0, 100, 100}
+        content_height = 200
+        scroll_offset = 0
+    }
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_web_nodes.kry"
 direct_web_out="$work/out/src/direct_web_nodes.js"
-for widget in Page Section Heading ParagraphText Link Flow Grid Scroll Fieldset; do
+for widget in Page Section Heading ParagraphText Link Flow Grid Fieldset; do
     grep -Eq "\"path\": \"DirectWebNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_web_out"
 done
+grep -q '"nodeName": "viewport"' "$direct_web_out"
+grep -q '"path": "DirectWebNodes/viewport"' "$direct_web_out"
 
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
@@ -667,7 +673,6 @@ DirectRuntimeNodes :: () #ui {
     Stack()
     Flow()
     Grid()
-    Scroll()
     Modal()
     TitleBar()
     TabBar()
@@ -686,7 +691,7 @@ DirectRuntimeNodes :: () #ui {
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_runtime_nodes.kry"
 direct_runtime_out="$work/out/src/direct_runtime_nodes.js"
-for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid; do
+for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid; do
     grep -Eq "\"path\": \"DirectRuntimeNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_runtime_out"
 done
 awk '/kryon\.widget\(\$rt,/ && $0 !~ /"path": "DirectRuntimeNodes\// { missing=1 } END { exit missing }' "$direct_runtime_out"

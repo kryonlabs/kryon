@@ -1120,11 +1120,43 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
     return 0;
 }
 
+static int
+begin_scroll_call_args(const char *source, char *args, size_t args_size)
+{
+    char name[K2JS_NAME_MAX];
+
+    if(!split_direct_call(source, name, sizeof(name), args, args_size))
+        return 0;
+    return strcmp(name, "BeginScroll") == 0;
+}
+
+static void
+emit_scroll_widget_arguments(FILE *f, const KirModule *m, const char *args)
+{
+    char parts[3][K2JS_TEXT_MAX];
+    int count = kir_split_top(args, parts[0], 3, sizeof(parts[0]));
+
+    if(count != 3) {
+        js_string(f, args);
+        return;
+    }
+    for(int i = 0; i < count; i++)
+        kir_trim_in_place(parts[i]);
+    fputs("{\"bounds\": ", f);
+    emit_initializer_value(f, m, parts[0]);
+    fputs(", \"content_height\": ", f);
+    emit_initializer_value(f, m, parts[1]);
+    fputs(", \"scroll_offset\": ", f);
+    emit_initializer_value(f, m, parts[2]);
+    fputc('}', f);
+}
+
 /* Evaluate initializer leaves in lexical scope, rather than sending source
  * text to a runtime parser that cannot see widget parameters or local values. */
 static void emit_widget_arguments(FILE *f, const KirModule *m,
                                   const char *widget, const char *args);
 static void emit_zero_value(FILE *f, const KirModule *m, const char *type);
+static int stmt_has_web_metadata(const KirStmt *st);
 
 static void
 emit_initializer_value_with_meta(FILE *f, const KirModule *m,
@@ -1135,6 +1167,15 @@ emit_initializer_value_with_meta(FILE *f, const KirModule *m,
     char arguments[K2JS_TEXT_MAX];
     const KirModule *owner = NULL;
     const KirFunction *declaration = NULL;
+    if(meta != NULL && stmt_has_web_metadata(meta) &&
+       begin_scroll_call_args(value, arguments, sizeof(arguments))) {
+        fputs("kryon.widget($rt, \"Scroll\", ", f);
+        emit_scroll_widget_arguments(f, m, arguments);
+        fputs(", $state, ", f);
+        emit_web_metadata(f, m, meta);
+        fputc(')', f);
+        return;
+    }
     if(condition_is_widget_call(value, widget, sizeof(widget),
                                 arguments, sizeof(arguments)) &&
        KirResolveFunction(m, widget, &owner, &declaration) == 0) {

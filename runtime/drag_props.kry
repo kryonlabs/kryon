@@ -1,0 +1,28 @@
+#module "drag_props"
+#import "ui_input_props.generated.h"
+
+DragMode :: enum {
+    DragValue = 0
+    DragRange = 1
+}
+
+DragProps :: struct {
+    bounds: Rectangle
+    id: i32
+    label: const char*
+    kind: NumericValueKind
+    mode: DragMode
+    float_values: *float
+    int_values: *i32
+    value_count: i32
+    float_min: *float
+    float_max: *float
+    int_min: *i32
+    int_max: *i32
+    speed: float
+    min: double
+    max: double
+    format: const char*
+    format_max: const char*
+    disabled: bool
+}

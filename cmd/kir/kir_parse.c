@@ -1740,6 +1740,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         return;
     if(strcmp(block->widget, "Scroll") == 0) {
         char bounds[KIR_TEXT_MAX];
+        KirStmt *statement;
         const char *height = (block->scope_fields & 2) ? block->scope_args[1] : "0";
         const char *offset = (block->scope_fields & 4) ? block->scope_args[2] : "nil";
         if(!(block->scope_fields & 1))
@@ -1755,8 +1756,14 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(n < 0 || (size_t)n >= sizeof(call))
             die("%s:%d: Scroll arguments are too long", span.path, span.line);
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
-        KirFunctionAddStmt(fn, block->name[0] ? KIR_STMT_DECL : KIR_STMT_EXPR,
-                           call, "", source_span);
+        statement = KirFunctionAddStmt(fn,
+                                       block->name[0] ? KIR_STMT_DECL
+                                                      : KIR_STMT_EXPR,
+                                       call, "", source_span);
+        if(statement == NULL)
+            die("out of memory parsing Scroll block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "",
                            source_span);
         block->opened = 1;

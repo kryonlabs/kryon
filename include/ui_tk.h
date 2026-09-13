@@ -4,13 +4,16 @@
 #include "kryon_compat.generated.h"
 #include "ui_collapsible_props.generated.h"
 #include "ui_color_picker_props.generated.h"
+#include "ui_drag_props.generated.h"
 #include "ui_fieldset_props.generated.h"
+#include "ui_input_props.generated.h"
 #include "ui_paned_view_props.generated.h"
 #include "ui_plot_props.generated.h"
 #include "ui_progress_props.generated.h"
 #include "ui_radio_props.generated.h"
 #include "ui_scroll_props.generated.h"
 #include "ui_separator_props.generated.h"
+#include "ui_slider_props.generated.h"
 #include "ui_spinbox_props.generated.h"
 #include "ui_toggle_props.generated.h"
 #include "ui_controls.h"
@@ -32,70 +35,6 @@ typedef enum {
 typedef int (*ClipboardOSC52WriteFn)(void *userdata, const char *text);
 typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
-
-typedef enum {
-    NumericFloat = 0,
-    NumericInt = 1,
-    NumericDouble = 2
-} NumericValueKind;
-
-typedef enum {
-    DragValue = 0,
-    DragRange = 1
-} DragMode;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    NumericValueKind kind;
-    DragMode mode;
-    float *float_values;
-    int *int_values;
-    int value_count;
-    float *float_min;
-    float *float_max;
-    int *int_min;
-    int *int_max;
-    float speed;
-    double min;
-    double max;
-    const char *format;
-    const char *format_max;
-    int disabled;
-} DragProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    NumericValueKind kind;
-    float *float_values;
-    int *int_values;
-    int value_count;
-    float *float_value;
-    double min;
-    double max;
-    const char *format;
-    int disabled;
-    int vertical;
-    int angle;
-} SliderProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    NumericValueKind kind;
-    float *float_values;
-    int *int_values;
-    double *double_values;
-    int value_count;
-    double step;
-    double step_fast;
-    const char *format;
-    int disabled;
-} InputProps;
 
 typedef enum {
     TextWrapAuto = 0,
