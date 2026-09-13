@@ -3696,12 +3696,10 @@ RenderTableView(TableViewProps table)
         ui_style_apply_effects_frame(default_header_frame).value);
     text_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_cell_frame).value);
-    header_font = header_style.font_size > 0.0f
-        ? (int)(header_style.font_size + 0.5f)
-        : GetSmallFontSize();
-    cell_font = text_style.font_size > 0.0f
-        ? (int)(text_style.font_size + 0.5f)
-        : header_font;
+    header_font = ResolveFont(0, (int)(header_style.font_size + 0.5f),
+                              GetSmallFontSize());
+    cell_font = ResolveFont(0, (int)(text_style.font_size + 0.5f),
+                            header_font);
 
     if(toolkit->resize_column >= 0 &&
        ui_popup_input_owner_captures(toolkit->resize_owner)) {
@@ -3814,8 +3812,8 @@ RenderTableView(TableViewProps table)
         text_style = ui_unpack_style(ui_style_apply_effects_frame(text_frame).value);
         selection_style = ui_unpack_style(ui_style_apply_effects_frame(selection_frame).value);
         divider_style = ui_unpack_style(ui_style_apply_effects_frame(divider_frame).value);
-        if(text_style.font_size > 0.0f)
-            cell_font = (int)(text_style.font_size + 0.5f);
+        cell_font = ResolveFont(0, (int)(text_style.font_size + 0.5f),
+                                cell_font);
         ui_tk_draw_style_frame(table.bounds, (Rectangle){0}, surface_frame, 0, 0,
                                table.disabled, focused);
     }
@@ -3848,9 +3846,8 @@ RenderTableView(TableViewProps table)
             Color header_color = header_paint.background;
             Color text_color = Fade(header_paint.foreground,
                                     header_paint.opacity);
-            int render_header_font = header_paint.font_size > 0.0f
-                ? (int)(header_paint.font_size + 0.5f)
-                : header_font;
+            int render_header_font = ResolveFont(
+                0, (int)(header_paint.font_size + 0.5f), header_font);
             float shift = ui_table_header_shift(table,head.y);
             if(shift != 0) {
                 Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
@@ -3965,8 +3962,9 @@ RenderTableView(TableViewProps table)
                 if((table.selected_row != NULL && *table.selected_row == r) || hot) {
                     text_color = selection_style.foreground;
                     text_opacity = selection_style.opacity;
-                    if(selection_style.font_size > 0.0f)
-                        render_font = (int)(selection_style.font_size + 0.5f);
+                    render_font = ResolveFont(
+                        0, (int)(selection_style.font_size + 0.5f),
+                        render_font);
                 } else {
                     text_color = text_style.foreground;
                 }
@@ -4269,9 +4267,8 @@ RenderCollapsible(CollapsibleProps section)
         section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
-    int font = default_item_style.font_size > 0.0f
-        ? (int)(default_item_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(default_item_style.font_size + 0.5f),
+                           GetFontSize());
     StyleFrame tree_item_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, default_state, !enabled, section.selected,
         section.class_name, StyleKindCollapsible(), 14);
@@ -4342,17 +4339,14 @@ RenderCollapsible(CollapsibleProps section)
             section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
-        font = item_style.font_size > 0.0f
-            ? (int)(item_style.font_size + 0.5f)
-            : font;
+        font = ResolveFont(0, (int)(item_style.font_size + 0.5f), font);
         StyleFrame link_frame = ui_tk_simple_style_frame_class_role(
             ButtonToneNeutral, close_hover ? ButtonStateHover : ButtonStateNormal,
             !enabled, 0, section.class_name, StyleKindCollapsible(), 15);
         Style link_style = ui_unpack_style(
             ui_style_apply_effects_frame(link_frame).value);
-        int close_font = link_style.font_size > 0.0f
-            ? (int)(link_style.font_size + 0.5f)
-            : font;
+        int close_font = ResolveFont(0, (int)(link_style.font_size + 0.5f),
+                                     font);
         Color text = Fade(item_style.foreground, item_style.opacity);
         Color icon = text;
         Color close_text = Fade(link_style.foreground, link_style.opacity);
@@ -4429,9 +4423,8 @@ RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
         Style label = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){0}, state, 0, 0.0f, 0.0f,
             nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 6).value);
-        int font = label.font_size > 0.0f
-            ? (int)(label.font_size + 0.5f)
-            : GetSmallFontSize();
+        int font = ResolveFont(0, (int)(label.font_size + 0.5f),
+                               GetSmallFontSize());
         FocusDebugOverlayPaint paint =
             FocusDebugOverlayPaintFor(nodes[i].bounds, TextLineHeight(font),
                                       nodes[i].label != NULL);
