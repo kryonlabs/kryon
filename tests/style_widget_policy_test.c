@@ -56,7 +56,8 @@ main(void)
         .focused = 1,
         .scale = 1.0f,
         .box = frame,
-        .active = frame
+        .active = frame,
+        .label = frame
     };
     SwatchSpec swatch = {
         .bounds = {10, 20, 80, 30},

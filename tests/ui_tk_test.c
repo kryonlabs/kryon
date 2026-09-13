@@ -207,31 +207,61 @@ test_checkbox_paint_geometry_is_stable(void)
         .focused = 0,
         .scale = 1.0f,
         .box = test_style_frame(0x11223344, 0x99AABBCC, 0x01020304),
-        .active = test_style_frame(0x55667788, 0xFFFFFFFF, 0x01020304)
+        .active = test_style_frame(0x55667788, 0xFFFFFFFF, 0x01020304),
+        .label = test_style_frame(0x00000000, 0x99AABBCC, 0x00000000)
     };
     CheckboxPaint unchecked = CheckboxPaintFor(spec);
     CheckboxPaint checked;
     CheckboxPaint unstyled;
-    CheckboxLayout layout = CheckboxLayoutFor(10, 20, 64, 1.0f);
-    CheckboxLayout tall_layout = CheckboxLayoutForText(10, 20, 64, 30, 1.0f);
+    CheckboxSpec custom = spec;
+    CheckboxPaint custom_paint;
+    CheckboxLayout layout = CheckboxLayoutFor(10, 20, 64, 1.0f,
+                                              spec.box, spec.label);
+    CheckboxLayout tall_layout = CheckboxLayoutForText(10, 20, 64, 30,
+                                                       1.0f, spec.box,
+                                                       spec.label);
+    CheckboxLayout custom_layout;
     CheckboxFlagResult flags_on = CheckboxFlagApply(1, 4, true);
     CheckboxFlagResult flags_off = CheckboxFlagApply(5, 4, true);
     CheckboxFlagResult flags_idle = CheckboxFlagApply(5, 4, false);
 
     spec.checked = 1;
     checked = CheckboxPaintFor(spec);
+    custom.box.value.fields |= StylePaddingX | StylePaddingY |
+                               StyleGap | StyleIconSize;
+    custom.box.value.padding_x = 30.0f;
+    custom.box.value.padding_y = 6.0f;
+    custom.box.value.gap = 8.0f;
+    custom.box.value.icon_size = 16.0f;
+    custom.active.value.fields |= StylePaddingX | StyleIconSize;
+    custom.active.value.padding_x = 4.0f;
+    custom.active.value.icon_size = 3.0f;
+    custom.label.value.fields |= StyleGap;
+    custom.label.value.gap = 6.0f;
+    custom_layout = CheckboxLayoutFor(10, 20, 64, 1.0f,
+                                      custom.box, custom.label);
+    custom_paint = CheckboxPaintFor(custom);
 
-    check_int("checkbox slot size", CheckboxSlotSize(1.0f), 22);
-    check_int("checkbox box size", CheckboxBoxSize(1.0f), 20);
+    check_int("checkbox slot size", CheckboxSlotSize(1.0f, spec.box), 22);
+    check_int("checkbox box size", CheckboxBoxSize(1.0f, spec.box), 20);
     check_int("checkbox layout width", (int)layout.bounds.width, 96);
     check_int("checkbox layout label x", (int)layout.label_x, 42);
     check_int("checkbox layout label y", (int)layout.label_y, 20);
     check_int("checkbox tall layout height", (int)tall_layout.bounds.height, 30);
     check_int("checkbox tall layout label y", (int)tall_layout.label_y, 20);
     check_int("checkbox label x helper",
-              (int)CheckboxLabelXFor(layout.slot_bounds, 1.0f), 42);
+              (int)CheckboxLabelXFor(layout.slot_bounds, 1.0f, spec.label),
+              42);
     check_int("checkbox label y helper",
               (int)CheckboxLabelYFor((Rectangle){10, 20, 96, 30}, 14), 28);
+    check_int("checkbox styled slot size",
+              CheckboxSlotSize(1.0f, custom.box), 30);
+    check_int("checkbox styled box size",
+              CheckboxBoxSize(1.0f, custom.box), 16);
+    check_int("checkbox styled layout width",
+              (int)custom_layout.bounds.width, 100);
+    check_int("checkbox styled label x", (int)custom_layout.label_x, 46);
+    check_int("checkbox styled mark width", (int)custom_paint.mark_width, 3);
     check_int("checkbox checked keeps box x", (int)checked.box_bounds.x,
               (int)unchecked.box_bounds.x);
     check_int("checkbox checked keeps box y", (int)checked.box_bounds.y,

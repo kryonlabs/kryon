@@ -1936,8 +1936,8 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		Scale:   1,
 		Box:     box,
 		Active:  active,
+		Label:   label,
 	})
-	paint.LabelColor = label.Value.Foreground
 	labelStyle := unpackStyle(label.Value)
 	labelFont, labelFontID := styleTextFace(labelStyle, Text14)
 	fill := unpackRGBA(box.Value.Background)
@@ -1949,7 +1949,9 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, Disabled: disabled})
+	labelX := Checkbox_CheckboxLabelXFor(paint.SlotBounds, 1, label)
+	labelY := Checkbox_CheckboxLabelYFor(props.Bounds, float32(labelFont))
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: labelX, Y: labelY, Width: props.Bounds.Width - (labelX - props.Bounds.X), Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, Disabled: disabled})
 	return changed
 }
 

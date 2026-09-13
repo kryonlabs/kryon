@@ -1612,6 +1612,10 @@ Checkbox {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -1653,12 +1657,15 @@ Checkbox[role=Mark] {
   border: accent;
   focus: focus;
   border-width: border;
+  padding-x: 5;
+  icon-size: 2.4;
   opacity: 1;
   material: default;
 }
 
 Checkbox[role=Label] {
   foreground: text;
+  gap: 10;
   font-size: font.md;
   opacity: 1;
   material: default;
@@ -3342,6 +3349,10 @@ Checkbox {
   border: border;
   focus: accent;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -3384,12 +3395,15 @@ Checkbox[role=Mark] {
   border: accent-border;
   focus: accent;
   border-width: border;
+  padding-x: 5;
+  icon-size: 2.4;
   opacity: 1;
   material: default;
 }
 
 Checkbox[role=Label] {
   foreground: text;
+  gap: 10;
   font-size: font;
   opacity: 1;
   material: default;
@@ -5107,6 +5121,10 @@ Checkbox {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -5147,12 +5165,15 @@ Checkbox[role=Mark] {
   border: accent;
   focus: focus;
   border-width: border;
+  padding-x: 5;
+  icon-size: 2.4;
   opacity: 1;
   material: default;
 }
 
 Checkbox[role=Label] {
   foreground: text;
+  gap: 10;
   font-size: font.md;
   opacity: 1;
   material: default;
@@ -6952,6 +6973,10 @@ Checkbox {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: glow;
 }
@@ -6997,12 +7022,15 @@ Checkbox[role=Mark] {
   border: accent-hover;
   focus: focus;
   border-width: border;
+  padding-x: 5;
+  icon-size: 2.4;
   opacity: 1;
   material: glow;
 }
 
 Checkbox[role=Label] {
   foreground: text;
+  gap: 10;
   font-size: font.md;
   opacity: 1;
   material: glow;
@@ -8762,6 +8790,10 @@ Checkbox {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 22;
+  padding-y: 3;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: premium;
 }
@@ -8806,12 +8838,15 @@ Checkbox[role=Mark] {
   border: accent-border;
   focus: focus;
   border-width: border;
+  padding-x: 5;
+  icon-size: 2.4;
   opacity: 1;
   material: premium;
 }
 
 Checkbox[role=Label] {
   foreground: text;
+  gap: 10;
   font-size: font;
   opacity: 1;
   material: premium;

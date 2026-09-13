@@ -779,7 +779,12 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     CheckboxLayout layout = CheckboxLayoutForText((float)x, (float)y,
                                                   (float)label_w,
                                                   (float)TextLineHeight(font),
-                                                  runtime_scale);
+                                                  runtime_scale,
+                                                  ui_checkbox_style_frame(
+                                                      ButtonToneNeutral,
+                                                      disabled ? ButtonStateDisabled : ButtonStateNormal,
+                                                      disabled, checked),
+                                                  label_frame);
     Rectangle bounds = layout.bounds;
     Vector2 mouse_world = ui_mouse_world();
     int pressed;
@@ -830,7 +835,11 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             font = (int)(label_style.font_size + 0.5f);
         layout = CheckboxLayoutForText((float)x, (float)y, (float)label_w,
                                        (float)TextLineHeight(font),
-                                       runtime_scale);
+                                       runtime_scale,
+                                       ui_checkbox_style_frame(
+                                           ButtonToneNeutral, state, disabled,
+                                           checked),
+                                       label_frame);
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = bounds,
             .checked = checked,
@@ -842,7 +851,8 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             .box = ui_checkbox_style_frame(ButtonToneNeutral, state, disabled,
                                            checked),
             .active = ui_checkbox_style_frame(ButtonToneAccent, state,
-                                              disabled, checked)
+                                              disabled, checked),
+            .label = label_frame
         });
         paint.label_color = Opacity(ColorToInt(label_style.foreground),
                                     label_style.opacity);

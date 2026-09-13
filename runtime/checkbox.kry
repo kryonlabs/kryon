@@ -1,4 +1,5 @@
 #module "checkbox"
+#import "control_props"
 #import "drawing_props"
 #import "style"
 #import "surface"
@@ -13,6 +14,7 @@ CheckboxSpec :: struct {
     scale: float
     box: StyleFrame
     active: StyleFrame
+    label: StyleFrame
 }
 
 CheckboxPaint :: struct {
@@ -56,19 +58,26 @@ CheckboxFlagResult :: struct {
     changed: bool
 }
 
-CheckboxSlotSize :: (scale: float) -> i32 #export {
+CheckboxSlotSize :: (scale: float, box: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(22.0 * scale)
+    size: float = box.value.padding_x
+    if size <= 0.0 { size = 22.0 }
+    return (i32)(size * scale)
 }
 
-CheckboxBoxSize :: (scale: float) -> i32 #export {
+CheckboxBoxSize :: (scale: float, box: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(20.0 * scale)
+    size: float = box.value.icon_size
+    if size <= 0.0 { size = 20.0 }
+    return (i32)(size * scale)
 }
 
-CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float) -> float #export {
+CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float,
+    label: StyleFrame) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
-    return slot_bounds.x + (float)CheckboxSlotSize(scale) + 10.0 * scale
+    gap: float = label.value.gap
+    if gap <= 0.0 { gap = 10.0 }
+    return slot_bounds.x + slot_bounds.width + gap * scale
 }
 
 CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float) -> float #export {
@@ -76,28 +85,31 @@ CheckboxLabelYFor :: (bounds: Rectangle, text_line_height: float) -> float #expo
 }
 
 CheckboxLayoutForText :: (x: float, y: float, label_width: float,
-    text_line_height: float, scale: float) -> CheckboxLayout #export {
+    text_line_height: float, scale: float, box: StyleFrame,
+    label: StyleFrame) -> CheckboxLayout #export {
     layout: CheckboxLayout
     if scale <= 0.0 { scale = 1.0 }
-    slot_size: float = (float)CheckboxSlotSize(scale)
+    slot_size: float = (float)CheckboxSlotSize(scale, box)
+    gap: float = label.value.gap
+    if gap <= 0.0 { gap = 10.0 }
     layout.bounds.x = x
     layout.bounds.y = y
-    layout.bounds.width = slot_size + 10.0 * scale + label_width
+    layout.bounds.width = slot_size + gap * scale + label_width
     layout.bounds.height = slot_size
     if layout.bounds.height < text_line_height {
         layout.bounds.height = text_line_height
     }
     layout.slot_bounds = layout.bounds
     layout.slot_bounds.width = slot_size
-    layout.label_x = CheckboxLabelXFor(layout.slot_bounds, scale)
+    layout.label_x = CheckboxLabelXFor(layout.slot_bounds, scale, label)
     layout.label_y = CheckboxLabelYFor(layout.bounds, text_line_height)
     return layout
 }
 
 CheckboxLayoutFor :: (x: float, y: float, label_width: float,
-    scale: float) -> CheckboxLayout #export {
+    scale: float, box: StyleFrame, label: StyleFrame) -> CheckboxLayout #export {
     return CheckboxLayoutForText(x, y, label_width,
-        (float)CheckboxSlotSize(scale), scale)
+        (float)CheckboxSlotSize(scale, box), scale, box, label)
 }
 
 CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult #export {
@@ -122,10 +134,20 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
 
-    slot_size: float = (float)CheckboxSlotSize(scale)
-    box_size: float = (float)CheckboxBoxSize(scale)
-    state_outset: float = 4.0 * scale
-    focus_outset: float = 3.0 * scale
+    slot_size: float = (float)CheckboxSlotSize(scale, spec.box)
+    box_size: float = (float)CheckboxBoxSize(scale, spec.box)
+    state_outset: float = spec.box.value.gap
+    focus_outset: float = spec.box.value.padding_y
+    mark_inset: float = spec.active.value.padding_x
+    mark_width: float = spec.active.value.icon_size
+    if state_outset <= 0.0 { state_outset = 4.0 }
+    if focus_outset <= 0.0 { focus_outset = 3.0 }
+    if mark_inset <= 0.0 { mark_inset = 5.0 }
+    if mark_width <= 0.0 { mark_width = 2.4 }
+    state_outset *= scale
+    focus_outset *= scale
+    mark_inset *= scale
+    mark_width *= scale
     border_width: float = spec.box.value.border_width * scale
 
     paint.bounds = spec.bounds
@@ -149,12 +171,12 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     paint.focus_bounds.width = paint.box_bounds.width + focus_outset * 2.0
     paint.focus_bounds.height = paint.box_bounds.height + focus_outset * 2.0
 
-    paint.check_start.x = paint.box_bounds.x + 5.0 * scale
+    paint.check_start.x = paint.box_bounds.x + mark_inset
     paint.check_start.y = paint.box_bounds.y + paint.box_bounds.height * 0.53
     paint.check_middle.x = paint.box_bounds.x + paint.box_bounds.width * 0.42
-    paint.check_middle.y = paint.box_bounds.y + paint.box_bounds.height - 5.0 * scale
-    paint.check_end.x = paint.box_bounds.x + paint.box_bounds.width - 5.0 * scale
-    paint.check_end.y = paint.box_bounds.y + 5.0 * scale
+    paint.check_middle.y = paint.box_bounds.y + paint.box_bounds.height - mark_inset
+    paint.check_end.x = paint.box_bounds.x + paint.box_bounds.width - mark_inset
+    paint.check_end.y = paint.box_bounds.y + mark_inset
 
     paint.box = spec.box
     paint.active = spec.active
@@ -165,13 +187,16 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
         spec.pressed ? 0.14 : (spec.hovered ? 0.08 : 0.10))
     paint.focus_color = spec.box.value.focus
     paint.label_color = spec.box.value.foreground
+    if (spec.label.value.fields & (u32)StyleForeground) != (u32)0 {
+        paint.label_color = spec.label.value.foreground
+    }
 
     paint.radius = 0.18
     paint.state_radius = 0.28
     paint.focus_radius = 0.26
     paint.border_width = border_width
     if paint.border_width < 0.0 { paint.border_width = 0.0 }
-    paint.mark_width = 2.4 * scale
+    paint.mark_width = mark_width
 
     paint.show_fill = spec.checked
     paint.show_mark = spec.checked

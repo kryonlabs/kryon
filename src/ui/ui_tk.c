@@ -955,6 +955,8 @@ RenderCheckbox(CheckboxProps checkbox)
         ButtonState state = ui_tk_checkbox_button_state(hovered, down,
                                                         focused, disabled);
         CheckboxPaint paint;
+        StyleFrame label_frame = ui_tk_checkbox_style_frame(
+            ButtonToneNeutral, state, disabled, checked, checkbox.class_name, 6);
 
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = checkbox.bounds,
@@ -969,11 +971,11 @@ RenderCheckbox(CheckboxProps checkbox)
                                               checkbox.class_name, 9),
             .active = ui_tk_checkbox_style_frame(ButtonToneAccent, state,
                                                  disabled, checked,
-                                                 checkbox.class_name, 10)
+                                                 checkbox.class_name, 10),
+            .label = label_frame
         });
         Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
-            ui_tk_checkbox_style_frame(ButtonToneNeutral, state, disabled,
-                                       checked, checkbox.class_name, 6)).value);
+            label_frame).value);
         int label_font = label_style.font_size > 0.0f
             ? (int)(label_style.font_size + 0.5f)
             : GetFontSize();
@@ -998,7 +1000,8 @@ RenderCheckbox(CheckboxProps checkbox)
             DrawLineEx(paint.check_middle, paint.check_end, paint.mark_width,
                        GetColor(paint.mark_color));
         }
-        float label_x = CheckboxLabelXFor(paint.slot_bounds, runtime_scale);
+        float label_x = CheckboxLabelXFor(paint.slot_bounds, runtime_scale,
+                                          label_frame);
         float label_y = CheckboxLabelYFor(checkbox.bounds,
                                           (float)TextLineHeight(label_font));
         RenderText(checkbox.label != NULL ? checkbox.label : "",
