@@ -10,6 +10,7 @@ main(void)
     ScrollMetrics metrics = ScrollMetricsFor(2.0f, track, thumb);
     ScrollPolicyView view;
     ScrollBarPaint paint;
+    Rectangle content;
 
     assert(metrics.scrollbar_width == 20);
     assert(metrics.reserved_width == 32);
@@ -31,6 +32,16 @@ main(void)
     assert(ScrollSafeContentWidth(10, 200, 260, 5, metrics) == 200);
     assert(ScrollSafeContentWidth(10, 300, 260, 5, metrics) == 210);
     assert(ScrollSafeContentWidth(250, 100, 260, 5, metrics) == 0);
+    content = ScrollScopeContentBounds((Rectangle){10, 20, 120, 80}, 0,
+                                       metrics);
+    assert((int)content.width == 120);
+    content = ScrollScopeContentBounds((Rectangle){10, 20, 120, 80}, 1,
+                                       metrics);
+    assert((int)content.width == 100);
+    assert(ScrollWheelOffsetFor(50, 1.0f, 200,
+                                metrics.default_wheel_step) == 0);
+    assert(ScrollWheelOffsetFor(50, -1.0f, 200,
+                                metrics.default_wheel_step) == 134);
 
     metrics = ScrollMetricsFor(1.0f, track, thumb);
     view = ScrollMeasure((Rectangle){0, 20, 320, 100}, 260, 12, 280, 40,
@@ -62,6 +73,7 @@ main(void)
     assert((int)paint.thumb_bounds.height == 38);
     assert(paint.track_span == 62);
     assert(paint.scroll_per_pixel > 2.58f && paint.scroll_per_pixel < 2.59f);
+    assert(ScrollDragOffsetFor(66.0f, 20.0f, 8.0f, 160, paint) == 98);
 
     paint = ScrollBarPaintFor(300, 20, 40, 400, 999, 360, metrics);
     assert((int)paint.thumb_bounds.y == 44);

@@ -97,6 +97,31 @@ ScrollSafeContentWidth :: (content_x: i32, content_width: i32,
     return safe_width
 }
 
+ScrollScopeContentBounds :: (bounds: Rectangle, has_scroll: bool,
+    metrics: ScrollMetrics) -> Rectangle #export {
+    content: Rectangle = bounds
+    if has_scroll {
+        content.width = bounds.width - (float)metrics.scrollbar_width
+        if content.width < 0.0 { content.width = 0.0 }
+    }
+    return content
+}
+
+ScrollWheelOffsetFor :: (scroll_offset: i32, wheel_move: float,
+    max_scroll: i32, wheel_step: i32) -> i32 #export {
+    delta: i32 = (i32)(wheel_move * (float)wheel_step)
+    return ScrollClamp(scroll_offset - delta, max_scroll)
+}
+
+ScrollDragOffsetFor :: (mouse_y: float, track_y: float, grab_y: float,
+    max_scroll: i32, paint: ScrollBarPaint) -> i32 #export {
+    if paint.scroll_per_pixel <= 0.0 {
+        return ScrollClamp(0, max_scroll)
+    }
+    offset: i32 = (i32)((mouse_y - track_y - grab_y) * paint.scroll_per_pixel)
+    return ScrollClamp(offset, max_scroll)
+}
+
 ScrollMeasure :: (bounds: Rectangle, content_height: i32, content_x: i32,
     content_width: i32, scroll_offset: i32, scrollbar_x: i32,
     metrics: ScrollMetrics) -> ScrollPolicyView #export {

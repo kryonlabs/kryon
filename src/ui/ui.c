@@ -13,6 +13,7 @@
 #include "runtime/focus.h"
 #include "runtime/link.h"
 #include "runtime/paragraph.h"
+#include "runtime/scroll.h"
 #include "runtime/surface.h"
 #include "runtime/text_input.h"
 #include "kry_uri.h"
@@ -49,6 +50,14 @@ ui_rect(float x, float y, float width, float height)
     rect.width = width;
     rect.height = height;
     return rect;
+}
+
+static ScrollMetrics
+ui_scope_scroll_metrics(void)
+{
+    StyleFrame track = {0};
+    StyleFrame thumb = {0};
+    return ScrollMetricsFor((float)GetScale(), track, thumb);
 }
 
 #if defined(PLATFORM_WEB)
@@ -516,42 +525,53 @@ ui_disabled_resume(DisabledScopeState scope)
 Rectangle
 ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
 {
-    int max_scroll = content_height - (int)bounds.height;
+    ScrollMetrics metrics = ui_scope_scroll_metrics();
+    int max_scroll = ScrollMax(content_height, (int)bounds.height);
     int offset = 0;
     Rectangle content = bounds;
     Vector2 mouse = ui_mouse_world();
-    if(max_scroll < 0)
-        max_scroll = 0;
     if(scroll_offset != NULL) {
-        *scroll_offset = ui_clampi(*scroll_offset, 0, max_scroll);
+        *scroll_offset = ScrollClamp(*scroll_offset, max_scroll);
         if(CheckCollisionPointRec(mouse, bounds) && !InputCapturesClick(mouse) &&
            g_scroll_wheel_frame != g_ui_frame_serial && GetMouseWheelMove() != 0) {
-            *scroll_offset = ui_clampi(*scroll_offset - (int)(GetMouseWheelMove() * 42), 0, max_scroll);
+            *scroll_offset = ScrollWheelOffsetFor(*scroll_offset,
+                                                  GetMouseWheelMove(),
+                                                  max_scroll,
+                                                  metrics.default_wheel_step);
             g_scroll_wheel_frame = g_ui_frame_serial;
         }
-        if(max_scroll > 0 && bounds.width > 10 && bounds.height > 0) {
-            Rectangle track = {bounds.x+bounds.width-10, bounds.y, 10, bounds.height};
-            float thumb_h = bounds.height*bounds.height/content_height;
-            if(thumb_h < 16) thumb_h = 16;
-            if(thumb_h > bounds.height) thumb_h = bounds.height;
-            float travel = bounds.height-thumb_h;
-            float thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
+        if(max_scroll > 0 && bounds.width > metrics.scrollbar_width &&
+           bounds.height > 0) {
+            int scrollbar_x = (int)(bounds.x + bounds.width) -
+                              metrics.scrollbar_width;
+            ScrollBarPaint paint = ScrollBarPaintFor(
+                scrollbar_x, (int)bounds.y, (int)bounds.height,
+                content_height, *scroll_offset, max_scroll, metrics);
             if(!ContentDisabled() && !InputCapturesClick(mouse) &&
-               CheckCollisionPointRec(mouse, track) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+               CheckCollisionPointRec(mouse, paint.track_bounds) &&
+               IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 g_scroll_drag_offset = scroll_offset;
-                g_scroll_drag_grab = mouse.y >= thumb_y && mouse.y < thumb_y+thumb_h
-                    ? mouse.y-thumb_y : thumb_h/2;
+                g_scroll_drag_grab =
+                    CheckCollisionPointRec(mouse, paint.thumb_bounds)
+                        ? mouse.y - paint.thumb_bounds.y
+                        : paint.thumb_bounds.height / 2;
             }
             if(g_scroll_drag_offset == scroll_offset) {
                 if(ContentDisabled()) g_scroll_drag_offset = NULL;
-                else if(travel > 0 && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
-                    *scroll_offset = ui_clampi((int)((mouse.y-bounds.y-g_scroll_drag_grab)*max_scroll/travel),0,max_scroll);
+                else if(paint.track_span > 0 &&
+                        (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ||
+                         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
+                    *scroll_offset = ScrollDragOffsetFor(
+                        mouse.y, paint.track_bounds.y, g_scroll_drag_grab,
+                        max_scroll, paint);
                 if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                     ConsumeRelease();
                     g_scroll_drag_offset = NULL;
                 }
             }
-            thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
+            paint = ScrollBarPaintFor(scrollbar_x, (int)bounds.y,
+                                      (int)bounds.height, content_height,
+                                      *scroll_offset, max_scroll, metrics);
             if(IsWindowReady()) {
                 Style track_style = ui_unpack_style(
                     ui_control_style_frame_kind(
@@ -568,8 +588,7 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                       .pill = 1},
                         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
                         StyleKindScrollThumb()).value);
-                Rectangle thumb = {track.x+2,thumb_y,6,thumb_h};
-                ui_draw_material(track, (Rectangle){0},
+                ui_draw_material(paint.track_bounds, (Rectangle){0},
                                  track_style.background, track_style.border,
                                  track_style.border, track_style.radius,
                                  track_style.border_width, 0.0f, 0.0f, 0,
@@ -577,7 +596,7 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                  track_style.opacity,
                                  ui_style_fill(track_style),
                                  track_style.material);
-                ui_draw_material(thumb, track,
+                ui_draw_material(paint.thumb_bounds, paint.track_bounds,
                                  thumb_style.background, thumb_style.border,
                                  thumb_style.border, thumb_style.radius,
                                  thumb_style.border_width, 0.0f, 0.0f, 0,
@@ -586,8 +605,8 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                  ui_style_fill(thumb_style),
                                  thumb_style.material);
             }
-            bounds.width -= 10;
-            content.width = bounds.width;
+            content = ScrollScopeContentBounds(bounds, 1, metrics);
+            bounds = content;
         }
         offset = *scroll_offset;
     }
