@@ -426,6 +426,8 @@ overscroll and touch-action controls, flex flow, grid tracks, grid auto-flow,
 row/column gaps, placement/self alignment, transforms, containment/container
 queries, will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
+animations, clip/mask paint controls, writing direction/mode, hyphenation,
+line clamping, color scheme, columns/break flow controls,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 

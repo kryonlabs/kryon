@@ -1682,7 +1682,7 @@ const webStyleLayers = {
 
 const webKssColorProperties = new Set([
   "background", "foreground", "border", "focus", "background-end",
-  "accent-color", "caret-color"
+  "accent-color", "caret-color", "outline-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -1706,7 +1706,8 @@ const webKssLengthProperties = new Set([
   "inset-inline-start", "inset-inline-end",
   "inset-block-start", "inset-block-end",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
-  "text-indent", "outline-width", "outline-offset",
+  "text-indent", "outline-width", "outline-offset", "tab-size",
+  "column-count", "column-width",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
   "scroll-margin-bottom", "scroll-margin-left",
   "scroll-margin-inline", "scroll-margin-block",
@@ -1726,7 +1727,8 @@ const webKssLiteralProperties = new Set([
   "typeface", "font-weight", "font-style", "font-variant", "text-align",
   "text-decoration", "text-transform", "text-overflow", "white-space",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
-  "overflow-x", "overflow-y", "box-sizing",
+  "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
+  "hyphens", "line-clamp",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "scroll-snap-type", "scroll-snap-align",
   "scroll-snap-stop", "touch-action",
@@ -1735,13 +1737,22 @@ const webKssLiteralProperties = new Set([
   "grid-template-rows", "grid-auto-flow", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat",
-  "background-clip", "background-origin", "background-attachment", "visibility",
-  "transition", "transition-duration", "transform", "transform-origin",
-  "filter", "backdrop-filter",
+  "background-clip", "background-origin", "background-attachment",
+  "background-blend-mode", "visibility",
+  "transition", "transition-property", "transition-duration",
+  "transition-timing-function", "transition-delay",
+  "animation", "animation-name", "animation-duration",
+  "animation-timing-function", "animation-delay",
+  "animation-iteration-count", "animation-direction",
+  "animation-fill-mode", "animation-play-state",
+  "transform", "transform-origin",
+  "filter", "backdrop-filter", "clip-path",
+  "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
-  "border-style", "outline-style", "box-shadow",
+  "border-style", "outline-style", "box-shadow", "color-scheme",
   "contain", "container-type", "container-name", "will-change",
-  "isolation", "mix-blend-mode"
+  "isolation", "mix-blend-mode", "columns", "column-rule",
+  "break-before", "break-after", "break-inside", "float", "clear"
 ]);
 
 function stripKssComments(source) {
@@ -2287,6 +2298,11 @@ const webCSSPropertyNames = new Map([
   ["overflow-x", "overflow-x"],
   ["overflow-y", "overflow-y"],
   ["box-sizing", "box-sizing"],
+  ["direction", "direction"],
+  ["writing-mode", "writing-mode"],
+  ["tab-size", "tab-size"],
+  ["hyphens", "hyphens"],
+  ["line-clamp", "line-clamp"],
   ["scroll-behavior", "scroll-behavior"],
   ["overscroll-behavior", "overscroll-behavior"],
   ["overscroll-behavior-x", "overscroll-behavior-x"],
@@ -2340,13 +2356,32 @@ const webCSSPropertyNames = new Map([
   ["background-clip", "background-clip"],
   ["background-origin", "background-origin"],
   ["background-attachment", "background-attachment"],
+  ["background-blend-mode", "background-blend-mode"],
   ["visibility", "visibility"],
   ["transition", "transition"],
+  ["transition-property", "transition-property"],
   ["transition-duration", "transition-duration"],
+  ["transition-timing-function", "transition-timing-function"],
+  ["transition-delay", "transition-delay"],
+  ["animation", "animation"],
+  ["animation-name", "animation-name"],
+  ["animation-duration", "animation-duration"],
+  ["animation-timing-function", "animation-timing-function"],
+  ["animation-delay", "animation-delay"],
+  ["animation-iteration-count", "animation-iteration-count"],
+  ["animation-direction", "animation-direction"],
+  ["animation-fill-mode", "animation-fill-mode"],
+  ["animation-play-state", "animation-play-state"],
   ["transform", "transform"],
   ["transform-origin", "transform-origin"],
   ["filter", "filter"],
   ["backdrop-filter", "backdrop-filter"],
+  ["clip-path", "clip-path"],
+  ["mask", "mask"],
+  ["mask-image", "mask-image"],
+  ["mask-size", "mask-size"],
+  ["mask-position", "mask-position"],
+  ["mask-repeat", "mask-repeat"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
   ["appearance", "appearance"],
@@ -2355,13 +2390,24 @@ const webCSSPropertyNames = new Map([
   ["outline-width", "outline-width"],
   ["outline-offset", "outline-offset"],
   ["outline-style", "outline-style"],
+  ["outline-color", "outline-color"],
   ["box-shadow", "box-shadow"],
+  ["color-scheme", "color-scheme"],
   ["contain", "contain"],
   ["container-type", "container-type"],
   ["container-name", "container-name"],
   ["will-change", "will-change"],
   ["isolation", "isolation"],
   ["mix-blend-mode", "mix-blend-mode"],
+  ["columns", "columns"],
+  ["column-count", "column-count"],
+  ["column-width", "column-width"],
+  ["column-rule", "column-rule"],
+  ["break-before", "break-before"],
+  ["break-after", "break-after"],
+  ["break-inside", "break-inside"],
+  ["float", "float"],
+  ["clear", "clear"],
   ["focus", "outline-color"]
 ]);
 
@@ -2369,7 +2415,12 @@ function webStyleCSSValue(name, value) {
   return typeof value === "number" && name !== "opacity" &&
       name !== "font-weight" && name !== "fontWeight" &&
       name !== "line-height" && name !== "lineHeight" &&
-      name !== "z-index" && name !== "zIndex"
+      name !== "z-index" && name !== "zIndex" &&
+      name !== "tab-size" && name !== "tabSize" &&
+      name !== "column-count" && name !== "columnCount" &&
+      name !== "line-clamp" && name !== "lineClamp" &&
+      name !== "webkitLineClamp" &&
+      name !== "animation-iteration-count" && name !== "animationIterationCount"
     ? value + "px" : String(value);
 }
 
@@ -3122,6 +3173,12 @@ function applyResolvedWebStyle(el, style) {
   set("overflowX", style["overflow-x"]);
   set("overflowY", style["overflow-y"]);
   set("boxSizing", style["box-sizing"]);
+  set("direction", style.direction);
+  set("writingMode", style["writing-mode"]);
+  set("tabSize", style["tab-size"]);
+  set("hyphens", style.hyphens);
+  set("lineClamp", style["line-clamp"]);
+  set("webkitLineClamp", style["line-clamp"]);
   set("scrollBehavior", style["scroll-behavior"]);
   set("overscrollBehavior", style["overscroll-behavior"]);
   set("overscrollBehaviorX", style["overscroll-behavior-x"]);
@@ -3175,15 +3232,34 @@ function applyResolvedWebStyle(el, style) {
   set("backgroundClip", style["background-clip"]);
   set("backgroundOrigin", style["background-origin"]);
   set("backgroundAttachment", style["background-attachment"]);
+  set("backgroundBlendMode", style["background-blend-mode"]);
   set("visibility", style.visibility);
   set("transition", style.transition);
+  set("transitionProperty", style["transition-property"]);
   set("transitionDuration", style["transition-duration"]);
+  set("transitionTimingFunction", style["transition-timing-function"]);
+  set("transitionDelay", style["transition-delay"]);
+  set("animation", style.animation);
+  set("animationName", style["animation-name"]);
+  set("animationDuration", style["animation-duration"]);
+  set("animationTimingFunction", style["animation-timing-function"]);
+  set("animationDelay", style["animation-delay"]);
+  set("animationIterationCount", style["animation-iteration-count"]);
+  set("animationDirection", style["animation-direction"]);
+  set("animationFillMode", style["animation-fill-mode"]);
+  set("animationPlayState", style["animation-play-state"]);
   if (!((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
         (offsetY !== undefined && offsetY !== null && offsetY !== "")))
     set("transform", style.transform);
   set("transformOrigin", style["transform-origin"]);
   set("filter", style.filter);
   set("backdropFilter", style["backdrop-filter"]);
+  set("clipPath", style["clip-path"]);
+  set("mask", style.mask);
+  set("maskImage", style["mask-image"]);
+  set("maskSize", style["mask-size"]);
+  set("maskPosition", style["mask-position"]);
+  set("maskRepeat", style["mask-repeat"]);
   set("cursor", style.cursor);
   set("pointerEvents", style["pointer-events"]);
   set("appearance", style.appearance);
@@ -3192,13 +3268,24 @@ function applyResolvedWebStyle(el, style) {
   set("outlineWidth", style["outline-width"]);
   set("outlineOffset", style["outline-offset"]);
   set("outlineStyle", style["outline-style"]);
+  set("outlineColor", style["outline-color"]);
   set("boxShadow", style["box-shadow"]);
+  set("colorScheme", style["color-scheme"]);
   set("contain", style.contain);
   set("containerType", style["container-type"]);
   set("containerName", style["container-name"]);
   set("willChange", style["will-change"]);
   set("isolation", style.isolation);
   set("mixBlendMode", style["mix-blend-mode"]);
+  set("columns", style.columns);
+  set("columnCount", style["column-count"]);
+  set("columnWidth", style["column-width"]);
+  set("columnRule", style["column-rule"]);
+  set("breakBefore", style["break-before"]);
+  set("breakAfter", style["break-after"]);
+  set("breakInside", style["break-inside"]);
+  set("float", style.float);
+  set("clear", style.clear);
   set("--kry-content-offset-x", style["content-offset-x"]);
   set("--kry-content-offset-y", style["content-offset-y"]);
   set("--kry-icon-size", style["icon-size"]);
@@ -3209,7 +3296,7 @@ function applyResolvedWebStyle(el, style) {
     const transform = style.transform ? ` ${webStyleCSSValue("transform", style.transform)}` : "";
     set("transform", `translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))${transform}`);
   }
-  set("outlineColor", style.focus);
+  set("outlineColor", style["outline-color"] ?? style.focus);
   if (style.border || style["border-width"]) {
     el.style.borderStyle = el.style.borderStyle || "solid";
     applied.add("borderStyle");
