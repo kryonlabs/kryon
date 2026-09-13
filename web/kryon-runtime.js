@@ -3764,6 +3764,20 @@ function nthChildPseudoMatches(pseudo, siblings, node) {
   return Number.isInteger(number) && number > 0 && position === number;
 }
 
+function nthLastChildPseudoMatches(pseudo, siblings, node) {
+  const match = String(pseudo || "").match(/^nth-last-child\(([^)]*)\)$/);
+  if (!match)
+    return false;
+  const position = siblings.length - siblings.indexOf(node);
+  const text = match[1].trim().toLowerCase();
+  if (text === "odd")
+    return position % 2 === 1;
+  if (text === "even")
+    return position > 0 && position % 2 === 0;
+  const number = Number(text);
+  return Number.isInteger(number) && number > 0 && position === number;
+}
+
 function selectorStructuralPseudosMatch(selector, node) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
@@ -3783,6 +3797,9 @@ function selectorStructuralPseudosMatch(selector, node) {
         return false;
     } else if (String(pseudo).startsWith("nth-child(")) {
       if (!nthChildPseudoMatches(pseudo, siblings, node))
+        return false;
+    } else if (String(pseudo).startsWith("nth-last-child(")) {
+      if (!nthLastChildPseudoMatches(pseudo, siblings, node))
         return false;
     } else {
       return false;

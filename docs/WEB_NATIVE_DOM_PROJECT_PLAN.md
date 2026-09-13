@@ -208,6 +208,8 @@ the browser receives normal elements, attributes, CSS, and events.
   Kry form-control facts and native browser pseudo/attribute selectors.
 - KSS structural selectors support browser-native `:empty` in CSS export,
   pre-mount Web Document queries, and mounted DOM object queries.
+- KSS structural selectors support browser-native `:nth-last-child(...)`
+  alongside `:nth-child(...)` for CSS export and Kry DOM queries.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
