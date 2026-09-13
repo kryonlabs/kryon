@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/style.h"
 #include "runtime/title_bar.h"
 
 /* Screen header (title bar) widgets. These were split out of modal.c so that
@@ -87,9 +88,8 @@ RenderTitleBarCenteredTitle(const char *title, int height,
 
     if(title == NULL)
         title = "";
-    font = text.font_size > 0.0f
-        ? (int)(text.font_size + 0.5f)
-        : GetTitleFontSize(title, max_w);
+    font = ResolveFont(0, (int)(text.font_size + 0.5f),
+                       GetTitleFontSize(title, max_w));
     title_w = TextWidth(title, font);
     while(TitleBarShouldShrinkTitleFont(title_w, max_w, font, Text12)) {
         font = TitleBarShrinkTitleFontStep(title_w, max_w, font, Text12);
