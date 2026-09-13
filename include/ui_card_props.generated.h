@@ -28,8 +28,6 @@ typedef struct CardProps {
     bool clickable;
     bool disabled;
     bool selected;
-    ButtonTone tone;
-    ButtonEmphasis emphasis;
     ButtonState state;
 } CardProps;
 

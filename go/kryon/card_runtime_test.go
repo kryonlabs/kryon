@@ -8,8 +8,6 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 		ID:        77,
 		ClassName: StyleClassID("elevated"),
 		Clickable: true,
-		Tone:      ButtonToneNeutral,
-		Emphasis:  ButtonEmphasisFilled,
 	}
 
 	button := Card_CardButtonProps(card)
@@ -20,13 +18,11 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 	if button.ClassName != card.ClassName {
 		t.Fatal("card button props must preserve KSS class identity")
 	}
-	if button.Emphasis != ButtonEmphasisFilled {
-		t.Fatal("card button props should keep requested emphasis")
+	if button.Tone != 0 || button.Emphasis != 0 {
+		t.Fatal("card button props should carry no visual tone/emphasis")
 	}
-	plain := Card_CardButtonProps(CardProps{
-		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
-	})
-	if plain.Emphasis != ButtonEmphasisFilled {
+	plain := Card_CardButtonProps(CardProps{})
+	if plain.Tone != 0 || plain.Emphasis != 0 {
 		t.Fatal("plain card should preserve semantics and carry no visual style")
 	}
 }
@@ -39,9 +35,7 @@ func TestCardRuntimeUsesCardStyleFacts(t *testing.T) {
 	}
 
 	r := New(AppConfig{}).(*runtime)
-	button := Card_CardButtonProps(CardProps{
-		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
-	})
+	button := Card_CardButtonProps(CardProps{})
 	cardStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
 		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())
 	buttonStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
@@ -80,8 +74,6 @@ func TestCardRuntimeResolvesClassSelectors(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	button := Card_CardButtonProps(CardProps{
 		ClassName: StyleClassID("primary"),
-		Tone:      ButtonToneNeutral,
-		Emphasis:  ButtonEmphasisFilled,
 	})
 	style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
 		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())

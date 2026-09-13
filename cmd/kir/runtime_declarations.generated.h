@@ -79,8 +79,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    clickable: bool\n"
         "    disabled: bool\n"
         "    selected: bool\n"
-        "    tone: ButtonTone\n"
-        "    emphasis: ButtonEmphasis\n"
         "    state: ButtonState\n"
         "}\n"
     },

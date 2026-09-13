@@ -1533,8 +1533,6 @@ func cardButtonProps(props CardProps) ButtonProps {
 		Bounds:    props.Bounds,
 		ID:        props.ID,
 		ClassName: props.ClassName,
-		Tone:      props.Tone,
-		Emphasis:  props.Emphasis,
 		Disabled:  props.Disabled,
 		Selected:  props.Selected,
 		State:     props.State,

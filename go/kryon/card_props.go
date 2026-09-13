@@ -9,7 +9,5 @@ type CardProps struct {
 	Clickable bool
 	Disabled  bool
 	Selected  bool
-	Tone      ButtonTone
-	Emphasis  ButtonEmphasis
 	State     ButtonState
 }

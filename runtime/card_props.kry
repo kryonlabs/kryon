@@ -8,7 +8,5 @@ CardProps :: struct {
     clickable: bool
     disabled: bool
     selected: bool
-    tone: ButtonTone
-    emphasis: ButtonEmphasis
     state: ButtonState
 }

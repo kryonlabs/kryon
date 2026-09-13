@@ -9,8 +9,6 @@ CardButtonProps :: (card: CardProps) -> ButtonProps #export {
     button.bounds = card.bounds
     if card.clickable { button.id = card.id }
     button.class_name = card.class_name
-    button.tone = card.tone
-    button.emphasis = card.emphasis
     button.size = (ControlSize)ControlSizeLarge
     button.disabled = card.disabled
     button.selected = card.selected
