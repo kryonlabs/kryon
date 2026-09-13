@@ -1703,6 +1703,7 @@ const webKssLiteralProperties = new Set([
   "flex-direction", "flex-wrap", "flex", "grid-template-columns",
   "grid-template-rows", "grid-auto-flow", "place-items", "place-content",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
+  "background-size", "background-position", "background-repeat", "visibility",
   "cursor", "pointer-events", "outline-style", "box-shadow"
 ]);
 
@@ -2023,6 +2024,10 @@ const webCSSPropertyNames = new Map([
   ["object-position", "object-position"],
   ["aspect-ratio", "aspect-ratio"],
   ["image-rendering", "image-rendering"],
+  ["background-size", "background-size"],
+  ["background-position", "background-position"],
+  ["background-repeat", "background-repeat"],
+  ["visibility", "visibility"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
   ["outline-width", "outline-width"],
@@ -2605,6 +2610,10 @@ function applyResolvedWebStyle(el, style) {
   set("objectPosition", style["object-position"]);
   set("aspectRatio", style["aspect-ratio"]);
   set("imageRendering", style["image-rendering"]);
+  set("backgroundSize", style["background-size"]);
+  set("backgroundPosition", style["background-position"]);
+  set("backgroundRepeat", style["background-repeat"]);
+  set("visibility", style.visibility);
   set("cursor", style.cursor);
   set("pointerEvents", style["pointer-events"]);
   set("outlineWidth", style["outline-width"]);
