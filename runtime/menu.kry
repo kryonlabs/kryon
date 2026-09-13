@@ -32,14 +32,13 @@ MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: MenuMetrics
+    row_height: float = 30.0
     if MenuHas(item.value.fields, (u32)StyleFontSize) &&
        MenuHas(item.value.fields, (u32)StylePaddingY) {
-        metrics.row_height = (i32)((item.value.font_size +
-            item.value.padding_y * 2.0) * scale)
-    } else {
-        metrics.row_height = (i32)(30.0 * scale)
+        row_height = item.value.font_size + item.value.padding_y * 2.0
     }
-    if metrics.row_height <= 0 { metrics.row_height = (i32)(30.0 * scale) }
+    metrics.row_height = MenuMetric(item.value.fields,
+        (u32)StyleContentOffset, item.value.offset_y, row_height, scale, false)
     metrics.panel_min_width = MenuMetric(panel.value.fields,
         (u32)StyleContentOffset, panel.value.offset_x, 180.0, scale, false)
     metrics.panel_padding = MenuMetric(panel.value.fields,

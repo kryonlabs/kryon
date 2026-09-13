@@ -408,6 +408,7 @@ MenuItem {
   padding-x: space.3;
   padding-y: space.2;
   offset-x: 88;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2366,6 +2367,7 @@ MenuItem {
   padding-x: space.2;
   padding-y: 8;
   offset-x: 88;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4306,6 +4308,7 @@ MenuItem {
   padding-x: space.3;
   padding-y: 7;
   offset-x: 88;
+  offset-y: 30;
   font-size: font.md;
   opacity: 1;
   material: default;
@@ -6300,6 +6303,7 @@ MenuItem {
   padding-x: space.3;
   padding-y: 7;
   offset-x: 88;
+  offset-y: 30;
   font-size: font.md;
   opacity: 1;
   material: glow;
@@ -8357,6 +8361,7 @@ MenuItem {
   padding-x: space.3;
   padding-y: 7;
   offset-x: 88;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: premium;

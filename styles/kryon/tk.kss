@@ -402,6 +402,7 @@ MenuItem {
   padding-x: space.2;
   padding-y: 8;
   offset-x: 88;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: default;

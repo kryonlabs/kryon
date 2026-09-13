@@ -429,6 +429,7 @@ MenuItem {
   padding-x: space.3;
   padding-y: 7;
   offset-x: 88;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: premium;
