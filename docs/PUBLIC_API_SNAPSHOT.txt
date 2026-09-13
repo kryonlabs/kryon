@@ -1942,7 +1942,6 @@ include/ui_tree.h function Plot
 include/ui_tree.h function Progress
 include/ui_tree.h function Radio
 include/ui_tree.h function ReconcileTree
-include/ui_tree.h function ResolveButtonStyle
 include/ui_tree.h function Ring
 include/ui_tree.h function RouteInput
 include/ui_tree.h function Router

@@ -187,8 +187,6 @@ NodeId HitTestNode(Vector2 point);
 int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 
-Style ResolveButtonStyle(ButtonProps button, ButtonState state);
-
 typedef struct {
     Rectangle bounds;
     int id;
