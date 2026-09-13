@@ -3349,7 +3349,8 @@ func (r *runtime) Progress(props ProgressProps) {
 		StyleSheet_StyleKindProgress(), 6)
 	labelStyle := unpackStyle(labelFrame.Value)
 	font := styleFont(labelStyle, Text14)
-	labelW := float32(runtimeTextWidth(props.Label, font))
+	fontID := styleFontID(labelStyle)
+	labelW := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 6, 1,
 		simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 			StyleSheet_StyleKindProgress(), 4),
@@ -3365,7 +3366,7 @@ func (r *runtime) Progress(props ProgressProps) {
 		if paint.Layout.LabelOnFill {
 			textColor = unpackRGBA(paint.FilledLabelColor)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.Layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, Opacity: labelStyle.Opacity, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.Layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID})
 	}
 }
 
@@ -3418,19 +3419,20 @@ func (r *runtime) Plot(props PlotProps) {
 	}
 	labelWidth := float32(0)
 	font := styleFont(plotStyle, Text14)
+	fontID := styleFontID(plotStyle)
 	if props.Label != "" {
-		labelWidth = float32(runtimeTextWidth(props.Label, font))
+		labelWidth = float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	}
 	overlayWidth := float32(0)
 	if props.Overlay != "" {
-		overlayWidth = float32(runtimeTextWidth(props.Overlay, font))
+		overlayWidth = float32(runtimeTextWidthWithFont(props.Overlay, font, fontID))
 	}
 	text := Plot_PlotTextPaintFor(props.Bounds, labelWidth, overlayWidth, 1, plotFrame, props.Label != "", props.Overlay != "")
 	if props.Label != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font, FontID: fontID})
 	}
 	if props.Overlay != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: text.OverlayBounds, Text: props.Overlay, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.OverlayBounds, Text: props.Overlay, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font, FontID: fontID})
 	}
 }
 
@@ -3810,7 +3812,8 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 	style := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false,
 		false, StyleSheet_StyleKindDrag()).Value)
 	font := styleFont(style, Text14)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font})
+	fontID := styleFontID(style)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID})
 }
 
 func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID int32, formatted string, disabled bool) (*numericInputState, bool, bool) {
@@ -4053,14 +4056,16 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: trackStyle.Foreground, ID: id, Row: component})
 	}
 	labelFont := styleFont(labelStyle, Text14)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, ID: id, Row: component})
+	labelFontID := styleFontID(labelStyle)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: id, Row: component})
 }
 
 func (r *runtime) drawSliderLabel(bounds Rectangle, label string, id int32) {
 	if label != "" {
 		style := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
 		font := styleFont(style, Text14)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, ID: id})
+		fontID := styleFontID(style)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: id})
 	}
 }
 
@@ -5259,6 +5264,7 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 	thumbFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSliderThumb())
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
 	font := styleFont(labelStyle, Text16)
+	fontID := styleFontID(labelStyle)
 	paint := Slider_SliderPaintFor(SliderSpec{
 		Bounds:      Rectangle{X: bounds.X, Y: bounds.Y + 18, Width: bounds.Width, Height: bounds.Height - 18},
 		Ratio:       ratio,
@@ -5267,8 +5273,8 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		ActiveTrack: activeFrame,
 		Thumb:       thumbFrame,
 	})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, ID: id})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidthWithFont(valueText, font, fontID)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, ID: id})
 	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
 	trackOp.ID = id
 	r.record(trackOp)
@@ -5292,8 +5298,9 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
 		props.Disabled || r.contentDisabled(), false, StyleSheet_StyleKindToggle(), 6).Value)
 	labelFont = styleFont(labelStyle, Text16)
-	offWidth := int32(runtimeTextWidth(props.OffLabel, labelFont))
-	onWidth := int32(runtimeTextWidth(props.OnLabel, labelFont))
+	labelFontID := styleFontID(labelStyle)
+	offWidth := int32(runtimeTextWidthWithFont(props.OffLabel, labelFont, labelFontID))
+	onWidth := int32(runtimeTextWidthWithFont(props.OnLabel, labelFont, labelFontID))
 	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
 		bounds.Width = minW
 	}
@@ -5346,6 +5353,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	})
 	if paint.HasLabels {
 		labelStyle = unpackStyle(labelFrame.Value)
+		labelFontID = styleFontID(labelStyle)
 		labelColor := packRGBA(labelStyle.Foreground)
 		if checked {
 			paint.OffLabelColor = labelColor
@@ -5371,8 +5379,8 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		activeOp.Selected = true
 		activeOp.Disabled = disabled
 		r.record(activeOp)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Disabled: disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled})
 	} else {
 		if input.Hovered && !disabled {
 			r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+5), Color: unpackRGBA(paint.ThumbGlowColor), ID: props.ID, Hovered: true})

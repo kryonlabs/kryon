@@ -73,28 +73,48 @@ Link { typeface: test-retained-semibold; font-size: 19; foreground: #304050; }
 Toast[role=Label] { typeface: test-retained-semibold; font-size: 18; foreground: #405060; }
 Checkbox[role=Label] { typeface: test-retained-semibold; font-size: 16; foreground: #506070; }
 Separator[role=Label] { typeface: test-retained-semibold; font-size: 15; foreground: #607080; }
+Progress[role=Label] { typeface: test-retained-semibold; font-size: 14; foreground: #708090; }
+Plot { typeface: test-retained-semibold; font-size: 13; foreground: #8090a0; }
+Slider[role=Label] { typeface: test-retained-semibold; font-size: 12; foreground: #90a0b0; }
+Toggle[role=Label] { typeface: test-retained-semibold; font-size: 11; foreground: #a0b0c0; }
+Drag { typeface: test-retained-semibold; font-size: 10; foreground: #b0c0d0; }
 `, "Retained Text Face", "") {
 		t.Fatal("style pack did not register")
 	}
 
 	rt := New(AppConfig{Width: 420, Height: 260}).(*runtime)
 	checked := int32(0)
+	toggled := int32(0)
+	sliderValues := []float32{0.5}
+	dragValues := []float32{2}
 	rt.BeginFrame()
 	rt.Heading(HeadingProps{Text: "Title"})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
 	rt.Link(LinkProps{Text: "Docs"})
 	rt.Separator(SeparatorProps{Bounds: Rectangle{Width: 160, Height: 24}, Label: "Group"})
 	rt.Checkbox(CheckboxProps{Bounds: Rectangle{Width: 160, Height: 32}, Label: "Check", Value: &checked})
+	rt.Progress(ProgressProps{Bounds: Rectangle{Width: 180, Height: 24}, Min: 0, Max: 100, Value: 35, Label: "Loading"})
+	rt.Plot(PlotProps{Bounds: Rectangle{Width: 180, Height: 60}, Label: "Trend", Overlay: "Now", Values: []float32{1, 3}, ValueCount: 2})
+	rt.Slider(SliderProps{Bounds: Rectangle{Width: 180, Height: 42}, ID: 301, Label: "Gain", FloatValues: sliderValues, ValueCount: 1, Min: 0, Max: 1})
+	rt.Toggle(ToggleProps{Bounds: Rectangle{Width: 0, Height: 0}, ID: 302, Value: &toggled, OffLabel: "Off", OnLabel: "On"})
+	rt.Drag(DragProps{Bounds: Rectangle{Width: 180, Height: 32}, ID: 303, Label: "Drag", FloatValues: dragValues, ValueCount: 1, Min: 0, Max: 10})
 	rt.Toast(ToastProps{Message: "Saved", Seconds: 1})
 	rt.EndFrame()
 
 	want := map[string]bool{
-		"Title": false,
-		"Body":  false,
-		"Docs":  false,
-		"Group": false,
-		"Check": false,
-		"Saved": false,
+		"Title":   false,
+		"Body":    false,
+		"Docs":    false,
+		"Group":   false,
+		"Check":   false,
+		"Loading": false,
+		"Trend":   false,
+		"Now":     false,
+		"Gain":    false,
+		"Off":     false,
+		"On":      false,
+		"Drag":    false,
+		"Saved":   false,
 	}
 	for _, op := range rt.FrameOps() {
 		if op.Kind != FrameOpText {
