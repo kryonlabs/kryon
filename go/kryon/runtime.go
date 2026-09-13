@@ -2605,6 +2605,7 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 		labelInset = 8
 	}
 	font := styleFont(style, Text14)
+	fontID := styleFontID(style)
 	paint := Selectable_SelectablePaintFor(SelectableSpec{
 		Bounds:     props.Bounds,
 		Selected:   selected,
@@ -2616,7 +2617,7 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	if paint.DrawFill {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.FillColor), Opacity: style.Opacity, Disabled: props.Disabled})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.LabelX, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - labelInset*2, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.LabelX, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - labelInset*2, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
 	return pressed
 }
 
@@ -2663,6 +2664,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	paint.LabelColor = label.Value.Foreground
 	labelStyle := unpackStyle(label.Value)
 	labelFont := styleFont(labelStyle, Text14)
+	labelFontID := styleFontID(labelStyle)
 	fill := unpackRGBA(box.Value.Background)
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
@@ -2672,7 +2674,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, Disabled: disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, Disabled: disabled})
 	return changed
 }
 
@@ -2733,14 +2735,15 @@ func (r *runtime) Separator(props SeparatorProps) {
 	if font <= 0 {
 		font = styleFont(unpackStyle(frame.Value), Text14)
 	}
-	labelWidth := float32(runtimeTextWidth(props.Label, font))
+	labelStyle := unpackStyle(frame.Value)
+	fontID := styleFontID(labelStyle)
+	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
 	lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
 		StyleSheet_StyleKindSeparator(), 7)
 	paint.LineColor = lineFrame.Value.Background
 	if paint.ShowText {
-		labelStyle := unpackStyle(frame.Value)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: labelStyle.Opacity, FontSize: font, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, Disabled: props.Disabled})
 	}
 	if paint.ShowLine {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.LineColor), Disabled: props.Disabled})
@@ -4973,19 +4976,20 @@ func (r *runtime) Heading(props HeadingProps) {
 	if font <= 0 {
 		font = styleFont(style, Text24)
 	}
+	fontID := styleFontID(style)
 	color := props.Color
 	if color.A == 0 {
 		color = style.Foreground
 	}
 	bounds := props.Bounds
 	if bounds.Width <= 0 {
-		bounds.Width = float32(runtimeTextWidth(props.Text, font))
+		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
 	}
 	if bounds.Height <= 0 {
 		bounds.Height = float32(font)
 	}
 	bounds = r.layoutRect(bounds)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
 }
 func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	style := defaultTextStyleForKind(Text16, StyleSheet_StyleKindParagraphText())
@@ -4993,6 +4997,7 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	if font <= 0 {
 		font = styleFont(style, Text16)
 	}
+	fontID := styleFontID(style)
 	color := props.Color
 	if color.A == 0 {
 		color = style.Foreground
@@ -5002,7 +5007,7 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
 	}
 	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + props.LineGap)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, ID: int32(props.Key), Semantic: SemanticParagraph})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: int32(props.Key), Semantic: SemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {
 	state := ButtonStateNormal
@@ -5015,9 +5020,10 @@ func (r *runtime) Link(props LinkProps) bool {
 	if font <= 0 {
 		font = styleFont(linkStyle, Text16)
 	}
+	fontID := styleFontID(linkStyle)
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 {
-		bounds.Width = float32(runtimeTextWidth(props.Text, font))
+		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
 	}
 	if bounds.Height <= 0 {
 		bounds.Height = float32(font + 4)
@@ -5031,7 +5037,7 @@ func (r *runtime) Link(props LinkProps) bool {
 	}
 	appearance := Link_ResolveLinkAppearance(frame, false, props.Disabled)
 	color := unpackRGBA(appearance.Color)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: linkStyle.Opacity, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: linkStyle.Opacity, FontSize: font, FontID: fontID, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
 }
 func (r *runtime) Flow(props FlowProps) {
@@ -5450,6 +5456,13 @@ func styleFont(style Style, fallback int32) int32 {
 		return font
 	}
 	return fallback
+}
+
+func styleFontID(style Style) uint32 {
+	if style.Fields&StyleTypeface == 0 {
+		return 0
+	}
+	return registeredTypeface(style.Typeface)
 }
 
 func modalActionLabel(action ModalAction, index, count int) string {
@@ -6193,10 +6206,11 @@ func (r *runtime) recordToast() {
 	if labelFont <= 0 {
 		labelFont = Text14
 	}
-	textWidth := int32(runtimeTextWidth(r.toastMessage, labelFont))
+	labelFontID := styleFontID(label)
+	textWidth := int32(runtimeTextWidthWithFont(r.toastMessage, labelFont, labelFontID))
 	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, labelFont, metrics)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: surface.Background, BorderColor: surface.Border, Radius: surface.Radius, BorderWidth: surface.BorderWidth, Material: MaterialKind(surface.Material), Opacity: surface.Opacity})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, Opacity: label.Opacity, FontSize: labelFont})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, Opacity: label.Opacity, FontSize: labelFont, FontID: labelFontID})
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -6240,14 +6254,16 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	labelStyle := unpackStyle(label.Value)
 	labelFont := styleFont(labelStyle, Text16)
 	markFont := styleFont(markStyle, Text16)
+	labelFontID := styleFontID(labelStyle)
+	markFontID := styleFontID(markStyle)
 	mark := Radio_RadioMarkText(props.Checked)
 	markColor := unpackRGBA(paint.RingColor)
 	if props.Checked {
 		markColor = unpackRGBA(paint.FillColor)
 	}
 	labelColor := unpackRGBA(paint.LabelColor)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, FontID: markFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	if input.Activated {
 		return props.ID
 	}
