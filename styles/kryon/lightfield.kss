@@ -689,6 +689,9 @@ Fieldset {
   border: border-soft;
   radius: radius;
   border-width: border;
+  padding-x: 8;
+  padding-y: 8;
+  gap: 9;
   font-size: font;
   opacity: 1;
   material: app;

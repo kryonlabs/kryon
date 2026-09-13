@@ -1,5 +1,6 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
+#include "runtime/fieldset.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
 #include "runtime/slider.h"
@@ -63,6 +64,7 @@ main(void)
         .face = frame
     };
     CheckboxPaint checkbox_paint;
+    FieldsetPaint fieldset_paint;
     SwatchPaint swatch_paint;
     RadioPaint radio_paint;
     ProgressPaint progress_paint;
@@ -118,6 +120,25 @@ main(void)
         fprintf(stderr, "swatch checker alt did not come from style\n");
         return 1;
     }
+    frame.value.padding_x = 12.0f;
+    frame.value.padding_y = 5.0f;
+    frame.value.gap = 7.0f;
+    frame.value.font_size = 14.0f;
+    fieldset_paint = FieldsetPaintFor((Rectangle){20, 30, 120, 60}, 40.0f,
+        1, 1.0f, frame);
+    check_float("fieldset title background padding comes from style",
+                fieldset_paint.title_background.x, 32.0f);
+    check_float("fieldset title background width comes from style",
+                fieldset_paint.title_background.width, 64.0f);
+    check_float("fieldset title background y comes from style",
+                fieldset_paint.title_background.y, 25.0f);
+    check_float("fieldset title text y comes from style",
+                fieldset_paint.title_text.y, 23.0f);
+    check_float("fieldset title height comes from style",
+                fieldset_paint.title_text.height, 14.0f);
+    frame.value.padding_y = 0.0f;
+    frame.value.gap = 0.0f;
+    frame.value.font_size = 0.0f;
     frame.value.padding_x = 10.0f;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
         25, 20.0f, 1.0f, frame, frame, frame);

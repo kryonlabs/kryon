@@ -655,6 +655,9 @@ Fieldset {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 6;
+  padding-y: 6;
+  gap: 7;
   font-size: font;
   opacity: 1;
   material: default;

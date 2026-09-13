@@ -21,10 +21,18 @@ FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
         scale = 1.0
     }
 
-    pad: float = 8.0 * scale
-    title_height: float = 18.0 * scale
-    title_offset_y: float = 8.0 * scale
-    text_offset_y: float = 9.0 * scale
+    pad: float = frame.value.padding_x
+    if pad <= 0.0 { pad = 8.0 }
+    pad *= scale
+    title_height: float = frame.value.font_size
+    if title_height <= 0.0 { title_height = 18.0 }
+    title_height *= scale
+    title_offset_y: float = frame.value.padding_y
+    if title_offset_y <= 0.0 { title_offset_y = 8.0 }
+    title_offset_y *= scale
+    text_offset_y: float = frame.value.gap
+    if text_offset_y <= 0.0 { text_offset_y = 9.0 }
+    text_offset_y *= scale
 
     paint.frame = bounds
     paint.face = frame
