@@ -589,7 +589,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int min_w = ToggleMinimumWidthForStyle(has_labels, off_w, on_w,
                                            runtime_scale, metric_track_frame,
-                                           metric_active_frame);
+                                           metric_active_frame, label_frame);
     int min_h = ToggleMinimumHeightForStyle(runtime_scale, metric_track_frame,
                                             metric_thumb_frame);
     Rectangle bounds;
@@ -675,6 +675,8 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
                                                 track_role),
             .active = ui_toggle_style_frame_role_class(ButtonToneAccent, state,
                                                  !enabled, class_name, 5),
+            .label = ui_toggle_style_frame_role_class(ButtonToneNeutral, state,
+                                                 !enabled, class_name, 6),
             .thumb = ui_toggle_thumb_style_frame_class(track_tone, state,
                                                  !enabled, checked,
                                                  class_name)

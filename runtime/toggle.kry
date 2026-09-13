@@ -20,6 +20,7 @@ ToggleSpec :: struct {
     scale: float
     track: StyleFrame
     active: StyleFrame
+    label: StyleFrame
     thumb: StyleFrame
 }
 
@@ -76,14 +77,16 @@ ToggleThumbSizeForStyle :: (thumb: StyleFrame, checked: bool,
 
 ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
     on_width: i32, scale: float, track: StyleFrame,
-    active: StyleFrame) -> i32 #export {
+    active: StyleFrame, label: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     if !has_labels { return (i32)ToggleTrackWidthForStyle(track, scale) }
     active_gap: float = ToggleMetric(active.value.fields, (u32)StyleGap,
         active.value.gap, 3.0, scale, true)
+    label_pad: float = ToggleMetric(label.value.fields,
+        (u32)StylePaddingX, label.value.padding_x, 16.0, scale, true)
     widest: i32 = off_width
     if on_width > widest { widest = on_width }
-    return (widest + (i32)(16.0 * scale)) * 2 +
+    return (widest + (i32)label_pad) * 2 +
         (i32)(active_gap * 2.0)
 }
 
@@ -105,7 +108,8 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     if scale <= 0.0 { scale = 1.0 }
     bounds: Rectangle = spec.bounds
     min_w: float = (float)ToggleMinimumWidthForStyle(spec.has_labels,
-        spec.off_width, spec.on_width, scale, spec.track, spec.active)
+        spec.off_width, spec.on_width, scale, spec.track, spec.active,
+        spec.label)
     min_h: float = (float)ToggleMinimumHeightForStyle(scale, spec.track,
         spec.thumb)
     if bounds.width < min_w { bounds.width = min_w }

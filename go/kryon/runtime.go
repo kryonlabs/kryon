@@ -4610,11 +4610,13 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		trackRoleForMetrics)
 	activeFrameForMetrics := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,
 		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(), 5)
+	labelFrameForMetrics := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		disabled, false, props.ClassName, StyleSheet_StyleKindToggle(), 6)
 	thumbFrameForMetrics := simpleStyleFrameWithClassRole(trackToneForMetrics, ButtonStateNormal,
 		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggleThumb(),
 		StyleSheet_StyleAny())
 	if minW := float32(Toggle_ToggleMinimumWidthForStyle(hasLabels, offWidth, onWidth,
-		1, trackFrameForMetrics, activeFrameForMetrics)); bounds.Width < minW {
+		1, trackFrameForMetrics, activeFrameForMetrics, labelFrameForMetrics)); bounds.Width < minW {
 		bounds.Width = minW
 	}
 	if minH := float32(Toggle_ToggleMinimumHeightForStyle(1, trackFrameForMetrics,
@@ -4665,6 +4667,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 			props.ClassName, StyleSheet_StyleKindToggle(), trackRole),
 		Active: simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled,
 			checked, props.ClassName, StyleSheet_StyleKindToggle(), 5),
+		Label: labelFrame,
 		Thumb: simpleStyleFrameWithClassRole(trackTone, state, disabled, checked,
 			props.ClassName, StyleSheet_StyleKindToggleThumb(), StyleSheet_StyleAny()),
 	})

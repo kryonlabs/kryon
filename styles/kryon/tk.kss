@@ -1742,6 +1742,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 12;
   font-size: font;
   opacity: 1;
 }

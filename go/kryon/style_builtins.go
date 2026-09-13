@@ -1775,6 +1775,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 16;
   font-size: font.md;
   opacity: 1;
 }
@@ -3736,6 +3737,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 12;
   font-size: font;
   opacity: 1;
 }
@@ -5737,6 +5739,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 16;
   font-size: font.md;
   opacity: 1;
 }
@@ -7814,6 +7817,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 16;
   font-size: font.md;
   opacity: 1;
 }
@@ -9858,6 +9862,7 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  padding-x: 16;
   font-size: font;
   opacity: 1;
 }

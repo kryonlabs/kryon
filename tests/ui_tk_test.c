@@ -20,6 +20,7 @@
 #include "runtime/spinbox.h"
 #include "runtime/tab_bar.h"
 #include "runtime/text_input.h"
+#include "runtime/toggle.h"
 #include "theme.h"
 #include "ui_inspect.h"
 #include "../src/ui/ui_internal.h"
@@ -649,6 +650,36 @@ test_radio_paint_policy(void)
     check_int("radio checked fill", (int)checked.fill_radius, 8);
     check_int("radio disabled ring", (int)disabled.ring_color, 0x333333FF);
     check_int("radio disabled label", (int)disabled.label_color, 0x333333FF);
+}
+
+static void
+test_toggle_paint_policy(void)
+{
+    StyleFrame track = test_style_frame(0x111111FF, 0xFFFFFFFF, 0x222222FF);
+    StyleFrame active = test_style_frame(0x333333FF, 0xFFFFFFFF, 0x444444FF);
+    StyleFrame label = test_style_frame(0, 0xFFFFFFFF, 0);
+    track.value.fields |= StylePaddingX | StylePaddingY | StyleGap;
+    track.value.padding_x = 54.0f;
+    track.value.padding_y = 32.0f;
+    track.value.gap = 4.0f;
+    active.value.fields |= StyleGap;
+    active.value.gap = 3.0f;
+    label.value.fields |= StylePaddingX;
+    label.value.padding_x = 16.0f;
+
+    check_int("toggle unlabeled width",
+              ToggleMinimumWidthForStyle(0, 0, 0, 1.0f, track, active,
+                                          label),
+              54);
+    check_int("toggle label padding width",
+              ToggleMinimumWidthForStyle(1, 18, 22, 1.0f, track, active,
+                                          label),
+              82);
+    label.value.padding_x = 0.0f;
+    check_int("toggle explicit zero label padding",
+              ToggleMinimumWidthForStyle(1, 18, 22, 1.0f, track, active,
+                                          label),
+              50);
 }
 
 static void
@@ -5102,6 +5133,7 @@ main(void)
     test_progress_layout_policy();
     test_selectable_paint_policy();
     test_radio_paint_policy();
+    test_toggle_paint_policy();
     test_list_box_layout_policy();
     test_multi_select_policy();
     test_tab_bar_policy();
