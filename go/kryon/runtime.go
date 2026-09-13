@@ -5771,7 +5771,10 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	}
 	p.Bounds = r.layoutRect(p.Bounds)
 	split := *p.Split
-	metrics := PanedView_PanedViewMetricsFor(1)
+	normalFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		ButtonStateNormal, false, false, p.ClassName,
+		StyleSheet_StyleKindPanedView(), 12)
+	metrics := PanedView_PanedViewMetricsFor(1, normalFrame)
 	limit := PanedView_PanedViewLimit(PanedView_PanedViewSize(p.Bounds, p.Vertical), p.MinFirst, p.MinSecond)
 	split = PanedView_PanedViewClampSplit(split, p.MinFirst, limit)
 	h := PanedView_PanedViewHandleFor(p.Bounds, p.Vertical, split, metrics)

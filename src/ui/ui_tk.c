@@ -4117,7 +4117,11 @@ int
 RenderPanedView(PanedViewProps panes)
 {
     ToolkitStore *toolkit = toolkit_state();
-    PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale());
+    StyleFrame normal_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, panes.class_name,
+        StyleKindPanedView(), 12);
+    PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale(),
+                                                   normal_frame);
     int changed = 0;
     int size = PanedViewSize(panes.bounds, panes.vertical != 0);
     int limit = PanedViewLimit(size, panes.min_first, panes.min_second);
@@ -4152,10 +4156,7 @@ RenderPanedView(PanedViewProps panes)
     handle = PanedViewHandleFor(panes.bounds, panes.vertical != 0,
                                 split, metrics);
     if(IsWindowReady()) {
-        StyleFrame frame = ui_tk_simple_style_frame_class_role(
-            ButtonToneNeutral, ButtonStateNormal, 0, 0, panes.class_name,
-            StyleKindPanedView(), 12);
-        ui_tk_draw_style_frame(handle, (Rectangle){0}, frame, 0, 0, 0, 0);
+        ui_tk_draw_style_frame(handle, (Rectangle){0}, normal_frame, 0, 0, 0, 0);
     }
     return changed;
 }

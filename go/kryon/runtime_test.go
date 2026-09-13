@@ -1968,7 +1968,7 @@ tokens {
   length { radius: 4; border: 2; }
   material { flat: Flat; }
 }
-PanedView[role=Handle] { background: handle; border: edge; radius: radius; border-width: border; material: flat; opacity: 0.8; }
+PanedView[role=Handle] { background: handle; border: edge; radius: radius; border-width: border; icon-size: 8; material: flat; opacity: 0.8; }
 `, "Test Paned", "") || !SetActiveStylePack("test.paned") {
 		t.Fatal("test paned style did not activate")
 	}

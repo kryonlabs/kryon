@@ -2,11 +2,12 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type PanedViewMetrics struct {
 	Grip int32
 }
 
-func PanedView_PanedViewMetricsFor(scale float32) PanedViewMetrics {
+func PanedView_PanedViewMetricsFor(scale float32, handle StyleFrame) PanedViewMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -15,13 +16,22 @@ func PanedView_PanedViewMetricsFor(scale float32) PanedViewMetrics {
 		scale = value_3
 	}
 	var metrics PanedViewMetrics = PanedViewMetrics{}
-	var value_4 float32 = 8.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	metrics.Grip = value_7
-	var value_8 PanedViewMetrics = metrics
-	return value_8
+	var value_4 float32 = handle.Value.IconSize
+	var grip float32 = value_4
+	var value_5 float32 = grip
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 float32 = 8.0
+		grip = value_8
+	}
+	var value_9 float32 = grip
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 * value_10
+	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
+	metrics.Grip = value_12
+	var value_13 PanedViewMetrics = metrics
+	return value_13
 }
 
 func PanedView_PanedViewSize(bounds Rectangle, vertical bool) int32 {

@@ -16,9 +16,12 @@ int
 main(void)
 {
     Rectangle bounds = {10, 20, 240, 80};
-    PanedViewMetrics metrics = PanedViewMetricsFor(2.0f);
-    assert(metrics.grip == 16);
-    assert(PanedViewMetricsFor(0.0f).grip == 8);
+    StyleFrame handle = {0};
+    handle.value.icon_size = 7.0f;
+    PanedViewMetrics metrics = PanedViewMetricsFor(2.0f, handle);
+    assert(metrics.grip == 14);
+    handle.value.icon_size = 0.0f;
+    assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
 
     assert(PanedViewSize(bounds, true) == 240);
     assert(PanedViewSize(bounds, false) == 80);
@@ -33,6 +36,8 @@ main(void)
     assert(PanedViewPointerSplit(bounds, true, 190, 60) == 180);
     assert(PanedViewPointerSplit(bounds, false, 190, 77) == 57);
 
+    handle.value.icon_size = 8.0f;
+    metrics = PanedViewMetricsFor(2.0f, handle);
     check_rect(PanedViewHandleFor(bounds, true, 90, metrics),
                92, 20, 16, 80);
     check_rect(PanedViewHandleFor(bounds, false, 50, metrics),

@@ -714,6 +714,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  icon-size: 8;
   opacity: 1;
   material: premium;
 }

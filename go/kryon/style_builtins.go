@@ -671,6 +671,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 8;
   opacity: 1;
   material: default;
 }
@@ -2420,6 +2421,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: 0;
   border-width: border.none;
+  icon-size: 8;
   opacity: 1;
   material: default;
 }
@@ -4127,6 +4129,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 8;
   opacity: 1;
   material: default;
 }
@@ -5913,6 +5916,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 8;
   opacity: 1;
   material: glow;
 }
@@ -7739,6 +7743,7 @@ PanedView[role=Handle] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  icon-size: 8;
   opacity: 1;
   material: premium;
 }
