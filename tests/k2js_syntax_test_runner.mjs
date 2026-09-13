@@ -2870,6 +2870,16 @@ function fakeDocument() {
       { nodeName: "mark", path: "Page/mark" });
     runtime.widget(nativeRt, "Time", { text: "2026-09-13", datetime: "2026-09-13" }, null,
       { nodeName: "time", path: "Page/time" });
+    runtime.widget(nativeRt, "Address", { text: "hello@example.test" }, null,
+      { nodeName: "nativeAddress", path: "Page/address" });
+    runtime.widget(nativeRt, "Small", { text: "Fine print" }, null,
+      { nodeName: "nativeSmall", path: "Page/small" });
+    runtime.widget(nativeRt, "DescriptionList", {}, null,
+      { nodeName: "nativeDescriptionList", path: "Page/descriptions" });
+    runtime.widget(nativeRt, "DescriptionTerm", { text: "DOM" }, null,
+      { nodeName: "nativeDescriptionTerm", path: "Page/descriptions/dom", parentPath: "Page/descriptions" });
+    runtime.widget(nativeRt, "DescriptionDetails", { text: "Document Object Model" }, null,
+      { nodeName: "nativeDescriptionDetails", path: "Page/descriptions/dom/details", parentPath: "Page/descriptions" });
     runtime.widget(nativeRt, "Video", { src: "intro.mp4", poster: "intro.jpg", controls: true, preload: "metadata" }, null,
       { nodeName: "nativeVideo", path: "Page/video" });
     runtime.widget(nativeRt, "Source", { src: "intro.webm", type: "video/webm" }, null,
@@ -3135,6 +3145,13 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Address").tag, "address");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Small").tag, "small");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionList").tag, "dl");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").tag, "dt");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").text, "DOM");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionDetails").tag, "dd");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionDetails").text, "Document Object Model");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").tag, "video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.src, "intro.mp4");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.controls, true);
@@ -3344,6 +3361,11 @@ function fakeDocument() {
     const nativeCite = runtime.findWebElement(nativeTarget, "citeText");
     const nativeMark = runtime.findWebElement(nativeTarget, "mark");
     const nativeTime = runtime.findWebElement(nativeTarget, "time");
+    const nativeAddress = runtime.findWebElement(nativeTarget, "nativeAddress");
+    const nativeSmall = runtime.findWebElement(nativeTarget, "nativeSmall");
+    const nativeDescriptionList = runtime.findWebElement(nativeTarget, "nativeDescriptionList");
+    const nativeDescriptionTerm = runtime.findWebElement(nativeTarget, "nativeDescriptionTerm");
+    const nativeDescriptionDetails = runtime.findWebElement(nativeTarget, "nativeDescriptionDetails");
     const nativeVideo = runtime.findWebElement(nativeTarget, "nativeVideo");
     const nativeVideoSource = runtime.findWebElement(nativeTarget, "nativeVideoSource");
     const nativeVideoTrack = runtime.findWebElement(nativeTarget, "nativeVideoTrack");
@@ -3454,6 +3476,15 @@ function fakeDocument() {
     assert.equal(nativeMark.tagName, "MARK");
     assert.equal(nativeTime.tagName, "TIME");
     assert.equal(nativeTime.attributes.datetime, "2026-09-13");
+    assert.equal(nativeAddress.tagName, "ADDRESS");
+    assert.equal(nativeAddress.textContent, "hello@example.test");
+    assert.equal(nativeSmall.tagName, "SMALL");
+    assert.equal(nativeSmall.textContent, "Fine print");
+    assert.equal(nativeDescriptionList.tagName, "DL");
+    assert.equal(nativeDescriptionTerm.tagName, "DT");
+    assert.equal(nativeDescriptionTerm.textContent, "DOM");
+    assert.equal(nativeDescriptionDetails.tagName, "DD");
+    assert.equal(nativeDescriptionDetails.textContent, "Document Object Model");
     assert.equal(nativeVideo.tagName, "VIDEO");
     assert.equal(nativeVideo.attributes.src, "intro.mp4");
     assert.equal(nativeVideo.attributes.poster, "intro.jpg");
