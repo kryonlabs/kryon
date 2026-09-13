@@ -19,11 +19,15 @@ main(void)
     StyleFrame header = {0};
     StyleFrame tree_header = {0};
     StyleFrame close = {0};
+    header.value.fields = StyleFontSize | StylePaddingX | StylePaddingY |
+                          StyleIconSize;
     header.value.font_size = 14.0f;
     header.value.padding_x = 6.0f;
     header.value.padding_y = 10.0f;
     header.value.icon_size = 18.0f;
+    tree_header.value.fields = StylePaddingX;
     tree_header.value.padding_x = 17.0f;
+    close.value.fields = StyleIconSize;
     close.value.icon_size = 22.0f;
     CollapsibleMetrics metrics = CollapsibleMetricsFor(2.0f, header,
                                                        tree_header, close);
@@ -58,13 +62,30 @@ main(void)
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerClosed), ">") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerOpen), "v") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerLeaf), "•") == 0);
+    header.value.fields = 0;
     header.value.font_size = 0.0f;
     header.value.padding_x = 0.0f;
     header.value.padding_y = 0.0f;
     header.value.icon_size = 0.0f;
+    tree_header.value.fields = 0;
     tree_header.value.padding_x = 0.0f;
+    close.value.fields = 0;
     close.value.icon_size = 0.0f;
-    assert(CollapsibleMetricsFor(0.0f, header, tree_header,
-                                 close).header_height == 32);
+    metrics = CollapsibleMetricsFor(0.0f, header, tree_header, close);
+    assert(metrics.header_height == 32);
+    assert(metrics.depth_indent == 20);
+    assert(metrics.close_width == 28);
+    assert(metrics.icon_offset == 8);
+    assert(metrics.text_offset == 28);
+    header.value.fields = StyleFontSize | StylePaddingX | StylePaddingY |
+                          StyleIconSize;
+    tree_header.value.fields = StylePaddingX;
+    close.value.fields = StyleIconSize;
+    metrics = CollapsibleMetricsFor(1.0f, header, tree_header, close);
+    assert(metrics.header_height == 0);
+    assert(metrics.depth_indent == 0);
+    assert(metrics.close_width == 0);
+    assert(metrics.icon_offset == 0);
+    assert(metrics.text_offset == 0);
     return 0;
 }
