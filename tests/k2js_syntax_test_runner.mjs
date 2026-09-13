@@ -101,6 +101,12 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button#tap-button:focus {
     border: #506070;
   }
+  Button#tap-button:active {
+    outline-color: #708090;
+  }
+  Button#tap-button:focus-visible {
+    caret-color: #8090a0;
+  }
   Button#tap-button:normal {
     outline-width: 5;
   }
@@ -768,12 +774,18 @@ assert.match(webStyleCSS,
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:hover,\[data-kry-state~="hover"\]\):is\(:active,\[aria-pressed="true"\],\[data-kry-state~="pressed"\]\)/);
 assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:active,\[aria-pressed="true"\],\[data-kry-state~="pressed"\]\)/);
+assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:focus,:focus-visible,\[data-kry-state~="focus"\]\)/);
+assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,\[readonly\],\[required\],\[open\],\[selected\],\[aria-pressed="true"\],\[aria-disabled="true"\],\[aria-busy="true"\],\[aria-checked="true"\],\[aria-selected="true"\],\[aria-current\],\[aria-invalid="true"\],\[aria-expanded="true"\],\[data-kry-state\]\)\)/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button:disabled { opacity: 0.5; }
   Button:enabled { cursor: pointer; }
+  Button:active { border-color: #121212; }
+  Button:focus-visible { outline-color: #232323; }
   Selectable:selected { opacity: 0.6; }
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
@@ -788,6 +800,10 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:is\(:disabled,\[aria-disabled="true"\],\[data-kry-state~="disabled"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:is\(:enabled,\[data-kry-state~="enabled"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Button"\]:is\(:active,\[aria-pressed="true"\],\[data-kry-state~="pressed"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Button"\]:is\(:focus,:focus-visible,\[data-kry-state~="focus"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[aria-current\],\[data-kry-state~="selected"\]\)/);
 assert.match(stateSelectorCSS,
@@ -1214,6 +1230,14 @@ assert.equal(runtime.resolveWebStyle({
   ...webDoc.nodes[2],
   state: { ...webDoc.nodes[2].state, hover: true, pressed: true }
 }, webStyleSheet)["border-width"], 7);
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[2],
+  state: { ...webDoc.nodes[2].state, pressed: true }
+}, webStyleSheet)["outline-color"], "#708090");
+assert.equal(runtime.resolveWebStyle({
+  ...webDoc.nodes[2],
+  state: { ...webDoc.nodes[2].state, focus: true }
+}, webStyleSheet)["caret-color"], "#8090a0");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
   Button#tap-button {

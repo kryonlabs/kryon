@@ -2340,14 +2340,16 @@ function parseSimpleSelector(text) {
         selector.not.push(...selectors);
       else
         selector.matches.push(...selectors);
-    } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
-        pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
+    } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "active" ||
+        pseudo === "focus" || pseudo === "focused" || pseudo === "focus-visible" ||
+        pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
         pseudo === "invalid" || pseudo === "expanded" || pseudo === "open" ||
         pseudo === "readonly" || pseudo === "read-only" || pseudo === "required" ||
         pseudo === "enabled" || pseudo === "optional")) {
-      const state = pseudo === "focused" ? "focus" :
-        (pseudo === "read-only" ? "readonly" : pseudo);
+      const state = pseudo === "active" ? "pressed" :
+        (pseudo === "focused" || pseudo === "focus-visible" ? "focus" :
+        (pseudo === "read-only" ? "readonly" : pseudo));
       selector.state = state;
       if (!selector.states.includes(state))
         selector.states.push(state);
@@ -2704,7 +2706,8 @@ function webStyleStateSelectorToCSS(state) {
     return "";
   if (text === "normal")
     return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,[readonly],[required],[open],[selected],[aria-pressed=\"true\"],[aria-disabled=\"true\"],[aria-busy=\"true\"],[aria-checked=\"true\"],[aria-selected=\"true\"],[aria-current],[aria-invalid=\"true\"],[aria-expanded=\"true\"],[data-kry-state]))";
-  const key = text === "focused" ? "focus" : text;
+  const key = text === "active" ? "pressed" :
+    (text === "focused" || text === "focus-visible" ? "focus" : text);
   const mirrored = `[data-kry-state~="${cssEscapeString(key)}"]`;
   const native = {
     hover: [":hover"],
@@ -3350,8 +3353,12 @@ function styleStateMatches(name, state, facts = {}) {
   const key = String(name).toLowerCase();
   if (key === "normal")
     return !Object.values(state || {}).some(Boolean) && !facts.readOnly && !facts.required;
-  if (key === "hover" || key === "pressed" || key === "focus" || key === "focused")
-    return !!state?.[key] || !!state?.[key === "focused" ? "focus" : key];
+  if (key === "hover" || key === "pressed" || key === "active" ||
+      key === "focus" || key === "focused" || key === "focus-visible") {
+    const stateKey = key === "active" ? "pressed" :
+      (key === "focused" || key === "focus-visible" ? "focus" : key);
+    return !!state?.[key] || !!state?.[stateKey];
+  }
   if (key === "enabled")
     return !state?.disabled && !facts.disabled;
   if (key === "readonly" || key === "read-only")
