@@ -94,6 +94,10 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   }
   TextField[maxlength=64] {
     offset-x: 4;
+    margin-x: space.3;
+    margin-y: 2;
+    min-width: 44;
+    max-height: 55;
   }
   TextField[spellcheck=false] {
     offset-y: 6;
@@ -130,7 +134,14 @@ assert.match(webStyleCSS, /padding-right: 13px;/);
 assert.match(webStyleCSS, /--kry-offset-y: 8px;/);
 assert.match(webStyleCSS, /transform: translate\(var\(--kry-offset-x, 0px\), var\(--kry-offset-y, 0px\)\);/);
 assert.match(webStyleCSS, /--kry-content-offset-y: 7px;/);
+assert.match(webStyleCSS, /--kry-content-offset-x: 3px;/);
 assert.match(webStyleCSS, /--kry-icon-size: 14px;/);
+assert.match(webStyleCSS, /margin-left: 13px;/);
+assert.match(webStyleCSS, /margin-right: 13px;/);
+assert.match(webStyleCSS, /margin-top: 2px;/);
+assert.match(webStyleCSS, /margin-bottom: 2px;/);
+assert.match(webStyleCSS, /min-width: 44px;/);
+assert.match(webStyleCSS, /max-height: 55px;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
@@ -476,6 +487,10 @@ assert.equal(webDoc.nodes[3].enterKeyHint, "search");
 assert.equal(webDoc.nodes[3].formNoValidate, true);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-x"], 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["margin-x"], 13);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["margin-y"], 2);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["min-width"], 44);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["max-height"], 55);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-y"], 6);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-y"], 7);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).radius, 4);
@@ -2316,6 +2331,13 @@ function fakeDocument() {
     assert.equal(searchLabel.textContent, "Search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
+    assert.equal(firstField.style.marginLeft, "13px");
+    assert.equal(firstField.style.marginRight, "13px");
+    assert.equal(firstField.style.marginTop, "2px");
+    assert.equal(firstField.style.marginBottom, "2px");
+    assert.equal(firstField.style.minWidth, "44px");
+    assert.equal(firstField.style.maxHeight, "55px");
+    assert.equal(firstField.style["--kry-content-offset-x"], "3px");
     assert.equal(firstField.style["--kry-content-offset-y"], "7px");
     assert.equal(firstField.style["--kry-icon-size"], "14px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");

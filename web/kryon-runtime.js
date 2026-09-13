@@ -1729,7 +1729,17 @@ function parseKssDeclarationValue(name, value, tokens) {
   const property = String(name || "").toLowerCase();
   if (["background", "background-color", "foreground", "color", "border", "border-color", "focus", "focus-color", "background-end", "background_end"].includes(property))
     return tokens.colors.get(key) ?? parsed;
-  if (["radius", "border-width", "border_width", "opacity", "padding-x", "padding_x", "padding-y", "padding_y", "gap", "font-size", "font_size", "icon-size", "icon_size", "offset-x", "offset_x", "offset-y", "offset_y"].includes(property))
+  if ([
+    "radius", "border-width", "border_width", "opacity",
+    "padding", "padding-x", "padding_x", "padding-y", "padding_y",
+    "margin", "margin-x", "margin_x", "margin-y", "margin_y",
+    "width", "height", "min-width", "min_width", "max-width", "max_width",
+    "min-height", "min_height", "max-height", "max_height",
+    "gap", "font-size", "font_size", "icon-size", "icon_size",
+    "offset-x", "offset_x", "offset-y", "offset_y",
+    "content-offset-x", "content_offset_x",
+    "content-offset-y", "content_offset_y"
+  ].includes(property))
     return tokens.lengths.get(key) ?? parsed;
   if (property === "material")
     return tokens.materials.get(key) ?? parsed;
@@ -1926,10 +1936,26 @@ const webCSSPropertyNames = new Map([
   ["border_width", "border-width"],
   ["radius", "border-radius"],
   ["opacity", "opacity"],
+  ["padding", "padding"],
   ["padding-x", "padding-left"],
   ["padding_x", "padding-left"],
   ["padding-y", "padding-top"],
   ["padding_y", "padding-top"],
+  ["margin", "margin"],
+  ["margin-x", "margin-left"],
+  ["margin_x", "margin-left"],
+  ["margin-y", "margin-top"],
+  ["margin_y", "margin-top"],
+  ["width", "width"],
+  ["height", "height"],
+  ["min-width", "min-width"],
+  ["min_width", "min-width"],
+  ["max-width", "max-width"],
+  ["max_width", "max-width"],
+  ["min-height", "min-height"],
+  ["min_height", "min-height"],
+  ["max-height", "max-height"],
+  ["max_height", "max-height"],
   ["gap", "gap"],
   ["font-size", "font-size"],
   ["font_size", "font-size"],
@@ -1973,11 +1999,27 @@ function webStyleRuleToCSS(rule) {
       lines.push(`  padding-bottom: ${cssValue};`);
       continue;
     }
+    if (name === "margin-x" || name === "margin_x") {
+      const cssValue = webStyleCSSValue("margin-left", value);
+      lines.push(`  margin-left: ${cssValue};`);
+      lines.push(`  margin-right: ${cssValue};`);
+      continue;
+    }
+    if (name === "margin-y" || name === "margin_y") {
+      const cssValue = webStyleCSSValue("margin-top", value);
+      lines.push(`  margin-top: ${cssValue};`);
+      lines.push(`  margin-bottom: ${cssValue};`);
+      continue;
+    }
     if (name === "offset-x" || name === "offset_x" ||
         name === "offset-y" || name === "offset_y")
       continue;
     if (name === "content-offset-y" || name === "content_offset_y") {
       lines.push(`  --kry-content-offset-y: ${webStyleCSSValue("--kry-content-offset-y", value)};`);
+      continue;
+    }
+    if (name === "content-offset-x" || name === "content_offset_x") {
+      lines.push(`  --kry-content-offset-x: ${webStyleCSSValue("--kry-content-offset-x", value)};`);
       continue;
     }
     if (name === "icon-size" || name === "icon_size") {
@@ -2331,12 +2373,25 @@ function applyResolvedWebStyle(el, style) {
   set("borderWidth", style["border-width"] ?? style.border_width);
   set("borderRadius", style.radius);
   set("opacity", style.opacity);
+  set("padding", style.padding);
   set("paddingLeft", style["padding-x"] ?? style.padding_x);
   set("paddingRight", style["padding-x"] ?? style.padding_x);
   set("paddingTop", style["padding-y"] ?? style.padding_y);
   set("paddingBottom", style["padding-y"] ?? style.padding_y);
+  set("margin", style.margin);
+  set("marginLeft", style["margin-x"] ?? style.margin_x);
+  set("marginRight", style["margin-x"] ?? style.margin_x);
+  set("marginTop", style["margin-y"] ?? style.margin_y);
+  set("marginBottom", style["margin-y"] ?? style.margin_y);
+  set("width", style.width);
+  set("height", style.height);
+  set("minWidth", style["min-width"] ?? style.min_width);
+  set("maxWidth", style["max-width"] ?? style.max_width);
+  set("minHeight", style["min-height"] ?? style.min_height);
+  set("maxHeight", style["max-height"] ?? style.max_height);
   set("gap", style.gap);
   set("fontSize", style["font-size"] ?? style.font_size);
+  set("--kry-content-offset-x", style["content-offset-x"] ?? style.content_offset_x);
   set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
   set("--kry-icon-size", style["icon-size"] ?? style.icon_size);
   const offsetX = style["offset-x"] ?? style.offset_x;
