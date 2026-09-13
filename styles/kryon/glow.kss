@@ -898,6 +898,7 @@ Toolbar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: glow;
 }
@@ -917,6 +918,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: app;
 }

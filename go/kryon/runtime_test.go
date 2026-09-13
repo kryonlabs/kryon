@@ -144,14 +144,12 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 
 	rt.QueueTap(327, 52)
 	toolbar := rt.Toolbar(ToolbarProps{
-		ID:                20,
-		X:                 0,
-		Y:                 34,
-		Width:             360,
-		Height:            42,
-		Actions:           actions,
-		ActionIconSize:    16,
-		ActionIconPadding: 5,
+		ID:      20,
+		X:       0,
+		Y:       34,
+		Width:   360,
+		Height:  42,
+		Actions: actions,
 	})
 	if got, want := toolbar.ClickedAction, int32(1); got != want {
 		t.Fatalf("clicked toolbar action = %d, want %d", got, want)
@@ -378,9 +376,9 @@ tokens {
   length { radius: 4; border: 2; }
   material { flat: Flat; }
 }
-Toolbar[role=Bar] { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Toolbar[role=Bar] { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; padding-x: 18; material: flat; }
 Toolbar[role=Divider] { border: rule; }
-Toolbar[role=Action] { background: button; foreground: button-ink; border: rule; radius: radius; border-width: border; material: flat; }
+Toolbar[role=Action] { background: button; foreground: button-ink; border: rule; radius: radius; border-width: border; padding-x: 9; gap: 7; icon-size: 18; material: flat; }
 `, "Test Toolbar", "") || !SetActiveStylePack("test.toolbar") {
 		t.Fatal("test toolbar style did not activate")
 	}

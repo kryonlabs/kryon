@@ -37,25 +37,21 @@ type ToolbarAction struct {
 }
 
 type ToolbarProps struct {
-	ID                int32
-	ClassName         int32
-	X                 int32
-	Y                 int32
-	Width             int32
-	Height            int32
-	DrawMenu          bool
-	Options           []string
-	OptionCount       int32
-	SelectedIndex     *int32
-	DropdownMinWidth  int32
-	DropdownMaxWidth  int32
-	DropdownHeight    int32
-	Actions           []ToolbarAction
-	ActionCount       int32
-	ActionIconSize    int32
-	ActionIconPadding int32
-	ActionGap         int32
-	SidePadding       int32
+	ID               int32
+	ClassName        int32
+	X                int32
+	Y                int32
+	Width            int32
+	Height           int32
+	DrawMenu         bool
+	Options          []string
+	OptionCount      int32
+	SelectedIndex    *int32
+	DropdownMinWidth int32
+	DropdownMaxWidth int32
+	DropdownHeight   int32
+	Actions          []ToolbarAction
+	ActionCount      int32
 }
 
 type ToolbarResult struct {

@@ -833,6 +833,7 @@ Toolbar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: default;
 }
@@ -852,6 +853,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -2540,6 +2544,7 @@ Toolbar[role=Bar] {
   border: border;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: default;
 }
@@ -2559,6 +2564,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius;
   border-width: border.none;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -4205,6 +4213,7 @@ Toolbar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: default;
 }
@@ -4224,6 +4233,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: default;
 }
@@ -5963,6 +5975,7 @@ Toolbar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: glow;
 }
@@ -5982,6 +5995,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: app;
 }
@@ -7749,6 +7765,7 @@ Toolbar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
   opacity: 1;
   material: premium;
 }
@@ -7768,6 +7785,9 @@ Toolbar[role=Action] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  padding-x: 8;
+  gap: 6;
+  icon-size: 20;
   opacity: 1;
   material: app;
 }

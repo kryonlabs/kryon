@@ -4985,25 +4985,45 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	if actionCount <= 0 || int(actionCount) > len(props.Actions) {
 		actionCount = int32(len(props.Actions))
 	}
+	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindToolbar(), 1)
+	barStyle := unpackStyle(barFrame.Value)
+	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindToolbar(), 17)
+	actionStyle := unpackStyle(actionFrame.Value)
+	actionIconSize := int32(0)
+	if actionStyle.IconSize > 0 {
+		actionIconSize = int32(actionStyle.IconSize + 0.5)
+	}
+	actionIconPadding := int32(0)
+	if actionStyle.PaddingX > 0 {
+		actionIconPadding = int32(actionStyle.PaddingX + 0.5)
+	}
+	actionGap := int32(0)
+	if actionStyle.Gap > 0 {
+		actionGap = int32(actionStyle.Gap + 0.5)
+	}
+	sidePadding := int32(0)
+	if barStyle.PaddingX > 0 {
+		sidePadding = int32(barStyle.PaddingX + 0.5)
+	}
 	layout := Toolbar_ToolbarLayoutFor(ToolbarSpec{
 		X:                 props.X,
 		Y:                 props.Y,
 		Width:             props.Width,
 		Height:            props.Height,
 		ActionCount:       actionCount,
-		ActionIconSize:    props.ActionIconSize,
-		ActionIconPadding: props.ActionIconPadding,
-		ActionGap:         props.ActionGap,
-		SidePadding:       props.SidePadding,
+		ActionIconSize:    actionIconSize,
+		ActionIconPadding: actionIconPadding,
+		ActionGap:         actionGap,
+		SidePadding:       sidePadding,
 		DropdownMinWidth:  props.DropdownMinWidth,
 		DropdownMaxWidth:  props.DropdownMaxWidth,
 		DropdownHeight:    props.DropdownHeight,
 		Scale:             1,
 	})
 	bounds := layout.Bounds
-	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindToolbar(), 1)
-	r.record(styleFrameRectOp(bounds, Rectangle{}, surfaceFrame))
+	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	dividerStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		props.ClassName, StyleSheet_StyleKindToolbar(), 18).Value)
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: dividerStyle.Border})

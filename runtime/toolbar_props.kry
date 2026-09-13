@@ -51,10 +51,6 @@ ToolbarProps :: struct {
     dropdown_height: i32
     actions: const ToolbarAction*
     action_count: i32
-    action_icon_size: i32
-    action_icon_padding: i32
-    action_gap: i32
-    side_padding: i32
 }
 
 ToolbarResult :: struct {

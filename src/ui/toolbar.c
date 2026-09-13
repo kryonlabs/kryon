@@ -6,34 +6,58 @@ ToolbarResult
 RenderToolbar(ToolbarProps toolbar)
 {
     ToolbarResult result = {-1, -1};
+    StyleFrame bar_frame;
+    StyleFrame divider_frame;
+    StyleFrame action_frame;
+    Style bar;
+    Style divider;
+    Style action_style;
+    int action_icon_size = 0;
+    int action_icon_padding = 0;
+    int action_gap = 0;
+    int side_padding = 0;
+    bar_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium,
+                      .class_name = toolbar.class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 1);
+    divider_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium,
+                      .class_name = toolbar.class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 18);
+    action_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium, .icon_only = true,
+                      .class_name = toolbar.class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 17);
+    bar = ui_unpack_style(bar_frame.value);
+    divider = ui_unpack_style(divider_frame.value);
+    action_style = ui_unpack_style(action_frame.value);
+    if(action_style.icon_size > 0.0f)
+        action_icon_size = (int)(action_style.icon_size + 0.5f);
+    if(action_style.padding_x > 0.0f)
+        action_icon_padding = (int)(action_style.padding_x + 0.5f);
+    if(action_style.gap > 0.0f)
+        action_gap = (int)(action_style.gap + 0.5f);
+    if(bar.padding_x > 0.0f)
+        side_padding = (int)(bar.padding_x + 0.5f);
     ToolbarLayout layout = ToolbarLayoutFor((ToolbarSpec){
         .x = toolbar.x,
         .y = toolbar.y,
         .width = toolbar.width,
         .height = toolbar.height,
         .action_count = toolbar.action_count,
-        .action_icon_size = toolbar.action_icon_size,
-        .action_icon_padding = toolbar.action_icon_padding,
-        .action_gap = toolbar.action_gap,
-        .side_padding = toolbar.side_padding,
+        .action_icon_size = action_icon_size,
+        .action_icon_padding = action_icon_padding,
+        .action_gap = action_gap,
+        .side_padding = side_padding,
         .dropdown_min_width = toolbar.dropdown_min_width,
         .dropdown_max_width = toolbar.dropdown_max_width,
         .dropdown_height = toolbar.dropdown_height,
         .scale = (float)Scale(1000) / 1000.0f
     });
 
-    StyleFrame bar_frame = ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium,
-                      .class_name = toolbar.class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 1);
-    StyleFrame divider_frame = ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium,
-                      .class_name = toolbar.class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 18);
-    Style bar = ui_unpack_style(bar_frame.value);
-    Style divider = ui_unpack_style(divider_frame.value);
     Rectangle bar_bounds = {(float)toolbar.x, (float)toolbar.y,
                             (float)toolbar.width, (float)toolbar.height};
     ui_draw_material(bar_bounds, (Rectangle){0}, bar.background, bar.border,
@@ -49,13 +73,6 @@ RenderToolbar(ToolbarProps toolbar)
             Rectangle action_bounds = ToolbarActionBoundsFor(layout, i,
                                                              toolbar.action_count);
             ButtonSpec button = {0};
-            Style action = ui_unpack_style(ui_control_style_frame_role_kind(
-                (ButtonProps){.tone = ButtonToneNeutral,
-                              .emphasis = ButtonEmphasisSoft,
-                              .size = ControlSizeMedium,
-                              .icon_only = true,
-                              .class_name = toolbar.class_name},
-                ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
             Style action_hover = ui_unpack_style(ui_control_style_frame_role_kind(
                 (ButtonProps){.tone = ButtonToneNeutral,
                               .emphasis = ButtonEmphasisSoft,
@@ -71,7 +88,7 @@ RenderToolbar(ToolbarProps toolbar)
             button.props.tone = ButtonToneNeutral;
             button.props.emphasis = ButtonEmphasisSoft;
             button.props.class_name = toolbar.class_name;
-            button.style.normal = action;
+            button.style.normal = action_style;
             button.style.hover = action_hover;
             button.style.normal.fields |= StyleIconSize;
             button.style.normal.icon_size =

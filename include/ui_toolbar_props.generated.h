@@ -71,10 +71,6 @@ typedef struct ToolbarProps {
     int32_t dropdown_height;
     const ToolbarAction* actions;
     int32_t action_count;
-    int32_t action_icon_size;
-    int32_t action_icon_padding;
-    int32_t action_gap;
-    int32_t side_padding;
 } ToolbarProps;
 
 typedef struct ToolbarResult {
