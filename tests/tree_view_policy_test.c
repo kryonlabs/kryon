@@ -44,7 +44,10 @@ main(void)
     assert(scroll.first == 2);
     assert(scroll.y_offset == 9);
 
+    panel.value.fields = StylePaddingX;
     panel.value.padding_x = 6.0f;
+    item.value.fields = StyleFontSize | StylePaddingY | StyleContentOffset |
+        StyleIconSize | StyleGap;
     item.value.font_size = 18.0f;
     item.value.padding_y = 5.0f;
     item.value.offset_x = 14.0f;
@@ -56,6 +59,12 @@ main(void)
     assert(metrics.depth_indent == 14);
     assert(metrics.marker_width == 12);
     assert(metrics.text_gap == 3);
+
+    panel.value.padding_x = 0.0f;
+    item.value.gap = 0.0f;
+    metrics = TreeViewMetricsFor(1.0f, panel, item);
+    assert(metrics.indent_x == 0);
+    assert(metrics.text_gap == 0);
 
     panel = (StyleFrame){0};
     item = (StyleFrame){0};
