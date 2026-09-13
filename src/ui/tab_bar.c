@@ -188,7 +188,9 @@ ui_tab_bar_finish_frame(void)
 int
 ui_tab_bar_height(void)
 {
-    return ui_default_style() ? Scale(48) : Scale(36);
+    StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
+        ButtonStateNormal, 0, 0, 0);
+    return TabBarPolicyHeight((float)Scale(1000) / 1000.0f, bar_frame);
 }
 
 int
@@ -210,6 +212,9 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
     const Tab *tab;
     int label_w;
     int has_label;
+    StyleFrame bar_frame;
+    StyleFrame tab_frame;
+    StyleFrame close_frame;
     TabBarMetrics metrics;
 
     if(index < 0 || index >= bar.count || bar.tabs == NULL)
@@ -218,9 +223,20 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
     tab = &bar.tabs[index];
     has_label = tab->label != NULL && tab->label[0] != '\0';
     label_w = has_label ? TextWidth(tab->label, font) : 0;
+    bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
+        bar.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        bar.disabled, 0, bar.class_name);
+    tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
+        tab->disabled ? ButtonStateDisabled : ButtonStateNormal,
+        tab->disabled, 0, bar.class_name);
+    close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
+        tab->disabled ? ButtonStateDisabled : ButtonStateNormal,
+        tab->disabled, 0, bar.class_name);
     metrics = TabBarDefaultMetrics(min_tab_w, max_tab_w,
-                                   (float)Scale(1000) / 1000.0f);
-    metrics.icon_width = icon_tab_w;
+                                   (float)Scale(1000) / 1000.0f,
+                                   bar_frame, tab_frame, close_frame);
+    if(icon_tab_w > 0)
+        metrics.icon_width = icon_tab_w;
     return TabBarTabWidth(label_w, has_label, tab->icon.id != 0,
                           tab->closeable, metrics);
 }
@@ -341,15 +357,21 @@ RenderTabBar(TabBarProps bar)
     StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         bar.class_name);
+    StyleFrame metric_tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        bar.class_name);
+    StyleFrame metric_close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        bar.class_name);
+    TabBarMetrics default_metrics = TabBarDefaultMetrics(
+        bar.min_tab_width, bar.max_tab_width,
+        (float)Scale(1000) / 1000.0f, bar_frame, metric_tab_frame,
+        metric_close_frame);
     int font = ui_tab_bar_font(bar, disabled);
-    int tab_gap = (int)bar_frame.value.gap;
-    if(tab_gap < 0)
-        tab_gap = 0;
-    int default_min_tab_w = ui_default_style() ? Scale(72) : Scale(120);
-    int default_max_tab_w = ui_default_style() ? Scale(168) : default_min_tab_w;
-    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
-    int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
-    int icon_tab_w = bar_h + tab_gap * 2;
+    int tab_gap = default_metrics.gap;
+    int min_tab_w = default_metrics.min_width;
+    int max_tab_w = default_metrics.max_width;
+    int icon_tab_w = default_metrics.icon_width;
     int focused = 0;
     int can_draw = IsWindowReady();
     int default_scroll_offset = 0;

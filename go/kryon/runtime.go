@@ -2360,10 +2360,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		return ButtonStateNormal
 	}(), disabled, false, props.ClassName, StyleSheet_StyleKindTabBar(), StyleSheet_StyleAny())
-	tabGap := int32(barFrame.Value.Gap)
-	if tabGap < 0 {
-		tabGap = 0
-	}
+	var tabGap int32
 	selected := props.SelectedIndex
 	if selected < 0 || int(selected) >= count {
 		selected = 0
@@ -2410,26 +2407,25 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		r.inputEvents = remaining
 	}
-	tabStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral,
+	tabFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
 		func() ButtonState {
 			if disabled {
 				return ButtonStateDisabled
 			}
 			return ButtonStateNormal
-		}(), disabled, false, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()).Value)
+		}(), disabled, false, props.ClassName, StyleSheet_StyleKindTab(), StyleSheet_StyleAny())
+	metricCloseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		func() ButtonState {
+			if disabled {
+				return ButtonStateDisabled
+			}
+			return ButtonStateNormal
+		}(), disabled, false, props.ClassName, StyleSheet_StyleKindTabClose(), StyleSheet_StyleAny())
+	tabStyle := unpackStyle(tabFrame.Value)
 	font, fontID := styleTextFace(tabStyle, Text12)
-	minWidth := float32(props.MinTabWidth)
-	if minWidth <= 0 {
-		minWidth = 120
-	}
-	maxWidth := float32(props.MaxTabWidth)
-	if maxWidth <= 0 {
-		maxWidth = minWidth
-	}
-	if maxWidth < minWidth {
-		maxWidth = minWidth
-	}
-	metrics := TabBar_TabBarDefaultMetrics(int32(minWidth), int32(maxWidth), 1)
+	metrics := TabBar_TabBarDefaultMetrics(props.MinTabWidth, props.MaxTabWidth,
+		1, barFrame, tabFrame, metricCloseFrame)
+	tabGap = metrics.Gap
 	widths := make([]float32, count)
 	totalWidth := int32(0)
 	for i := 0; i < count; i++ {

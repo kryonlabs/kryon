@@ -213,6 +213,9 @@ TabBar {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 72;
+  icon-size: 48;
+  offset-x: 168;
   gap: space.2;
   opacity: 1;
   material: default;
@@ -227,6 +230,7 @@ Tab {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 44;
   font-size: font.md;
   opacity: 1;
   material: default;
@@ -259,6 +263,7 @@ TabClose {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 24;
   opacity: 1;
   material: default;
 }
@@ -1970,6 +1975,9 @@ TabBar {
   border: border-soft;
   radius: radius;
   border-width: border;
+  padding-x: 120;
+  icon-size: 36;
+  offset-x: 120;
   gap: gap;
   opacity: 1;
   material: default;
@@ -1984,6 +1992,7 @@ Tab {
   border-width: border;
   padding-x: space.2;
   padding-y: space.1;
+  icon-size: 44;
   opacity: 1;
   material: default;
 }
@@ -2018,6 +2027,7 @@ TabClose {
   border: transparent;
   radius: radius;
   border-width: border.none;
+  icon-size: 24;
   opacity: 1;
   material: default;
 }
@@ -3717,6 +3727,9 @@ TabBar {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 72;
+  icon-size: 48;
+  offset-x: 168;
   gap: gap;
   opacity: 1;
   material: default;
@@ -3731,6 +3744,7 @@ Tab {
   border-width: border;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 44;
   opacity: 1;
   material: default;
 }
@@ -3763,6 +3777,7 @@ TabClose {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 24;
   opacity: 1;
   material: default;
 }
@@ -5504,6 +5519,9 @@ TabBar {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 120;
+  icon-size: 36;
+  offset-x: 120;
   gap: gap;
   opacity: 1;
   material: glow;
@@ -5519,6 +5537,7 @@ Tab {
   border-width: border;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 44;
   opacity: 1;
   material: glow;
 }
@@ -5552,6 +5571,7 @@ TabClose {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 24;
   opacity: 1;
   material: glow;
 }
@@ -7361,6 +7381,9 @@ TabBar {
   border: border-soft;
   radius: radius;
   border-width: border;
+  padding-x: 120;
+  icon-size: 36;
+  offset-x: 120;
   gap: gap;
   opacity: 1;
   material: premium;
@@ -7376,6 +7399,7 @@ Tab {
   border-width: border;
   padding-x: space.3;
   padding-y: 8;
+  icon-size: 44;
   opacity: 1;
   material: premium;
 }
@@ -7408,6 +7432,7 @@ TabClose {
   border: transparent;
   radius: radius;
   border-width: 0;
+  icon-size: 24;
   opacity: 1;
   material: premium;
 }

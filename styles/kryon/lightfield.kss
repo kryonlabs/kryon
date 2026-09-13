@@ -224,6 +224,9 @@ TabBar {
   border: border-soft;
   radius: radius;
   border-width: border;
+  padding-x: 120;
+  icon-size: 36;
+  offset-x: 120;
   gap: gap;
   opacity: 1;
   material: premium;
@@ -239,6 +242,7 @@ Tab {
   border-width: border;
   padding-x: space.3;
   padding-y: 8;
+  icon-size: 44;
   opacity: 1;
   material: premium;
 }
@@ -271,6 +275,7 @@ TabClose {
   border: transparent;
   radius: radius;
   border-width: 0;
+  icon-size: 24;
   opacity: 1;
   material: premium;
 }

@@ -4,11 +4,12 @@ package kryon
 // #import drawing_props
 // #import style
 type TabBarMetrics struct {
-	MinWidth   int32
-	MaxWidth   int32
-	IconWidth  int32
-	Gap        int32
-	CloseWidth int32
+	MinWidth     int32
+	MaxWidth     int32
+	IconWidth    int32
+	Gap          int32
+	CloseWidth   int32
+	LabelPadding int32
 }
 
 type TabBarScroll struct {
@@ -68,7 +69,7 @@ func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame) Tab
 	return value_14
 }
 
-func TabBar_TabBarPolicyHeight(scale float32) int32 {
+func TabBar_TabBarPolicyHeight(scale float32, bar StyleFrame) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -76,14 +77,23 @@ func TabBar_TabBarPolicyHeight(scale float32) int32 {
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = 32.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	return value_7
+	var value_4 float32 = bar.Value.IconSize
+	var height float32 = value_4
+	var value_5 float32 = height
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 float32 = 32.0
+		height = value_8
+	}
+	var value_9 float32 = height
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 * value_10
+	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
+	return value_12
 }
 
-func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32) TabBarMetrics {
+func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32, bar StyleFrame, tab StyleFrame, close StyleFrame) TabBarMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -98,45 +108,109 @@ func TabBar_TabBarDefaultMetrics(min_width int32, max_width int32, scale float32
 	var value_6 int32 = 0
 	var value_7 bool = value_5 <= value_6
 	if value_7 {
-		var value_8 float32 = 120.0
+		var value_8 float32 = bar.Value.PaddingX
 		var value_9 float32 = scale
 		var value_10 float32 = value_8 * value_9
 		var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
 		metrics.MinWidth = value_11
+		var value_12 int32 = metrics.MinWidth
+		var value_13 int32 = 0
+		var value_14 bool = value_12 <= value_13
+		if value_14 {
+			var value_15 float32 = 120.0
+			var value_16 float32 = scale
+			var value_17 float32 = value_15 * value_16
+			var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
+			metrics.MinWidth = value_18
+		}
 	}
-	var value_12 int32 = max_width
-	metrics.MaxWidth = value_12
-	var value_13 int32 = metrics.MaxWidth
-	var value_14 int32 = 0
-	var value_15 bool = value_13 <= value_14
-	if value_15 {
-		var value_16 int32 = metrics.MinWidth
-		metrics.MaxWidth = value_16
+	var value_19 int32 = max_width
+	metrics.MaxWidth = value_19
+	var value_20 int32 = metrics.MaxWidth
+	var value_21 int32 = 0
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 float32 = bar.Value.OffsetX
+		var value_24 float32 = scale
+		var value_25 float32 = value_23 * value_24
+		var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
+		metrics.MaxWidth = value_26
+		var value_27 int32 = metrics.MaxWidth
+		var value_28 int32 = 0
+		var value_29 bool = value_27 <= value_28
+		if value_29 {
+			var value_30 int32 = metrics.MinWidth
+			metrics.MaxWidth = value_30
+		}
 	}
-	var value_17 int32 = metrics.MaxWidth
-	var value_18 int32 = metrics.MinWidth
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 int32 = metrics.MinWidth
-		metrics.MaxWidth = value_20
+	var value_31 int32 = metrics.MaxWidth
+	var value_32 int32 = metrics.MinWidth
+	var value_33 bool = value_31 < value_32
+	if value_33 {
+		var value_34 int32 = metrics.MinWidth
+		metrics.MaxWidth = value_34
 	}
-	var value_21 float32 = 44.0
-	var value_22 float32 = scale
-	var value_23 float32 = value_21 * value_22
-	var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-	metrics.IconWidth = value_24
-	var value_25 float32 = 4.0
-	var value_26 float32 = scale
-	var value_27 float32 = value_25 * value_26
-	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
-	metrics.Gap = value_28
-	var value_29 float32 = 24.0
-	var value_30 float32 = scale
-	var value_31 float32 = value_29 * value_30
-	var value_32 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_31), 32, true)), uint64(0), 32, true, 0))
-	metrics.CloseWidth = value_32
-	var value_33 TabBarMetrics = metrics
-	return value_33
+	var value_35 float32 = tab.Value.IconSize
+	var value_36 float32 = scale
+	var value_37 float32 = value_35 * value_36
+	var value_38 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_37), 32, true)), uint64(0), 32, true, 0))
+	metrics.IconWidth = value_38
+	var value_39 int32 = metrics.IconWidth
+	var value_40 int32 = 0
+	var value_41 bool = value_39 <= value_40
+	if value_41 {
+		var value_42 float32 = 44.0
+		var value_43 float32 = scale
+		var value_44 float32 = value_42 * value_43
+		var value_45 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_44), 32, true)), uint64(0), 32, true, 0))
+		metrics.IconWidth = value_45
+	}
+	var value_46 float32 = bar.Value.Gap
+	var value_47 float32 = scale
+	var value_48 float32 = value_46 * value_47
+	var value_49 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_48), 32, true)), uint64(0), 32, true, 0))
+	metrics.Gap = value_49
+	var value_50 int32 = metrics.Gap
+	var value_51 int32 = 0
+	var value_52 bool = value_50 < value_51
+	if value_52 {
+		var value_53 int32 = 0
+		metrics.Gap = value_53
+	}
+	var value_54 float32 = close.Value.IconSize
+	var value_55 float32 = scale
+	var value_56 float32 = value_54 * value_55
+	var value_57 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_56), 32, true)), uint64(0), 32, true, 0))
+	metrics.CloseWidth = value_57
+	var value_58 int32 = metrics.CloseWidth
+	var value_59 int32 = 0
+	var value_60 bool = value_58 <= value_59
+	if value_60 {
+		var value_61 float32 = 24.0
+		var value_62 float32 = scale
+		var value_63 float32 = value_61 * value_62
+		var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
+		metrics.CloseWidth = value_64
+	}
+	var value_65 float32 = tab.Value.PaddingX
+	var value_66 float32 = 2.0
+	var value_67 float32 = value_65 * value_66
+	var value_68 float32 = scale
+	var value_69 float32 = value_67 * value_68
+	var value_70 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_69), 32, true)), uint64(0), 32, true, 0))
+	metrics.LabelPadding = value_70
+	var value_71 int32 = metrics.LabelPadding
+	var value_72 int32 = 0
+	var value_73 bool = value_71 <= value_72
+	if value_73 {
+		var value_74 float32 = 16.0
+		var value_75 float32 = scale
+		var value_76 float32 = value_74 * value_75
+		var value_77 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_76), 32, true)), uint64(0), 32, true, 0))
+		metrics.LabelPadding = value_77
+	}
+	var value_78 TabBarMetrics = metrics
+	return value_78
 }
 
 func TabBar_TabBarTabWidth(label_width int32, has_label bool, has_icon bool, closeable bool, metrics TabBarMetrics) int32 {
@@ -158,7 +232,7 @@ func TabBar_TabBarTabWidth(label_width int32, has_label bool, has_icon bool, clo
 		return value_7
 	}
 	var value_8 int32 = label_width
-	var value_9 int32 = 16
+	var value_9 int32 = metrics.LabelPadding
 	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
 	var width int32 = value_10
 	var value_11 bool = closeable

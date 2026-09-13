@@ -679,17 +679,42 @@ static void
 test_tab_bar_policy(void)
 {
     Rectangle bounds = {10, 20, 240, 32};
-    TabBarMetrics metrics = TabBarDefaultMetrics(80, 160, 1.0f);
-    int label_width = TabBarTabWidth(42, 1, 0, 0, metrics);
-    int close_width = TabBarTabWidth(42, 1, 0, 1, metrics);
-    int icon_width = TabBarTabWidth(0, 0, 1, 0, metrics);
-    int total = TabBarTotalWidth(label_width + close_width + icon_width,
-                                 3, metrics.gap);
-    TabBarScroll scroll = TabBarScrollFor(bounds.width, total, 999);
+    StyleFrame bar_frame = test_style_frame(0x05060708, 0x01020304,
+                                            0x11223344);
+    StyleFrame tab_frame = test_style_frame(0x05060708, 0x01020304,
+                                            0x11223344);
+    StyleFrame close_frame = test_style_frame(0x05060708, 0x01020304,
+                                              0x11223344);
+    TabBarMetrics metrics;
+    int label_width;
+    int close_width;
+    int icon_width;
+    int total;
+    TabBarScroll scroll;
     Rectangle equal_last = TabBarEqualTabBounds(bounds, 3, 2);
     Rectangle marker = TabBarDragMarkerBounds(40, 80, 20, 32, 1, 1.0f);
 
-    check_int("tab bar height", TabBarPolicyHeight(1.0f), 32);
+    bar_frame.value.fields |= StylePaddingX | StyleGap |
+                              StyleIconSize | StyleContentOffset;
+    bar_frame.value.padding_x = 80.0f;
+    bar_frame.value.gap = 4.0f;
+    bar_frame.value.icon_size = 32.0f;
+    bar_frame.value.offset_x = 160.0f;
+    tab_frame.value.fields |= StylePaddingX | StyleIconSize;
+    tab_frame.value.padding_x = 8.0f;
+    tab_frame.value.icon_size = 44.0f;
+    close_frame.value.fields |= StyleIconSize;
+    close_frame.value.icon_size = 24.0f;
+    metrics = TabBarDefaultMetrics(80, 160, 1.0f,
+                                   bar_frame, tab_frame, close_frame);
+    label_width = TabBarTabWidth(42, 1, 0, 0, metrics);
+    close_width = TabBarTabWidth(42, 1, 0, 1, metrics);
+    icon_width = TabBarTabWidth(0, 0, 1, 0, metrics);
+    total = TabBarTotalWidth(label_width + close_width + icon_width,
+                             3, metrics.gap);
+    scroll = TabBarScrollFor(bounds.width, total, 999);
+
+    check_int("tab bar height", TabBarPolicyHeight(1.0f, bar_frame), 32);
     check_int("tab label width min", label_width, 80);
     check_int("tab close width", close_width, 82);
     check_int("tab icon width", icon_width, 44);

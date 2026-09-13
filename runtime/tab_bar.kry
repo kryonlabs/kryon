@@ -8,6 +8,7 @@ TabBarMetrics :: struct {
     icon_width: i32
     gap: i32
     close_width: i32
+    label_padding: i32
 }
 
 TabBarScroll :: struct {
@@ -53,28 +54,48 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     return paint
 }
 
-TabBarPolicyHeight :: (scale: float) -> i32 #export {
+TabBarPolicyHeight :: (scale: float, bar: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(32.0 * scale)
+    height: float = bar.value.icon_size
+    if height <= 0.0 { height = 32.0 }
+    return (i32)(height * scale)
 }
 
-TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float) -> TabBarMetrics #export {
+TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float,
+    bar: StyleFrame, tab: StyleFrame, close: StyleFrame) -> TabBarMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TabBarMetrics
     metrics.min_width = min_width
     if metrics.min_width <= 0 {
-        metrics.min_width = (i32)(120.0 * scale)
+        metrics.min_width = (i32)(bar.value.padding_x * scale)
+        if metrics.min_width <= 0 {
+            metrics.min_width = (i32)(120.0 * scale)
+        }
     }
     metrics.max_width = max_width
     if metrics.max_width <= 0 {
-        metrics.max_width = metrics.min_width
+        metrics.max_width = (i32)(bar.value.offset_x * scale)
+        if metrics.max_width <= 0 {
+            metrics.max_width = metrics.min_width
+        }
     }
     if metrics.max_width < metrics.min_width {
         metrics.max_width = metrics.min_width
     }
-    metrics.icon_width = (i32)(44.0 * scale)
-    metrics.gap = (i32)(4.0 * scale)
-    metrics.close_width = (i32)(24.0 * scale)
+    metrics.icon_width = (i32)(tab.value.icon_size * scale)
+    if metrics.icon_width <= 0 {
+        metrics.icon_width = (i32)(44.0 * scale)
+    }
+    metrics.gap = (i32)(bar.value.gap * scale)
+    if metrics.gap < 0 { metrics.gap = 0 }
+    metrics.close_width = (i32)(close.value.icon_size * scale)
+    if metrics.close_width <= 0 {
+        metrics.close_width = (i32)(24.0 * scale)
+    }
+    metrics.label_padding = (i32)(tab.value.padding_x * 2.0 * scale)
+    if metrics.label_padding <= 0 {
+        metrics.label_padding = (i32)(16.0 * scale)
+    }
     return metrics
 }
 
@@ -86,7 +107,7 @@ TabBarTabWidth :: (label_width: i32, has_label: bool, has_icon: bool,
     if !has_label {
         return metrics.min_width
     }
-    width: i32 = label_width + 16
+    width: i32 = label_width + metrics.label_padding
     if closeable {
         width += metrics.close_width
     }
