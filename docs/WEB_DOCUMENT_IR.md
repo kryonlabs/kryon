@@ -398,7 +398,8 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[aria-multiselectable=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, padding,
 margin, size constraints, radius, border width, opacity, font size, offsets,
-content offsets, icon size, and local
+font family, font weight, letter spacing, text alignment, content offsets,
+icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,

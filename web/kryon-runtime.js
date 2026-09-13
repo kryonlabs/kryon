@@ -1735,7 +1735,8 @@ function parseKssDeclarationValue(name, value, tokens) {
     "margin", "margin-x", "margin_x", "margin-y", "margin_y",
     "width", "height", "min-width", "min_width", "max-width", "max_width",
     "min-height", "min_height", "max-height", "max_height",
-    "gap", "font-size", "font_size", "icon-size", "icon_size",
+    "gap", "font-size", "font_size", "letter-spacing", "letter_spacing",
+    "icon-size", "icon_size",
     "offset-x", "offset_x", "offset-y", "offset_y",
     "content-offset-x", "content_offset_x",
     "content-offset-y", "content_offset_y"
@@ -1959,13 +1960,23 @@ const webCSSPropertyNames = new Map([
   ["gap", "gap"],
   ["font-size", "font-size"],
   ["font_size", "font-size"],
+  ["font-family", "font-family"],
+  ["font_family", "font-family"],
+  ["font-weight", "font-weight"],
+  ["font_weight", "font-weight"],
+  ["letter-spacing", "letter-spacing"],
+  ["letter_spacing", "letter-spacing"],
+  ["text-align", "text-align"],
+  ["text_align", "text-align"],
   ["focus", "outline-color"],
   ["focus-color", "outline-color"],
   ["focus_color", "outline-color"]
 ]);
 
 function webStyleCSSValue(name, value) {
-  return typeof value === "number" && name !== "opacity" ? value + "px" : String(value);
+  return typeof value === "number" && name !== "opacity" &&
+      name !== "font-weight" && name !== "fontWeight"
+    ? value + "px" : String(value);
 }
 
 function webStyleValueToCSS(name, value) {
@@ -2391,6 +2402,10 @@ function applyResolvedWebStyle(el, style) {
   set("maxHeight", style["max-height"] ?? style.max_height);
   set("gap", style.gap);
   set("fontSize", style["font-size"] ?? style.font_size);
+  set("fontFamily", style["font-family"] ?? style.font_family);
+  set("fontWeight", style["font-weight"] ?? style.font_weight);
+  set("letterSpacing", style["letter-spacing"] ?? style.letter_spacing);
+  set("textAlign", style["text-align"] ?? style.text_align);
   set("--kry-content-offset-x", style["content-offset-x"] ?? style.content_offset_x);
   set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
   set("--kry-icon-size", style["icon-size"] ?? style.icon_size);

@@ -91,6 +91,10 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   }
   TextField[required] {
     font-size: 11;
+    font-family: ui-sans-serif;
+    font-weight: 600;
+    letter-spacing: 1;
+    text-align: center;
   }
   TextField[maxlength=64] {
     offset-x: 4;
@@ -142,6 +146,10 @@ assert.match(webStyleCSS, /margin-top: 2px;/);
 assert.match(webStyleCSS, /margin-bottom: 2px;/);
 assert.match(webStyleCSS, /min-width: 44px;/);
 assert.match(webStyleCSS, /max-height: 55px;/);
+assert.match(webStyleCSS, /font-family: ui-sans-serif;/);
+assert.match(webStyleCSS, /font-weight: 600;/);
+assert.match(webStyleCSS, /letter-spacing: 1px;/);
+assert.match(webStyleCSS, /text-align: center;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
@@ -496,6 +504,10 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-of
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).radius, 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-x"], 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"], 11);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-family"], "ui-sans-serif");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-weight"], 600);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["letter-spacing"], 1);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["text-align"], "center");
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -2340,6 +2352,10 @@ function fakeDocument() {
     assert.equal(firstField.style["--kry-content-offset-x"], "3px");
     assert.equal(firstField.style["--kry-content-offset-y"], "7px");
     assert.equal(firstField.style["--kry-icon-size"], "14px");
+    assert.equal(firstField.style.fontFamily, "ui-sans-serif");
+    assert.equal(firstField.style.fontWeight, "600");
+    assert.equal(firstField.style.letterSpacing, "1px");
+    assert.equal(firstField.style.textAlign, "center");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
     assert.equal(runtime.webFormValue(target, "search-box"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
