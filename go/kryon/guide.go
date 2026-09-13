@@ -771,10 +771,10 @@ func Guide_GuideArrowFor(tip Rectangle, anchor Rectangle, metrics GuideMetrics) 
 	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 4))
 	var arrow_size int32 = value_26
 	var value_27 int32 = arrow_size
-	var value_28 int32 = 1
+	var value_28 int32 = 0
 	var value_29 bool = value_27 < value_28
 	if value_29 {
-		var value_30 int32 = 1
+		var value_30 int32 = 0
 		arrow_size = value_30
 	}
 	var value_31 int32 = metrics.AnchorStroke

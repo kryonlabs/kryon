@@ -255,7 +255,7 @@ GuideArrowFor :: (tip: Rectangle, anchor: Rectangle,
     tip_top: i32 = (i32)tip.y
     tip_bottom: i32 = (i32)(tip.y + tip.height)
     arrow_size: i32 = metrics.gap / 2
-    if arrow_size < 1 { arrow_size = 1 }
+    if arrow_size < 0 { arrow_size = 0 }
     arrow.stroke_width = (float)metrics.anchor_stroke
 
     if anchor_cy < tip_top {

@@ -102,6 +102,7 @@ main(void)
     GuideScrim scrim;
     GuideLayout layout;
     GuideArrow arrow;
+    GuideMetrics zero_metrics;
     Rectangle tip;
 
     panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
@@ -173,6 +174,16 @@ main(void)
     check_vec(arrow.tip1, 120, 90);
     check_vec(arrow.tip2, 140, 90);
     assert(fabsf(arrow.stroke_width - 2.0f) < 0.001f);
+
+    zero_metrics = metrics;
+    zero_metrics.gap = 0;
+    zero_metrics.anchor_stroke = 0;
+    arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
+                          (Rectangle){120, 20, 20, 20}, zero_metrics);
+    check_vec(arrow.tip0, 130, 100);
+    check_vec(arrow.tip1, 130, 100);
+    check_vec(arrow.tip2, 130, 100);
+    assert(fabsf(arrow.stroke_width) < 0.001f);
 
     arrow = GuideArrowFor((Rectangle){100, 100, 80, 40},
                           (Rectangle){120, 200, 20, 20}, metrics);

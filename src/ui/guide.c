@@ -20,8 +20,10 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color,
 {
     GuideArrow arrow = GuideArrowFor(tip, anchor, metrics);
 
-    DrawLineEx(arrow.line_start, arrow.line_end, arrow.stroke_width, color);
-    DrawTriangle(arrow.tip0, arrow.tip1, arrow.tip2, color);
+    if(arrow.stroke_width > 0.0f)
+        DrawLineEx(arrow.line_start, arrow.line_end, arrow.stroke_width, color);
+    if(metrics.gap > 0)
+        DrawTriangle(arrow.tip0, arrow.tip1, arrow.tip2, color);
 }
 
 static StyleFrame
