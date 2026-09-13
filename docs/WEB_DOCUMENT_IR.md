@@ -625,6 +625,7 @@ bridge directly as non-enumerable `element.kryRef`, `element.kryNode`, `element.
 scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryRoot`, `element.kryIdentity`, `element.krySnapshot`,
 `element.kryStyleFacts`, `element.kryStyleTrace`, `element.kryParent`, and
+`element.kryPreviousSibling`, `element.kryNextSibling`, and
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,
@@ -655,6 +656,12 @@ serializable `relationRefs`.
 Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
 `kryRelations` and `kryRelationRefs`, and `WebDOMObject` exposes `relations`
 and `relationRefs` for the same live-object and serializable packets.
+Direct sibling traversal is also available before mount through
+`webNodePreviousSibling(rt, query)` and `webNodeNextSibling(rt, query)`, and
+after mount through `webDOMPreviousSibling(target, query)`,
+`webDOMNextSibling(target, query)`, `root.kryPreviousSibling(query)`,
+`root.kryNextSibling(query)`, `element.kryPreviousSibling`,
+`element.kryNextSibling`, `object.previousSibling`, and `object.nextSibling`.
 
 `webDOMSnapshot(target, query)`, `root.krySnapshot(query)`,
 `webDOMSnapshots(target, selector)`, and `root.krySnapshots(selector)` return

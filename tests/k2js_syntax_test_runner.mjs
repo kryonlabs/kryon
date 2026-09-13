@@ -3419,6 +3419,14 @@ function fakeDocument() {
     assert.equal(runtime.webDOMEventRefs(target, "tap-button").click, "call_host");
     assert.equal(runtime.webDOMEventRefs(target, "tap-button").keyUp, "");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
+    assert.equal(buttonObject.previousSibling.ref, webDoc.nodes[1].path);
+    assert.equal(buttonObject.nextSibling.ref, "search-box");
+    assert.equal(firstButton.kryPreviousSibling.ref, webDoc.nodes[1].path);
+    assert.equal(firstButton.kryNextSibling.ref, "search-box");
+    assert.equal(root.kryPreviousSibling("tap-button").ref, webDoc.nodes[1].path);
+    assert.equal(root.kryNextSibling("tap-button").ref, "search-box");
+    assert.equal(runtime.webDOMPreviousSibling(target, "tap-button").ref, webDoc.nodes[1].path);
+    assert.equal(runtime.webDOMNextSibling(target, "tap-button").ref, "search-box");
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
     assert.equal(buttonObject.relations.previousSibling.ref, webDoc.nodes[1].path);
     assert.equal(buttonObject.relations.nextSibling.ref, "search-box");
@@ -3460,6 +3468,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeRelations(rt, "primary-action").previousSibling.path,
       webDoc.nodes[1].path);
     assert.equal(runtime.webNodeRelations(rt, "primary-action").nextSibling.path,
+      webDoc.nodes[3].path);
+    assert.equal(runtime.webNodePreviousSibling(rt, "primary-action").path,
+      webDoc.nodes[1].path);
+    assert.equal(runtime.webNodeNextSibling(rt, "primary-action").path,
       webDoc.nodes[3].path);
     assert.equal(runtime.webNodeRelationRefs(rt, "primary-action").previousSibling,
       webDoc.nodes[1].path);

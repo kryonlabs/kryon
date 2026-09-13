@@ -146,6 +146,10 @@ the browser receives normal elements, attributes, CSS, and events.
   nodes can enumerate cells that reference them.
 - Web relationship facts include structural `previousSibling`/`nextSibling`
   links for adjacent Kry DOM objects in both pre-mount and mounted snapshots.
+- Sibling traversal APIs expose those structural links directly through
+  `webNodePreviousSibling(...)`, `webNodeNextSibling(...)`,
+  `webDOMPreviousSibling(...)`, `webDOMNextSibling(...)`, mounted root helpers,
+  element getters, and `WebDOMObject` getters.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
 - Browser-backed KSS coverage verifies mounted application of native container,

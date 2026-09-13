@@ -5310,6 +5310,24 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMParent(root, node.path) : null;
       }
     },
+    kryPreviousSibling: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMPreviousSibling(root, node.path) : null;
+      }
+    },
+    kryNextSibling: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMNextSibling(root, node.path) : null;
+      }
+    },
     kryChildren: {
       configurable: true,
       enumerable: false,
@@ -5767,6 +5785,22 @@ function makeWebDOMObject(root, node, element, ref = "") {
       get() {
         const target = webDOMObjectRoot(this);
         return target ? webDOMParent(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    previousSibling: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMPreviousSibling(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    nextSibling: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMNextSibling(target, webDOMObjectQuery(this)) : null;
       }
     },
     children: {
@@ -6888,6 +6922,20 @@ function bindWebRootProperties(root) {
         return webDOMRelationRefs(this, query);
       }
     },
+    kryPreviousSibling: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMPreviousSibling(this, query);
+      }
+    },
+    kryNextSibling: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMNextSibling(this, query);
+      }
+    },
     kryEventRefs: {
       configurable: true,
       enumerable: false,
@@ -7432,6 +7480,14 @@ export function webNodeParent(rt, query) {
   if (!node || !parentPath || parentPath === node.path)
     return null;
   return webFrameNodeMap(frame).get(parentPath) || null;
+}
+
+export function webNodePreviousSibling(rt, query) {
+  return webNodePreviousSiblingFromFrame(webNodeQuery(rt, query));
+}
+
+export function webNodeNextSibling(rt, query) {
+  return webNodeNextSiblingFromFrame(webNodeQuery(rt, query));
 }
 
 export function webNodeChildren(rt, query = "") {
@@ -8555,6 +8611,18 @@ export function webDOMParent(target, query) {
   if (!root || !object || !parentPath || parentPath === object.node.path)
     return null;
   return webDOMObjectForNode(root, root.__kryNodes?.get(parentPath));
+}
+
+export function webDOMPreviousSibling(target, query) {
+  const root = mountedRoot(target);
+  const object = root ? webDOMObject(target, query) : null;
+  return object ? webDOMSiblingObject(root, object.node, -1) : null;
+}
+
+export function webDOMNextSibling(target, query) {
+  const root = mountedRoot(target);
+  const object = root ? webDOMObject(target, query) : null;
+  return object ? webDOMSiblingObject(root, object.node, 1) : null;
 }
 
 export function webDOMChildren(target, query = "") {
