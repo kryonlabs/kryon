@@ -108,6 +108,8 @@ the browser receives normal elements, attributes, CSS, and events.
   position, repeat, origin, clip, attachment, and blend controls.
 - KSS web type styling accepts both Kryon's `typeface` alias and the native
   `font-family` property name.
+- KSS web text decoration styling covers native line, color, style, thickness,
+  underline offset, and skip-ink controls.
 - KSS web sizing supports logical `inline-size`/`block-size` and min/max
   variants for writing-mode-aware layouts.
 - KSS web grid styling supports named template areas and per-node grid-area

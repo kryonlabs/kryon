@@ -2013,7 +2013,8 @@ const webKssLiteralProperties = new Set([
   "typeface", "font-family", "font-weight", "font-style", "font-variant", "font-stretch",
   "font-kerning", "font-optical-sizing", "font-feature-settings",
   "font-variation-settings", "text-align",
-  "text-decoration", "text-decoration-style", "text-shadow",
+  "text-decoration", "text-decoration-line", "text-decoration-style",
+  "text-decoration-skip-ink", "text-shadow",
   "text-transform", "text-overflow", "white-space",
   "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "border-style", "border-top-style", "border-right-style",
@@ -2728,8 +2729,10 @@ const webCSSPropertyNames = new Map([
   ["text-indent", "text-indent"],
   ["text-align", "text-align"],
   ["text-decoration", "text-decoration"],
+  ["text-decoration-line", "text-decoration-line"],
   ["text-decoration-color", "text-decoration-color"],
   ["text-decoration-style", "text-decoration-style"],
+  ["text-decoration-skip-ink", "text-decoration-skip-ink"],
   ["text-decoration-thickness", "text-decoration-thickness"],
   ["text-underline-offset", "text-underline-offset"],
   ["text-shadow", "text-shadow"],
@@ -3748,8 +3751,10 @@ function applyResolvedWebStyle(el, style) {
   set("textIndent", style["text-indent"]);
   set("textAlign", style["text-align"]);
   set("textDecoration", style["text-decoration"]);
+  set("textDecorationLine", style["text-decoration-line"]);
   set("textDecorationColor", style["text-decoration-color"]);
   set("textDecorationStyle", style["text-decoration-style"]);
+  set("textDecorationSkipInk", style["text-decoration-skip-ink"]);
   set("textDecorationThickness", style["text-decoration-thickness"]);
   set("textUnderlineOffset", style["text-underline-offset"]);
   set("textShadow", style["text-shadow"]);
