@@ -23,6 +23,30 @@ type PlotTextPaint struct {
 	ShowOverlay   bool
 }
 
+func Plot_PlotMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	return value_13
+}
+
 func Plot_PlotOffset(count int32, offset int32) int32 {
 	var value_0 int32 = count
 	var value_1 int32 = 0
@@ -286,125 +310,89 @@ func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width 
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = frame.Value.PaddingX
-	var pad_x float32 = value_4
-	var value_5 uint32 = frame.Value.Fields
-	var value_6 int32 = int32(StylePaddingX)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 float32 = pad_x
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
-	}
-	if value_12 {
-		var value_16 float32 = 6.0
-		pad_x = value_16
-	}
-	var value_17 float32 = pad_x
-	var value_18 float32 = scale
-	pad_x = value_17 * value_18
-	var value_19 float32 = frame.Value.PaddingY
-	var pad_y float32 = value_19
-	var value_20 uint32 = frame.Value.Fields
-	var value_21 int32 = int32(StylePaddingY)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(value_22), 32, false, 8))
-	var value_24 int32 = 0
-	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(0), 32, false, 0))
-	var value_26 bool = value_23 == value_25
-	var value_27 bool = value_26
-	if !value_27 {
-		var value_28 float32 = pad_y
-		var value_29 float32 = 0.0
-		var value_30 bool = value_28 < value_29
-		value_27 = value_30
-	}
+	var value_4 uint32 = frame.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.PaddingX
+	var value_8 float32 = 6.0
+	var value_9 float32 = scale
+	var value_10 float32 = Plot_PlotMetric(value_4, value_6, value_7, value_8, value_9)
+	var pad_x float32 = value_10
+	var value_11 uint32 = frame.Value.Fields
+	var value_12 int32 = int32(StylePaddingY)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = frame.Value.PaddingY
+	var value_15 float32 = 4.0
+	var value_16 float32 = scale
+	var value_17 float32 = Plot_PlotMetric(value_11, value_13, value_14, value_15, value_16)
+	var pad_y float32 = value_17
+	var value_18 uint32 = frame.Value.Fields
+	var value_19 int32 = int32(StyleFontSize)
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
+	var value_21 float32 = frame.Value.FontSize
+	var value_22 float32 = 18.0
+	var value_23 float32 = scale
+	var value_24 float32 = Plot_PlotMetric(value_18, value_20, value_21, value_22, value_23)
+	var text_height float32 = value_24
+	var value_25 float32 = text_height
+	var value_26 float32 = 0.0
+	var value_27 bool = value_25 <= value_26
 	if value_27 {
-		var value_31 float32 = 4.0
-		pad_y = value_31
+		var value_28 float32 = 18.0
+		var value_29 float32 = scale
+		var value_30 float32 = value_28 * value_29
+		text_height = value_30
 	}
-	var value_32 float32 = pad_y
-	var value_33 float32 = scale
-	pad_y = value_32 * value_33
-	var value_34 float32 = frame.Value.FontSize
-	var text_height float32 = value_34
-	var value_35 uint32 = frame.Value.Fields
-	var value_36 int32 = int32(StyleFontSize)
-	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(value_37), 32, false, 8))
-	var value_39 int32 = 0
-	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
-	var value_41 bool = value_38 == value_40
-	var value_42 bool = value_41
-	if !value_42 {
-		var value_43 float32 = text_height
-		var value_44 float32 = 0.0
-		var value_45 bool = value_43 <= value_44
-		value_42 = value_45
+	var value_31 uint32 = frame.Value.Foreground
+	paint.TextColor = value_31
+	var value_32 bool = show_label
+	paint.ShowLabel = value_32
+	var value_33 bool = show_overlay
+	paint.ShowOverlay = value_33
+	var value_34 float32 = bounds.X
+	var value_35 float32 = pad_x
+	var value_36 float32 = value_34 + value_35
+	paint.LabelBounds.X = value_36
+	var value_37 float32 = bounds.Y
+	var value_38 float32 = pad_y
+	var value_39 float32 = value_37 + value_38
+	paint.LabelBounds.Y = value_39
+	var value_40 float32 = label_width
+	paint.LabelBounds.Width = value_40
+	var value_41 float32 = text_height
+	paint.LabelBounds.Height = value_41
+	var value_42 float32 = bounds.X
+	var value_43 float32 = bounds.Width
+	var value_44 float32 = value_42 + value_43
+	var value_45 float32 = overlay_width
+	var value_46 float32 = value_44 - value_45
+	var value_47 float32 = pad_x
+	var value_48 float32 = value_46 - value_47
+	paint.OverlayBounds.X = value_48
+	var value_49 float32 = bounds.Y
+	var value_50 float32 = pad_y
+	var value_51 float32 = value_49 + value_50
+	paint.OverlayBounds.Y = value_51
+	var value_52 float32 = overlay_width
+	paint.OverlayBounds.Width = value_52
+	var value_53 float32 = text_height
+	paint.OverlayBounds.Height = value_53
+	var value_54 bool = show_label
+	var value_55 bool = !value_54
+	if value_55 {
+		var value_56 float32 = 0.0
+		paint.LabelBounds.Width = value_56
+		var value_57 float32 = 0.0
+		paint.LabelBounds.Height = value_57
 	}
-	if value_42 {
-		var value_46 float32 = 18.0
-		text_height = value_46
+	var value_58 bool = show_overlay
+	var value_59 bool = !value_58
+	if value_59 {
+		var value_60 float32 = 0.0
+		paint.OverlayBounds.Width = value_60
+		var value_61 float32 = 0.0
+		paint.OverlayBounds.Height = value_61
 	}
-	var value_47 float32 = text_height
-	var value_48 float32 = scale
-	text_height = value_47 * value_48
-	var value_49 uint32 = frame.Value.Foreground
-	paint.TextColor = value_49
-	var value_50 bool = show_label
-	paint.ShowLabel = value_50
-	var value_51 bool = show_overlay
-	paint.ShowOverlay = value_51
-	var value_52 float32 = bounds.X
-	var value_53 float32 = pad_x
-	var value_54 float32 = value_52 + value_53
-	paint.LabelBounds.X = value_54
-	var value_55 float32 = bounds.Y
-	var value_56 float32 = pad_y
-	var value_57 float32 = value_55 + value_56
-	paint.LabelBounds.Y = value_57
-	var value_58 float32 = label_width
-	paint.LabelBounds.Width = value_58
-	var value_59 float32 = text_height
-	paint.LabelBounds.Height = value_59
-	var value_60 float32 = bounds.X
-	var value_61 float32 = bounds.Width
-	var value_62 float32 = value_60 + value_61
-	var value_63 float32 = overlay_width
-	var value_64 float32 = value_62 - value_63
-	var value_65 float32 = pad_x
-	var value_66 float32 = value_64 - value_65
-	paint.OverlayBounds.X = value_66
-	var value_67 float32 = bounds.Y
-	var value_68 float32 = pad_y
-	var value_69 float32 = value_67 + value_68
-	paint.OverlayBounds.Y = value_69
-	var value_70 float32 = overlay_width
-	paint.OverlayBounds.Width = value_70
-	var value_71 float32 = text_height
-	paint.OverlayBounds.Height = value_71
-	var value_72 bool = show_label
-	var value_73 bool = !value_72
-	if value_73 {
-		var value_74 float32 = 0.0
-		paint.LabelBounds.Width = value_74
-		var value_75 float32 = 0.0
-		paint.LabelBounds.Height = value_75
-	}
-	var value_76 bool = show_overlay
-	var value_77 bool = !value_76
-	if value_77 {
-		var value_78 float32 = 0.0
-		paint.OverlayBounds.Width = value_78
-		var value_79 float32 = 0.0
-		paint.OverlayBounds.Height = value_79
-	}
-	var value_80 PlotTextPaint = paint
-	return value_80
+	var value_62 PlotTextPaint = paint
+	return value_62
 }

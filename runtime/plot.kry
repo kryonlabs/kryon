@@ -22,6 +22,12 @@ PlotTextPaint :: struct {
     show_overlay: bool
 }
 
+PlotMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> float {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return value * scale
+}
+
 PlotOffset :: (count: i32, offset: i32) -> i32 #export {
     if count <= 0 {
         return 0
@@ -122,21 +128,13 @@ PlotTextPaintFor :: (bounds: Rectangle, label_width: float,
     if scale <= 0.0 {
         scale = 1.0
     }
-    pad_x: float = frame.value.padding_x
-    if (frame.value.fields & (u32)StylePaddingX) == (u32)0 || pad_x < 0.0 {
-        pad_x = 6.0
-    }
-    pad_x *= scale
-    pad_y: float = frame.value.padding_y
-    if (frame.value.fields & (u32)StylePaddingY) == (u32)0 || pad_y < 0.0 {
-        pad_y = 4.0
-    }
-    pad_y *= scale
-    text_height: float = frame.value.font_size
-    if (frame.value.fields & (u32)StyleFontSize) == (u32)0 || text_height <= 0.0 {
-        text_height = 18.0
-    }
-    text_height *= scale
+    pad_x: float = PlotMetric(frame.value.fields, (u32)StylePaddingX,
+        frame.value.padding_x, 6.0, scale)
+    pad_y: float = PlotMetric(frame.value.fields, (u32)StylePaddingY,
+        frame.value.padding_y, 4.0, scale)
+    text_height: float = PlotMetric(frame.value.fields, (u32)StyleFontSize,
+        frame.value.font_size, 18.0, scale)
+    if text_height <= 0.0 { text_height = 18.0 * scale }
     paint.text_color = frame.value.foreground
     paint.show_label = show_label
     paint.show_overlay = show_overlay
