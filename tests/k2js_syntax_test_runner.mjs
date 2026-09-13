@@ -2227,6 +2227,8 @@ function fakeDocument() {
       { nodeName: "choiceRadio", path: "Page/choiceRadio" });
     runtime.widget(nativeRt, "Progress", { value: 42, max: 100 }, null,
       { nodeName: "upload", path: "Page/upload" });
+    runtime.widget(nativeRt, "Line", {}, null,
+      { nodeName: "line", path: "Page/line" });
     runtime.widget(nativeRt, "Separator", {}, null,
       { nodeName: "rule", path: "Page/rule" });
     runtime.widget(nativeRt, "TableView", {}, null,
@@ -2327,7 +2329,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
       ["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
-       "Checkbox", "Toggle", "Radio", "Progress", "Separator"].map((kind) => {
+       "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
         return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
       }),
@@ -2341,14 +2343,15 @@ function fakeDocument() {
         ["Toggle", "input", "checkbox", "", "", ""],
         ["Radio", "input", "radio", "", "", ""],
         ["Progress", "progress", "", "", "100", "42"],
+        ["Line", "hr", "", "", "", ""],
         ["Separator", "hr", "", "", "", ""]
       ]);
     assert.deepEqual(["Slider", "Spinbox", "Dropdown", "ListBox", "ColorPicker",
-      "Checkbox", "Toggle", "Radio", "Progress", "Separator", "TableView"]
+      "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator", "TableView"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
       ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
-       "switch", "radio", "progressbar", "separator", "table"]);
+       "switch", "radio", "progressbar", "separator", "separator", "table"]);
     assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),

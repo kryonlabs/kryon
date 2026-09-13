@@ -1184,6 +1184,7 @@ function widgetTag(item) {
     return "input";
   case "Progress":
     return "progress";
+  case "Line":
   case "Separator":
     return "hr";
   case "Menu":

@@ -76,6 +76,11 @@ try {
     path: "Page/article/bullet",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Line", {}, null, {
+    nodeName: "line",
+    path: "Page/article/line",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "TableView", {}, null, {
     nodeName: "prices",
     path: "Page/prices"
@@ -262,11 +267,15 @@ try {
     "root flow relation refs missing");
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
+  const line = kryon.findWebElement(target, "line");
   assert(icon.tagName === "SPAN", "icon native span not rendered");
   assert(icon.getAttribute("role") === "img", "icon image role missing");
   assert(bullet.tagName === "LI", "bullet native list item not rendered");
   assert(kryon.webDOMSnapshot(target, "bullet").role === "listitem",
     "bullet listitem snapshot role missing");
+  assert(line.tagName === "HR", "line native separator not rendered");
+  assert(kryon.webDOMSnapshot(target, "line").role === "separator",
+    "line separator snapshot role missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);

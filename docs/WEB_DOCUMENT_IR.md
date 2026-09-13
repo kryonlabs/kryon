@@ -355,7 +355,7 @@ The initial tag mapping is intentionally conservative:
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |
 | `Progress` | `progress` |
-| `Separator` | `hr` |
+| `Line`, `Separator` | `hr` |
 | `Menu` | `menu` |
 | `TableView` | `table` |
 | `TableCell` | `td`, or `th` when `scope` is `row`, `col`, `rowgroup`, or `colgroup` |
