@@ -3475,7 +3475,7 @@ func TestPageTextUsesStyleSheetKinds(t *testing.T) {
 Heading { foreground: #123456; font-size: 30; }
 Heading.hero { foreground: #243546; font-size: 34; }
 ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
-ParagraphText.lede { foreground: #fedcba; font-size: 20; opacity: 0.64; }
+ParagraphText.lede { foreground: #fedcba; font-size: 20; gap: 9; opacity: 0.64; }
 Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 `, "Page Text", "") || !SetActiveStylePack("test.page_text") {
 		t.Fatal("test page text style did not activate")
@@ -3512,7 +3512,7 @@ Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 		case op.Kind == FrameOpText && op.Semantic == SemanticParagraph && op.Text == "Lede":
 			sawLede = true
 			if op.Color != (Color{R: 0xfe, G: 0xdc, B: 0xba, A: 0xff}) ||
-				op.FontSize != 20 || op.Opacity != 0.64 {
+				op.FontSize != 20 || op.Bounds.Height != 29 || op.Opacity != 0.64 {
 				t.Fatalf("classed paragraph style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Semantic == SemanticLink:

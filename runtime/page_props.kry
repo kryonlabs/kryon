@@ -33,6 +33,5 @@ ParagraphTextProps :: struct {
     bounds: Rectangle
     text: const char*
     class_name: i32
-    line_gap: i32
     key: KeyID
 }

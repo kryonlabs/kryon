@@ -1162,6 +1162,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font.md;
+  gap: space.2;
   opacity: 1;
 }
 

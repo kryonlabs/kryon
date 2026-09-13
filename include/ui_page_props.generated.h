@@ -53,7 +53,6 @@ typedef struct ParagraphTextProps {
     Rectangle bounds;
     const char* text;
     int32_t class_name;
-    int32_t line_gap;
     KeyID key;
 } ParagraphTextProps;
 

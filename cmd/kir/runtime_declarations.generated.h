@@ -749,7 +749,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    bounds: Rectangle\n"
         "    text: const char*\n"
         "    class_name: i32\n"
-        "    line_gap: i32\n"
         "    key: KeyID\n"
         "}\n"
     },

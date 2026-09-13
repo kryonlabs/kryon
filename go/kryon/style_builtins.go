@@ -1164,6 +1164,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font.md;
+  gap: space.2;
   opacity: 1;
 }
 
@@ -2868,6 +2869,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font;
+  gap: 4;
 }
 
 Link {
@@ -4544,6 +4546,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font.md;
+  gap: space.2;
   opacity: 1;
 }
 
@@ -6327,6 +6330,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font.md;
+  gap: space.2;
   opacity: 1;
 }
 
@@ -8108,6 +8112,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font;
+  gap: 4;
 }
 
 Link {

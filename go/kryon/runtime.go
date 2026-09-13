@@ -4301,11 +4301,15 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	style := defaultTextStyleForClassKind(Text16, props.ClassName, StyleSheet_StyleKindParagraphText())
 	font, fontID := styleTextFace(style, Text16)
 	color := style.Foreground
+	lineGap := int32(4)
+	if style.Gap > 0 {
+		lineGap = int32(style.Gap + 0.5)
+	}
 	width := int32(props.Bounds.Width)
 	if width <= 0 {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
 	}
-	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + props.LineGap)})
+	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + lineGap)})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: int32(props.Key), Semantic: SemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {

@@ -1167,6 +1167,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font;
+  gap: 4;
 }
 
 Link {

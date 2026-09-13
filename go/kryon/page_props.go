@@ -34,6 +34,5 @@ type ParagraphTextProps struct {
 	Bounds    Rectangle
 	Text      string
 	ClassName int32
-	LineGap   int32
 	Key       KeyID
 }
