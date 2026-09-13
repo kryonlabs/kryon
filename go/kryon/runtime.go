@@ -378,24 +378,6 @@ type ThemeFamily struct {
 	Dark  Theme
 }
 
-type SelectableProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Label    string
-	Selected *int32
-	Disabled bool
-}
-
-type CheckboxProps struct {
-	Bounds     Rectangle
-	ID         int32
-	Label      string
-	Value      *int32
-	Flags      *int32
-	FlagsValue int32
-	Disabled   bool
-}
-
 type ToggleProps struct {
 	Bounds   Rectangle
 	ID       int32

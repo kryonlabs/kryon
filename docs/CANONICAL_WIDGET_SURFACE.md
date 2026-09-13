@@ -42,6 +42,7 @@ surface review:
 | `runtime/card.kry` | Card composition | `.kry canonical` |
 | `runtime/card_props.kry` | Card props | `.kry canonical` |
 | `runtime/checkbox.kry` | Checkbox paint/layout policy | `.kry canonical` |
+| `runtime/checkbox_props.kry` | Checkbox props | `.kry canonical` |
 | `runtime/collapsible.kry` | Collapsible metrics/header geometry policy | `.kry canonical` |
 | `runtime/color_picker.kry` | ColorPicker channel layout and color policy | `.kry canonical` |
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
@@ -78,6 +79,7 @@ surface review:
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
+| `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
 | `runtime/slider.kry` | Slider composition plus value/keyboard policy | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
@@ -347,9 +349,9 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
-| `Checkbox` | `.kry canonical` | Paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
+| `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
-| `Selectable` | `.kry canonical` | Paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
+| `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; segment typography and paint are KSS-owned; host handles label measurement, focus/input, and button drawing. |

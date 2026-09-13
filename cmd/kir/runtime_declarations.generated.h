@@ -67,6 +67,20 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    style: ControlStyle\n"
         "}\n"
     },
+    {"runtime/checkbox_props.kry",
+        "#module \"checkbox_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "CheckboxProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    label: const char*\n"
+        "    value: *i32\n"
+        "    flags: *i32\n"
+        "    flags_value: i32\n"
+        "    disabled: bool\n"
+        "}\n"
+    },
     {"runtime/control_props.kry",
         "#module \"control_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
@@ -238,6 +252,18 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    pressed: bool\n"
         "    hovered: bool\n"
         "    focused: bool\n"
+        "}\n"
+    },
+    {"runtime/selectable_props.kry",
+        "#module \"selectable_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "SelectableProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    label: const char*\n"
+        "    selected: *i32\n"
+        "    disabled: bool\n"
         "}\n"
     },
 };

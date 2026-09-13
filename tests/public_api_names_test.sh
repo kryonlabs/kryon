@@ -478,6 +478,20 @@ if [ -n "$stale_tree_api_matches" ]; then
     exit 1
 fi
 
+manual_widget_props_matches="$(
+    rg -n 'typedef struct \{[^}]*\} (CheckboxProps|SelectableProps)|type (CheckboxProps|SelectableProps) struct' \
+        include/ui_tree.h \
+        go/kryon/runtime.go \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$manual_widget_props_matches" ]; then
+    echo "CheckboxProps and SelectableProps must be generated from runtime/*_props.kry, not hand-written in public host files:"
+    echo "$manual_widget_props_matches"
+    exit 1
+fi
+
 button_style_matches="$(
     rg -n '\b(UIButtonStyle[A-Za-z0-9_]*|UI_BUTTON_STYLE_[A-Z_]+|ButtonStyle|StyledButton|RenderStyledButton)\b' \
         include \

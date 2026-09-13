@@ -1331,6 +1331,7 @@ include/theme_meta.h function NormalizeTheme
 include/theme_meta.h macro THEME_COUNT
 include/ui_button_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_card_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_checkbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_clip.h function BeginClip
 include/ui_clip.h function EndClip
 include/ui_clip.h function GetClipEffective
@@ -1680,6 +1681,7 @@ include/ui_scaling.h function SetScale
 include/ui_scroll.h function GetScrollbarContentWidth
 include/ui_scroll.h function GetScrollbarReservedWidth
 include/ui_scroll.h function GetScrollbarSafeContentWidth
+include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks
 include/ui_style_sheet.h function FindStylePack

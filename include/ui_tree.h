@@ -5,7 +5,9 @@
 #include "ui_controls.h"
 #include "ui_button_props.generated.h"
 #include "ui_card_props.generated.h"
+#include "ui_checkbox_props.generated.h"
 #include "ui_grid_props.generated.h"
+#include "ui_selectable_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_profile.h"
@@ -79,24 +81,6 @@ const TreeNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);
 int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    int *selected;
-    int disabled;
-} SelectableProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    int *value;
-    int *flags;
-    int flags_value;
-    int disabled;
-} CheckboxProps;
 
 void AppBackground(void);
 void Background(Color color);
