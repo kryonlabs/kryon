@@ -86,6 +86,7 @@ surface review:
 | `runtime/paint.kry` | Paint/drawing helpers | Native support |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
+| `runtime/page.kry` | Page, Section, Heading, ParagraphText, and Flow composition | `.kry canonical` |
 | `runtime/page_props.kry` | Page/Section/Heading/Paragraph props | `.kry canonical` |
 | `runtime/paragraph.kry` | Paragraph metrics/default policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
