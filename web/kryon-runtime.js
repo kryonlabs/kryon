@@ -1170,7 +1170,8 @@ function widgetTag(item) {
   case "TableView":
     return "table";
   case "TableCell":
-    return "td";
+    return /^(col|row|colgroup|rowgroup)$/i.test(metaString(item.meta, "scope"))
+      ? "th" : "td";
   case "Canvas":
   case "Plot":
   case "CanvasGrid":
@@ -1720,6 +1721,13 @@ function implicitRole(node) {
     return "separator";
   if (node.tag === "table")
     return "table";
+  if (node.tag === "th") {
+    const scope = String(node.scope || "").toLowerCase();
+    if (scope === "row" || scope === "rowgroup")
+      return "rowheader";
+    if (scope === "col" || scope === "colgroup")
+      return "columnheader";
+  }
   if (/^h[1-6]$/.test(node.tag))
     return "heading";
   if (node.tag === "main")

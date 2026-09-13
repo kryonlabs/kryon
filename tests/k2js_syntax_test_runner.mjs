@@ -1712,24 +1712,22 @@ function fakeDocument() {
     runtime.beginFrame(tableRt);
     runtime.widget(tableRt, "TableView", {}, null,
       { nodeName: "prices", path: "Page/prices" });
-    runtime.widget(tableRt, "Text", { text: "Price" }, null,
+    runtime.widget(tableRt, "TableCell", { text: "Price" }, null,
       {
         nodeName: "priceHeader",
         path: "Page/prices/priceHeader",
         parentPath: "Page/prices",
-        tag: "th",
         id: "price-header",
         scope: "col",
         ariaSort: "ascending",
         ariaColIndex: 1,
         ariaColCount: 2
       });
-    runtime.widget(tableRt, "Text", { text: "Product" }, null,
+    runtime.widget(tableRt, "TableCell", { text: "Product" }, null,
       {
         nodeName: "productHeader",
         path: "Page/prices/productHeader",
         parentPath: "Page/prices",
-        tag: "th",
         id: "product-header",
         scope: "row",
         ariaRowIndex: 2
@@ -1771,10 +1769,14 @@ function fakeDocument() {
     const priceHeader = runtime.findWebElement(tableTarget, "priceHeader");
     const productHeader = runtime.findWebElement(tableTarget, "productHeader");
     const priceCell = runtime.findWebElement(tableTarget, "priceCell");
+    assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/priceHeader").tag, "th");
+    assert.equal(runtime.webNodeQuery(tableRt, "Page/prices/productHeader").tag, "th");
+    assert.equal(priceHeader.tagName, "TH");
     assert.equal(priceHeader.attributes.scope, "col");
     assert.equal(priceHeader.attributes["aria-sort"], "ascending");
     assert.equal(priceHeader.attributes["aria-colindex"], "1");
     assert.equal(priceHeader.attributes["aria-colcount"], "2");
+    assert.equal(productHeader.tagName, "TH");
     assert.equal(productHeader.attributes.scope, "row");
     assert.equal(productHeader.attributes["aria-rowindex"], "2");
     assert.equal(priceCell.attributes.headers, "price-header product-header");
@@ -1783,6 +1785,12 @@ function fakeDocument() {
     assert.equal(priceCell.attributes["aria-rowindex"], "2");
     assert.equal(priceCell.attributes["aria-colindex"], "1");
     assert.equal(priceCell.attributes["aria-rowcount"], "4");
+    assert.equal(runtime.webAccessibilitySnapshot(tableRt).nodes
+      .find((node) => node.path === "Page/prices/priceHeader")?.role,
+      "columnheader");
+    assert.equal(runtime.webAccessibilitySnapshot(tableRt).nodes
+      .find((node) => node.path === "Page/prices/productHeader")?.role,
+      "rowheader");
     assert.deepEqual(runtime.webAccessibilitySnapshot(tableRt).nodes
       .find((node) => node.kind === "Text" && node.path === "Page/prices/priceCell"),
       {
