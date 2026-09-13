@@ -1656,6 +1656,8 @@ Radio[role=Ring] {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 40;
+  gap: 4;
   opacity: 1;
   material: default;
 }
@@ -3340,6 +3342,8 @@ Radio[role=Ring] {
   border: border;
   focus: accent;
   border-width: border;
+  padding-x: 20;
+  gap: gap;
   opacity: 1;
   material: default;
 }
@@ -5056,6 +5060,8 @@ Radio[role=Ring] {
   border: border-hover;
   focus: focus;
   border-width: border;
+  padding-x: 40;
+  gap: 4;
   opacity: 1;
   material: default;
 }
@@ -6861,6 +6867,8 @@ Radio[role=Ring] {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 40;
+  gap: 4;
   opacity: 1;
   material: glow;
 }
@@ -8624,6 +8632,8 @@ Radio[role=Ring] {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 40;
+  gap: 4;
   opacity: 1;
   material: premium;
 }

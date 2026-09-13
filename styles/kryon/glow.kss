@@ -1748,6 +1748,8 @@ Radio[role=Ring] {
   border: border;
   focus: focus;
   border-width: border;
+  padding-x: 40;
+  gap: 4;
   opacity: 1;
   material: glow;
 }

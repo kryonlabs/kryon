@@ -7,7 +7,6 @@ type RadioSpec struct {
 	Bounds         Rectangle
 	Checked        bool
 	Disabled       bool
-	DefaultStyle   bool
 	SelectedAmount float32
 	Scale          float32
 	Frame          StyleFrame
@@ -85,201 +84,182 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var value_6 int32 = Radio_RadioSize(value_5)
 	var value_7 float32 = float32(value_6)
 	var diameter float32 = value_7
-	var value_8 float32 = scale
-	var value_9 int32 = Radio_RadioTouchSize(value_8)
-	var value_10 float32 = float32(value_9)
-	var touch float32 = value_10
-	var value_11 float32 = 8.0
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var gap float32 = value_13
-	var value_14 bool = spec.DefaultStyle
-	if value_14 {
-		var value_15 float32 = 4.0
-		var value_16 float32 = scale
-		var value_17 float32 = value_15 * value_16
-		gap = value_17
+	var value_8 float32 = spec.Frame.Value.Gap
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var gap float32 = value_10
+	var value_11 float32 = gap
+	var value_12 float32 = 0.0
+	var value_13 bool = value_11 <= value_12
+	if value_13 {
+		var value_14 float32 = 8.0
+		var value_15 float32 = scale
+		var value_16 float32 = value_14 * value_15
+		gap = value_16
 	}
-	var value_18 Rectangle = spec.Bounds
-	paint.HitBounds = value_18
-	var value_19 bool = spec.DefaultStyle
-	var value_20 bool = value_19
-	if value_20 {
-		var value_21 float32 = paint.HitBounds.Width
-		var value_22 float32 = touch
-		var value_23 bool = value_21 < value_22
-		value_20 = value_23
+	var value_17 float32 = spec.Frame.Value.PaddingX
+	var value_18 float32 = scale
+	var value_19 float32 = value_17 * value_18
+	var slot_width float32 = value_19
+	var value_20 float32 = slot_width
+	var value_21 float32 = diameter
+	var value_22 bool = value_20 < value_21
+	if value_22 {
+		var value_23 float32 = diameter
+		slot_width = value_23
 	}
-	if value_20 {
-		var value_24 float32 = touch
-		paint.HitBounds.Width = value_24
+	var value_24 Rectangle = spec.Bounds
+	paint.HitBounds = value_24
+	var value_25 float32 = paint.HitBounds.Width
+	var value_26 float32 = slot_width
+	var value_27 bool = value_25 < value_26
+	if value_27 {
+		var value_28 float32 = slot_width
+		paint.HitBounds.Width = value_28
 	}
-	var value_25 float32 = diameter
-	paint.Diameter = value_25
-	var value_26 float32 = touch
-	paint.Touch = value_26
-	var value_27 float32 = spec.Bounds.X
-	var value_28 float32 = diameter
-	var value_29 float32 = 0.5
-	var value_30 float32 = value_28 * value_29
-	var value_31 float32 = value_27 + value_30
-	paint.Center.X = value_31
-	var value_32 float32 = spec.Bounds.Y
-	var value_33 float32 = spec.Bounds.Height
-	var value_34 float32 = 0.5
-	var value_35 float32 = value_33 * value_34
-	var value_36 float32 = value_32 + value_35
-	paint.Center.Y = value_36
-	var value_37 bool = spec.DefaultStyle
-	if value_37 {
-		var value_38 float32 = spec.Bounds.X
-		var value_39 float32 = touch
-		var value_40 float32 = 0.5
-		var value_41 float32 = value_39 * value_40
-		var value_42 float32 = value_38 + value_41
-		paint.Center.X = value_42
+	var value_29 float32 = diameter
+	paint.Diameter = value_29
+	var value_30 float32 = slot_width
+	paint.Touch = value_30
+	var value_31 float32 = spec.Bounds.X
+	var value_32 float32 = slot_width
+	var value_33 float32 = 0.5
+	var value_34 float32 = value_32 * value_33
+	var value_35 float32 = value_31 + value_34
+	paint.Center.X = value_35
+	var value_36 float32 = spec.Bounds.Y
+	var value_37 float32 = spec.Bounds.Height
+	var value_38 float32 = 0.5
+	var value_39 float32 = value_37 * value_38
+	var value_40 float32 = value_36 + value_39
+	paint.Center.Y = value_40
+	var value_41 float32 = spec.Bounds.X
+	var value_42 float32 = slot_width
+	var value_43 float32 = diameter
+	var value_44 float32 = value_42 - value_43
+	var value_45 float32 = 0.5
+	var value_46 float32 = value_44 * value_45
+	var value_47 float32 = value_41 + value_46
+	paint.MarkBounds.X = value_47
+	var value_48 float32 = spec.Bounds.Y
+	var value_49 float32 = spec.Bounds.Height
+	var value_50 float32 = diameter
+	var value_51 float32 = value_49 - value_50
+	var value_52 float32 = 0.5
+	var value_53 float32 = value_51 * value_52
+	var value_54 float32 = value_48 + value_53
+	paint.MarkBounds.Y = value_54
+	var value_55 float32 = diameter
+	paint.MarkBounds.Width = value_55
+	var value_56 float32 = diameter
+	paint.MarkBounds.Height = value_56
+	var value_57 float32 = spec.Bounds.X
+	var value_58 float32 = slot_width
+	var value_59 float32 = value_57 + value_58
+	var value_60 float32 = gap
+	var value_61 float32 = value_59 + value_60
+	paint.LabelX = value_61
+	var value_62 float32 = paint.LabelX
+	paint.LabelBounds.X = value_62
+	var value_63 float32 = spec.Bounds.Y
+	paint.LabelBounds.Y = value_63
+	var value_64 float32 = spec.Bounds.Width
+	var value_65 float32 = paint.LabelX
+	var value_66 float32 = spec.Bounds.X
+	var value_67 float32 = value_65 - value_66
+	var value_68 float32 = value_64 - value_67
+	paint.LabelBounds.Width = value_68
+	var value_69 float32 = spec.Bounds.Height
+	paint.LabelBounds.Height = value_69
+	var value_70 float32 = paint.LabelBounds.Width
+	var value_71 float32 = 0.0
+	var value_72 bool = value_70 < value_71
+	if value_72 {
+		var value_73 float32 = 0.0
+		paint.LabelBounds.Width = value_73
 	}
-	var value_43 float32 = spec.Bounds.X
-	paint.MarkBounds.X = value_43
-	var value_44 float32 = spec.Bounds.Y
-	var value_45 float32 = spec.Bounds.Height
-	var value_46 float32 = diameter
-	var value_47 float32 = value_45 - value_46
-	var value_48 float32 = 0.5
-	var value_49 float32 = value_47 * value_48
-	var value_50 float32 = value_44 + value_49
-	paint.MarkBounds.Y = value_50
-	var value_51 float32 = diameter
-	paint.MarkBounds.Width = value_51
-	var value_52 float32 = diameter
-	paint.MarkBounds.Height = value_52
-	var value_53 bool = spec.DefaultStyle
-	if value_53 {
-		var value_54 float32 = spec.Bounds.X
-		var value_55 float32 = touch
-		var value_56 float32 = diameter
-		var value_57 float32 = value_55 - value_56
-		var value_58 float32 = 0.5
-		var value_59 float32 = value_57 * value_58
-		var value_60 float32 = value_54 + value_59
-		paint.MarkBounds.X = value_60
+	var value_74 float32 = spec.SelectedAmount
+	var selected float32 = value_74
+	var value_75 float32 = selected
+	var value_76 float32 = 0.0
+	var value_77 bool = value_75 < value_76
+	if value_77 {
+		var value_78 float32 = 0.0
+		selected = value_78
 	}
-	var value_61 float32 = spec.Bounds.X
-	var value_62 float32 = diameter
-	var value_63 float32 = value_61 + value_62
-	var value_64 float32 = gap
-	var value_65 float32 = value_63 + value_64
-	paint.LabelX = value_65
-	var value_66 bool = spec.DefaultStyle
-	if value_66 {
-		var value_67 float32 = spec.Bounds.X
-		var value_68 float32 = touch
-		var value_69 float32 = value_67 + value_68
-		var value_70 float32 = gap
-		var value_71 float32 = value_69 + value_70
-		paint.LabelX = value_71
+	var value_79 float32 = selected
+	var value_80 float32 = 1.0
+	var value_81 bool = value_79 > value_80
+	if value_81 {
+		var value_82 float32 = 1.0
+		selected = value_82
 	}
-	var value_72 float32 = paint.LabelX
-	paint.LabelBounds.X = value_72
-	var value_73 float32 = spec.Bounds.Y
-	paint.LabelBounds.Y = value_73
-	var value_74 float32 = spec.Bounds.Width
-	var value_75 float32 = paint.LabelX
-	var value_76 float32 = spec.Bounds.X
-	var value_77 float32 = value_75 - value_76
-	var value_78 float32 = value_74 - value_77
-	paint.LabelBounds.Width = value_78
-	var value_79 float32 = spec.Bounds.Height
-	paint.LabelBounds.Height = value_79
-	var value_80 float32 = paint.LabelBounds.Width
-	var value_81 float32 = 0.0
-	var value_82 bool = value_80 < value_81
-	if value_82 {
-		var value_83 float32 = 0.0
-		paint.LabelBounds.Width = value_83
+	var value_83 bool = spec.Checked
+	if value_83 {
+		var value_84 float32 = 1.0
+		selected = value_84
 	}
-	var value_84 float32 = spec.SelectedAmount
-	var selected float32 = value_84
-	var value_85 float32 = selected
-	var value_86 float32 = 0.0
-	var value_87 bool = value_85 < value_86
-	if value_87 {
-		var value_88 float32 = 0.0
-		selected = value_88
-	}
-	var value_89 float32 = selected
-	var value_90 float32 = 1.0
-	var value_91 bool = value_89 > value_90
-	if value_91 {
-		var value_92 float32 = 1.0
-		selected = value_92
-	}
-	var value_93 bool = spec.Checked
+	var value_85 float32 = diameter
+	var value_86 float32 = 0.5
+	var value_87 float32 = value_85 * value_86
+	paint.OuterRadius = value_87
+	var value_88 float32 = spec.Frame.Value.BorderWidth
+	var value_89 float32 = scale
+	var value_90 float32 = value_88 * value_89
+	paint.StrokeWidth = value_90
+	var value_91 float32 = paint.StrokeWidth
+	var value_92 float32 = 0.0
+	var value_93 bool = value_91 < value_92
 	if value_93 {
-		var value_94 float32 = 1.0
-		selected = value_94
+		var value_94 float32 = 0.0
+		paint.StrokeWidth = value_94
 	}
-	var value_95 float32 = diameter
-	var value_96 float32 = 0.5
-	var value_97 float32 = value_95 * value_96
-	paint.OuterRadius = value_97
-	var value_98 float32 = spec.Frame.Value.BorderWidth
-	var value_99 float32 = scale
-	var value_100 float32 = value_98 * value_99
-	paint.StrokeWidth = value_100
-	var value_101 float32 = paint.StrokeWidth
-	var value_102 float32 = 0.0
-	var value_103 bool = value_101 < value_102
-	if value_103 {
-		var value_104 float32 = 0.0
-		paint.StrokeWidth = value_104
+	var value_95 float32 = paint.OuterRadius
+	var value_96 float32 = paint.StrokeWidth
+	var value_97 float32 = 1.5
+	var value_98 float32 = value_96 * value_97
+	var value_99 float32 = value_95 - value_98
+	var value_100 float32 = selected
+	var value_101 float32 = value_99 * value_100
+	paint.FillRadius = value_101
+	var value_102 bool = spec.Checked
+	if value_102 {
+		var value_103 float32 = paint.OuterRadius
+		var value_104 float32 = paint.StrokeWidth
+		var value_105 float32 = value_103 - value_104
+		paint.FillRadius = value_105
 	}
-	var value_105 float32 = paint.OuterRadius
-	var value_106 float32 = paint.StrokeWidth
-	var value_107 float32 = 1.5
-	var value_108 float32 = value_106 * value_107
-	var value_109 float32 = value_105 - value_108
-	var value_110 float32 = selected
-	var value_111 float32 = value_109 * value_110
-	paint.FillRadius = value_111
-	var value_112 bool = spec.Checked
-	if value_112 {
-		var value_113 float32 = paint.OuterRadius
-		var value_114 float32 = paint.StrokeWidth
-		var value_115 float32 = value_113 - value_114
-		paint.FillRadius = value_115
+	var value_106 float32 = paint.FillRadius
+	var value_107 float32 = 0.0
+	var value_108 bool = value_106 < value_107
+	if value_108 {
+		var value_109 float32 = 0.0
+		paint.FillRadius = value_109
 	}
-	var value_116 float32 = paint.FillRadius
-	var value_117 float32 = 0.0
-	var value_118 bool = value_116 < value_117
-	if value_118 {
+	var value_110 uint32 = spec.Frame.Value.Border
+	paint.RingColor = value_110
+	var value_111 uint32 = spec.Selected.Value.Background
+	paint.FillColor = value_111
+	var value_112 uint32 = spec.Frame.Value.Foreground
+	paint.LabelColor = value_112
+	var value_113 bool = spec.Checked
+	if value_113 {
+		var value_114 uint32 = spec.Selected.Value.Background
+		paint.RingColor = value_114
+	}
+	var value_115 bool = spec.Checked
+	var value_116 bool = !value_115
+	var value_117 bool = value_116
+	if value_117 {
+		var value_118 float32 = selected
 		var value_119 float32 = 0.0
-		paint.FillRadius = value_119
+		var value_120 bool = value_118 > value_119
+		value_117 = value_120
 	}
-	var value_120 uint32 = spec.Frame.Value.Border
-	paint.RingColor = value_120
-	var value_121 uint32 = spec.Selected.Value.Background
-	paint.FillColor = value_121
-	var value_122 uint32 = spec.Frame.Value.Foreground
-	paint.LabelColor = value_122
-	var value_123 bool = spec.Checked
-	if value_123 {
-		var value_124 uint32 = spec.Selected.Value.Background
-		paint.RingColor = value_124
+	if value_117 {
+		var value_121 uint32 = spec.Selected.Value.Background
+		paint.RingColor = value_121
 	}
-	var value_125 bool = spec.Checked
-	var value_126 bool = !value_125
-	var value_127 bool = value_126
-	if value_127 {
-		var value_128 float32 = selected
-		var value_129 float32 = 0.0
-		var value_130 bool = value_128 > value_129
-		value_127 = value_130
-	}
-	if value_127 {
-		var value_131 uint32 = spec.Selected.Value.Background
-		paint.RingColor = value_131
-	}
-	var value_132 RadioPaint = paint
-	return value_132
+	var value_122 RadioPaint = paint
+	return value_122
 }

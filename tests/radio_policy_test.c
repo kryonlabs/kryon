@@ -51,9 +51,15 @@ main(void)
         .bounds = {10, 20, 160, 30},
         .checked = true,
         .disabled = true,
-        .default_style = true,
         .scale = 1.0f,
-        .frame = test_radio_frame(0x333333ff, 0x666666ff, 0x666666ff),
+        .frame = (StyleFrame){.value = {
+            .background = 0x333333ff,
+            .foreground = 0x666666ff,
+            .border = 0x666666ff,
+            .border_width = 2.0f,
+            .padding_x = 40.0f,
+            .gap = 4.0f,
+        }},
         .selected = test_radio_frame(0x666666ff, 0x666666ff, 0x666666ff),
     });
     check_rect(paint.mark_bounds, 20, 25, 20, 20);
