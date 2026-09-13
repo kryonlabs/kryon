@@ -84,17 +84,16 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 }
 
 static int
-ui_modal_action_width(const char *label, int font)
+ui_modal_action_width(const char *label, int font, ModalMetrics metrics)
 {
-    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
-
     return ModalActionWidth(TextWidth(label != NULL ? label : "", font),
                             metrics);
 }
 
 static int
 ui_modal_measure_action_rows(const ModalAction *actions, int count,
-                             int content_w, int gap, int font)
+                             int content_w, int gap, int font,
+                             ModalMetrics metrics)
 {
     int rows = 1;
     int row_w = 0;
@@ -104,7 +103,7 @@ ui_modal_measure_action_rows(const ModalAction *actions, int count,
         return 0;
 
     for(i = 0; i < count; i++) {
-        int action_w = ui_modal_action_width(actions[i].label, font);
+        int action_w = ui_modal_action_width(actions[i].label, font, metrics);
         int next_rows = ModalActionRowsStep(row_w, rows, action_w,
                                             content_w, gap);
         row_w = ModalActionRowWidthStep(row_w, action_w, content_w, gap);
@@ -113,11 +112,34 @@ ui_modal_measure_action_rows(const ModalAction *actions, int count,
     return rows;
 }
 
+static StyleFrame
+ui_modal_frame(int class_name, ButtonTone tone, ButtonState state, int role)
+{
+    return ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = tone,
+                      .emphasis = tone == ButtonToneAccent ?
+                          ButtonEmphasisFilled : ButtonEmphasisSoft,
+                      .class_name = class_name},
+        state, 0, 0.0f, 0.0f, 0.0f, StyleKindModal(), role);
+}
+
+static ModalMetrics
+ui_modal_metrics_for_class(int class_name)
+{
+    return ModalMetricsFor(
+        (float)GetScale(),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 2),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 16),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 20),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 17),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 15));
+}
+
 static int
 ui_modal_draw_actions(const ModalAction *actions, int count,
                       int x, int y, int content_w, int button_h,
                       int gap, int font, int class_name,
-                      Vector2 mouse_world)
+                      Vector2 mouse_world, ModalMetrics metrics)
 {
     int result = 0;
     int row_start = 0;
@@ -131,7 +153,8 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 
     for(i = 0; i <= count; i++) {
         int end_row = i == count;
-        int action_w = !end_row ? ui_modal_action_width(actions[i].label, font) : 0;
+        int action_w = !end_row ?
+            ui_modal_action_width(actions[i].label, font, metrics) : 0;
         int next_w = row_w > 0 ? row_w + gap + action_w : action_w;
 
         if(!end_row && (row_w == 0 || next_w <= content_w)) {
@@ -171,7 +194,7 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 int
 RenderActionModal(ModalProps modal)
 {
-    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
+    ModalMetrics metrics = ui_modal_metrics_for_class(modal.class_name);
     int modal_max_w = modal.max_width > 0 ? Scale(modal.max_width) : 0;
     ModalLayout layout;
     int modal_w;
@@ -236,7 +259,8 @@ RenderActionModal(ModalProps modal)
     ReflowTextLayout(&msg_layout, msg_w, msg_font, Scale(4));
 
     button_rows = ui_modal_measure_action_rows(modal.actions, modal.action_count,
-                                               msg_w, btn_gap, btn_font);
+                                               msg_w, btn_gap, btn_font,
+                                               metrics);
     buttons_h = ModalButtonsHeight(button_rows, metrics);
     if(has_prompt) {
         prompt_h = metrics.prompt_height;
@@ -276,14 +300,14 @@ RenderActionModal(ModalProps modal)
                      panel_style.opacity, ui_style_fill(panel_style),
                      panel_style.material);
 
-    title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
+    title_font = GetTitleFontSize(modal.title, msg_w);
     if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
        title_style.font_size > 0.0f)
         title_font = (int)(title_style.font_size + 0.5f);
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
-               modal_y + Scale(14), title_font,
+               modal_y + metrics.frame_title_y, title_font,
                Fade(title_style.foreground, title_style.opacity));
 
     DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font,
@@ -309,13 +333,14 @@ RenderActionModal(ModalProps modal)
     }
 
     if(result == 0 && modal.close_icon.id != 0) {
-        int icon_size = Scale(20);
-        int icon_padding = Scale(8);
+        int icon_size = metrics.frame_icon_size;
+        int icon_padding = metrics.frame_icon_padding;
         int icon_w = icon_size + icon_padding * 2;
         int hover = 0;
 
-        if(ui_modal_icon_button(modal_x + modal_w - icon_w - Scale(6),
-                               modal_y + Scale(6), icon_size,
+        if(ui_modal_icon_button(modal_x + modal_w - icon_w -
+                               metrics.frame_icon_edge_gap,
+                               modal_y + metrics.frame_icon_edge_gap, icon_size,
                                icon_padding, modal.close_icon,
                                modal.class_name, &hover))
             result = -1;
@@ -325,7 +350,7 @@ RenderActionModal(ModalProps modal)
         result = ui_modal_draw_actions(modal.actions, modal.action_count,
                                        msg_x, btn_y, msg_w, btn_h, btn_gap,
                                        btn_font, modal.class_name,
-                                       mouse_world);
+                                       mouse_world, metrics);
     if(result == 0 && has_prompt && commit_pressed)
         result = modal.action_count > 1 ? 2 : 1;
     if(result == 0 && has_prompt && IsKeyPressed(KEY_ESCAPE))
@@ -342,7 +367,7 @@ RenderModalFrame(int width, int height, const char *title,
     char editor_id[96];
     UIPanelFrame frame = {0};
     Widget widget;
-    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
+    ModalMetrics metrics = ui_modal_metrics_for_class(0);
     ModalFrameLayout layout;
     int title_font;
     int title_w;

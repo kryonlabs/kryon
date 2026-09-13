@@ -1,5 +1,7 @@
 #module "modal"
+#import "control_props"
 #import "drawing_props"
+#import "style"
 
 ModalMetrics :: struct {
     screen_pad: i32
@@ -52,35 +54,75 @@ ModalFrameLayout :: struct {
     icon_padding: i32
 }
 
-ModalMetricsFor :: (scale: float) -> ModalMetrics #export {
+ModalHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+ModalMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !ModalHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+ModalMetricsFor :: (scale: float, panel: StyleFrame, title: StyleFrame,
+    message: StyleFrame, action: StyleFrame, close: StyleFrame) -> ModalMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ModalMetrics
-    metrics.screen_pad = (i32)(24.0 * scale)
-    metrics.min_width = (i32)(280.0 * scale)
-    metrics.default_max_width = (i32)(420.0 * scale)
-    metrics.edge_pad = (i32)(8.0 * scale)
-    metrics.title_height = (i32)(48.0 * scale)
-    metrics.padding_x = (i32)(18.0 * scale)
-    metrics.padding_bottom = (i32)(18.0 * scale)
-    metrics.message_gap = (i32)(18.0 * scale)
-    metrics.prompt_height = (i32)(38.0 * scale)
-    metrics.prompt_gap = (i32)(18.0 * scale)
-    metrics.button_height = (i32)(44.0 * scale)
-    metrics.button_gap = (i32)(8.0 * scale)
-    metrics.action_padding_x = (i32)(24.0 * scale)
-    metrics.action_min_width = (i32)(88.0 * scale)
-    metrics.action_max_width = (i32)(150.0 * scale)
-    metrics.content_min_width = (i32)(120.0 * scale)
-    metrics.min_height = (i32)(160.0 * scale)
-    metrics.frame_min_width = (i32)(120.0 * scale)
-    metrics.frame_min_height = (i32)(96.0 * scale)
-    metrics.frame_title_y = (i32)(14.0 * scale)
-    metrics.frame_content_y = (i32)(58.0 * scale)
-    metrics.frame_content_bottom_pad = (i32)(16.0 * scale)
-    metrics.frame_icon_size = (i32)(20.0 * scale)
-    metrics.frame_icon_padding = (i32)(8.0 * scale)
-    metrics.frame_icon_edge_gap = (i32)(6.0 * scale)
-    metrics.frame_title_side_padding = (i32)(24.0 * scale)
+    metrics.screen_pad = ModalMetric(panel.value.fields,
+        (u32)StyleGap, panel.value.gap, 24.0, scale, true)
+    metrics.min_width = ModalMetric(panel.value.fields,
+        (u32)StyleIconSize, panel.value.icon_size, 280.0, scale, false)
+    metrics.default_max_width = ModalMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_x, 420.0, scale, false)
+    metrics.edge_pad = ModalMetric(panel.value.fields,
+        (u32)StylePaddingY, panel.value.padding_y, 8.0, scale, true)
+    metrics.title_height = ModalMetric(title.value.fields,
+        (u32)StyleIconSize, title.value.icon_size, 48.0, scale, true)
+    metrics.padding_x = ModalMetric(panel.value.fields,
+        (u32)StylePaddingX, panel.value.padding_x, 18.0, scale, true)
+    metrics.padding_bottom = ModalMetric(panel.value.fields,
+        (u32)StylePaddingY, panel.value.padding_y, 18.0, scale, true)
+    metrics.message_gap = ModalMetric(message.value.fields,
+        (u32)StyleGap, message.value.gap, 18.0, scale, true)
+    metrics.prompt_height = ModalMetric(message.value.fields,
+        (u32)StyleIconSize, message.value.icon_size, 38.0, scale, true)
+    metrics.prompt_gap = ModalMetric(message.value.fields,
+        (u32)StyleContentOffset, message.value.offset_y, 18.0, scale, true)
+    metrics.button_height = ModalMetric(action.value.fields,
+        (u32)StyleIconSize, action.value.icon_size, 44.0, scale, false)
+    metrics.button_gap = ModalMetric(action.value.fields,
+        (u32)StyleGap, action.value.gap, 8.0, scale, true)
+    metrics.action_padding_x = ModalMetric(action.value.fields,
+        (u32)StylePaddingX, action.value.padding_x, 24.0, scale, true)
+    metrics.action_min_width = ModalMetric(action.value.fields,
+        (u32)StyleContentOffset, action.value.offset_x, 88.0, scale, false)
+    metrics.action_max_width = ModalMetric(action.value.fields,
+        (u32)StyleContentOffset, action.value.offset_y, 150.0, scale, false)
+    metrics.content_min_width = ModalMetric(message.value.fields,
+        (u32)StylePaddingX, message.value.padding_x, 120.0, scale, false)
+    metrics.min_height = ModalMetric(message.value.fields,
+        (u32)StylePaddingY, message.value.padding_y, 160.0, scale, false)
+    metrics.frame_min_width = ModalMetric(close.value.fields,
+        (u32)StyleContentOffset, close.value.offset_x, 120.0, scale, false)
+    metrics.frame_min_height = ModalMetric(close.value.fields,
+        (u32)StyleContentOffset, close.value.offset_y, 96.0, scale, false)
+    metrics.frame_title_y = ModalMetric(title.value.fields,
+        (u32)StyleContentOffset, title.value.offset_y, 14.0, scale, true)
+    metrics.frame_content_y = ModalMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_y, 58.0, scale, true)
+    metrics.frame_content_bottom_pad = ModalMetric(close.value.fields,
+        (u32)StylePaddingY, close.value.padding_y, 16.0, scale, true)
+    metrics.frame_icon_size = ModalMetric(close.value.fields,
+        (u32)StyleIconSize, close.value.icon_size, 20.0, scale, true)
+    metrics.frame_icon_padding = ModalMetric(close.value.fields,
+        (u32)StylePaddingX, close.value.padding_x, 8.0, scale, true)
+    metrics.frame_icon_edge_gap = ModalMetric(close.value.fields,
+        (u32)StyleGap, close.value.gap, 6.0, scale, true)
+    metrics.frame_title_side_padding = ModalMetric(title.value.fields,
+        (u32)StylePaddingX, title.value.padding_x, 24.0, scale, true)
     return metrics
 }
 

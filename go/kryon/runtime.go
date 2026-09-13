@@ -4837,7 +4837,17 @@ func modalActionLabel(action ModalAction, index, count int) string {
 }
 
 func (r *runtime) drawActionModal(title, message string, actions []ModalAction, fieldHeight float32, className int32) (int32, Rectangle) {
-	metrics := Modal_ModalMetricsFor(1)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 2)
+	titleFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 16)
+	messageFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 20)
+	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 17)
+	closeFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 15)
+	metrics := Modal_ModalMetricsFor(1, panelFrame, titleFrame, messageFrame, actionFrame, closeFrame)
 	messageHeight := int32(0)
 	if message != "" {
 		messageHeight = 24
@@ -4848,19 +4858,15 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 	}
 	layout := Modal_ModalLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), 0, messageHeight, buttonRows, fieldHeight > 0, metrics)
 	panel := layout.Panel
-	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 2)
 	panelStyle := unpackStyle(panelFrame.Value)
-	titleStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 16).Value)
-	messageStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 20).Value)
+	titleStyle := unpackStyle(titleFrame.Value)
+	messageStyle := unpackStyle(messageFrame.Value)
 	scrimStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		className, StyleSheet_StyleKindModal(), 19).Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
 	titleFont, titleFontID := styleTextFace(titleStyle, Text16)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont, FontID: titleFontID})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + float32(metrics.FrameTitleY), Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont, FontID: titleFontID})
 	if message != "" {
 		messageFont, messageFontID := styleTextFace(messageStyle, Text16)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, Opacity: messageStyle.Opacity, FontSize: messageFont, FontID: messageFontID})
