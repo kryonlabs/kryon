@@ -249,12 +249,12 @@ RenderActionModal(ModalProps modal)
 
     modal_w = ModalClampWidth(ui_view_width, modal_max_w, metrics);
     msg_w = ModalContentWidth(modal_w, metrics);
-    if((message_style.fields & (uint32_t)StyleFontSize) != 0 &&
-       message_style.font_size > 0.0f)
-        msg_font = (int)(message_style.font_size + 0.5f);
-    if((action_style.fields & (uint32_t)StyleFontSize) != 0 &&
-       action_style.font_size > 0.0f)
-        btn_font = (int)(action_style.font_size + 0.5f);
+    msg_font = ModalFontFor(
+        msg_font, (int)(message_style.font_size + 0.5f),
+        (message_style.fields & (uint32_t)StyleFontSize) != 0);
+    btn_font = ModalFontFor(
+        btn_font, (int)(action_style.font_size + 0.5f),
+        (action_style.fields & (uint32_t)StyleFontSize) != 0);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -302,10 +302,10 @@ RenderActionModal(ModalProps modal)
                      panel_style.opacity, ui_style_fill(panel_style),
                      panel_style.material);
 
-    title_font = GetTitleFontSize(modal.title, msg_w);
-    if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
-       title_style.font_size > 0.0f)
-        title_font = (int)(title_style.font_size + 0.5f);
+    title_font = ModalFontFor(
+        GetTitleFontSize(modal.title, msg_w),
+        (int)(title_style.font_size + 0.5f),
+        (title_style.fields & (uint32_t)StyleFontSize) != 0);
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
@@ -327,7 +327,7 @@ RenderActionModal(ModalProps modal)
         int field_focused = modal.focused != NULL && *modal.focused;
         field_props.focused = &field_focused;
         field_props.max_codepoints = modal.text_size - 1;
-        field_props.focus_id = modal.focus_id > 0 ? modal.focus_id : 7301;
+        field_props.focus_id = ModalPromptFocusIdFor(modal.focus_id, 7301);
         field_props.commit_pressed = &commit_pressed;
         ui_text_field_render(field_props);
         if(modal.focused != NULL)
@@ -354,7 +354,7 @@ RenderActionModal(ModalProps modal)
                                        btn_font, modal.class_name,
                                        mouse_world, metrics);
     if(result == 0 && has_prompt && commit_pressed)
-        result = modal.action_count > 1 ? 2 : 1;
+        result = ModalPromptCommitResult(modal.action_count);
     if(result == 0 && has_prompt && IsKeyPressed(KEY_ESCAPE))
         result = 1;
 
@@ -434,9 +434,9 @@ RenderModalFrame(int width, int height, const char *title,
                      panel_style.opacity, ui_style_fill(panel_style),
                      panel_style.material);
 
-    if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
-       title_style.font_size > 0.0f)
-        title_font = (int)(title_style.font_size + 0.5f);
+    title_font = ModalFontFor(
+        title_font, (int)(title_style.font_size + 0.5f),
+        (title_style.fields & (uint32_t)StyleFontSize) != 0);
     title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
                layout.title_y, title_font,

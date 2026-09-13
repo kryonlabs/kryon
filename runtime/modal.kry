@@ -193,6 +193,22 @@ ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {
     return rows * metrics.button_height + (rows - 1) * metrics.button_gap
 }
 
+ModalFontFor :: (default_font: i32, style_font: i32,
+    style_has_font: bool) -> i32 #export {
+    if style_has_font && style_font > 0 { return style_font }
+    return default_font
+}
+
+ModalPromptFocusIdFor :: (requested_focus_id: i32, fallback_focus_id: i32) -> i32 #export {
+    if requested_focus_id > 0 { return requested_focus_id }
+    return fallback_focus_id
+}
+
+ModalPromptCommitResult :: (action_count: i32) -> i32 #export {
+    if action_count > 1 { return 2 }
+    return 1
+}
+
 ModalLayoutFor :: (view_width: i32, view_height: i32, max_width: i32,
     message_height: i32, button_rows: i32, has_prompt: bool,
     metrics: ModalMetrics) -> ModalLayout #export {
