@@ -210,6 +210,9 @@ the browser receives normal elements, attributes, CSS, and events.
   pre-mount Web Document queries, and mounted DOM object queries.
 - KSS structural selectors support browser-native `:nth-last-child(...)`
   alongside `:nth-child(...)` for CSS export and Kry DOM queries.
+- KSS structural selectors support browser-native of-type selectors against
+  Kry kind siblings: `:first-of-type`, `:last-of-type`, `:only-of-type`,
+  `:nth-of-type(...)`, and `:nth-last-of-type(...)`.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 

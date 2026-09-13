@@ -3778,9 +3778,44 @@ function nthLastChildPseudoMatches(pseudo, siblings, node) {
   return Number.isInteger(number) && number > 0 && position === number;
 }
 
+function webNodeSameTypeSiblingsFromFrame(siblings, node) {
+  const kind = String(node?.kind || "").toLowerCase();
+  return siblings.filter((candidate) =>
+    String(candidate?.kind || "").toLowerCase() === kind);
+}
+
+function nthOfTypePseudoMatches(pseudo, siblings, node) {
+  const match = String(pseudo || "").match(/^nth-of-type\(([^)]*)\)$/);
+  if (!match)
+    return false;
+  return nthChildPositionMatches(match[1], webNodeSameTypeSiblingsFromFrame(siblings, node), node, false);
+}
+
+function nthLastOfTypePseudoMatches(pseudo, siblings, node) {
+  const match = String(pseudo || "").match(/^nth-last-of-type\(([^)]*)\)$/);
+  if (!match)
+    return false;
+  return nthChildPositionMatches(match[1], webNodeSameTypeSiblingsFromFrame(siblings, node), node, true);
+}
+
+function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
+  const index = siblings.indexOf(node);
+  const position = fromEnd ? siblings.length - index : index + 1;
+  const value = String(text || "").trim().toLowerCase();
+  if (index < 0)
+    return false;
+  if (value === "odd")
+    return position % 2 === 1;
+  if (value === "even")
+    return position > 0 && position % 2 === 0;
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 && position === number;
+}
+
 function selectorStructuralPseudosMatch(selector, node) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
+    const typeSiblings = webNodeSameTypeSiblingsFromFrame(siblings, node);
     if (pseudo === "first-child") {
       if (siblings[0] !== node)
         return false;
@@ -3789,6 +3824,15 @@ function selectorStructuralPseudosMatch(selector, node) {
         return false;
     } else if (pseudo === "only-child") {
       if (siblings.length !== 1 || siblings[0] !== node)
+        return false;
+    } else if (pseudo === "first-of-type") {
+      if (typeSiblings[0] !== node)
+        return false;
+    } else if (pseudo === "last-of-type") {
+      if (typeSiblings[typeSiblings.length - 1] !== node)
+        return false;
+    } else if (pseudo === "only-of-type") {
+      if (typeSiblings.length !== 1 || typeSiblings[0] !== node)
         return false;
     } else if (pseudo === "empty") {
       const hasChildren = (node.__kryFrameNodes || []).some((candidate) =>
@@ -3800,6 +3844,12 @@ function selectorStructuralPseudosMatch(selector, node) {
         return false;
     } else if (String(pseudo).startsWith("nth-last-child(")) {
       if (!nthLastChildPseudoMatches(pseudo, siblings, node))
+        return false;
+    } else if (String(pseudo).startsWith("nth-of-type(")) {
+      if (!nthOfTypePseudoMatches(pseudo, siblings, node))
+        return false;
+    } else if (String(pseudo).startsWith("nth-last-of-type(")) {
+      if (!nthLastOfTypePseudoMatches(pseudo, siblings, node))
         return false;
     } else {
       return false;

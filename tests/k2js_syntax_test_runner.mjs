@@ -453,6 +453,11 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Screen > Button:nth-last-child(6) { outline-offset: 6; }
   Screen > Text:nth-child(odd) { line-height: 1.2; }
   Screen > Input:nth-child(even) { appearance: auto; }
+  Screen > Text:first-of-type { overflow-wrap: break-word; }
+  Screen > Text:last-of-type { text-transform: lowercase; }
+  Screen > Button:only-of-type { text-decoration-style: dotted; }
+  Screen > Input:nth-of-type(1) { scroll-margin-top: 3; }
+  Screen > Input:nth-last-of-type(1) { scroll-padding-bottom: 4; }
   Section:empty { field-sizing: content; }
   Button:not(.secondary) { caret-color: #112233; }
   :is(Button, TextField)[webRef^="primary"] { accent-color: #223344; }
@@ -482,6 +487,10 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]:nth-child\(2\)/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]:nth-last-child\(6\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\] > \[data-kry-kind="Text"\]:first-of-type/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\] > \[data-kry-kind="Input"\]:nth-last-of-type\(1\)/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Section"\]:empty/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
@@ -845,6 +854,11 @@ assert.equal(runtime.webNodeQuery(rt, `Screen > Button:nth-child(2)`).path, webD
 assert.equal(runtime.webNodeQuery(rt, `Screen > Button:nth-last-child(6)`).path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Text:nth-child(odd)`).path, webDoc.nodes[1].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen > Input:nth-child(even)`).path, webDoc.nodes[6].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Text:first-of-type`).path, webDoc.nodes[1].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Text:last-of-type`).path, webDoc.nodes[4].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Button:only-of-type`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Input:nth-of-type(1)`).path, webDoc.nodes[6].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Input:nth-last-of-type(1)`).path, webDoc.nodes[7].path);
 assert.equal(runtime.webNodeQuery(rt, `Button:not(.secondary)`).path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `:is(Button, TextField)[webRef^="primary"]`).path,
   webDoc.nodes[2].path);
@@ -865,6 +879,11 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outli
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outline-offset"], 6);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet)["line-height"], 1.2);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet).appearance, "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet)["overflow-wrap"], "break-word");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[4], operatorStyleSheet)["text-transform"], "lowercase");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["text-decoration-style"], "dotted");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet)["scroll-margin-top"], 3);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[7], operatorStyleSheet)["scroll-padding-bottom"], 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["caret-color"], "#112233");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["accent-color"], "#223344");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "vertical");
@@ -3661,6 +3680,16 @@ function fakeDocument() {
       firstText);
     assert.equal(runtime.webDOMQuery(target, "Screen > Input:nth-child(even)").node.path,
       inputPaths[0]);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Text:first-of-type").element,
+      firstText);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Text:last-of-type").ref,
+      "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "Screen > Button:only-of-type").element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Input:nth-of-type(1)").node.path,
+      inputPaths[0]);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Input:nth-last-of-type(1)").node.path,
+      inputPaths[inputPaths.length - 1]);
     assert.equal(runtime.webDOMQuery(target, "Button:not(.secondary)").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, ":is(Button, TextField)[webRef^=\"primary\"]").element,
       firstButton);
