@@ -28,8 +28,11 @@ TableViewScrollLayout :: struct {
 }
 
 TableViewMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
-    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
     return (i32)(value * scale)
 }
 
@@ -38,17 +41,17 @@ TableViewMetricsFor :: (scale: float, table: StyleFrame, header: StyleFrame,
     if scale <= 0.0 { scale = 1.0 }
     metrics: TableViewMetrics
     metrics.default_row_height = TableViewMetric(table.value.fields,
-        (u32)StyleContentOffset, table.value.offset_y, 28.0, scale)
+        (u32)StyleContentOffset, table.value.offset_y, 28.0, scale, false)
     metrics.min_header_height = TableViewMetric(header.value.fields,
-        (u32)StyleContentOffset, header.value.offset_y, 30.0, scale)
+        (u32)StyleContentOffset, header.value.offset_y, 30.0, scale, false)
     metrics.default_min_column_width = TableViewMetric(cell.value.fields,
-        (u32)StyleContentOffset, cell.value.offset_x, 32.0, scale)
+        (u32)StyleContentOffset, cell.value.offset_x, 32.0, scale, false)
     metrics.header_text_pad_x = TableViewMetric(header.value.fields,
-        (u32)StylePaddingX, header.value.padding_x, 6.0, scale)
+        (u32)StylePaddingX, header.value.padding_x, 6.0, scale, true)
     metrics.resize_tolerance = TableViewMetric(divider.value.fields,
-        (u32)StylePaddingX, divider.value.padding_x, 5.0, scale)
+        (u32)StylePaddingX, divider.value.padding_x, 5.0, scale, true)
     metrics.scrollbar_width = TableViewMetric(divider.value.fields,
-        (u32)StyleContentOffset, divider.value.offset_y, 8.0, scale)
+        (u32)StyleContentOffset, divider.value.offset_y, 8.0, scale, true)
     return metrics
 }
 

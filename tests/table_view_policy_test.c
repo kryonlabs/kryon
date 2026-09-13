@@ -60,6 +60,20 @@ main(void)
     assert(metrics.resize_tolerance == 7);
     assert(metrics.scrollbar_width == 10);
 
+    table.value.offset_y = 0.0f;
+    header.value.offset_y = 0.0f;
+    header.value.padding_x = 0.0f;
+    cell.value.offset_x = 0.0f;
+    divider.value.padding_x = 0.0f;
+    divider.value.offset_y = 0.0f;
+    metrics = TableViewMetricsFor(1.0f, table, header, cell, divider);
+    assert(metrics.default_row_height == 28);
+    assert(metrics.min_header_height == 30);
+    assert(metrics.default_min_column_width == 32);
+    assert(metrics.header_text_pad_x == 0);
+    assert(metrics.resize_tolerance == 0);
+    assert(metrics.scrollbar_width == 0);
+
     table.value.offset_y = 28.0f;
     header.value.offset_y = 30.0f;
     header.value.padding_x = 6.0f;
