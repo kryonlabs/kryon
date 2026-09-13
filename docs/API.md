@@ -697,7 +697,6 @@ typedef struct {
     TextAlign align;
     TextAlign vertical_align;
     int disabled;
-    int letter_spacing;
     int selectable;
 } TextProps;
 
@@ -730,11 +729,11 @@ The bundled Noto font setup also registers `"semibold"`; use a text class with
 `typeface: semibold` for real semibold outlines, or register your own named
 face. `font` remains the size.
 
-`letter_spacing` adds a non-negative number of logical pixels between Unicode
-codepoints (not UTF-8 bytes), with no trailing gap. Zero preserves the font's
-normal spacing; negative values are treated as zero. C and native Go include
-the spacing in intrinsic width, wrapping, alignment, and painting. C text
-selection uses the same spaced positions. This is codepoint tracking, not
+KSS `letter-spacing` adds a non-negative number of logical pixels between
+Unicode codepoints (not UTF-8 bytes), with no trailing gap. Zero preserves the
+font's normal spacing; negative values are treated as zero. C and native Go
+include the spacing in intrinsic width, wrapping, alignment, and painting. C
+text selection uses the same spaced positions. This is codepoint tracking, not
 grapheme-cluster shaping; use zero for scripts that require joined shaping.
 
 Native `.kry` can use the same properties without a compound literal:

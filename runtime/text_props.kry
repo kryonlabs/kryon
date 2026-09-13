@@ -22,6 +22,5 @@ TextProps :: struct {
     align: TextAlign
     vertical_align: TextAlign
     disabled: bool
-    letter_spacing: i32
     selectable: bool
 }

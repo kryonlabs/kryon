@@ -1266,7 +1266,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    align: TextAlign\n"
         "    vertical_align: TextAlign\n"
         "    disabled: bool\n"
-        "    letter_spacing: i32\n"
         "    selectable: bool\n"
         "}\n"
     },

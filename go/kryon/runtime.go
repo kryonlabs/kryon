@@ -1227,12 +1227,13 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			fontID = selected
 		}
 	}
+	letterSpacing := int32(0)
 	if style.Fields&StyleLetterSpacing != 0 {
-		props.LetterSpacing = styleLength(style.LetterSpacing)
+		letterSpacing = styleLength(style.LetterSpacing)
 	}
 	appearance := Text_ResolveTextStyle(props.Font, inheritedFont, Text16,
 		packRGBA(style.Foreground), packRGBA(inheritedColor), 0xffffffff,
-		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, props.LetterSpacing)
+		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, letterSpacing)
 	font, spacing := appearance.Font, appearance.LetterSpacing
 	color := unpackRGBA(Surface_Opacity(appearance.Color, style.Opacity))
 	measure := func(text string) int {

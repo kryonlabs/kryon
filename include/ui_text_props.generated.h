@@ -42,7 +42,6 @@ typedef struct TextProps {
     TextAlign align;
     TextAlign vertical_align;
     bool disabled;
-    int32_t letter_spacing;
     bool selectable;
 } TextProps;
 

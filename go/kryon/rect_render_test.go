@@ -102,17 +102,24 @@ Text.face { typeface: test-semibold; }`, "Text Typeface", "") || !SetActiveStyle
 }
 
 func TestTextLetterSpacingMeasuresCodepointsAndWraps(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`@pack test.text.letter_spacing;
+Text.tracked3 { letter-spacing: 3; }
+Text.tracked4 { letter-spacing: 4; }`, "Text Letter Spacing", "") {
+		t.Fatal("text letter-spacing style pack did not register")
+	}
 	r := New(AppConfig{Width: 300, Height: 100}).(*runtime)
 	r.BeginFrame()
 	natural := runtimeTextWidth("AéB", 18)
-	r.Text(TextProps{Text: "AéB", Font: 18, LetterSpacing: 3, Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "AéB", ClassName: StyleClassID("tracked3"), Font: 18, Wrap: TextWrapNone})
 	ops := r.FrameOps()
 	op := ops[len(ops)-1]
 	if op.Bounds.Width != float32(natural+6) || op.LetterSpacing != 3 {
 		t.Fatalf("tracking must add two gaps, not UTF-8 byte gaps: %+v", op)
 	}
 	r.Text(TextProps{Bounds: Rectangle{X: 10, Y: 30, Width: 200, Height: 30},
-		Text: "AB", Font: 18, LetterSpacing: 4, Align: TextAlignCenter, Wrap: TextWrapNone})
+		Text: "AB", ClassName: StyleClassID("tracked4"), Font: 18, Align: TextAlignCenter, Wrap: TextWrapNone})
 	ops = r.FrameOps()
 	op = ops[len(ops)-1]
 	wantWidth := float32(runtimeTextWidth("AB", 18) + 4)
@@ -122,7 +129,7 @@ func TestTextLetterSpacingMeasuresCodepointsAndWraps(t *testing.T) {
 	width := float32(runtimeTextWidth("AA BB", 18))
 	before := len(ops)
 	r.Text(TextProps{Bounds: Rectangle{X: 10, Y: 60, Width: width, Height: 50},
-		Text: "AA BB", Font: 18, LetterSpacing: 3, Wrap: TextWrapAuto})
+		Text: "AA BB", ClassName: StyleClassID("tracked3"), Font: 18, Wrap: TextWrapAuto})
 	ops = r.FrameOps()
 	if len(ops)-before != 2 || ops[before].Text != "AA" || ops[before+1].Text != "BB" {
 		t.Fatal("tracked text did not wrap using its measured width")

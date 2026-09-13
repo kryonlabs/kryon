@@ -2421,6 +2421,7 @@ Text(TextProps props)
     const char *value = props.text != NULL ? props.text : "";
     const char *typeface = NULL;
     int font;
+    int letter_spacing = 0;
     int inherited_font = 0;
     Color inherited_color = {0};
     bool inherited_color_set = false;
@@ -2465,16 +2466,16 @@ Text(TextProps props)
     if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
     if((style.fields & StyleLetterSpacing) != 0)
-        props.letter_spacing = (int)(style.letter_spacing + 0.5f);
+        letter_spacing = (int)(style.letter_spacing + 0.5f);
     previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
         ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,
         inherited_color_set, (style.fields & StyleForeground) != 0,
-        props.disabled, inherited_disabled, props.letter_spacing);
+        props.disabled, inherited_disabled, letter_spacing);
     font = appearance.font;
     props.color = GetColor(Opacity(appearance.color, style.opacity));
-    props.letter_spacing = appearance.letter_spacing;
-    previous_spacing = ui_set_text_letter_spacing(Scale(props.letter_spacing));
+    letter_spacing = appearance.letter_spacing;
+    previous_spacing = ui_set_text_letter_spacing(Scale(letter_spacing));
     props.wrap = (TextWrap)TextWrapPolicy(bounds.width, props.wrap);
     if(!bounded)
         measured_width = (float)TextWidth(value, font);
@@ -2496,7 +2497,7 @@ Text(TextProps props)
         ui_tree_nodes[node].owned_text = ui_tree_strdup(value);
         ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
-        ui_tree_nodes[node].data.primitive.letter_spacing = props.letter_spacing;
+        ui_tree_nodes[node].data.primitive.letter_spacing = letter_spacing;
         ui_tree_nodes[node].data.primitive.color = props.color;
         ui_tree_nodes[node].data.primitive.style = style;
         ui_tree_nodes[node].data.primitive.wrap = props.wrap;
@@ -2513,12 +2514,12 @@ Text(TextProps props)
        !ui_tree_node_uses_retained_layout(node)) {
         ui_paint_text_box(value, bounds, font, props.color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token(), props.letter_spacing);
+                          ui_active_font_token(), letter_spacing);
         ui_tree_mark_painted_immediate(node);
     } else if(!ui_tree_building) {
         ui_paint_text_box(value, bounds, font, props.color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token(), props.letter_spacing);
+                          ui_active_font_token(), letter_spacing);
     }
     PopTextSelectable(selectable_token);
     ui_set_text_letter_spacing(previous_spacing);

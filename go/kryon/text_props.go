@@ -27,6 +27,5 @@ type TextProps struct {
 	Align         TextAlign
 	VerticalAlign TextAlign
 	Disabled      bool
-	LetterSpacing int32
 	Selectable    bool
 }

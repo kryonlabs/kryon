@@ -25,19 +25,19 @@ ButtonsExample :: (viewport: Rectangle) #ui {
         SetThemeMode(previous_mode)
         LightfieldHeader()
         Text((TextProps){.bounds={29, 11, 250, 30}, .text="KRYON",
-            .font=26, .letter_spacing=25, .color=chrome.colors.text, .wrap=TextWrapNone})
+            .font=26, .color=chrome.colors.text, .wrap=TextWrapNone})
         Text((TextProps){.bounds={28, 38, 300, 20}, .text="DESIGN SYSTEM 2040",
-            .font=13, .letter_spacing=6, .color=chrome.colors.icon, .wrap=TextWrapNone})
+            .font=13, .color=chrome.colors.icon, .wrap=TextWrapNone})
         Text((TextProps){.bounds={321, 5, 900, 38}, .text="PROPOSAL 4 — MAGNETIC LIGHTFIELD",
-            .font=37, .letter_spacing=2, .align=TextAlignCenter,
+            .font=37, .align=TextAlignCenter,
             .color=chrome.colors.text, .wrap=TextWrapNone})
         Text((TextProps){.bounds={415, 43, 700, 22}, .text="LIVING INTERFACES. QUIETER POWER.",
-            .font=15, .letter_spacing=6, .align=TextAlignCenter,
+            .font=15, .align=TextAlignCenter,
             .color=chrome.colors.icon, .wrap=TextWrapNone})
         Text((TextProps){.bounds={1335, 17, 200, 20}, .text="A MORE",
-            .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
+            .font=13, .color=chrome.colors.icon, .wrap=TextWrapNone})
         Text((TextProps){.bounds={1335, 33, 200, 20}, .text="HUMAN TOMORROW —",
-            .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
+            .font=13, .color=chrome.colors.icon, .wrap=TextWrapNone})
         effects_label: const char* = FancyEffectsEnabled() != 0 ? "Fancy" : "Simple"
         if Button((ButtonProps){.bounds={1392, 46, 112, 28}, .label=effects_label, .id=40400,
             .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft, .size=ControlSizeSmall}) {
@@ -219,18 +219,17 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             full_delete_style.content_offset.x = -15
         }
         theme_heading: TextProps = (TextProps){.bounds={origin + 27, 83, 350, 26},
-            .text="LIGHT THEME", .font=Text24, .letter_spacing=3, .wrap=TextWrapNone}
+            .text="LIGHT THEME", .font=Text24, .wrap=TextWrapNone}
         sizes_heading: TextProps = (TextProps){.bounds={origin + 26, 475, 200, 28},
             .text="SIZES", .font=27, .wrap=TextWrapNone}
         icons_heading: TextProps = (TextProps){.bounds={origin + 25, 679, 300, 28},
             .text="ICON VARIANTS", .font=27, .wrap=TextWrapNone}
         theme_caption: TextProps = (TextProps){.bounds={origin + 27, 108, 350, 20},
-            .text="DEPTH THROUGH LIGHT", .font=13, .letter_spacing=5,
+            .text="DEPTH THROUGH LIGHT", .font=13,
             .color=current_theme.colors.link_hover, .wrap=TextWrapNone}
         footer_label: const char* = "KRYON / 2040 / BUILD WHAT'S NEXT"
         footer_align: TextAlign = TextAlignEnd
         footer_font: int = Text14
-        footer_spacing: int = 6
         panel_x: int = 1
         panel_border := current_theme.colors.background
         panel_top: Color = {250, 252, 254, 255}
@@ -243,19 +242,15 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             theme_heading.text = "DARK THEME"
             theme_heading.bounds = (Rectangle){origin + 27, 81, 350, 26}
             theme_heading.font = 27
-            theme_heading.letter_spacing = 2
             sizes_heading.bounds = (Rectangle){origin + 25, 477, 200, 28}
             sizes_heading.font = Text24
-            sizes_heading.letter_spacing = 2
             icons_heading.bounds = (Rectangle){origin + 24, 681, 300, 28}
             icons_heading.font = 25
-            icons_heading.letter_spacing = 1
             theme_caption.text = "LIGHT CREATES DEPTH"
             theme_caption.bounds = (Rectangle){origin + 26, 108, 350, 20}
             footer_label = "INTELLIGENT DETAILS. LASTING IMPACT."
             footer_align = TextAlignStart
             footer_font = Text12
-            footer_spacing = 4
             panel_x = 4
             panel_border = current_theme.colors.link
             panel_border.a = 80
@@ -488,7 +483,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
         }
         Line(origin + 24, 864, origin + 744, 864, GetThemeBorder())
         Text((TextProps){.bounds={origin + 25, 872, 400, 28},
-            .text="FULL WIDTH EXAMPLES", .font=Text24, .letter_spacing=1, .wrap=TextWrapNone})
+            .text="FULL WIDTH EXAMPLES", .font=Text24, .wrap=TextWrapNone})
         Button full_run: {
             bounds = {origin + 24, 901, 720, 34}
             label = "Run"
@@ -510,7 +505,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             style = (ControlStyle){.normal=full_delete_style}
         }
         Text((TextProps){.bounds={origin + 27, 1003, 714, 20},
-            .text=footer_label, .font=footer_font, .letter_spacing=footer_spacing, .align=footer_align,
+            .text=footer_label, .font=footer_font, .align=footer_align,
             .color=chrome_theme.colors.icon, .wrap=TextWrapNone})
     }
 }
