@@ -2215,8 +2215,12 @@ function fakeDocument() {
       { nodeName: "copies", path: "Page/copies" });
     runtime.widget(nativeRt, "Dropdown", {}, null,
       { nodeName: "choice", path: "Page/choice" });
+    runtime.widget(nativeRt, "Selectable", { label: "Alpha", value: "a" }, null,
+      { nodeName: "choiceAlpha", path: "Page/choice/alpha", parentPath: "Page/choice" });
     runtime.widget(nativeRt, "ListBox", {}, null,
       { nodeName: "items", path: "Page/items" });
+    runtime.widget(nativeRt, "Selectable", { text: "Beta", value: "b", selected: true }, null,
+      { nodeName: "itemBeta", path: "Page/items/beta", parentPath: "Page/items" });
     runtime.widget(nativeRt, "ColorPicker", { value: "#336699" }, null,
       { nodeName: "accent", path: "Page/accent" });
     runtime.widget(nativeRt, "Checkbox", { checked: true }, null,
@@ -2318,6 +2322,11 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "[inputmode=email]").path, "Page/email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").tag, "option");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").text, "Alpha");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").domValue, "a");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").tag, "option");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").state.selected, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
     assert.equal(runtime.webNodeQuery(nativeRt, "[src=\"hero.png\"]").path, "Page/hero");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Image")).asset, "hero.png");
@@ -2352,15 +2361,23 @@ function fakeDocument() {
         .find((node) => node.kind === kind)?.role),
       ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
        "switch", "radio", "progressbar", "separator", "separator", "table"]);
-    assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Plot", "CanvasGrid"]
+    assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Selectable", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
-      ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "listitem", "img", "img"]);
+      ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "listitem", "option", "img", "img"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
     runtime.renderWebDocument(nativeRt, nativeTarget);
     const nav = runtime.findWebElement(nativeTarget, "nav");
+    const dropdownOption = runtime.findWebElement(nativeTarget, "Page/choice/alpha");
+    const listOption = runtime.findWebElement(nativeTarget, "Page/items/beta");
+    assert.equal(dropdownOption.tagName, "OPTION");
+    assert.equal(dropdownOption.textContent, "Alpha");
+    assert.equal(dropdownOption.attributes.value, "a");
+    assert.equal(listOption.tagName, "OPTION");
+    assert.equal(listOption.attributes.selected, "");
+    assert.equal(listOption.selected, true);
     const title = runtime.findWebElement(nativeTarget, "title");
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");

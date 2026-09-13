@@ -351,6 +351,7 @@ The initial tag mapping is intentionally conservative:
 | `ColorPicker` | `input type=color` |
 | `Dropdown` | `select` |
 | `ListBox` | `select` |
+| `Selectable` under `Dropdown`/`ListBox` | `option` |
 | `Image` with `alt_text` | `img` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |

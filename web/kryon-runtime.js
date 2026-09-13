@@ -1217,6 +1217,8 @@ function widgetText(item) {
     return propString(args, "text", "");
   case "Button":
     return propString(args, "label", "");
+  case "Selectable":
+    return propString(args, "text", propString(args, "label", ""));
   case "Progress":
     return propString(args, "label", "");
   case "TextField":
@@ -1268,6 +1270,8 @@ function widgetDOMValue(item) {
     return propString(item.args, "value", "");
   if (item.name === "Slider" || item.name === "Spinbox")
     return propString(item.args, "value", "");
+  if (item.name === "Selectable")
+    return propStringAny(item.args, ["value", "dom_value", "html_value"]);
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1925,6 +1929,8 @@ function implicitRole(node) {
     return "separator";
   if (node.tag === "li")
     return "listitem";
+  if (node.tag === "option")
+    return "option";
   if (node.tag === "table")
     return "table";
   if (node.tag === "th") {
@@ -4357,6 +4363,13 @@ function normalizeWebDocumentNodes(nodes) {
       rootPath = node.path || rootPath;
     else
       lastParentPath = node.parentPath;
+  }
+  const byPath = new Map(nodes.filter(Boolean).map((node) => [node.path, node]));
+  for (const node of nodes) {
+    const parent = byPath.get(node?.parentPath || "");
+    if (node?.kind === "Selectable" &&
+        (parent?.kind === "Dropdown" || parent?.kind === "ListBox"))
+      node.tag = "option";
     node.styleFacts = webNodeStyleFacts(node);
   }
 }
@@ -6456,6 +6469,10 @@ function applyWebNode(el, docNode, rt) {
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
+  } else if (docNode.tag === "option") {
+    setAttr(el, "selected", docNode.state.selected);
+    el.selected = !!docNode.state.selected;
+    el.textContent = docNode.text;
   } else if (docNode.tag === "input") {
     const nativeValue = docNode.domValue || docNode.value;
     if (nativeValue !== undefined && nativeValue !== null && nativeValue !== "")

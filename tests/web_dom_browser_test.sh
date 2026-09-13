@@ -81,6 +81,16 @@ try {
     path: "Page/article/line",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "ListBox", {}, null, {
+    nodeName: "choices",
+    path: "Page/article/choices",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "Selectable", { text: "Beta", value: "b", selected: true }, null, {
+    nodeName: "choiceBeta",
+    path: "Page/article/choices/beta",
+    parentPath: "Page/article/choices"
+  });
   kryon.widget(rt, "TableView", {}, null, {
     nodeName: "prices",
     path: "Page/prices"
@@ -268,6 +278,7 @@ try {
   const icon = kryon.findWebElement(target, "icon");
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");
+  const choice = kryon.findWebElement(target, "choiceBeta");
   assert(icon.tagName === "SPAN", "icon native span not rendered");
   assert(icon.getAttribute("role") === "img", "icon image role missing");
   assert(bullet.tagName === "LI", "bullet native list item not rendered");
@@ -276,6 +287,11 @@ try {
   assert(line.tagName === "HR", "line native separator not rendered");
   assert(kryon.webDOMSnapshot(target, "line").role === "separator",
     "line separator snapshot role missing");
+  assert(choice.tagName === "OPTION", "selectable native option not rendered");
+  assert(choice.value === "b", "selectable option value missing");
+  assert(choice.selected === true, "selectable option selected state missing");
+  assert(kryon.webDOMSnapshot(target, "choiceBeta").role === "option",
+    "selectable option snapshot role missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);
