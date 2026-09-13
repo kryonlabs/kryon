@@ -244,6 +244,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS structural selectors support browser-native `:focus-within` in CSS
   export, pre-mount style resolution, and mounted DOM queries by walking Kry
   descendant focus state.
+- KSS structural selectors support browser-native `:target` in CSS export,
+  pre-mount style resolution, and mounted DOM queries by matching the route
+  hash against Kry DOM identity aliases and generated element ids.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 

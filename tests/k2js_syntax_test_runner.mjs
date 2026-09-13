@@ -787,6 +787,7 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button:active { border-color: #121212; }
   Button:focus-visible { outline-color: #232323; }
   Screen:focus-within { outline-width: 6; }
+  Button:target { text-decoration-line: underline; }
   Selectable:selected { opacity: 0.6; }
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
@@ -808,6 +809,8 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:is\(:focus,:focus-visible,\[data-kry-state~="focus"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Screen"\]:focus-within/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Button"\]:target/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[aria-current\],\[data-kry-state~="selected"\]\)/);
 assert.match(stateSelectorCSS,
@@ -1263,6 +1266,14 @@ assert.equal(runtime.resolveWebStyle(focusWithinRoot, runtime.parseWebStyleSheet
     opacity: 0.67;
   }
 `)).opacity, 0.67);
+runtime.ReplaceRoute("/#tap-button");
+assert.equal(runtime.webNodeQuery(rt, "Button:target").path, "Scene/root/tap");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
+  Button:target {
+    opacity: 0.68;
+  }
+`)).opacity, 0.68);
+runtime.ReplaceRoute("/");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
   Button#tap-button {
@@ -4125,6 +4136,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetState(target, "tap-button", "focus", true), true);
     assert.equal(runtime.webDOMQuery(target, "Screen:focus-within").element, screen);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "focus", false), true);
+    runtime.ReplaceRoute("/#tap-button");
+    assert.equal(runtime.webDOMQuery(target, "Button:target").element, firstButton);
+    runtime.ReplaceRoute("/");
     assert.equal(runtime.webDOMQuery(target, "Input:optional").node.path, inputPaths[0]);
     assert.equal(runtime.webDOMQuery(target, "TextField:valid").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "Screen:valid"), null);

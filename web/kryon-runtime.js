@@ -3863,6 +3863,23 @@ function webNodeHasFocusWithin(node) {
     (candidate.state?.focus || candidate.state?.["focus-within"]));
 }
 
+function webNodeMatchesRouteTarget(node) {
+  const hash = GetRouteHash().replace(/^#/, "");
+  if (!node || !hash)
+    return false;
+  let decoded = hash;
+  try {
+    decoded = decodeURIComponent(hash);
+  } catch {
+    decoded = hash;
+  }
+  const targets = new Set([hash, decoded]);
+  const identity = webNodeIdentity(node);
+  if (identity.aliases.some((alias) => targets.has(alias)))
+    return true;
+  return targets.has(webDOMGeneratedId({ node, ref: identity.ref }));
+}
+
 function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
@@ -3901,6 +3918,9 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
         return false;
     } else if (pseudo === "focus-within") {
       if (!webNodeHasFocusWithin(node))
+        return false;
+    } else if (pseudo === "target") {
+      if (!webNodeMatchesRouteTarget(node))
         return false;
     } else if (String(pseudo).startsWith("nth-child(")) {
       if (!nthChildPseudoMatches(pseudo, siblings, node))
