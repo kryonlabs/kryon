@@ -122,6 +122,9 @@ the browser receives normal elements, attributes, CSS, and events.
   addressable through Kry DOM identity, selector, snapshot, and mounted object
   APIs. `Script` is a DOM/data element alias only; generated k2js still owns app
   logic.
+- Native metadata aliases such as `Base`, `Meta`, and `Title` render to
+  matching browser elements with head-style attributes while remaining ordinary
+  Kry DOM objects for selectors, snapshots, and devtools.
 - Native inline phrasing/editing aliases such as `Strong`, `Em`, `Abbr`,
   `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, `Cite`, `Ruby`,
   `Rt`, `Rp`, `Bdi`, `Bdo`, and `Wbr` render to matching browser elements,

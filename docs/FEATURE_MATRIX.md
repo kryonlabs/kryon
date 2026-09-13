@@ -48,22 +48,22 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 162 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 165 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface;
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`AppBackground Background Text Paragraph Abbr Abbreviation Address Area Article Aside
+`AppBackground Background Text Paragraph Abbr Abbreviation Address Area Article Aside Base
 Box Line Bevel Icon Image Button Card Selectable Audio Bdi Bdo
 BidirectionalIsolate BidirectionalOverride BlockQuote Bold Cite Code
 CodeBlock Col ColGroup Data Datalist DataList Del Deleted DescriptionDetails DescriptionList
 DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form
 Header Hgroup HGroup IFrame Iframe Ins Inserted Italic ImageMap Kbd Keyboard Label Legend List
-ListItem Main Mark Meter Nav Navigation NoScript Noscript EmbeddedObject OrderedList OptionGroup OptGroup Option
+ListItem Main Mark Meta Meter Nav Navigation NoScript Noscript EmbeddedObject OrderedList OptionGroup OptGroup Option
 Output Param Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Script Search Select Slot Small Source Strong Sub Subscript Summary Sup Superscript Table
 TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow
-Tbody Template Tfoot Thead Time Tr Track UnorderedList Var Variable Video Wbr
+Tbody Template Tfoot Thead Time Title Tr Track UnorderedList Var Variable Video Wbr
 WordBreakOpportunity Bullet Separator Link
 TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio
 Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading

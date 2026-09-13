@@ -353,6 +353,9 @@ The initial tag mapping is intentionally conservative:
 | `Icon` | `span role=img` |
 | `Bullet` | `li` |
 | `Heading` | `h1`-`h6` |
+| `Base` | `base` |
+| `Meta` | `meta` |
+| `Title` | `title` |
 | `Paragraph`, `ParagraphText` | `p` |
 | `Link` | `a` |
 | `Button` | `button` |

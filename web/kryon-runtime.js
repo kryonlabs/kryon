@@ -1148,6 +1148,12 @@ function widgetTag(item) {
     return "article";
   case "Aside":
     return "aside";
+  case "Base":
+    return "base";
+  case "Meta":
+    return "meta";
+  case "Title":
+    return "title";
   case "ImageMap":
     return "map";
   case "Area":
@@ -1470,6 +1476,7 @@ function widgetText(item) {
   case "Script":
   case "NoScript":
   case "Noscript":
+  case "Title":
     return propString(args, "text", "");
   case "Output":
     return propString(args, "text", propString(args, "value", ""));
@@ -1767,6 +1774,28 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["hreflang", "href_lang", "dom_hreflang", "html_hreflang"]));
     setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
       propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
+    break;
+  case "Base":
+    setWidgetNativeAttr(out, "href", metaString(meta, "href") ||
+      propStringAny(args, ["href", "url", "dom_href", "html_href"]));
+    setWidgetNativeAttr(out, "target", metaString(meta, "target") ||
+      propStringAny(args, ["target", "dom_target", "html_target"]));
+    break;
+  case "Meta":
+    setWidgetNativeAttr(out, "name", metaString(meta, "domName") ||
+      propStringAny(args, ["name", "meta_name", "dom_name", "html_name"]));
+    setWidgetNativeAttr(out, "content", metaString(meta, "content") ||
+      propStringAny(args, ["content", "dom_content", "html_content"]));
+    setWidgetNativeAttr(out, "charset", metaString(meta, "charset") ||
+      propStringAny(args, ["charset", "char_set", "dom_charset", "html_charset"]));
+    setWidgetNativeAttr(out, "http-equiv", metaString(meta, "httpEquiv") ||
+      propStringAny(args, ["http_equiv", "httpequiv", "dom_http_equiv", "html_http_equiv"]));
+    setWidgetNativeAttr(out, "property", metaString(meta, "property") ||
+      propStringAny(args, ["property", "meta_property", "dom_property", "html_property"]));
+    setWidgetNativeAttr(out, "media", metaString(meta, "media") ||
+      propStringAny(args, ["media", "dom_media", "html_media"]));
+    setWidgetNativeAttr(out, "itemprop", metaString(meta, "itemProp") ||
+      propStringAny(args, ["itemprop", "item_prop", "dom_itemprop", "html_itemprop"]));
     break;
   case "OptionGroup":
   case "OptGroup":
@@ -11687,7 +11716,7 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "AppBackground", "Background", "Text", "Paragraph",
-  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside",
+  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Base",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
   "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
@@ -11697,13 +11726,13 @@ const runtimeCallNames = [
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
   "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
-  "Legend", "Mark", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
+  "Legend", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
-  "TableHead", "TableRow", "Tbody", "Template", "Tfoot", "Thead", "Time",
+  "TableHead", "TableRow", "Tbody", "Template", "Tfoot", "Thead", "Time", "Title",
   "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
   "Wbr", "WordBreakOpportunity",
   "Bullet", "Separator",
@@ -11733,6 +11762,7 @@ export function Abbreviation(...args) { return struct("Abbreviation", args); }
 export function Address(...args) { return struct("Address", args); }
 export function Area(...args) { return struct("Area", args); }
 export function Background(...args) { return struct("Background", args); }
+export function Base(...args) { return struct("Base", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function Article(...args) { return struct("Article", args); }
 export function Aside(...args) { return struct("Aside", args); }
@@ -11800,6 +11830,7 @@ export function ListBox(...args) { return struct("ListBox", args); }
 export function ListItem(...args) { return struct("ListItem", args); }
 export function Main(...args) { return struct("Main", args); }
 export function Mark(...args) { return struct("Mark", args); }
+export function Meta(...args) { return struct("Meta", args); }
 export function Menu(...args) { return struct("Menu", args); }
 export function Flow(...args) { return struct("Flow", args); }
 export function Grid(...args) { return struct("Grid", args); }
@@ -11878,6 +11909,7 @@ export function TextField(...args) { return struct("TextField", args); }
 export function Tfoot(...args) { return struct("Tfoot", args); }
 export function Thead(...args) { return struct("Thead", args); }
 export function TitleBar(...args) { return struct("TitleBar", args); }
+export function Title(...args) { return struct("Title", args); }
 export function Time(...args) { return struct("Time", args); }
 export function Tr(...args) { return struct("Tr", args); }
 export function Track(...args) { return struct("Track", args); }

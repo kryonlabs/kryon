@@ -243,6 +243,7 @@ host roles rather than retained nodes.
 | `Area` | `.kry canonical` | Web-native image-map area element. |
 | `Article` | `.kry canonical` | Web-native article content region. |
 | `Aside` | `.kry canonical` | Web-native aside/related-content region. |
+| `Base` | `.kry canonical` | Web-native document base URL element. |
 | `Box` | `.kry canonical` | Canonical rectangle primitive with `Rectangle` bounds. |
 | `Line` | `.kry canonical` | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
 | `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
@@ -297,6 +298,7 @@ host roles rather than retained nodes.
 | `ListItem` | `.kry canonical` | Web-native list item element. |
 | `Main` | `.kry canonical` | Web-native main landmark element. |
 | `Mark` | `.kry canonical` | Web-native marked/highlighted text element. |
+| `Meta` | `.kry canonical` | Web-native document metadata element. |
 | `Meter` | `.kry canonical` | Web-native scalar meter element. |
 | `Nav` | `.kry canonical` | Web-native navigation landmark element. |
 | `Navigation` | `.kry canonical` | Long-form alias for `Nav`. |
@@ -342,6 +344,7 @@ host roles rather than retained nodes.
 | `Template` | `.kry canonical` | Web-native inert template element. |
 | `Tfoot` | `.kry canonical` | Web-native short alias for `TableFoot`. |
 | `Thead` | `.kry canonical` | Web-native short alias for `TableHead`. |
+| `Title` | `.kry canonical` | Web-native document title element. |
 | `Time` | `.kry canonical` | Web-native time element. |
 | `Tr` | `.kry canonical` | Web-native short alias for `TableRow`. |
 | `Track` | `.kry canonical` | Web-native media text track element. |

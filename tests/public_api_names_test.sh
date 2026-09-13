@@ -268,20 +268,20 @@ parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
 runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
 web_native_only = {
-    'Abbr', 'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio',
+    'Abbr', 'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio', 'Base',
     'Bdi', 'Bdo', 'BidirectionalIsolate', 'BidirectionalOverride',
     'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
     'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'Hgroup', 'HGroup', 'IFrame', 'Iframe', 'ImageMap',
     'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
-    'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'NoScript', 'Noscript', 'EmbeddedObject', 'OrderedList',
+    'ListItem', 'Main', 'Mark', 'Meta', 'Meter', 'Nav', 'Navigation', 'NoScript', 'Noscript', 'EmbeddedObject', 'OrderedList',
     'OptionGroup', 'OptGroup', 'Option', 'Output', 'Param', 'Pre', 'Quote',
     'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Script', 'Search', 'Select',
     'Slot', 'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
     'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
-    'Tbody', 'Template', 'Tfoot', 'Thead', 'Time', 'Tr', 'Track', 'UnorderedList',
+    'Tbody', 'Template', 'Tfoot', 'Thead', 'Time', 'Title', 'Tr', 'Track', 'UnorderedList',
     'Var', 'Variable', 'Video', 'Wbr', 'WordBreakOpportunity',
 }
 special = {'Canvas', 'End'} | web_native_only

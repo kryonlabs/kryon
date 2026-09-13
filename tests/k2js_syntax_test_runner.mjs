@@ -9,20 +9,20 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
   assert.equal(runtime[name]().type, name);
 }
 for (const name of [
-  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio",
+  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio", "Base",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
   "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
-  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
+  "ListItem", "Main", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
-  "Tbody", "Template", "Tfoot", "Thead", "Time", "Tr", "Track", "UnorderedList", "Var",
+  "Tbody", "Template", "Tfoot", "Thead", "Time", "Title", "Tr", "Track", "UnorderedList", "Var",
   "Variable", "Video", "Wbr", "WordBreakOpportunity"
 ]) {
   assert.equal(typeof runtime[name], "function");
@@ -2910,6 +2910,12 @@ function fakeDocument() {
       { nodeName: "nativeDescriptionTerm", path: "Page/descriptions/dom", parentPath: "Page/descriptions" });
     runtime.widget(nativeRt, "DescriptionDetails", { text: "Document Object Model" }, null,
       { nodeName: "nativeDescriptionDetails", path: "Page/descriptions/dom/details", parentPath: "Page/descriptions" });
+    runtime.widget(nativeRt, "Base", { href: "https://example.test/", target: "_blank" }, null,
+      { nodeName: "nativeBase", path: "Page/base" });
+    runtime.widget(nativeRt, "Meta", { name: "description", content: "Kry DOM", charset: "utf-8" }, null,
+      { nodeName: "nativeMeta", path: "Page/meta" });
+    runtime.widget(nativeRt, "Title", { text: "Kry document title" }, null,
+      { nodeName: "nativeTitle", path: "Page/title" });
     runtime.widget(nativeRt, "Video", { src: "intro.mp4", poster: "intro.jpg", controls: true, preload: "metadata" }, null,
       { nodeName: "nativeVideo", path: "Page/video" });
     runtime.widget(nativeRt, "Source", { src: "intro.webm", type: "video/webm" }, null,
@@ -3290,6 +3296,16 @@ function fakeDocument() {
       "Page/descriptions");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "DescriptionList").descriptionListItems,
       ["Page/descriptions/dom", "Page/descriptions/dom/details"]);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Base").tag, "base");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Base").extraAttrs.href, "https://example.test/");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Base").extraAttrs.target, "_blank");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Meta").tag, "meta");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Meta").extraAttrs.name, "description");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Meta").extraAttrs.content, "Kry DOM");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Meta").extraAttrs.charset, "utf-8");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Title").tag, "title");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Title").text, "Kry document title");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[content=\"Kry DOM\"]").path, "Page/meta");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").tag, "video");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.src, "intro.mp4");
     assert.equal(runtime.webNodeQuery(nativeRt, "Video").extraAttrs.controls, true);
@@ -3613,6 +3629,9 @@ function fakeDocument() {
     const nativeDescriptionList = runtime.findWebElement(nativeTarget, "nativeDescriptionList");
     const nativeDescriptionTerm = runtime.findWebElement(nativeTarget, "nativeDescriptionTerm");
     const nativeDescriptionDetails = runtime.findWebElement(nativeTarget, "nativeDescriptionDetails");
+    const nativeBase = runtime.findWebElement(nativeTarget, "nativeBase");
+    const nativeMeta = runtime.findWebElement(nativeTarget, "nativeMeta");
+    const nativeTitle = runtime.findWebElement(nativeTarget, "nativeTitle");
     const nativeVideo = runtime.findWebElement(nativeTarget, "nativeVideo");
     const nativeVideoSource = runtime.findWebElement(nativeTarget, "nativeVideoSource");
     const nativeVideoTrack = runtime.findWebElement(nativeTarget, "nativeVideoTrack");
@@ -3772,6 +3791,15 @@ function fakeDocument() {
     assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "DescriptionList")
       .relationRefs.descriptionListItems,
       ["Page/descriptions/dom", "Page/descriptions/dom/details"]);
+    assert.equal(nativeBase.tagName, "BASE");
+    assert.equal(nativeBase.attributes.href, "https://example.test/");
+    assert.equal(nativeBase.attributes.target, "_blank");
+    assert.equal(nativeMeta.tagName, "META");
+    assert.equal(nativeMeta.attributes.name, "description");
+    assert.equal(nativeMeta.attributes.content, "Kry DOM");
+    assert.equal(nativeMeta.attributes.charset, "utf-8");
+    assert.equal(nativeTitle.tagName, "TITLE");
+    assert.equal(nativeTitle.textContent, "Kry document title");
     assert.equal(nativeVideo.tagName, "VIDEO");
     assert.equal(nativeVideo.attributes.src, "intro.mp4");
     assert.equal(nativeVideo.attributes.poster, "intro.jpg");
