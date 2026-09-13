@@ -423,7 +423,8 @@ resolver supports kind selectors, descendant, child, and sibling chains, `[index
 `=`, `~=`, `|=`, `^=`, `$=`, and `*=`, source identity selectors
 such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
 and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
-native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
+native attribute aliases such as `[id=...]`, `[name=...]`, `[title=...]`,
+`[tabindex=...]`, `[type=...]`, `[href=...]`,
 `[target=...]`, `[rel=...]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,
 `[draggable=true]`, `[spellcheck=...]`, `[contenteditable=...]`,

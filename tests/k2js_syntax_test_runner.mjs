@@ -2564,6 +2564,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(linkRt, "Link").rel, "noopener");
     assert.equal(runtime.webNodeQuery(linkRt, "#manual-link").path,
       "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[id=\"manual-link\"]").path,
+      "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[name=\"manual_resource\"]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[title=\"Manual PDF\"]").path,
