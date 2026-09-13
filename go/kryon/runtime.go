@@ -797,6 +797,7 @@ type sliderFloatProps struct {
 	Max        float32
 	Format     string
 	Disabled   bool
+	ClassName  int32
 }
 
 type sliderIntProps struct {
@@ -809,6 +810,7 @@ type sliderIntProps struct {
 	Max        int32
 	Format     string
 	Disabled   bool
+	ClassName  int32
 }
 
 type sliderAngleProps struct {
@@ -820,6 +822,7 @@ type sliderAngleProps struct {
 	MaxDegrees float32
 	Format     string
 	Disabled   bool
+	ClassName  int32
 }
 
 type inputFloatProps struct {
@@ -3831,7 +3834,7 @@ func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maxim
 	return next, next != value
 }
 
-func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical, focused bool, id, component int32) {
+func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical, focused bool, className, id, component int32) {
 	hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, bounds)
 	state := ButtonStateNormal
 	if disabled {
@@ -3841,9 +3844,9 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 	} else if hovered {
 		state = ButtonStateHover
 	}
-	trackFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindSlider(), 4)
-	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, state, disabled, true, StyleSheet_StyleKindSlider(), 5)
-	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindSlider(), 6)
+	trackFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), 4)
+	activeFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled, true, className, StyleSheet_StyleKindSlider(), 5)
+	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), 6)
 	trackStyle := unpackStyle(trackFrame.Value)
 	activeStyle := unpackStyle(activeFrame.Value)
 	labelStyle := unpackStyle(labelFrame.Value)
@@ -3872,9 +3875,9 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: id, Row: component})
 }
 
-func (r *runtime) drawSliderLabel(bounds Rectangle, label string, id int32) {
+func (r *runtime) drawSliderLabel(bounds Rectangle, label string, className, id int32) {
 	if label != "" {
-		style := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
+		style := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, className, StyleSheet_StyleKindSlider(), 6).Value)
 		font, fontID := styleTextFace(style, Text14)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: id})
 	}
@@ -3923,9 +3926,9 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 			format = "%.3f"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
+		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
 	}
-	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ClassName, props.ID)
 	return changed
 }
 
@@ -3972,9 +3975,9 @@ func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 			format = "%d"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
+		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
 	}
-	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ClassName, props.ID)
 	return changed
 }
 
@@ -3988,7 +3991,7 @@ func (r *runtime) sliderAngle(props sliderAngleProps) bool {
 		format = "%.0f deg"
 	}
 	values := []float32{degrees}
-	changed := r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: values, ValueCount: 1, Min: props.MinDegrees, Max: props.MaxDegrees, Format: format, Disabled: props.Disabled}, false)
+	changed := r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: values, ValueCount: 1, Min: props.MinDegrees, Max: props.MaxDegrees, Format: format, Disabled: props.Disabled, ClassName: props.ClassName}, false)
 	if changed {
 		*props.Value = values[0] * 0.017453292519943295
 	}
@@ -4014,6 +4017,7 @@ func (r *runtime) Slider(props SliderProps) bool {
 			MaxDegrees: float32(props.Max),
 			Format:     props.Format,
 			Disabled:   props.Disabled,
+			ClassName:  props.ClassName,
 		})
 	}
 	if props.Kind == NumericInt {
@@ -4027,6 +4031,7 @@ func (r *runtime) Slider(props SliderProps) bool {
 			Max:        int32(props.Max),
 			Format:     props.Format,
 			Disabled:   props.Disabled,
+			ClassName:  props.ClassName,
 		}
 		if props.Vertical {
 			return r.sliderInt(slider, true)
@@ -4043,6 +4048,7 @@ func (r *runtime) Slider(props SliderProps) bool {
 		Max:        float32(props.Max),
 		Format:     props.Format,
 		Disabled:   props.Disabled,
+		ClassName:  props.ClassName,
 	}
 	if props.Vertical {
 		return r.sliderFloat(slider, true)
@@ -4151,7 +4157,7 @@ func (r *runtime) inputFloat(props inputFloatProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
+	r.drawSliderLabel(props.Bounds, props.Label, 0, props.ID)
 	return changed
 }
 
@@ -4187,7 +4193,7 @@ func (r *runtime) inputInt(props inputIntProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
+	r.drawSliderLabel(props.Bounds, props.Label, 0, props.ID)
 	return changed
 }
 
@@ -4223,7 +4229,7 @@ func (r *runtime) inputDouble(props inputDoubleProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
+	r.drawSliderLabel(props.Bounds, props.Label, 0, props.ID)
 	return changed
 }
 

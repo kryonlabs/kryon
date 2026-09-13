@@ -1760,17 +1760,19 @@ DrawTree(void)
                 ui_paint_slider_angle((SliderAngleProps){
                     slider.bounds, slider.id, slider.label, slider.float_value,
                     (float)slider.min, (float)slider.max, slider.format,
-                    slider.disabled});
+                    slider.disabled, slider.class_name});
             } else if(slider.kind == NumericInt) {
                 ui_paint_slider_whole((SliderWholeProps){
                     slider.bounds, slider.id, slider.label, slider.int_values,
                     slider.value_count, (int)slider.min, (int)slider.max,
-                    slider.format, slider.disabled}, slider.vertical);
+                    slider.format, slider.disabled, slider.class_name},
+                    slider.vertical);
             } else {
                 ui_paint_slider_scalar((SliderScalarProps){
                     slider.bounds, slider.id, slider.label, slider.float_values,
                     slider.value_count, (float)slider.min, (float)slider.max,
-                    slider.format, slider.disabled}, slider.vertical);
+                    slider.format, slider.disabled, slider.class_name},
+                    slider.vertical);
             }
             break;
         }
@@ -2981,7 +2983,8 @@ ui_tree_scalar_slider(SliderScalarProps slider, int vertical)
             .id = slider.id, .label = NULL, .kind = NumericFloat,
             .float_values = slider.values, .value_count = slider.value_count,
             .min = slider.min, .max = slider.max, .format = NULL,
-            .disabled = slider.disabled, .vertical = vertical};
+            .disabled = slider.disabled, .vertical = vertical,
+            .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
             slider.format != NULL ? slider.format : "%.3f",
             &node->data.slider.format_offset);
@@ -3005,7 +3008,8 @@ ui_tree_whole_slider(SliderWholeProps slider, int vertical)
             .id = slider.id, .label = NULL, .kind = NumericInt,
             .int_values = slider.values, .value_count = slider.value_count,
             .min = slider.min, .max = slider.max, .format = NULL,
-            .disabled = slider.disabled, .vertical = vertical};
+            .disabled = slider.disabled, .vertical = vertical,
+            .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
             slider.format != NULL ? slider.format : "%d",
             &node->data.slider.format_offset);
@@ -3053,7 +3057,8 @@ ui_tree_slider_angle(SliderAngleProps slider)
             .id = slider.id, .label = NULL, .kind = NumericFloat,
             .float_value = slider.value, .min = slider.min_degrees,
             .max = slider.max_degrees, .format = NULL,
-            .disabled = slider.disabled, .angle = 1};
+            .disabled = slider.disabled, .angle = 1,
+            .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
             slider.format != NULL ? slider.format : "%.3f",
             &node->data.slider.format_offset);
@@ -3076,19 +3081,19 @@ Slider(SliderProps slider)
         return ui_tree_slider_angle((SliderAngleProps){
             slider.bounds, slider.id, slider.label, slider.float_value,
             (float)slider.min, (float)slider.max, slider.format,
-            slider.disabled});
+            slider.disabled, slider.class_name});
     }
     if(slider.kind == NumericInt) {
         SliderWholeProps props = {slider.bounds, slider.id, slider.label,
                                 slider.int_values, count, (int)slider.min,
                                 (int)slider.max, slider.format,
-                                slider.disabled};
+                                slider.disabled, slider.class_name};
         return slider.vertical ? ui_tree_vslider_whole(props) : ui_tree_slider_whole(props);
     }
     SliderScalarProps props = {slider.bounds, slider.id, slider.label,
                               slider.float_values, count, (float)slider.min,
                               (float)slider.max, slider.format,
-                              slider.disabled};
+                              slider.disabled, slider.class_name};
     return slider.vertical ? ui_tree_vslider_scalar(props) : ui_tree_slider_scalar(props);
 }
 

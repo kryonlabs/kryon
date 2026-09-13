@@ -17,4 +17,5 @@ type SliderProps struct {
 	Disabled    bool
 	Vertical    bool
 	Angle       bool
+	ClassName   int32
 }

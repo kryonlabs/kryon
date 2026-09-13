@@ -36,6 +36,7 @@ typedef struct SliderProps {
     bool disabled;
     bool vertical;
     bool angle;
+    int32_t class_name;
 } SliderProps;
 
 #endif /* K_RUNTIME_SLIDER_PROPS_H */

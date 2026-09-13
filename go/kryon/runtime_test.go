@@ -1348,24 +1348,29 @@ tokens {
   material { flat: Flat; }
 }
 Slider[role=Track] { background: track; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Slider.primary[role=Track] { background: #223344; border: #6a7888; }
 Slider[role=Fill] { background: active; foreground: ink; border: active; radius: radius; border-width: border; material: flat; }
+Slider.primary[role=Fill] { background: #ddeeff; border: #ccddee; }
 Slider[role=Label] { foreground: label; font-size: 18; opacity: 0.67; }
+Slider.primary[role=Label] { foreground: #102030; font-size: 19; opacity: 0.77; }
 `, "Test Slider", "") || !SetActiveStylePack("test.slider") {
 		t.Fatal("test slider style did not activate")
 	}
 	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
 	values := []float32{0.5}
 
-	rt.sliderFloat(sliderFloatProps{
-		Bounds:     Rectangle{X: 8, Y: 28, Width: 120, Height: 30},
-		ID:         88,
-		Label:      "Level",
-		Values:     values,
-		ValueCount: 1,
-		Min:        0,
-		Max:        1,
-		Format:     "%.1f",
-	}, false)
+	rt.Slider(SliderProps{
+		Bounds:      Rectangle{X: 8, Y: 28, Width: 120, Height: 30},
+		ID:          88,
+		Label:       "Level",
+		Kind:        NumericFloat,
+		FloatValues: values,
+		ValueCount:  1,
+		Min:         0,
+		Max:         1,
+		Format:      "%.1f",
+		ClassName:   StyleClassID("primary"),
+	})
 
 	var sawTrack, sawFill, sawValue, sawLabel bool
 	for _, op := range rt.FrameOps() {
@@ -1375,24 +1380,24 @@ Slider[role=Label] { foreground: label; font-size: 18; opacity: 0.67; }
 		switch {
 		case op.Kind == FrameOpRect && op.Row == 0 && !op.Selected:
 			sawTrack = true
-			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderColor != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) || op.BorderColor != (Color{R: 0x6a, G: 0x78, B: 0x88, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("slider track style op = %+v", op)
 			}
 		case op.Kind == FrameOpRect && op.Row == 0 && op.Selected:
 			sawFill = true
-			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xdd, G: 0xee, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xcc, G: 0xdd, B: 0xee, A: 0xff}) {
 				t.Fatalf("slider active style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Row == 0 && op.Text == "0.5":
 			sawValue = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
-				op.FontSize != 18 || op.Opacity != 0.67 {
+			if op.Color != (Color{R: 0x10, G: 0x20, B: 0x30, A: 0xff}) ||
+				op.FontSize != 19 || op.Opacity != 0.77 {
 				t.Fatalf("slider value text style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Level":
 			sawLabel = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
-				op.FontSize != 18 || op.Opacity != 0.67 {
+			if op.Color != (Color{R: 0x10, G: 0x20, B: 0x30, A: 0xff}) ||
+				op.FontSize != 19 || op.Opacity != 0.77 {
 				t.Fatalf("slider label style op = %+v", op)
 			}
 		}

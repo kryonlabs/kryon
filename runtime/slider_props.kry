@@ -16,4 +16,5 @@ SliderProps :: struct {
     disabled: bool
     vertical: bool
     angle: bool
+    class_name: i32
 }

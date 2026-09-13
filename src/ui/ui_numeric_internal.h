@@ -67,6 +67,7 @@ typedef struct {
     float max;
     const char *format;
     int disabled;
+    int class_name;
 } SliderScalarProps;
 
 typedef struct {
@@ -79,6 +80,7 @@ typedef struct {
     int max;
     const char *format;
     int disabled;
+    int class_name;
 } SliderWholeProps;
 
 typedef struct {
@@ -90,6 +92,7 @@ typedef struct {
     float max_degrees;
     const char *format;
     int disabled;
+    int class_name;
 } SliderAngleProps;
 
 typedef struct {

@@ -1020,7 +1020,7 @@ ui_color_edit(ColorPickerProps edit, int channels)
         return 0;
     return ui_slider_scalar((SliderScalarProps){edit.bounds, edit.id, edit.label,
                                                edit.values, channels, 0.0f, 1.0f,
-                                               "%.3f", edit.disabled}, 0);
+                                               "%.3f", edit.disabled, 0}, 0);
 }
 
 static Color
@@ -2546,7 +2546,7 @@ ui_update_slider_whole_keyboard(int focus_id, int vertical, int minimum,
 
 static void
 ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
-                    int disabled, int vertical, int focused)
+                    int disabled, int vertical, int focused, int class_name)
 {
     if(!IsWindowReady())
         return;
@@ -2557,18 +2557,14 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     ButtonState state = disabled ? ButtonStateDisabled :
                         (focused ? ButtonStateFocus :
                          (hovered ? ButtonStateHover : ButtonStateNormal));
-    StyleFrame track = ui_tk_simple_style_frame_role(ButtonToneNeutral, state,
-                                                     disabled, 0,
-                                                     StyleKindSlider(), 4);
-    StyleFrame active = ui_tk_simple_style_frame_role(ButtonToneAccent, state,
-                                                      disabled, 1,
-                                                      StyleKindSlider(), 5);
-    StyleFrame thumb = ui_tk_simple_style_frame(ButtonToneAccent, state,
-                                                disabled, 1,
-                                                StyleKindSliderThumb());
-    StyleFrame label = ui_tk_simple_style_frame_role(ButtonToneNeutral, state,
-                                                     disabled, 0,
-                                                     StyleKindSlider(), 6);
+    StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        state, disabled, 0, class_name, StyleKindSlider(), 4);
+    StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
+        state, disabled, 1, class_name, StyleKindSlider(), 5);
+    StyleFrame thumb = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
+        state, disabled, 1, class_name, StyleKindSliderThumb(), StyleAny());
+    StyleFrame label = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        state, disabled, 0, class_name, StyleKindSlider(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label).value);
     int label_font = label_style.font_size > 0.0f
         ? (int)(label_style.font_size + 0.5f)
@@ -2594,11 +2590,11 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
 }
 
 static void
-ui_draw_slider_label(Rectangle bounds, const char *label)
+ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
 {
     if(IsWindowReady() && label != NULL) {
-        StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-            ButtonStateNormal, 0, 0, StyleKindSlider(), 6);
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+            ButtonStateNormal, 0, 0, class_name, StyleKindSlider(), 6);
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
@@ -2720,9 +2716,10 @@ ui_paint_slider_scalar(SliderScalarProps slider, int vertical)
                       IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%.3f",slider.values[i]);
-        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused,
+                            slider.class_name);
     }
-    ui_draw_slider_label(slider.bounds,slider.label);
+    ui_draw_slider_label(slider.bounds,slider.label,slider.class_name);
 }
 
 void
@@ -2746,9 +2743,10 @@ ui_paint_slider_whole(SliderWholeProps slider, int vertical)
                       IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%d",slider.values[i]);
-        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused);
+        ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused,
+                            slider.class_name);
     }
-    ui_draw_slider_label(slider.bounds,slider.label);
+    ui_draw_slider_label(slider.bounds,slider.label,slider.class_name);
 }
 
 static int
@@ -2774,7 +2772,7 @@ ui_update_slider_angle(SliderAngleProps slider)
     value_slider = (SliderScalarProps){slider.bounds, slider.id, slider.label,
                                       &degrees, 1, slider.min_degrees,
                                       slider.max_degrees, slider.format,
-                                      slider.disabled};
+                                      slider.disabled, slider.class_name};
     changed = ui_update_slider_scalar(value_slider, 0);
     if(changed)
         *slider.value = degrees * degrees_to_radians;
@@ -2958,7 +2956,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         }
         (void)commit;
     }
-    ui_draw_slider_label(bounds, label);
+    ui_draw_slider_label(bounds, label, 0);
     EndDisabled();
     return changed;
 }

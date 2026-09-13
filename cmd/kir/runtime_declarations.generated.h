@@ -458,6 +458,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "    vertical: bool\n"
         "    angle: bool\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/spinbox_props.kry",
