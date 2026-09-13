@@ -526,6 +526,46 @@ export interface WebDOMRelations {
   popoverInvokers: WebDOMObject[];
 }
 
+export interface WebNodeEventRefs {
+  click: string;
+  doubleClick: string;
+  input: string;
+  beforeInput: string;
+  change: string;
+  select: string;
+  key: string;
+  keyUp: string;
+  invalid: string;
+  submit: string;
+  reset: string;
+  toggle: string;
+  close: string;
+  cancel: string;
+  focus: string;
+  blur: string;
+  scroll: string;
+  mouseEnter: string;
+  mouseLeave: string;
+  mouseMove: string;
+  mouseDown: string;
+  mouseUp: string;
+  pointerEnter: string;
+  pointerLeave: string;
+  pointerMove: string;
+  pointerDown: string;
+  pointerUp: string;
+  pointerCancel: string;
+  wheel: string;
+  contextMenu: string;
+  dragStart: string;
+  dragEnd: string;
+  dragOver: string;
+  drop: string;
+  copy: string;
+  cut: string;
+  paste: string;
+}
+
 export interface WebDOMBindHandlers {
   mount?: (object: WebDOMObject, detail: WebDOMObserveDetail) =>
     unknown | ((object: WebDOMObject, detail: WebDOMObserveDetail) => unknown);
@@ -724,45 +764,7 @@ export interface WebDOMSnapshot {
     popoverTarget: string;
     popoverInvokers: string[];
   };
-  eventRefs: {
-    click: string;
-    doubleClick: string;
-    input: string;
-    beforeInput: string;
-    change: string;
-    select: string;
-    key: string;
-    keyUp: string;
-    invalid: string;
-    submit: string;
-    reset: string;
-    toggle: string;
-    close: string;
-    cancel: string;
-    focus: string;
-    blur: string;
-    scroll: string;
-    mouseEnter: string;
-    mouseLeave: string;
-    mouseMove: string;
-    mouseDown: string;
-    mouseUp: string;
-    pointerEnter: string;
-    pointerLeave: string;
-    pointerMove: string;
-    pointerDown: string;
-    pointerUp: string;
-    pointerCancel: string;
-    wheel: string;
-    contextMenu: string;
-    dragStart: string;
-    dragEnd: string;
-    dragOver: string;
-    drop: string;
-    copy: string;
-    cut: string;
-    paste: string;
-  };
+  eventRefs: WebNodeEventRefs;
   name: string;
   key: string;
   id: string;
@@ -894,6 +896,7 @@ export function hostCall(host: unknown, method: string, args?: unknown[]): unkno
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
 export function webNodeIdentity(node: WebDocumentNode): WebNodeIdentity;
+export function webNodeEventRefs(node: WebDocumentNode | null): WebNodeEventRefs;
 export function webSourceRef(sourcePath: string, sourceLine: number, sourceColumn?: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
@@ -927,6 +930,7 @@ export function webSourceMap(rt: Runtime): WebNodeIdentity[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
+export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;
 export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
 export function webDOMDecorateEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;

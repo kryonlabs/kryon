@@ -897,6 +897,8 @@ assert.deepEqual(webDoc.nodes[2].extraAttrs, {
   part: "primary-action"
 });
 assert.equal(webDoc.nodes[2].onClick, "call_host");
+assert.equal(runtime.webNodeEventRefs(webDoc.nodes[2]).click, "call_host");
+assert.equal(runtime.webNodeEventRefs(webDoc.nodes[2]).keyUp, "");
 assert.deepEqual(webDoc.nodes[2].styleFacts, {
   index: 2,
   kind: "Button",
@@ -3047,6 +3049,8 @@ function fakeDocument() {
     assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");
     assert.equal(buttonObject.snapshot.eventRefs.click, "call_host");
     assert.equal(buttonObject.snapshot.eventRefs.keyUp, "");
+    assert.equal(runtime.webDOMEventRefs(target, "tap-button").click, "call_host");
+    assert.equal(runtime.webDOMEventRefs(target, "tap-button").keyUp, "");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
     assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);

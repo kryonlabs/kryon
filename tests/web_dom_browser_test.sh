@@ -189,6 +189,8 @@ try {
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
   assert(kryon.webDOMSnapshot(target, "article-ref").eventRefs.click === "article_click",
     "snapshot event refs missing click hook");
+  assert(kryon.webDOMEventRefs(target, "article-ref").click === "article_click",
+    "mounted event refs missing click hook");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);

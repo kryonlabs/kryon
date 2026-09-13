@@ -103,7 +103,8 @@ the browser receives normal elements, attributes, CSS, and events.
   populate Web Document event facts and rendered `data-kry-on-*` glue hooks.
 - Mounted DOM snapshots serialize event refs for generated logic hooks so
   inspectors can show which Kry logic action is attached to each native DOM
-  object without scraping `data-kry-on-*` attributes.
+  object without scraping `data-kry-on-*` attributes; direct
+  `webNodeEventRefs(...)` and `webDOMEventRefs(...)` APIs expose the same facts.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring. App style installation preserves embedded

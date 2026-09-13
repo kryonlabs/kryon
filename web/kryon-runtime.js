@@ -6935,6 +6935,11 @@ export function webDOMIdentity(target, query) {
   return object ? webNodeIdentity(object.node) : null;
 }
 
+export function webDOMEventRefs(target, query) {
+  const object = webDOMObject(target, query);
+  return object ? webNodeEventRefs(object.node) : null;
+}
+
 export function webDOMRelations(target, query) {
   const object = webDOMObject(target, query);
   return object ? webDOMRelationsForNode(target, object.node) : null;
@@ -7437,7 +7442,7 @@ function plainElementMap(source) {
   return out;
 }
 
-function webNodeEventRefs(node) {
+export function webNodeEventRefs(node) {
   return {
     click: node?.onClick || "",
     doubleClick: node?.onDoubleClick || "",

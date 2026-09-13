@@ -611,6 +611,9 @@ plain, serializable views of mounted Kry DOM objects: the complete
 `WebNodeIdentity` packet and alias list, source location, parent/child refs,
 relation refs, event refs, attributes, dataset, style, text/value, state,
 geometry, and scroll without live DOM references.
+`webNodeEventRefs(node)` and `webDOMEventRefs(target, query)` return the same
+event-ref packet directly for unmounted Web Document nodes or mounted DOM
+objects.
 `webDOMSnapshotFromElement(element)` and `webDOMSnapshotFromEvent(...)` provide
 the same serializable projection from native DOM elements and events.
 
