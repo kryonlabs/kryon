@@ -919,6 +919,44 @@ assert.equal(frame.nodes[0].sourceLine, 3);
 assert.equal(frame.nodes[0].sourceEndLine, 7);
 EOF
 
+cat > "$work/src/switch_widget_nodes.kry" <<'EOF'
+#import "kryon.h"
+SwitchWidgetNodes :: () #ui {
+    switch Button(
+        (ButtonProps){
+            .label = "Mode"
+        }
+    ) {
+    case true:
+        break
+    default:
+        break
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/switch_widget_nodes.kry"
+switch_widget_out="$work/out/src/switch_widget_nodes.js"
+grep -q 'switch (kryon.widget(\$rt, "Button"' "$switch_widget_out"
+grep -q '"path": "SwitchWidgetNodes/Button@3"' "$switch_widget_out"
+grep -q '"sourcePath": "src/switch_widget_nodes.kry"' "$switch_widget_out"
+grep -q '"sourceLine": 3' "$switch_widget_out"
+grep -q '"sourceColumn": 5' "$switch_widget_out"
+grep -q '"sourceEndLine": 7' "$switch_widget_out"
+grep -q '"sourceEndColumn": 8' "$switch_widget_out"
+node --input-type=module - "$switch_widget_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.SwitchWidgetNodes_SwitchWidgetNodes(rt, module.createState(), {});
+const frame = runtime.webDocumentFrame(rt);
+assert.equal(frame.nodes.length, 1);
+assert.equal(frame.nodes[0].path, "SwitchWidgetNodes/Button@3");
+assert.equal(frame.nodes[0].sourceLine, 3);
+assert.equal(frame.nodes[0].sourceEndLine, 7);
+EOF
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {

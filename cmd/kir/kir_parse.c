@@ -1688,10 +1688,14 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
     if(kind == KIR_STMT_RETURN && starts_word(expr, "return")) {
         memmove(expr, expr + 6, strlen(expr + 6) + 1);
         kir_trim_in_place(expr);
-    } else if(kind == KIR_STMT_IF || kind == KIR_STMT_WHILE) {
+    } else if(kind == KIR_STMT_IF || kind == KIR_STMT_WHILE ||
+              kind == KIR_STMT_SWITCH) {
         kir_strip_block_brace(expr);
         if(kind == KIR_STMT_WHILE && starts_word(expr, "while")) {
             memmove(expr, expr + 5, strlen(expr + 5) + 1);
+            kir_trim_in_place(expr);
+        } else if(kind == KIR_STMT_SWITCH && starts_word(expr, "switch")) {
+            memmove(expr, expr + 6, strlen(expr + 6) + 1);
             kir_trim_in_place(expr);
         } else if(starts_word(expr, "else if")) {
             memmove(expr, expr + 7, strlen(expr + 7) + 1);
@@ -4235,7 +4239,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
                        kind == KIR_STMT_ASSIGN || kind == KIR_STMT_IF ||
-                       kind == KIR_STMT_WHILE || kind == KIR_STMT_FOR)
+                       kind == KIR_STMT_WHILE || kind == KIR_STMT_FOR ||
+                       kind == KIR_STMT_SWITCH)
                         ui_stmt_apply_expression_widget_metadata(st, fn,
                             ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
                             &root_anonymous_widget_count,

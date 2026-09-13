@@ -2442,17 +2442,18 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             kir_strip_block_brace(raw);
             emit_indent(f, indent);
             const char *condition = kir_skip_ws(raw + strlen(keyword));
-            if(st->kind == KIR_STMT_WHILE &&
+            if(stmt_has_web_metadata(st) &&
                begin_popup_call_args(condition, args, sizeof(args))) {
-                fprintf(f, "while (kryon.widget($rt, \"Popup\", ");
+                fprintf(f, "%s (kryon.widget($rt, \"Popup\", ", keyword);
                 emit_initializer_value(f, m, args);
                 fprintf(f, ", $state, ");
                 emit_web_metadata(f, m, st);
                 fprintf(f, ")) {\n");
-            } else if(st->kind == KIR_STMT_WHILE &&
-                      condition_is_widget_call(condition, widget, sizeof(widget),
-                                               args, sizeof(args))) {
-                fprintf(f, "while (kryon.widget($rt, ");
+            } else if(stmt_has_web_metadata(st) &&
+                      condition_is_widget_call(condition, widget,
+                                               sizeof(widget), args,
+                                               sizeof(args))) {
+                fprintf(f, "%s (kryon.widget($rt, ", keyword);
                 js_string(f, widget);
                 fprintf(f, ", ");
                 emit_widget_arguments(f, m, widget, args);
