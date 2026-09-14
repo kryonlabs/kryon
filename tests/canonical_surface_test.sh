@@ -119,6 +119,16 @@ check_absent "typed numeric helper legacy names" \
     '\bUI(Float|Int|Double|Angle)(Drag|Slider|Input)[A-Za-z0-9_]*\b|\bDragFloats\b|\bDragInts\b|\bSliderFloats\b|\bSliderInts\b|\bInputInts\b|\bInputFloats\b|\bdrag_floats\b|\bdrag_ints\b|\bslider_floats\b|\bslider_ints\b|\binput_floats\b|\binput_ints\b|\binput_doubles\b' \
     $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts
 
+check_absent "raw widget component identity formulas" \
+    'props\.ID\s*\*\s*(8|16)|id\s*\*\s*16\s*\+\s*component|picker\.id\s*\*\s*8|slider\.id\s*<<\s*4|drag\.id\s*<<\s*4|toolbar\.id\s*\*\s*100|spinbox\.id\s*\*\s*10|[0-9]+\s*\*\s*10\s*\+\s*1' \
+    src/ui go/kryon tests/ui_tk_test.c tests/*.go \
+    --glob '!go/kryon/drag.go' \
+    --glob '!go/kryon/slider.go' \
+    --glob '!go/kryon/spinbox.go' \
+    --glob '!go/kryon/toolbar.go' \
+    --glob '!go/kryon/color_picker.go' \
+    --glob '!go/kryon/segmented_control.go'
+
 check_absent "button variant legacy names" \
     '\b(MenuButton|SplitButton|InfoButton|ArrowButton)\b' \
     include src cmd go web docs examples tests tools scripts \
