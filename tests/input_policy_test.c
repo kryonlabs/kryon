@@ -37,12 +37,14 @@ main(void)
     assert(pointer.hovered);
     assert(!pointer.disabled_marker);
     assert(pointer.activated);
+    assert(pointer.consume_release);
     pointer = InputPointerInteractionFor(true, false, true, true, true,
                                          false, true);
     assert(!pointer.active);
     assert(!pointer.hovered);
     assert(pointer.disabled_marker);
     assert(!pointer.activated);
+    assert(!pointer.consume_release);
     pointer = InputPointerInteractionFor(true, true, false, true, true,
                                          false, true);
     assert(!pointer.active);
@@ -52,6 +54,7 @@ main(void)
                                          true, true);
     assert(pointer.active);
     assert(!pointer.activated);
+    assert(!pointer.consume_release);
     pointer = InputPointerInteractionFor(true, false, false, true, true,
                                          false, false);
     assert(pointer.active);

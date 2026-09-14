@@ -58,6 +58,7 @@ NavigationBarItemInteraction :: struct {
     hovered: bool
     disabled_marker: bool
     activated: bool
+    consume_release: bool
     state: ButtonState
 }
 
@@ -160,6 +161,7 @@ NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
     interaction.disabled_marker = pointer_inside && disabled && !captured
     interaction.activated = interaction.active && released &&
         !release_consumed && press_started_inside
+    interaction.consume_release = interaction.activated
     interaction.state = NavigationBarItemStateFor(selected, disabled,
         interaction.hovered)
     return interaction

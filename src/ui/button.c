@@ -875,8 +875,9 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
                       font, text, TextWrapNone, TextAlignCenter,
                       TextAlignCenter, ui_active_font_token(), 0);
 
-    if(interaction.activated) {
+    if(interaction.consume_release)
         ConsumeRelease();
+    if(interaction.activated) {
         return 1;
     }
     return 0;

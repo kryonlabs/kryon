@@ -928,8 +928,9 @@ HandleClick(Rectangle bounds, int disabled, int *hover)
         MarkDisabled();
     if(interaction.active)
         MarkClickable();
-    if(interaction.activated) {
+    if(interaction.consume_release)
         ConsumeRelease();
+    if(interaction.activated) {
         return 1;
     }
     return 0;
@@ -970,8 +971,9 @@ HandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
         MarkDisabled();
     if(interaction.active)
         MarkClickable();
-    if(interaction.activated) {
+    if(interaction.consume_release)
         ConsumeRelease();
+    if(interaction.activated) {
         return 1;
     }
     return 0;

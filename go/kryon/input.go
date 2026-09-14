@@ -22,6 +22,7 @@ type InputPointerInteraction struct {
 	Hovered        bool
 	DisabledMarker bool
 	Activated      bool
+	ConsumeRelease bool
 }
 
 type InputCellLayout struct {
@@ -191,8 +192,10 @@ func Input_InputPointerInteractionFor(inside bool, captured bool, disabled bool,
 		value_22 = value_23
 	}
 	interaction.Activated = value_22
-	var value_24 InputPointerInteraction = interaction
-	return value_24
+	var value_24 bool = interaction.Activated
+	interaction.ConsumeRelease = value_24
+	var value_25 InputPointerInteraction = interaction
+	return value_25
 }
 
 func Input_InputTempEditActivationFor(pressed bool, control bool, same_kind bool, same_widget bool, same_component bool, elapsed_seconds float32, dx float32, dy float32, slop int32) bool {

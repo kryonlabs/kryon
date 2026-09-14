@@ -59,6 +59,7 @@ type NavigationBarItemInteraction struct {
 	Hovered        bool
 	DisabledMarker bool
 	Activated      bool
+	ConsumeRelease bool
 	State          ButtonState
 }
 
@@ -265,13 +266,15 @@ func NavigationBar_NavigationBarItemInteractionFor(disabled bool, pointer_inside
 		value_22 = value_23
 	}
 	interaction.Activated = value_22
-	var value_24 bool = selected
-	var value_25 bool = disabled
-	var value_26 bool = interaction.Hovered
-	var value_27 ButtonState = ButtonState(NavigationBar_NavigationBarItemStateFor(value_24, value_25, value_26))
-	interaction.State = value_27
-	var value_28 NavigationBarItemInteraction = interaction
-	return value_28
+	var value_24 bool = interaction.Activated
+	interaction.ConsumeRelease = value_24
+	var value_25 bool = selected
+	var value_26 bool = disabled
+	var value_27 bool = interaction.Hovered
+	var value_28 ButtonState = ButtonState(NavigationBar_NavigationBarItemStateFor(value_25, value_26, value_27))
+	interaction.State = value_28
+	var value_29 NavigationBarItemInteraction = interaction
+	return value_29
 }
 
 func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_count int32, option_count int32, slot_limit int32) NavigationBarConfigCounts {

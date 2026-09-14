@@ -21,6 +21,7 @@ InputPointerInteraction :: struct {
     hovered: bool
     disabled_marker: bool
     activated: bool
+    consume_release: bool
 }
 
 InputCellLayout :: struct {
@@ -71,6 +72,7 @@ InputPointerInteractionFor :: (inside: bool, captured: bool, disabled: bool,
     interaction.disabled_marker = inside && !captured && disabled
     interaction.activated = interaction.active && released &&
         !release_consumed && press_started_inside
+    interaction.consume_release = interaction.activated
     return interaction
 }
 

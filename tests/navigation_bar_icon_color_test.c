@@ -218,6 +218,8 @@ main(void)
         check_true("navigation bar interaction hovered", interaction.hovered);
         check_true("navigation bar interaction activated",
                    interaction.activated);
+        check_true("navigation bar interaction consumes release",
+                   interaction.consume_release);
         check_true("navigation bar interaction hover state",
                    interaction.state == ButtonStateHover);
 
@@ -226,6 +228,8 @@ main(void)
                                                       false);
         check_true("navigation bar captured inactive",
                    !interaction.active && !interaction.activated);
+        check_true("navigation bar captured does not consume release",
+                   !interaction.consume_release);
         check_true("navigation bar captured normal state",
                    interaction.state == ButtonStateNormal);
 

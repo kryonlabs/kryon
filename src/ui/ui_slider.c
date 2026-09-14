@@ -649,7 +649,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         if(toggle.changed && value != NULL)
             *value = toggle.value;
     }
-    if(pressed)
+    if(pressed && interaction.consume_release)
         ConsumeRelease();
     if(!can_draw) {
         EndWidget(&widget);
@@ -842,7 +842,7 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
         if(toggle.changed && value != NULL)
             *value = toggle.checked ? 1 : 0;
     }
-    if(pressed) {
+    if(pressed && interaction.consume_release) {
         ConsumeRelease();
     }
     if(!can_draw) {

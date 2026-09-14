@@ -37,8 +37,9 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
         MarkDisabled();
     else if(interaction.active)
         MarkClickable();
-    if(interaction.activated) {
+    if(interaction.consume_release)
         ConsumeRelease();
+    if(interaction.activated) {
         return 1;
     }
     return 0;
