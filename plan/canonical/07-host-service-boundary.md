@@ -1,54 +1,18 @@
-# 07 Host Service Boundary
+# Remaining host-service inventory
 
-## Goal
+`docs/CANONICAL_WIDGET_SURFACE.md` records widget ownership and the completed
+C release-call classification. Complete the inventory at behavior granularity:
 
-Draw a hard line between widget policy that belongs in `.kry` and host services
-that should remain native.
+- Native and Go retained focus/selection/menu state: storage is host support;
+  navigation targets, close rules, and ownership transitions are policy.
+- Text: buffers/IME/measurement/paint are host services; edit, selection,
+  reflow and composition decisions need explicit generated owners.
+- Blocks: clipping and paint stacks are host services; scope visibility,
+  activation, restoration and dismissal behavior must agree across backends.
+- Game2D: keep physics/audio/rendering and scene ownership explicitly outside
+  the widget migration unless a separate scene-policy migration is agreed.
+- Terminal: retain only reusable runtime/host primitives in Kryon. Kapsule's
+  terminal emulator and product behavior belong in Kapsule.
 
-## Host Services That May Stay Native
-
-- image cache, loading, decoding, and texture upload
-- icon sheet/type lookup
-- URL dispatch
-- clipboard and platform text services
-- font measurement and glyph atlas rendering
-- focus registration storage
-- paint layers and clipping stacks
-- pointer owner storage where retained state is required
-- platform windows and OS integration
-- terminal PTY/session IO and ANSI parsing
-- Game2D physics/audio handles and scene rendering
-
-## Widget Policy That Should Move To `.kry`
-
-- activation and release decisions
-- keyboard intent
-- default metrics and fallback constants
-- layout geometry
-- style selector facts and role decisions
-- open/close/commit/cancel rules
-- row, cell, header, and option selection policy
-- scroll, drag, resize, reorder, swipe, and modal lifecycles
-
-## Tasks
-
-1. Add explicit host-service notes to `docs/CANONICAL_WIDGET_SURFACE.md`.
-2. When a C branch remains, document why it is host support.
-3. When a branch has no host-service reason, move it to `.kry`.
-4. Keep Kapsule/app-specific logic out of Kryon.
-5. Keep downstream `vendor/kryon` pristine; all changes happen in
-   `/mnt/storage/Projects/kryon`.
-
-## Proof
-
-```sh
-git status --short
-rg -n 'host support|native support|remain native|remain host' docs/CANONICAL_WIDGET_SURFACE.md
-sh tests/public_api_names_test.sh
-```
-
-## Done When
-
-- Every remaining native widget path is either gone or clearly justified as a
-  host service.
-- The boundary is understandable without reading the whole C implementation.
+Done when every retained native/Go/JS path has either a specific service reason
+or a shared `.kry` policy owner, with no old API adapters left in maintained use.

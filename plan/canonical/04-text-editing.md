@@ -1,60 +1,21 @@
-# 04 Text Editing
+# Remaining text editing work
 
-## Goal
+TextField/TextArea metrics, edit intent, selection ranges, composition gates,
+keyboard navigation, and clipboard command decisions already have `.kry`
+owners. Immediate C shortcuts and Go clipboard command decisions now use them.
+`EditText` remains the actual buffer-edit service used by both native fields;
+it is not an unused compatibility wrapper that can simply be deleted.
 
-Finish moving text field and text area policy into `.kry` while keeping true
-platform text services native.
+Remaining:
 
-## Current State
+- Audit retained/immediate selection ownership, IME focus transitions, and
+  Go text editing for decisions still implemented independently of `.kry`.
+- Replace web handwritten editing decisions with generated policy where the
+  semantics are shared. Test secure and read-only fields, UTF-8 boundaries,
+  selection replacement, clipboard commands, and preedit commit/cancel.
+- Exercise `tests/parity/composition.kry` behavior in the web runner. Generation
+  alone does not verify composition, focus ownership, or platform integration.
+- Document storage and OS boundaries separately from unfinished widget logic.
 
-`TextField` and `TextArea` already have substantial `.kry` ownership:
-
-- metrics
-- KSS typography defaults
-- paint geometry
-- buffer limits
-- cursor normalization
-- navigation decisions
-- edit intent policy
-- selection state/range policy
-- double-click and pan gates
-- focus/platform text-input sync decisions
-- text-buffer mutation/range/bracket policy
-- composition/preedit gates and paint spans
-- context-menu and keyboard edit-command decisions
-
-Remaining native work includes raw string storage, memmove/scanning, IME,
-selection ownership/painting, and rendering.
-
-## Tasks
-
-1. Split native text work into:
-   - required platform service
-   - reusable `.kry` policy
-   - old immediate compatibility path that should disappear
-2. Move remaining edit gates from `src/ui/ui.c` and retained-tree paths into
-   `runtime/text_input.kry`.
-3. Convert keyboard shortcut interpretation to `.kry` decision records where
-   it is widget behavior.
-4. Keep actual string memory operations native until `.kry` has a real
-   string/storage story that is safe for all backends.
-5. Make selection ownership decisions testable in `.kry` even if painting stays
-   native.
-6. Ensure Go and web generated runtimes use the same `.kry` text policies.
-
-## Proof
-
-```sh
-make text-input-policy-test
-make public-headers-compile-check
-go test ./... ./go/kryon/...
-sh tests/public_api_names_test.sh
-rg -n 'UIText|TextInputControl|RenderTextField|RenderTextArea' include src runtime docs go/kryon --glob '!build/**'
-```
-
-## Done When
-
-- Text widget decisions are generated from `.kry`.
-- C keeps only storage, platform IME, text measurement, drawing, and unavoidable
-  host glue.
-- No public stale `UIText*` or split text-input helper names remain.
+Raw buffers, memory movement, clipboard IO, font measurement, and platform IME
+remain native services. Do not create a new text widget or forwarding layer.
