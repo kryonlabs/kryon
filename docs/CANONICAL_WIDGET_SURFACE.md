@@ -127,7 +127,7 @@ surface review:
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea metrics, scroll, paint geometry, buffer-limit, navigation, selection state, and edit-intent policy | `.kry canonical` |
 | `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
-| `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
+| `runtime/theme.kry` | Theme data/helpers and typed `ThemePolicy` resolution | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout and paint geometry policy | `.kry canonical` |
 | `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |

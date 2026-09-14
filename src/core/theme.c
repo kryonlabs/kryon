@@ -121,7 +121,7 @@ SetThemeMode(ThemeMode mode)
     if(mode < THEME_MODE_SYSTEM || mode > THEME_MODE_DARK)
         mode = THEME_MODE_SYSTEM;
     theme_mode = mode;
-    dark_mode = ResolveDark((int32_t)mode, SystemThemePrefersDark());
+    dark_mode = ResolveDark((ThemePolicy)mode, SystemThemePrefersDark());
     if(active_theme_family_set) {
         Theme selected = dark_mode ? active_theme_family.dark
                                    : active_theme_family.light;

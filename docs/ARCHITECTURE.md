@@ -238,9 +238,9 @@ strict mode on all four targets.
 
 JavaScript fallback expressions resolve casts to declared `.kry` enums through
 the shared type lookup, including runtime-call arguments. Numeric operands are
-truncated toward zero. This does not supply metadata for host-only C enums
-such as `ThemeMode`; those declarations still need migration before the theme
-catalog's C-style casts can execute in JavaScript.
+truncated toward zero. Theme system/light/dark resolution uses the generated
+`ThemePolicy` enum in `runtime/theme.kry`; host-facing theme APIs may still
+bridge from native `ThemeMode` at their boundary.
 
 Each widget must have one canonical declaration in `.kry`. That declaration
 owns its typed props and defaults, per-instance state, events, measurement and

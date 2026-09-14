@@ -758,7 +758,10 @@ parse_enum(const KirType *t)
         K2goEnumMember *m = &e->members[e->count++];
         memset(m, 0, sizeof(*m));
         snprintf(m->kry, sizeof(m->kry), "%s", name);
-        if(e->prefix[0] != '\0')
+        if(e->prefix[0] != '\0' &&
+           strncmp(m->kry, e->prefix, strlen(e->prefix)) == 0)
+            kir_camel_ident(m->kry, m->go, sizeof(m->go));
+        else if(e->prefix[0] != '\0')
             snprintf(m->go, sizeof(m->go), "%s%s", e->prefix, m->kry);
         else
             kir_camel_ident(m->kry, m->go, sizeof(m->go));

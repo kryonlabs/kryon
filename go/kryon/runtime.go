@@ -6574,7 +6574,7 @@ func (r *runtime) theme() themePalette {
 }
 
 func (r *runtime) effectiveDark() bool {
-	return Theme_ResolveDark(int32(r.themeMode), systemPrefersDark())
+	return Theme_ResolveDark(ThemePolicy(r.themeMode), systemPrefersDark())
 }
 
 func systemPrefersDark() bool {
