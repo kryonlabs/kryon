@@ -3635,8 +3635,14 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         ui_consume_focus_tab();
         selection_changed = changed = 1;
     }
-    if(ui_table_mod_key_down() &&
-       (IsKeyPressed(KEY_C) || IsKeyPressed(KEY_X))) {
+    TableViewClipboardDecision clipboard_decision =
+        TableViewClipboardDecisionFor(
+            ui_table_mod_key_down() != 0,
+            IsKeyPressed(KEY_C) != 0,
+            IsKeyPressed(KEY_X) != 0,
+            IsKeyPressed(KEY_V) != 0,
+            table.pasted_text != NULL);
+    if(clipboard_decision.copy_selection) {
         char *copy = ui_table_clipboard_text(table,*table.selected_row,
             table.selected_column != NULL ? *table.selected_column : -1);
         if(copy != NULL) {
@@ -3645,8 +3651,7 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
             changed = 1;
         }
     }
-    if(ui_table_mod_key_down() && IsKeyPressed(KEY_V) &&
-       table.pasted_text != NULL) {
+    if(clipboard_decision.paste) {
         *table.pasted_text = GetClipboardTextValue();
         if(table.pasted_row != NULL) *table.pasted_row = *table.selected_row;
         if(table.pasted_column != NULL)

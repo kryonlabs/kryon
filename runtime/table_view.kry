@@ -38,6 +38,11 @@ TableViewSelectionClearDecision :: struct {
     changed: bool
 }
 
+TableViewClipboardDecision :: struct {
+    copy_selection: bool
+    paste: bool
+}
+
 TableViewMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -312,6 +317,18 @@ TableViewSelectionClearFor :: (selected_row: i32,
         decision.column = -1
         decision.changed = true
     }
+    return decision
+}
+
+TableViewClipboardDecisionFor :: (modifier_down: bool,
+    copy_pressed: bool, cut_pressed: bool, paste_pressed: bool,
+    has_paste_target: bool) -> TableViewClipboardDecision #export {
+    decision: TableViewClipboardDecision
+    if !modifier_down {
+        return decision
+    }
+    decision.copy_selection = copy_pressed || cut_pressed
+    decision.paste = paste_pressed && has_paste_target
     return decision
 }
 

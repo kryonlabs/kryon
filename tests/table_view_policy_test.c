@@ -28,6 +28,7 @@ main(void)
                                                    cell, divider);
     TableViewLayout layout;
     TableViewScrollLayout scroll;
+    TableViewClipboardDecision clipboard;
     Rectangle row;
 
     assert(metrics.default_row_height == 56);
@@ -81,6 +82,21 @@ main(void)
     assert(!clear_decision.changed);
     assert(clear_decision.row == -1);
     assert(clear_decision.column == -1);
+    clipboard = TableViewClipboardDecisionFor(false, true, false, true, true);
+    assert(!clipboard.copy_selection);
+    assert(!clipboard.paste);
+    clipboard = TableViewClipboardDecisionFor(true, true, false, false, true);
+    assert(clipboard.copy_selection);
+    assert(!clipboard.paste);
+    clipboard = TableViewClipboardDecisionFor(true, false, true, false, true);
+    assert(clipboard.copy_selection);
+    assert(!clipboard.paste);
+    clipboard = TableViewClipboardDecisionFor(true, false, false, true, false);
+    assert(!clipboard.copy_selection);
+    assert(!clipboard.paste);
+    clipboard = TableViewClipboardDecisionFor(true, false, false, true, true);
+    assert(!clipboard.copy_selection);
+    assert(clipboard.paste);
     assert(TableViewSelectionScrollOffset(4, 1, 20, 60, 0, 100) == 20);
     assert(TableViewSelectionScrollOffset(2, 1, 20, 60, 80, 100) == 20);
     assert(TableViewSelectionScrollOffset(0, 1, 20, 60, 120, 100) == 100);
