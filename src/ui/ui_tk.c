@@ -1210,18 +1210,20 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                       IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
                 const MenuItem *selected_item =
                     &items[state->navigation.path[depth]];
+                int opens_submenu = MenuItemCanOpenSubmenu(
+                    (int)selected_item->kind, selected_item->disabled,
+                    selected_item->submenu != NULL,
+                    selected_item->submenu_count, depth, TK_MENU_DEPTH_MAX);
                 state->navigation.key_handled = 1;
-                if(selected_item->kind == MenuSubmenu &&
-                   selected_item->submenu != NULL &&
-                   selected_item->submenu_count > 0 &&
-                   depth+1 < TK_MENU_DEPTH_MAX) {
+                if(opens_submenu) {
                     state->submenu_id = selected_item->id;
                     state->navigation.depth = depth+1;
                     state->navigation.path[depth+1] =
                         menu_first_item(selected_item->submenu,
                                         selected_item->submenu_count);
-                } else if(selected_item->kind != MenuSeparator &&
-                          !selected_item->disabled) {
+                } else if(MenuItemKeyboardActivates((int)selected_item->kind,
+                                                     selected_item->disabled,
+                                                     opens_submenu)) {
                     state->open_id = 0;
                     return selected_item->id;
                 }
@@ -1249,7 +1251,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         Rectangle row = MenuRowBounds(panel, i, metrics);
         const MenuItem *item = &items[i];
         int row_hot = !ContentDisabled() && ui_contains(row, mouse) &&
-                      item->kind != MenuSeparator;
+                      !MenuItemIsSeparator((int)item->kind);
         int hot = row_hot && !item->disabled;
         int selected = keyboard && depth < TK_MENU_DEPTH_MAX &&
                        state->navigation.path[depth] == i;
@@ -1268,7 +1270,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                                     font);
         Color item_text = Fade(item_style.foreground, item_style.opacity);
 
-        if(item->kind == MenuSeparator) {
+        if(MenuItemIsSeparator((int)item->kind)) {
             if(can_draw) {
                 StyleFrame separator_frame = ui_tk_simple_style_frame_class_role(
                     ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
@@ -1319,17 +1321,18 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                        MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
         }
-        if(can_draw && item->kind == MenuSubmenu)
+        if(can_draw && MenuItemShowsSubmenu((int)item->kind))
             RenderText(">", MenuSubmenuIndicatorX(row, metrics),
                        MenuTextY(row, TextLineHeight(item_font)),
                        item_font, item_text);
-        if(hot && item->kind == MenuSubmenu)
+        if(hot && MenuItemShowsSubmenu((int)item->kind))
             state->submenu_id = item->id;
-        if(item->kind == MenuSubmenu &&
+        if(MenuItemCanOpenSubmenu((int)item->kind, item->disabled,
+                                  item->submenu != NULL, item->submenu_count,
+                                  depth, TK_MENU_DEPTH_MAX) &&
            (keyboard
                 ? selected && state->navigation.depth > depth
-                : state->submenu_id == item->id) &&
-           item->submenu != NULL && item->submenu_count > 0) {
+                : state->submenu_id == item->id)) {
             Vector2 origin = MenuSubmenuOrigin(row);
             int sub = draw_menu_items((int)origin.x, (int)origin.y,
                                       item->submenu, item->submenu_count,
@@ -1346,9 +1349,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 state->navigation.depth = depth;
             }
             SetFocus(focus_id);
-            if(item->kind == MenuSubmenu)
+            if(MenuItemShowsSubmenu((int)item->kind))
                 state->submenu_id = item->id;
-            else {
+            else if(MenuItemPointerActivates((int)item->kind,
+                                             item->disabled)) {
                 activated = item->id;
                 state->open_id = 0;
             }
@@ -1539,8 +1543,12 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             int selected = state->navigation.path[0];
             int opens_submenu = selected >= 0 &&
                 selected < menus[current].item_count &&
-                menus[current].items[selected].kind == MenuSubmenu &&
-                !menus[current].items[selected].disabled;
+                MenuItemCanOpenSubmenu(
+                    (int)menus[current].items[selected].kind,
+                    menus[current].items[selected].disabled,
+                    menus[current].items[selected].submenu != NULL,
+                    menus[current].items[selected].submenu_count,
+                    state->navigation.depth, TK_MENU_DEPTH_MAX);
             if(!opens_submenu) {
                 current = MenuBarMoveTopIndex(current, menu_count, 1);
                 state->open_id = MenuBarOpenIdFor(id, current, menu_count);
