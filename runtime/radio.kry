@@ -71,6 +71,14 @@ RadioMarkText :: (checked: bool) -> const char* #export {
     return "○"
 }
 
+RadioStateLayerAlpha :: (hovered: bool, down: bool, press_amount: float) -> i32 #export {
+    if down { return 31 }
+    if !hovered { return 0 }
+    if press_amount < 0.0 { press_amount = 0.0 }
+    if press_amount > 1.0 { press_amount = 1.0 }
+    return (i32)(20.0 + 11.0 * press_amount)
+}
+
 RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     paint: RadioPaint
     scale: float = spec.scale

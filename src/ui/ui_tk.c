@@ -1913,6 +1913,7 @@ RenderRadio(RadioProps radio)
         Color ring;
         Color fill;
         Color label;
+        int layer_alpha;
         const char *text = radio.label != NULL ? radio.label : "";
 
         key = (key ^ (unsigned int)radio.id) * 16777619u;
@@ -1982,13 +1983,11 @@ RenderRadio(RadioProps radio)
         if(radio.disabled) {
             press = 0.0f;
         }
-        if(hot && HoverEffectsEnabled()) {
+        layer_alpha = RadioStateLayerAlpha(hot && HoverEffectsEnabled(),
+                                           down != 0, press);
+        if(layer_alpha > 0) {
             Color layer = ring;
-            layer.a = (unsigned char)(20 + 11 * press);
-            DrawCircleV(paint.center, paint.touch / 2.0f, layer);
-        } else if(down) {
-            Color layer = ring;
-            layer.a = 31;
+            layer.a = (unsigned char)layer_alpha;
             DrawCircleV(paint.center, paint.touch / 2.0f, layer);
         }
         ui_default_ripple(state_bounds, ring, (int)key, down);

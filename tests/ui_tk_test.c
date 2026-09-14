@@ -818,6 +818,10 @@ test_radio_paint_policy(void)
     check_int("radio styled size", RadioSizeForStyle(frame, 1.0f), 20);
     check_int("radio styled touch size", RadioTouchSizeForStyle(frame, 1.0f), 40);
     check_int("radio label x", (int)unchecked.label_x, 58);
+    check_int("radio idle state layer", RadioStateLayerAlpha(false, false, 0.5f), 0);
+    check_int("radio hover state layer", RadioStateLayerAlpha(true, false, 0.0f), 20);
+    check_int("radio press state layer", RadioStateLayerAlpha(true, false, 1.0f), 31);
+    check_int("radio down state layer", RadioStateLayerAlpha(false, true, 0.0f), 31);
     frame.value.fields |= StyleGap | StylePaddingX;
     frame.value.gap = 0.0f;
     frame.value.padding_x = 40.0f;

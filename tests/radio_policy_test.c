@@ -36,6 +36,10 @@ main(void)
     assert(RadioTouchSizeForStyle((StyleFrame){0}, 2.0f) == 80);
     assert(strcmp(RadioMarkText(false), "○") == 0);
     assert(strcmp(RadioMarkText(true), "◉") == 0);
+    assert(RadioStateLayerAlpha(false, false, 0.5f) == 0);
+    assert(RadioStateLayerAlpha(true, false, -1.0f) == 20);
+    assert(RadioStateLayerAlpha(true, false, 1.0f) == 31);
+    assert(RadioStateLayerAlpha(false, true, 0.0f) == 31);
 
     paint = RadioPaintFor((RadioSpec){
         .bounds = {10, 20, 160, 30},
