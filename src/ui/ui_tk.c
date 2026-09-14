@@ -1021,7 +1021,8 @@ ui_color_edit(ColorPickerProps edit, int channels)
         return 0;
     return ui_slider_continuous((SliderContinuousProps){edit.bounds, edit.id,
                                                edit.label, edit.values, channels,
-                                               0.0f, 1.0f, "%.3f",
+                                               0.0f, 1.0f,
+                                               InputDefaultFormat(NumericFloat),
                                                edit.disabled, edit.class_name}, 0);
 }
 
@@ -1059,7 +1060,8 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
         SliderContinuousProps channel = {
             row,
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
-            0.0f, 1.0f, "%.3f", picker.disabled, picker.class_name
+            0.0f, 1.0f, InputDefaultFormat(NumericFloat),
+            picker.disabled, picker.class_name
         };
         changed |= ui_slider_continuous(channel, 0);
     }
@@ -2219,12 +2221,15 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
         ClearTextInputFocus();
     }
     if(activate) {
+        const char *default_format = InputDefaultFormat(
+            integer ? NumericInt : NumericFloat);
         if(integer)
             snprintf(state->text, sizeof(state->text),
-                     format != NULL ? format : "%d", *(int *)value);
+                     format != NULL ? format : default_format, *(int *)value);
         else
             snprintf(state->text, sizeof(state->text),
-                     format != NULL ? format : "%.3f", *(float *)value);
+                     format != NULL ? format : default_format,
+                     *(float *)value);
         state->cursor = (int)strlen(state->text);
         state->focused = 1;
         SetFocus(focus_id);
@@ -2480,7 +2485,9 @@ ui_paint_drag_continuous(DragContinuousProps drag)
             continue;
         int focused = !disabled && focus_id > 0 && IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
-        snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
+        snprintf(text, sizeof(text),
+                 drag.format != NULL ? drag.format :
+                    InputDefaultFormat(NumericFloat),
                  drag.values[i]);
         ui_paint_drag_cell(cell,text,disabled,focused,drag.class_name);
     }
@@ -2503,7 +2510,9 @@ ui_paint_drag_discrete(DragDiscreteProps drag)
             continue;
         int focused = !disabled && focus_id > 0 && IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
-        snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
+        snprintf(text, sizeof(text),
+                 drag.format != NULL ? drag.format :
+                    InputDefaultFormat(NumericInt),
                  drag.values[i]);
         ui_paint_drag_cell(cell,text,disabled,focused,drag.class_name);
     }
@@ -2774,7 +2783,10 @@ ui_paint_slider_continuous(SliderContinuousProps slider, int vertical)
         int focused = !slider.disabled && focus_id > 0 &&
                       IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
-        snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%.3f",slider.values[i]);
+        snprintf(text, sizeof(text),
+                 slider.format != NULL ? slider.format :
+                    InputDefaultFormat(NumericFloat),
+                 slider.values[i]);
         ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused,
                             slider.class_name);
     }
@@ -2799,7 +2811,10 @@ ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
         int focused = !slider.disabled && focus_id > 0 &&
                       IsFocusActive(focus_id) &&
                       !ui_popup_input_focus_captures(focus_id);
-        snprintf(text,sizeof(text),slider.format != NULL ? slider.format : "%d",slider.values[i]);
+        snprintf(text, sizeof(text),
+                 slider.format != NULL ? slider.format :
+                    InputDefaultFormat(NumericInt),
+                 slider.values[i]);
         ui_draw_slider_cell(cell,ratio,text,slider.disabled,vertical,focused,
                             slider.class_name);
     }
@@ -3057,7 +3072,8 @@ RenderSpinbox(SpinboxProps spinbox)
     if(spinbox.value_text != NULL)
         snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
     else
-        snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
+        snprintf(value_text, sizeof(value_text), InputDefaultFormat(NumericInt),
+                 spinbox.value != NULL ? *spinbox.value : 0);
     if(IsWindowReady()) {
         StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
