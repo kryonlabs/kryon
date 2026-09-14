@@ -17,6 +17,7 @@ main(void)
 {
     Rectangle bounds = {10, 20, 240, 80};
     StyleFrame handle = {0};
+    PanedViewLayout layout;
     assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
     assert(PanedViewMetricsFor(0.0f, handle).drop_edge == 46);
 
@@ -36,6 +37,9 @@ main(void)
     assert(PanedViewLimit(240, 40, 40) == 200);
     assert(PanedViewLimit(60, 50, 40) == 50);
     assert(PanedViewDefaultSplit(200) == 100);
+    assert(PanedViewSplitFor(0, false, 240, 40, 40) == 100);
+    assert(PanedViewSplitFor(20, true, 240, 40, 40) == 40);
+    assert(PanedViewSplitFor(220, true, 240, 40, 40) == 200);
 
     assert(PanedViewClampSplit(20, 40, 200) == 40);
     assert(PanedViewClampSplit(220, 40, 200) == 200);
@@ -43,6 +47,8 @@ main(void)
 
     assert(PanedViewPointerSplit(bounds, true, 190, 60) == 180);
     assert(PanedViewPointerSplit(bounds, false, 190, 77) == 57);
+    assert(PanedViewPointerSplitFor(bounds, true, 260, 60, 40, 40) == 200);
+    assert(PanedViewPointerSplitFor(bounds, false, 190, 10, 30, 20) == 30);
 
     handle.value.icon_size = 8.0f;
     metrics = PanedViewMetricsFor(2.0f, handle);
@@ -50,6 +56,19 @@ main(void)
                92, 20, 16, 80);
     check_rect(PanedViewHandleFor(bounds, false, 50, metrics),
                10, 62, 240, 16);
+    layout = PanedViewLayoutFor(bounds, true, 0, false, 40, 40, metrics);
+    assert(layout.size == 240);
+    assert(layout.limit == 200);
+    assert(layout.split == 100);
+    check_rect(layout.handle, 102, 20, 16, 80);
+    layout = PanedViewLayoutFor(bounds, false, 500, true, 30, 20, metrics);
+    assert(layout.size == 80);
+    assert(layout.limit == 60);
+    assert(layout.split == 60);
+    check_rect(layout.handle, 10, 72, 240, 16);
+    assert(PanedViewChanged(50, 60, true));
+    assert(!PanedViewChanged(50, 50, true));
+    assert(!PanedViewChanged(0, 60, false));
 
     metrics.drop_edge = 46;
     assert(PanedViewDropZoneFor(bounds, (Vector2){1, 30}, metrics) ==

@@ -4211,12 +4211,12 @@ RenderPanedView(PanedViewProps panes)
     PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale(),
                                                    normal_frame);
     int changed = 0;
-    int size = PanedViewSize(panes.bounds, panes.vertical != 0);
-    int limit = PanedViewLimit(size, panes.min_first, panes.min_second);
-    int split = panes.split != NULL ? *panes.split : limit / 2;
-    split = PanedViewClampSplit(split, panes.min_first, limit);
-    Rectangle handle = PanedViewHandleFor(panes.bounds, panes.vertical != 0,
-                                         split, metrics);
+    PanedViewLayout layout = PanedViewLayoutFor(
+        panes.bounds, panes.vertical != 0,
+        panes.split != NULL ? *panes.split : 0, panes.split != NULL,
+        panes.min_first, panes.min_second, metrics);
+    int split = layout.split;
+    Rectangle handle = layout.handle;
     if(toolkit->active_split != NULL &&
        ui_popup_input_owner_captures(toolkit->active_split_owner))
         toolkit->active_split = NULL;
@@ -4233,11 +4233,12 @@ RenderPanedView(PanedViewProps panes)
     }
     if(toolkit->active_split != NULL && toolkit->active_split == panes.split) {
         Vector2 mouse = ui_mouse_world();
-        int next = PanedViewPointerSplit(panes.bounds, panes.vertical != 0,
-                                         mouse.x, mouse.y);
-        split = PanedViewClampSplit(next, panes.min_first, limit);
+        split = PanedViewPointerSplitFor(panes.bounds, panes.vertical != 0,
+                                         mouse.x, mouse.y, panes.min_first,
+                                         panes.min_second);
     }
-    if(panes.split != NULL && *panes.split != split) {
+    if(PanedViewChanged(panes.split != NULL ? *panes.split : 0, split,
+                        panes.split != NULL)) {
         *panes.split = split;
         changed = 1;
     }

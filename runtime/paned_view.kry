@@ -9,6 +9,13 @@ PanedViewMetrics :: struct {
     drop_edge: i32
 }
 
+PanedViewLayout :: struct {
+    size: i32
+    limit: i32
+    split: i32
+    handle: Rectangle
+}
+
 PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
     return (i32)(value * scale)
@@ -45,10 +52,28 @@ PanedViewDefaultSplit :: (limit: i32) -> i32 #export {
     return limit / 2
 }
 
+PanedViewSplitFor :: (current_split: i32, has_split: bool,
+    size: i32, min_first: i32, min_second: i32) -> i32 #export {
+    limit: i32 = PanedViewLimit(size, min_first, min_second)
+    split: i32 = current_split
+    if !has_split { split = PanedViewDefaultSplit(limit) }
+    return PanedViewClampSplit(split, min_first, limit)
+}
+
 PanedViewPointerSplit :: (bounds: Rectangle, vertical: bool,
     pointer_x: float, pointer_y: float) -> i32 #export {
     if vertical { return (i32)(pointer_x - bounds.x) }
     return (i32)(pointer_y - bounds.y)
+}
+
+PanedViewPointerSplitFor :: (bounds: Rectangle, vertical: bool,
+    pointer_x: float, pointer_y: float, min_first: i32,
+    min_second: i32) -> i32 #export {
+    size: i32 = PanedViewSize(bounds, vertical)
+    limit: i32 = PanedViewLimit(size, min_first, min_second)
+    split: i32 = PanedViewPointerSplit(bounds, vertical, pointer_x,
+        pointer_y)
+    return PanedViewClampSplit(split, min_first, limit)
 }
 
 PanedViewHandleFor :: (bounds: Rectangle, vertical: bool,
@@ -67,6 +92,28 @@ PanedViewHandleFor :: (bounds: Rectangle, vertical: bool,
         handle.height = (float)metrics.grip
     }
     return handle
+}
+
+PanedViewLayoutFor :: (bounds: Rectangle, vertical: bool,
+    current_split: i32, has_split: bool, min_first: i32, min_second: i32,
+    metrics: PanedViewMetrics) -> PanedViewLayout #export {
+    layout: PanedViewLayout
+    layout.size = PanedViewSize(bounds, vertical)
+    layout.limit = PanedViewLimit(layout.size, min_first, min_second)
+    layout.split = current_split
+    if !has_split {
+        layout.split = PanedViewDefaultSplit(layout.limit)
+    }
+    layout.split = PanedViewClampSplit(layout.split, min_first, layout.limit)
+    layout.handle = PanedViewHandleFor(bounds, vertical, layout.split,
+        metrics)
+    return layout
+}
+
+PanedViewChanged :: (previous_split: i32, next_split: i32,
+    has_split: bool) -> bool #export {
+    if !has_split { return false }
+    return previous_split != next_split
 }
 
 PanedViewDropZoneFor :: (bounds: Rectangle, mouse: Vector2,
