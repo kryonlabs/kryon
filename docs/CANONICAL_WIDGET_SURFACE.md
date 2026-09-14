@@ -765,8 +765,9 @@ and host plumbing behind the canonical names.
   through `runtime/layout.kry`; default focus outline bounds now route through
   `runtime/focus.kry`; default control shine bounds now route through
   `runtime/style.kry`; default ripple radius policy now routes through
-  `runtime/style.kry`. Continue by reducing raw native constants in shared
-  immediate-mode helpers.
+  `runtime/style.kry`; retained `Button(info)` bounds and diameter policy now
+  routes through `runtime/button.kry`. Continue by reducing raw native constants
+  in shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

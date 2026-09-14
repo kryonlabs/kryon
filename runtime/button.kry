@@ -103,6 +103,11 @@ InfoIndicatorMetrics :: struct {
     diameter: i32
 }
 
+ButtonInfoBounds :: struct {
+    bounds: Rectangle
+    diameter: i32
+}
+
 ButtonFallbackPolicy :: struct {
     radius: float
     disabled_background_alpha: u8
@@ -226,6 +231,21 @@ InfoIndicatorMetricsFor :: (requested_diameter: i32, scale: float,
             face.value.icon_size, 18.0, scale, false)
     }
     return metrics
+}
+
+ButtonInfoBoundsFor :: (declared: Rectangle, scale: float,
+    face: StyleFrame) -> ButtonInfoBounds #export {
+    result: ButtonInfoBounds
+    requested: i32 = (i32)declared.width
+    if declared.height > 0.0 && declared.height < declared.width {
+        requested = (i32)declared.height
+    }
+    metrics: InfoIndicatorMetrics = InfoIndicatorMetricsFor(requested, scale, face)
+    result.bounds = declared
+    result.diameter = metrics.diameter
+    if result.bounds.width <= 0.0 { result.bounds.width = (float)result.diameter }
+    if result.bounds.height <= 0.0 { result.bounds.height = (float)result.diameter }
+    return result
 }
 
 ButtonFallbackPolicyFor :: (hovered: bool, pressed: bool, disabled: bool,

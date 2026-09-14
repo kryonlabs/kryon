@@ -442,6 +442,7 @@ test_button_policy(void)
     IconActionMetrics icon_metrics;
     TextButtonMetrics text_metrics;
     InfoIndicatorMetrics info_metrics;
+    ButtonInfoBounds info_bounds;
     ButtonFallbackPolicy fallback_policy;
 
     check_int("action enabled", ButtonActionEnabled(false, false) ? 1 : 0, 1);
@@ -503,6 +504,16 @@ test_button_policy(void)
     check_int("info indicator requested diameter", info_metrics.diameter, 20);
     info_metrics = InfoIndicatorMetricsFor(0, 2.0f, frame);
     check_int("info indicator styled diameter", info_metrics.diameter, 28);
+    info_bounds = ButtonInfoBoundsFor((Rectangle){10, 20, 0, 0}, 1.0f, frame);
+    check_float("info bounds fallback width", info_bounds.bounds.width, 14.0f);
+    check_float("info bounds fallback height", info_bounds.bounds.height, 14.0f);
+    check_int("info bounds fallback diameter", info_bounds.diameter, 14);
+    info_bounds = ButtonInfoBoundsFor((Rectangle){10, 20, 24, 18}, 1.0f, frame);
+    check_float("info bounds declared width", info_bounds.bounds.width, 24.0f);
+    check_float("info bounds declared height", info_bounds.bounds.height, 18.0f);
+    check_int("info bounds declared diameter", info_bounds.diameter, 18);
+    info_bounds = ButtonInfoBoundsFor((Rectangle){10, 20, 24, 0}, 1.0f, frame);
+    check_float("info bounds fills missing height", info_bounds.bounds.height, 24.0f);
 
     fallback_policy = ButtonFallbackPolicyFor(false, false, false, false,
                                               false);

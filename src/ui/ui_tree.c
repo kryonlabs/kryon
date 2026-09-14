@@ -3491,21 +3491,20 @@ Button(ButtonProps button)
     int activated = 0;
 
     if(button.info) {
-        int diameter = (int)button.bounds.width;
-        if(button.bounds.height > 0 && button.bounds.height < button.bounds.width)
-            diameter = (int)button.bounds.height;
-        if(diameter <= 0)
-            diameter = Scale(18);
-        Rectangle bounds = button.bounds;
-        if(bounds.width <= 0)
-            bounds.width = diameter;
-        if(bounds.height <= 0)
-            bounds.height = diameter;
+        float scale = (float)Scale(1000) / 1000.0f;
+        StyleFrame frame = ui_control_style_frame_kind(
+            (ButtonProps){.tone = ButtonToneNeutral,
+                          .emphasis = ButtonEmphasisGhost,
+                          .size = ControlSizeSmall,
+                          .pill = 1},
+            ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindButton());
+        ButtonInfoBounds info = ButtonInfoBoundsFor(button.bounds, scale, frame);
+        Rectangle bounds = info.bounds;
         NodeId node = ui_tree_add(button.id, WidgetKindButton,
                                   bounds, NULL);
         int clicked = RenderButtonInfoIndicator((int)(bounds.x + bounds.width / 2),
                                        (int)(bounds.y + bounds.height / 2),
-                                       diameter);
+                                       info.diameter);
         ui_tree_mark_build_activation(node, clicked);
         ui_tree_mark_painted_immediate(node);
         return clicked;
