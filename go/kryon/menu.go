@@ -91,6 +91,11 @@ type MenuOutsideCloseDecision struct {
 	OpenIndex      int32
 }
 
+type MenuContextOutsideCloseDecision struct {
+	CloseOpen      bool
+	ConsumeRelease bool
+}
+
 type MenuContextOpenResult struct {
 	Open    bool
 	Changed bool
@@ -798,6 +803,44 @@ func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contai
 	}
 	var value_18 MenuOutsideCloseDecision = decision
 	return value_18
+}
+
+func Menu_MenuContextOutsideCloseDecisionFor(open_id int32, menu_id int32, suppress_close bool, mouse_released bool, panel_valid bool, contains_panel bool) MenuContextOutsideCloseDecision {
+	var decision MenuContextOutsideCloseDecision = MenuContextOutsideCloseDecision{}
+	var value_0 int32 = open_id
+	var value_1 int32 = menu_id
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = suppress_close
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	var value_6 bool = value_3
+	if value_6 {
+		var value_7 bool = mouse_released
+		value_6 = value_7
+	}
+	var value_8 bool = value_6
+	if value_8 {
+		var value_9 bool = panel_valid
+		var value_10 bool = !value_9
+		var value_11 bool = value_10
+		if !value_11 {
+			var value_12 bool = contains_panel
+			var value_13 bool = !value_12
+			value_11 = value_13
+		}
+		value_8 = value_11
+	}
+	if value_8 {
+		var value_14 bool = true
+		decision.CloseOpen = value_14
+		var value_15 bool = true
+		decision.ConsumeRelease = value_15
+	}
+	var value_16 MenuContextOutsideCloseDecision = decision
+	return value_16
 }
 
 func Menu_MenuContextOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) MenuContextOpenResult {

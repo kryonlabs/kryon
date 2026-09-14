@@ -90,6 +90,11 @@ MenuOutsideCloseDecision :: struct {
     open_index: i32
 }
 
+MenuContextOutsideCloseDecision :: struct {
+    close_open: bool
+    consume_release: bool
+}
+
 MenuContextOpenResult :: struct {
     open: bool
     changed: bool
@@ -349,6 +354,18 @@ MenuOutsideCloseDecisionFor :: (open_id: i32, mouse_released: bool,
        (!panel_valid || !contains_panel) {
         decision.close_open = true
         decision.clear_submenu = true
+        decision.consume_release = true
+    }
+    return decision
+}
+
+MenuContextOutsideCloseDecisionFor :: (open_id: i32, menu_id: i32,
+    suppress_close: bool, mouse_released: bool, panel_valid: bool,
+    contains_panel: bool) -> MenuContextOutsideCloseDecision #export {
+    decision: MenuContextOutsideCloseDecision
+    if open_id == menu_id && !suppress_close && mouse_released &&
+       (!panel_valid || !contains_panel) {
+        decision.close_open = true
         decision.consume_release = true
     }
     return decision

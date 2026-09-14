@@ -1742,13 +1742,20 @@ ui_draw_menu_overlays(void)
             state->context_pending_id = state->context_overlay.id;
             state->context_pending_activated = activated;
             state->context_open_id = 0;
-        } else if(!state->context_overlay.suppress_close &&
-                  IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-                  (!state->panel_valid ||
-                   !ui_contains(state->panel_bounds, mouse))) {
-            ConsumeRelease();
-            state->context_pending_closed_id = state->context_overlay.id;
-            state->context_open_id = 0;
+        } else {
+            MenuContextOutsideCloseDecision close_decision =
+                MenuContextOutsideCloseDecisionFor(
+                    state->context_open_id, state->context_overlay.id,
+                    state->context_overlay.suppress_close != 0,
+                    IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                    state->panel_valid != 0,
+                    ui_contains(state->panel_bounds, mouse) != 0);
+            if(close_decision.consume_release)
+                ConsumeRelease();
+            if(close_decision.close_open) {
+                state->context_pending_closed_id = state->context_overlay.id;
+                state->context_open_id = 0;
+            }
         }
     }
     state->context_overlay.active = 0;

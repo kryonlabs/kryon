@@ -313,6 +313,25 @@ main(void)
     close_decision = MenuOutsideCloseDecisionFor(0, true, false, false,
                                                 false);
     assert(!close_decision.close_open);
+    MenuContextOutsideCloseDecision context_close =
+        MenuContextOutsideCloseDecisionFor(42, 42, false, true, true, false);
+    assert(context_close.close_open);
+    assert(context_close.consume_release);
+    context_close =
+        MenuContextOutsideCloseDecisionFor(42, 42, false, true, false, false);
+    assert(context_close.close_open);
+    context_close =
+        MenuContextOutsideCloseDecisionFor(42, 42, false, true, true, true);
+    assert(!context_close.close_open);
+    context_close =
+        MenuContextOutsideCloseDecisionFor(42, 42, true, true, true, false);
+    assert(!context_close.close_open);
+    context_close =
+        MenuContextOutsideCloseDecisionFor(0, 42, false, true, true, false);
+    assert(!context_close.close_open);
+    context_close =
+        MenuContextOutsideCloseDecisionFor(42, 42, false, false, true, false);
+    assert(!context_close.close_open);
     MenuContextOpenResult context_open =
         MenuContextOpenFor(false, true, false, true);
     assert(context_open.open);
