@@ -45,6 +45,19 @@ if [ -n "$removed_widget_matches" ]; then
     exit 1
 fi
 
+removed_web_alias_matches="$(
+    rg -n '("(Abbr|Bdi|Bdo|Br|Col|ColGroup|Datalist|Del|Em|Hgroup|Iframe|Ins|Kbd|List|Nav|Noscript|OptGroup|Rp|Rt|Samp|Sub|Sup|Tbody|Tfoot|Thead|Tr|Var|Wbr)"|export function (Abbr|Bdi|Bdo|Br|Col|ColGroup|Datalist|Del|Em|Hgroup|Iframe|Ins|Kbd|List|Nav|Noscript|OptGroup|Rp|Rt|Samp|Sub|Sup|Tbody|Tfoot|Thead|Tr|Var|Wbr)\b|^\| `(Abbr|Bdi|Bdo|Br|Col|ColGroup|Datalist|Del|Em|Hgroup|Iframe|Ins|Kbd|List|Nav|Noscript|OptGroup|Rp|Rt|Samp|Sub|Sup|Tbody|Tfoot|Thead|Tr|Var|Wbr)` \||\b(Abbr|Bdi|Bdo|Br|Col|ColGroup|Datalist|Del|Em|Hgroup|Iframe|Ins|Kbd|List|Nav|Noscript|OptGroup|Rp|Rt|Samp|Sub|Sup|Tbody|Tfoot|Thead|Tr|Var|Wbr)\s*\()' \
+        cmd/kir/kir_parse.c cmd/k2js/k2js_lower.c web/kryon-runtime.js web/kryon-runtime.d.ts docs/CANONICAL_WIDGET_SURFACE.md tests/k2js_syntax_test.sh tests/k2js_syntax_test_runner.mjs \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$removed_web_alias_matches" ]; then
+    echo "Web-native widgets must use one canonical readable public name; removed short/casing aliases are not accepted:"
+    echo "$removed_web_alias_matches"
+    exit 1
+fi
+
 icon_size_matches="$(
     rg -n '\bICON_SIZE_(TINY|SMALL|MEDIUM|LARGE)\b|\bICON_SHEET_UI\b' \
         include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity go web \
@@ -296,21 +309,18 @@ parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
 runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
 web_native_only = {
-    'Abbr', 'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio', 'Base',
-    'Bdi', 'Bdo', 'BidirectionalIsolate', 'BidirectionalOverride',
-    'BlockQuote', 'Bold', 'Br', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
-    'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
-    'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
-    'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'Hgroup', 'HGroup', 'IFrame', 'Iframe', 'ImageMap',
-    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'LineBreak', 'List',
-    'ListItem', 'Main', 'Mark', 'Meta', 'Meter', 'Nav', 'Navigation', 'NoScript', 'Noscript', 'EmbeddedObject', 'OrderedList',
-    'OptionGroup', 'OptGroup', 'Option', 'Output', 'Param', 'Pre', 'Quote',
-    'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Script', 'Search', 'Select',
-    'Slot', 'Small', 'Source', 'Strong', 'StyleElement', 'Sub', 'Subscript', 'Summary', 'Sup',
-    'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
+    'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio', 'Base',
+    'BidirectionalIsolate', 'BidirectionalOverride',
+    'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Data', 'DataList', 'Deleted', 'DescriptionDetails', 'DescriptionList',
+    'DescriptionTerm', 'Details', 'Dialog', 'Embed', 'Emphasis',
+    'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'HGroup', 'IFrame', 'ImageMap',
+    'Inserted', 'Italic', 'Keyboard', 'Label', 'Legend', 'LineBreak', 'ListItem', 'Main', 'Mark', 'Meta', 'Meter', 'Navigation', 'NoScript', 'EmbeddedObject', 'OrderedList',
+    'OptionGroup', 'Option', 'Output', 'Param', 'Pre', 'Quote',
+    'Ruby', 'RubyParenthesis', 'RubyText', 'Sample', 'Script', 'Search', 'Select',
+    'Slot', 'Small', 'Source', 'Strong', 'StyleElement', 'Subscript', 'Summary', 'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
-    'Tbody', 'Template', 'Tfoot', 'Thead', 'Time', 'Title', 'Tr', 'Track', 'UnorderedList',
-    'Var', 'Variable', 'Video', 'Wbr', 'WordBreakOpportunity',
+    'Template', 'Time', 'Title', 'Track', 'UnorderedList',
+    'Variable', 'Video', 'WordBreakOpportunity',
 }
 special = {'Canvas', 'End'} | web_native_only
 for name in parser_names:

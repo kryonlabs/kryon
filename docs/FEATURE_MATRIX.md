@@ -48,28 +48,27 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 168 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 140 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface;
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`AppBackground Background Text Paragraph Abbr Abbreviation Address Area Article Aside Base
-Box Line Bevel Icon Image Button Card Selectable Audio Bdi Bdo
-BidirectionalIsolate BidirectionalOverride BlockQuote Bold Br Cite Code
-CodeBlock Col ColGroup Data Datalist DataList Del Deleted DescriptionDetails DescriptionList
-DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form
-Header Hgroup HGroup IFrame Iframe Ins Inserted Italic ImageMap Kbd Keyboard Label Legend LineBreak List
-ListItem Main Mark Meta Meter Nav Navigation NoScript Noscript EmbeddedObject OrderedList OptionGroup OptGroup Option
-Output Param Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Script Search Select Slot Small Source Strong StyleElement Sub Subscript Summary Sup Superscript Table
-TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow
-Tbody Template Tfoot Thead Time Title Tr Track UnorderedList Var Variable Video Wbr
-WordBreakOpportunity Bullet Separator Link
-TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio
-Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading
-ParagraphText Column Row Stack Flow Grid Scroll End Modal TitleBar TabBar
-NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView
-TableView ColorPicker CanvasGrid`
+`AppBackground Background Text Paragraph Abbreviation Address Area Article Aside Base
+Box Line Bevel Icon Image Button Card Selectable Audio BidirectionalIsolate
+BidirectionalOverride BlockQuote Bold Cite Code CodeBlock Data DataList Deleted
+DescriptionDetails DescriptionList DescriptionTerm Details Dialog Embed Emphasis
+Figcaption Figure Footer Form Header HGroup IFrame Inserted Italic ImageMap Keyboard
+Label Legend LineBreak ListItem Main Mark Meta Meter Navigation NoScript
+EmbeddedObject OrderedList OptionGroup Option Output Param Pre Quote Ruby
+RubyParenthesis RubyText Sample Script Search Select Slot Small Source Strong
+StyleElement Subscript Summary Superscript Table TableBody TableCaption TableColumn
+TableColumnGroup TableFoot TableHead TableRow Template Time Title Track UnorderedList
+Variable Video WordBreakOpportunity Bullet Separator Link TextField TextArea Dropdown
+SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox
+DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll
+End Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible
+ListBox TreeView TableView ColorPicker CanvasGrid`
 
 `Canvas` and `TableCell` are lexical `.kry` blocks rather than ordinary one-call
 widgets; `Scroll` is both a parser-recognized widget statement and a lexical

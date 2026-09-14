@@ -694,8 +694,8 @@ NativeAliasBlocks :: () #ui {
         type = "image/svg+xml"
     }
     Table cols: {
-        ColGroup metrics: {
-            Col quarter: {
+        TableColumnGroup metrics: {
+            TableColumn quarter: {
                 span = 1
             }
         }
@@ -1257,7 +1257,6 @@ DirectRuntimeNodes :: () #ui {
     TableView()
     ColorPicker()
     CanvasGrid()
-    Abbr()
     Abbreviation()
     Address()
     Article()
@@ -1268,17 +1267,13 @@ DirectRuntimeNodes :: () #ui {
     Cite()
     Code()
     CodeBlock()
-    Col()
-    ColGroup()
     Data()
-    Del()
     Deleted()
     DescriptionDetails()
     DescriptionList()
     DescriptionTerm()
     Details()
     Dialog()
-    Em()
     Embed()
     Emphasis()
     Figcaption()
@@ -1287,36 +1282,28 @@ DirectRuntimeNodes :: () #ui {
     Form()
     Header()
     IFrame()
-    Iframe()
-    Ins()
     Inserted()
     Italic()
-    Kbd()
     Keyboard()
     Legend()
     Label()
-    List()
     ListItem()
     Main()
     Mark()
     Meter()
-    Nav()
     Navigation()
     OrderedList()
     Option()
     Output()
     Pre()
     Quote()
-    Samp()
     Sample()
     Select()
     Small()
     Source()
     Strong()
-    Sub()
     Subscript()
     Summary()
-    Sup()
     Superscript()
     Table()
     TableBody()
@@ -1326,21 +1313,16 @@ DirectRuntimeNodes :: () #ui {
     TableFoot()
     TableHead()
     TableRow()
-    Tbody()
-    Tfoot()
-    Thead()
     Time()
-    Tr()
     Track()
     UnorderedList()
-    Var()
     Variable()
     Video()
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_runtime_nodes.kry"
 direct_runtime_out="$work/out/src/direct_runtime_nodes.js"
-for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbr Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Col ColGroup Data Del Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label Legend List ListItem Main Mark Meter Nav Navigation OrderedList Option Output Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video; do
+for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Data Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Embed Emphasis Figcaption Figure Footer Form Header IFrame Inserted Italic Keyboard Label Legend ListItem Main Mark Meter Navigation OrderedList Option Output Pre Quote Sample Select Small Source Strong Subscript Summary Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Time Track UnorderedList Variable Video; do
     grep -Eq "\"path\": \"DirectRuntimeNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_runtime_out"
 done
 awk '/kryon\.widget\(\$rt,/ && $0 !~ /"path": "DirectRuntimeNodes\// { missing=1 } END { exit missing }' "$direct_runtime_out"

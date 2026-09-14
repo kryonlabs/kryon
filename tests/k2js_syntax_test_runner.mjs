@@ -9,21 +9,17 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
   assert.equal(runtime[name]().type, name);
 }
 for (const name of [
-  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio", "Base",
-  "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
-  "BlockQuote", "Bold", "Br", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
-  "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
-  "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
-  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
-  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "LineBreak", "List",
-  "ListItem", "Main", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
-  "Slot", "Small", "Source", "Strong", "StyleElement", "Sub", "Subscript", "Summary", "Sup",
-  "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
+  "Abbreviation", "Address", "Area", "Article", "Aside", "Audio", "Base",
+  "BidirectionalIsolate", "BidirectionalOverride",
+  "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Data", "DataList", "Deleted", "DescriptionDetails", "DescriptionList",
+  "DescriptionTerm", "Details", "Dialog", "Embed", "Emphasis",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "HGroup", "IFrame", "ImageMap",
+  "Inserted", "Italic", "Keyboard", "Label", "Legend", "LineBreak", "ListItem", "Main", "Mark", "Meta", "Meter", "Navigation", "NoScript", "EmbeddedObject", "OrderedList",
+  "OptionGroup", "Option", "Output", "Param", "Pre", "Quote",
+  "Ruby", "RubyParenthesis", "RubyText", "Sample", "Script", "Search", "Select",
+  "Slot", "Small", "Source", "Strong", "StyleElement", "Subscript", "Summary", "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
-  "Tbody", "Template", "Tfoot", "Thead", "Time", "Title", "Tr", "Track", "UnorderedList", "Var",
-  "Variable", "Video", "Wbr", "WordBreakOpportunity"
+  "Template", "Time", "Title", "Track", "UnorderedList", "Variable", "Video", "WordBreakOpportunity"
 ]) {
   assert.equal(typeof runtime[name], "function");
   assert.equal(runtime[name]().type, name);
@@ -2822,7 +2818,7 @@ function fakeDocument() {
       { nodeName: "homeLink", path: "Page/nav/home", parentPath: "Page/nav" });
     runtime.widget(nativeRt, "TitleBar", {}, null,
       { nodeName: "title", path: "Page/title" });
-    runtime.widget(nativeRt, "Hgroup", {}, null,
+    runtime.widget(nativeRt, "HGroup", {}, null,
       { nodeName: "headingGroup", path: "Page/headingGroup" });
     runtime.widget(nativeRt, "Heading", { text: "Native DOM" }, null,
       { nodeName: "headingGroupTitle", path: "Page/headingGroup/title", parentPath: "Page/headingGroup" });
@@ -2844,7 +2840,7 @@ function fakeDocument() {
       { nodeName: "figure", path: "Page/figure" });
     runtime.widget(nativeRt, "Figcaption", { text: "Launch chart" }, null,
       { nodeName: "caption", path: "Page/figure/caption", parentPath: "Page/figure" });
-    runtime.widget(nativeRt, "List", {}, null,
+    runtime.widget(nativeRt, "UnorderedList", {}, null,
       { nodeName: "list", path: "Page/list" });
     runtime.widget(nativeRt, "ListItem", { text: "First" }, null,
       { nodeName: "listItem", path: "Page/list/first", parentPath: "Page/list" });
@@ -2862,25 +2858,25 @@ function fakeDocument() {
       { nodeName: "inlineCode", path: "Page/inlineCode" });
     runtime.widget(nativeRt, "Strong", { text: "Important" }, null,
       { nodeName: "strongText", path: "Page/strong" });
-    runtime.widget(nativeRt, "Em", { text: "Emphasis" }, null,
+    runtime.widget(nativeRt, "Emphasis", { text: "Emphasis" }, null,
       { nodeName: "emText", path: "Page/em" });
-    runtime.widget(nativeRt, "Abbr", { text: "DOM", title: "Document Object Model" }, null,
+    runtime.widget(nativeRt, "Abbreviation", { text: "DOM", title: "Document Object Model" }, null,
       { nodeName: "abbrText", path: "Page/abbr" });
     runtime.widget(nativeRt, "Data", { text: "Forty two", value: "42" }, null,
       { nodeName: "dataText", path: "Page/data" });
-    runtime.widget(nativeRt, "Del", { text: "Old", cite: "/changes/1", datetime: "2026-09-12" }, null,
+    runtime.widget(nativeRt, "Deleted", { text: "Old", cite: "/changes/1", datetime: "2026-09-12" }, null,
       { nodeName: "deletedText", path: "Page/deleted" });
-    runtime.widget(nativeRt, "Ins", { text: "New", cite: "/changes/2", datetime: "2026-09-13" }, null,
+    runtime.widget(nativeRt, "Inserted", { text: "New", cite: "/changes/2", datetime: "2026-09-13" }, null,
       { nodeName: "insertedText", path: "Page/inserted" });
-    runtime.widget(nativeRt, "Sub", { text: "2" }, null,
+    runtime.widget(nativeRt, "Subscript", { text: "2" }, null,
       { nodeName: "subText", path: "Page/sub" });
-    runtime.widget(nativeRt, "Sup", { text: "n" }, null,
+    runtime.widget(nativeRt, "Superscript", { text: "n" }, null,
       { nodeName: "supText", path: "Page/sup" });
-    runtime.widget(nativeRt, "Kbd", { text: "Ctrl+K" }, null,
+    runtime.widget(nativeRt, "Keyboard", { text: "Ctrl+K" }, null,
       { nodeName: "kbdText", path: "Page/kbd" });
-    runtime.widget(nativeRt, "Samp", { text: "ok" }, null,
+    runtime.widget(nativeRt, "Sample", { text: "ok" }, null,
       { nodeName: "sampleText", path: "Page/sample" });
-    runtime.widget(nativeRt, "Var", { text: "x" }, null,
+    runtime.widget(nativeRt, "Variable", { text: "x" }, null,
       { nodeName: "varText", path: "Page/var" });
     runtime.widget(nativeRt, "Cite", { text: "Kryon Notes" }, null,
       { nodeName: "citeText", path: "Page/cite" });
@@ -2894,17 +2890,17 @@ function fakeDocument() {
       { nodeName: "nativeSmall", path: "Page/small" });
     runtime.widget(nativeRt, "Ruby", { text: "\u6f22" }, null,
       { nodeName: "nativeRuby", path: "Page/ruby" });
-    runtime.widget(nativeRt, "Rt", { text: "kan" }, null,
+    runtime.widget(nativeRt, "RubyText", { text: "kan" }, null,
       { nodeName: "nativeRubyText", path: "Page/ruby/text", parentPath: "Page/ruby" });
-    runtime.widget(nativeRt, "Rp", { text: "(" }, null,
+    runtime.widget(nativeRt, "RubyParenthesis", { text: "(" }, null,
       { nodeName: "nativeRubyParenthesis", path: "Page/ruby/open", parentPath: "Page/ruby" });
-    runtime.widget(nativeRt, "Bdi", { text: "\u0645\u0631\u062d\u0628\u0627" }, null,
+    runtime.widget(nativeRt, "BidirectionalIsolate", { text: "\u0645\u0631\u062d\u0628\u0627" }, null,
       { nodeName: "nativeBdi", path: "Page/bdi" });
-    runtime.widget(nativeRt, "Bdo", { text: "abc", dir: "rtl", lang: "ar", translate: "no" }, null,
+    runtime.widget(nativeRt, "BidirectionalOverride", { text: "abc", dir: "rtl", lang: "ar", translate: "no" }, null,
       { nodeName: "nativeBdo", path: "Page/bdo" });
-    runtime.widget(nativeRt, "Br", {}, null,
+    runtime.widget(nativeRt, "LineBreak", {}, null,
       { nodeName: "nativeBr", path: "Page/break" });
-    runtime.widget(nativeRt, "Wbr", {}, null,
+    runtime.widget(nativeRt, "WordBreakOpportunity", {}, null,
       { nodeName: "nativeWbr", path: "Page/wbr" });
     runtime.widget(nativeRt, "DescriptionList", {}, null,
       { nodeName: "nativeDescriptionList", path: "Page/descriptions" });
@@ -3007,7 +3003,7 @@ function fakeDocument() {
       { nodeName: "nativeOptionGroup", path: "Page/nativeSelect/numbers", parentPath: "Page/nativeSelect" });
     runtime.widget(nativeRt, "Option", { text: "One", value: "1", selected: true }, null,
       { nodeName: "nativeOption", path: "Page/nativeSelect/numbers/one", parentPath: "Page/nativeSelect/numbers" });
-    runtime.widget(nativeRt, "Datalist", {}, null,
+    runtime.widget(nativeRt, "DataList", {}, null,
       { nodeName: "suggestions", path: "Page/suggestions" });
     runtime.widget(nativeRt, "Option", { value: "hello@example.test" }, null,
       { nodeName: "suggestedEmail", path: "Page/suggestions/email", parentPath: "Page/suggestions" });
@@ -3179,7 +3175,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").role, "");
     assert.equal(runtime.webNodeQuery(nativeRt, "TitleBar").tag, "header");
     assert.equal(runtime.webNodeQuery(nativeRt, "TitleBar").role, "");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Hgroup").tag, "hgroup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "HGroup").tag, "hgroup");
     assert.equal(runtime.webNodeQuery(nativeRt, "Search").tag, "search");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/search/field").landmarkOwner.path,
       "Page/search");
@@ -3224,7 +3220,7 @@ function fakeDocument() {
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Figure")?.role, "figure");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
-      .find((node) => node.kind === "List")?.role, "list");
+      .find((node) => node.kind === "UnorderedList")?.role, "list");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Form")?.role, "form");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3249,7 +3245,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Footer").tag, "footer");
     assert.equal(runtime.webNodeQuery(nativeRt, "Figure").tag, "figure");
     assert.equal(runtime.webNodeQuery(nativeRt, "Figcaption").tag, "figcaption");
-    assert.equal(runtime.webNodeQuery(nativeRt, "List").tag, "ul");
+    assert.equal(runtime.webNodeQuery(nativeRt, "UnorderedList").tag, "ul");
     assert.equal(runtime.webNodeQuery(nativeRt, "ListItem").tag, "li");
     assert.equal(runtime.webNodeQuery(nativeRt, "OrderedList").tag, "ol");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/ordered").extraAttrs.start, "3");
@@ -3262,20 +3258,20 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "CodeBlock").tag, "pre");
     assert.equal(runtime.webNodeQuery(nativeRt, "Code").tag, "code");
     assert.equal(runtime.webNodeQuery(nativeRt, "Strong").tag, "strong");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Em").tag, "em");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Abbr").tag, "abbr");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Abbr").title, "Document Object Model");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Emphasis").tag, "em");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Abbreviation").tag, "abbr");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Abbreviation").title, "Document Object Model");
     assert.equal(runtime.webNodeQuery(nativeRt, "Data").tag, "data");
     assert.equal(runtime.webNodeQuery(nativeRt, "Data").extraAttrs.value, "42");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Del").tag, "del");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Del").extraAttrs.datetime, "2026-09-12");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Ins").tag, "ins");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Ins").extraAttrs.cite, "/changes/2");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Sub").tag, "sub");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Sup").tag, "sup");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Kbd").tag, "kbd");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Samp").tag, "samp");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Var").tag, "var");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Deleted").tag, "del");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Deleted").extraAttrs.datetime, "2026-09-12");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Inserted").tag, "ins");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Inserted").extraAttrs.cite, "/changes/2");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Subscript").tag, "sub");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Superscript").tag, "sup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Keyboard").tag, "kbd");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Sample").tag, "samp");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Variable").tag, "var");
     assert.equal(runtime.webNodeQuery(nativeRt, "Cite").tag, "cite");
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
@@ -3284,16 +3280,16 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Small").tag, "small");
     assert.equal(runtime.webNodeQuery(nativeRt, "Ruby").tag, "ruby");
     assert.equal(runtime.webNodeQuery(nativeRt, "Ruby").text, "\u6f22");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Rt").tag, "rt");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Rp").tag, "rp");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdi").tag, "bdi");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").tag, "bdo");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").dir, "rtl");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").lang, "ar");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").translate, "no");
+    assert.equal(runtime.webNodeQuery(nativeRt, "RubyText").tag, "rt");
+    assert.equal(runtime.webNodeQuery(nativeRt, "RubyParenthesis").tag, "rp");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BidirectionalIsolate").tag, "bdi");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BidirectionalOverride").tag, "bdo");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BidirectionalOverride").dir, "rtl");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BidirectionalOverride").lang, "ar");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BidirectionalOverride").translate, "no");
     assert.equal(runtime.webNodeQuery(nativeRt, "[dir=rtl]").path, "Page/bdo");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Br").tag, "br");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Wbr").tag, "wbr");
+    assert.equal(runtime.webNodeQuery(nativeRt, "LineBreak").tag, "br");
+    assert.equal(runtime.webNodeQuery(nativeRt, "WordBreakOpportunity").tag, "wbr");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionList").tag, "dl");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").tag, "dt");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").text, "DOM");
@@ -3389,7 +3385,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").tag, "optgroup");
     assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").extraAttrs.label, "Numbers");
     assert.equal(runtime.webNodeQuery(nativeRt, "Option").tag, "option");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Datalist").tag, "datalist");
+    assert.equal(runtime.webNodeQuery(nativeRt, "DataList").tag, "datalist");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/suggestions/email").collectionOwner.path,
       "Page/suggestions");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/suggestions").collectionItems,

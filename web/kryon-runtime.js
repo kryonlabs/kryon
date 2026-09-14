@@ -516,6 +516,339 @@ export function copyValue(value) {
   return Object.fromEntries(Object.entries(value).map(([key, field]) => [key, copyValue(field)]));
 }
 
+export function ResolveFont(requested, inherited, fallback) {
+  requested = numberValue(requested, 0);
+  inherited = numberValue(inherited, 0);
+  fallback = numberValue(fallback, 0);
+  if (requested > 0)
+    return Math.trunc(requested);
+  if (inherited > 0)
+    return Math.trunc(inherited);
+  if (fallback > 0)
+    return Math.trunc(fallback);
+  return 16;
+}
+
+function unitValue(value) {
+  value = numberValue(value, 0);
+  if (value < 0)
+    return 0;
+  if (value > 1)
+    return 1;
+  return value;
+}
+
+function opacityColor(color, opacity) {
+  opacity = unitValue(opacity);
+  const alpha = Math.trunc((Number(color) & 255) * opacity);
+  return (((Number(color) >>> 8) << 8) | alpha) >>> 0;
+}
+
+export function Opacity(color, opacity) {
+  return opacityColor(color, opacity);
+}
+
+export function GradientColor(top, bottom, position) {
+  const t = unitValue(position);
+  top = Number(top) >>> 0;
+  bottom = Number(bottom) >>> 0;
+  let result = 0;
+  for (let shift = 0; shift <= 24; shift += 8) {
+    const a = (top >>> shift) & 255;
+    const b = (bottom >>> shift) & 255;
+    result = (result | (Math.trunc(a + (b - a) * t) << shift)) >>> 0;
+  }
+  return result >>> 0;
+}
+
+function mixValue(from, to, amount) {
+  amount = numberValue(amount, 0);
+  if (amount <= 0)
+    return from;
+  if (amount >= 1)
+    return to;
+  return from + (to - from) * amount;
+}
+
+export function InteractionValue(normal, hover, press, focus, hoverAmount,
+  pressAmount, focusAmount) {
+  const resting = mixValue(numberValue(normal, 0), numberValue(focus, 0),
+    numberValue(focusAmount, 0));
+  return mixValue(mixValue(resting, numberValue(hover, 0),
+    numberValue(hoverAmount, 0)), numberValue(press, 0), numberValue(pressAmount, 0));
+}
+
+export function InteractionColor(normal, hover, press, focus, hoverAmount,
+  pressAmount, focusAmount) {
+  const resting = GradientColor(normal, focus, focusAmount);
+  return GradientColor(GradientColor(resting, hover, hoverAmount), press, pressAmount);
+}
+
+export function FillState(fields, start, end) {
+  return {
+    normal: (Number(fields) & 8192) !== 0,
+    hover: false,
+    press: false,
+    focus: false,
+    normal_start: Number(start) >>> 0,
+    normal_end: Number(end) >>> 0,
+    hover_start: 0,
+    hover_end: 0,
+    press_start: 0,
+    press_end: 0,
+    focus_start: 0,
+    focus_end: 0,
+    hover_amount: 0,
+    press_amount: 0,
+    focus_amount: 0
+  };
+}
+
+export function FillTransition(normal, hover, press, focus, h, p, f) {
+  normal = { ...normal };
+  normal.hover = !!hover?.normal;
+  normal.press = !!press?.normal;
+  normal.focus = !!focus?.normal;
+  normal.hover_start = Number(hover?.normal_start || 0) >>> 0;
+  normal.hover_end = Number(hover?.normal_end || 0) >>> 0;
+  normal.press_start = Number(press?.normal_start || 0) >>> 0;
+  normal.press_end = Number(press?.normal_end || 0) >>> 0;
+  normal.focus_start = Number(focus?.normal_start || 0) >>> 0;
+  normal.focus_end = Number(focus?.normal_end || 0) >>> 0;
+  normal.hover_amount = numberValue(h, 0);
+  normal.press_amount = numberValue(p, 0);
+  normal.focus_amount = numberValue(f, 0);
+  return normal;
+}
+
+function colorChroma(color) {
+  color = Number(color) >>> 0;
+  let lowest = 255;
+  let highest = 0;
+  for (let shift = 8; shift <= 24; shift += 8) {
+    const channel = (color >>> shift) & 255;
+    if (channel < lowest)
+      lowest = channel;
+    if (channel > highest)
+      highest = channel;
+  }
+  return highest - lowest;
+}
+
+export function LoadingRing(width, height, iconSize, elapsedMs, color, ambient) {
+  const ring = {
+    x: numberValue(width, 0) * 0.5,
+    y: numberValue(height, 0) * 0.5,
+    inner_radius: 0,
+    outer_radius: 0,
+    start_angle: 0,
+    end_angle: 0,
+    color: 0,
+    track_color: 0,
+    tip_color: 0,
+    trail_opacity: 0,
+    glow_blur: 0
+  };
+  iconSize = numberValue(iconSize, 0);
+  if (iconSize <= 0)
+    return ring;
+  ambient = Number(ambient) >>> 0;
+  color = Number(color) >>> 0;
+  const brightness = ((ambient >>> 24) & 255) + ((ambient >>> 16) & 255) + ((ambient >>> 8) & 255);
+  const lightSurroundings = brightness > 450;
+  ring.outer_radius = iconSize * 0.5;
+  if (!lightSurroundings)
+    ring.outer_radius += 1;
+  if (ring.outer_radius < 3)
+    ring.outer_radius = 3;
+  ring.inner_radius = ring.outer_radius - (lightSurroundings ? 2 : 2.5);
+  const phaseMs = numberValue(elapsedMs, 0) - Math.trunc(numberValue(elapsedMs, 0) / 1500) * 1500;
+  let angle = phaseMs * 0.24;
+  if (!lightSurroundings)
+    angle += 110;
+  angle -= Math.trunc(angle / 360) * 360;
+  ring.start_angle = angle;
+  ring.end_angle = angle + (lightSurroundings ? 270 : 315);
+  ring.color = color;
+  ring.track_color = opacityColor(color, 0.22);
+  const white = ((16777215 << 8) | (color & 255)) >>> 0;
+  ring.tip_color = lightSurroundings ? GradientColor(color, white, 0.88) : white;
+  ring.trail_opacity = 0.55;
+  if (!lightSurroundings) {
+    const chroma = unitValue((colorChroma(color) - 64) / 64);
+    ring.trail_opacity += 0.25 * chroma;
+    ring.glow_blur = 6 * chroma;
+  }
+  return ring;
+}
+
+export function ResolveFlags(state, disabled, loading, selected) {
+  state = Number(state) || 0;
+  return {
+    disabled: !!disabled || state === 5,
+    loading: !!loading || state === 6,
+    selected: !!selected || state === 7
+  };
+}
+
+export function ResolveState(explicitState, disabled, loading, pressed, hovered,
+  focused, selected) {
+  explicitState = Number(explicitState) || 0;
+  if (disabled)
+    return 5;
+  if (loading)
+    return 6;
+  if (explicitState !== 0)
+    return explicitState;
+  if (pressed)
+    return 3;
+  if (hovered)
+    return 2;
+  if (focused)
+    return 4;
+  if (selected)
+    return 7;
+  return 1;
+}
+
+export function ResolveInteraction(explicitState, disabled, loading, pressed,
+  hovered, focused, selected) {
+  const state = ResolveState(explicitState, disabled, loading, pressed, hovered,
+    focused, selected);
+  const interaction = { state, hovered: !!hovered, pressed: !!pressed, focused: !!focused };
+  if (Number(explicitState) !== 0) {
+    interaction.hovered = state === 2;
+    interaction.pressed = state === 3;
+    interaction.focused = state === 4;
+  }
+  if (disabled || loading) {
+    interaction.hovered = false;
+    interaction.pressed = false;
+    interaction.focused = false;
+  }
+  return interaction;
+}
+
+export function CanActivate(disabled, loading) {
+  return !disabled && !loading;
+}
+
+export function ContentBounds(width, height, paddingX, paddingY) {
+  paddingX = Math.max(0, numberValue(paddingX, 0));
+  paddingY = Math.max(0, numberValue(paddingY, 0));
+  const box = {
+    x: paddingX,
+    y: paddingY,
+    width: numberValue(width, 0) - 2 * paddingX,
+    height: numberValue(height, 0) - 2 * paddingY
+  };
+  if (box.width < 0)
+    box.width = 0;
+  if (box.height < 0)
+    box.height = 0;
+  return box;
+}
+
+export function InsetBounds(bounds, paddingX, paddingY, scale) {
+  scale = numberValue(scale, 1);
+  if (scale <= 0)
+    scale = 1;
+  const content = ContentBounds(numberValue(bounds?.width, 0) / scale,
+    numberValue(bounds?.height, 0) / scale, paddingX, paddingY);
+  return {
+    x: numberValue(bounds?.x, 0) + content.x * scale,
+    y: numberValue(bounds?.y, 0) + content.y * scale,
+    width: content.width * scale,
+    height: content.height * scale
+  };
+}
+
+export function CenterChild(declared, measured, content) {
+  measured = { ...(measured || {}) };
+  if (numberValue(declared?.x, 0) !== 0 || numberValue(declared?.y, 0) !== 0)
+    return measured;
+  if (numberValue(measured.width, 0) <= 0)
+    measured.width = numberValue(content?.width, 0);
+  if (numberValue(measured.height, 0) <= 0)
+    measured.height = numberValue(content?.height, 0);
+  measured.x = numberValue(content?.x, 0) +
+    (numberValue(content?.width, 0) - numberValue(measured.width, 0)) * 0.5;
+  measured.y = numberValue(content?.y, 0) +
+    (numberValue(content?.height, 0) - numberValue(measured.height, 0)) * 0.5;
+  return measured;
+}
+
+export function FitHeight(requested, minimum, content, padding) {
+  requested = numberValue(requested, 0);
+  if (requested > 0)
+    return requested;
+  padding = Math.max(0, numberValue(padding, 0));
+  content = Math.max(0, numberValue(content, 0));
+  const height = content + 2 * padding;
+  return height < numberValue(minimum, 0) ? numberValue(minimum, 0) : height;
+}
+
+export function MaterialLayer(material, index, width, height, radius, borderWidth,
+  background, border, light, focusColor, hover, press, focused, disabled, opacity,
+  ambient) {
+  const layer = {
+    x: 0, y: 0, width: numberValue(width, 0), height: numberValue(height, 0),
+    radius: numberValue(radius, 0), stroke: 0, blur: 0, inner_blur: 0,
+    outside_only: false, is_face: false, color: 0, end_color: 0,
+    gradient: false, gradient_bias: 0
+  };
+  if (Number(material) !== 1)
+    return layer;
+  if (Number(index) === 0) {
+    layer.color = opacityColor(background, opacity);
+    layer.is_face = true;
+  } else if (Number(index) === 1 && numberValue(borderWidth, 0) > 0) {
+    layer.color = opacityColor(border, opacity);
+    layer.stroke = numberValue(borderWidth, 0);
+  } else if (Number(index) === 2 && !disabled) {
+    layer.color = opacityColor(focusColor, numberValue(opacity, 0) * unitValue(focused));
+    layer.stroke = 1;
+  }
+  return layer;
+}
+
+export function ApplyFillStates(layer, states, opacity) {
+  if (!states?.normal && !states?.hover && !states?.press && !states?.focus)
+    return layer;
+  const end = layer.gradient ? layer.end_color : layer.color;
+  const fillEndpoint = (material, enabled, custom) => enabled ? opacityColor(custom, opacity) : material;
+  layer.end_color = InteractionColor(
+    fillEndpoint(end, states.normal, states.normal_end),
+    fillEndpoint(end, states.hover, states.hover_end),
+    fillEndpoint(end, states.press, states.press_end),
+    fillEndpoint(end, states.focus, states.focus_end),
+    states.hover_amount, states.press_amount, states.focus_amount);
+  layer.color = InteractionColor(
+    fillEndpoint(layer.color, states.normal, states.normal_start),
+    fillEndpoint(layer.color, states.hover, states.hover_start),
+    fillEndpoint(layer.color, states.press, states.press_start),
+    fillEndpoint(layer.color, states.focus, states.focus_start),
+    states.hover_amount, states.press_amount, states.focus_amount);
+  layer.gradient = true;
+  layer.gradient_bias = InteractionValue(
+    states.normal ? 0 : numberValue(layer.gradient_bias, 0),
+    states.hover ? 0 : numberValue(layer.gradient_bias, 0),
+    states.press ? 0 : numberValue(layer.gradient_bias, 0),
+    states.focus ? 0 : numberValue(layer.gradient_bias, 0),
+    states.hover_amount, states.press_amount, states.focus_amount);
+  return layer;
+}
+
+export function FillGradient(layer, enabled, start, end, opacity) {
+  if (enabled) {
+    layer.color = opacityColor(start, opacity);
+    layer.end_color = opacityColor(end, opacity);
+    layer.gradient = true;
+    layer.gradient_bias = 0;
+  }
+  return layer;
+}
+
 export function ref(object, key) {
   const reference = {
     get value() { return object ? object[key] : undefined; },
@@ -1158,7 +1491,6 @@ function widgetTag(item) {
     return "map";
   case "Area":
     return "area";
-  case "Br":
   case "LineBreak":
     return "br";
   case "Template":
@@ -1170,7 +1502,6 @@ function widgetTag(item) {
   case "StyleElement":
     return "style";
   case "NoScript":
-  case "Noscript":
     return "noscript";
   case "Header":
     return "header";
@@ -1178,11 +1509,9 @@ function widgetTag(item) {
     return "footer";
   case "NavigationBar":
   case "Navigation":
-  case "Nav":
     return "nav";
   case "TitleBar":
     return "header";
-  case "Hgroup":
   case "HGroup":
     return "hgroup";
   case "Fieldset":
@@ -1224,34 +1553,25 @@ function widgetTag(item) {
   case "Strong":
   case "Bold":
     return "strong";
-  case "Em":
   case "Emphasis":
   case "Italic":
     return "em";
-  case "Abbr":
   case "Abbreviation":
     return "abbr";
   case "Data":
     return "data";
-  case "Del":
   case "Deleted":
     return "del";
-  case "Ins":
   case "Inserted":
     return "ins";
-  case "Sub":
   case "Subscript":
     return "sub";
-  case "Sup":
   case "Superscript":
     return "sup";
-  case "Kbd":
   case "Keyboard":
     return "kbd";
-  case "Samp":
   case "Sample":
     return "samp";
-  case "Var":
   case "Variable":
     return "var";
   case "Cite":
@@ -1269,13 +1589,11 @@ function widgetTag(item) {
   case "Figcaption":
     return "figcaption";
   case "UnorderedList":
-  case "List":
     return "ul";
   case "OrderedList":
     return "ol";
   case "DescriptionList":
     return "dl";
-  case "Datalist":
   case "DataList":
     return "datalist";
   case "DescriptionTerm":
@@ -1284,19 +1602,14 @@ function widgetTag(item) {
     return "dd";
   case "Ruby":
     return "ruby";
-  case "Rt":
   case "RubyText":
     return "rt";
-  case "Rp":
   case "RubyParenthesis":
     return "rp";
-  case "Bdi":
   case "BidirectionalIsolate":
     return "bdi";
-  case "Bdo":
   case "BidirectionalOverride":
     return "bdo";
-  case "Wbr":
   case "WordBreakOpportunity":
     return "wbr";
   case "Text":
@@ -1327,7 +1640,6 @@ function widgetTag(item) {
   case "Select":
     return "select";
   case "OptionGroup":
-  case "OptGroup":
     return "optgroup";
   case "Option":
     return "option";
@@ -1342,7 +1654,6 @@ function widgetTag(item) {
   case "Track":
     return "track";
   case "IFrame":
-  case "Iframe":
     return "iframe";
   case "Embed":
     return "embed";
@@ -1369,22 +1680,16 @@ function widgetTag(item) {
   case "TableCaption":
     return "caption";
   case "TableHead":
-  case "Thead":
     return "thead";
   case "TableBody":
-  case "Tbody":
     return "tbody";
   case "TableFoot":
-  case "Tfoot":
     return "tfoot";
   case "TableRow":
-  case "Tr":
     return "tr";
   case "TableColumnGroup":
-  case "ColGroup":
     return "colgroup";
   case "TableColumn":
-  case "Col":
     return "col";
   case "TableCell":
     return /^(col|row|colgroup|rowgroup)$/i.test(
@@ -1423,7 +1728,6 @@ function widgetText(item) {
   case "Footer":
   case "Main":
   case "Navigation":
-  case "Nav":
   case "BlockQuote":
   case "Quote":
   case "CodeBlock":
@@ -1431,25 +1735,16 @@ function widgetText(item) {
   case "Code":
   case "Strong":
   case "Bold":
-  case "Em":
   case "Emphasis":
   case "Italic":
-  case "Abbr":
   case "Abbreviation":
   case "Data":
-  case "Del":
   case "Deleted":
-  case "Ins":
   case "Inserted":
-  case "Sub":
   case "Subscript":
-  case "Sup":
   case "Superscript":
-  case "Kbd":
   case "Keyboard":
-  case "Samp":
   case "Sample":
-  case "Var":
   case "Variable":
   case "Cite":
   case "Mark":
@@ -1457,20 +1752,15 @@ function widgetText(item) {
   case "Address":
   case "Small":
   case "Ruby":
-  case "Rt":
   case "RubyText":
-  case "Rp":
   case "RubyParenthesis":
-  case "Bdi":
   case "BidirectionalIsolate":
-  case "Bdo":
   case "BidirectionalOverride":
   case "Figure":
   case "Figcaption":
   case "Video":
   case "Audio":
   case "IFrame":
-  case "Iframe":
   case "Summary":
   case "Legend":
   case "Label":
@@ -1480,7 +1770,6 @@ function widgetText(item) {
   case "DescriptionDetails":
   case "Script":
   case "NoScript":
-  case "Noscript":
   case "Title":
   case "StyleElement":
     return propString(args, "text", "");
@@ -1747,9 +2036,7 @@ function widgetNativeAttrs(item, meta, args) {
     setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
       propStringAny(args, ["value", "dom_value", "html_value"]));
     break;
-  case "Del":
   case "Deleted":
-  case "Ins":
   case "Inserted":
     setWidgetNativeAttr(out, "cite", metaString(meta, "cite") ||
       propStringAny(args, ["cite", "dom_cite", "html_cite"]));
@@ -1765,7 +2052,6 @@ function widgetNativeAttrs(item, meta, args) {
       isTruthyPropAny(args, ["reversed", "dom_reversed", "html_reversed"]));
     break;
   case "UnorderedList":
-  case "List":
     setWidgetNativeAttr(out, "type", metaString(meta, "listType") ||
       propStringAny(args, ["type", "list_type", "dom_type", "html_type"]));
     break;
@@ -1804,7 +2090,6 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["itemprop", "item_prop", "dom_itemprop", "html_itemprop"]));
     break;
   case "OptionGroup":
-  case "OptGroup":
     setWidgetNativeAttr(out, "label", metaString(meta, "optionLabel") ||
       propStringAny(args, ["label", "title", "dom_label", "html_label"]));
     break;
@@ -1841,9 +2126,7 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["height", "dom_height", "html_height"]));
     break;
   case "TableColumnGroup":
-  case "ColGroup":
   case "TableColumn":
-  case "Col":
     setWidgetNativeAttr(out, "span", metaString(meta, "span") ||
       propStringAny(args, ["span", "dom_span", "html_span"]));
     break;
@@ -1930,7 +2213,6 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
     break;
   case "IFrame":
-  case "Iframe":
     setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
       propStringAny(args, ["src", "dom_src", "html_src"]));
     setWidgetNativeAttr(out, "loading", metaString(meta, "loading") ||
@@ -11730,25 +12012,25 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "AppBackground", "Background", "Text", "Paragraph",
-  "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Base",
-  "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
+  "Abbreviation", "Address", "Area", "Article", "Aside", "Base",
+  "BidirectionalIsolate", "BidirectionalOverride",
   "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
-  "Audio", "BlockQuote", "Bold", "Br", "Cite", "Code", "CodeBlock",
-  "Col", "ColGroup", "Data", "Datalist", "DataList", "Del", "Deleted",
+  "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
+  "Data", "DataList", "Deleted",
   "DescriptionDetails", "DescriptionList", "DescriptionTerm",
-  "Details", "Dialog", "Em", "Embed", "Emphasis",
-  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
-  "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
-  "Kbd", "Keyboard", "Label", "LineBreak", "List", "ListItem", "Main",
-  "Legend", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
-  "Slot", "Small", "Source", "Strong", "StyleElement", "Sub", "Subscript", "Summary",
-  "Sup", "Superscript", "Table", "TableBody", "TableCaption",
+  "Details", "Dialog", "Embed", "Emphasis",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "HGroup",
+  "IFrame", "ImageMap", "Inserted", "Italic",
+  "Keyboard", "Label", "LineBreak", "ListItem", "Main",
+  "Legend", "Mark", "Meta", "Meter", "Navigation", "NoScript", "EmbeddedObject", "OrderedList",
+  "OptionGroup", "Option", "Output", "Param", "Pre", "Quote",
+  "Ruby", "RubyParenthesis", "RubyText", "Sample", "Script", "Search", "Select",
+  "Slot", "Small", "Source", "Strong", "StyleElement", "Subscript", "Summary",
+  "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
-  "TableHead", "TableRow", "Tbody", "Template", "Tfoot", "Thead", "Time", "Title",
-  "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
-  "Wbr", "WordBreakOpportunity",
+  "TableHead", "TableRow", "Template", "Time", "Title",
+  "Track", "UnorderedList", "Variable", "Video",
+  "WordBreakOpportunity",
   "Bullet", "Separator",
   "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
   "Slider", "Menu",
@@ -11771,7 +12053,6 @@ for (const name of runtimeCallNames) {
 globalThis.__kryonRuntimeInit = true;
 
 export function AppBackground(...args) { return struct("AppBackground", args); }
-export function Abbr(...args) { return struct("Abbr", args); }
 export function Abbreviation(...args) { return struct("Abbreviation", args); }
 export function Address(...args) { return struct("Address", args); }
 export function Area(...args) { return struct("Area", args); }
@@ -11780,8 +12061,6 @@ export function Base(...args) { return struct("Base", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function Article(...args) { return struct("Article", args); }
 export function Aside(...args) { return struct("Aside", args); }
-export function Bdi(...args) { return struct("Bdi", args); }
-export function Bdo(...args) { return struct("Bdo", args); }
 export function BidirectionalIsolate(...args) { return struct("BidirectionalIsolate", args); }
 export function BidirectionalOverride(...args) { return struct("BidirectionalOverride", args); }
 export function Audio(...args) { return struct("Audio", args); }
@@ -11789,7 +12068,6 @@ export function Bullet(...args) { return struct("Bullet", args); }
 export function Button(...args) { return struct("Button", args); }
 export function BlockQuote(...args) { return struct("BlockQuote", args); }
 export function Bold(...args) { return struct("Bold", args); }
-export function Br(...args) { return struct("Br", args); }
 export function Card(...args) { return struct("Card", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
@@ -11799,12 +12077,8 @@ export function ColorPicker(...args) { return struct("ColorPicker", args); }
 export function Column(...args) { return struct("Column", args); }
 export function Code(...args) { return struct("Code", args); }
 export function CodeBlock(...args) { return struct("CodeBlock", args); }
-export function Col(...args) { return struct("Col", args); }
-export function ColGroup(...args) { return struct("ColGroup", args); }
 export function Data(...args) { return struct("Data", args); }
-export function Datalist(...args) { return struct("Datalist", args); }
 export function DataList(...args) { return struct("DataList", args); }
-export function Del(...args) { return struct("Del", args); }
 export function Deleted(...args) { return struct("Deleted", args); }
 export function DescriptionDetails(...args) { return struct("DescriptionDetails", args); }
 export function DescriptionList(...args) { return struct("DescriptionList", args); }
@@ -11814,7 +12088,6 @@ export function Dialog(...args) { return struct("Dialog", args); }
 export function Drag(...args) { return struct("Drag", args); }
 export function DragDrop(...args) { return struct("DragDrop", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
-export function Em(...args) { return struct("Em", args); }
 export function Embed(...args) { return struct("Embed", args); }
 export function Emphasis(...args) { return struct("Emphasis", args); }
 export function Figcaption(...args) { return struct("Figcaption", args); }
@@ -11822,16 +12095,12 @@ export function Figure(...args) { return struct("Figure", args); }
 export function Footer(...args) { return struct("Footer", args); }
 export function Form(...args) { return struct("Form", args); }
 export function Header(...args) { return struct("Header", args); }
-export function Hgroup(...args) { return struct("Hgroup", args); }
 export function HGroup(...args) { return struct("HGroup", args); }
 export function IFrame(...args) { return struct("IFrame", args); }
-export function Iframe(...args) { return struct("Iframe", args); }
 export function ImageMap(...args) { return struct("ImageMap", args); }
 export function Input(...args) { return struct("Input", args); }
-export function Ins(...args) { return struct("Ins", args); }
 export function Inserted(...args) { return struct("Inserted", args); }
 export function Italic(...args) { return struct("Italic", args); }
-export function Kbd(...args) { return struct("Kbd", args); }
 export function Keyboard(...args) { return struct("Keyboard", args); }
 export function Label(...args) { return struct("Label", args); }
 export function Legend(...args) { return struct("Legend", args); }
@@ -11841,7 +12110,6 @@ export function Fieldset(...args) { return struct("Fieldset", args); }
 export function Line(...args) { return struct("Line", args); }
 export function LineBreak(...args) { return struct("LineBreak", args); }
 export function Link(...args) { return struct("Link", args); }
-export function List(...args) { return struct("List", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
 export function ListItem(...args) { return struct("ListItem", args); }
 export function Main(...args) { return struct("Main", args); }
@@ -11853,15 +12121,12 @@ export function Grid(...args) { return struct("Grid", args); }
 export function Heading(...args) { return struct("Heading", args); }
 export function Modal(...args) { return struct("Modal", args); }
 export function Meter(...args) { return struct("Meter", args); }
-export function Nav(...args) { return struct("Nav", args); }
 export function NavigationBar(...args) { return struct("NavigationBar", args); }
 export function Navigation(...args) { return struct("Navigation", args); }
 export function NoScript(...args) { return struct("NoScript", args); }
-export function Noscript(...args) { return struct("Noscript", args); }
 export function EmbeddedObject(...args) { return struct("EmbeddedObject", args); }
 export function OrderedList(...args) { return struct("OrderedList", args); }
 export function OptionGroup(...args) { return struct("OptionGroup", args); }
-export function OptGroup(...args) { return struct("OptGroup", args); }
 export function Option(...args) { return struct("Option", args); }
 export function Output(...args) { return struct("Output", args); }
 export function Param(...args) { return struct("Param", args); }
@@ -11874,15 +12139,12 @@ export function Plot(...args) { return struct("Plot", args); }
 export function Pre(...args) { return struct("Pre", args); }
 export function Progress(...args) { return struct("Progress", args); }
 export function Quote(...args) { return struct("Quote", args); }
-export function Rp(...args) { return struct("Rp", args); }
-export function Rt(...args) { return struct("Rt", args); }
 export function Ruby(...args) { return struct("Ruby", args); }
 export function RubyParenthesis(...args) { return struct("RubyParenthesis", args); }
 export function RubyText(...args) { return struct("RubyText", args); }
 export function Radio(...args) { return struct("Radio", args); }
 export function Box(...args) { return struct("Box", args); }
 export function Row(...args) { return struct("Row", args); }
-export function Samp(...args) { return struct("Samp", args); }
 export function Sample(...args) { return struct("Sample", args); }
 export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
@@ -11902,10 +12164,8 @@ export function Spinbox(...args) { return struct("Spinbox", args); }
 export function Stack(...args) { return struct("Stack", args); }
 export function Strong(...args) { return struct("Strong", args); }
 export function StyleElement(...args) { return struct("StyleElement", args); }
-export function Sub(...args) { return struct("Sub", args); }
 export function Subscript(...args) { return struct("Subscript", args); }
 export function Summary(...args) { return struct("Summary", args); }
-export function Sup(...args) { return struct("Sup", args); }
 export function Superscript(...args) { return struct("Superscript", args); }
 export function TabBar(...args) { return struct("TabBar", args); }
 export function Table(...args) { return struct("Table", args); }
@@ -11918,24 +12178,18 @@ export function TableFoot(...args) { return struct("TableFoot", args); }
 export function TableHead(...args) { return struct("TableHead", args); }
 export function TableRow(...args) { return struct("TableRow", args); }
 export function TableView(...args) { return struct("TableView", args); }
-export function Tbody(...args) { return struct("Tbody", args); }
 export function Template(...args) { return struct("Template", args); }
 export function Text(...args) { return struct("Text", args); }
 export function TextArea(...args) { return struct("TextArea", args); }
 export function TextField(...args) { return struct("TextField", args); }
-export function Tfoot(...args) { return struct("Tfoot", args); }
-export function Thead(...args) { return struct("Thead", args); }
 export function TitleBar(...args) { return struct("TitleBar", args); }
 export function Title(...args) { return struct("Title", args); }
 export function Time(...args) { return struct("Time", args); }
-export function Tr(...args) { return struct("Tr", args); }
 export function Track(...args) { return struct("Track", args); }
 export function TreeView(...args) { return struct("TreeView", args); }
 export function Toggle(...args) { return struct("Toggle", args); }
 export function Toolbar(...args) { return struct("Toolbar", args); }
 export function UnorderedList(...args) { return struct("UnorderedList", args); }
-export function Var(...args) { return struct("Var", args); }
 export function Variable(...args) { return struct("Variable", args); }
 export function Video(...args) { return struct("Video", args); }
-export function Wbr(...args) { return struct("Wbr", args); }
 export function WordBreakOpportunity(...args) { return struct("WordBreakOpportunity", args); }
