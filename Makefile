@@ -321,6 +321,7 @@ TEXT_INPUT_PRECISION_TEST = $(BUILD_DIR)/tests/text_input_precision_test
 CONTROL_APPEARANCE_PERF_TEST = $(BUILD_DIR)/tests/control_appearance_perf_test
 CONTROL_APPEARANCE_CAPTURE = $(BUILD_DIR)/tests/control_appearance_capture
 CONTROL_APPEARANCE_CAPTURE_PNG = $(BUILD_DIR)/control-appearance-side-by-side.png
+STYLE_CAPTURE_BOARDS = $(BUILD_DIR)/tests/style_capture_boards
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
@@ -397,7 +398,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance style-capture-boards bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -1549,6 +1550,17 @@ $(CONTROL_APPEARANCE_CAPTURE): tests/control_appearance_capture.c $(LIB) $(KRYON
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/control_appearance_capture.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(STYLE_CAPTURE_BOARDS): tests/style_capture_boards.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/style_capture_boards.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+style-capture-boards: $(STYLE_CAPTURE_BOARDS)
+	rm -f $(BUILD_DIR)/style-boards/*.png
+	xvfb-run -a $(STYLE_CAPTURE_BOARDS) $(BUILD_DIR)/style-boards
+	@ls $(BUILD_DIR)/style-boards/*.png >/dev/null && echo "style boards written to $(BUILD_DIR)/style-boards"
 
 capture-control-appearance: $(CONTROL_APPEARANCE_CAPTURE)
 	rm -f $(CONTROL_APPEARANCE_CAPTURE_PNG)
