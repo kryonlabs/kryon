@@ -824,5 +824,36 @@ main(void)
     assert(!insert_decision.accept);
     assert(insert_decision.stop);
 
+    assert(TextNavigationKeyFor(0, 0, 0, 0, 0, 0, 0, 0, 0) == TextNavNone());
+    assert(TextNavigationKeyFor(1, 1, 0, 0, 0, 0, 0, 0, 0) == TextNavLeft());
+    assert(TextNavigationKeyFor(1, 0, 1, 0, 0, 0, 0, 0, 0) == TextNavRight());
+    assert(TextNavigationKeyFor(1, 0, 0, 1, 0, 0, 0, 0, 0) == TextNavHome());
+    assert(TextNavigationKeyFor(1, 0, 0, 0, 1, 0, 0, 0, 0) == TextNavEnd());
+    assert(TextNavigationKeyFor(1, 0, 0, 0, 0, 1, 0, 0, 0) == TextNavUp());
+    assert(TextNavigationKeyFor(1, 0, 0, 0, 0, 0, 1, 0, 0) == TextNavDown());
+    assert(TextNavigationKeyFor(1, 0, 0, 0, 0, 0, 0, 1, 0) == TextNavPageUp());
+    assert(TextNavigationKeyFor(1, 0, 0, 0, 0, 0, 0, 0, 1) ==
+           TextNavPageDown());
+    assert(TextNavigationKeyFor(0, 0, 0, 0, 0, 1, 1, 1, 1) == TextNavNone());
+
+    TextBackspaceRepeat repeat = TextBackspaceRepeatFor(1, 1, 10.0, 0.0);
+    assert(repeat.count == 1);
+    assert(fabs(repeat.next_repeat_at - 10.34) < 0.000001);
+    repeat = TextBackspaceRepeatFor(0, 0, 10.0, 5.0);
+    assert(repeat.count == 0);
+    assert(repeat.next_repeat_at == 0.0);
+    repeat = TextBackspaceRepeatFor(0, 1, 10.0, 0.0);
+    assert(repeat.count == 0);
+    assert(fabs(repeat.next_repeat_at - 10.34) < 0.000001);
+    repeat = TextBackspaceRepeatFor(0, 1, 10.0, 5.0);
+    assert(repeat.count == 8);
+    assert(fabs(repeat.next_repeat_at - 5.36) < 0.000001);
+    repeat = TextBackspaceRepeatFor(0, 1, 10.0, 9.98);
+    assert(repeat.count == 1);
+    assert(fabs(repeat.next_repeat_at - 10.025) < 0.000001);
+    repeat = TextBackspaceRepeatFor(0, 1, 10.0, 10.05);
+    assert(repeat.count == 0);
+    assert(repeat.next_repeat_at == 10.05);
+
     return 0;
 }

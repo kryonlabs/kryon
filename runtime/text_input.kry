@@ -720,6 +720,52 @@ TextNavPageDown :: () -> i32 #export {
     return 8
 }
 
+TextNavigationKeyFor :: (multiline: bool, left: bool, right: bool,
+    home: bool, end: bool, up: bool, down: bool,
+    page_up: bool, page_down: bool) -> i32 #export {
+    if left { return TextNavLeft() }
+    if right { return TextNavRight() }
+    if home { return TextNavHome() }
+    if end { return TextNavEnd() }
+    if multiline && up { return TextNavUp() }
+    if multiline && down { return TextNavDown() }
+    if multiline && page_up { return TextNavPageUp() }
+    if multiline && page_down { return TextNavPageDown() }
+    return TextNavNone()
+}
+
+TextBackspaceRepeat :: struct {
+    count: i32
+    next_repeat_at: f64
+}
+
+TextBackspaceRepeatFor :: (pressed: bool, down: bool, now: f64,
+    next_repeat_at: f64) -> TextBackspaceRepeat #export {
+    result: TextBackspaceRepeat
+    if pressed {
+        result.count = 1
+        result.next_repeat_at = now + 0.34
+        return result
+    }
+    if !down {
+        result.next_repeat_at = 0.0
+        return result
+    }
+    if next_repeat_at <= 0.0 {
+        result.next_repeat_at = now + 0.34
+        return result
+    }
+    count: i32 = 0
+    cursor: f64 = next_repeat_at
+    while now >= cursor && count < 8 {
+        count += 1
+        cursor += 0.045
+    }
+    result.count = count
+    result.next_repeat_at = cursor
+    return result
+}
+
 TextDeleteNone :: () -> i32 #export {
     return 0
 }

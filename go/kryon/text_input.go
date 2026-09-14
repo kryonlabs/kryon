@@ -220,6 +220,11 @@ type TextSelectionState struct {
 	HasSelection bool
 }
 
+type TextBackspaceRepeat struct {
+	Count        int32
+	NextRepeatAt float64
+}
+
 func TextInput_TextInputFactsFor(style_kind int32, class_name int32) StyleFacts {
 	var value_0 int32 = style_kind
 	var value_1 int32 = 0
@@ -1528,6 +1533,136 @@ func TextInput_TextNavPageUp() int32 {
 func TextInput_TextNavPageDown() int32 {
 	var value_0 int32 = 8
 	return value_0
+}
+
+func TextInput_TextNavigationKeyFor(multiline bool, left bool, right bool, home bool, end bool, up bool, down bool, page_up bool, page_down bool) int32 {
+	var value_0 bool = left
+	if value_0 {
+		var value_1 int32 = TextInput_TextNavLeft()
+		return value_1
+	}
+	var value_2 bool = right
+	if value_2 {
+		var value_3 int32 = TextInput_TextNavRight()
+		return value_3
+	}
+	var value_4 bool = home
+	if value_4 {
+		var value_5 int32 = TextInput_TextNavHome()
+		return value_5
+	}
+	var value_6 bool = end
+	if value_6 {
+		var value_7 int32 = TextInput_TextNavEnd()
+		return value_7
+	}
+	var value_8 bool = multiline
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 bool = up
+		value_9 = value_10
+	}
+	if value_9 {
+		var value_11 int32 = TextInput_TextNavUp()
+		return value_11
+	}
+	var value_12 bool = multiline
+	var value_13 bool = value_12
+	if value_13 {
+		var value_14 bool = down
+		value_13 = value_14
+	}
+	if value_13 {
+		var value_15 int32 = TextInput_TextNavDown()
+		return value_15
+	}
+	var value_16 bool = multiline
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = page_up
+		value_17 = value_18
+	}
+	if value_17 {
+		var value_19 int32 = TextInput_TextNavPageUp()
+		return value_19
+	}
+	var value_20 bool = multiline
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 bool = page_down
+		value_21 = value_22
+	}
+	if value_21 {
+		var value_23 int32 = TextInput_TextNavPageDown()
+		return value_23
+	}
+	var value_24 int32 = TextInput_TextNavNone()
+	return value_24
+}
+
+func TextInput_TextBackspaceRepeatFor(pressed bool, down bool, now float64, next_repeat_at float64) TextBackspaceRepeat {
+	var result TextBackspaceRepeat = TextBackspaceRepeat{}
+	var value_0 bool = pressed
+	if value_0 {
+		var value_1 int32 = 1
+		result.Count = value_1
+		var value_2 float64 = now
+		var value_3 float64 = 0.34
+		var value_4 float64 = value_2 + value_3
+		result.NextRepeatAt = value_4
+		var value_5 TextBackspaceRepeat = result
+		return value_5
+	}
+	var value_6 bool = down
+	var value_7 bool = !value_6
+	if value_7 {
+		var value_8 float64 = 0.0
+		result.NextRepeatAt = value_8
+		var value_9 TextBackspaceRepeat = result
+		return value_9
+	}
+	var value_10 float64 = next_repeat_at
+	var value_11 float64 = 0.0
+	var value_12 bool = value_10 <= value_11
+	if value_12 {
+		var value_13 float64 = now
+		var value_14 float64 = 0.34
+		var value_15 float64 = value_13 + value_14
+		result.NextRepeatAt = value_15
+		var value_16 TextBackspaceRepeat = result
+		return value_16
+	}
+	var value_17 int32 = 0
+	var count int32 = value_17
+	var value_18 float64 = next_repeat_at
+	var cursor float64 = value_18
+	for {
+		var value_19 float64 = now
+		var value_20 float64 = cursor
+		var value_21 bool = value_19 >= value_20
+		var value_22 bool = value_21
+		if value_22 {
+			var value_23 int32 = count
+			var value_24 int32 = 8
+			var value_25 bool = value_23 < value_24
+			value_22 = value_25
+		}
+		if !value_22 {
+			break
+		}
+		var value_26 int32 = count
+		var value_27 int32 = 1
+		count = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
+		var value_28 float64 = cursor
+		var value_29 float64 = 0.045
+		cursor = value_28 + value_29
+	}
+	var value_30 int32 = count
+	result.Count = value_30
+	var value_31 float64 = cursor
+	result.NextRepeatAt = value_31
+	var value_32 TextBackspaceRepeat = result
+	return value_32
 }
 
 func TextInput_TextDeleteNone() int32 {

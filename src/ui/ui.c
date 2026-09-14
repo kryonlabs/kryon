@@ -660,27 +660,12 @@ ui_pointer_dx(void)
 static int
 ui_backspace_repeat_count(void)
 {
-    double now;
-    int count = 0;
+    TextBackspaceRepeat repeat = TextBackspaceRepeatFor(
+        IsKeyPressed(KEY_BACKSPACE) != 0, IsKeyDown(KEY_BACKSPACE) != 0,
+        GetTime(), g_ui_backspace_next_repeat_at);
 
-    if(IsKeyPressed(KEY_BACKSPACE)) {
-        g_ui_backspace_next_repeat_at = GetTime() + 0.34;
-        return 1;
-    }
-    if(!IsKeyDown(KEY_BACKSPACE)) {
-        g_ui_backspace_next_repeat_at = 0.0;
-        return 0;
-    }
-    now = GetTime();
-    if(g_ui_backspace_next_repeat_at <= 0.0) {
-        g_ui_backspace_next_repeat_at = now + 0.34;
-        return 0;
-    }
-    while(now >= g_ui_backspace_next_repeat_at && count < 8) {
-        count++;
-        g_ui_backspace_next_repeat_at += 0.045;
-    }
-    return count;
+    g_ui_backspace_next_repeat_at = repeat.next_repeat_at;
+    return repeat.count;
 }
 
 static int
@@ -2601,23 +2586,11 @@ ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
 int
 ui_text_navigation_key(int multiline)
 {
-    if(IsKeyPressed(KEY_LEFT))
-        return TextNavLeft();
-    if(IsKeyPressed(KEY_RIGHT))
-        return TextNavRight();
-    if(IsKeyPressed(KEY_HOME))
-        return TextNavHome();
-    if(IsKeyPressed(KEY_END))
-        return TextNavEnd();
-    if(multiline && IsKeyPressed(KEY_UP))
-        return TextNavUp();
-    if(multiline && IsKeyPressed(KEY_DOWN))
-        return TextNavDown();
-    if(multiline && IsKeyPressed(KEY_PAGE_UP))
-        return TextNavPageUp();
-    if(multiline && IsKeyPressed(KEY_PAGE_DOWN))
-        return TextNavPageDown();
-    return 0;
+    return TextNavigationKeyFor(multiline != 0,
+        IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+        IsKeyPressed(KEY_PAGE_UP) != 0, IsKeyPressed(KEY_PAGE_DOWN) != 0);
 }
 
 int
