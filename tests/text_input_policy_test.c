@@ -34,6 +34,7 @@ main(void)
                                                    16, 6, 8, 4);
     TextInputMetrics zero_metrics = TextInputMetricsFor(
         StylePaddingX | StylePaddingY | StyleGap, 0, 0, 0, 0, 16, 6, 8, 4);
+    TextInputResolvedStyle resolved_style;
     TextNavigationDecision decision;
     TextDeleteDecision delete_decision;
     TextInsertDecision insert_decision;
@@ -76,6 +77,22 @@ main(void)
     assert(TextInputDefaultPaddingY(1.0f) == 8);
     assert(TextInputDefaultPaddingX(2.0f) == 20);
     assert(TextInputDefaultPaddingY(2.0f) == 16);
+    resolved_style = TextInputResolvedStyleFor(0, 0, 0, -1, 0.0f,
+        StylePaddingX | StylePaddingY | StyleGap | StyleRadius,
+        6.4f, 8.5f, 2.0f, 5.0f, 2.0f);
+    assert((resolved_style.fields & StylePaddingX) != 0);
+    assert(resolved_style.padding_x == 12);
+    assert(resolved_style.padding_y == 18);
+    assert(resolved_style.line_gap == 4);
+    assert(fabsf(resolved_style.radius - 5.0f) < 0.001f);
+    resolved_style = TextInputResolvedStyleFor(
+        StylePaddingX | StylePaddingY | StyleGap | StyleRadius,
+        0, -4, -2, 0.0f, StylePaddingX | StylePaddingY | StyleGap |
+        StyleRadius, 6.0f, 8.0f, 2.0f, 5.0f, 2.0f);
+    assert(resolved_style.padding_x == 0);
+    assert(resolved_style.padding_y == 0);
+    assert(resolved_style.line_gap == 0);
+    assert(fabsf(resolved_style.radius) < 0.001f);
     assert(TextInputContentWidth(40.0f, 8) == 24);
     assert(TextInputContentWidth(10.0f, 8) == 0);
     assert(TextAreaPageRows(72.0f, metrics.font, metrics.line_gap,

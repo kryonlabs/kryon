@@ -10,6 +10,14 @@ TextInputMetrics :: struct {
     line_height: i32
 }
 
+TextInputResolvedStyle :: struct {
+    fields: u32
+    padding_x: i32
+    padding_y: i32
+    line_gap: i32
+    radius: float
+}
+
 TextFieldScroll :: struct {
     scroll: i32
     max_scroll: i32
@@ -731,6 +739,65 @@ TextInputScaledMetric :: (value: float, scale: float) -> i32 {
     metric: i32 = (i32)(value * scale)
     if metric < 0 { return 0 }
     return metric
+}
+
+TextInputRoundScaledMetric :: (value: float, scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    metric: i32 = (i32)(((float)((i32)(value + 0.5))) * scale + 0.5)
+    if metric < 0 { return 0 }
+    return metric
+}
+
+TextInputRequestedFieldsFor :: (fields: u32, padding_x: i32,
+    padding_y: i32, line_gap: i32) -> u32 {
+    requested: u32 = fields
+    if padding_x > 0 {
+        requested = requested | (u32)StylePaddingX
+    }
+    if padding_y > 0 {
+        requested = requested | (u32)StylePaddingY
+    }
+    if line_gap >= 0 {
+        requested = requested | (u32)StyleGap
+    }
+    return requested
+}
+
+TextInputResolvedMetric :: (requested_fields: u32, field: u32,
+    requested_value: i32, resolved_fields: u32, resolved_value: float,
+    scale: float, unset_value: i32) -> i32 {
+    if (requested_fields & field) != (u32)0 {
+        if requested_value < 0 { return 0 }
+        return requested_value
+    }
+    if (resolved_fields & field) != (u32)0 && resolved_value >= 0.0 {
+        return TextInputRoundScaledMetric(resolved_value, scale)
+    }
+    return unset_value
+}
+
+TextInputResolvedStyleFor :: (fields: u32, padding_x: i32, padding_y: i32,
+    line_gap: i32, radius: float, resolved_fields: u32,
+    resolved_padding_x: float, resolved_padding_y: float,
+    resolved_gap: float, resolved_radius: float,
+    scale: float) -> TextInputResolvedStyle #export {
+    style: TextInputResolvedStyle
+    requested_fields: u32 = TextInputRequestedFieldsFor(fields, padding_x,
+        padding_y, line_gap)
+    style.fields = requested_fields | resolved_fields
+    style.padding_x = TextInputResolvedMetric(requested_fields,
+        (u32)StylePaddingX, padding_x, resolved_fields, resolved_padding_x,
+        scale, padding_x)
+    style.padding_y = TextInputResolvedMetric(requested_fields,
+        (u32)StylePaddingY, padding_y, resolved_fields, resolved_padding_y,
+        scale, padding_y)
+    style.line_gap = TextInputResolvedMetric(requested_fields,
+        (u32)StyleGap, line_gap, resolved_fields, resolved_gap, scale, -1)
+    style.radius = radius
+    if (fields & (u32)StyleRadius) == (u32)0 || radius < 0.0 {
+        style.radius = resolved_radius
+    }
+    return style
 }
 
 TextInputDefaultPaddingX :: (scale: float) -> i32 #export {

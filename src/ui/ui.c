@@ -1903,7 +1903,7 @@ TextInputAppearance
 ui_resolve_text_input_appearance(TextInputAppearance style, int style_kind,
                             int class_name)
 {
-    uint32_t requested_fields = style.fields;
+    float scale = (float)Scale(1000) / 1000.0f;
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
         ResolveActiveStyle(
             ui_pack_style_states((ControlStyle){.normal = {
@@ -1914,13 +1914,10 @@ ui_resolve_text_input_appearance(TextInputAppearance style, int style_kind,
                               ButtonEmphasisSoft, ControlSizeMedium,
                               ButtonStateNormal),
             ButtonStateNormal)));
-
-    if(style.padding_x > 0)
-        requested_fields |= StylePaddingX;
-    if(style.padding_y > 0)
-        requested_fields |= StylePaddingY;
-    if(style.line_gap >= 0)
-        requested_fields |= StyleGap;
+    TextInputResolvedStyle policy = TextInputResolvedStyleFor(
+        style.fields, style.padding_x, style.padding_y, style.line_gap,
+        style.radius, resolved.fields, resolved.padding_x, resolved.padding_y,
+        resolved.gap, resolved.radius, scale);
 
     if(style.background.a == 0)
         style.background = resolved.background;
@@ -1933,32 +1930,11 @@ ui_resolve_text_input_appearance(TextInputAppearance style, int style_kind,
     if(style.cursor.a == 0)
         style.cursor = resolved.focus.a != 0 ? resolved.focus
                                              : resolved.foreground;
-    if(style.radius <= 0.0f)
-        style.radius = resolved.radius;
-    style.fields = requested_fields | resolved.fields;
-    if((requested_fields & StylePaddingX) != 0) {
-        if(style.padding_x < 0)
-            style.padding_x = 0;
-    } else if((resolved.fields & StylePaddingX) != 0 &&
-              resolved.padding_x >= 0.0f) {
-        style.padding_x = Scale((int)(resolved.padding_x + 0.5f));
-    }
-    if((requested_fields & StylePaddingY) != 0) {
-        if(style.padding_y < 0)
-            style.padding_y = 0;
-    } else if((resolved.fields & StylePaddingY) != 0 &&
-              resolved.padding_y >= 0.0f) {
-        style.padding_y = Scale((int)(resolved.padding_y + 0.5f));
-    }
-    if((requested_fields & StyleGap) != 0) {
-        if(style.line_gap < 0)
-            style.line_gap = 0;
-    } else if((resolved.fields & StyleGap) != 0) {
-        style.line_gap = resolved.gap > 0.0f
-            ? Scale((int)(resolved.gap + 0.5f)) : 0;
-    } else if(style.line_gap <= 0) {
-        style.line_gap = -1;
-    }
+    style.fields = policy.fields;
+    style.padding_x = policy.padding_x;
+    style.padding_y = policy.padding_y;
+    style.line_gap = policy.line_gap;
+    style.radius = policy.radius;
     return style;
 }
 

@@ -11,6 +11,14 @@ type TextInputMetrics struct {
 	LineHeight int32
 }
 
+type TextInputResolvedStyle struct {
+	Fields   uint32
+	PaddingX int32
+	PaddingY int32
+	LineGap  int32
+	Radius   float32
+}
+
 type TextFieldScroll struct {
 	Scroll      int32
 	MaxScroll   int32
@@ -1568,6 +1576,180 @@ func TextInput_TextInputScaledMetric(value float32, scale float32) int32 {
 	}
 	var value_12 int32 = metric
 	return value_12
+}
+
+func TextInput_TextInputRoundScaledMetric(value float32, scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = value
+	var value_5 float32 = 0.5
+	var value_6 float32 = value_4 + value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var value_8 float32 = float32(value_7)
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 float32 = 0.5
+	var value_12 float32 = value_10 + value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_13
+	var value_14 int32 = metric
+	var value_15 int32 = 0
+	var value_16 bool = value_14 < value_15
+	if value_16 {
+		var value_17 int32 = 0
+		return value_17
+	}
+	var value_18 int32 = metric
+	return value_18
+}
+
+func TextInput_TextInputRequestedFieldsFor(fields uint32, padding_x int32, padding_y int32, line_gap int32) uint32 {
+	var value_0 uint32 = fields
+	var requested uint32 = value_0
+	var value_1 int32 = padding_x
+	var value_2 int32 = 0
+	var value_3 bool = value_1 > value_2
+	if value_3 {
+		var value_4 uint32 = requested
+		var value_5 int32 = int32(StylePaddingX)
+		var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+		var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 9))
+		requested = value_7
+	}
+	var value_8 int32 = padding_y
+	var value_9 int32 = 0
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 uint32 = requested
+		var value_12 int32 = int32(StylePaddingY)
+		var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+		var value_14 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_13), 32, false, 9))
+		requested = value_14
+	}
+	var value_15 int32 = line_gap
+	var value_16 int32 = 0
+	var value_17 bool = value_15 >= value_16
+	if value_17 {
+		var value_18 uint32 = requested
+		var value_19 int32 = int32(StyleGap)
+		var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
+		var value_21 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(value_20), 32, false, 9))
+		requested = value_21
+	}
+	var value_22 uint32 = requested
+	return value_22
+}
+
+func TextInput_TextInputResolvedMetric(requested_fields uint32, field uint32, requested_value int32, resolved_fields uint32, resolved_value float32, scale float32, unset_value int32) int32 {
+	var value_0 uint32 = requested_fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 != value_4
+	if value_5 {
+		var value_6 int32 = requested_value
+		var value_7 int32 = 0
+		var value_8 bool = value_6 < value_7
+		if value_8 {
+			var value_9 int32 = 0
+			return value_9
+		}
+		var value_10 int32 = requested_value
+		return value_10
+	}
+	var value_11 uint32 = resolved_fields
+	var value_12 uint32 = field
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, false, 8))
+	var value_14 int32 = 0
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
+	var value_16 bool = value_13 != value_15
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 float32 = resolved_value
+		var value_19 float32 = 0.0
+		var value_20 bool = value_18 >= value_19
+		value_17 = value_20
+	}
+	if value_17 {
+		var value_21 float32 = resolved_value
+		var value_22 float32 = scale
+		var value_23 int32 = TextInput_TextInputRoundScaledMetric(value_21, value_22)
+		return value_23
+	}
+	var value_24 int32 = unset_value
+	return value_24
+}
+
+func TextInput_TextInputResolvedStyleFor(fields uint32, padding_x int32, padding_y int32, line_gap int32, radius float32, resolved_fields uint32, resolved_padding_x float32, resolved_padding_y float32, resolved_gap float32, resolved_radius float32, scale float32) TextInputResolvedStyle {
+	var style TextInputResolvedStyle = TextInputResolvedStyle{}
+	var value_0 uint32 = fields
+	var value_1 int32 = padding_x
+	var value_2 int32 = padding_y
+	var value_3 int32 = line_gap
+	var value_4 uint32 = TextInput_TextInputRequestedFieldsFor(value_0, value_1, value_2, value_3)
+	var requested_fields uint32 = value_4
+	var value_5 uint32 = requested_fields
+	var value_6 uint32 = resolved_fields
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, false, 9))
+	style.Fields = value_7
+	var value_8 uint32 = requested_fields
+	var value_9 int32 = int32(StylePaddingX)
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 int32 = padding_x
+	var value_12 uint32 = resolved_fields
+	var value_13 float32 = resolved_padding_x
+	var value_14 float32 = scale
+	var value_15 int32 = padding_x
+	var value_16 int32 = TextInput_TextInputResolvedMetric(value_8, value_10, value_11, value_12, value_13, value_14, value_15)
+	style.PaddingX = value_16
+	var value_17 uint32 = requested_fields
+	var value_18 int32 = int32(StylePaddingY)
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
+	var value_20 int32 = padding_y
+	var value_21 uint32 = resolved_fields
+	var value_22 float32 = resolved_padding_y
+	var value_23 float32 = scale
+	var value_24 int32 = padding_y
+	var value_25 int32 = TextInput_TextInputResolvedMetric(value_17, value_19, value_20, value_21, value_22, value_23, value_24)
+	style.PaddingY = value_25
+	var value_26 uint32 = requested_fields
+	var value_27 int32 = int32(StyleGap)
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
+	var value_29 int32 = line_gap
+	var value_30 uint32 = resolved_fields
+	var value_31 float32 = resolved_gap
+	var value_32 float32 = scale
+	var value_33 int32 = -1
+	var value_34 int32 = TextInput_TextInputResolvedMetric(value_26, value_28, value_29, value_30, value_31, value_32, value_33)
+	style.LineGap = value_34
+	var value_35 float32 = radius
+	style.Radius = value_35
+	var value_36 uint32 = fields
+	var value_37 int32 = int32(StyleRadius)
+	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(0), 32, false, 0))
+	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(value_38), 32, false, 8))
+	var value_40 int32 = 0
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
+	var value_42 bool = value_39 == value_41
+	var value_43 bool = value_42
+	if !value_43 {
+		var value_44 float32 = radius
+		var value_45 float32 = 0.0
+		var value_46 bool = value_44 < value_45
+		value_43 = value_46
+	}
+	if value_43 {
+		var value_47 float32 = resolved_radius
+		style.Radius = value_47
+	}
+	var value_48 TextInputResolvedStyle = style
+	return value_48
 }
 
 func TextInput_TextInputDefaultPaddingX(scale float32) int32 {
