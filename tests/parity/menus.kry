@@ -30,6 +30,6 @@ menus_frame :: () #ui {
             flags = PopupTooltip
             Text((TextProps){.bounds={220,106,120,20},.text="Menu help",.wrap=TextWrapNone})
         }
-        Progress((ProgressProps){{220,200,100,10},0,100,result.activated_id,""})
+        Progress((ProgressProps){.bounds = {220,200,100,10}, .min = 0, .max = 100, .value = result.activated_id, .label = ""})
     }
 }

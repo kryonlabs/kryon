@@ -93,7 +93,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Spinbox((SpinboxProps){{Scale(350), Scale(382), Scale(120), Scale(28)}, 36, 0, 0, 100, 1, &slider_value, 0, ""})
         Dropdown((DropdownProps){.bounds = {Scale(350), Scale(418), Scale(160), Scale(28)}, .id = 37,
             .options = choices[:], .option_count = 3, .selected_index = &pick})
-        Progress((ProgressProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})
+        Progress((ProgressProps){.bounds = {Scale(350), Scale(458), Scale(160), Scale(18)}, .min = 0, .max = 100, .value = slider_value, .label = "Progress"})
 
         ColorPicker((ColorPickerProps){.bounds = {Scale(540), Scale(92), Scale(96), Scale(120)}, .id = 38, .values = pick_color, .value_count = 4, .picker = true})
         Fieldset((FieldsetProps){.bounds = {Scale(540), Scale(148), Scale(140), Scale(48)}, .title = "Frame"})

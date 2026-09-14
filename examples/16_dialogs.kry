@@ -11,7 +11,7 @@ state {
     dialog: int = 0
     prompt: [128] char = "value"
     cursor: int = 5
-    focused: int = 0
+    focused: bool = false
     color_values: [4] float = {0.47f,0.63f,0.86f,1.0f}
 }
 

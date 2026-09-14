@@ -62,6 +62,7 @@ state {
     checkbox_value: int = 1
     text_cursor: int = 5
     text_focused: int = 0
+    modal_focused: bool = false
     area_cursor: int = 12
     area_focused: int = 0
     area_scroll: int = 0
@@ -178,9 +179,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x + Scale(56),y + Scale(418),0,0}, .text="Value", .wrap=TextWrapNone})
         Bullet((Rectangle){x,y + Scale(460),Scale(16),Scale(20)})
         Text((TextProps){.bounds={x + Scale(20),y + Scale(460),0,0}, .text="Bullet text", .wrap=TextWrapNone})
-        selectable_token: int = PushTextSelectable(1)
-        Text((TextProps){.bounds={x, y + Scale(510), 0, 0}, .text="Select and copy this text.", .wrap=TextWrapNone})
-        PopTextSelectable(selectable_token)
+        Text((TextProps){.bounds={x, y + Scale(510), 0, 0}, .text="Select and copy this text.", .wrap=TextWrapNone, .selectable=true})
         Text((TextProps){.bounds={right,y + Scale(260),0,0}, .text="Bool: true", .wrap=TextWrapNone})
         Text((TextProps){.bounds={right,y + Scale(300),0,0}, .text=TextFormat("Int: %d", 42), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right,y + Scale(340),0,0}, .text=TextFormat("UInt: %u", 42), .wrap=TextWrapNone})
@@ -219,7 +218,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Spinbox((SpinboxProps){.bounds = {right, y + Scale(44), Scale(140), Scale(32)}, .id = 110, .min = 0, .max = 100, .step = 1, .value = &slider_value, .value_text = nil, .wrap = 0})
         Dropdown((DropdownProps){.bounds = {right, y + Scale(92), Scale(180), Scale(32)}, .id = 111,
             .options = choices, .option_count = 3, .selected_index = &picked})
-        Progress((ProgressProps){{right, y + Scale(140), Scale(220), Scale(24)}, 0, 100, slider_value, "Progress"})
+        Progress((ProgressProps){.bounds = {right, y + Scale(140), Scale(220), Scale(24)}, .min = 0, .max = 100, .value = slider_value, .label = "Progress"})
         ColorPicker((ColorPickerProps){.bounds = {right + Scale(240), y, Scale(120), Scale(120)}, .id = 112, .values = rgba, .value_count = 4, .picker = true})
 
         if Button((ButtonProps){.bounds = {x,y + Scale(204),Scale(120),Scale(28)}, .label = "Small", .size = ControlSizeSmall, .id = 200}) {
@@ -526,7 +525,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         if dialog == 3 {
             prompt_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Save",ButtonToneAccent,ButtonEmphasisFilled,0}}
-            result: int = Modal((ModalProps){.title = "Prompt",.actions = prompt_actions,.action_count = 2,.max_width = 460,.text = text_value,.text_size = sizeof(text_value),.cursor_position = &text_cursor,.focused = &text_focused})
+            result: int = Modal((ModalProps){.title = "Prompt",.actions = prompt_actions,.action_count = 2,.max_width = 460,.text = text_value,.text_size = sizeof(text_value),.cursor_position = &text_cursor,.focused = &modal_focused})
             if result != 0 { dialog_result = result; dialog = 0 }
         }
         if dialog == 5 {

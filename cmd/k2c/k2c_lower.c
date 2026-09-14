@@ -644,6 +644,30 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
     fprintf(c, "    PopInspectSource();\n");
 }
 
+static void
+emit_ui_host_hook_prototypes(FILE *c)
+{
+    fputs("\n"
+          "/* Private host hooks used by lowered .kry block widgets. They stay\n"
+          " * out of public headers; generated C only needs the prototypes. */\n"
+          "void DisabledScope(int disabled);\n"
+          "void DisabledEndScope(void);\n"
+          "Rectangle ScrollScope(Rectangle bounds, int content_height, int *scroll_offset);\n"
+          "void ScrollEndScope(void);\n"
+          "NodeId ButtonScope(ButtonProps button);\n"
+          "NodeId CardScope(CardProps card);\n"
+          "int PopupScope(PopupProps popup);\n"
+          "void PopupEndScope(void);\n"
+          "Rectangle TableCellScope(TableViewProps table, int row, int column);\n"
+          "void TableCellEndScope(void);\n"
+          "CanvasResult CanvasScope(Canvas canvas);\n"
+          "void CanvasEndScope(Canvas canvas);\n"
+          "void RenderImage(ImageProps image);\n"
+          "int PushTextSelectable(int selectable);\n"
+          "void PopTextSelectable(int token);\n",
+          c);
+}
+
 typedef struct BodySymbols {
     const KirModule *module;
     const K2cModuleSyms *symbols;
@@ -1514,10 +1538,15 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     fprintf(c, "#include \"%s.h\"\n", stem);
     fprintf(c, "#include <stdio.h>\n");
     int needs_inspection = 0;
+    int needs_ui_host_hooks = 0;
     for(int fi = 0; fi < m->function_count; fi++)
         if(!m->functions[fi].is_extern && !KirCanEmitBody(m, &m->functions[fi])) needs_inspection = 1;
+    for(int fi = 0; fi < m->function_count; fi++)
+        if(!m->functions[fi].is_extern && m->functions[fi].is_ui) needs_ui_host_hooks = 1;
     if(needs_inspection)
         fprintf(c, "#include \"ui_inspect.h\"\n");
+    if(needs_ui_host_hooks)
+        emit_ui_host_hook_prototypes(c);
     KirEmitNumbers(c, m, KIR_C);
     /* '#private' imports include here (implementation-only). */
     for(i = 0; i < m->import_count; i++) {

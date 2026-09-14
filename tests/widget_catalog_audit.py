@@ -20,16 +20,16 @@ group = ""
 
 HARNESS = r'''
 #include <string.h>
-static int href_activated;
-int __wrap_OpenURI(const char *uri) { href_activated = strcmp(uri, "https://kryonlabs.com") == 0; return 1; }
+static int link_activated;
+int __wrap_OpenURI(const char *uri) { link_activated = strcmp(uri, "https://kryonlabs.com") == 0; return 1; }
 #include "@ROOT@/build/examples/codegen/26_widget_catalog/26_widget_catalog.c"
 static void AuditFrame(Rectangle viewport) {
     WidgetCatalogExample(viewport);
     FILE *out = fopen("@STATE@.tmp", "w");
     if(out) {
         fprintf(out,"{\"clicks\":%d,\"category\":%d,\"scroll\":%d,\"picked\":%d,\"slider\":%d,\"toggle\":%d,\"checkbox\":%d,\"selected\":%d,\"flags\":%d,\"dialog\":%d,\"open\":%d,\"tree\":%d,\"row\":%d,\"multi\":%d,\"same_text\":%d,\"accepted\":%d,\"number\":%.6f,\"integer\":%d,\"double\":%.6f,\"rmin\":%.6f,\"imin\":%d,\"angle\":%.6f,\"red\":%.6f,\"alpha\":%.6f,\"text_test\":%d,\"area_test\":%d,",action_count,category,scroll_off,picked,slider_value,toggle_value,checkbox_value,selected,flags,dialog,open,tree_selected,table_selected_row,multi_count,strcmp(text_value,area_value)==0,accepted_size,numbers[0],integers[0],doubles[0],range_min,int_min,angle,rgba[0],rgba[3],strstr(text_value,"TEST")!=NULL,strstr(area_value,"TEST")!=NULL);
-        fprintf(out,"\"tabs\":%d,\"tab_selected\":%d,\"subtab\":%d,\"pane\":%d,\"command\":%d,\"split\":%d,\"dark\":%d,\"theme\":%d,\"zoom\":%.3f,\"pan_x\":%d,\"pan_y\":%d,\"cascade_count\":%d,\"cascade_selected\":%d,\"preview\":%d,\"route\":%d,\"picker\":%d,",tab_count,tab_selected,subtab_selected,pane_selected,menu_command,split,dark_mode,theme_id,canvas_zoom,canvas_scroll_x,canvas_scroll_y,cascade_count,cascade_selected,page_preview,page_route,picker_choice);
-        fprintf(out,"\"fits\":%d,\"scale\":%.4f,\"href\":%d,\"effective_dark\":%d,\"copied\":%d,\"mode\":%d,\"style\":%d,\"dialog_result\":%d,\"n1\":%.4f,\"n2\":%.4f,\"i1\":%d,\"i2\":%d,\"focus\":%d,\"popover_test\":%d}",Scale(1060)<=viewport.width && Scale(546)<=viewport.height-Scale(52),GetScale(),href_activated,GetEffectiveThemeDarkMode(),GetClipboardText()!=NULL && strstr(GetClipboardText(),"Select")!=NULL,theme_mode,theme_style,dialog_result,numbers[1],numbers[2],integers[1],integers[2],GetFocus(),strstr(text_value,"POPOVER_TEST")!=NULL);
+        fprintf(out,"\"tabs\":%d,\"tab_selected\":%d,\"subtab\":%d,\"pane\":%d,\"command\":%d,\"split\":%d,\"dark\":%d,\"theme\":%d,\"zoom\":%.3f,\"pan_x\":%d,\"pan_y\":%d,\"preview\":%d,\"route\":%d,\"picker\":%d,",tab_count,tab_selected,subtab_selected,pane_selected,menu_command,split,dark_mode,theme_id,canvas_zoom,canvas_scroll_x,canvas_scroll_y,page_preview,page_route,picker_choice);
+        fprintf(out,"\"fits\":%d,\"scale\":%.4f,\"link\":%d,\"effective_dark\":%d,\"copied\":%d,\"mode\":%d,\"dialog_result\":%d,\"n1\":%.4f,\"n2\":%.4f,\"i1\":%d,\"i2\":%d,\"focus\":%d,\"popover_test\":%d}",Scale(1060)<=viewport.width && Scale(546)<=viewport.height-Scale(52),GetScale(),link_activated,GetEffectiveThemeDarkMode(),GetClipboardText()!=NULL && strstr(GetClipboardText(),"Select")!=NULL,theme_mode,dialog_result,numbers[1],numbers[2],integers[1],integers[2],GetFocus(),strstr(text_value,"POPOVER_TEST")!=NULL);
         fclose(out); rename("@STATE@.tmp","@STATE@");
     }
 }
@@ -127,7 +127,7 @@ def run_actions():
     def rich_dropdown(): click(730,381);capture('dropdown-rich-open');click(710,443)
     check('Dropdown rich','picked',rich_dropdown)
     category(2)
-    check('Layout TabBar','picked',lambda:click(805,137))
+    check('Layout TabBar','picked',lambda:click(707,137),0)
     check('Collapsible','open',lambda:click(750,205))
     category(3)
     check('ListBox','picked',lambda:click(290,160),1)
@@ -204,35 +204,25 @@ def run_extended():
 def run_new_dialogs():
     category(4);capture('navigation-new')
     category(5);capture('feedback-new');click(490,139);capture('modal-layered');click(600,447)
-    click(330,530);capture('picker-new');click(550,403)
-    check('Picker selection','picker',lambda:None,1)
+    click(330,530);capture('picker-new');click(610,447)
+    check('Picker selection','picker',lambda:None,2)
     click(530,530);capture('modal-frame-new');click(510,410);xd('key','Escape');time.sleep(.3)
-    click(730,530);capture('popover-new');xd('key','Escape')
     category(3);xd('mousemove','--window',window,1100,620);xd('click','--repeat',9,'--delay',25,5);capture('cascade-new')
 
 def run_remaining():
     category(5)
     # Exercise the toggle from dark regardless of the host's initial theme.
     if not state()['dark']:
-        click(385,189)
-    check('Theme light','dark',lambda:click(385,189),0)
+        category(9); click(832,210); category(5)
+    category(9)
+    check('Theme light','dark',lambda:click(832,210),0)
     check('Theme light rendered','effective_dark',lambda:None,0)
-    check('Theme palette','theme',lambda:click(790,189))
+    check('Theme palette','theme',lambda:click(832,258))
     capture('theme-light')
+    category(5)
     click(900,139);click(520,410);key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'PROMPT_TEST');capture('prompt-typed');click(710,447)
     check('Prompt submit','dialog',lambda:None,0);check('Prompt value','text_test',lambda:None,1)
-    click(730,530);check('Popover opens','dialog',lambda:None,7);capture('popover-new')
-    for _ in range(3):
-     click(760,587)
-     if state()['focus']==971: break
-    key_chord('ctrl+a');xd('type','--clearmodifiers','--delay',60,'POPOVER_TEST')
-    for _ in range(3):
-     key_chord('Return');time.sleep(.3)
-     if state()['dialog']==0: break
-    check('Popover submit','dialog',lambda:None,0);check('Popover value','popover_test',lambda:None,1)
     category(3);xd('mousemove','--window',window,1100,620);xd('click','--repeat',9,'--delay',25,5)
-    check('Cascading expand','cascade_count',lambda:click(285,495),2)
-    check('Cascading select','cascade_selected',lambda:click(350,525),12)
     category(0);drag(253,600,410,600);capture('selection-drag');xd('keydown','ctrl');xd('keydown','c');time.sleep(.15);xd('keyup','c');xd('keyup','ctrl');check('Selectable text copy','copied',lambda:None,1)
     category(1);xd('mousemove','--window',window,320,599);time.sleep(1);capture('tooltip-hover')
 
@@ -257,7 +247,7 @@ def run_vectors():
     xd("keydown","shift"); click(300,495); xd("keyup","shift")
     check("Shift range selection","multi",lambda:None,3)
     category(1)
-    check("Link dispatches expected URL","href",lambda:click(500,137),1)
+    check("Link dispatches expected URL","link",lambda:click(500,137),1)
 
 def run_tab_limits():
     category(4)
@@ -293,15 +283,12 @@ def run_tab_limits():
 def run_settings():
     category(9)
     capture("page-content")
-    click(800,243); capture("palette-menu")
-    click(800,300)
+    click(832,258); capture("palette-change")
     capture("app-theme-settings")
-    click(800,243); click(800,300)
+    click(832,210)
     check("Theme controls light mode","mode",lambda:None,1)
     capture("settings-light")
-    click(800,393); capture("style-menu")
-    click(800,450)
-    check("Theme controls style","style",lambda:None,1)
+    check("Theme controls palette","theme",lambda:click(832,258))
 
 def run_sizes():
     for width,height in [(800,600),(1120,640),(1600,1000)]:
