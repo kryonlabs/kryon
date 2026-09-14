@@ -590,6 +590,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     int pressed;
     int hovered;
     int down;
+    InputPointerInteraction interaction;
     if(w < min_w)
         w = min_w;
     if(h < min_h)
@@ -615,18 +616,20 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     WidgetSetBounds(&widget, editor_bounds);
 
     bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
-    hovered = CheckCollisionPointRec(mouse_world, bounds) &&
-              !InputCapturesClick(mouse_world);
+    interaction = InputPointerInteractionFor(
+        CheckCollisionPointRec(mouse_world, bounds) != 0,
+        InputCapturesClick(mouse_world) != 0, !enabled,
+        HoverEffectsEnabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
+    hovered = interaction.active;
     down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
-    if(hovered) {
-        if(enabled)
-            MarkClickable();
-        else
-            MarkDisabled();
-    }
+    if(interaction.active)
+        MarkClickable();
+    if(interaction.disabled_marker)
+        MarkDisabled();
 
-    pressed = enabled && hovered && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    pressed = interaction.activated;
 
     if(pressed) {
         *value = !*value;

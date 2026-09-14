@@ -799,7 +799,7 @@ and host plumbing behind the canonical names.
   table keyboard selection, clear-selection, header sort cycling,
   resize lifecycle/width, clipboard intent, and scroll-into-view policy now route through
   `runtime/table_view.kry`; `Input` numeric kind default format, integer
-  rounding, step dispatch, temp-edit activation, shared pointer interaction, and
+  rounding, step dispatch, temp-edit activation, shared pointer interaction for old immediate helpers, and
   pointer-drag threshold/start/direction policy now route through
   `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
