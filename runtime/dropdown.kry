@@ -594,3 +594,15 @@ PopupDragGesture :: (gesture: PopupGesture, offset: i32, down: bool, inside: boo
     }
     return gesture
 }
+
+DropdownJustOpenedNext :: (just_opened: bool, pointer_pressed: bool) -> bool #export {
+    return just_opened && pointer_pressed
+}
+
+DropdownScrollbarPressedNext :: (pressed: bool, pointer_down: bool,
+    pointer_pressed: bool, max_scroll: i32, pointer_over_scrollbar: bool) -> bool #export {
+    if !pointer_down {
+        return false
+    }
+    return pressed || (max_scroll > 0 && pointer_pressed && pointer_over_scrollbar)
+}

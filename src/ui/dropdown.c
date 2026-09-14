@@ -568,9 +568,10 @@ dropdown_paint_menu(int id)
     int pointer_in_dropdown = CheckCollisionPointRec(mouse, btn_bounds) ||
                               CheckCollisionPointRec(mouse, menu_bounds);
     Rectangle scrollbar_bounds = menu_layout.scrollbar_bounds;
-    if(max_scroll > 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-       CheckCollisionPointRec(mouse, scrollbar_bounds))
-        state->scrollbar_pressed = 1;
+    state->scrollbar_pressed = DropdownScrollbarPressedNext(
+        state->scrollbar_pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0, max_scroll,
+        CheckCollisionPointRec(mouse, scrollbar_bounds) != 0);
 
     state->gesture = PopupDragGesture(state->gesture, state->scroll_offset,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
@@ -606,8 +607,9 @@ dropdown_paint_menu(int id)
         return state->pending_changed;
     }
 
-    if(state->just_opened && !IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        state->just_opened = 0;
+    state->just_opened = DropdownJustOpenedNext(
+        state->just_opened != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
 
     if(CheckCollisionPointRec(mouse, menu_bounds)) {
         float wheel = GetMouseWheelMove();
@@ -736,7 +738,9 @@ dropdown_paint_menu(int id)
     if(clip_started)
         EndClip();
 
-    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) state->scrollbar_pressed = 0;
+    state->scrollbar_pressed = DropdownScrollbarPressedNext(
+        state->scrollbar_pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        false, max_scroll, false);
 
 
     return changed;

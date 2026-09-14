@@ -142,6 +142,14 @@ test_existing_policy(void)
     assert(DropdownCurrentIndexFor(0, 0) == 0);
     assert(ContentHeight(3, 20.0f, 8.0f) == 68);
     assert(WheelOffset(20, 1.0f, 10.0f, 100) == 10);
+    assert(DropdownJustOpenedNext(true, true));
+    assert(!DropdownJustOpenedNext(true, false));
+    assert(!DropdownJustOpenedNext(false, true));
+    assert(DropdownScrollbarPressedNext(false, true, true, 20, true));
+    assert(!DropdownScrollbarPressedNext(false, true, true, 0, true));
+    assert(!DropdownScrollbarPressedNext(false, true, true, 20, false));
+    assert(DropdownScrollbarPressedNext(true, true, false, 0, false));
+    assert(!DropdownScrollbarPressedNext(true, false, false, 20, true));
     assert(rows.first == 1);
     assert(rows.end == 5);
     assert(layout.content_height == 108);

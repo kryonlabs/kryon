@@ -783,8 +783,8 @@ and host plumbing behind the canonical names.
    `runtime/popup_policy.kry` and label text-field row layout into
   `runtime/rows.kry`; InfoRows background/text/separator geometry and
   button-row wrap height/advance now also
-  routes through `runtime/rows.kry`; dropdown panel/option/scrollbar role
-  policy and selected-option appearance now route through `runtime/dropdown.kry`;
+  route through `runtime/rows.kry`; dropdown panel/option/scrollbar role
+  policy, selected-option appearance, and menu transient pointer state now route through `runtime/dropdown.kry`;
   menu selectable-item, submenu activation, pointer item effects,
   wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
