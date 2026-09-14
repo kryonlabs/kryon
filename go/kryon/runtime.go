@@ -4832,15 +4832,15 @@ func modalActionLabel(action ModalAction, index, count int) string {
 
 func (r *runtime) drawActionModal(title, message string, actions []ModalAction, fieldHeight float32, className int32) (int32, Rectangle) {
 	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 2)
+		className, StyleSheet_StyleKindModal(), Modal_ModalPanelRole())
 	titleFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 16)
+		className, StyleSheet_StyleKindModal(), Modal_ModalTitleRole())
 	messageFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 20)
+		className, StyleSheet_StyleKindModal(), Modal_ModalMessageRole())
 	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 17)
+		className, StyleSheet_StyleKindModal(), Modal_ModalActionRole())
 	closeFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 15)
+		className, StyleSheet_StyleKindModal(), Modal_ModalCloseRole())
 	metrics := Modal_ModalMetricsFor(1, panelFrame, titleFrame, messageFrame, actionFrame, closeFrame)
 	messageHeight := int32(0)
 	if message != "" {
@@ -4856,7 +4856,7 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 	titleStyle := unpackStyle(titleFrame.Value)
 	messageStyle := unpackStyle(messageFrame.Value)
 	scrimStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		className, StyleSheet_StyleKindModal(), 19).Value)
+		className, StyleSheet_StyleKindModal(), Modal_ModalScrimRole()).Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
 	titleFont, titleFontID := styleTextFace(titleStyle, Text16)
@@ -4884,7 +4884,7 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 		}
 		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{Bounds: bounds, Label: label,
 			ClassName: className, Tone: tone, Emphasis: emphasis, Disabled: action.Disabled},
-			panel, false, StyleSheet_StyleKindModal(), 17)
+			panel, false, StyleSheet_StyleKindModal(), Modal_ModalActionRole())
 		button.AmbientColor = panelStyle.Background
 		r.record(button)
 		if pressed {

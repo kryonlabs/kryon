@@ -5,6 +5,7 @@
 #include "runtime/focus.h"
 #include "runtime/image.h"
 #include "runtime/menu.h"
+#include "runtime/modal.h"
 #include "runtime/paned_view.h"
 #include "runtime/plot.h"
 #include "runtime/progress.h"
@@ -144,6 +145,12 @@ main(void)
     if(MenuBarRole() != 1 || MenuPopupRole() != 2 ||
        MenuContextRole() != 3) {
         fprintf(stderr, "menu role policy changed\n");
+        return 1;
+    }
+    if(ModalPanelRole() != 2 || ModalTitleRole() != 16 ||
+       ModalActionRole() != 17 || ModalScrimRole() != 19 ||
+       ModalMessageRole() != 20 || ModalCloseRole() != 15) {
+        fprintf(stderr, "modal role policy changed\n");
         return 1;
     }
 

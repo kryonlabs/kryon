@@ -69,6 +69,30 @@ ModalResultDecision :: struct {
     result: i32
 }
 
+ModalPanelRole :: () -> i32 #export {
+    return 2
+}
+
+ModalTitleRole :: () -> i32 #export {
+    return 16
+}
+
+ModalActionRole :: () -> i32 #export {
+    return 17
+}
+
+ModalScrimRole :: () -> i32 #export {
+    return 19
+}
+
+ModalMessageRole :: () -> i32 #export {
+    return 20
+}
+
+ModalCloseRole :: () -> i32 #export {
+    return 15
+}
+
 ModalHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }

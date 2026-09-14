@@ -70,6 +70,36 @@ type ModalResultDecision struct {
 	Result int32
 }
 
+func Modal_ModalPanelRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func Modal_ModalTitleRole() int32 {
+	var value_0 int32 = 16
+	return value_0
+}
+
+func Modal_ModalActionRole() int32 {
+	var value_0 int32 = 17
+	return value_0
+}
+
+func Modal_ModalScrimRole() int32 {
+	var value_0 int32 = 19
+	return value_0
+}
+
+func Modal_ModalMessageRole() int32 {
+	var value_0 int32 = 20
+	return value_0
+}
+
+func Modal_ModalCloseRole() int32 {
+	var value_0 int32 = 15
+	return value_0
+}
+
 func Modal_ModalHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
