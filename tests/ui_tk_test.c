@@ -541,6 +541,8 @@ test_button_policy(void)
               fallback_policy.hover_border_lighten, 40);
     check_float("button fallback outline width",
                 fallback_policy.outline_width, 1.0f);
+    check_int("button fallback outline alpha",
+              fallback_policy.outline_alpha, 255);
     check_int("button fallback outline light",
               fallback_policy.outline_adjust, 36);
 

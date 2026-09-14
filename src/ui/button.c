@@ -240,7 +240,7 @@ ui_draw_termi_button_outline(Rectangle bounds, Color border, int hovered,
         outline = DarkenColor(outline, -policy.outline_adjust);
     else
         outline = LightenColor(outline, policy.outline_adjust);
-    outline.a = 255;
+    outline.a = policy.outline_alpha;
     DrawRectangleLinesEx(bounds, policy.outline_width, outline);
 }
 

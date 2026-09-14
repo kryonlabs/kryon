@@ -855,7 +855,8 @@ and host plumbing behind the canonical names.
   `runtime/title_bar.kry`; progress draw radius normalization now routes
   through `runtime/progress.kry`; default text selection alpha now routes
   through `runtime/text.kry`; default disabled alpha and focus outline alpha
-  now route through `runtime/style.kry`. Continue by reducing raw
+  now route through `runtime/style.kry`; termi button fallback outline alpha
+  now routes through `runtime/button.kry`. Continue by reducing raw
   native constants in shared immediate-mode helpers. Icon slider popup and
   bottom icon row style icon sizing now route through `runtime/toolbar.kry`;
   icon action style size/radius policy now routes through `runtime/button.kry`;

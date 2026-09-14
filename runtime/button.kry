@@ -119,6 +119,7 @@ ButtonFallbackPolicy :: struct {
     termi_border_lighten: i32
     termi_hover_border_lighten: i32
     outline_width: float
+    outline_alpha: u8
     outline_adjust: i32
     outline_white: bool
 }
@@ -276,6 +277,7 @@ ButtonFallbackPolicyFor :: (hovered: bool, pressed: bool, disabled: bool,
     policy.termi_border_lighten = 58
     policy.termi_hover_border_lighten = 78
     policy.outline_width = hovered || pressed ? 2.0 : 1.0
+    policy.outline_alpha = (u8)255
     policy.outline_adjust = 36
     if disabled {
         policy.outline_adjust = -45
