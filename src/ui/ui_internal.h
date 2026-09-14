@@ -387,8 +387,8 @@ void RenderNonSelectableText(const char *text, int x, int y, int font_size,
 void DrawScaledText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
-void DrawLeftControlTextInRect(const char *text, Rectangle rect,
-                                 int font_size, Color color);
+void RenderControlTextInRect(const char *text, Rectangle rect,
+                             int font_size, Color color);
 void DrawFittedTextInRect(const char *text, Rectangle rect,
                           int preferred_size, int min_size, Color color);
 int MeasureSelectableTextBlock(const char *text, int width, int font_size,

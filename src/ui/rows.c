@@ -114,8 +114,8 @@ RenderInfoRows(InfoRowsProps rows)
         if(i > 0)
             DrawLine(rows.x, row_layout.separator_y, rows.x + rows.width,
                      row_layout.separator_y, separator);
-        DrawLeftControlTextInRect(row->text ? row->text : "",
-                                  row_layout.text_bounds, font, text);
+        RenderControlTextInRect(row->text ? row->text : "",
+                                row_layout.text_bounds, font, text);
     }
     PopTextFont(font_token);
 }
@@ -395,9 +395,8 @@ RowFormSpinbox(RowForm *form, SpinboxRowProps row)
     label_color = row.label_color.a != 0 ? row.label_color
                                          : text_style.foreground;
 
-    DrawLeftControlTextInRect(row.label != NULL ? row.label : "",
-                                layout.label_bounds,
-                                label_font, label_color);
+    RenderControlTextInRect(row.label != NULL ? row.label : "",
+                            layout.label_bounds, label_font, label_color);
     spinbox = row.spinbox;
     spinbox.bounds = layout.spinbox_bounds;
     return Spinbox(spinbox);

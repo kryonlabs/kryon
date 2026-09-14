@@ -732,6 +732,19 @@ if [ -n "$public_text_helper_matches" ]; then
     exit 1
 fi
 
+internal_text_helper_matches="$(
+    rg -n '\bDrawLeftControlTextInRect\b' \
+        src/ui include \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$internal_text_helper_matches" ]; then
+    echo "Internal text helpers must use clean render/text names, not stale draw-prefixed control names:"
+    echo "$internal_text_helper_matches"
+    exit 1
+fi
+
 public_widget_registration_matches="$(
     rg -n '\b(BeginWidget|EndWidget|WidgetSetBounds|WidgetSetAction|WidgetFlagMovable|WidgetFlagResizable|WidgetFlagReadOnly|WidgetFlagTemporaryId)\b|include/ui_widget\.h' \
         include \

@@ -577,7 +577,7 @@ RenderTabBar(TabBarProps bar)
         Rectangle text_rect = content_layout.text_bounds;
 
         if(can_draw && text_rect.width > 0 && has_label)
-            DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
+            RenderControlTextInRect(tab->label, text_rect, font, text_color);
 
         if(can_draw && tab->closeable && close_size > 0) {
             TabBarCloseLabelPaint close_label;

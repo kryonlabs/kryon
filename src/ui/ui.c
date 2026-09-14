@@ -1482,7 +1482,8 @@ FitFontSize(const char *text, int max_width,
 }
 
 void
-DrawLeftControlTextInRect(const char *text, Rectangle rect, int font_size, Color color)
+RenderControlTextInRect(const char *text, Rectangle rect, int font_size,
+                        Color color)
 {
     const char *value = text != NULL ? text : "";
     float scale = (float)Scale(1000) / 1000.0f;
