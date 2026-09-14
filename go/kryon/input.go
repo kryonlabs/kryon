@@ -186,6 +186,76 @@ func Input_InputEffectiveStep(step float64, step_fast float64, fast bool) float6
 	return value_6
 }
 
+func Input_InputKindIsFloat(kind NumericValueKind) bool {
+	var value_0 NumericValueKind = NumericValueKind(kind)
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(NumericFloat)
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
+	var value_4 bool = value_1 == value_3
+	return value_4
+}
+
+func Input_InputKindIsInt(kind NumericValueKind) bool {
+	var value_0 NumericValueKind = NumericValueKind(kind)
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(NumericInt)
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
+	var value_4 bool = value_1 == value_3
+	return value_4
+}
+
+func Input_InputKindIsDouble(kind NumericValueKind) bool {
+	var value_0 NumericValueKind = NumericValueKind(kind)
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 int32 = int32(NumericDouble)
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
+	var value_4 bool = value_1 == value_3
+	return value_4
+}
+
+func Input_InputDefaultFormat(kind NumericValueKind) string {
+	var value_0 NumericValueKind = NumericValueKind(kind)
+	var value_1 bool = Input_InputKindIsInt(value_0)
+	if value_1 {
+		var value_2 string = "%d"
+		return value_2
+	}
+	var value_3 NumericValueKind = NumericValueKind(kind)
+	var value_4 bool = Input_InputKindIsDouble(value_3)
+	if value_4 {
+		var value_5 string = "%.6f"
+		return value_5
+	}
+	var value_6 string = "%.3f"
+	return value_6
+}
+
+func Input_InputRoundValueForKind(kind NumericValueKind, value float64) float64 {
+	var value_0 NumericValueKind = NumericValueKind(kind)
+	var value_1 bool = Input_InputKindIsInt(value_0)
+	if value_1 {
+		var value_2 float64 = value
+		var value_3 float64 = 0.0
+		var value_4 bool = value_2 < value_3
+		if value_4 {
+			var value_5 float64 = value
+			var value_6 float64 = 0.5
+			var value_7 float64 = value_5 - value_6
+			var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+			var value_9 float64 = float64(value_8)
+			return value_9
+		}
+		var value_10 float64 = value
+		var value_11 float64 = 0.5
+		var value_12 float64 = value_10 + value_11
+		var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+		var value_14 float64 = float64(value_13)
+		return value_14
+	}
+	var value_15 float64 = value
+	return value_15
+}
+
 func Input_InputContinuousStepValue(value float32, step float32, step_fast float32, direction int32, fast bool) InputContinuousStep {
 	var result InputContinuousStep = InputContinuousStep{}
 	var value_0 float32 = value
@@ -303,4 +373,61 @@ func Input_InputStepValue(value float64, step float64, step_fast float64, direct
 	result.Changed = value_22
 	var value_23 InputStep = result
 	return value_23
+}
+
+func Input_InputStepValueForKind(kind NumericValueKind, value float64, step float64, step_fast float64, direction int32, fast bool) InputStep {
+	var result InputStep = InputStep{}
+	var value_0 float64 = value
+	result.Value = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 NumericValueKind = NumericValueKind(kind)
+	var value_3 bool = Input_InputKindIsInt(value_2)
+	if value_3 {
+		var value_4 float64 = value
+		var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+		var value_6 float64 = step
+		var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+		var value_8 float64 = step_fast
+		var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
+		var value_10 int32 = direction
+		var value_11 bool = fast
+		var value_12 InputDiscreteStep = Input_InputDiscreteStepValue(value_5, value_7, value_9, value_10, value_11)
+		var stepped InputDiscreteStep = value_12
+		var value_13 int32 = stepped.Value
+		var value_14 float64 = float64(value_13)
+		result.Value = value_14
+		var value_15 bool = stepped.Changed
+		result.Changed = value_15
+		var value_16 InputStep = result
+		return value_16
+	}
+	var value_17 NumericValueKind = NumericValueKind(kind)
+	var value_18 bool = Input_InputKindIsFloat(value_17)
+	if value_18 {
+		var value_19 float64 = value
+		var value_20 float32 = float32(value_19)
+		var value_21 float64 = step
+		var value_22 float32 = float32(value_21)
+		var value_23 float64 = step_fast
+		var value_24 float32 = float32(value_23)
+		var value_25 int32 = direction
+		var value_26 bool = fast
+		var value_27 InputContinuousStep = Input_InputContinuousStepValue(value_20, value_22, value_24, value_25, value_26)
+		var continuous InputContinuousStep = value_27
+		var value_28 float32 = continuous.Value
+		var value_29 float64 = float64(value_28)
+		result.Value = value_29
+		var value_30 bool = continuous.Changed
+		result.Changed = value_30
+		var value_31 InputStep = result
+		return value_31
+	}
+	var value_32 float64 = value
+	var value_33 float64 = step
+	var value_34 float64 = step_fast
+	var value_35 int32 = direction
+	var value_36 bool = fast
+	var value_37 InputStep = Input_InputStepValue(value_32, value_33, value_34, value_35, value_36)
+	return value_37
 }

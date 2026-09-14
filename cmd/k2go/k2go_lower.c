@@ -381,7 +381,9 @@ typedef struct {
     const KirModule *module;
 } K2goGlobalFunction;
 
-static K2goGlobalFunction g_functions[512];
+enum { K2GO_GLOBAL_FUNCTION_MAX = 4096 };
+
+static K2goGlobalFunction g_functions[K2GO_GLOBAL_FUNCTION_MAX];
 static int g_function_count;
 
 static int
@@ -421,7 +423,7 @@ k2go_build_global_functions(const KirProgram *const *progs, int prog_count)
                 const KirFunction *fn = &m->functions[fi];
                 char fname[K2GO_NAME_MAX];
 
-                if(fn->is_extern || g_function_count >= 512)
+                if(fn->is_extern || g_function_count >= K2GO_GLOBAL_FUNCTION_MAX)
                     continue;
                 kir_camel_ident(fn->name, fname, sizeof(fname));
                 snprintf(g_functions[g_function_count].kry,
@@ -2225,8 +2227,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(strlen(constants[ci].c) == il &&
                        strncmp(constants[ci].c, ident, il) == 0) {
                         size_t gl = strlen(constants[ci].go);
-                        int written = snprintf(dst + dn, dst_size - dn,
-                                               "%s.", K2GO_RUNTIME_PKG);
+                        int written = runtime_output ? 0 :
+                            snprintf(dst + dn, dst_size - dn,
+                                     "%s.", K2GO_RUNTIME_PKG);
                         if(written > 0)
                             dn += (size_t)written;
                         if(dn + gl + 1 < dst_size) {
@@ -2274,9 +2277,50 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             /* runtime call? Capitalized identifiers route to the package API. */
             if(isupper((unsigned char)ident[0]) && *kir_skip_ws(q) == '(' &&
                sfi < 0) {
+                if(runtime_output) {
+                    int match = -1;
+
+                    for(int ii = 0; ii < m->import_count && match < 0; ii++) {
+                        char import_guard[K2GO_NAME_MAX];
+
+                        if(m->imports[ii].kind != KIR_IMPORT_HEADER &&
+                           m->imports[ii].kind != KIR_IMPORT_MODULE)
+                            continue;
+                        kir_camel_ident(m->imports[ii].target, import_guard,
+                                        sizeof(import_guard));
+                        for(int gi = 0; gi < g_function_count; gi++) {
+                            if(strcmp(g_functions[gi].guard, import_guard) == 0 &&
+                               strlen(g_functions[gi].kry) == il &&
+                               strncmp(g_functions[gi].kry, ident, il) == 0) {
+                                match = gi;
+                                break;
+                            }
+                        }
+                    }
+                    for(int gi = 0; gi < g_function_count; gi++) {
+                        if(match >= 0)
+                            break;
+                        if(strlen(g_functions[gi].kry) == il &&
+                           strncmp(g_functions[gi].kry, ident, il) == 0) {
+                            match = gi;
+                        }
+                    }
+                    if(match >= 0) {
+                        size_t fl = strlen(g_functions[match].go);
+
+                        if(dn + fl + 16 < dst_size) {
+                            memcpy(dst + dn, g_functions[match].go, fl);
+                            dn += fl;
+                            dst[dn++] = '(';
+                        }
+                        p = kir_skip_ws(q) + 1;
+                        continue;
+                    }
+                }
                 {
-                    int written = snprintf(dst + dn, dst_size - dn,
-                                           "%s.", K2GO_RUNTIME_PKG);
+                    int written = runtime_output ? 0 :
+                        snprintf(dst + dn, dst_size - dn,
+                                 "%s.", K2GO_RUNTIME_PKG);
 
                     if(written > 0)
                         dn += (size_t)written;

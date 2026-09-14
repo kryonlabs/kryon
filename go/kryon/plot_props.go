@@ -2,6 +2,13 @@
 package kryon
 
 // #import kryon_compat.generated.h
+type PlotMode int32
+
+const (
+	PlotLines PlotMode = 0
+	PlotBars  PlotMode = 1
+)
+
 type PlotProps struct {
 	Bounds     Rectangle
 	ClassName  int32
@@ -12,5 +19,5 @@ type PlotProps struct {
 	Overlay    string
 	ScaleMin   float32
 	ScaleMax   float32
-	Mode       int32
+	Mode       PlotMode
 }

@@ -44,6 +44,21 @@ type InfoIndicatorMetrics struct {
 	Diameter int32
 }
 
+type ButtonFallbackPolicy struct {
+	Radius                  float32
+	DisabledBackgroundAlpha uint8
+	DisabledForegroundAlpha uint8
+	FallbackBorderLighten   int32
+	HoverBorderLighten      int32
+	PressedBackgroundDarken int32
+	HoverBackgroundLighten  int32
+	TermiBorderLighten      int32
+	TermiHoverBorderLighten int32
+	OutlineWidth            float32
+	OutlineAdjust           int32
+	OutlineWhite            bool
+}
+
 type ButtonSplitLayout struct {
 	Width        float32
 	ActionWidth  float32
@@ -470,6 +485,76 @@ func Button_InfoIndicatorMetricsFor(requested_diameter int32, scale float32, fac
 	}
 	var value_24 InfoIndicatorMetrics = metrics
 	return value_24
+}
+
+func Button_ButtonFallbackPolicyFor(hovered bool, pressed bool, disabled bool, cues bool, termi bool) ButtonFallbackPolicy {
+	var policy ButtonFallbackPolicy = ButtonFallbackPolicy{}
+	var value_0 float32 = 0.06
+	policy.Radius = value_0
+	var value_1 int32 = 120
+	var value_2 uint8 = uint8(number_runtime_bits(uint64(value_1), uint64(0), 8, false, 0))
+	policy.DisabledBackgroundAlpha = value_2
+	var value_3 int32 = 150
+	var value_4 uint8 = uint8(number_runtime_bits(uint64(value_3), uint64(0), 8, false, 0))
+	policy.DisabledForegroundAlpha = value_4
+	var value_5 int32 = 32
+	policy.FallbackBorderLighten = value_5
+	var value_6 bool = cues
+	var value_7 int32 = 0
+	if value_6 {
+		var value_8 int32 = 54
+		value_7 = value_8
+	} else {
+		var value_9 int32 = 40
+		value_7 = value_9
+	}
+	policy.HoverBorderLighten = value_7
+	var value_10 int32 = 18
+	policy.PressedBackgroundDarken = value_10
+	var value_11 int32 = 6
+	policy.HoverBackgroundLighten = value_11
+	var value_12 int32 = 58
+	policy.TermiBorderLighten = value_12
+	var value_13 int32 = 78
+	policy.TermiHoverBorderLighten = value_13
+	var value_14 bool = hovered
+	var value_15 bool = value_14
+	if !value_15 {
+		var value_16 bool = pressed
+		value_15 = value_16
+	}
+	var value_17 float32 = 0
+	if value_15 {
+		var value_18 float32 = 2.0
+		value_17 = value_18
+	} else {
+		var value_19 float32 = 1.0
+		value_17 = value_19
+	}
+	policy.OutlineWidth = value_17
+	var value_20 int32 = 36
+	policy.OutlineAdjust = value_20
+	var value_21 bool = disabled
+	if value_21 {
+		var value_22 int32 = -45
+		policy.OutlineAdjust = value_22
+	} else {
+		var value_23 bool = pressed
+		if value_23 {
+			var value_24 int32 = 0
+			policy.OutlineAdjust = value_24
+			var value_25 bool = true
+			policy.OutlineWhite = value_25
+		} else {
+			var value_26 bool = hovered
+			if value_26 {
+				var value_27 int32 = 72
+				policy.OutlineAdjust = value_27
+			}
+		}
+	}
+	var value_28 ButtonFallbackPolicy = policy
+	return value_28
 }
 
 func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {

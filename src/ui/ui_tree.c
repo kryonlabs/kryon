@@ -2851,7 +2851,7 @@ void
 Plot(PlotProps plot)
 {
     ui_tree_add(0, WIDGET_CUSTOM, plot.bounds, &plot);
-    if(plot.mode == 1)
+    if(plot.mode == PlotBars)
         RenderPlotHistogram(plot);
     else
         RenderPlotLines(plot);

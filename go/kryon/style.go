@@ -336,6 +336,32 @@ func Style_ResolveFont(requested int32, inherited int32, fallback int32) int32 {
 	return value_12
 }
 
+func Style_StyleFontValue(fields uint32, font_size float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 int32 = int32(StyleFontSize)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_4 int32 = 0
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 bool = value_3 == value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 float32 = font_size
+	var value_9 float32 = 0.0
+	var value_10 bool = value_8 <= value_9
+	if value_10 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 float32 = font_size
+	var value_13 float32 = 0.5
+	var value_14 float32 = value_12 + value_13
+	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
+	return value_15
+}
+
 func Style_FitHeight(requested float32, minimum float32, content float32, padding float32) float32 {
 	var value_0 float32 = requested
 	var value_1 float32 = 0.0

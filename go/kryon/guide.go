@@ -462,6 +462,77 @@ func Guide_GuideChromeHeight(metrics GuideMetrics) int32 {
 	return value_12
 }
 
+func Guide_GuideLineGapFor(requested_line_gap int32, metrics GuideMetrics) int32 {
+	var value_0 int32 = requested_line_gap
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = requested_line_gap
+		return value_3
+	}
+	var value_4 int32 = metrics.DefaultLineGap
+	return value_4
+}
+
+func Guide_GuideParagraphFontFor(requested_font int32, style_font int32, default_font int32) int32 {
+	var value_0 int32 = default_font
+	var font int32 = value_0
+	var value_1 int32 = requested_font
+	var value_2 int32 = 0
+	var value_3 bool = value_1 > value_2
+	if value_3 {
+		var value_4 int32 = requested_font
+		font = value_4
+	}
+	var value_5 int32 = style_font
+	var value_6 int32 = 0
+	var value_7 bool = value_5 > value_6
+	if value_7 {
+		var value_8 int32 = style_font
+		font = value_8
+	}
+	var value_9 int32 = font
+	return value_9
+}
+
+func Guide_GuideParagraphHeightLimit(max_tip_height int32, metrics GuideMetrics) int32 {
+	var value_0 int32 = max_tip_height
+	var value_1 GuideMetrics = metrics
+	var value_2 int32 = Guide_GuideChromeHeight(value_1)
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, true, 2))
+	return value_3
+}
+
+func Guide_GuideShouldShrinkParagraphFont(paragraph_height int32, height_limit int32, font int32, min_font int32) bool {
+	var value_0 int32 = font
+	var value_1 int32 = min_font
+	var value_2 bool = value_0 > value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = paragraph_height
+		var value_5 int32 = height_limit
+		var value_6 bool = value_4 > value_5
+		value_3 = value_6
+	}
+	return value_3
+}
+
+func Guide_GuideShrinkParagraphFontStep(paragraph_height int32, height_limit int32, font int32, min_font int32) int32 {
+	var value_0 int32 = paragraph_height
+	var value_1 int32 = height_limit
+	var value_2 int32 = font
+	var value_3 int32 = min_font
+	var value_4 bool = Guide_GuideShouldShrinkParagraphFont(value_0, value_1, value_2, value_3)
+	if value_4 {
+		var value_5 int32 = font
+		var value_6 int32 = 1
+		var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
+		return value_7
+	}
+	var value_8 int32 = font
+	return value_8
+}
+
 func Guide_GuideTipHeight(paragraph_height int32, max_tip_height int32, metrics GuideMetrics) int32 {
 	var value_0 GuideMetrics = metrics
 	var value_1 int32 = Guide_GuideChromeHeight(value_0)

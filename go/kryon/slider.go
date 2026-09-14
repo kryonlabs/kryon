@@ -696,6 +696,32 @@ func Slider_SliderClampRatio(ratio float32) float32 {
 	return value_8
 }
 
+func Slider_SliderPointerRatio(pointer float32, origin float32, length float32, inverted bool) float32 {
+	var value_0 float32 = length
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 0.0
+		return value_3
+	}
+	var value_4 float32 = pointer
+	var value_5 float32 = origin
+	var value_6 float32 = value_4 - value_5
+	var value_7 float32 = length
+	var value_8 float32 = value_6 / value_7
+	var ratio float32 = value_8
+	var value_9 bool = inverted
+	if value_9 {
+		var value_10 float32 = 1.0
+		var value_11 float32 = ratio
+		var value_12 float32 = value_10 - value_11
+		ratio = value_12
+	}
+	var value_13 float32 = ratio
+	var value_14 float32 = Slider_SliderClampRatio(value_13)
+	return value_14
+}
+
 func Slider_SliderRatio(value float32, minimum float32, maximum float32) float32 {
 	var value_0 float32 = maximum
 	var value_1 float32 = minimum
@@ -877,6 +903,18 @@ func Slider_SliderDiscreteValue(minimum int32, maximum int32, ratio float32) int
 	var value_19 int64 = int64(number_runtime_bits(uint64(value_10), uint64(value_18), 64, true, 1))
 	var value_20 int32 = int32(number_runtime_bits(uint64(value_19), uint64(0), 32, true, 0))
 	return value_20
+}
+
+func Slider_SliderDiscretePointerValue(pointer float32, origin float32, length float32, minimum int32, maximum int32, inverted bool) int32 {
+	var value_0 int32 = minimum
+	var value_1 int32 = maximum
+	var value_2 float32 = pointer
+	var value_3 float32 = origin
+	var value_4 float32 = length
+	var value_5 bool = inverted
+	var value_6 float32 = Slider_SliderPointerRatio(value_2, value_3, value_4, value_5)
+	var value_7 int32 = Slider_SliderDiscreteValue(value_0, value_1, value_6)
+	return value_7
 }
 
 func Slider_SliderDiscreteKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderDiscreteStep {

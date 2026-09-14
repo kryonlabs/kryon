@@ -93,6 +93,12 @@ type NavigationBarConfigRowLayout struct {
 	RemoveBounds   Rectangle
 }
 
+type NavigationBarConfigCounts struct {
+	RouteCount    int32
+	MaxRouteCount int32
+	OptionCount   int32
+}
+
 func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -106,6 +112,86 @@ func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	var value_6 float32 = value_4 * value_5
 	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
 	return value_7
+}
+
+func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) int32 {
+	var value_0 int32 = style_font
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = style_font
+		return value_3
+	}
+	var value_4 int32 = default_font
+	return value_4
+}
+
+func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_count int32, option_count int32, slot_limit int32) NavigationBarConfigCounts {
+	var counts NavigationBarConfigCounts = NavigationBarConfigCounts{}
+	var value_0 int32 = slot_limit
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 16
+		slot_limit = value_3
+	}
+	var value_4 int32 = max_route_count
+	var value_5 int32 = 0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 int32 = route_count
+		max_route_count = value_7
+	}
+	var value_8 int32 = max_route_count
+	var value_9 int32 = slot_limit
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = slot_limit
+		max_route_count = value_11
+	}
+	var value_12 int32 = max_route_count
+	var value_13 int32 = 0
+	var value_14 bool = value_12 < value_13
+	if value_14 {
+		var value_15 int32 = 0
+		max_route_count = value_15
+	}
+	var value_16 int32 = route_count
+	var value_17 int32 = 0
+	var value_18 bool = value_16 < value_17
+	if value_18 {
+		var value_19 int32 = 0
+		route_count = value_19
+	}
+	var value_20 int32 = route_count
+	var value_21 int32 = max_route_count
+	var value_22 bool = value_20 > value_21
+	if value_22 {
+		var value_23 int32 = max_route_count
+		route_count = value_23
+	}
+	var value_24 int32 = option_count
+	var value_25 int32 = 0
+	var value_26 bool = value_24 < value_25
+	if value_26 {
+		var value_27 int32 = 0
+		option_count = value_27
+	}
+	var value_28 int32 = option_count
+	var value_29 int32 = slot_limit
+	var value_30 bool = value_28 > value_29
+	if value_30 {
+		var value_31 int32 = slot_limit
+		option_count = value_31
+	}
+	var value_32 int32 = route_count
+	counts.RouteCount = value_32
+	var value_33 int32 = max_route_count
+	counts.MaxRouteCount = value_33
+	var value_34 int32 = option_count
+	counts.OptionCount = value_34
+	var value_35 NavigationBarConfigCounts = counts
+	return value_35
 }
 
 func NavigationBar_NavigationBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {

@@ -8,6 +8,99 @@ type LayoutMetrics struct {
 	Padding int32
 }
 
+type CenteredColumnLayout struct {
+	X     int32
+	Width int32
+}
+
+func Layout_LayoutClamp(value int32, min_value int32, max_value int32) int32 {
+	var value_0 int32 = value
+	var out int32 = value_0
+	var value_1 int32 = out
+	var value_2 int32 = min_value
+	var value_3 bool = value_1 < value_2
+	if value_3 {
+		var value_4 int32 = min_value
+		out = value_4
+	}
+	var value_5 int32 = out
+	var value_6 int32 = max_value
+	var value_7 bool = value_5 > value_6
+	if value_7 {
+		var value_8 int32 = max_value
+		out = value_8
+	}
+	var value_9 int32 = out
+	return value_9
+}
+
+func Layout_CenteredColumnFor(view_width int32, max_width int32, side_padding int32) CenteredColumnLayout {
+	var layout CenteredColumnLayout = CenteredColumnLayout{}
+	var value_0 int32 = view_width
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		view_width = value_3
+	}
+	var value_4 int32 = max_width
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		max_width = value_7
+	}
+	var value_8 int32 = side_padding
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		side_padding = value_11
+	}
+	var value_12 int32 = view_width
+	var value_13 int32 = side_padding
+	var value_14 int32 = 2
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 2))
+	var available int32 = value_16
+	var value_17 int32 = available
+	var value_18 int32 = 0
+	var value_19 bool = value_17 < value_18
+	if value_19 {
+		var value_20 int32 = 0
+		available = value_20
+	}
+	var value_21 int32 = max_width
+	layout.Width = value_21
+	var value_22 int32 = layout.Width
+	var value_23 int32 = available
+	var value_24 bool = value_22 > value_23
+	if value_24 {
+		var value_25 int32 = available
+		layout.Width = value_25
+	}
+	var value_26 int32 = view_width
+	var value_27 int32 = layout.Width
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
+	var value_29 int32 = 2
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 4))
+	layout.X = value_30
+	var value_31 CenteredColumnLayout = layout
+	return value_31
+}
+
+func Layout_PageSidePaddingFor(view_width int32) int32 {
+	var value_0 int32 = view_width
+	var value_1 int32 = 50
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 4))
+	var padding int32 = value_2
+	var value_3 int32 = padding
+	var value_4 int32 = 12
+	var value_5 int32 = 24
+	var value_6 int32 = Layout_LayoutClamp(value_3, value_4, value_5)
+	return value_6
+}
+
 func Layout_LayoutMetricsFor(bounds Rectangle, gap int32, padding int32) LayoutMetrics {
 	var metrics LayoutMetrics = LayoutMetrics{}
 	var value_0 int32 = gap

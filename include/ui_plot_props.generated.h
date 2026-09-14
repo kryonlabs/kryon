@@ -21,6 +21,11 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "kryon_compat.generated.h"
 
+typedef enum PlotMode {
+    PlotLines = 0,
+    PlotBars = 1,
+} PlotMode;
+
 typedef struct PlotProps {
     Rectangle bounds;
     int32_t class_name;
@@ -31,7 +36,7 @@ typedef struct PlotProps {
     const char* overlay;
     float scale_min;
     float scale_max;
-    int32_t mode;
+    PlotMode mode;
 } PlotProps;
 
 #endif /* K_RUNTIME_PLOT_PROPS_H */

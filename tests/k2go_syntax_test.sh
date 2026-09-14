@@ -298,7 +298,7 @@ App :: () #ui {
     Dropdown((DropdownProps){.bounds = {Scale(4), Scale(210), Scale(120), Scale(24)}, .id = 11, .options = choices, .option_count = 3, .selected_index = &pick})
     Progress((ProgressProps){{Scale(140), Scale(210), Scale(100), Scale(10)}, 0, 100, nums[0] + scalar, ""})
     Plot((PlotProps){.bounds = {Scale(250), Scale(210), Scale(100), Scale(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
-    Plot((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1, .mode = 1})
+    Plot((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1, .mode = PlotBars})
     Drag((DragProps){.bounds = {Scale(250), Scale(298), Scale(100), Scale(28)}, .id = 28, .label = "Float", .kind = NumericFloat, .float_values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0, .max = 1.0})
     Drag((DragProps){.bounds = {Scale(250), Scale(330), Scale(100), Scale(28)}, .id = 29, .label = "Int", .kind = NumericInt, .int_values = nums, .value_count = 2, .speed = 1.0f, .min = 0.0, .max = 10.0})
     Drag((DragProps){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .kind = NumericFloat, .mode = DragRange, .float_min = &drag_continuous_min, .float_max = &drag_continuous_max, .speed = 0.1f, .min = 0.0, .max = 10.0, .format_max = "max %.1f"})
@@ -615,7 +615,7 @@ grep -q 'kr.TabBar(kr.TabBarProps{.*ID: int32(260)' "$out"
 grep -q 'kr.ListBox(kr.ListBoxProps{' "$out"
 grep -q 'kr.TreeView(kr.TreeViewProps{.*Items: tree_items\[:\].*SelectedID: &st.Pick' "$out"
 grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*ValueCount: int32(4)' "$out"
-grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: int32(1).*Mode: int32(1)' "$out"
+grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: int32(1).*Mode: kr.PlotBars' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Kind: kr.NumericFloat.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Kind: kr.NumericInt.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Mode: kr.DragRange.*FloatMin: &st.DragContinuousMin.*FloatMax: &st.DragContinuousMax.*FormatMax: "max %.1f"' "$out"

@@ -537,6 +537,13 @@ func Reorder_ReorderDraggedCenterY(pointer_y int32, press_offset_y int32, item_h
 	return value_7
 }
 
+func Reorder_ReorderItemMatches(candidate_id int32, item_id int32) bool {
+	var value_0 int32 = candidate_id
+	var value_1 int32 = item_id
+	var value_2 bool = value_0 == value_1
+	return value_2
+}
+
 func Reorder_ReorderTargetIncludesItem(pointer_y int32, item_bounds Rectangle) bool {
 	var value_0 float32 = item_bounds.Y
 	var value_1 float32 = item_bounds.Height
@@ -549,6 +556,27 @@ func Reorder_ReorderTargetIncludesItem(pointer_y int32, item_bounds Rectangle) b
 	var value_7 int32 = center_y
 	var value_8 bool = value_6 > value_7
 	return value_8
+}
+
+func Reorder_ReorderTargetStep(target int32, index int32, active_index int32, pointer_y int32, item_bounds Rectangle) int32 {
+	var value_0 int32 = index
+	var value_1 int32 = active_index
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 int32 = target
+		return value_3
+	}
+	var value_4 int32 = pointer_y
+	var value_5 Rectangle = item_bounds
+	var value_6 bool = Reorder_ReorderTargetIncludesItem(value_4, value_5)
+	if value_6 {
+		var value_7 int32 = target
+		var value_8 int32 = 1
+		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
+		return value_9
+	}
+	var value_10 int32 = target
+	return value_10
 }
 
 func Reorder_ReorderTargetIndexFor(target int32, item_count int32) int32 {

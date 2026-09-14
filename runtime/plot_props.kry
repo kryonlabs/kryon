@@ -1,6 +1,11 @@
 #module "plot_props"
 #import "kryon_compat.generated.h"
 
+PlotMode :: enum {
+    PlotLines = 0
+    PlotBars = 1
+}
+
 PlotProps :: struct {
     bounds: Rectangle
     class_name: i32
@@ -11,5 +16,5 @@ PlotProps :: struct {
     overlay: const char*
     scale_min: float
     scale_max: float
-    mode: i32
+    mode: PlotMode
 }

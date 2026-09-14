@@ -764,6 +764,11 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "#module \"plot_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
         "\n"
+        "PlotMode :: enum {\n"
+        "    PlotLines = 0\n"
+        "    PlotBars = 1\n"
+        "}\n"
+        "\n"
         "PlotProps :: struct {\n"
         "    bounds: Rectangle\n"
         "    class_name: i32\n"
@@ -774,7 +779,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    overlay: const char*\n"
         "    scale_min: float\n"
         "    scale_max: float\n"
-        "    mode: i32\n"
+        "    mode: PlotMode\n"
         "}\n"
     },
     {"runtime/popup_props.kry",

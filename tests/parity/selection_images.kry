@@ -31,7 +31,7 @@ selection_images_frame :: () #ui {
         image.bounds = (Rectangle){140,100,96,64}
         Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_fit = image.fit, .id = 952})
         Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section"})
-        tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,1}}
+        tabs: [2] Tab = {{.label = "One", .closeable = 1},{.label = "Two", .closeable = 1}}
         Button((ButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
         TabBar((TabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = selected_tab, .closed_index = &closed_tab, .min_tab_width = 90, .max_tab_width = 90})
         DragDrop((DragDropProps){.bounds = {20,245,80,28}, .id = 955, .role = DragDropRoleSource, .type = "ITEM", .data = payload, .data_size = 8})
@@ -44,10 +44,7 @@ selection_images_frame :: () #ui {
 tab_scope_frame :: () #ui {
     Screen tab_scope_root: {
         bounds = {0,0,320,180}
-        scope_tabs: [2] Tab = {
-            {"First",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0},
-            {"Second",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0}
-        }
+        scope_tabs: [2] Tab = {{.label = "First"},{.label = "Second"}}
         selected: int = TabBar((TabBarProps){.bounds={20,20,240,32},.tabs=scope_tabs,.count=2,.selected_index=tab_scope_selected,.id=958})
         if selected >= 0 {
             tab_scope_selected = selected

@@ -2690,7 +2690,7 @@ func (r *runtime) Plot(props PlotProps) {
 		}
 	}
 	plotRange := Plot_PlotRangeFor(props.ScaleMin, props.ScaleMax, minValue, maxValue)
-	if props.Mode == 1 {
+	if props.Mode == PlotBars {
 		for i := 0; i < count; i++ {
 			bar := Plot_PlotHistogramBar(props.Bounds, int32(i), int32(count), props.Values[(offset+i)%count], plotRange, markFrame)
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: bar.Bounds, Color: unpackRGBA(bar.Color), Row: int32(i)})

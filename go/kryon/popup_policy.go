@@ -12,6 +12,11 @@ type PopupDecision struct {
 	RequiresTrigger bool
 }
 
+type PopupContextActivation struct {
+	Open   bool
+	Origin Vector2
+}
+
 func PopupPolicy_PopupDecisionFor(flags uint32, disabled bool) PopupDecision {
 	var decision PopupDecision = PopupDecision{}
 	var value_0 int32 = 1
@@ -229,6 +234,71 @@ func PopupPolicy_PopupMenuBarOrigin(item Rectangle, bar Rectangle) Vector2 {
 func PopupPolicy_PopupContextOrigin(mouse Vector2) Vector2 {
 	var value_0 Vector2 = mouse
 	return value_0
+}
+
+func PopupPolicy_PopupContextActivationFor(decision PopupDecision, trigger Rectangle, mouse Vector2, disabled bool, click_captured bool, right_released bool) PopupContextActivation {
+	var activation PopupContextActivation = PopupContextActivation{}
+	var value_0 Vector2 = mouse
+	var value_1 Vector2 = PopupPolicy_PopupContextOrigin(value_0)
+	activation.Origin = value_1
+	var value_2 bool = decision.Context
+	var value_3 bool = !value_2
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 bool = disabled
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if !value_6 {
+		var value_7 bool = click_captured
+		value_6 = value_7
+	}
+	var value_8 bool = value_6
+	if !value_8 {
+		var value_9 bool = right_released
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	if value_8 {
+		var value_11 PopupContextActivation = activation
+		return value_11
+	}
+	var value_12 float32 = mouse.X
+	var value_13 float32 = trigger.X
+	var value_14 bool = value_12 < value_13
+	var value_15 bool = value_14
+	if !value_15 {
+		var value_16 float32 = mouse.Y
+		var value_17 float32 = trigger.Y
+		var value_18 bool = value_16 < value_17
+		value_15 = value_18
+	}
+	var value_19 bool = value_15
+	if !value_19 {
+		var value_20 float32 = mouse.X
+		var value_21 float32 = trigger.X
+		var value_22 float32 = trigger.Width
+		var value_23 float32 = value_21 + value_22
+		var value_24 bool = value_20 > value_23
+		value_19 = value_24
+	}
+	var value_25 bool = value_19
+	if !value_25 {
+		var value_26 float32 = mouse.Y
+		var value_27 float32 = trigger.Y
+		var value_28 float32 = trigger.Height
+		var value_29 float32 = value_27 + value_28
+		var value_30 bool = value_26 > value_29
+		value_25 = value_30
+	}
+	if value_25 {
+		var value_31 PopupContextActivation = activation
+		return value_31
+	}
+	var value_32 bool = true
+	activation.Open = value_32
+	var value_33 PopupContextActivation = activation
+	return value_33
 }
 
 func PopupPolicy_PopupBackdropAlpha(decision PopupDecision) int32 {

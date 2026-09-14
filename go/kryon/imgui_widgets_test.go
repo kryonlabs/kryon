@@ -830,7 +830,7 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 		r.EndFrame()
 
 		r.BeginFrame()
-		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1, Mode: 1})
+		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1, Mode: PlotBars})
 		markColor := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, false, true,
 			0, StyleSheet_StyleKindPlotMark(), StyleSheet_StyleAny()).Value).Background
 		bars := 0

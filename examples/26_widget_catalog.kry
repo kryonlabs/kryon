@@ -465,7 +465,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             Text((TextProps){.bounds={right, y + Scale(628), 0, 0}, .text="Plot lines", .wrap=TextWrapNone})
             Plot((PlotProps){.bounds = {right,y + Scale(666),Scale(350),Scale(150)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
             Text((TextProps){.bounds={x, y + Scale(870), 0, 0}, .text="Plot histogram", .wrap=TextWrapNone})
-            Plot((PlotProps){.bounds = {x,y + Scale(908),Scale(350),Scale(110)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f, .mode = 1})
+            Plot((PlotProps){.bounds = {x,y + Scale(908),Scale(350),Scale(110)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f, .mode = PlotBars})
         }
         if category == 8 {
             Text((TextProps){.bounds={x, y, 0, 0}, .text="COLORS", .wrap=TextWrapNone})

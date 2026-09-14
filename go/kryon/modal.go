@@ -590,6 +590,42 @@ func Modal_ModalButtonsHeight(rows int32, metrics ModalMetrics) int32 {
 	return value_12
 }
 
+func Modal_ModalFontFor(default_font int32, style_font int32) int32 {
+	var value_0 int32 = style_font
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = style_font
+		return value_3
+	}
+	var value_4 int32 = default_font
+	return value_4
+}
+
+func Modal_ModalPromptFocusIdFor(requested_focus_id int32, fallback_focus_id int32) int32 {
+	var value_0 int32 = requested_focus_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = requested_focus_id
+		return value_3
+	}
+	var value_4 int32 = fallback_focus_id
+	return value_4
+}
+
+func Modal_ModalPromptCommitResult(action_count int32) int32 {
+	var value_0 int32 = action_count
+	var value_1 int32 = 1
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = 2
+		return value_3
+	}
+	var value_4 int32 = 1
+	return value_4
+}
+
 func Modal_ModalLayoutFor(view_width int32, view_height int32, max_width int32, message_height int32, button_rows int32, has_prompt bool, metrics ModalMetrics) ModalLayout {
 	var layout ModalLayout = ModalLayout{}
 	var value_0 int32 = view_width

@@ -158,3 +158,15 @@ func Image_ImagePlaceholderLayoutFor(bounds Rectangle, text_width int32, font_he
 	var value_19 ImagePlaceholderLayout = layout
 	return value_19
 }
+
+func Image_ImagePlaceholderFontFor(default_font int32, style_font int32) int32 {
+	var value_0 int32 = style_font
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = style_font
+		return value_3
+	}
+	var value_4 int32 = default_font
+	return value_4
+}

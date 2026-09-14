@@ -15,3 +15,61 @@ type StylePickerProps struct {
 	ClassName int32
 	Disabled  bool
 }
+
+func StylePickerProps_StylePickerOptionCountFor(count int32, limit int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = limit
+	var value_5 int32 = 0
+	var value_6 bool = value_4 > value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 int32 = count
+		var value_9 int32 = limit
+		var value_10 bool = value_8 > value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 int32 = limit
+		return value_11
+	}
+	var value_12 int32 = count
+	return value_12
+}
+
+func StylePickerProps_StylePickerSelectedIndexFor(selected int32, count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 int32 = StylePickerProps_StylePickerOptionCountFor(value_0, value_1)
+	count = value_2
+	var value_3 int32 = count
+	var value_4 int32 = 0
+	var value_5 bool = value_3 <= value_4
+	if value_5 {
+		var value_6 int32 = -1
+		return value_6
+	}
+	var value_7 int32 = selected
+	var value_8 int32 = 0
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 int32 = 0
+		return value_10
+	}
+	var value_11 int32 = selected
+	var value_12 int32 = count
+	var value_13 bool = value_11 >= value_12
+	if value_13 {
+		var value_14 int32 = count
+		var value_15 int32 = 1
+		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+		return value_16
+	}
+	var value_17 int32 = selected
+	return value_17
+}

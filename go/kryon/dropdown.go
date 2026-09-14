@@ -426,6 +426,34 @@ func Dropdown_ClampIndex(value int32, count int32) int32 {
 	return value_14
 }
 
+func Dropdown_DropdownOptionCountFor(count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = count
+	return value_4
+}
+
+func Dropdown_DropdownCurrentIndexFor(selected int32, count int32) int32 {
+	var value_0 int32 = selected
+	var value_1 int32 = count
+	var value_2 int32 = Dropdown_ClampIndex(value_0, value_1)
+	var index int32 = value_2
+	var value_3 int32 = index
+	var value_4 int32 = 0
+	var value_5 bool = value_3 < value_4
+	if value_5 {
+		var value_6 int32 = 0
+		return value_6
+	}
+	var value_7 int32 = index
+	return value_7
+}
+
 func Dropdown_Trigger(open bool, disabled bool, count int32, focused bool, keyboard bool, activated bool, enter bool, space bool, down bool) bool {
 	var value_0 bool = disabled
 	var value_1 bool = value_0

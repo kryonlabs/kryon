@@ -67,110 +67,125 @@ func SegmentedControl_SegmentedDefaultMetrics(row_height int32, min_item_width i
 		scale = value_3
 	}
 	var metrics SegmentedMetrics = SegmentedMetrics{}
-	var value_4 uint32 = control.Value.Fields
+	var value_4 uint32 = segment.Value.Fields
 	var value_5 int32 = int32(StyleGap)
 	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 float32 = control.Value.Gap
-	var value_8 float32 = 6.0
-	var value_9 float32 = scale
-	var value_10 bool = true
-	var value_11 int32 = SegmentedControl_SegmentedMetric(value_4, value_6, value_7, value_8, value_9, value_10)
-	metrics.Gap = value_11
-	var value_12 int32 = row_height
-	metrics.RowHeight = value_12
-	var value_13 int32 = metrics.RowHeight
+	var value_7 float32 = segment.Value.Gap
+	var value_8 float32 = 1.0
+	var value_9 float32 = -value_8
+	var value_10 float32 = scale
+	var value_11 bool = true
+	var value_12 int32 = SegmentedControl_SegmentedMetric(value_4, value_6, value_7, value_9, value_10, value_11)
+	metrics.Gap = value_12
+	var value_13 int32 = metrics.Gap
 	var value_14 int32 = 0
-	var value_15 bool = value_13 <= value_14
+	var value_15 bool = value_13 < value_14
 	if value_15 {
 		var value_16 uint32 = control.Value.Fields
-		var value_17 int32 = int32(StyleIconSize)
+		var value_17 int32 = int32(StyleGap)
 		var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
-		var value_19 float32 = control.Value.IconSize
-		var value_20 float32 = 30.0
+		var value_19 float32 = control.Value.Gap
+		var value_20 float32 = 6.0
 		var value_21 float32 = scale
-		var value_22 bool = false
+		var value_22 bool = true
 		var value_23 int32 = SegmentedControl_SegmentedMetric(value_16, value_18, value_19, value_20, value_21, value_22)
-		metrics.RowHeight = value_23
+		metrics.Gap = value_23
 	}
-	var value_24 int32 = min_item_width
-	metrics.MinItemWidth = value_24
-	var value_25 int32 = metrics.MinItemWidth
+	var value_24 int32 = row_height
+	metrics.RowHeight = value_24
+	var value_25 int32 = metrics.RowHeight
 	var value_26 int32 = 0
 	var value_27 bool = value_25 <= value_26
 	if value_27 {
 		var value_28 uint32 = control.Value.Fields
-		var value_29 int32 = int32(StyleContentOffset)
+		var value_29 int32 = int32(StyleIconSize)
 		var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
-		var value_31 float32 = control.Value.OffsetX
-		var value_32 float32 = 72.0
+		var value_31 float32 = control.Value.IconSize
+		var value_32 float32 = 30.0
 		var value_33 float32 = scale
 		var value_34 bool = false
 		var value_35 int32 = SegmentedControl_SegmentedMetric(value_28, value_30, value_31, value_32, value_33, value_34)
-		metrics.MinItemWidth = value_35
+		metrics.RowHeight = value_35
 	}
-	var value_36 int32 = max_item_width
-	metrics.MaxItemWidth = value_36
-	var value_37 int32 = metrics.MaxItemWidth
+	var value_36 int32 = min_item_width
+	metrics.MinItemWidth = value_36
+	var value_37 int32 = metrics.MinItemWidth
 	var value_38 int32 = 0
 	var value_39 bool = value_37 <= value_38
 	if value_39 {
 		var value_40 uint32 = control.Value.Fields
 		var value_41 int32 = int32(StyleContentOffset)
 		var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
-		var value_43 float32 = control.Value.OffsetY
-		var value_44 float32 = 180.0
+		var value_43 float32 = control.Value.OffsetX
+		var value_44 float32 = 72.0
 		var value_45 float32 = scale
 		var value_46 bool = false
 		var value_47 int32 = SegmentedControl_SegmentedMetric(value_40, value_42, value_43, value_44, value_45, value_46)
-		metrics.MaxItemWidth = value_47
+		metrics.MinItemWidth = value_47
 	}
-	var value_48 int32 = metrics.MaxItemWidth
-	var value_49 int32 = 0
-	var value_50 bool = value_48 > value_49
-	var value_51 bool = value_50
+	var value_48 int32 = max_item_width
+	metrics.MaxItemWidth = value_48
+	var value_49 int32 = metrics.MaxItemWidth
+	var value_50 int32 = 0
+	var value_51 bool = value_49 <= value_50
 	if value_51 {
-		var value_52 int32 = metrics.MaxItemWidth
-		var value_53 int32 = metrics.MinItemWidth
-		var value_54 bool = value_52 < value_53
-		value_51 = value_54
+		var value_52 uint32 = control.Value.Fields
+		var value_53 int32 = int32(StyleContentOffset)
+		var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
+		var value_55 float32 = control.Value.OffsetY
+		var value_56 float32 = 180.0
+		var value_57 float32 = scale
+		var value_58 bool = false
+		var value_59 int32 = SegmentedControl_SegmentedMetric(value_52, value_54, value_55, value_56, value_57, value_58)
+		metrics.MaxItemWidth = value_59
 	}
-	if value_51 {
-		var value_55 int32 = metrics.MinItemWidth
-		metrics.MaxItemWidth = value_55
+	var value_60 int32 = metrics.MaxItemWidth
+	var value_61 int32 = 0
+	var value_62 bool = value_60 > value_61
+	var value_63 bool = value_62
+	if value_63 {
+		var value_64 int32 = metrics.MaxItemWidth
+		var value_65 int32 = metrics.MinItemWidth
+		var value_66 bool = value_64 < value_65
+		value_63 = value_66
 	}
-	var value_56 float32 = segment.Value.PaddingX
-	var value_57 float32 = 2.0
-	var value_58 float32 = value_56 * value_57
-	var label_padding float32 = value_58
-	var value_59 uint32 = segment.Value.Fields
-	var value_60 int32 = int32(StylePaddingX)
-	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(value_61), 32, false, 8))
-	var value_63 int32 = 0
-	var value_64 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(0), 32, false, 0))
-	var value_65 bool = value_62 == value_64
-	var value_66 bool = value_65
-	if !value_66 {
-		var value_67 float32 = segment.Value.PaddingX
-		var value_68 float32 = 0.0
-		var value_69 bool = value_67 < value_68
-		value_66 = value_69
+	if value_63 {
+		var value_67 int32 = metrics.MinItemWidth
+		metrics.MaxItemWidth = value_67
 	}
-	if value_66 {
-		var value_70 float32 = 20.0
-		label_padding = value_70
-	}
+	var value_68 float32 = segment.Value.PaddingX
+	var value_69 float32 = 2.0
+	var value_70 float32 = value_68 * value_69
+	var label_padding float32 = value_70
 	var value_71 uint32 = segment.Value.Fields
-	var value_72 int32 = int32(StyleContentOffset)
+	var value_72 int32 = int32(StylePaddingX)
 	var value_73 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(0), 32, false, 0))
-	var value_74 float32 = segment.Value.OffsetX
-	var value_75 float32 = label_padding
-	var value_76 float32 = scale
-	var value_77 bool = true
-	var value_78 int32 = SegmentedControl_SegmentedMetric(value_71, value_73, value_74, value_75, value_76, value_77)
-	metrics.LabelPadding = value_78
-	var value_79 SegmentedMetrics = metrics
-	return value_79
+	var value_74 uint32 = uint32(number_runtime_bits(uint64(value_71), uint64(value_73), 32, false, 8))
+	var value_75 int32 = 0
+	var value_76 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(0), 32, false, 0))
+	var value_77 bool = value_74 == value_76
+	var value_78 bool = value_77
+	if !value_78 {
+		var value_79 float32 = segment.Value.PaddingX
+		var value_80 float32 = 0.0
+		var value_81 bool = value_79 < value_80
+		value_78 = value_81
+	}
+	if value_78 {
+		var value_82 float32 = 20.0
+		label_padding = value_82
+	}
+	var value_83 uint32 = segment.Value.Fields
+	var value_84 int32 = int32(StyleContentOffset)
+	var value_85 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(0), 32, false, 0))
+	var value_86 float32 = segment.Value.OffsetX
+	var value_87 float32 = label_padding
+	var value_88 float32 = scale
+	var value_89 bool = true
+	var value_90 int32 = SegmentedControl_SegmentedMetric(value_83, value_85, value_86, value_87, value_88, value_89)
+	metrics.LabelPadding = value_90
+	var value_91 SegmentedMetrics = metrics
+	return value_91
 }
 
 func SegmentedControl_SegmentedItemWidth(label_width int32, metrics SegmentedMetrics) int32 {

@@ -368,3 +368,19 @@ func TitleBar_TitleBarShouldShrinkTitleFont(title_width int32, max_width int32, 
 	}
 	return value_3
 }
+
+func TitleBar_TitleBarShrinkTitleFontStep(title_width int32, max_width int32, font int32, min_font int32) int32 {
+	var value_0 int32 = title_width
+	var value_1 int32 = max_width
+	var value_2 int32 = font
+	var value_3 int32 = min_font
+	var value_4 bool = TitleBar_TitleBarShouldShrinkTitleFont(value_0, value_1, value_2, value_3)
+	if value_4 {
+		var value_5 int32 = font
+		var value_6 int32 = 1
+		var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
+		return value_7
+	}
+	var value_8 int32 = font
+	return value_8
+}

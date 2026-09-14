@@ -580,6 +580,74 @@ func TabBar_TabBarTotalWidth(tab_width_sum int32, count int32, gap int32) int32 
 	return value_15
 }
 
+func TabBar_TabBarSelectedIndexFor(selected int32, count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = selected
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 int32 = selected
+		var value_9 int32 = count
+		var value_10 bool = value_8 >= value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 int32 = selected
+	return value_12
+}
+
+func TabBar_TabBarWrappedIndex(from int32, direction int32, step int32, count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = direction
+	var value_5 int32 = 0
+	var value_6 bool = value_4 == value_5
+	if value_6 {
+		var value_7 int32 = 1
+		direction = value_7
+	}
+	var value_8 int32 = step
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		step = value_11
+	}
+	var value_12 int32 = from
+	var value_13 int32 = direction
+	var value_14 int32 = step
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_15), 32, true, 1))
+	var value_17 int32 = count
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 5))
+	var index int32 = value_18
+	var value_19 int32 = index
+	var value_20 int32 = 0
+	var value_21 bool = value_19 < value_20
+	if value_21 {
+		var value_22 int32 = index
+		var value_23 int32 = count
+		index = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
+	}
+	var value_24 int32 = index
+	return value_24
+}
+
 func TabBar_TabBarScrollFor(bounds_width float32, total_width int32, scroll int32) TabBarScroll {
 	var result TabBarScroll = TabBarScroll{}
 	var value_0 int32 = total_width

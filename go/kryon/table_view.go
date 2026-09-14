@@ -28,6 +28,11 @@ type TableViewScrollLayout struct {
 	VisibleRows int32
 }
 
+type TableViewSelection struct {
+	Row        int32
+	ColumnSlot int32
+}
+
 func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -612,4 +617,322 @@ func TableView_TableViewMinimumColumnWidth(requested_min_width int32, scale floa
 	}
 	var value_16 int32 = metrics.DefaultMinColumnWidth
 	return value_16
+}
+
+func TableView_TableViewSelectedRowFor(selected_row int32, row_count int32) int32 {
+	var value_0 int32 = row_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = selected_row
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = selected_row
+	var value_9 int32 = row_count
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = row_count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		return value_13
+	}
+	var value_14 int32 = selected_row
+	return value_14
+}
+
+func TableView_TableViewSelectionMoveRow(row int32, row_count int32, direction int32) int32 {
+	var value_0 int32 = row_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = row
+	var value_5 int32 = row_count
+	var value_6 int32 = TableView_TableViewSelectedRowFor(value_4, value_5)
+	row = value_6
+	var value_7 int32 = direction
+	var value_8 int32 = 0
+	var value_9 bool = value_7 < value_8
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 int32 = row
+		var value_12 int32 = 0
+		var value_13 bool = value_11 > value_12
+		value_10 = value_13
+	}
+	if value_10 {
+		var value_14 int32 = row
+		var value_15 int32 = 1
+		row = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+	}
+	var value_16 int32 = direction
+	var value_17 int32 = 0
+	var value_18 bool = value_16 > value_17
+	var value_19 bool = value_18
+	if value_19 {
+		var value_20 int32 = row
+		var value_21 int32 = row_count
+		var value_22 int32 = 1
+		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
+		var value_24 bool = value_20 < value_23
+		value_19 = value_24
+	}
+	if value_19 {
+		var value_25 int32 = row
+		var value_26 int32 = 1
+		row = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
+	}
+	var value_27 int32 = row
+	return value_27
+}
+
+func TableView_TableViewColumnSlotFor(slot int32, visible_columns int32) int32 {
+	var value_0 int32 = visible_columns
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = slot
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = slot
+	var value_9 int32 = visible_columns
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = visible_columns
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		return value_13
+	}
+	var value_14 int32 = slot
+	return value_14
+}
+
+func TableView_TableViewSelectionMoveColumn(slot int32, visible_columns int32, direction int32) int32 {
+	var value_0 int32 = visible_columns
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = slot
+	var value_5 int32 = visible_columns
+	var value_6 int32 = TableView_TableViewColumnSlotFor(value_4, value_5)
+	slot = value_6
+	var value_7 int32 = direction
+	var value_8 int32 = 0
+	var value_9 bool = value_7 < value_8
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 int32 = slot
+		var value_12 int32 = 0
+		var value_13 bool = value_11 > value_12
+		value_10 = value_13
+	}
+	if value_10 {
+		var value_14 int32 = slot
+		var value_15 int32 = 1
+		slot = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+	}
+	var value_16 int32 = direction
+	var value_17 int32 = 0
+	var value_18 bool = value_16 > value_17
+	var value_19 bool = value_18
+	if value_19 {
+		var value_20 int32 = slot
+		var value_21 int32 = visible_columns
+		var value_22 int32 = 1
+		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
+		var value_24 bool = value_20 < value_23
+		value_19 = value_24
+	}
+	if value_19 {
+		var value_25 int32 = slot
+		var value_26 int32 = 1
+		slot = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 1))
+	}
+	var value_27 int32 = slot
+	return value_27
+}
+
+func TableView_TableViewSelectionTab(row int32, column_slot int32, row_count int32, visible_columns int32, backwards bool) TableViewSelection {
+	var selection TableViewSelection = TableViewSelection{}
+	var value_0 int32 = row
+	var value_1 int32 = row_count
+	var value_2 int32 = TableView_TableViewSelectedRowFor(value_0, value_1)
+	selection.Row = value_2
+	var value_3 int32 = column_slot
+	var value_4 int32 = visible_columns
+	var value_5 int32 = TableView_TableViewColumnSlotFor(value_3, value_4)
+	selection.ColumnSlot = value_5
+	var value_6 int32 = selection.Row
+	var value_7 int32 = 0
+	var value_8 bool = value_6 < value_7
+	var value_9 bool = value_8
+	if !value_9 {
+		var value_10 int32 = selection.ColumnSlot
+		var value_11 int32 = 0
+		var value_12 bool = value_10 < value_11
+		value_9 = value_12
+	}
+	if value_9 {
+		var value_13 TableViewSelection = selection
+		return value_13
+	}
+	var value_14 bool = backwards
+	if value_14 {
+		var value_15 int32 = selection.ColumnSlot
+		var value_16 int32 = 0
+		var value_17 bool = value_15 > value_16
+		if value_17 {
+			var value_18 int32 = selection.ColumnSlot
+			var value_19 int32 = 1
+			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 2))
+		} else {
+			var value_20 int32 = visible_columns
+			var value_21 int32 = 1
+			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 2))
+			selection.ColumnSlot = value_22
+			var value_23 int32 = selection.Row
+			var value_24 int32 = 0
+			var value_25 bool = value_23 > value_24
+			if value_25 {
+				var value_26 int32 = selection.Row
+				var value_27 int32 = 1
+				selection.Row = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 2))
+			}
+		}
+	} else {
+		var value_28 int32 = selection.ColumnSlot
+		var value_29 int32 = visible_columns
+		var value_30 int32 = 1
+		var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 2))
+		var value_32 bool = value_28 < value_31
+		if value_32 {
+			var value_33 int32 = selection.ColumnSlot
+			var value_34 int32 = 1
+			selection.ColumnSlot = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
+		} else {
+			var value_35 int32 = 0
+			selection.ColumnSlot = value_35
+			var value_36 int32 = selection.Row
+			var value_37 int32 = row_count
+			var value_38 int32 = 1
+			var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 2))
+			var value_40 bool = value_36 < value_39
+			if value_40 {
+				var value_41 int32 = selection.Row
+				var value_42 int32 = 1
+				selection.Row = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
+			}
+		}
+	}
+	var value_43 TableViewSelection = selection
+	return value_43
+}
+
+func TableView_TableViewSelectionScrollOffset(row int32, frozen_rows int32, row_height int32, view_height int32, scroll_offset int32, max_scroll int32) int32 {
+	var value_0 int32 = scroll_offset
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		scroll_offset = value_3
+	}
+	var value_4 int32 = max_scroll
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		max_scroll = value_7
+	}
+	var value_8 int32 = row
+	var value_9 int32 = frozen_rows
+	var value_10 bool = value_8 < value_9
+	var value_11 bool = value_10
+	if !value_11 {
+		var value_12 int32 = view_height
+		var value_13 int32 = 0
+		var value_14 bool = value_12 <= value_13
+		value_11 = value_14
+	}
+	if value_11 {
+		var value_15 int32 = scroll_offset
+		var value_16 int32 = max_scroll
+		var value_17 bool = value_15 > value_16
+		if value_17 {
+			var value_18 int32 = max_scroll
+			return value_18
+		}
+		var value_19 int32 = scroll_offset
+		return value_19
+	}
+	var value_20 int32 = row_height
+	var value_21 int32 = 0
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 int32 = 1
+		row_height = value_23
+	}
+	var value_24 int32 = row
+	var value_25 int32 = frozen_rows
+	var value_26 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 2))
+	var value_27 int32 = row_height
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 3))
+	var top int32 = value_28
+	var value_29 int32 = top
+	var value_30 int32 = row_height
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
+	var bottom int32 = value_31
+	var value_32 int32 = top
+	var value_33 int32 = scroll_offset
+	var value_34 bool = value_32 < value_33
+	if value_34 {
+		var value_35 int32 = top
+		scroll_offset = value_35
+	} else {
+		var value_36 int32 = bottom
+		var value_37 int32 = scroll_offset
+		var value_38 int32 = view_height
+		var value_39 int32 = int32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, true, 1))
+		var value_40 bool = value_36 > value_39
+		if value_40 {
+			var value_41 int32 = bottom
+			var value_42 int32 = view_height
+			var value_43 int32 = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 2))
+			scroll_offset = value_43
+		}
+	}
+	var value_44 int32 = scroll_offset
+	var value_45 int32 = 0
+	var value_46 bool = value_44 < value_45
+	if value_46 {
+		var value_47 int32 = 0
+		scroll_offset = value_47
+	}
+	var value_48 int32 = scroll_offset
+	var value_49 int32 = max_scroll
+	var value_50 bool = value_48 > value_49
+	if value_50 {
+		var value_51 int32 = max_scroll
+		scroll_offset = value_51
+	}
+	var value_52 int32 = scroll_offset
+	return value_52
 }

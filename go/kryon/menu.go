@@ -38,6 +38,16 @@ func Menu_MenuHas(fields uint32, field uint32) bool {
 	return value_5
 }
 
+func Menu_MenuKindSeparator() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func Menu_MenuKindSubmenu() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
 func Menu_MenuMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -72,6 +82,281 @@ func Menu_MenuMetric(fields uint32, field uint32, value float32, fallback float3
 	var value_18 float32 = value_16 * value_17
 	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
 	return value_19
+}
+
+func Menu_MenuWrappedItemIndex(start int32, direction int32, item_count int32) int32 {
+	var value_0 int32 = item_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = direction
+	var value_5 int32 = 0
+	var value_6 bool = value_4 == value_5
+	if value_6 {
+		var value_7 int32 = 1
+		direction = value_7
+	}
+	var value_8 int32 = start
+	var value_9 int32 = direction
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
+	var value_11 int32 = item_count
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	var value_13 int32 = item_count
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 5))
+	return value_14
+}
+
+func Menu_MenuItemSelectable(kind int32, disabled bool) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSeparator()
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = disabled
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	return value_3
+}
+
+func Menu_MenuItemIsSeparator(kind int32) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSeparator()
+	var value_2 bool = value_0 == value_1
+	return value_2
+}
+
+func Menu_MenuItemShowsSubmenu(kind int32) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSubmenu()
+	var value_2 bool = value_0 == value_1
+	return value_2
+}
+
+func Menu_MenuItemCanOpenSubmenu(kind int32, disabled bool, has_submenu bool, submenu_count int32, depth int32, max_depth int32) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSubmenu()
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 bool = disabled
+		value_3 = value_4
+	}
+	if value_3 {
+		var value_5 bool = false
+		return value_5
+	}
+	var value_6 bool = has_submenu
+	var value_7 bool = !value_6
+	var value_8 bool = value_7
+	if !value_8 {
+		var value_9 int32 = submenu_count
+		var value_10 int32 = 0
+		var value_11 bool = value_9 <= value_10
+		value_8 = value_11
+	}
+	if value_8 {
+		var value_12 bool = false
+		return value_12
+	}
+	var value_13 int32 = depth
+	var value_14 int32 = 1
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
+	var value_16 int32 = max_depth
+	var value_17 bool = value_15 < value_16
+	return value_17
+}
+
+func Menu_MenuItemKeyboardActivates(kind int32, disabled bool, opens_submenu bool) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSeparator()
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = disabled
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	var value_6 bool = value_3
+	if value_6 {
+		var value_7 bool = opens_submenu
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	return value_6
+}
+
+func Menu_MenuItemPointerActivates(kind int32, disabled bool) bool {
+	var value_0 int32 = kind
+	var value_1 int32 = Menu_MenuKindSeparator()
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = kind
+		var value_5 int32 = Menu_MenuKindSubmenu()
+		var value_6 bool = value_4 != value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if value_7 {
+		var value_8 bool = disabled
+		var value_9 bool = !value_8
+		value_7 = value_9
+	}
+	return value_7
+}
+
+func Menu_MenuBarCountFor(count int32, limit int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = limit
+	var value_5 int32 = 0
+	var value_6 bool = value_4 >= value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 int32 = count
+		var value_9 int32 = limit
+		var value_10 bool = value_8 > value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 int32 = limit
+		return value_11
+	}
+	var value_12 int32 = count
+	return value_12
+}
+
+func Menu_MenuBarOpenIndexFor(bar_id int32, open_id int32, menu_count int32) int32 {
+	var value_0 int32 = bar_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = menu_count
+		var value_5 int32 = 0
+		var value_6 bool = value_4 <= value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 int32 = -1
+		return value_7
+	}
+	var value_8 int32 = open_id
+	var value_9 int32 = bar_id
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
+	var value_11 int32 = 1
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
+	var index int32 = value_12
+	var value_13 int32 = index
+	var value_14 int32 = 0
+	var value_15 bool = value_13 < value_14
+	var value_16 bool = value_15
+	if !value_16 {
+		var value_17 int32 = index
+		var value_18 int32 = menu_count
+		var value_19 bool = value_17 >= value_18
+		value_16 = value_19
+	}
+	if value_16 {
+		var value_20 int32 = -1
+		return value_20
+	}
+	var value_21 int32 = index
+	return value_21
+}
+
+func Menu_MenuBarOpenIdFor(bar_id int32, index int32, menu_count int32) int32 {
+	var value_0 int32 = bar_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = index
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = index
+		var value_9 int32 = menu_count
+		var value_10 bool = value_8 >= value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 int32 = bar_id
+	var value_13 int32 = 1
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	var value_15 int32 = index
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
+	return value_16
+}
+
+func Menu_MenuBarTopIndexFor(top int32, menu_count int32) int32 {
+	var value_0 int32 = menu_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = top
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 int32 = top
+		var value_9 int32 = menu_count
+		var value_10 bool = value_8 >= value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 int32 = top
+	return value_12
+}
+
+func Menu_MenuBarMoveTopIndex(top int32, menu_count int32, direction int32) int32 {
+	var value_0 int32 = menu_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = top
+	var value_5 int32 = menu_count
+	var value_6 int32 = Menu_MenuBarTopIndexFor(value_4, value_5)
+	top = value_6
+	var value_7 int32 = direction
+	var value_8 int32 = 0
+	var value_9 bool = value_7 == value_8
+	if value_9 {
+		var value_10 int32 = top
+		return value_10
+	}
+	var value_11 int32 = top
+	var value_12 int32 = direction
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
+	var value_14 int32 = menu_count
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
+	var value_16 int32 = menu_count
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 5))
+	return value_17
 }
 
 func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
