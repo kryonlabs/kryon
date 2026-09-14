@@ -1496,38 +1496,62 @@ RouteInput(void)
         modifier = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
                    IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
         if(modifier && IsKeyPressed(KEY_A)) {
-            ui_tree_text_select_all(state, (int)strlen(field->text));
-            selection_changed = 1;
-            start = state->anchor;
-            end = state->cursor;
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+                    end > start, 0, 0, field->text[0] != '\0', 1,
+                    !field->read_only, !field->read_only);
+            if(decision.select_all) {
+                ui_tree_text_select_all(state, (int)strlen(field->text));
+                selection_changed = 1;
+                start = state->anchor;
+                end = state->cursor;
+            }
         }
         if(modifier && IsKeyPressed(KEY_C) && !field->secure) {
-            if(end > start)
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCopy(),
+                    end > start, 1, 0, field->text[0] != '\0', 1,
+                    !field->read_only, !field->read_only);
+            if(decision.copy_selection)
                 (void)ui_text_copy_range(field->text, start, end);
-            else
+            else if(decision.copy_all)
                 (void)SetClipboardTextValue(field->text);
         }
-        if(modifier && IsKeyPressed(KEY_X) && !field->secure && !field->read_only) {
-            if(end > start) {
-                if(ui_text_copy_range(field->text, start, end))
-                    changed |= ui_text_delete_range(
-                        field->text, field->text_size, &state->cursor,
-                        start, end);
-            } else if(field->text[0] != '\0') {
+        if(modifier && IsKeyPressed(KEY_X) && !field->secure) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCut(),
+                    end > start, 1, 1, field->text[0] != '\0',
+                    !field->read_only, !field->read_only,
+                    !field->read_only);
+            int copied_selection = 0;
+            if(decision.copy_selection)
+                copied_selection = ui_text_copy_range(field->text, start, end);
+            if(decision.delete_selection && copied_selection)
+                changed |= ui_text_delete_range(
+                    field->text, field->text_size, &state->cursor,
+                    start, end);
+            if(decision.copy_all)
                 (void)SetClipboardTextValue(field->text);
+            if(decision.clear_all) {
                 field->text[0] = '\0';
                 state->cursor = 0;
                 changed = 1;
             }
-            ui_tree_text_collapse(state, state->cursor);
-            selection_changed = 1;
-            start = end = state->cursor;
+            if(decision.collapse_selection) {
+                ui_tree_text_collapse(state, state->cursor);
+                selection_changed = 1;
+                start = end = state->cursor;
+            }
         }
-        if(modifier && IsKeyPressed(KEY_V) && !field->read_only) {
-            if(end > start)
+        if(modifier && IsKeyPressed(KEY_V)) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandPaste(),
+                    end > start, 0, 0, field->text[0] != '\0', 1,
+                    !field->read_only, !field->read_only);
+            if(decision.delete_selection)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor, start, end);
-            {
+            if(decision.paste) {
                 int allow_newlines =
                     node->kind == WidgetKindTextArea;
                 TextEdit edit;
@@ -1539,9 +1563,11 @@ RouteInput(void)
                 edit.max_codepoints = field->max_codepoints;
                 changed |= ui_text_paste_clipboard(edit, allow_newlines);
             }
-            ui_tree_text_collapse(state, state->cursor);
-            selection_changed = 1;
-            start = end = state->cursor;
+            if(decision.collapse_selection) {
+                ui_tree_text_collapse(state, state->cursor);
+                selection_changed = 1;
+                start = end = state->cursor;
+            }
         }
         {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
@@ -1620,25 +1646,31 @@ RouteInput(void)
                     field->secure);
             selection_changed = changed;
         }
-        if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-            if(node->kind == WidgetKindTextArea && !field->read_only) {
-                if(end > start)
-                    changed |= ui_text_delete_range(
-                        field->text, field->text_size, &state->cursor,
-                        start, end);
-                if(ui_text_insert_newline(field->text, field->text_size,
-                                          &state->cursor,
-                                          field->max_codepoints))
-                    changed = 1;
-                ui_tree_text_collapse(state, state->cursor);
-                selection_changed = 1;
-            } else {
+        {
+            int enter_requested = IsKeyPressed(KEY_ENTER) ||
+                                  IsKeyPressed(KEY_KP_ENTER);
+            if(node->kind == WidgetKindTextArea) {
+                if(TextAreaEnterNewlineShouldRun(field->read_only,
+                                                 enter_requested)) {
+                    if(end > start)
+                        changed |= ui_text_delete_range(
+                            field->text, field->text_size, &state->cursor,
+                            start, end);
+                    if(ui_text_insert_newline(field->text, field->text_size,
+                                              &state->cursor,
+                                              field->max_codepoints))
+                        changed = 1;
+                    ui_tree_text_collapse(state, state->cursor);
+                    selection_changed = 1;
+                }
+            } else if(TextEditCommitShouldRun(enter_requested, 0)) {
                 if(field->commit_pressed != NULL)
                     *field->commit_pressed = 1;
                 ui_text_field_event(node, EVENT_TEXT_COMMIT, GetTime());
             }
         }
-        if(IsKeyPressed(KEY_ESCAPE)) {
+        if(TextEscapeShouldBlur(state->focused, IsKeyboardInputEnabled(),
+                                IsKeyPressed(KEY_ESCAPE))) {
             state->focused = 0;
             state->dragging = 0;
             if(field->focused != NULL)
