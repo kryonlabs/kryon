@@ -717,6 +717,16 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    handle: void*\n"
         "}\n"
     },
+    {"runtime/node_registry_props.kry",
+        "#module \"node_registry_props\"\n"
+        "\n"
+        "NodeTypeFlag :: enum {\n"
+        "    NodeTypeFlagInsertable = 1\n"
+        "    NodeTypeFlagSelectable = 2\n"
+        "    NodeTypeFlagMovable = 4\n"
+        "    NodeTypeFlagResizable = 8\n"
+        "}\n"
+    },
     {"runtime/page_props.kry",
         "#module \"page_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

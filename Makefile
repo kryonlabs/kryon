@@ -1584,11 +1584,11 @@ icons-import-mingcute: scripts/import-mingcute-icons.py
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
 
-$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h include/ui_node_registry_props.generated.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h include/ui_node_registry_props.generated.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 

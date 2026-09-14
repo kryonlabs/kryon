@@ -84,6 +84,7 @@ surface review:
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D node props and enums | `.kry canonical` |
+| `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
 | `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |

@@ -1,0 +1,8 @@
+#module "node_registry_props"
+
+NodeTypeFlag :: enum {
+    NodeTypeFlagInsertable = 1
+    NodeTypeFlagSelectable = 2
+    NodeTypeFlagMovable = 4
+    NodeTypeFlagResizable = 8
+}

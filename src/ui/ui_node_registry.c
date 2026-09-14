@@ -3,16 +3,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define EDITABLE (NODE_SELECTABLE | NODE_MOVABLE | \
-                  NODE_RESIZABLE)
-#define INSERT_EDITABLE (NODE_INSERTABLE | EDITABLE)
-#define MOVABLE_TEXT (NODE_INSERTABLE | NODE_SELECTABLE | \
-                      NODE_MOVABLE)
+#define EDITABLE (NodeTypeFlagSelectable | NodeTypeFlagMovable | \
+                  NodeTypeFlagResizable)
+#define INSERT_EDITABLE (NodeTypeFlagInsertable | EDITABLE)
+#define MOVABLE_TEXT (NodeTypeFlagInsertable | NodeTypeFlagSelectable | \
+                      NodeTypeFlagMovable)
 
 static const NodeType node_types[] = {
-    {"Background", "Background", "UI/Display", "Control", "Fill", NODE_INSERTABLE | NODE_SELECTABLE},
+    {"Background", "Background", "UI/Display", "Control", "Fill", NodeTypeFlagInsertable | NodeTypeFlagSelectable},
     {"Text", "Text", "UI/Display", "Control", "Label", MOVABLE_TEXT},
-    {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", NODE_SELECTABLE},
+    {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", NodeTypeFlagSelectable},
     {"Box", "Box", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
@@ -152,7 +152,7 @@ NodeTypeDetail(int index)
     return type != NULL ? type->detail : "";
 }
 
-unsigned
+NodeTypeFlag
 NodeTypeFlagsAt(int index)
 {
     const NodeType *type = node_type_checked(index);
@@ -165,7 +165,7 @@ NodeTypeInsertable(int index)
     const NodeType *type = node_type_checked(index);
 
     return type != NULL &&
-           (type->flags & NODE_INSERTABLE) != 0 &&
+           (type->flags & NodeTypeFlagInsertable) != 0 &&
            node_type_has_snippet(type->name);
 }
 

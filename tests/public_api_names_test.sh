@@ -113,7 +113,7 @@ if [ -n "$internal_overlay_registry_matches" ]; then
 fi
 
 node_registry_prefix_matches="$(
-    rg -n '\b(KryonNodeType|KRYON_NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE))\b' \
+    rg -n '\b(KryonNodeType|KRYON_NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE)|NodeTypeFlags)\b' \
         include/ui_node_registry.h src/ui/ui_node_registry.c docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
