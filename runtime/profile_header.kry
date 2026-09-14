@@ -43,6 +43,8 @@ ProfilePickerCell :: struct {
 }
 
 ProfilePointerAction :: struct {
+    active: bool
+    activated: bool
     mark_clickable: bool
     consume_release: bool
     activate: bool
@@ -218,10 +220,18 @@ ProfilePickerCellFor :: (index: i32, content_x: i32, content_y: i32,
 
 ProfilePointerActionFor :: (active: bool, activated: bool) -> ProfilePointerAction #export {
     action: ProfilePointerAction
+    action.active = active
+    action.activated = activated
     action.mark_clickable = active
     action.activate = active && activated
     action.consume_release = action.activate
     return action
+}
+
+ProfilePointerActionFromInput :: (inside: bool, input_captured: bool,
+    hover_enabled: bool, released: bool) -> ProfilePointerAction #export {
+    active: bool = inside && !input_captured && hover_enabled
+    return ProfilePointerActionFor(active, active && released)
 }
 
 ProfilePickerCellDecisionFor :: (active: bool, activated: bool,

@@ -181,15 +181,6 @@ ui_profile_images_dark_mode(void)
     return IsThemeColorDark(ui_surface_style().background) ? 1 : 0;
 }
 
-static InputPointerInteraction
-ui_profile_pointer_interaction(Rectangle bounds, Vector2 mouse, int released)
-{
-    return InputPointerInteractionFor(
-        CheckCollisionPointRec(mouse, bounds) != 0,
-        InputCapturesClick(mouse) != 0, false, HoverEffectsEnabled() != 0,
-        released != 0, false, true);
-}
-
 static void
 ui_draw_pfp_fallback(int x, int y, int size, Color color)
 {
@@ -249,10 +240,10 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                      0.0f, 0.0f, 0, surface_style.focus, 0.0f,
                      surface_style.opacity, ui_style_fill(surface_style),
                      surface_style.material);
-    InputPointerInteraction profile_interaction =
-        ui_profile_pointer_interaction(layout.profile_bounds, mouse, released);
-    ProfilePointerAction profile_action = ProfilePointerActionFor(
-        profile_interaction.active != 0, profile_interaction.activated != 0);
+    ProfilePointerAction profile_action = ProfilePointerActionFromInput(
+        CheckCollisionPointRec(mouse, layout.profile_bounds) != 0,
+        InputCapturesClick(mouse) != 0, HoverEffectsEnabled() != 0,
+        released != 0);
     if(profile_action.mark_clickable)
         MarkClickable();
     if(profile_action.activate) {
@@ -275,10 +266,10 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                              layout.avatar_center_y - layout.avatar_radius,
                              layout.avatar_size, text_style.foreground);
 
-    InputPointerInteraction username_interaction =
-        ui_profile_pointer_interaction(layout.username_bounds, mouse, released);
-    ProfilePointerAction username_action = ProfilePointerActionFor(
-        username_interaction.active != 0, username_interaction.activated != 0);
+    ProfilePointerAction username_action = ProfilePointerActionFromInput(
+        CheckCollisionPointRec(mouse, layout.username_bounds) != 0,
+        InputCapturesClick(mouse) != 0, HoverEffectsEnabled() != 0,
+        released != 0);
     if(username_action.mark_clickable)
         MarkClickable();
     if(username_action.activate) {
@@ -293,10 +284,10 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                    ProfileHeaderSubtitleY(layout.name_y, scale), small_font,
                    muted_text);
 
-    InputPointerInteraction friends_interaction =
-        ui_profile_pointer_interaction(layout.friends_bounds, mouse, released);
-    ProfilePointerAction friends_action = ProfilePointerActionFor(
-        friends_interaction.active != 0, friends_interaction.activated != 0);
+    ProfilePointerAction friends_action = ProfilePointerActionFromInput(
+        CheckCollisionPointRec(mouse, layout.friends_bounds) != 0,
+        InputCapturesClick(mouse) != 0, HoverEffectsEnabled() != 0,
+        released != 0);
     if(friends_action.mark_clickable) {
         ui_draw_material(layout.friends_bounds, layout.header_bounds,
                          hover_style.background, hover_style.border,
@@ -369,15 +360,16 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                  scroll_view.content_w, layout);
         IconType type = GetProfileImageIconType(i);
         Texture2D icon = {0};
-        InputPointerInteraction cell_interaction =
-            ui_profile_pointer_interaction(cell.bounds, mouse,
-                                           IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
-        int hovered = cell_interaction.active;
+        ProfilePointerAction cell_action = ProfilePointerActionFromInput(
+            CheckCollisionPointRec(mouse, cell.bounds) != 0,
+            InputCapturesClick(mouse) != 0, HoverEffectsEnabled() != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+        int hovered = cell_action.active;
         int active = type == selected;
         ProfilePickerCellDecision cell_decision =
             ProfilePickerCellDecisionFor(
-                cell_interaction.active != 0,
-                cell_interaction.activated != 0, i, (int)type, (int)selected);
+                cell_action.active != 0, cell_action.activated != 0, i,
+                (int)type, (int)selected);
         ButtonState state = active ? ButtonStateSelected
                           : hovered ? ButtonStateHover
                           : ButtonStateNormal;

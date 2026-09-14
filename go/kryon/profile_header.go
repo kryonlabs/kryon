@@ -44,6 +44,8 @@ type ProfilePickerCell struct {
 }
 
 type ProfilePointerAction struct {
+	Active         bool
+	Activated      bool
 	MarkClickable  bool
 	ConsumeRelease bool
 	Activate       bool
@@ -684,18 +686,47 @@ func ProfileHeader_ProfilePickerCellFor(index int32, content_x int32, content_y 
 func ProfileHeader_ProfilePointerActionFor(active bool, activated bool) ProfilePointerAction {
 	var action ProfilePointerAction = ProfilePointerAction{}
 	var value_0 bool = active
-	action.MarkClickable = value_0
-	var value_1 bool = active
-	var value_2 bool = value_1
-	if value_2 {
-		var value_3 bool = activated
-		value_2 = value_3
+	action.Active = value_0
+	var value_1 bool = activated
+	action.Activated = value_1
+	var value_2 bool = active
+	action.MarkClickable = value_2
+	var value_3 bool = active
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = activated
+		value_4 = value_5
 	}
-	action.Activate = value_2
-	var value_4 bool = action.Activate
-	action.ConsumeRelease = value_4
-	var value_5 ProfilePointerAction = action
-	return value_5
+	action.Activate = value_4
+	var value_6 bool = action.Activate
+	action.ConsumeRelease = value_6
+	var value_7 ProfilePointerAction = action
+	return value_7
+}
+
+func ProfileHeader_ProfilePointerActionFromInput(inside bool, input_captured bool, hover_enabled bool, released bool) ProfilePointerAction {
+	var value_0 bool = inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = input_captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = hover_enabled
+		value_4 = value_5
+	}
+	var active bool = value_4
+	var value_6 bool = active
+	var value_7 bool = active
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = released
+		value_8 = value_9
+	}
+	var value_10 ProfilePointerAction = ProfileHeader_ProfilePointerActionFor(value_6, value_8)
+	return value_10
 }
 
 func ProfileHeader_ProfilePickerCellDecisionFor(active bool, activated bool, index int32, icon_type int32, selected_icon_type int32) ProfilePickerCellDecision {
