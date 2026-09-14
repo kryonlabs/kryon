@@ -242,9 +242,18 @@ ModalMessageLineGap :: (scale: float) -> i32 #export {
     return (i32)(4.0 * scale)
 }
 
-ModalPromptFocusIdFor :: (requested_focus_id: i32, fallback_focus_id: i32) -> i32 #export {
+ModalHasPromptFor :: (has_text: bool, text_size: i32, has_cursor: bool,
+    has_focus: bool) -> bool #export {
+    return has_text && text_size > 0 && has_cursor && has_focus
+}
+
+ModalPromptFallbackFocusId :: () -> i32 #export {
+    return 7301
+}
+
+ModalPromptFocusIdFor :: (requested_focus_id: i32) -> i32 #export {
     if requested_focus_id > 0 { return requested_focus_id }
-    return fallback_focus_id
+    return ModalPromptFallbackFocusId()
 }
 
 ModalPromptCommitResult :: (action_count: i32) -> i32 #export {

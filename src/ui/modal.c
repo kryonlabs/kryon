@@ -129,11 +129,16 @@ ui_modal_metrics_for_class(int class_name)
 {
     return ModalMetricsFor(
         (float)GetScale(),
-        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 2),
-        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 16),
-        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 20),
-        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 17),
-        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal, 15));
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal,
+                       ModalPanelRole()),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal,
+                       ModalTitleRole()),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal,
+                       ModalMessageRole()),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal,
+                       ModalActionRole()),
+        ui_modal_frame(class_name, ButtonToneNeutral, ButtonStateNormal,
+                       ModalCloseRole()));
 }
 
 static int
@@ -223,9 +228,10 @@ RenderActionModal(ModalProps modal)
     int commit_pressed = 0;
     int title_w;
     int result = 0;
-    int has_prompt = modal.text != NULL && modal.text_size > 0 &&
-                     modal.cursor_position != NULL &&
-                     modal.focused != NULL;
+    int has_prompt = ModalHasPromptFor(modal.text != NULL,
+                                       modal.text_size,
+                                       modal.cursor_position != NULL,
+                                       modal.focused != NULL);
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
     ModalDismissal dismissal;
@@ -334,7 +340,7 @@ RenderActionModal(ModalProps modal)
         int field_focused = modal.focused != NULL && *modal.focused;
         field_props.focused = &field_focused;
         field_props.max_codepoints = modal.text_size - 1;
-        field_props.focus_id = ModalPromptFocusIdFor(modal.focus_id, 7301);
+        field_props.focus_id = ModalPromptFocusIdFor(modal.focus_id);
         field_props.commit_pressed = &commit_pressed;
         ui_text_field_render(field_props);
         if(modal.focused != NULL)
