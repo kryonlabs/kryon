@@ -153,6 +153,11 @@ TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
     return paint
 }
 
+TreeViewMarkerText :: (expanded: bool) -> const char* #export {
+    if expanded { return "v" }
+    return ">"
+}
+
 TreeViewRowDecisionFor :: (hot: bool, released: bool, selectable: bool,
     has_selection: bool, item_id: i32) -> TreeViewRowDecision #export {
     decision: TreeViewRowDecision

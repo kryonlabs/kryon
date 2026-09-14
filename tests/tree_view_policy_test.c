@@ -93,6 +93,8 @@ main(void)
     assert(paint.marker_y == 44);
     assert(paint.text_x == 72);
     assert(paint.text_y == 44);
+    assert(TreeViewMarkerText(false)[0] == '>');
+    assert(TreeViewMarkerText(true)[0] == 'v');
     decision = TreeViewRowDecisionFor(true, true, true, true, 42);
     assert(decision.select);
     assert(decision.selected_id == 42);

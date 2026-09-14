@@ -3388,12 +3388,9 @@ RenderTreeView(TreeViewProps tree)
             ui_tk_draw_style_frame(row, tree.bounds, item_frame, hot, 0,
                                    tree.disabled, 0);
         if(paint) {
-            if(item->expanded)
-                RenderText("v", text_paint.marker_x, text_paint.marker_y,
-                           item_font, item_text);
-            else
-                RenderText(">", text_paint.marker_x, text_paint.marker_y,
-                           item_font, item_text);
+            RenderText(TreeViewMarkerText(item->expanded != 0),
+                       text_paint.marker_x, text_paint.marker_y,
+                       item_font, item_text);
             RenderText(item->label != NULL ? item->label : "",
                        text_paint.text_x, text_paint.text_y,
                        item_font, item_text);
