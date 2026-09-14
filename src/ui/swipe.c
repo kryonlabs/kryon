@@ -29,9 +29,10 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         ResetSwipe(gesture);
-        if(g_ui_pointer_owner == POINTER_OWNER_NONE &&
-           !ui_input_captures_click_internal(pointer, 0) &&
-           CheckCollisionPointRec(pointer, spec.bounds)) {
+        if(SwipeCanBegin(spec.bounds,
+                         CheckCollisionPointRec(pointer, spec.bounds),
+                         g_ui_pointer_owner == POINTER_OWNER_NONE &&
+                         !ui_input_captures_click_internal(pointer, 0))) {
             gesture->active = 1;
             gesture->start = pointer;
             gesture->started_at = now;
@@ -86,12 +87,11 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
     }
 
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        SwipeDirection direction =
-            SwipeDirectionFor(delta, directions, axis_bias);
-        float primary = SwipePrimaryDistanceFor(delta, direction);
-        double elapsed = now - gesture->started_at;
-        int within_time = spec.max_duration <= 0.0f ||
-                          elapsed <= (double)spec.max_duration;
+        SwipeReleaseState release =
+            SwipeReleaseStateFor(delta, directions, axis_bias, min_distance,
+                                 now - gesture->started_at,
+                                 spec.max_duration,
+                                 gesture->dragging != 0);
 
         if(gesture->dragging) {
             ConsumeRelease();
@@ -99,9 +99,8 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
         }
-        if(gesture->dragging && within_time && primary >= min_distance)
-            result.direction = direction;
-        result.progress = SwipeProgressFor(primary, min_distance);
+        result.direction = release.direction;
+        result.progress = release.progress;
         result.dragging = 0;
         result.active = 0;
         ResetSwipe(gesture);

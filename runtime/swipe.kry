@@ -8,6 +8,12 @@ SwipeDragState :: struct {
     progress: float
 }
 
+SwipeReleaseState :: struct {
+    direction: SwipeDirection
+    progress: float
+    committed: bool
+}
+
 SwipeAbs :: (value: float) -> float #export {
     if value < 0.0 { return -value }
     return value
@@ -30,6 +36,12 @@ SwipeAxisBiasFor :: (axis_bias: float) -> float #export {
 
 SwipeDecisionDistanceFor :: (scale: float) -> float #export {
     return 8.0 * scale
+}
+
+SwipeCanBegin :: (bounds: Rectangle, pointer_inside: bool, input_clear: bool) -> bool #export {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return false }
+    if !pointer_inside { return false }
+    return input_clear
 }
 
 SwipeDirectionFor :: (delta: Vector2, directions: u32,
@@ -120,6 +132,23 @@ SwipeDragStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
     state.direction = direction
     if state.dragging {
         state.progress = SwipeProgressFor(primary, min_distance)
+    }
+    return state
+}
+
+SwipeReleaseStateFor :: (delta: Vector2, directions: u32, axis_bias: float,
+    min_distance: float, elapsed: f64, max_duration: float,
+    was_dragging: bool) -> SwipeReleaseState #export {
+    state: SwipeReleaseState
+    state.direction = SwipeDirectionFor(delta, directions, axis_bias)
+    primary: float = SwipePrimaryDistanceFor(delta, state.direction)
+    within_time: bool = max_duration <= 0.0 ||
+        elapsed <= (f64)max_duration
+
+    state.progress = SwipeProgressFor(primary, min_distance)
+    state.committed = was_dragging && within_time && primary >= min_distance
+    if !state.committed {
+        state.direction = (SwipeDirection)SwipeNone
     }
     return state
 }

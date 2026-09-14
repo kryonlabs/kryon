@@ -13,6 +13,14 @@ test_defaults(void)
     assert(fabsf(SwipeAxisBiasFor(0.0f) - 1.25f) < 0.001f);
     assert(fabsf(SwipeAxisBiasFor(1.6f) - 1.6f) < 0.001f);
     assert(fabsf(SwipeDecisionDistanceFor(1.5f) - 12.0f) < 0.001f);
+    assert(SwipeCanBegin((Rectangle){0.0f, 0.0f, 100.0f, 40.0f},
+                         true, true));
+    assert(!SwipeCanBegin((Rectangle){0.0f, 0.0f, 0.0f, 40.0f},
+                          true, true));
+    assert(!SwipeCanBegin((Rectangle){0.0f, 0.0f, 100.0f, 40.0f},
+                          false, true));
+    assert(!SwipeCanBegin((Rectangle){0.0f, 0.0f, 100.0f, 40.0f},
+                          true, false));
 }
 
 static void
@@ -65,6 +73,7 @@ static void
 test_drag_state(void)
 {
     SwipeDragState state;
+    SwipeReleaseState release;
 
     state = SwipeDragStateFor((Vector2){7.0f, 0.0f}, SwipeAll, 1.25f,
                               8.0f, 48.0f, false);
@@ -91,6 +100,24 @@ test_drag_state(void)
     assert(state.dragging);
     assert(!state.cancelled);
     assert(fabsf(state.progress - 1.0f) < 0.001f);
+
+    release = SwipeReleaseStateFor((Vector2){-64.0f, 0.0f}, SwipeHorizontal,
+                                   1.25f, 48.0f, 0.2, 0.5f, true);
+    assert(release.committed);
+    assert(release.direction == SwipeLeft);
+    assert(fabsf(release.progress - 1.0f) < 0.001f);
+
+    release = SwipeReleaseStateFor((Vector2){-64.0f, 0.0f}, SwipeHorizontal,
+                                   1.25f, 48.0f, 0.6, 0.5f, true);
+    assert(!release.committed);
+    assert(release.direction == SwipeNone);
+    assert(fabsf(release.progress - 1.0f) < 0.001f);
+
+    release = SwipeReleaseStateFor((Vector2){-24.0f, 0.0f}, SwipeHorizontal,
+                                   1.25f, 48.0f, 0.2, 0.5f, true);
+    assert(!release.committed);
+    assert(release.direction == SwipeNone);
+    assert(fabsf(release.progress - 0.5f) < 0.001f);
 }
 
 int
