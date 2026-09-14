@@ -97,6 +97,10 @@ SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float, font_size: i32,
     return paint
 }
 
+SliderEditorCenterX :: (bounds: Rectangle) -> i32 #export {
+    return (i32)(bounds.x + bounds.width * 0.5)
+}
+
 SliderLabelInsetForStyle :: (label: StyleFrame, scale: float) -> float #export {
     return SliderMetricFloat(label.value.fields, (u32)StylePaddingX,
         label.value.padding_x, 6.0, scale, true)

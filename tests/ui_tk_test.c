@@ -1444,6 +1444,8 @@ test_slider_value_policy(void)
     check_int("slider cell text y", (int)cell_paint.text_y, 28);
     check_int("slider label text x", (int)label_paint.text_x, 16);
     check_int("slider label text y", (int)label_paint.text_y, 2);
+    check_int("slider editor center x",
+              SliderEditorCenterX((Rectangle){10, 20, 80, 30}), 50);
 }
 
 static void

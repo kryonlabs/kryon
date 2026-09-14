@@ -807,8 +807,8 @@ and host plumbing behind the canonical names.
   `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, component
   drag tokens, and retained pointer lifecycle now route through
   `runtime/drag.kry`; `Slider` component tokens,
-  focus IDs, old immediate pointer lifecycle, and retained ratio pointer
-  lifecycle now route through
+  focus IDs, editor center placement, old immediate pointer lifecycle, and
+  retained ratio pointer lifecycle now route through
   `runtime/slider.kry`; toolbar action focus IDs now route through
   `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
   `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy

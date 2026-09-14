@@ -364,7 +364,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
     editor_bounds = widget.bounds;
-    x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
+    x = SliderEditorCenterX(editor_bounds);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
     layout = SliderVerticalEditorLayoutFor(
@@ -481,7 +481,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
     editor_bounds = widget.bounds;
-    x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
+    x = SliderEditorCenterX(editor_bounds);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
     layout = SliderVerticalEditorLayoutFor(
