@@ -43,6 +43,26 @@ InputPointerDragThresholdFor :: (scale: float) -> i32 #export {
     return InputScaledMetric(5.0, scale)
 }
 
+InputTempEditActivationFor :: (pressed: bool, control: bool,
+    same_kind: bool, same_widget: bool, same_component: bool,
+    elapsed_seconds: float, dx: float, dy: float, slop: i32) -> bool #export {
+    if !pressed {
+        return false
+    }
+    if control {
+        return true
+    }
+    if slop < 0 { slop = 0 }
+    if dx < (float)-slop || dx > (float)slop {
+        return false
+    }
+    if dy < (float)-slop || dy > (float)slop {
+        return false
+    }
+    return same_kind && same_widget && same_component &&
+        elapsed_seconds <= 0.30
+}
+
 InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
     requested_button_width: i32, has_step: bool) -> InputCellLayout #export {
     layout: InputCellLayout

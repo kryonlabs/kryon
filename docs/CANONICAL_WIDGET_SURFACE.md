@@ -65,7 +65,7 @@ surface review:
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
 | `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
 | `runtime/image_props.kry` | Image props | `.kry canonical` |
-| `runtime/input.kry` | Input step-button default, component layout, and value/step policy | `.kry canonical` |
+| `runtime/input.kry` | Input step-button default, component layout, value/step, and temp-edit activation policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
 | `runtime/inspect.kry` | Inspector edit/resize geometry and handle-size policy | `.kry support` |
@@ -163,7 +163,7 @@ text measurement, painting, storage, or platform services.
 |---|---|---|
 | Text and drawing | `Text` style resolution, selectable range normalization/highlight geometry/double-click line-selection policy, `Paragraph` metrics/default line-gap/layout spacing/line-step/height/line-stride/alignment/selectable line-index/local-offset policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/line storage/drawing, selectable text ownership/drawing |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options; button fallback/terminal paint constants | helper button variants belong in `ButtonProps` or composition; invisible hit testing and rasterization are host support |
-| Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` step-button default, component/step-button layout, and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox` button-width/layout/value policy, `TextField`/`TextArea` defaults/metrics/paint geometry/buffer-limit/cursor normalization/navigation/edit intent/selection state/paint-span/double-click/pan/focus/text-buffer/range decision policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition, raw string storage/memmove/scanning, and platform text services |
+| Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` step-button default, component/step-button layout, value, and temp-edit activation policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox` button-width/layout/value policy, `TextField`/`TextArea` defaults/metrics/paint geometry/buffer-limit/cursor normalization/navigation/edit intent/selection state/paint-span/double-click/pan/focus/text-buffer/range decision policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition, raw string storage/memmove/scanning, and platform text services |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/lifecycle gate/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership storage and reorder pointer ownership storage remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop source/target lifecycle decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry and row-selection decision policy, `TableView` layout/scroll/scrollbar/cell geometry, keyboard selection, activation, clear-selection, resize lifecycle/width, and clipboard intent policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, item interaction, paint/config layout/count/default policy, `TabBar` sizing/scroll/keyboard-index/reorder marker/double-click decision policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` effective state/layout/reservation/paint geometry policy, `Menu` geometry/navigation and group pointer open/close decision policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
@@ -386,7 +386,7 @@ host roles rather than retained nodes.
 | `Progress` | `.kry canonical` | One progress concept. |
 | `Plot` | `.kry canonical` | Public props and mode names live in `runtime/plot_props.kry`; plot geometry/text policy lives in `.kry`. |
 | `Drag` | `.kry canonical` | Numeric drag value control; value type/count, component layout, and text paint geometry are props/policy. |
-| `Input` | `.kry canonical` | Numeric input control; value type/count and component/step-button layout are props/policy. |
+| `Input` | `.kry canonical` | Numeric input control; value type/count, component/step-button layout, and temp-edit activation are props/policy. |
 | `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
 | `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
@@ -522,7 +522,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Dropdown` | `.kry canonical` | Option/index normalization, popup placement, row/window, scrollbar, scrolling, navigation, and indicator policy are in `.kry`; trigger and option typography use resolved KSS font sizes directly. |
 | `Slider` | `.kry canonical` | Public props live in `runtime/slider_props.kry`; value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry live in `SliderProps`/`.kry`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
-| `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, and step policy live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
+| `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, step policy, and temp-edit activation live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, row/text layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
@@ -805,8 +805,8 @@ and host plumbing behind the canonical names.
   and focus IDs now route through `runtime/slider.kry`; toolbar action focus IDs now route through
   `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
   `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy
-  now routes through `runtime/scroll.kry`; numeric temp-edit and selectable
-  text double-click slop metrics, including retained text widget click slop,
+  now routes through `runtime/scroll.kry`; numeric temp-edit double-click activation
+  and selectable text double-click slop metrics, including retained text widget click slop,
   now route through `runtime/input.kry` and `runtime/text.kry`;
   `TextField`/`TextArea` double-click slop, field pan
   drag threshold, and `TextArea` gutter metrics now route through

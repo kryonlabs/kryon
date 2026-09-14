@@ -2209,13 +2209,12 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     int slop = InputDoubleClickSlopFor(scale);
     float dx = mouse.x - toolkit->numeric_click.position.x;
     float dy = mouse.y - toolkit->numeric_click.position.y;
-    int double_click = pressed && toolkit->numeric_click.valid &&
-        toolkit->numeric_click.kind == kind &&
-        toolkit->numeric_click.widget_id == widget_id &&
-        toolkit->numeric_click.component == component &&
-        now - toolkit->numeric_click.time <= 0.30 &&
-        dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
-    int activate = pressed && (control || double_click);
+    int activate = InputTempEditActivationFor(
+        pressed, control, toolkit->numeric_click.valid &&
+            toolkit->numeric_click.kind == kind,
+        toolkit->numeric_click.widget_id == widget_id,
+        toolkit->numeric_click.component == component,
+        (float)(now - toolkit->numeric_click.time), dx, dy, slop);
     NumericInputState *state =
         ui_numeric_input_find(kind, widget_id, component);
     int commit = 0;
