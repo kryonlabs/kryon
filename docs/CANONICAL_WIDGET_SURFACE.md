@@ -727,10 +727,11 @@ and host plumbing behind the canonical names.
   through `runtime/layout.kry`; scroll-page content-width normalization and
   scroll drag/ensure-visible policy now route through `runtime/scroll.kry`;
   table keyboard selection and scroll-into-view policy now route through
-  `runtime/table_view.kry`; immediate-mode `Input` numeric kind default format,
-  integer rounding, and step dispatch now route through `runtime/input.kry`.
-  Continue by reducing raw native constants in retained-tree numeric helpers and
-  shared immediate-mode helpers.
+  `runtime/table_view.kry`; `Input` numeric kind default format, integer
+  rounding, and step dispatch now route through `runtime/input.kry`; retained
+  and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
+  that runtime policy. Continue by reducing raw native constants in shared
+  immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and
