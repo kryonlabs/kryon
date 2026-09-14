@@ -604,23 +604,20 @@ void
 ui_default_elevation(Rectangle bounds, float radius, int level)
 {
     Color shadow;
-    int y1;
-    int y2;
+    StyleElevationPaint paint = StyleElevationPaintFor(level);
 
-    if(level <= 0)
+    if(!paint.visible)
         return;
-    if(level > 4)
-        level = 4;
 
     shadow = BLACK;
-    shadow.a = (unsigned char)(18 + level * 6);
-    y1 = Scale(level);
-    y2 = Scale(level * 2);
-    DrawRectangleRounded((Rectangle){bounds.x, bounds.y + (float)y2,
+    shadow.a = (unsigned char)paint.far_alpha;
+    DrawRectangleRounded((Rectangle){bounds.x,
+                                     bounds.y + (float)Scale(paint.far_offset),
                                      bounds.width, bounds.height},
                          radius, 12, shadow);
-    shadow.a = (unsigned char)(10 + level * 4);
-    DrawRectangleRounded((Rectangle){bounds.x, bounds.y + (float)y1,
+    shadow.a = (unsigned char)paint.near_alpha;
+    DrawRectangleRounded((Rectangle){bounds.x,
+                                     bounds.y + (float)Scale(paint.near_offset),
                                      bounds.width, bounds.height},
                          radius, 12, shadow);
 }

@@ -74,6 +74,12 @@ int main(void)
     assert(StyleStateLayerAlpha(false, false, true) == 20);
     assert(StyleStateLayerAlpha(false, true, true) == 31);
     assert(StyleStateLayerAlpha(true, false, false) == 31);
+    StyleElevationPaint elevation = StyleElevationPaintFor(2);
+    assert(elevation.visible && elevation.far_alpha == 30);
+    assert(elevation.near_alpha == 18 && elevation.far_offset == 4);
+    assert(elevation.near_offset == 2);
+    assert(!StyleElevationPaintFor(0).visible);
+    assert(StyleElevationPaintFor(99).level == 4);
     Vector2 ripple_origin = StyleRippleFallbackOrigin((Rectangle){10, 20, 40, 20});
     assert(ripple_origin.x == 30 && ripple_origin.y == 30);
     assert(StyleRippleRadius(2, 100, 2) == 16);

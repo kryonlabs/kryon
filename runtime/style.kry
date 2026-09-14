@@ -51,6 +51,15 @@ StyleShinePaint :: struct {
     visible: bool
 }
 
+StyleElevationPaint :: struct {
+    level: i32
+    far_alpha: i32
+    near_alpha: i32
+    far_offset: i32
+    near_offset: i32
+    visible: bool
+}
+
 # Activation is an action result, not a visual-state override. Explicit
 # previews keep their resolved state even when a user activates the control.
 ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
@@ -209,6 +218,19 @@ StyleStateLayerAlpha :: (pressed: bool, focused: bool, hovered: bool) -> i32 #ex
     if focused { return 31 }
     if hovered { return 20 }
     return 0
+}
+
+StyleElevationPaintFor :: (level: i32) -> StyleElevationPaint #export {
+    paint: StyleElevationPaint
+    if level <= 0 { return paint }
+    if level > 4 { level = 4 }
+    paint.level = level
+    paint.far_alpha = 18 + level * 6
+    paint.near_alpha = 10 + level * 4
+    paint.far_offset = level * 2
+    paint.near_offset = level
+    paint.visible = true
+    return paint
 }
 
 # Ripple animation timing is native, but radius policy belongs to style.
