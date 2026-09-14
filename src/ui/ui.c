@@ -1111,13 +1111,14 @@ ui_selection_range(TextSelection selection, const char *text,
                    int *start, int *end)
 {
     int len = text != NULL ? (int)strlen(text) : 0;
-    TextSelectionRange range = TextSelectionRangeFor(selection.anchor,
-                                                     selection.cursor);
+    TextSelectionRange range = TextSelectionRangeForLength(selection.anchor,
+                                                           selection.cursor,
+                                                           len);
 
     if(start != NULL)
-        *start = ui_clampi(range.start, 0, len);
+        *start = range.start;
     if(end != NULL)
-        *end = ui_clampi(range.end, 0, len);
+        *end = range.end;
 }
 
 static int
@@ -3952,12 +3953,11 @@ ui_text_area_render(TextAreaProps area)
     }
     if(TextSelectionRangeShouldResolve(focused, context_active,
        has_selection)) {
-        TextSelectionRange range = TextSelectionRangeFor(
-            g_ui_text_area_selection.anchor, g_ui_text_area_selection.cursor);
+        TextSelectionRange range = TextSelectionRangeForLength(
+            g_ui_text_area_selection.anchor, g_ui_text_area_selection.cursor,
+            (int)strlen(area.text));
         selection_start = range.start;
         selection_end = range.end;
-        selection_start = ui_clampi(selection_start, 0, (int)strlen(area.text));
-        selection_end = ui_clampi(selection_end, 0, (int)strlen(area.text));
     }
     {
         int anchor = has_selection
@@ -4156,8 +4156,8 @@ ui_text_area_render(TextAreaProps area)
                                          area.focused))
                 anchor = g_ui_text_area_selection.anchor;
             if(ui_text_navigate(navigation, &anchor, &cursor)) {
-                TextSelectionRange range = TextSelectionRangeFor(anchor,
-                                                                 cursor);
+                TextSelectionRange range = TextSelectionRangeForLength(
+                    anchor, cursor, (int)strlen(area.text));
                 *area.cursor_position = cursor;
                 ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                       area.focused, anchor, cursor, 0);
@@ -4812,8 +4812,8 @@ ui_text_field_render_filtered(TextFieldProps field,
                                          field.focus_id, field.focused))
                 anchor = g_ui_text_field_selection.anchor;
             if(ui_text_navigate(navigation, &anchor, &cursor)) {
-                TextSelectionRange range = TextSelectionRangeFor(anchor,
-                                                                 cursor);
+                TextSelectionRange range = TextSelectionRangeForLength(
+                    anchor, cursor, (int)strlen(field.text));
                 *field.cursor_position = cursor;
                 ui_text_selection_set(&g_ui_text_field_selection,
                                       field.focus_id, field.focused,
