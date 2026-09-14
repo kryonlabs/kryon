@@ -1542,10 +1542,6 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(!m->functions[fi].is_extern && !KirCanEmitBody(m, &m->functions[fi])) needs_inspection = 1;
     if(needs_inspection)
         fprintf(c, "#include \"ui_inspect.h\"\n");
-    /* Block widgets lower to host-hook calls (ScrollScope, RenderImage, ...)
-     * from plain functions too, not only #ui functions. Unused prototypes are
-     * harmless, so every generated file declares the hook surface. */
-    emit_ui_host_hook_prototypes(c);
     KirEmitNumbers(c, m, KIR_C);
     /* '#private' imports include here (implementation-only). */
     for(i = 0; i < m->import_count; i++) {
@@ -1560,6 +1556,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             fprintf(c, "#include \"%s\"\n", imp->target);
         emit_guard_close(c, imp->guard);
     }
+    /* Block widgets lower to host-hook calls (ScrollScope, RenderImage, ...)
+     * from plain functions too, not only #ui functions. The prototypes use
+     * public widget types, so they come after the module's includes; unused
+     * prototypes are harmless. */
+    emit_ui_host_hook_prototypes(c);
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     /* Kry module constants lowered to C preprocessor constants. */
     for(i = 0; i < m->define_count; i++) {
