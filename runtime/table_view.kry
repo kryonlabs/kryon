@@ -80,6 +80,18 @@ TableViewResizeClearDecision :: struct {
     clear: bool
 }
 
+TableViewResizeStartDecision :: struct {
+    begin: bool
+    column: i32
+}
+
+TableViewResizeDragDecision :: struct {
+    update: bool
+    finish: bool
+    consume_release: bool
+    mark_clickable: bool
+}
+
 TableViewPanelRole :: () -> i32 #export {
     return 2
 }
@@ -319,6 +331,35 @@ TableViewResizeColumnWidthFor :: (start_width: i32, start_x: i32,
     return width
 }
 
+TableViewResizeStartFor :: (active: bool, content_disabled: bool,
+    table_disabled: bool, resizable: bool, has_column_widths: bool,
+    pressed: bool, pointer_in_header: bool,
+    column: i32) -> TableViewResizeStartDecision #export {
+    decision: TableViewResizeStartDecision
+    decision.column = column
+    decision.begin = !active && !content_disabled && !table_disabled &&
+        resizable && has_column_widths && pressed && pointer_in_header &&
+        column >= 0
+    return decision
+}
+
+TableViewResizeDragFor :: (active: bool, same_table: bool,
+    content_disabled: bool, table_disabled: bool, resizable: bool,
+    has_column_widths: bool, down: bool,
+    released: bool) -> TableViewResizeDragDecision #export {
+    decision: TableViewResizeDragDecision
+    if !active || !same_table {
+        return decision
+    }
+    can_update: bool = !content_disabled && !table_disabled && resizable &&
+        has_column_widths
+    decision.update = can_update && down
+    decision.finish = released
+    decision.consume_release = released
+    decision.mark_clickable = can_update && down
+    return decision
+}
+
 TableViewResizeClearFor :: (active: bool, owner_captured: bool,
     content_disabled: bool, released: bool, same_table: bool,
     table_disabled: bool, resizable: bool,
@@ -337,6 +378,16 @@ TableViewResizeClearFor :: (active: bool, owner_captured: bool,
         decision.clear = true
     }
     return decision
+}
+
+TableViewHeaderHotFor :: (disabled: bool, pointer_in_headers: bool,
+    pointer_in_header: bool, captured: bool) -> bool #export {
+    return !disabled && pointer_in_headers && pointer_in_header && !captured
+}
+
+TableViewRowHotFor :: (disabled: bool, custom_cells: bool,
+    pointer_in_viewport: bool, row_hot: bool) -> bool #export {
+    return !disabled && !custom_cells && pointer_in_viewport && row_hot
 }
 
 TableViewSelectedRowFor :: (selected_row: i32, row_count: i32) -> i32 #export {

@@ -3858,45 +3858,64 @@ RenderTableView(TableViewProps table)
     scroll_body_h = layout.scroll_body_height;
     default_col_w = TableViewDefaultColumnWidth((int)table.bounds.width,
                                                 visible_columns);
-    if(!ContentDisabled() && !table.disabled && table.resizable && table.column_widths != NULL) {
+    {
         Vector2 mouse = ui_mouse_world();
         Rectangle header = {table.bounds.x, table.bounds.y,
                             table.bounds.width, (float)header_h};
-        if(toolkit->resize_column < 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
-           ui_contains(header, mouse)) {
-            int separator_x = 0;
-            int column = ui_table_separator_at_x(table, (int)(mouse.x-ui_table_header_shift(table,mouse.y)),
-                                                  metrics.resize_tolerance, default_col_w,
-                                                  &separator_x);
-            if(column >= 0) {
-                toolkit->resize_table_id = table.id;
-                toolkit->resize_column = column;
-                toolkit->resize_start_x = (int)mouse.x;
-                toolkit->resize_start_width = ui_table_column_width(table, column,
-                                                           default_col_w);
-                toolkit->resize_owner = ui_popup_input_owner();
-                MarkClickable();
-            }
+        int pointer_in_header = ui_contains(header, mouse);
+        int separator_x = 0;
+        int column = pointer_in_header ?
+            ui_table_separator_at_x(table,
+                                    (int)(mouse.x -
+                                          ui_table_header_shift(table, mouse.y)),
+                                    metrics.resize_tolerance, default_col_w,
+                                    &separator_x) : -1;
+        TableViewResizeStartDecision resize_start = TableViewResizeStartFor(
+            toolkit->resize_column >= 0,
+            ContentDisabled() != 0,
+            table.disabled != 0,
+            table.resizable != 0,
+            table.column_widths != NULL,
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+            pointer_in_header != 0,
+            column);
+        if(resize_start.begin) {
+            toolkit->resize_table_id = table.id;
+            toolkit->resize_column = resize_start.column;
+            toolkit->resize_start_x = (int)mouse.x;
+            toolkit->resize_start_width = ui_table_column_width(
+                table, resize_start.column, default_col_w);
+            toolkit->resize_owner = ui_popup_input_owner();
+            MarkClickable();
         }
-        if(toolkit->resize_column >= 0 && toolkit->resize_table_id == table.id) {
+        TableViewResizeDragDecision resize_drag = TableViewResizeDragFor(
+            toolkit->resize_column >= 0,
+            toolkit->resize_table_id == table.id,
+            ContentDisabled() != 0,
+            table.disabled != 0,
+            table.resizable != 0,
+            table.column_widths != NULL,
+            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+        if(resize_drag.update) {
             int minimum = TableViewMinimumColumnWidth(table.min_column_width,
                                                       (float)GetScale(),
                                                       metrics);
-            if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                int width = TableViewResizeColumnWidthFor(
-                    toolkit->resize_start_width, toolkit->resize_start_x,
-                    (int)mouse.x, minimum);
-                if(table.column_widths[toolkit->resize_column] != width) {
-                    table.column_widths[toolkit->resize_column] = width;
-                    changed = 1;
-                }
-                MarkClickable();
+            int width = TableViewResizeColumnWidthFor(
+                toolkit->resize_start_width, toolkit->resize_start_x,
+                (int)mouse.x, minimum);
+            if(table.column_widths[toolkit->resize_column] != width) {
+                table.column_widths[toolkit->resize_column] = width;
+                changed = 1;
             }
-            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                ConsumeRelease();
-                toolkit->resize_table_id = 0;
-                toolkit->resize_column = -1;
-            }
+        }
+        if(resize_drag.mark_clickable)
+            MarkClickable();
+        if(resize_drag.consume_release)
+            ConsumeRelease();
+        if(resize_drag.finish) {
+            toolkit->resize_table_id = 0;
+            toolkit->resize_column = -1;
         }
     }
     max_scroll = ui_update_scroll(TableViewViewport(table.bounds, layout, true),
@@ -3945,8 +3964,11 @@ RenderTableView(TableViewProps table)
         Vector2 header_mouse = ui_mouse_world();
         Vector2 local_mouse = {header_mouse.x-ui_table_header_shift(table,header_mouse.y),header_mouse.y};
         Rectangle all_headers = {table.bounds.x,table.bounds.y,table.bounds.width,(float)header_h};
-        int header_hot = !table.disabled && ui_contains(all_headers,header_mouse) &&
-            ui_contains(head,local_mouse) && !InputCapturesClick(header_mouse);
+        int header_hot = TableViewHeaderHotFor(
+            table.disabled != 0,
+            ui_contains(all_headers, header_mouse) != 0,
+            ui_contains(head, local_mouse) != 0,
+            InputCapturesClick(header_mouse) != 0);
         TableViewHeaderPointerDecision header_pointer =
             TableViewHeaderPointerDecisionFor(
                 table.disabled != 0, header_hot != 0,
@@ -4044,7 +4066,11 @@ RenderTableView(TableViewProps table)
                                            scrolling != 0);
         Rectangle viewport = TableViewViewport(table.bounds, layout,
                                                scrolling != 0);
-        int hot = !table.disabled && !table.custom_cells && ui_contains(viewport, ui_mouse_world()) && ui_hot(row);
+        int hot = TableViewRowHotFor(
+            table.disabled != 0,
+            table.custom_cells != 0,
+            ui_contains(viewport, ui_mouse_world()) != 0,
+            ui_hot(row) != 0);
         TableViewRowPointerDecision row_pointer =
             TableViewRowPointerDecisionFor(
                 table.disabled != 0, hot != 0,

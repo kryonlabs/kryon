@@ -81,6 +81,18 @@ type TableViewResizeClearDecision struct {
 	Clear bool
 }
 
+type TableViewResizeStartDecision struct {
+	Begin  bool
+	Column int32
+}
+
+type TableViewResizeDragDecision struct {
+	Update         bool
+	Finish         bool
+	ConsumeRelease bool
+	MarkClickable  bool
+}
+
 func TableView_TableViewPanelRole() int32 {
 	var value_0 int32 = 2
 	return value_0
@@ -715,6 +727,111 @@ func TableView_TableViewResizeColumnWidthFor(start_width int32, start_x int32, p
 	return value_9
 }
 
+func TableView_TableViewResizeStartFor(active bool, content_disabled bool, table_disabled bool, resizable bool, has_column_widths bool, pressed bool, pointer_in_header bool, column int32) TableViewResizeStartDecision {
+	var decision TableViewResizeStartDecision = TableViewResizeStartDecision{}
+	var value_0 int32 = column
+	decision.Column = value_0
+	var value_1 bool = active
+	var value_2 bool = !value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = content_disabled
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	var value_6 bool = value_3
+	if value_6 {
+		var value_7 bool = table_disabled
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	var value_9 bool = value_6
+	if value_9 {
+		var value_10 bool = resizable
+		value_9 = value_10
+	}
+	var value_11 bool = value_9
+	if value_11 {
+		var value_12 bool = has_column_widths
+		value_11 = value_12
+	}
+	var value_13 bool = value_11
+	if value_13 {
+		var value_14 bool = pressed
+		value_13 = value_14
+	}
+	var value_15 bool = value_13
+	if value_15 {
+		var value_16 bool = pointer_in_header
+		value_15 = value_16
+	}
+	var value_17 bool = value_15
+	if value_17 {
+		var value_18 int32 = column
+		var value_19 int32 = 0
+		var value_20 bool = value_18 >= value_19
+		value_17 = value_20
+	}
+	decision.Begin = value_17
+	var value_21 TableViewResizeStartDecision = decision
+	return value_21
+}
+
+func TableView_TableViewResizeDragFor(active bool, same_table bool, content_disabled bool, table_disabled bool, resizable bool, has_column_widths bool, down bool, released bool) TableViewResizeDragDecision {
+	var decision TableViewResizeDragDecision = TableViewResizeDragDecision{}
+	var value_0 bool = active
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = same_table
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	if value_2 {
+		var value_5 TableViewResizeDragDecision = decision
+		return value_5
+	}
+	var value_6 bool = content_disabled
+	var value_7 bool = !value_6
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = table_disabled
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	var value_11 bool = value_8
+	if value_11 {
+		var value_12 bool = resizable
+		value_11 = value_12
+	}
+	var value_13 bool = value_11
+	if value_13 {
+		var value_14 bool = has_column_widths
+		value_13 = value_14
+	}
+	var can_update bool = value_13
+	var value_15 bool = can_update
+	var value_16 bool = value_15
+	if value_16 {
+		var value_17 bool = down
+		value_16 = value_17
+	}
+	decision.Update = value_16
+	var value_18 bool = released
+	decision.Finish = value_18
+	var value_19 bool = released
+	decision.ConsumeRelease = value_19
+	var value_20 bool = can_update
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 bool = down
+		value_21 = value_22
+	}
+	decision.MarkClickable = value_21
+	var value_23 TableViewResizeDragDecision = decision
+	return value_23
+}
+
 func TableView_TableViewResizeClearFor(active bool, owner_captured bool, content_disabled bool, released bool, same_table bool, table_disabled bool, resizable bool, has_column_widths bool) TableViewResizeClearDecision {
 	var decision TableViewResizeClearDecision = TableViewResizeClearDecision{}
 	var value_0 bool = active
@@ -770,6 +887,50 @@ func TableView_TableViewResizeClearFor(active bool, owner_captured bool, content
 	}
 	var value_23 TableViewResizeClearDecision = decision
 	return value_23
+}
+
+func TableView_TableViewHeaderHotFor(disabled bool, pointer_in_headers bool, pointer_in_header bool, captured bool) bool {
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = pointer_in_headers
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = pointer_in_header
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = captured
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	return value_6
+}
+
+func TableView_TableViewRowHotFor(disabled bool, custom_cells bool, pointer_in_viewport bool, row_hot bool) bool {
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = custom_cells
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	var value_5 bool = value_2
+	if value_5 {
+		var value_6 bool = pointer_in_viewport
+		value_5 = value_6
+	}
+	var value_7 bool = value_5
+	if value_7 {
+		var value_8 bool = row_hot
+		value_7 = value_8
+	}
+	return value_7
 }
 
 func TableView_TableViewSelectedRowFor(selected_row int32, row_count int32) int32 {

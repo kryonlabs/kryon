@@ -30,6 +30,8 @@ main(void)
     TableViewScrollLayout scroll;
     TableViewClipboardDecision clipboard;
     TableViewResizeClearDecision resize_clear;
+    TableViewResizeStartDecision resize_start;
+    TableViewResizeDragDecision resize_drag;
     TableViewHeaderPointerDecision header_pointer;
     TableViewRowPointerDecision row_pointer;
     TableViewRowClickDecision row_click;
@@ -55,6 +57,39 @@ main(void)
     assert(TableViewResizeColumnWidthFor(120, 50, 90, 64) == 160);
     assert(TableViewResizeColumnWidthFor(120, 50, 10, 64) == 80);
     assert(TableViewResizeColumnWidthFor(120, 50, -20, 64) == 64);
+    resize_start = TableViewResizeStartFor(false, false, false, true, true,
+                                           true, true, 2);
+    assert(resize_start.begin);
+    assert(resize_start.column == 2);
+    resize_start = TableViewResizeStartFor(true, false, false, true, true,
+                                           true, true, 2);
+    assert(!resize_start.begin);
+    resize_start = TableViewResizeStartFor(false, true, false, true, true,
+                                           true, true, 2);
+    assert(!resize_start.begin);
+    resize_start = TableViewResizeStartFor(false, false, false, true, true,
+                                           true, true, -1);
+    assert(!resize_start.begin);
+    resize_drag = TableViewResizeDragFor(true, true, false, false, true, true,
+                                         true, false);
+    assert(resize_drag.update);
+    assert(!resize_drag.finish);
+    assert(!resize_drag.consume_release);
+    assert(resize_drag.mark_clickable);
+    resize_drag = TableViewResizeDragFor(true, true, false, false, true, true,
+                                         false, true);
+    assert(!resize_drag.update);
+    assert(resize_drag.finish);
+    assert(resize_drag.consume_release);
+    assert(!resize_drag.mark_clickable);
+    resize_drag = TableViewResizeDragFor(true, false, false, false, true, true,
+                                         true, true);
+    assert(!resize_drag.update);
+    assert(!resize_drag.finish);
+    resize_drag = TableViewResizeDragFor(true, true, false, false, true, false,
+                                         true, false);
+    assert(!resize_drag.update);
+    assert(!resize_drag.mark_clickable);
     resize_clear = TableViewResizeClearFor(false, true, true, true, false,
                                            true, false, false);
     assert(!resize_clear.clear);
@@ -79,6 +114,12 @@ main(void)
     resize_clear = TableViewResizeClearFor(true, false, false, true, true,
                                            false, true, false);
     assert(resize_clear.clear);
+    assert(TableViewHeaderHotFor(false, true, true, false));
+    assert(!TableViewHeaderHotFor(true, true, true, false));
+    assert(!TableViewHeaderHotFor(false, true, true, true));
+    assert(TableViewRowHotFor(false, false, true, true));
+    assert(!TableViewRowHotFor(false, true, true, true));
+    assert(!TableViewRowHotFor(false, false, false, true));
     assert(TableViewSelectedRowFor(-1, 4) == 0);
     assert(TableViewSelectedRowFor(9, 4) == 3);
     assert(TableViewSelectedRowFor(2, 4) == 2);
