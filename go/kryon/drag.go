@@ -317,6 +317,37 @@ func Drag_DragDiscreteRoundedDelta(scaled float32, force_minimum_step bool) int3
 	return value_20
 }
 
+func Drag_DragKeyboardShouldRun(focus_active bool, keyboard_enabled bool, popup_captures bool) bool {
+	var value_0 bool = focus_active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = popup_captures
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	return value_3
+}
+
+func Drag_DragKeyboardDirectionFor(right bool, left bool) int32 {
+	var value_0 bool = right
+	if value_0 {
+		var value_1 int32 = 1
+		return value_1
+	}
+	var value_2 bool = left
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = 0
+	return value_4
+}
+
 func Drag_DragKeyboardInputFor(direction int32, home bool, end bool, alt bool, shift bool) DragKeyboardInput {
 	var input DragKeyboardInput = DragKeyboardInput{}
 	var value_0 int32 = direction

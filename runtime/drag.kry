@@ -118,6 +118,17 @@ DragDiscreteRoundedDelta :: (scaled: float, force_minimum_step: bool) -> i32 #ex
     return step
 }
 
+DragKeyboardShouldRun :: (focus_active: bool, keyboard_enabled: bool,
+    popup_captures: bool) -> bool #export {
+    return focus_active && keyboard_enabled && !popup_captures
+}
+
+DragKeyboardDirectionFor :: (right: bool, left: bool) -> i32 #export {
+    if right { return 1 }
+    if left { return -1 }
+    return 0
+}
+
 DragKeyboardInputFor :: (direction: i32, home: bool, end: bool,
     alt: bool, shift: bool) -> DragKeyboardInput #export {
     input: DragKeyboardInput

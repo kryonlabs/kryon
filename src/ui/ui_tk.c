@@ -2225,7 +2225,6 @@ ui_numeric_focus_id(int id, int component, int integer)
     return SliderFocusIdFor(id, component, integer != 0);
 }
 
-static int ui_slider_keyboard_direction(int vertical);
 static int ui_numeric_input_filter(int codepoint, void *user_data);
 static NumericInputState *ui_numeric_input_find(int kind, int widget_id,
                                                    int component);
@@ -2387,15 +2386,16 @@ static int
 ui_update_drag_continuous_keyboard(int focus_id, float speed, float minimum,
                               float maximum, float *value)
 {
-    int direction;
     DragStep step;
 
-    if(focus_id <= 0 || !IsFocusActive(focus_id) ||
-       !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+    if(focus_id <= 0 || !DragKeyboardShouldRun(
+            IsFocusActive(focus_id) != 0, IsKeyboardInputEnabled() != 0,
+            ui_popup_input_focus_captures(focus_id) != 0))
         return 0;
-    direction = ui_slider_keyboard_direction(0);
     DragKeyboardInput keyboard_input = DragKeyboardInputFor(
-        direction, IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        DragKeyboardDirectionFor(IsKeyPressed(KEY_RIGHT) != 0,
+                                 IsKeyPressed(KEY_LEFT) != 0),
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
         (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) != 0,
         (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0);
     step = DragKeyboardValue(*value, speed, minimum, maximum, keyboard_input);
@@ -2408,15 +2408,16 @@ static int
 ui_update_drag_discrete_keyboard(int focus_id, float speed, int minimum,
                             int maximum, int *value)
 {
-    int direction;
     DragDiscreteStep step;
 
-    if(focus_id <= 0 || !IsFocusActive(focus_id) ||
-       !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+    if(focus_id <= 0 || !DragKeyboardShouldRun(
+            IsFocusActive(focus_id) != 0, IsKeyboardInputEnabled() != 0,
+            ui_popup_input_focus_captures(focus_id) != 0))
         return 0;
-    direction = ui_slider_keyboard_direction(0);
     DragKeyboardInput keyboard_input = DragKeyboardInputFor(
-        direction, IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        DragKeyboardDirectionFor(IsKeyPressed(KEY_RIGHT) != 0,
+                                 IsKeyPressed(KEY_LEFT) != 0),
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
         (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) != 0,
         (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0);
     step = DragDiscreteKeyboardValue(*value, speed, minimum, maximum,
@@ -2637,31 +2638,20 @@ ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
 }
 
 static int
-ui_slider_keyboard_direction(int vertical)
-{
-    if(vertical) {
-        if(IsKeyPressed(KEY_UP)) return 1;
-        if(IsKeyPressed(KEY_DOWN)) return -1;
-    } else {
-        if(IsKeyPressed(KEY_RIGHT)) return 1;
-        if(IsKeyPressed(KEY_LEFT)) return -1;
-    }
-    return 0;
-}
-
-static int
 ui_update_slider_continuous_keyboard(int focus_id, int vertical, float minimum,
                                 float maximum, float *value)
 {
-    int direction;
     SliderStep step;
 
-    if(focus_id <= 0 || !IsFocusActive(focus_id) ||
-       !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+    if(focus_id <= 0 || !SliderKeyboardShouldRun(
+            IsFocusActive(focus_id) != 0, IsKeyboardInputEnabled() != 0,
+            ui_popup_input_focus_captures(focus_id) != 0))
         return 0;
-    direction = ui_slider_keyboard_direction(vertical);
-    step = SliderKeyboardValue(*value, minimum, maximum, direction,
-        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+    step = SliderKeyboardValue(*value, minimum, maximum,
+        SliderKeyboardDirectionFor(vertical != 0,
+            IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+            IsKeyPressed(KEY_RIGHT) != 0, IsKeyPressed(KEY_LEFT) != 0),
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
     if(!step.changed)
@@ -2674,15 +2664,17 @@ static int
 ui_update_slider_discrete_keyboard(int focus_id, int vertical, int minimum,
                               int maximum, int *value)
 {
-    int direction;
     SliderDiscreteStep step;
 
-    if(focus_id <= 0 || !IsFocusActive(focus_id) ||
-       !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
+    if(focus_id <= 0 || !SliderKeyboardShouldRun(
+            IsFocusActive(focus_id) != 0, IsKeyboardInputEnabled() != 0,
+            ui_popup_input_focus_captures(focus_id) != 0))
         return 0;
-    direction = ui_slider_keyboard_direction(vertical);
-    step = SliderDiscreteKeyboardValue(*value, minimum, maximum, direction,
-        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+    step = SliderDiscreteKeyboardValue(*value, minimum, maximum,
+        SliderKeyboardDirectionFor(vertical != 0,
+            IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+            IsKeyPressed(KEY_RIGHT) != 0, IsKeyPressed(KEY_LEFT) != 0),
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
     if(!step.changed)

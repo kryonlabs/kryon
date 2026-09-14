@@ -343,6 +343,23 @@ SliderValue :: (minimum: float, maximum: float, ratio: float) -> float #export {
     return minimum + SliderClampRatio(ratio) * span
 }
 
+SliderKeyboardShouldRun :: (focus_active: bool, keyboard_enabled: bool,
+    popup_captures: bool) -> bool #export {
+    return focus_active && keyboard_enabled && !popup_captures
+}
+
+SliderKeyboardDirectionFor :: (vertical: bool, up: bool, down: bool,
+    right: bool, left: bool) -> i32 #export {
+    if vertical {
+        if up { return 1 }
+        if down { return -1 }
+    } else {
+        if right { return 1 }
+        if left { return -1 }
+    }
+    return 0
+}
+
 SliderKeyboardValue :: (value: float, minimum: float, maximum: float,
     direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderStep #export {
     result: SliderStep

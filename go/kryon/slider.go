@@ -866,6 +866,51 @@ func Slider_SliderValue(minimum float32, maximum float32, ratio float32) float32
 	return value_12
 }
 
+func Slider_SliderKeyboardShouldRun(focus_active bool, keyboard_enabled bool, popup_captures bool) bool {
+	var value_0 bool = focus_active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = popup_captures
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	return value_3
+}
+
+func Slider_SliderKeyboardDirectionFor(vertical bool, up bool, down bool, right bool, left bool) int32 {
+	var value_0 bool = vertical
+	if value_0 {
+		var value_1 bool = up
+		if value_1 {
+			var value_2 int32 = 1
+			return value_2
+		}
+		var value_3 bool = down
+		if value_3 {
+			var value_4 int32 = -1
+			return value_4
+		}
+	} else {
+		var value_5 bool = right
+		if value_5 {
+			var value_6 int32 = 1
+			return value_6
+		}
+		var value_7 bool = left
+		if value_7 {
+			var value_8 int32 = -1
+			return value_8
+		}
+	}
+	var value_9 int32 = 0
+	return value_9
+}
+
 func Slider_SliderKeyboardValue(value float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) SliderStep {
 	var result SliderStep = SliderStep{}
 	var value_0 float32 = value
