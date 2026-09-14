@@ -3,6 +3,19 @@ package kryon
 
 // #import kryon_compat.generated.h
 // #import kryon_key.h
+type SemanticKind int32
+
+const (
+	SemanticNone      SemanticKind = 0
+	SemanticPage      SemanticKind = 1
+	SemanticSection   SemanticKind = 2
+	SemanticHeading   SemanticKind = 3
+	SemanticParagraph SemanticKind = 4
+	SemanticLink      SemanticKind = 5
+	SemanticImage     SemanticKind = 6
+	SemanticButton    SemanticKind = 7
+)
+
 type PageProps struct {
 	Bounds       Rectangle
 	Title        string

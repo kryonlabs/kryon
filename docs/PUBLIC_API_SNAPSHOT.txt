@@ -1624,14 +1624,6 @@ include/ui_node_registry.h function NodeTypeLabel
 include/ui_node_registry.h function NodeTypeName
 include/ui_node_registry.h function NodeTypeSnippet
 include/ui_node_registry_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_page.h enum SEMANTIC_BUTTON
-include/ui_page.h enum SEMANTIC_HEADING
-include/ui_page.h enum SEMANTIC_IMAGE
-include/ui_page.h enum SEMANTIC_LINK
-include/ui_page.h enum SEMANTIC_NONE
-include/ui_page.h enum SEMANTIC_PAGE
-include/ui_page.h enum SEMANTIC_PARAGRAPH
-include/ui_page.h enum SEMANTIC_SECTION
 include/ui_page.h function Flow
 include/ui_page.h function GetRouteHash
 include/ui_page.h function GetRoutePath

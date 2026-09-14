@@ -34,7 +34,6 @@ type KeyID uint64
 type ThemeId int32
 type ThemeSource int32
 type ThemeMode int32
-type SemanticKind int32
 
 const (
 	FlagVsyncHint       uint = 0x00000040
@@ -137,17 +136,6 @@ const (
 	THEME_XFCE     = 13
 	THEME_SWEET    = 14
 	THEME_COUNT    = 15
-)
-
-const (
-	SemanticNone SemanticKind = iota
-	SemanticPage
-	SemanticSection
-	SemanticHeading
-	SemanticParagraph
-	SemanticLink
-	SemanticImage
-	SemanticButton
 )
 
 const (

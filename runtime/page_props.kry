@@ -2,6 +2,17 @@
 #import "kryon_compat.generated.h"
 #import "kryon_key.h"
 
+SemanticKind :: enum {
+    SemanticNone = 0
+    SemanticPage = 1
+    SemanticSection = 2
+    SemanticHeading = 3
+    SemanticParagraph = 4
+    SemanticLink = 5
+    SemanticImage = 6
+    SemanticButton = 7
+}
+
 PageProps :: struct {
     bounds: Rectangle
     title: const char*

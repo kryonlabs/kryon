@@ -150,7 +150,7 @@ ui_tree_heading_semantic(const char *text, int level)
 {
 #if defined(__GNUC__) || defined(__clang__)
     if(level > 0 && kry_dom_semantic_next != NULL)
-        kry_dom_semantic_next(SEMANTIC_HEADING, text, NULL, NULL, level, -1);
+        kry_dom_semantic_next(SemanticHeading, text, NULL, NULL, level, -1);
 #else
     (void)text;
     (void)level;
@@ -2354,7 +2354,7 @@ RenderImage(ImageProps image)
     Color fallback;
 
     if(image.alt_text != NULL && image.alt_text[0] != '\0')
-        ui_page_semantic_next(SEMANTIC_IMAGE, image.alt_text, NULL, "img", 0,
+        ui_page_semantic_next(SemanticImage, image.alt_text, NULL, "img", 0,
                               -1);
     ui_tree_add(0, WidgetKindImage, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);

@@ -206,7 +206,7 @@ Page(PageProps props)
         SetPageCanonicalURL(props.canonical_url);
     if(style.background.a != 0)
         SetPageThemeColor(style.background);
-    page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
+    page_semantic_box(SemanticPage, bounds, props.title);
     PageLayoutMetrics metrics = PageLayoutMetricsFor(style_data);
     return Column((ColumnProps){bounds, metrics.gap, metrics.padding, key});
 }
@@ -217,7 +217,7 @@ Section(SectionProps props)
     Rectangle bounds = page_bounds_or_view(props.bounds);
     KeyID key = props.key != 0 ? props.key : Key(props.label);
 
-    page_semantic_box(SEMANTIC_SECTION, bounds, props.label);
+    page_semantic_box(SemanticSection, bounds, props.label);
     StyleData style = page_box_style(StyleKindSection(), props.class_name);
     PageLayoutMetrics metrics = PageLayoutMetricsFor(style);
     return Column((ColumnProps){bounds, metrics.gap, metrics.padding, key});
@@ -270,14 +270,14 @@ ParagraphText(ParagraphTextProps props)
         paragraph.font = GetFontSize();
     if(text_style.gap > 0.0f)
         paragraph.line_gap = (int)(text_style.gap + 0.5f);
-    ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
+    ui_page_semantic_next(SemanticParagraph, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }
 
 int
 Link(LinkProps props)
 {
-    ui_page_semantic_next(SEMANTIC_LINK, props.text, props.link, "link", 0,
+    ui_page_semantic_next(SemanticLink, props.text, props.link, "link", 0,
                           props.focus_id);
     return RenderLink(props);
 }

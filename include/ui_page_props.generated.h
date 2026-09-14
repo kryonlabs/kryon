@@ -22,6 +22,17 @@ static inline bool StringEqual(String a, String b) {
 #include "kryon_compat.generated.h"
 #include "kryon_key.h"
 
+typedef enum SemanticKind {
+    SemanticNone = 0,
+    SemanticPage = 1,
+    SemanticSection = 2,
+    SemanticHeading = 3,
+    SemanticParagraph = 4,
+    SemanticLink = 5,
+    SemanticImage = 6,
+    SemanticButton = 7,
+} SemanticKind;
+
 typedef struct PageProps {
     Rectangle bounds;
     const char* title;

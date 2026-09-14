@@ -7,17 +7,6 @@
 #include "ui_page_props.generated.h"
 #include "ui_tree.h"
 
-typedef enum SemanticKind {
-    SEMANTIC_NONE = 0,
-    SEMANTIC_PAGE,
-    SEMANTIC_SECTION,
-    SEMANTIC_HEADING,
-    SEMANTIC_PARAGRAPH,
-    SEMANTIC_LINK,
-    SEMANTIC_IMAGE,
-    SEMANTIC_BUTTON
-} SemanticKind;
-
 typedef ColumnProps FlowProps;
 
 void SetPageTitle(const char *title);
