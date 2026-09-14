@@ -61,8 +61,12 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
 
     mouse = ui_mouse_world();
 
-    if(!icon_clicked && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !CheckCollisionPointRec(mouse, layout.popup_bounds)) {
+    IconSliderPopupCloseDecision close_decision =
+        IconSliderPopupCloseDecisionFor(
+            icon_clicked != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            CheckCollisionPointRec(mouse, layout.popup_bounds) != 0);
+    if(close_decision.close) {
         *popup.open = 0;
         return 0;
     }

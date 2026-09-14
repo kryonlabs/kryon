@@ -281,6 +281,10 @@ IconSliderPopupLayout :: struct {
     icon_size: i32
 }
 
+IconSliderPopupCloseDecision :: struct {
+    close: bool
+}
+
 IconSliderPopupLayoutFor :: (x: i32, y: i32, icon_size: i32,
     icon_padding: i32, popup_width: i32, popup_height: i32,
     scale: float) -> IconSliderPopupLayout #export {
@@ -310,4 +314,11 @@ IconSliderPopupLayoutFor :: (x: i32, y: i32, icon_size: i32,
     if layout.slider_height < 0 { layout.slider_height = 0 }
     layout.icon_size = icon_size
     return layout
+}
+
+IconSliderPopupCloseDecisionFor :: (icon_clicked: bool, released: bool,
+    pointer_inside_popup: bool) -> IconSliderPopupCloseDecision #export {
+    decision: IconSliderPopupCloseDecision
+    decision.close = !icon_clicked && released && !pointer_inside_popup
+    return decision
 }

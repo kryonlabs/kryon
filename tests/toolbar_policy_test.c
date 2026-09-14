@@ -166,6 +166,7 @@ test_icon_slider_popup_layout(void)
         IconSliderPopupLayoutFor(20, 30, 24, 10, 0, 0, 1.0f);
     IconSliderPopupLayout wide =
         IconSliderPopupLayoutFor(20, 30, 24, 10, 30, 120, 2.0f);
+    IconSliderPopupCloseDecision close_decision;
 
     assert(layout.button_bounds.x == 20.0f);
     assert(layout.button_bounds.y == 30.0f);
@@ -184,6 +185,15 @@ test_icon_slider_popup_layout(void)
     assert(wide.popup_bounds.height == 120.0f);
     assert(wide.slider_y == 110);
     assert(wide.slider_height == 72);
+
+    close_decision = IconSliderPopupCloseDecisionFor(false, true, false);
+    assert(close_decision.close);
+    close_decision = IconSliderPopupCloseDecisionFor(true, true, false);
+    assert(!close_decision.close);
+    close_decision = IconSliderPopupCloseDecisionFor(false, false, false);
+    assert(!close_decision.close);
+    close_decision = IconSliderPopupCloseDecisionFor(false, true, true);
+    assert(!close_decision.close);
 }
 
 int
