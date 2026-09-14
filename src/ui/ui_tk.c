@@ -3364,11 +3364,17 @@ RenderTreeView(TreeViewProps tree)
         }
         if(hot)
             MarkClickable();
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->selectable && tree.selected_id != NULL) {
+        TreeViewRowDecision decision = TreeViewRowDecisionFor(
+            hot, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            item->selectable != 0, tree.selected_id != NULL,
+            item->id);
+        if(decision.consume_release)
             ConsumeRelease();
-            *tree.selected_id = item->id;
-            changed = 1;
+        if(decision.select) {
+            *tree.selected_id = decision.selected_id;
         }
+        if(decision.changed)
+            changed = 1;
     }
     if(paint)
         EndClip();

@@ -26,6 +26,7 @@ main(void)
     Rectangle text;
     TreeViewTextPaint paint;
     Rectangle scrollbar;
+    TreeViewRowDecision decision;
 
     assert(metrics.default_row_height == 56);
     assert(metrics.indent_x == 16);
@@ -92,6 +93,21 @@ main(void)
     assert(paint.marker_y == 44);
     assert(paint.text_x == 72);
     assert(paint.text_y == 44);
+    decision = TreeViewRowDecisionFor(true, true, true, true, 42);
+    assert(decision.select);
+    assert(decision.selected_id == 42);
+    assert(decision.consume_release);
+    assert(decision.changed);
+    decision = TreeViewRowDecisionFor(true, true, false, true, 42);
+    assert(!decision.select);
+    assert(!decision.consume_release);
+    assert(!decision.changed);
+    decision = TreeViewRowDecisionFor(true, true, true, false, 42);
+    assert(!decision.select);
+    assert(!decision.changed);
+    decision = TreeViewRowDecisionFor(true, false, true, true, 42);
+    assert(!decision.select);
+    assert(!decision.changed);
     scrollbar = TreeViewScrollbarBoundsFor(bounds, 8);
     check_rect(scrollbar, 182, 20, 8, 90);
     scrollbar = TreeViewScrollbarBoundsFor(bounds, 0);

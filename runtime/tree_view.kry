@@ -24,6 +24,13 @@ TreeViewTextPaint :: struct {
     text_y: i32
 }
 
+TreeViewRowDecision :: struct {
+    select: bool
+    selected_id: i32
+    consume_release: bool
+    changed: bool
+}
+
 TreeViewHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -144,6 +151,18 @@ TreeViewTextPaintFor :: (marker: Rectangle, text: Rectangle,
     paint.text_x = (i32)text.x
     paint.text_y = (i32)text.y + ((i32)text.height - text_line_height) / 2
     return paint
+}
+
+TreeViewRowDecisionFor :: (hot: bool, released: bool, selectable: bool,
+    has_selection: bool, item_id: i32) -> TreeViewRowDecision #export {
+    decision: TreeViewRowDecision
+    decision.selected_id = item_id
+    if hot && released && selectable && has_selection {
+        decision.select = true
+        decision.consume_release = true
+        decision.changed = true
+    }
+    return decision
 }
 
 TreeViewScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
