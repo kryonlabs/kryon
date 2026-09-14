@@ -68,6 +68,19 @@ main(void)
     selection = TableViewSelectionTab(0, 0, 4, 3, true);
     assert(selection.row == 0);
     assert(selection.column_slot == 2);
+    TableViewSelectionClearDecision clear_decision =
+        TableViewSelectionClearFor(2, 1);
+    assert(clear_decision.changed);
+    assert(clear_decision.row == -1);
+    assert(clear_decision.column == -1);
+    clear_decision = TableViewSelectionClearFor(-1, 1);
+    assert(clear_decision.changed);
+    assert(clear_decision.row == -1);
+    assert(clear_decision.column == -1);
+    clear_decision = TableViewSelectionClearFor(-1, -1);
+    assert(!clear_decision.changed);
+    assert(clear_decision.row == -1);
+    assert(clear_decision.column == -1);
     assert(TableViewSelectionScrollOffset(4, 1, 20, 60, 0, 100) == 20);
     assert(TableViewSelectionScrollOffset(2, 1, 20, 60, 80, 100) == 20);
     assert(TableViewSelectionScrollOffset(0, 1, 20, 60, 120, 100) == 100);

@@ -32,6 +32,12 @@ TableViewSelection :: struct {
     column_slot: i32
 }
 
+TableViewSelectionClearDecision :: struct {
+    row: i32
+    column: i32
+    changed: bool
+}
+
 TableViewMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -294,6 +300,19 @@ TableViewSelectionTab :: (row: i32, column_slot: i32, row_count: i32,
         }
     }
     return selection
+}
+
+TableViewSelectionClearFor :: (selected_row: i32,
+    selected_column: i32) -> TableViewSelectionClearDecision #export {
+    decision: TableViewSelectionClearDecision
+    decision.row = selected_row
+    decision.column = selected_column
+    if selected_row >= 0 || selected_column >= 0 {
+        decision.row = -1
+        decision.column = -1
+        decision.changed = true
+    }
+    return decision
 }
 
 TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,

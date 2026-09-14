@@ -3654,12 +3654,16 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         if(table.activated_column != NULL) *table.activated_column = column;
         selection_changed = changed = 1;
     }
-    if(IsKeyPressed(KEY_ESCAPE) &&
-       (*table.selected_row >= 0 ||
-        (table.selected_column != NULL && *table.selected_column >= 0))) {
-        row = -1;
-        column = -1;
-        selection_changed = changed = 1;
+    if(IsKeyPressed(KEY_ESCAPE)) {
+        TableViewSelectionClearDecision clear_decision =
+            TableViewSelectionClearFor(
+                *table.selected_row,
+                table.selected_column != NULL ? *table.selected_column : -1);
+        if(clear_decision.changed) {
+            row = clear_decision.row;
+            column = clear_decision.column;
+            selection_changed = changed = 1;
+        }
     }
 
     if(selection_changed) {
