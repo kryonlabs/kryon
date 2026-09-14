@@ -1820,7 +1820,8 @@ RenderFocus(Rectangle bounds)
     StyleFrame frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneAccent,
                       .emphasis = ButtonEmphasisOutline},
-        ButtonStateFocus, 0, 0.0f, 0.0f, 1.0f, StyleKindFocus(), 9);
+        ButtonStateFocus, 0, 0.0f, 0.0f, 1.0f, StyleKindFocus(),
+        FocusBoxRole());
     FocusPaint paint = FocusPaintFor(bounds, (float)GetScale(), frame);
     Style style = ui_unpack_style(frame.value);
     Color focus = style.focus.a != 0 ? style.focus : style.border;

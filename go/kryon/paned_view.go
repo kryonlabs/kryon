@@ -23,6 +23,11 @@ type PanedViewDragDecision struct {
 	DragActive  bool
 }
 
+func PanedView_PanedViewHandleRole() int32 {
+	var value_0 int32 = 12
+	return value_0
+}
+
 func PanedView_PanedViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field

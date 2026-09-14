@@ -22,6 +22,10 @@ PanedViewDragDecision :: struct {
     drag_active: bool
 }
 
+PanedViewHandleRole :: () -> i32 #export {
+    return 12
+}
+
 PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
     return (i32)(value * scale)

@@ -8,6 +8,11 @@ type ImagePlaceholderLayout struct {
 	LabelY int32
 }
 
+func Image_ImageLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Image_ImageFitBounds(bounds Rectangle, source Rectangle, texture_width int32, texture_height int32, fit int32) Rectangle {
 	var value_0 Rectangle = bounds
 	var dst Rectangle = value_0

@@ -32,6 +32,10 @@ ToastRenderDecision :: struct {
     clear: bool
 }
 
+ToastLabelRole :: () -> i32 #export {
+    return 6
+}
+
 ToastMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }

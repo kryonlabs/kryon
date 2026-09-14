@@ -756,7 +756,8 @@ GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 {
     StyleFrame frame = {0};
     frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindPanedView(), 0, 0, 12,
+        StyleControlRoleFacts(StyleKindPanedView(), 0, 0,
+            PanedViewHandleRole(),
             ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
             ButtonStateNormal),
         ButtonStateNormal);

@@ -4244,7 +4244,7 @@ RenderPanedView(PanedViewProps panes)
     ToolkitStore *toolkit = toolkit_state();
     StyleFrame normal_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, panes.class_name,
-        StyleKindPanedView(), 12);
+        StyleKindPanedView(), PanedViewHandleRole());
     PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale(),
                                                    normal_frame);
     int changed = 0;
@@ -4515,10 +4515,12 @@ RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
                                              : ButtonStateNormal;
         Style box = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){0}, state, 0, 0.0f, 0.0f,
-            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 9).value);
+            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(),
+            FocusBoxRole()).value);
         Style label = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){0}, state, 0, 0.0f, 0.0f,
-            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 6).value);
+            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(),
+            FocusLabelRole()).value);
         int font = ResolveFont(0, StyleFontValue(label.fields, label.font_size),
                                GetSmallFontSize());
         FocusDebugOverlayPaint paint =

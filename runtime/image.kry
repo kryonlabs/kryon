@@ -8,6 +8,10 @@ ImagePlaceholderLayout :: struct {
     label_y: i32
 }
 
+ImageLabelRole :: () -> i32 #export {
+    return 6
+}
+
 ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
     texture_width: i32, texture_height: i32, fit: i32) -> Rectangle #export {
     dst: Rectangle = bounds

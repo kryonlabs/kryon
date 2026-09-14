@@ -2372,7 +2372,7 @@ RenderImage(ImageProps image)
                           .emphasis = ButtonEmphasisSoft,
                           .class_name = image.class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-            StyleKindImage(), 6).value);
+            StyleKindImage(), ImageLabelRole()).value);
         int label_font = ResolveFont(
             0, StyleFontValue(label_style.fields, label_style.font_size),
             GetSmallFontSize());

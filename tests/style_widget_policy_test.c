@@ -1,12 +1,16 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
 #include "runtime/fieldset.h"
+#include "runtime/focus.h"
+#include "runtime/image.h"
+#include "runtime/paned_view.h"
 #include "runtime/plot.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
 #include "runtime/separator.h"
 #include "runtime/slider.h"
 #include "runtime/toggle.h"
+#include "runtime/toast.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,6 +123,12 @@ main(void)
     if(ProgressTrackRole() != 4 || ProgressFillRole() != 5 ||
        ProgressLabelRole() != 6) {
         fprintf(stderr, "progress role policy changed\n");
+        return 1;
+    }
+    if(PanedViewHandleRole() != 12 || ToastLabelRole() != 6 ||
+       ImageLabelRole() != 6 || FocusBoxRole() != 9 ||
+       FocusLabelRole() != 6) {
+        fprintf(stderr, "small widget role policy changed\n");
         return 1;
     }
 

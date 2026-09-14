@@ -97,7 +97,7 @@ RenderToast(void)
         .value = ResolveActiveStyle(base,
                                     StyleControlRoleFacts(
                                         StyleKindToast(), 0,
-                                        toast_class_name, 6,
+                                        toast_class_name, ToastLabelRole(),
                                         ButtonToneNeutral,
                                         ButtonEmphasisSoft,
                                         ControlSizeMedium, ButtonStateNormal),

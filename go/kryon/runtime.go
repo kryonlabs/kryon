@@ -5591,7 +5591,7 @@ func (r *runtime) recordToast() {
 	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, r.toastClassName, StyleSheet_StyleKindToast(), StyleSheet_StyleAny())
 	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, r.toastClassName, StyleSheet_StyleKindToast(), 6)
+		false, false, r.toastClassName, StyleSheet_StyleKindToast(), Toast_ToastLabelRole())
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
 	metrics := Toast_ToastMetricsFor(1, surfaceFrame)
@@ -5798,7 +5798,7 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	split := *p.Split
 	normalFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
 		ButtonStateNormal, false, false, p.ClassName,
-		StyleSheet_StyleKindPanedView(), 12)
+		StyleSheet_StyleKindPanedView(), PanedView_PanedViewHandleRole())
 	metrics := PanedView_PanedViewMetricsFor(1, normalFrame)
 	limit := PanedView_PanedViewLimit(PanedView_PanedViewSize(p.Bounds, p.Vertical), p.MinFirst, p.MinSecond)
 	split = PanedView_PanedViewClampSplit(split, p.MinFirst, limit)
@@ -5835,7 +5835,7 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 		state = ButtonStatePressed
 	}
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, false, false,
-		p.ClassName, StyleSheet_StyleKindPanedView(), 12)
+		p.ClassName, StyleSheet_StyleKindPanedView(), PanedView_PanedViewHandleRole())
 	op := styleFrameRectOp(h, p.Bounds, frame)
 	op.ID = p.ID
 	op.Pressed = changed != 0

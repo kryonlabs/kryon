@@ -16,6 +16,16 @@ type FocusDebugOverlayPaint struct {
 	LabelVisible  bool
 }
 
+func Focus_FocusBoxRole() int32 {
+	var value_0 int32 = 9
+	return value_0
+}
+
+func Focus_FocusLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Focus_FocusMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
