@@ -31,6 +31,13 @@ ScrollBarPaint :: struct {
     scroll_per_pixel: float
 }
 
+ScrollClipGeometry :: struct {
+    screen_bounds: Rectangle
+    clipped_world_bounds: Rectangle
+    visual_screen_bounds: Rectangle
+    visual_bleed: i32
+}
+
 ScrollMetric :: (fields: u32, field: u32, value: float, fallback: float,
     scale: float) -> i32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -117,6 +124,83 @@ ScrollScopeContentBounds :: (bounds: Rectangle, has_scroll: bool,
         if content.width < 0.0 { content.width = 0.0 }
     }
     return content
+}
+
+ScrollScreenBoundsFor :: (bounds: Rectangle, camera_offset: Vector2,
+    zoom: float) -> Rectangle #export {
+    if zoom <= 0.0 { zoom = 1.0 }
+    screen: Rectangle
+    screen.x = camera_offset.x + bounds.x * zoom
+    screen.y = camera_offset.y + bounds.y * zoom
+    screen.width = bounds.width * zoom
+    screen.height = bounds.height * zoom
+    return screen
+}
+
+ScrollWorldBoundsFor :: (screen_bounds: Rectangle, camera_offset: Vector2,
+    zoom: float) -> Rectangle #export {
+    if zoom <= 0.0 { zoom = 1.0 }
+    world: Rectangle
+    world.x = (screen_bounds.x - camera_offset.x) / zoom
+    world.y = (screen_bounds.y - camera_offset.y) / zoom
+    world.width = screen_bounds.width / zoom
+    world.height = screen_bounds.height / zoom
+    return world
+}
+
+ScrollVisualBoundsFor :: (screen_bounds: Rectangle, visual_bleed: i32,
+    zoom: float, screen_width: i32, screen_height: i32, view_width: i32,
+    view_height: i32, camera_offset: Vector2) -> Rectangle #export {
+    if zoom <= 0.0 { zoom = 1.0 }
+    bleed: i32 = (i32)((float)visual_bleed * zoom)
+    if bleed < 1 { bleed = 1 }
+
+    visual: Rectangle
+    visual.x = screen_bounds.x - (float)bleed
+    visual.y = screen_bounds.y - (float)bleed
+    visual.width = screen_bounds.width + (float)(bleed * 2)
+    visual.height = screen_bounds.height + (float)(bleed * 2)
+
+    if visual.x < 0.0 {
+        visual.width += visual.x
+        visual.x = 0.0
+    }
+    if visual.y < 0.0 {
+        visual.height += visual.y
+        visual.y = 0.0
+    }
+
+    if screen_width <= 0 {
+        screen_width = (i32)(camera_offset.x + (float)view_width * zoom)
+    }
+    if screen_height <= 0 {
+        screen_height = (i32)(camera_offset.y + (float)view_height * zoom)
+    }
+    if visual.x + visual.width > (float)screen_width {
+        visual.width = (float)screen_width - visual.x
+    }
+    if visual.y + visual.height > (float)screen_height {
+        visual.height = (float)screen_height - visual.y
+    }
+    if visual.width < 0.0 { visual.width = 0.0 }
+    if visual.height < 0.0 { visual.height = 0.0 }
+    return visual
+}
+
+ScrollClipGeometryFor :: (bounds: Rectangle, clipped_screen_bounds: Rectangle,
+    visual_bleed: i32, camera_offset: Vector2, zoom: float, screen_width: i32,
+    screen_height: i32, view_width: i32, view_height: i32) -> ScrollClipGeometry #export {
+    if zoom <= 0.0 { zoom = 1.0 }
+    geometry: ScrollClipGeometry
+    geometry.screen_bounds = ScrollScreenBoundsFor(bounds, camera_offset, zoom)
+    geometry.clipped_world_bounds = ScrollWorldBoundsFor(clipped_screen_bounds,
+        camera_offset, zoom)
+    geometry.visual_screen_bounds = ScrollVisualBoundsFor(geometry.screen_bounds,
+        visual_bleed, zoom, screen_width, screen_height, view_width,
+        view_height, camera_offset)
+    geometry.visual_bleed = (i32)((float)visual_bleed * zoom)
+    if geometry.visual_bleed < 1 { geometry.visual_bleed = 1 }
+    return geometry
 }
 
 ScrollWheelOffsetFor :: (scroll_offset: i32, wheel_move: float,

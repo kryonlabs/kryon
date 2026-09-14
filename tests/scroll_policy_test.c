@@ -11,6 +11,8 @@ main(void)
     ScrollPolicyView view;
     ScrollBarPaint paint;
     Rectangle content;
+    ScrollClipGeometry clip;
+    Rectangle rect;
 
     assert(metrics.scrollbar_width == 20);
     assert(metrics.reserved_width == 32);
@@ -42,6 +44,44 @@ main(void)
     content = ScrollScopeContentBounds((Rectangle){10, 20, 120, 80}, 1,
                                        metrics);
     assert((int)content.width == 100);
+    rect = ScrollScreenBoundsFor((Rectangle){10, 20, 100, 80},
+                                 (Vector2){5, 7}, 2.0f);
+    assert((int)rect.x == 25);
+    assert((int)rect.y == 47);
+    assert((int)rect.width == 200);
+    assert((int)rect.height == 160);
+    rect = ScrollWorldBoundsFor((Rectangle){30, 50, 120, 100},
+                                (Vector2){5, 7}, 2.0f);
+    assert(rect.x > 12.49f && rect.x < 12.51f);
+    assert(rect.y > 21.49f && rect.y < 21.51f);
+    assert((int)rect.width == 60);
+    assert((int)rect.height == 50);
+    clip = ScrollClipGeometryFor((Rectangle){10, 20, 100, 80},
+                                 (Rectangle){30, 50, 120, 100}, 8,
+                                 (Vector2){5, 7}, 2.0f, 400, 300, 200, 150);
+    assert((int)clip.screen_bounds.x == 25);
+    assert((int)clip.clipped_world_bounds.width == 60);
+    assert((int)clip.visual_screen_bounds.x == 9);
+    assert((int)clip.visual_screen_bounds.y == 31);
+    assert((int)clip.visual_screen_bounds.width == 232);
+    assert((int)clip.visual_screen_bounds.height == 192);
+    assert(clip.visual_bleed == 16);
+    clip = ScrollClipGeometryFor((Rectangle){-5, -8, 20, 20},
+                                 (Rectangle){0, 0, 10, 10}, 10,
+                                 (Vector2){0, 0}, 1.0f, 50, 40, 50, 40);
+    assert((int)clip.visual_screen_bounds.x == 0);
+    assert((int)clip.visual_screen_bounds.y == 0);
+    assert((int)clip.visual_screen_bounds.width == 25);
+    assert((int)clip.visual_screen_bounds.height == 22);
+    clip = ScrollClipGeometryFor((Rectangle){0, 0, 80, 60},
+                                 (Rectangle){2, 4, 20, 30}, 0,
+                                 (Vector2){3, 5}, 0.0f, 0, 0, 50, 40);
+    assert((int)clip.screen_bounds.x == 3);
+    assert((int)clip.screen_bounds.y == 5);
+    assert((int)clip.clipped_world_bounds.x == -1);
+    assert((int)clip.visual_screen_bounds.width == 51);
+    assert((int)clip.visual_screen_bounds.height == 41);
+    assert(clip.visual_bleed == 1);
     assert(ScrollWheelOffsetFor(50, 1.0f, 200,
                                 metrics.default_wheel_step) == 0);
     assert(ScrollWheelOffsetFor(50, -1.0f, 200,

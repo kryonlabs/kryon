@@ -268,62 +268,14 @@ BeginScrollContainer(ScrollArea area)
         view.content_y = y;
     }
     {
-        int visual_bleed = metrics.visual_bleed;
-        Rectangle screen_bounds = {
-            g_ui_camera.offset.x + area.bounds.x * g_ui_camera.zoom,
-            g_ui_camera.offset.y + area.bounds.y * g_ui_camera.zoom,
-            area.bounds.width * g_ui_camera.zoom,
-            area.bounds.height * g_ui_camera.zoom
-        };
-        Rectangle visual_screen_bounds;
-        Rectangle clipped_screen_bounds = GetClipEffective(screen_bounds);
-        Rectangle clipped_world_bounds = {
-            (clipped_screen_bounds.x - g_ui_camera.offset.x) / g_ui_camera.zoom,
-            (clipped_screen_bounds.y - g_ui_camera.offset.y) / g_ui_camera.zoom,
-            clipped_screen_bounds.width / g_ui_camera.zoom,
-            clipped_screen_bounds.height / g_ui_camera.zoom
-        };
-
-        visual_bleed = (int)((float)visual_bleed * g_ui_camera.zoom);
-        if(visual_bleed < 1)
-            visual_bleed = 1;
-        visual_screen_bounds = (Rectangle){
-            screen_bounds.x - visual_bleed,
-            screen_bounds.y - visual_bleed,
-            screen_bounds.width + visual_bleed * 2,
-            screen_bounds.height + visual_bleed * 2
-        };
-        if(visual_screen_bounds.x < 0) {
-            visual_screen_bounds.width += visual_screen_bounds.x;
-            visual_screen_bounds.x = 0;
-        }
-        if(visual_screen_bounds.y < 0) {
-            visual_screen_bounds.height += visual_screen_bounds.y;
-            visual_screen_bounds.y = 0;
-        }
-        {
-            int screen_w = GetScreenWidth();
-            int screen_h = GetScreenHeight();
-
-            if(screen_w <= 0)
-                screen_w = (int)(g_ui_camera.offset.x +
-                                 (float)ui_view_width * g_ui_camera.zoom);
-            if(screen_h <= 0)
-                screen_h = (int)(g_ui_camera.offset.y +
-                                 (float)ui_view_height * g_ui_camera.zoom);
-            if(visual_screen_bounds.x + visual_screen_bounds.width >
-               (float)screen_w)
-                visual_screen_bounds.width = (float)screen_w -
-                                             visual_screen_bounds.x;
-            if(visual_screen_bounds.y + visual_screen_bounds.height >
-               (float)screen_h)
-                visual_screen_bounds.height = (float)screen_h -
-                                              visual_screen_bounds.y;
-        }
-        if(visual_screen_bounds.width < 0)
-            visual_screen_bounds.width = 0;
-        if(visual_screen_bounds.height < 0)
-            visual_screen_bounds.height = 0;
+        Rectangle screen_bounds = ScrollScreenBoundsFor(
+            area.bounds, g_ui_camera.offset, g_ui_camera.zoom);
+        ScrollClipGeometry geometry = ScrollClipGeometryFor(
+            area.bounds, GetClipEffective(screen_bounds), metrics.visual_bleed,
+            g_ui_camera.offset, g_ui_camera.zoom, GetScreenWidth(),
+            GetScreenHeight(), ui_view_width, ui_view_height);
+        Rectangle clipped_world_bounds = geometry.clipped_world_bounds;
+        Rectangle visual_screen_bounds = geometry.visual_screen_bounds;
 
         PushInputClip(clipped_world_bounds);
         BeginClip((int)visual_screen_bounds.x, (int)visual_screen_bounds.y,
