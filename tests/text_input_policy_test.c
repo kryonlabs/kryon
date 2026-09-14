@@ -605,6 +605,10 @@ main(void)
     assert(TextAreaRevealScroll(30, 10, 12, 80) == 10);
     assert(TextAreaRevealScroll(30, 90, 20, 60) == 50);
     assert(TextAreaRevealScroll(30, 40, 12, 80) == 30);
+    assert(TextAreaScrollFor(-4, 20) == 0);
+    assert(TextAreaScrollFor(30, 20) == 20);
+    assert(TextAreaScrollFor(8, 20) == 8);
+    assert(TextAreaScrollFor(8, -2) == 0);
     assert(TextOutsideClickShouldBlur(true, false, false));
     assert(!TextOutsideClickShouldBlur(false, false, false));
     assert(!TextOutsideClickShouldBlur(true, true, false));

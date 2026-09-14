@@ -649,6 +649,19 @@ TextAreaRevealScroll :: (scroll: i32, cursor_y: i32, cursor_height: i32,
     return scroll
 }
 
+TextAreaScrollFor :: (scroll: i32, max_scroll: i32) -> i32 #export {
+    if max_scroll < 0 {
+        max_scroll = 0
+    }
+    if scroll < 0 {
+        return 0
+    }
+    if scroll > max_scroll {
+        return max_scroll
+    }
+    return scroll
+}
+
 TextFieldRevealCursorShouldRun :: (focused: bool) -> bool #export {
     return focused
 }
@@ -915,9 +928,7 @@ TextAreaPaintFor :: (bounds: Rectangle, font: i32, line_gap: i32,
     if paint.viewport_height < 0 { paint.viewport_height = 0 }
     paint.max_scroll = TextAreaMaxScrollFor(content_height, bounds.height,
                                             padding_y)
-    paint.scroll_y = scroll_y
-    if paint.scroll_y < 0 { paint.scroll_y = 0 }
-    if paint.scroll_y > paint.max_scroll { paint.scroll_y = paint.max_scroll }
+    paint.scroll_y = TextAreaScrollFor(scroll_y, paint.max_scroll)
     paint.wrap_width = TextAreaWrapWidthFor(bounds.width, padding_x, wrap,
                                             min_wrap_width)
     paint.clip_bounds.x = bounds.x + (float)padding_x

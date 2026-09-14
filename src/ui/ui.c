@@ -3393,13 +3393,13 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
         area.text, font, line_gap, wrap_width, area.content_version, 1);
     max_scroll = TextAreaMaxScrollFor(content_h, area.bounds.height,
                                       padding_y);
-    scroll_y = ui_clampi(*area.scroll_y, 0, max_scroll);
+    scroll_y = TextAreaScrollFor(*area.scroll_y, max_scroll);
     cursor_h = TextLineHeight(font);
     cursor_y = ui_text_area_cursor_y(area.text, cursor, font, line_gap,
                                      wrap_width, &cursor_h);
     scroll_y = TextAreaRevealScroll(scroll_y, cursor_y, cursor_h,
                                     viewport_h);
-    *area.scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+    *area.scroll_y = TextAreaScrollFor(scroll_y, max_scroll);
 }
 
 static void
@@ -4279,7 +4279,7 @@ ui_text_area_render(TextAreaProps area)
         scroll_y = TextAreaRevealScroll(scroll_y, cursor_y, cursor_h,
                                         viewport_h);
     }
-    scroll_y = ui_clampi(scroll_y, 0, max_scroll);
+    scroll_y = TextAreaScrollFor(scroll_y, max_scroll);
     if(area.scroll_y != NULL)
         *area.scroll_y = scroll_y;
 
