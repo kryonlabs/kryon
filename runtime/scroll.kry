@@ -31,6 +31,14 @@ ScrollBarPaint :: struct {
     scroll_per_pixel: float
 }
 
+ScrollBarDragDecision :: struct {
+    start_drag: bool
+    continue_drag: bool
+    cancel_drag: bool
+    claim_scroll_owner: bool
+    scroll_offset: i32
+}
+
 ScrollClipGeometry :: struct {
     screen_bounds: Rectangle
     clipped_world_bounds: Rectangle
@@ -236,6 +244,35 @@ ScrollThumbDragDeltaOffsetFor :: (start_scroll: i32, delta_y: i32,
         offset += (i32)((float)delta_y * paint.scroll_per_pixel)
     }
     return ScrollClamp(offset, max_scroll)
+}
+
+ScrollBarDragFor :: (mouse_down: bool, input_captured: bool,
+    thumb_active: bool, pointer_owner_none: bool, drag_active: bool,
+    owns_drag: bool, current_scroll: i32, start_scroll: i32,
+    delta_y: i32, max_scroll: i32,
+    paint: ScrollBarPaint) -> ScrollBarDragDecision #export {
+    decision: ScrollBarDragDecision
+    decision.scroll_offset = ScrollClamp(current_scroll, max_scroll)
+    if mouse_down && (!input_captured || owns_drag) {
+        if !drag_active {
+            if thumb_active && pointer_owner_none {
+                decision.start_drag = true
+                decision.claim_scroll_owner = true
+            }
+            return decision
+        }
+        if owns_drag {
+            decision.continue_drag = true
+            decision.claim_scroll_owner = true
+            decision.scroll_offset = ScrollThumbDragDeltaOffsetFor(
+                start_scroll, delta_y, max_scroll, paint)
+        }
+        return decision
+    }
+    if owns_drag {
+        decision.cancel_drag = true
+    }
+    return decision
 }
 
 ScrollRectVisibleOffsetFor :: (scroll_offset: i32, viewport_y: i32,

@@ -360,7 +360,6 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     ScrollBarPaint paint = ScrollBarPaintFor(x, y, viewport_h, content_h,
                                              *scroll_offset, max_scroll,
                                              metrics);
-    int track_span = paint.track_span;
     Vector2 mouse_pos = ui_mouse_world();
     int my = (int)mouse_pos.y;
     Rectangle thumb_bounds = paint.thumb_bounds;
@@ -368,30 +367,28 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
                                  : ui_input_captures_click_internal(mouse_pos, 0);
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;
     int thumb_hover = thumb_active && HoverEffectsEnabled();
+    int owns_drag = scrollbar_drag_active && scrollbar_drag_offset == scroll_offset;
+    ScrollBarDragDecision drag_decision;
 
     if(thumb_active)
         MarkClickable();
 
-    /* Handle drag state */
-    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       (!input_captured ||
-        (scrollbar_drag_active && scrollbar_drag_offset == scroll_offset))) {
-        if(!scrollbar_drag_active) {
-            /* Start drag if clicking on thumb */
-            if(thumb_active && g_ui_pointer_owner == POINTER_OWNER_NONE) {
-                scrollbar_drag_active = 1;
-                scrollbar_drag_offset = scroll_offset;
-                g_ui_pointer_owner = POINTER_OWNER_SCROLL;
-                scrollbar_drag_start_y = my;
-                scrollbar_drag_start_scroll = *scroll_offset;
-            }
-        } else if(scrollbar_drag_offset == scroll_offset) {
-            /* Continue drag */
-            int dy = my - scrollbar_drag_start_y;
-            *scroll_offset = ScrollThumbDragDeltaOffsetFor(
-                scrollbar_drag_start_scroll, dy, max_scroll, paint);
-        }
-    } else if(scrollbar_drag_offset == scroll_offset) {
+    drag_decision = ScrollBarDragFor(
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        input_captured != 0, thumb_active != 0,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        scrollbar_drag_active != 0, owns_drag != 0, *scroll_offset,
+        scrollbar_drag_start_scroll, my - scrollbar_drag_start_y,
+        max_scroll, paint);
+    if(drag_decision.start_drag) {
+        scrollbar_drag_active = 1;
+        scrollbar_drag_offset = scroll_offset;
+        g_ui_pointer_owner = POINTER_OWNER_SCROLL;
+        scrollbar_drag_start_y = my;
+        scrollbar_drag_start_scroll = *scroll_offset;
+    } else if(drag_decision.continue_drag) {
+        *scroll_offset = drag_decision.scroll_offset;
+    } else if(drag_decision.cancel_drag) {
         ui_scrollbar_cancel(scroll_offset);
     }
 
