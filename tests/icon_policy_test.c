@@ -24,5 +24,16 @@ main(void)
     assert(layout.size == 0);
     assert(!layout.drawable);
     check_rect(layout.bounds, 3, 4, 0, 0);
+
+    assert(IconButtonSizeFor(0, 1.0f) == 12);
+    assert(IconButtonSizeFor(1, 1.0f) == 14);
+    assert(IconButtonSizeFor(2, 2.0f) == 32);
+    assert(IconButtonSizeFor(3, 1.5f) == 30);
+    assert(IconButtonSizeFor(99, 1.0f) == 14);
+    assert(IconButtonPaddingFor(0, 2.0f) == 8);
+    assert(IconButtonPaddingFor(1, 2.0f) == 10);
+    assert(IconButtonPaddingFor(2, 2.0f) == 12);
+    assert(IconButtonPaddingFor(3, 2.0f) == 14);
+    assert(IconButtonPaddingFor(99, 1.0f) == 5);
     return 0;
 }

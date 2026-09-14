@@ -11,6 +11,7 @@
 #include "runtime/bevel.h"
 #include "runtime/button.h"
 #include "runtime/focus.h"
+#include "runtime/icon.h"
 #include "runtime/input.h"
 #include "runtime/link.h"
 #include "runtime/paragraph.h"
@@ -5054,25 +5055,13 @@ RenderTextLines(const char **lines, int count, int x, int *y, int font, int line
 int
 GetIconButtonSize(int size)
 {
-    switch(size) {
-    case ICON_SIZE_TINY: return ClampPx(12, 10, 18);
-    case ICON_SIZE_SMALL: return ClampPx(14, 12, 20);
-    case ICON_SIZE_MEDIUM: return ClampPx(16, 14, 24);
-    case ICON_SIZE_LARGE: return ClampPx(20, 18, 28);
-    default: return ClampPx(14, 12, 20);
-    }
+    return IconButtonSizeFor(size, (float)Scale(1000) / 1000.0f);
 }
 
 int
 GetIconButtonPadding(int size)
 {
-    switch(size) {
-    case ICON_SIZE_TINY: return Scale(4);
-    case ICON_SIZE_SMALL: return Scale(5);
-    case ICON_SIZE_MEDIUM: return Scale(6);
-    case ICON_SIZE_LARGE: return Scale(7);
-    default: return Scale(5);
-    }
+    return IconButtonPaddingFor(size, (float)Scale(1000) / 1000.0f);
 }
 
 void

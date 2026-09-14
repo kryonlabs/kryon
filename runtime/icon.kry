@@ -7,6 +7,34 @@ IconLayout :: struct {
     drawable: bool
 }
 
+IconScaledPx :: (px: i32, scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)((float)px * scale + 0.5)
+}
+
+IconClampPx :: (px: i32, min_px: i32, max_px: i32, scale: float) -> i32 {
+    value: i32 = IconScaledPx(px, scale)
+    min_value: i32 = IconScaledPx(min_px, scale)
+    max_value: i32 = IconScaledPx(max_px, scale)
+    if value < min_value { value = min_value }
+    if value > max_value { value = max_value }
+    return value
+}
+
+IconButtonSizeFor :: (kind: i32, scale: float) -> i32 #export {
+    if kind == 0 { return IconClampPx(12, 10, 18, scale) }
+    if kind == 2 { return IconClampPx(16, 14, 24, scale) }
+    if kind == 3 { return IconClampPx(20, 18, 28, scale) }
+    return IconClampPx(14, 12, 20, scale)
+}
+
+IconButtonPaddingFor :: (kind: i32, scale: float) -> i32 #export {
+    if kind == 0 { return IconScaledPx(4, scale) }
+    if kind == 2 { return IconScaledPx(6, scale) }
+    if kind == 3 { return IconScaledPx(7, scale) }
+    return IconScaledPx(5, scale)
+}
+
 IconLayoutFor :: (x: i32, y: i32, size: i32) -> IconLayout #export {
     layout: IconLayout
     layout.size = size
