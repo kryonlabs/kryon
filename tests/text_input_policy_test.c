@@ -60,6 +60,7 @@ main(void)
     TextPlatformInputSyncDecision platform_sync;
     TextBufferInsertDecision buffer_insert;
     TextBufferDeleteDecision buffer_delete;
+    TextBufferBracketDecision bracket_decision;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -641,6 +642,31 @@ main(void)
     assert(TextBufferCursorAfterDelete(8, 2, 3) == 5);
     assert(TextBufferCursorAfterDelete(3, 2, 3) == 2);
     assert(TextBufferCursorAfterDelete(1, 2, 3) == 1);
+    assert(TextBufferBracketCursorFor(4, 0) == -1);
+    assert(TextBufferBracketCursorFor(-4, 8) == 0);
+    assert(TextBufferBracketCursorFor(99, 8) == 7);
+    assert(TextBufferBracketCursorFor(3, 8) == 3);
+    assert(TextBufferBracketCandidatePos(4, true) == 4);
+    assert(TextBufferBracketCandidatePos(4, false) == 3);
+    assert(TextBufferBracketCandidatePos(0, false) == 0);
+    bracket_decision = TextBufferBracketDecisionFor(2, 40);
+    assert(bracket_decision.valid);
+    assert(bracket_decision.pos == 2);
+    assert(bracket_decision.open == 40);
+    assert(bracket_decision.close == 41);
+    assert(bracket_decision.direction == 1);
+    bracket_decision = TextBufferBracketDecisionFor(3, 93);
+    assert(bracket_decision.valid);
+    assert(bracket_decision.open == 91);
+    assert(bracket_decision.close == 93);
+    assert(bracket_decision.direction == -1);
+    bracket_decision = TextBufferBracketDecisionFor(4, 123);
+    assert(bracket_decision.valid);
+    assert(bracket_decision.open == 123);
+    assert(bracket_decision.close == 125);
+    assert(bracket_decision.direction == 1);
+    bracket_decision = TextBufferBracketDecisionFor(5, 120);
+    assert(!bracket_decision.valid);
 
     check_zero(TextNavigationDecisionFor(TextNavNone(), false, false, false,
                                          false, false));

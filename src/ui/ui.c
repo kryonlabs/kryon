@@ -3612,9 +3612,9 @@ TextBufferBracketMatch(const char *text, int cursor)
 {
     const char *opens = "([{";
     const char *closes = ")]}";
+    TextBufferBracketDecision decision;
     int len;
     int pos;
-    const char *p;
     int dir;
     char open;
     char close;
@@ -3625,27 +3625,16 @@ TextBufferBracketMatch(const char *text, int cursor)
     len = (int)strlen(text);
     if(len <= 0)
         return -1;
-    if(cursor < 0)
-        cursor = 0;
-    if(cursor >= len)
-        cursor = len - 1;
-    pos = cursor;
-    if(pos > 0 && strchr(opens, text[pos]) == NULL &&
-       strchr(closes, text[pos]) == NULL)
-        pos--;
-    p = strchr(opens, text[pos]);
-    if(p != NULL) {
-        open = *p;
-        close = closes[p - opens];
-        dir = 1;
-    } else {
-        p = strchr(closes, text[pos]);
-        if(p == NULL)
-            return -1;
-        close = *p;
-        open = opens[p - closes];
-        dir = -1;
-    }
+    pos = TextBufferBracketCursorFor(cursor, len);
+    pos = TextBufferBracketCandidatePos(
+        pos, strchr(opens, text[pos]) != NULL ||
+                 strchr(closes, text[pos]) != NULL);
+    decision = TextBufferBracketDecisionFor(pos, (unsigned char)text[pos]);
+    if(!decision.valid)
+        return -1;
+    open = (char)decision.open;
+    close = (char)decision.close;
+    dir = decision.direction;
     for(int i = pos; i >= 0 && i < len; i += dir) {
         if(text[i] == open)
             depth += dir > 0 ? 1 : -1;

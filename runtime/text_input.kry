@@ -78,6 +78,14 @@ TextBufferDeleteDecision :: struct {
     tail_count: i32
 }
 
+TextBufferBracketDecision :: struct {
+    valid: bool
+    pos: i32
+    open: i32
+    close: i32
+    direction: i32
+}
+
 TextContextMenuState :: struct {
     cut_enabled: bool
     copy_enabled: bool
@@ -1077,6 +1085,70 @@ TextBufferCursorAfterDelete :: (cursor: i32, at: i32,
         return at
     }
     return cursor
+}
+
+TextBufferBracketCursorFor :: (cursor: i32, length: i32) -> i32 #export {
+    if length <= 0 { return -1 }
+    if cursor < 0 { return 0 }
+    if cursor >= length { return length - 1 }
+    return cursor
+}
+
+TextBufferBracketCandidatePos :: (cursor: i32,
+    current_is_bracket: bool) -> i32 #export {
+    if cursor > 0 && !current_is_bracket {
+        return cursor - 1
+    }
+    return cursor
+}
+
+TextBufferBracketDecisionFor :: (pos: i32,
+    bracket_code: i32) -> TextBufferBracketDecision #export {
+    decision: TextBufferBracketDecision
+    decision.pos = pos
+    if bracket_code == 40 {
+        decision.valid = true
+        decision.open = 40
+        decision.close = 41
+        decision.direction = 1
+        return decision
+    }
+    if bracket_code == 91 {
+        decision.valid = true
+        decision.open = 91
+        decision.close = 93
+        decision.direction = 1
+        return decision
+    }
+    if bracket_code == 123 {
+        decision.valid = true
+        decision.open = 123
+        decision.close = 125
+        decision.direction = 1
+        return decision
+    }
+    if bracket_code == 41 {
+        decision.valid = true
+        decision.open = 40
+        decision.close = 41
+        decision.direction = -1
+        return decision
+    }
+    if bracket_code == 93 {
+        decision.valid = true
+        decision.open = 91
+        decision.close = 93
+        decision.direction = -1
+        return decision
+    }
+    if bracket_code == 125 {
+        decision.valid = true
+        decision.open = 123
+        decision.close = 125
+        decision.direction = -1
+        return decision
+    }
+    return decision
 }
 
 TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
