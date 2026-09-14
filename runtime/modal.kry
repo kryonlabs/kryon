@@ -65,6 +65,10 @@ ModalDismissal :: struct {
     release_consumed: bool
 }
 
+ModalResultDecision :: struct {
+    result: i32
+}
+
 ModalHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -216,6 +220,24 @@ ModalPromptFocusIdFor :: (requested_focus_id: i32, fallback_focus_id: i32) -> i3
 ModalPromptCommitResult :: (action_count: i32) -> i32 #export {
     if action_count > 1 { return 2 }
     return 1
+}
+
+ModalPromptResultFor :: (current_result: i32, has_prompt: bool,
+    commit_pressed: bool, escape_pressed: bool,
+    action_count: i32) -> ModalResultDecision #export {
+    decision: ModalResultDecision
+    decision.result = current_result
+    if current_result != 0 || !has_prompt {
+        return decision
+    }
+    if commit_pressed {
+        decision.result = ModalPromptCommitResult(action_count)
+        return decision
+    }
+    if escape_pressed {
+        decision.result = 1
+    }
+    return decision
 }
 
 ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,

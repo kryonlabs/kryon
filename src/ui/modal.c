@@ -357,10 +357,10 @@ RenderActionModal(ModalProps modal)
                                        msg_x, btn_y, msg_w, btn_h, btn_gap,
                                        btn_font, modal.class_name,
                                        mouse_world, metrics);
-    if(result == 0 && has_prompt && commit_pressed)
-        result = ModalPromptCommitResult(modal.action_count);
-    if(result == 0 && has_prompt && IsKeyPressed(KEY_ESCAPE))
-        result = 1;
+    ModalResultDecision result_decision = ModalPromptResultFor(
+        result, has_prompt != 0, commit_pressed != 0,
+        IsKeyPressed(KEY_ESCAPE) != 0, modal.action_count);
+    result = result_decision.result;
 
     return result;
 }
