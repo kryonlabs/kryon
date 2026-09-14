@@ -55,7 +55,7 @@ Toast(ToastProps props)
         return;
     copy_toast_message(props.message);
     toast_class_name = props.class_name;
-    toast_until = GetTime() + (double)decision.seconds;
+    toast_until = (double)ToastDeadlineFor((float)GetTime(), decision.seconds);
 }
 
 void

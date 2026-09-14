@@ -29,6 +29,7 @@ main(void)
     assert(fabsf(metrics.default_seconds - 3.0f) < 0.001f);
     assert(fabsf(ToastDuration(0.0f, metrics) - 3.0f) < 0.001f);
     assert(fabsf(ToastDuration(2.5f, metrics) - 2.5f) < 0.001f);
+    assert(fabsf(ToastDeadlineFor(10.0f, 2.5f) - 12.5f) < 0.001f);
     request = ToastRequestDecisionFor(false, 2.5f, metrics);
     assert(!request.show);
     assert(request.clear);

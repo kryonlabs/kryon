@@ -60,6 +60,10 @@ ToastDuration :: (seconds: float, metrics: ToastMetrics) -> float #export {
     return seconds
 }
 
+ToastDeadlineFor :: (now_seconds: float, duration_seconds: float) -> float #export {
+    return now_seconds + duration_seconds
+}
+
 ToastRequestDecisionFor :: (has_message: bool, seconds: float,
     metrics: ToastMetrics) -> ToastRequestDecision #export {
     decision: ToastRequestDecision

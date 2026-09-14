@@ -605,7 +605,7 @@ metrics and protocol support here.
 |---|---|---|
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. Mode/input policy is in `.kry`; host handles pointer sampling, paint layers, clipping, and child content. |
 | `Modal` | `.kry canonical` | Layout, frame geometry, outside-dismissal, prompt-result, and action sizing/row policy are in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture application, release consumption, text editing, and drawing. |
-| `Toast` | `.kry canonical` | Public toast feedback surface. Request/render clear decisions, duration, layout, text-placement, and truncation policy are in `.kry`; host keeps message storage, timing source, text measurement, and drawing. |
+| `Toast` | `.kry canonical` | Public toast feedback surface. Request/render clear decisions, duration/deadline, layout, text-placement, and truncation policy are in `.kry`; host keeps message storage, clock source, text measurement, and drawing. |
 | `Focus` | Partly `.kry-backed` | Focus ring geometry is in `.kry`; focus state, registration, and drawing remain host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
@@ -851,7 +851,7 @@ and host plumbing behind the canonical names.
    retained menu open/focus/input state, drag/drop payload storage, reorder and
    swipe pointer ownership storage, paned-view active split storage, tree/table stored selection
    mutation, table resize pointer ownership/clipboard IO, modal input capture, and toast message
-   storage/timing source are still native support around `.kry` policy.
+   storage/clock source are still native support around `.kry` policy.
 6. Finish lowered block backend cleanup:
    `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
    blocks are canonical `.kry` syntax. Lowered `Scroll` scope geometry, wheel,
