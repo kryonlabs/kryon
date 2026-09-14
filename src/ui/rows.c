@@ -158,7 +158,7 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
                                                : text_style.foreground;
     int font_token;
     if(row.label_color.a == 0)
-        label_color.a = (unsigned char)(label_color.a * 0.72f);
+        label_color.a = RowsMutedAlpha(label_color.a);
     TextFieldProps field = row.field;
 
     layout = LabelTextFieldLayoutFor(x, y, w, (Rectangle){0}, metrics);
@@ -191,7 +191,7 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
     Color color = label.color.a != 0 ? label.color : text_style.foreground;
     int font_token;
     if(label.color.a == 0)
-        color.a = (unsigned char)(color.a * 0.72f);
+        color.a = RowsMutedAlpha(color.a);
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 

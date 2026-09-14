@@ -32,6 +32,8 @@ main(void)
     assert(ButtonRowSecondaryRole() == 6);
     assert(SpinboxRowLabelRole() == 7);
     assert(SpinboxRowControlRole() == 8);
+    assert(RowsMutedAlpha(255) == 183);
+    assert(RowsMutedAlpha(128) == 92);
 
     info = InfoRowsMetricsFor(0, 0, 1.0f, row);
     assert(info.row_height == 32);

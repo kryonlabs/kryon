@@ -93,6 +93,10 @@ RowsRequestedMetric :: (requested: i32, fields: u32, field: u32,
     return RowsMetric(fields, field, value, fallback, scale, allow_zero)
 }
 
+RowsMutedAlpha :: (alpha: u8) -> u8 #export {
+    return (u8)((float)alpha * 0.72)
+}
+
 InfoRowsTextRole :: () -> i32 #export {
     return 0
 }

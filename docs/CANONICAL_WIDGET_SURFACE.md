@@ -839,6 +839,7 @@ and host plumbing behind the canonical names.
   routes through `runtime/button.kry`; immediate `Paragraph` default line-gap
   policy now routes through `runtime/paragraph.kry`; immediate `Separator`
   label vertical placement now routes through `runtime/separator.kry`;
+  row muted-label alpha now routes through `runtime/rows.kry`;
   profile image picker selected-stroke width now routes through
   `runtime/profile_header.kry`. Continue by reducing raw
   native constants in shared immediate-mode helpers. Icon slider popup and
