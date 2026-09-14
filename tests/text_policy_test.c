@@ -53,6 +53,8 @@ int main(void)
     assert(clip.x == 10 && clip.y == 18 && clip.width == 30 && clip.height == 44);
     assert(TextCenteredY((Rectangle){10, 20, 30, 40}, 16) == 32);
     assert(TextCenteredY((Rectangle){10, 20, 30, 15}, 16) == 20);
+    assert(TextBaselineYFor(10, 40, 16, false, 0.0f, 0.0f) == 22);
+    assert(TextBaselineYFor(10, 40, 16, true, -3.0f, 17.0f) == 23);
     assert(TextSelectionLineEndPaddingFor(2.0f) == 12);
     assert(TextSelectionMinWidthFor(2.0f) == 8);
     assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);

@@ -101,6 +101,15 @@ TextCenteredY :: (bounds: Rectangle, line_height: i32) -> i32 #export {
     return (i32)bounds.y + ((i32)bounds.height - line_height) / 2
 }
 
+TextBaselineYFor :: (box_y: i32, box_h: i32, fallback_height: i32,
+    has_glyphs: bool, min_top: float, max_bottom: float) -> i32 #export {
+    if !has_glyphs {
+        return box_y + (i32)(((float)box_h - (float)fallback_height) * 0.5 + 0.5)
+    }
+    glyph_height: float = max_bottom - min_top
+    return box_y + (i32)(((float)box_h - glyph_height) * 0.5 - min_top + 0.5)
+}
+
 TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(6.0 * scale)

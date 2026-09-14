@@ -1903,9 +1903,9 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
     int seen_glyph = 0;
 
     if(text == NULL || text[0] == '\0' || !TextFontReady(font))
-        return box_y + (int)(((float)box_h -
-                              (float)TextLineHeight(normalized_font_size)) *
-                             0.5f + 0.5f);
+        return TextBaselineYFor(box_y, box_h,
+                                TextLineHeight(normalized_font_size),
+                                false, 0.0f, 0.0f);
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1939,9 +1939,9 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
     }
 
     if(!seen_glyph)
-        return box_y + (int)(((float)box_h -
-                              (float)normalized_font_size) *
-                             0.5f + 0.5f);
+        return TextBaselineYFor(box_y, box_h, normalized_font_size,
+                                false, 0.0f, 0.0f);
 
-    return box_y + (int)(((float)box_h - (max_bottom - min_top)) * 0.5f - min_top + 0.5f);
+    return TextBaselineYFor(box_y, box_h, normalized_font_size,
+                            true, min_top, max_bottom);
 }
