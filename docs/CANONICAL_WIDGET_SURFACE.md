@@ -686,6 +686,36 @@ stays prefix-free.
 | `WidgetKindRouter` | `Router` | `.kry canonical` |
 | `WidgetKindCard` | `Card` | `.kry canonical` |
 
+### Canonical Widgets Lowered Through `WidgetKindCustom`
+
+These names are still clean public concepts even though the retained tree uses
+`WidgetKindCustom` as the temporary host bucket. Do not expose the host bucket
+as a public widget name. Use this list as the feedback surface for deciding
+which concepts deserve dedicated retained node kinds later.
+
+| Public widget/concept | Current retained lowering | Decision |
+|---|---|---|
+| `Separator` | `WidgetKindCustom` | `.kry canonical`; line/label/bullet policy lives in `runtime/separator.kry` |
+| `DragDrop` | `WidgetKindCustom` | `.kry canonical`; source/target lifecycle policy lives in `runtime/drag_drop.kry` |
+| `Radio` | `WidgetKindCustom` | `.kry canonical`; paint/layout/marker policy lives in `runtime/radio.kry` |
+| `Progress` | `WidgetKindCustom` | `.kry canonical`; track/fill/label layout policy lives in `runtime/progress.kry` |
+| `Plot` | `WidgetKindCustom` | `.kry canonical`; range/mark/text paint policy lives in `runtime/plot.kry` |
+| `Focus` | `WidgetKindCustom` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
+| `Spinbox` | `WidgetKindCustom` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
+| `Fieldset` | `WidgetKindCustom` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |
+| `ListBox` | `WidgetKindCustom` | `.kry canonical`; row/window and multi-select policy lives in `runtime/list_box.kry` and `runtime/list_box_multi.kry` |
+| `TreeView` | `WidgetKindCustom` | `.kry canonical`; row/window/selection paint policy lives in `runtime/tree_view.kry` |
+| `TableView` | `WidgetKindCustom` | `.kry canonical`; table geometry, roles, selection, resize, clipboard intent, and scroll policy live in `runtime/table_view.kry` |
+| `PanedView` | `WidgetKindCustom` | `.kry canonical`; split/handle/drag policy lives in `runtime/paned_view.kry` |
+| `Collapsible` | `WidgetKindCustom` | `.kry canonical`; header/close/layout policy lives in `runtime/collapsible.kry` |
+| `ColorPicker` | `WidgetKindCustom` | `.kry canonical`; channel/swatch policy lives in `runtime/color_picker.kry` |
+| `Modal` | `WidgetKindCustom` | `.kry canonical`; layout/frame/action policy lives in `runtime/modal.kry` |
+| `Toolbar` | `WidgetKindCustom` | `.kry canonical`; toolbar and bottom-row layout policy lives in `runtime/toolbar.kry` |
+| `Menu` | `WidgetKindCustom` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |
+| `Selectable` | `WidgetKindCustom` | `.kry canonical`; paint/layout policy lives in `runtime/selectable.kry` |
+| `StylePicker` | `WidgetKindCustom` | `.kry canonical`; public props and option state live in `runtime/style_picker_props.kry` |
+| `Guide` | `WidgetKindCustom` | `.kry canonical`; guide and pager policy live in `runtime/guide.kry` and `runtime/guide_pager.kry` |
+
 Recent retained-tree public C cleanup:
 
 | Old public name | Current name |

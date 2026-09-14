@@ -17,6 +17,7 @@ WEB_RUNTIME = ROOT / "web/kryon-runtime.js"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
 RUNTIME = ROOT / "runtime"
+WIDGET_KIND = RUNTIME / "widget_kind.kry"
 
 NATIVE_COMPAT_EXPORTS = set()
 
@@ -274,6 +275,43 @@ def block_rows() -> dict[str, list[str]]:
     return rows
 
 
+def retained_node_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Retained Node Kinds\n(?P<body>.*?)(?=^### |^## )",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing ## Retained Node Kinds section")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            kind = cells[0].strip("`")
+            if kind in rows:
+                raise AssertionError(f"duplicate retained node kind row: {kind}")
+            rows[kind] = cells
+    return rows
+
+
+def retained_widget_kinds() -> list[str]:
+    text = WIDGET_KIND.read_text(encoding="utf-8")
+    match = re.search(
+        r"WidgetKind :: enum \{(?P<body>.*?)\n\}",
+        text,
+        flags=re.S,
+    )
+    if not match:
+        raise AssertionError("missing WidgetKind enum")
+    kinds = re.findall(r"\b(WidgetKind[A-Za-z0-9_]+)\s*=", match.group("body"))
+    kinds = [kind for kind in kinds if kind != "WidgetKindCount"]
+    if not kinds:
+        raise AssertionError("empty WidgetKind enum")
+    return kinds
+
+
 def compat_rows() -> dict[str, list[str]]:
     text = DOC.read_text(encoding="utf-8")
     match = re.search(
@@ -387,6 +425,8 @@ def main() -> int:
     parser_doc_rows = parser_rows()
     block_expected = block_widget_names()
     block_doc_rows = block_rows()
+    retained_expected = retained_widget_kinds()
+    retained_doc_rows = retained_node_rows()
     compat_doc_rows = compat_rows()
     go_compat_doc_rows = go_compat_rows()
     web_compat_doc_rows = web_compat_rows()
@@ -446,6 +486,15 @@ def main() -> int:
         errors.append(f"block statement row is not in widget_block_prop_type: {name}")
     for name in sorted(BLOCK_ONLY_WIDGET_NAMES - set(block_expected)):
         errors.append(f"block-only widget is missing from block statement surface: {name}")
+    for kind in retained_expected:
+        if kind not in retained_doc_rows:
+            errors.append(f"missing retained node kind row: {kind}")
+    for kind in sorted(
+        set(retained_doc_rows)
+        - set(retained_expected)
+        - {"WIDGET_READONLY_TEXT_BOX", "WIDGET_PARAGRAPH_MODAL", "WIDGET_TEXT_INPUT_PAINT"}
+    ):
+        errors.append(f"retained node kind row is not in runtime/widget_kind.kry: {kind}")
     if compat_expected != NATIVE_COMPAT_EXPORTS:
         for name in sorted(compat_expected - NATIVE_COMPAT_EXPORTS):
             errors.append(f"unreviewed native compatibility export in ui_tree.h: {name}")
