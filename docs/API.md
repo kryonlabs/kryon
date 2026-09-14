@@ -672,14 +672,6 @@ Use `RegisterTextFontSourceForText` or `RegisterTextFontFileSourceForText` when
 the font should include Kryon's standard UI coverage plus the unique
 codepoints found in a UTF-8 corpus, such as localized strings.
 
-#### Text Measurement
-
-```c
-int TextWidth(const char *text, int font_size);
-int TextHeight(const char *text, int font_size);
-int TextLineHeight(int font_size);
-```
-
 #### Text Widgets
 
 ```c

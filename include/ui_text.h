@@ -44,10 +44,7 @@ void ClearTextFonts(void);
 /* Print per-font rasterization stats to stderr. No-op without
  * KRYON_MEM_DEBUG (see kryon_mem.h). */
 void TextFontMemoryReport(const char *tag);
-int TextWidth(const char *text, int font_size);
 int MeasureTextWidth(const char *text, int font_size, const char *typeface);
-int TextHeight(const char *text, int font_size);
-int TextLineHeight(int font_size);
 Font GetTextFontForCodepoint(int codepoint, int font_size);
 float GetTextFontScale(Font font, int font_size);
 

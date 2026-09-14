@@ -1720,9 +1720,6 @@ include/ui_text.h function RegisterTextFontSource
 include/ui_text.h function RegisterTextFontSourceForText
 include/ui_text.h function TextFontHasGlyph
 include/ui_text.h function TextFontMemoryReport
-include/ui_text.h function TextHeight
-include/ui_text.h function TextLineHeight
-include/ui_text.h function TextWidth
 include/ui_text.h function UnloadTextFont
 include/ui_text.h function UseTextFont
 include/ui_text.h macro Text12

@@ -60,15 +60,15 @@ if [ -n "$icon_size_matches" ]; then
 fi
 
 text_baseline_matches="$(
-    rg -n '\bTextBaselineY\b' \
-        include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity go web \
+    rg -n '\b(TextBaselineY|TextWidth|TextHeight|TextLineHeight)\b' \
+        include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity web \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!tests/public_api_names_test.sh' || true
 )"
 
 if [ -n "$text_baseline_matches" ]; then
-    echo "TextBaselineY is internal font plumbing; public code should use Text/MeasureText policy:"
+    echo "Raw text measurement helpers are internal font plumbing; public code should use Text/MeasureText policy:"
     echo "$text_baseline_matches"
     exit 1
 fi
