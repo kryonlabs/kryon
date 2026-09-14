@@ -226,6 +226,10 @@ test_checkbox_paint_geometry_is_stable(void)
     CheckboxFlagResult flags_on = CheckboxFlagApply(1, 4, true);
     CheckboxFlagResult flags_off = CheckboxFlagApply(5, 4, true);
     CheckboxFlagResult flags_idle = CheckboxFlagApply(5, 4, false);
+    CheckboxValueResult value_on = CheckboxValueApply(false, true, true);
+    CheckboxValueResult value_off = CheckboxValueApply(true, true, true);
+    CheckboxValueResult value_idle = CheckboxValueApply(true, false, true);
+    CheckboxValueResult value_missing = CheckboxValueApply(true, true, false);
 
     spec.checked = 1;
     checked = CheckboxPaintFor(spec);
@@ -308,6 +312,14 @@ test_checkbox_paint_geometry_is_stable(void)
     check_int("checkbox flags off unchecked", flags_off.checked, 0);
     check_int("checkbox idle unchanged", (int)flags_idle.flags, 5);
     check_int("checkbox idle no change", flags_idle.changed, 0);
+    check_int("checkbox value turns on", value_on.checked, 1);
+    check_int("checkbox value on changed", value_on.changed, 1);
+    check_int("checkbox value turns off", value_off.checked, 0);
+    check_int("checkbox value off changed", value_off.changed, 1);
+    check_int("checkbox value idle checked", value_idle.checked, 1);
+    check_int("checkbox value idle unchanged", value_idle.changed, 0);
+    check_int("checkbox value missing checked", value_missing.checked, 1);
+    check_int("checkbox value missing unchanged", value_missing.changed, 0);
 }
 
 static void

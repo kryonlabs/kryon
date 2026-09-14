@@ -959,12 +959,12 @@ RenderCheckbox(CheckboxProps checkbox)
         if(state.changed)
             *checkbox.flags = (int)state.flags;
     } else if(checkbox.value != NULL) {
-        checked = *checkbox.value != 0;
-        if(pressed) {
-            checked = !checked;
-            *checkbox.value = checked;
-            changed = 1;
-        }
+        CheckboxValueResult state = CheckboxValueApply(
+            *checkbox.value != 0, pressed != 0, 1);
+        checked = state.checked;
+        changed = state.changed;
+        if(state.changed)
+            *checkbox.value = state.checked ? 1 : 0;
     }
 
     if(IsWindowReady()) {

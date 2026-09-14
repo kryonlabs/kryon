@@ -58,6 +58,11 @@ CheckboxFlagResult :: struct {
     changed: bool
 }
 
+CheckboxValueResult :: struct {
+    checked: bool
+    changed: bool
+}
+
 CheckboxMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> float {
     if scale <= 0.0 { scale = 1.0 }
@@ -129,6 +134,17 @@ CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFla
             result.flags = flags | flag_value
         }
         result.checked = !result.checked
+        result.changed = true
+    }
+    return result
+}
+
+CheckboxValueApply :: (checked: bool, pressed: bool, has_value: bool) -> CheckboxValueResult #export {
+    result: CheckboxValueResult
+    result.checked = checked
+    result.changed = false
+    if pressed && has_value {
+        result.checked = !checked
         result.changed = true
     }
     return result

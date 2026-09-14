@@ -59,6 +59,11 @@ type CheckboxFlagResult struct {
 	Changed bool
 }
 
+type CheckboxValueResult struct {
+	Checked bool
+	Changed bool
+}
+
 func Checkbox_CheckboxMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -267,6 +272,17 @@ func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) C
 	}
 	var value_19 CheckboxFlagResult = result
 	return value_19
+}
+
+func Checkbox_CheckboxValueApply(checked bool, pressed bool, has_value bool) CheckboxValueResult {
+	var result CheckboxValueResult = CheckboxValueResult{}
+	result.Checked = checked
+	result.Changed = false
+	if pressed && has_value {
+		result.Checked = !checked
+		result.Changed = true
+	}
+	return result
 }
 
 func Checkbox_CheckboxBoxRoleForTone(tone ButtonTone) int32 {

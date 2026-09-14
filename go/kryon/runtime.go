@@ -1891,15 +1891,15 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 			*props.Flags = int32(state.Flags)
 		}
 	} else if props.Value != nil {
-		checked = *props.Value != 0
-		if input.Activated {
-			if checked {
-				*props.Value = 0
-			} else {
+		state := Checkbox_CheckboxValueApply(*props.Value != 0, input.Activated, true)
+		checked = state.Checked
+		changed = state.Changed
+		if state.Changed {
+			if state.Checked {
 				*props.Value = 1
+			} else {
+				*props.Value = 0
 			}
-			checked = !checked
-			changed = true
 		}
 	}
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, disabled)
