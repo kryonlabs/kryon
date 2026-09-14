@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "ui_style_sheet.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -17,6 +18,7 @@ typedef struct PreviewOptions {
     const char *source;
     const char *source_dir;
     const char *out;
+    const char *style;
     int width;
     int height;
     int count;
@@ -37,7 +39,11 @@ usage(void)
             "  kryon-preview capture --project ROOT --source REL --output PNG [--width W --height H]\n"
             "  kryon-preview reload --project ROOT --source REL [--count N --width W --height H]\n"
             "  kryon-preview capture-all --project ROOT --source-dir DIR --out-dir DIR [--width W --height H]\n"
-            "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n");
+            "  kryon-preview capture-style --project ROOT --source REL --out-dir DIR [--width W --height H]\n"
+            "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n"
+            "\n"
+            "  --style PACK   run one command with a built-in style pack (material, tk,\n"
+            "                 vanilla, lightfield) or 'none' for no-style mode\n");
 }
 
 static const char *
@@ -98,6 +104,11 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
             if(value == NULL)
                 return 0;
             opt->count = atoi(value);
+        } else if(strcmp(argv[i], "--style") == 0) {
+            value = arg_value(argc, argv, &i);
+            if(value == NULL)
+                return 0;
+            opt->style = value;
         } else {
             return 0;
         }
@@ -114,6 +125,8 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
         return opt->project != NULL && opt->source != NULL;
     if(strcmp(opt->command, "capture-all") == 0)
         return opt->project != NULL && opt->source_dir != NULL && opt->out != NULL;
+    if(strcmp(opt->command, "capture-style") == 0)
+        return opt->project != NULL && opt->source != NULL && opt->out != NULL;
     if(strcmp(opt->command, "cartridge") == 0)
         return opt->source != NULL && opt->out != NULL;
     return 0;
@@ -303,6 +316,64 @@ run_capture(const PreviewOptions *opt)
         return 1;
     ok = capture_source(&session, opt->source, opt->out,
                         opt->width, opt->height);
+    preview_close(&session);
+    return ok ? 0 : 1;
+}
+
+static const char *const kp_style_packs[] = {
+    "material", "tk", "vanilla", "lightfield", "none",
+};
+
+static void png_name(char *dst, size_t dst_size, const char *rel);
+
+static int
+apply_style_pack(const char *pack)
+{
+    if(strcmp(pack, "none") == 0) {
+        ClearStylePacks();
+        return 1;
+    }
+    EnsureBuiltInStylePacks();
+    if(!SetActiveStylePack(pack)) {
+        fprintf(stderr, "kryon-preview: style pack '%s' unavailable\n", pack);
+        return 0;
+    }
+    return 1;
+}
+
+static int
+run_capture_style(const PreviewOptions *opt)
+{
+    PreviewSession session = {0};
+    char name[KP_PATH_MAX];
+    char out[KP_PATH_MAX];
+    size_t name_len;
+    int ok = 1;
+
+    if(!preview_open(&session, opt->project))
+        return 1;
+    if(!mkdir_p(opt->out)) {
+        fprintf(stderr, "kryon-preview: could not create %s\n", opt->out);
+        preview_close(&session);
+        return 1;
+    }
+    for(size_t i = 0; i < sizeof(kp_style_packs) / sizeof(kp_style_packs[0]); i++) {
+        const char *pack = kp_style_packs[i];
+
+        if(!apply_style_pack(pack)) {
+            ok = 0;
+            continue;
+        }
+        png_name(name, sizeof(name), opt->source);
+        name_len = strlen(name);
+        if(name_len > 4)
+            name[name_len - 4] = '\0';
+        snprintf(out, sizeof(out), "%s/%s-%s.png", opt->out, name, pack);
+        if(!capture_source(&session, opt->source, out,
+                           opt->width, opt->height))
+            ok = 0;
+    }
+    EnsureBuiltInStylePacks();
     preview_close(&session);
     return ok ? 0 : 1;
 }
@@ -580,10 +651,14 @@ main(int argc, char **argv)
     InitInterface(opt.width, opt.height, 1.0f);
     SetCurrentTheme(THEME_MONO, 0);
     setenv("KRYON_INSPECT", "1", 1);
+    if(opt.style != NULL && !apply_style_pack(opt.style))
+        return 1;
     if(strcmp(opt.command, "capture") == 0)
         rc = run_capture(&opt);
     else if(strcmp(opt.command, "reload") == 0)
         rc = run_reload(&opt);
+    else if(strcmp(opt.command, "capture-style") == 0)
+        rc = run_capture_style(&opt);
     else if(strcmp(opt.command, "cartridge") == 0)
         rc = run_cartridge(&opt);
     else
