@@ -16,8 +16,11 @@ static TextCompositionSession text_composition;
 int
 ui_text_composition_cancel(const void *owner)
 {
-    if(text_composition.owner == NULL ||
-       (owner != NULL && text_composition.owner != owner))
+    TextCompositionSessionDecision decision =
+        TextCompositionCancelDecisionFor(text_composition.owner != NULL,
+                                         owner != NULL,
+                                         text_composition.owner == owner);
+    if(!decision.cancel)
         return 0;
     memset(&text_composition, 0, sizeof(text_composition));
     return 1;
@@ -27,8 +30,12 @@ int
 ui_text_composition_get(const void *owner, const char **text,
                         int *cursor, int *selection_length)
 {
-    if(owner == NULL || text_composition.owner != owner ||
-       text_composition.text[0] == '\0')
+    TextCompositionSessionDecision decision =
+        TextCompositionGetDecisionFor(text_composition.owner != NULL,
+                                      owner != NULL &&
+                                      text_composition.owner == owner,
+                                      text_composition.text[0] != '\0');
+    if(!decision.visible)
         return 0;
     if(text != NULL)
         *text = text_composition.text;

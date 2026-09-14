@@ -45,6 +45,7 @@ main(void)
     TextAreaGutterMetrics gutter_metrics;
     TextInputDoubleClickDecision double_click;
     TextCompositionInputDecision composition_input;
+    TextCompositionSessionDecision composition_session;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -122,6 +123,20 @@ main(void)
     assert(!composition_input.accept_events);
     assert(composition_input.cancel);
     assert(composition_input.drain_events);
+    composition_session = TextCompositionCancelDecisionFor(true, true, true);
+    assert(composition_session.cancel);
+    composition_session = TextCompositionCancelDecisionFor(true, true, false);
+    assert(!composition_session.cancel);
+    composition_session = TextCompositionCancelDecisionFor(true, false, false);
+    assert(composition_session.cancel);
+    composition_session = TextCompositionCancelDecisionFor(false, false, false);
+    assert(!composition_session.cancel);
+    composition_session = TextCompositionGetDecisionFor(true, true, true);
+    assert(composition_session.visible);
+    composition_session = TextCompositionGetDecisionFor(true, true, false);
+    assert(!composition_session.visible);
+    composition_session = TextCompositionGetDecisionFor(true, false, true);
+    assert(!composition_session.visible);
     assert(TextCompositionSelectionLength(6, 2, 3) == 3);
     assert(TextCompositionSelectionLength(6, 2, 99) == 4);
     assert(TextCompositionSelectionLength(6, 9, 2) == 0);

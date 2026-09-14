@@ -78,6 +78,11 @@ TextCompositionInputDecision :: struct {
     drain_events: bool
 }
 
+TextCompositionSessionDecision :: struct {
+    visible: bool
+    cancel: bool
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
 }
@@ -87,6 +92,20 @@ TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompo
     decision.accept_events = focused && !read_only
     decision.cancel = !decision.accept_events
     decision.drain_events = focused && read_only
+    return decision
+}
+
+TextCompositionCancelDecisionFor :: (has_owner: bool, scoped: bool,
+    same_owner: bool) -> TextCompositionSessionDecision #export {
+    decision: TextCompositionSessionDecision
+    decision.cancel = has_owner && (!scoped || same_owner)
+    return decision
+}
+
+TextCompositionGetDecisionFor :: (has_owner: bool, same_owner: bool,
+    has_text: bool) -> TextCompositionSessionDecision #export {
+    decision: TextCompositionSessionDecision
+    decision.visible = has_owner && same_owner && has_text
     return decision
 }
 
