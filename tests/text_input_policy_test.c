@@ -57,6 +57,7 @@ main(void)
     TextFocusClaimDecision focus_claim;
     TextFocusReleaseDecision focus_release;
     TextFocusOwnerDecision focus_owner;
+    TextPlatformInputSyncDecision platform_sync;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -216,6 +217,29 @@ main(void)
     assert(!TextFocusOwnerIsStale(true, 9, 10));
     assert(TextFocusOwnerIsStale(true, 8, 10));
     assert(TextFocusOwnerIsStale(true, 0, 10));
+    assert(TextPlatformInputActiveFor(true, false, false));
+    assert(TextPlatformInputActiveFor(false, true, true));
+    assert(!TextPlatformInputActiveFor(false, true, false));
+    assert(!TextPlatformInputActiveFor(false, false, false));
+    platform_sync = TextPlatformInputSyncDecisionFor(true, true, false, false);
+    assert(platform_sync.active);
+    assert(platform_sync.call_callback);
+    assert(platform_sync.callback_active);
+    assert(platform_sync.clear_show_request);
+    platform_sync = TextPlatformInputSyncDecisionFor(false, true, false, true);
+    assert(platform_sync.active);
+    assert(platform_sync.call_callback);
+    assert(platform_sync.callback_active);
+    platform_sync = TextPlatformInputSyncDecisionFor(false, true, true, false);
+    assert(!platform_sync.active);
+    assert(platform_sync.call_callback);
+    assert(!platform_sync.callback_active);
+    platform_sync = TextPlatformInputSyncDecisionFor(false, true, true, true);
+    assert(platform_sync.active);
+    assert(!platform_sync.call_callback);
+    platform_sync = TextPlatformInputSyncDecisionFor(true, false, false, true);
+    assert(platform_sync.active);
+    assert(!platform_sync.call_callback);
     composition_input = TextCompositionInputDecisionFor(true, false);
     assert(composition_input.accept_events);
     assert(!composition_input.cancel);

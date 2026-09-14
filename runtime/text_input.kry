@@ -165,6 +165,13 @@ TextFocusOwnerDecision :: struct {
     clear_target: bool
 }
 
+TextPlatformInputSyncDecision :: struct {
+    active: bool
+    call_callback: bool
+    callback_active: bool
+    clear_show_request: bool
+}
+
 TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
     same_owner: bool) -> TextFocusClaimDecision #export {
     decision: TextFocusClaimDecision
@@ -209,6 +216,30 @@ TextFocusOwnerIsStale :: (has_owner: bool, owner_frame: i64,
     current_frame: i64) -> bool #export {
     return has_owner && owner_frame != current_frame - 1 &&
         owner_frame != current_frame
+}
+
+TextPlatformInputActiveFor :: (requested: bool, has_owner: bool,
+    owner_rendered_this_frame: bool) -> bool #export {
+    return requested || (has_owner && owner_rendered_this_frame)
+}
+
+TextPlatformInputSyncDecisionFor :: (show_requested: bool,
+    has_callback: bool, platform_active: bool,
+    text_input_active: bool) -> TextPlatformInputSyncDecision #export {
+    decision: TextPlatformInputSyncDecision
+    decision.clear_show_request = true
+    if show_requested && has_callback {
+        decision.active = true
+        decision.call_callback = true
+        decision.callback_active = true
+        return decision
+    }
+    decision.active = text_input_active
+    if platform_active != text_input_active {
+        decision.call_callback = has_callback
+        decision.callback_active = text_input_active
+    }
+    return decision
 }
 
 TextFocusReleaseDecisionFor :: (has_target: bool, owns_focus: bool,

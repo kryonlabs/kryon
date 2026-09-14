@@ -5504,19 +5504,20 @@ ui_centered_min_hit_rect(int x, int y, int w, int h, int min_w, int min_h)
 static void
 ui_sync_platform_text_input(void)
 {
-    int text_input_active =
-        g_ui_text_input_requested != 0 ||
-        (g_ui_text_focus_owner != NULL &&
-         g_ui_text_focus_owner_this_frame == g_ui_text_focus_owner);
+    int text_input_active = TextPlatformInputActiveFor(
+        g_ui_text_input_requested != 0,
+        g_ui_text_focus_owner != NULL,
+        g_ui_text_focus_owner_this_frame == g_ui_text_focus_owner);
+    TextPlatformInputSyncDecision decision =
+        TextPlatformInputSyncDecisionFor(
+            g_ui_text_input_show_requested != 0,
+            g_ui_text_input_platform_callback != NULL,
+            g_ui_platform_text_input_active != 0,
+            text_input_active != 0);
 
-    if(g_ui_text_input_show_requested &&
-       g_ui_text_input_platform_callback != NULL) {
-        g_ui_platform_text_input_active = 1;
-        g_ui_text_input_platform_callback(1);
-    } else if(g_ui_platform_text_input_active != text_input_active) {
-        g_ui_platform_text_input_active = text_input_active;
-        if(g_ui_text_input_platform_callback != NULL)
-            g_ui_text_input_platform_callback(text_input_active);
-    }
-    g_ui_text_input_show_requested = 0;
+    g_ui_platform_text_input_active = decision.active ? 1 : 0;
+    if(decision.call_callback && g_ui_text_input_platform_callback != NULL)
+        g_ui_text_input_platform_callback(decision.callback_active ? 1 : 0);
+    if(decision.clear_show_request)
+        g_ui_text_input_show_requested = 0;
 }
