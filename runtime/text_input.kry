@@ -75,6 +75,16 @@ TextContextMenuState :: struct {
     select_all_enabled: bool
 }
 
+TextContextCommandDecision :: struct {
+    copy_selection: bool
+    copy_all: bool
+    delete_selection: bool
+    clear_all: bool
+    paste: bool
+    select_all: bool
+    collapse_selection: bool
+}
+
 TextInputDoubleClickDecision :: struct {
     double_click: bool
 }
@@ -310,6 +320,60 @@ TextContextMenuStateFor :: (has_selection: bool,
     state.paste_enabled = clipboard_has_text && !read_only
     state.select_all_enabled = has_text
     return state
+}
+
+TextContextCommandCut :: () -> i32 #export {
+    return 1
+}
+
+TextContextCommandCopy :: () -> i32 #export {
+    return 2
+}
+
+TextContextCommandPaste :: () -> i32 #export {
+    return 3
+}
+
+TextContextCommandSelectAll :: () -> i32 #export {
+    return 4
+}
+
+TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
+    copy_all_when_empty: bool, has_text: bool,
+    read_only: bool) -> TextContextCommandDecision #export {
+    decision: TextContextCommandDecision
+    if command == TextContextCommandCut() {
+        if has_selection {
+            decision.copy_selection = true
+            decision.delete_selection = !read_only
+        } else if !read_only && copy_all_when_empty && has_text {
+            decision.copy_all = true
+            decision.clear_all = true
+        }
+        decision.collapse_selection = true
+        return decision
+    }
+    if command == TextContextCommandCopy() {
+        if has_selection {
+            decision.copy_selection = true
+        } else if copy_all_when_empty && has_text {
+            decision.copy_all = true
+        }
+        return decision
+    }
+    if command == TextContextCommandPaste() {
+        if !read_only {
+            decision.delete_selection = has_selection
+            decision.paste = true
+            decision.collapse_selection = true
+        }
+        return decision
+    }
+    if command == TextContextCommandSelectAll() {
+        decision.select_all = true
+        return decision
+    }
+    return decision
 }
 
 TextNavNone :: () -> i32 #export {

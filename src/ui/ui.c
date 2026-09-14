@@ -214,6 +214,24 @@ static int g_ui_text_context_changed = 0;
 static int g_ui_text_context_changed_kind = TEXT_CONTEXT_NONE;
 static int g_ui_text_context_changed_id = 0;
 static int *g_ui_text_context_changed_owner = NULL;
+
+static int
+ui_text_context_command_kind(int command)
+{
+    switch(command) {
+    case TEXT_CONTEXT_CUT:
+        return TextContextCommandCut();
+    case TEXT_CONTEXT_COPY:
+        return TextContextCommandCopy();
+    case TEXT_CONTEXT_PASTE:
+        return TextContextCommandPaste();
+    case TEXT_CONTEXT_SELECT_ALL:
+        return TextContextCommandSelectAll();
+    default:
+        return 0;
+    }
+}
+
 /* Identity of the widget that currently owns text input focus, recorded as the
  * address of its `focused` flag. Ownership is PERSISTENT across frames: it does
  * not reset at frame start, it only changes when a text input is clicked (or
@@ -1226,6 +1244,9 @@ ui_text_apply_context_command(int command, TextEdit edit,
 {
     int changed = 0;
     int len;
+    int has_selection;
+    int copied_selection = 0;
+    TextContextCommandDecision decision;
 
     if(edit.text == NULL || edit.text_size == 0 ||
        edit.cursor_position == NULL || selection == NULL)
@@ -1233,52 +1254,36 @@ ui_text_apply_context_command(int command, TextEdit edit,
     len = (int)strlen(edit.text);
     selection_start = ui_clampi(selection_start, 0, len);
     selection_end = ui_clampi(selection_end, 0, len);
+    has_selection = selection_end > selection_start;
+    decision = TextContextCommandDecisionFor(
+        ui_text_context_command_kind(command), has_selection,
+        copy_all_when_empty != 0, len > 0, read_only != 0);
 
-    switch(command) {
-    case TEXT_CONTEXT_CUT:
-        if(selection_end > selection_start) {
-            if(read_only) {
-                ui_text_copy_range(edit.text, selection_start, selection_end);
-            } else if(ui_text_copy_range(edit.text, selection_start, selection_end) &&
-               ui_text_delete_range(edit.text, edit.text_size,
-                                    edit.cursor_position,
-                                    selection_start, selection_end))
-                changed = 1;
-        } else if(!read_only && copy_all_when_empty && len > 0) {
-            SetClipboardTextValue(edit.text);
-            edit.text[0] = '\0';
-            *edit.cursor_position = 0;
-            changed = 1;
-        }
-        ui_text_selection_set(selection, selection_id, selection_owner,
-                              *edit.cursor_position, *edit.cursor_position, 0);
-        break;
-    case TEXT_CONTEXT_COPY:
-        if(selection_end > selection_start)
-            ui_text_copy_range(edit.text, selection_start, selection_end);
-        else if(copy_all_when_empty && len > 0)
-            SetClipboardTextValue(edit.text);
-        break;
-    case TEXT_CONTEXT_PASTE:
-        if(read_only)
-            break;
-        if(selection_end > selection_start)
-            ui_text_delete_range(edit.text, edit.text_size,
-                                 edit.cursor_position,
-                                 selection_start, selection_end);
-        if(ui_text_paste_clipboard(edit, allow_newlines))
-            changed = 1;
-        ui_text_selection_set(selection, selection_id, selection_owner,
-                              *edit.cursor_position, *edit.cursor_position, 0);
-        break;
-    case TEXT_CONTEXT_SELECT_ALL:
-        len = (int)strlen(edit.text);
+    if(decision.copy_selection)
+        copied_selection = ui_text_copy_range(edit.text, selection_start,
+                                              selection_end);
+    if(decision.copy_all)
+        SetClipboardTextValue(edit.text);
+    if(decision.delete_selection &&
+       (!decision.copy_selection || copied_selection) &&
+       ui_text_delete_range(edit.text, edit.text_size, edit.cursor_position,
+                            selection_start, selection_end))
+        changed |= !decision.paste;
+    if(decision.clear_all) {
+        edit.text[0] = '\0';
+        *edit.cursor_position = 0;
+        changed = 1;
+    }
+    if(decision.paste && ui_text_paste_clipboard(edit, allow_newlines))
+        changed = 1;
+    if(decision.select_all) {
         ui_text_selection_set(selection, selection_id, selection_owner,
                               0, len, 0);
         *edit.cursor_position = len;
-        break;
-    default:
-        break;
+    }
+    if(decision.collapse_selection) {
+        ui_text_selection_set(selection, selection_id, selection_owner,
+                              *edit.cursor_position, *edit.cursor_position, 0);
     }
     return changed;
 }

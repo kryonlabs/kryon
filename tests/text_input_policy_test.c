@@ -52,6 +52,7 @@ main(void)
     TextCompositionPaintSpan composition_span;
     TextSelectionPaintSpan selection_span;
     TextContextMenuState context_menu;
+    TextContextCommandDecision context_command;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -311,6 +312,44 @@ main(void)
     assert(!context_menu.copy_enabled);
     assert(context_menu.paste_enabled);
     assert(!context_menu.select_all_enabled);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandCut(), true, false, true, false);
+    assert(context_command.copy_selection);
+    assert(!context_command.copy_all);
+    assert(context_command.delete_selection);
+    assert(!context_command.clear_all);
+    assert(!context_command.paste);
+    assert(!context_command.select_all);
+    assert(context_command.collapse_selection);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandCut(), false, true, true, false);
+    assert(!context_command.copy_selection);
+    assert(context_command.copy_all);
+    assert(!context_command.delete_selection);
+    assert(context_command.clear_all);
+    assert(context_command.collapse_selection);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandCut(), true, false, true, true);
+    assert(context_command.copy_selection);
+    assert(!context_command.delete_selection);
+    assert(context_command.collapse_selection);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandCopy(), false, true, true, true);
+    assert(!context_command.copy_selection);
+    assert(context_command.copy_all);
+    assert(!context_command.collapse_selection);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandPaste(), true, false, true, false);
+    assert(context_command.delete_selection);
+    assert(context_command.paste);
+    assert(context_command.collapse_selection);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandPaste(), true, false, true, true);
+    assert(!context_command.delete_selection);
+    assert(!context_command.paste);
+    context_command = TextContextCommandDecisionFor(
+        TextContextCommandSelectAll(), false, false, false, false);
+    assert(context_command.select_all);
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);
