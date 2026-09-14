@@ -138,6 +138,14 @@ NavigationBarFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     return default_font
 }
 
+NavigationBarItemStateFor :: (active: bool, disabled: bool,
+    hovered: bool) -> ButtonState #export {
+    if disabled { return (ButtonState)ButtonStateDisabled }
+    if active { return (ButtonState)ButtonStateSelected }
+    if hovered { return (ButtonState)ButtonStateHover }
+    return (ButtonState)ButtonStateNormal
+}
+
 NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
     captured: bool, hover_effects: bool, released: bool,
     release_consumed: bool, press_started_inside: bool,
@@ -148,14 +156,8 @@ NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
     interaction.disabled_marker = pointer_inside && disabled && !captured
     interaction.activated = interaction.active && released &&
         !release_consumed && press_started_inside
-    interaction.state = (ButtonState)ButtonStateNormal
-    if disabled {
-        interaction.state = (ButtonState)ButtonStateDisabled
-    } else if selected {
-        interaction.state = (ButtonState)ButtonStateSelected
-    } else if interaction.hovered {
-        interaction.state = (ButtonState)ButtonStateHover
-    }
+    interaction.state = NavigationBarItemStateFor(selected, disabled,
+        interaction.hovered)
     return interaction
 }
 

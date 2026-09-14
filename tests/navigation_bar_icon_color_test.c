@@ -194,6 +194,18 @@ main(void)
               NavigationBarFontFor(11, 0), 11);
     check_int("compact navigation bar style font override",
               NavigationBarFontFor(11, 13), 13);
+    check_true("navigation bar item normal state",
+               NavigationBarItemStateFor(false, false, false) ==
+                   ButtonStateNormal);
+    check_true("navigation bar item hover state",
+               NavigationBarItemStateFor(false, false, true) ==
+                   ButtonStateHover);
+    check_true("navigation bar item selected state wins over hover",
+               NavigationBarItemStateFor(true, false, true) ==
+                   ButtonStateSelected);
+    check_true("navigation bar item disabled state wins",
+               NavigationBarItemStateFor(true, true, true) ==
+                   ButtonStateDisabled);
     {
         NavigationBarItemInteraction interaction =
             NavigationBarItemInteractionFor(false, true, false, true, true,

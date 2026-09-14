@@ -84,7 +84,8 @@ ui_navigation_bar_item_frame(int active, int disabled, int hovered,
                              int class_name)
 {
     ButtonProps props = {0};
-    ButtonState state = ButtonStateNormal;
+    ButtonState state = NavigationBarItemStateFor(active != 0, disabled != 0,
+                                                  hovered != 0);
     props.class_name = class_name;
     props.tone = active ? ButtonToneAccent : ButtonToneNeutral;
     props.emphasis = active ? ButtonEmphasisFilled : ButtonEmphasisGhost;
@@ -92,12 +93,6 @@ ui_navigation_bar_item_frame(int active, int disabled, int hovered,
     props.pill = 1;
     props.disabled = disabled;
     props.selected = active;
-    if(disabled)
-        state = ButtonStateDisabled;
-    else if(active)
-        state = ButtonStateSelected;
-    else if(hovered)
-        state = ButtonStateHover;
     return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
                                        StyleKindNavigationBarItem());
 }
