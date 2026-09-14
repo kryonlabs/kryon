@@ -21,6 +21,7 @@ int
 main(void)
 {
     StyleSheet sheet = {0};
+    StylePickerState picker_state;
 
     ClearStylePacks();
     dropdown_calls = 0;
@@ -32,6 +33,14 @@ main(void)
     assert(StylePickerSelectedIndexFor(-1, 3) == 0);
     assert(StylePickerSelectedIndexFor(9, 3) == 2);
     assert(StylePickerSelectedIndexFor(0, 0) == -1);
+    picker_state = StylePickerStateFor(12, 99, 8);
+    assert(picker_state.has_options);
+    assert(picker_state.option_count == 8);
+    assert(picker_state.selected_index == 7);
+    picker_state = StylePickerStateFor(-2, 0, 8);
+    assert(!picker_state.has_options);
+    assert(picker_state.option_count == 0);
+    assert(picker_state.selected_index == -1);
     assert(!StylePicker((StylePickerProps){.id = 41}));
     assert(dropdown_calls == 1);
     assert(captured_dropdown.option_count >= 5);

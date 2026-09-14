@@ -15,6 +15,12 @@ StylePickerProps :: struct {
     disabled: bool
 }
 
+StylePickerState :: struct {
+    option_count: i32
+    selected_index: i32
+    has_options: bool
+}
+
 StylePickerOptionCountFor :: (count: i32, limit: i32) -> i32 #export {
     if count < 0 { return 0 }
     if limit > 0 && count > limit { return limit }
@@ -27,4 +33,13 @@ StylePickerSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
     if selected < 0 { return 0 }
     if selected >= count { return count - 1 }
     return selected
+}
+
+StylePickerStateFor :: (count: i32, selected: i32, limit: i32) -> StylePickerState #export {
+    state: StylePickerState
+    state.option_count = StylePickerOptionCountFor(count, limit)
+    state.selected_index = StylePickerSelectedIndexFor(selected,
+        state.option_count)
+    state.has_options = state.option_count > 0
+    return state
 }

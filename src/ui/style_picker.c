@@ -8,11 +8,13 @@ StylePicker(StylePickerProps props)
     const char *labels[STYLE_PACK_MAX];
     int selected = -1;
     int count = GetStylePackCount();
+    StylePickerState state;
 
     if(count <= 0 && EnsureBuiltInStylePacks())
         count = GetStylePackCount();
-    count = StylePickerOptionCountFor(count, STYLE_PACK_MAX);
-    if(count <= 0)
+    state = StylePickerStateFor(count, selected, STYLE_PACK_MAX);
+    count = state.option_count;
+    if(!state.has_options)
         return false;
 
     for(int i = 0; i < count; i++) {
@@ -25,7 +27,8 @@ StylePicker(StylePickerProps props)
             selected = i;
     }
 
-    selected = StylePickerSelectedIndexFor(selected, count);
+    state = StylePickerStateFor(count, selected, STYLE_PACK_MAX);
+    selected = state.selected_index;
 
     bool changed = Dropdown((DropdownProps){
         .bounds = props.bounds,

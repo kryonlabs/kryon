@@ -120,7 +120,7 @@ surface review:
 | `runtime/scroll.kry` | Scroll measurement, sizing, wheel, drag, and ensure-visible policy | `.kry canonical` |
 | `runtime/scroll_props.kry` | Scroll props | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
-| `runtime/style_picker_props.kry` | StylePicker props and option/selection policy | `.kry canonical` |
+| `runtime/style_picker_props.kry` | StylePicker props and option/selection/dropdown state policy | `.kry canonical` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/swipe.kry` | Swipe direction/default/progress policy | `.kry support` |
@@ -166,7 +166,7 @@ text measurement, painting, storage, or platform services.
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership and reorder pointer ownership/gesture lifecycle remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/reservation/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
-| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout/text-placement policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy, profile header/profile image picker geometry support, inspector edit/resize geometry policy | theme picker, inspector state/input, and profile image rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
+| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout/text-placement policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection/dropdown state policy, profile header/profile image picker geometry support, inspector edit/resize geometry policy | theme picker, inspector state/input, and profile image rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Terminal | `TerminalPane` font fallback, content bounds, grid clamp, and scroll indicator metrics policy | terminal emulator state, PTY/session IO, ANSI parsing, text measurement, clipboard/selection, input sampling, and drawing remain native terminal host support |
 | Game2D | `Scene`, `Node2D`, `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums/defaults; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and runtime node mutation remain native Game2D support. |
 
@@ -609,7 +609,7 @@ metrics and protocol support here.
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
-| `StylePicker` | `.kry canonical` | Public props and option/selection policy live in `runtime/style_picker_props.kry`; style-pack storage, KSS parsing, and dropdown rendering remain host support. |
+| `StylePicker` | `.kry canonical` | Public props and option/selection/dropdown state policy live in `runtime/style_picker_props.kry`; style-pack storage, KSS parsing, and dropdown rendering remain host support. |
 
 ## Game2D Nodes
 
