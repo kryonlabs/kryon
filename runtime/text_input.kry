@@ -1038,6 +1038,13 @@ TextSelectionRangeForLength :: (anchor: i32, cursor: i32,
     return out
 }
 
+TextCursorForLength :: (cursor: i32, length: i32) -> i32 #export {
+    if length < 0 { length = 0 }
+    if cursor < 0 { return 0 }
+    if cursor > length { return length }
+    return cursor
+}
+
 TextSelectionAfterMove :: (anchor: i32, cursor: i32, target: i32,
     extend: bool) -> TextSelectionState #export {
     out: TextSelectionState

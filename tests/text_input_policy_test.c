@@ -438,6 +438,10 @@ main(void)
     assert(selection.start == 0);
     assert(selection.end == 0);
     assert(!selection.has_selection);
+    assert(TextCursorForLength(-2, 6) == 0);
+    assert(TextCursorForLength(99, 6) == 6);
+    assert(TextCursorForLength(4, 6) == 4);
+    assert(TextCursorForLength(4, -1) == 0);
     assert(TextSelectionOwnerMatches(true, true, 0, 0));
     assert(!TextSelectionOwnerMatches(true, false, 0, 0));
     assert(TextSelectionOwnerMatches(false, false, 9, 9));

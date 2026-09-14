@@ -198,7 +198,7 @@ ui_text_word_left(const char *text, int cursor)
 {
     if(text == NULL)
         return 0;
-    cursor = ui_clampi(cursor, 0, (int)strlen(text));
+    cursor = TextCursorForLength(cursor, (int)strlen(text));
     cursor = ui_utf8_prev_offset(text, cursor);
     while(cursor > 0 && !ui_text_is_word_boundary(text, cursor))
         cursor = ui_utf8_prev_offset(text, cursor);
@@ -213,7 +213,7 @@ ui_text_word_right(const char *text, int cursor)
     if(text == NULL)
         return 0;
     len = (int)strlen(text);
-    cursor = ui_clampi(cursor, 0, len);
+    cursor = TextCursorForLength(cursor, len);
     cursor = ui_utf8_next_offset(text, cursor);
     while(cursor < len && !ui_text_is_word_boundary(text, cursor))
         cursor = ui_utf8_next_offset(text, cursor);
@@ -343,7 +343,7 @@ ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
         return 0;
     len = (int)strlen(text);
     codepoint_count = ui_utf8_codepoint_count(text);
-    *cursor = ui_clampi(*cursor, 0, len);
+    *cursor = TextCursorForLength(*cursor, len);
     decision = TextInsertDecisionFor((unsigned char)ch, 1, len,
                                      (int)text_size, codepoint_count, 0,
                                      max_codepoints, 0);
@@ -373,7 +373,7 @@ ui_text_insert_newline(char *text, size_t text_size, int *cursor,
         return 0;
     len = (int)strlen(text);
     codepoint_count = ui_utf8_codepoint_count(text);
-    *cursor = ui_clampi(*cursor, 0, len);
+    *cursor = TextCursorForLength(*cursor, len);
     decision = TextInsertDecisionFor('\n', 1, len, (int)text_size,
                                      codepoint_count, 0,
                                      max_codepoints, 1);
@@ -407,7 +407,7 @@ ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoin
     encoded_len = ui_utf8_encode(codepoint, encoded);
     len = (int)strlen(text);
     codepoint_count = ui_utf8_codepoint_count(text);
-    *cursor = ui_clampi(*cursor, 0, len);
+    *cursor = TextCursorForLength(*cursor, len);
     decision = TextInsertDecisionFor(codepoint, encoded_len, len,
                                      (int)text_size, codepoint_count, 0,
                                      max_codepoints, 0);
@@ -444,7 +444,7 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
         return 0;
 
     len = (int)strlen(text);
-    *cursor = ui_clampi(*cursor, 0, len);
+    *cursor = TextCursorForLength(*cursor, len);
     current_codepoints = ui_utf8_codepoint_count(text);
     if(TextInsertDecisionFor(' ', 1, len, (int)text_size,
                              current_codepoints, 0, max_codepoints,

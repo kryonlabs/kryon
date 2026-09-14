@@ -2268,7 +2268,7 @@ ui_text_width_before_cursor(const char *text, int font, int cursor_position)
         return 0;
 
     len = (int)strlen(text);
-    copy_len = ui_clampi(cursor_position, 0, len);
+    copy_len = TextCursorForLength(cursor_position, len);
     if(copy_len >= (int)sizeof(before_cursor))
         copy_len = (int)sizeof(before_cursor) - 1;
     memcpy(before_cursor, text, (size_t)copy_len);
@@ -2305,7 +2305,7 @@ EditText(TextEdit edit)
         return 0;
 
     len = (int)strlen(edit.text);
-    *edit.cursor_position = ui_clampi(*edit.cursor_position, 0, len);
+    *edit.cursor_position = TextCursorForLength(*edit.cursor_position, len);
     if(!IsKeyboardInputEnabled())
         return 0;
 
