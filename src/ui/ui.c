@@ -1035,16 +1035,6 @@ PopInputClip(void)
 }
 
 int
-ui_clampi(int value, int min_value, int max_value)
-{
-    if(value < min_value)
-        return min_value;
-    if(value > max_value)
-        return max_value;
-    return value;
-}
-
-int
 ui_caret_blink_visible(void)
 {
     return ((int)(GetTime() * 2.0)) % 2 == 0;

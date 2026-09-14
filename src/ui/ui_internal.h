@@ -313,7 +313,6 @@ void ui_tab_scope_finish_frame(void);
 int *ui_tab_bar_owned_scroll(int id, int *fallback);
 void PushInputClip(Rectangle bounds);
 void PopInputClip(void);
-int ui_clampi(int value, int min_value, int max_value);
 int ui_classic_style(void);
 int ui_modern_style(void);
 float ui_radius_px(Rectangle bounds, float radius_px);

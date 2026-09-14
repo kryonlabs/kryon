@@ -959,8 +959,8 @@ SetSelection(KeyID key, int anchor, int cursor)
                 return 0;
             length = (int)strlen(node->data.text_area.text);
         }
-        state->anchor = ui_clampi(anchor, 0, length);
-        state->cursor = ui_clampi(cursor, 0, length);
+        state->anchor = TextCursorForLength(anchor, length);
+        state->cursor = TextCursorForLength(cursor, length);
         if(node->kind == WidgetKindTextField) {
             if(node->data.text_field.cursor_position != NULL)
                 *node->data.text_field.cursor_position = state->cursor;

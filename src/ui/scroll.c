@@ -218,7 +218,7 @@ BeginScrollContainer(ScrollArea area)
     capture.height = (float)ui_view_height;
 
     if(area.scroll_offset != NULL) {
-        *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
+        *area.scroll_offset = ScrollClamp(*area.scroll_offset, view.max_scroll);
         if(view.max_scroll > 0 && inside && !captured) {
             float wheel = GetMouseWheelMove();
             if(wheel != 0.0f) {

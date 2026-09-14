@@ -55,7 +55,7 @@ ui_utf8_clamp_offset(const char *text, int offset)
     if(text == NULL)
         return 0;
     len = (int)strlen(text);
-    offset = ui_clampi(offset, 0, len);
+    offset = TextCursorForLength(offset, len);
     while(offset > 0 && offset < len &&
           (((unsigned char)text[offset] & 0xc0) == 0x80))
         offset--;

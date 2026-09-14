@@ -1,7 +1,7 @@
 /* Unit tests for the pure UTF-8 codec and text-buffer helpers in
  * ui_text_edit.c. Like transition_test.c, this compiles the implementation
- * directly (no GUI/raylib link): GetCodepointNext and ui_clampi are provided
- * here as faithful stubs. */
+ * directly (no GUI/raylib link): GetCodepointNext is provided here as a
+ * faithful stub. */
 
 #include <stdio.h>
 #include <string.h>
@@ -114,17 +114,6 @@ GetCodepointNext(const char *text, int *codepointSize)
     if(codepointSize != NULL)
         *codepointSize = len;
     return codepoint;
-}
-
-/* ui_clampi is the other external symbol ui_text_edit.c needs. */
-int
-ui_clampi(int value, int min_value, int max_value)
-{
-    if(value < min_value)
-        return min_value;
-    if(value > max_value)
-        return max_value;
-    return value;
 }
 
 static void
