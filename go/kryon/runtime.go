@@ -817,6 +817,8 @@ type selection struct {
 	Cursor int
 }
 
+const menuMaxDepth int32 = 8
+
 type menuNavigation struct {
 	Top  int32
 	Path []int
@@ -5170,35 +5172,40 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 	}
 	focused := !r.contentDisabled() && id != 0 && r.focusID == id && !r.popupFocusCaptures(id)
 	if focused && len(menus) > 0 {
+		keyboardInput := Menu_MenuKeyboardInputFor(false, r.keyDown[KeyDown],
+			r.keyDown[KeyHome], r.keyDown[KeyEnd], r.keyDown[KeyLeft],
+			r.keyDown[KeyRight], r.keyDown[KeyEnter] || r.keyDown[335],
+			r.keyDown[KeySpace], r.keyDown[KeyEscape])
+		keyboardDecision := Menu_MenuBarKeyboardDecisionFor(keyboardInput,
+			open >= 0, int32(len(state.Path)-1))
 		if open < 0 {
-			switch {
-			case r.keyDown[KeyLeft]:
-				state.Top = (state.Top + int32(len(menus)) - 1) % int32(len(menus))
-			case r.keyDown[KeyRight]:
-				state.Top = (state.Top + 1) % int32(len(menus))
-			case r.keyDown[KeyHome]:
+			if keyboardDecision.MoveTopDelta != 0 {
+				state.Top = Menu_MenuBarMoveTopIndex(state.Top,
+					int32(len(menus)), keyboardDecision.MoveTopDelta)
+			} else if keyboardDecision.FirstTop {
 				state.Top = 0
-			case r.keyDown[KeyEnd]:
+			} else if keyboardDecision.LastTop {
 				state.Top = int32(len(menus) - 1)
-			case r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace] || r.keyDown[KeyDown]:
+			} else if keyboardDecision.OpenTop {
 				open = state.Top
 				r.openMenus[id] = open
 				resetMenuPath(state, limitedMenuItems(menus[open].Items, menus[open].ItemCount))
 				openedByKeyboard = true
 			}
-		} else if r.keyDown[KeyEscape] {
+		} else if keyboardDecision.CloseOpen {
 			open = -1
 			delete(r.openMenus, id)
 			delete(r.openSubmenus, id)
 			state.Path = state.Path[:0]
-		} else if len(state.Path) <= 1 && r.keyDown[KeyLeft] {
-			open = (open + int32(len(menus)) - 1) % int32(len(menus))
+		} else if keyboardDecision.MoveOpenDelta != 0 {
+			open = Menu_MenuBarMoveTopIndex(open, int32(len(menus)),
+				keyboardDecision.MoveOpenDelta)
 			state.Top = open
 			r.openMenus[id] = open
 			delete(r.openSubmenus, id)
 			resetMenuPath(state, limitedMenuItems(menus[open].Items, menus[open].ItemCount))
 			openedByKeyboard = true
-		} else if len(state.Path) <= 1 && r.keyDown[KeyRight] {
+		} else if keyboardDecision.MoveOpenIfNoSubmenuDelta != 0 {
 			selected := -1
 			if len(state.Path) == 1 {
 				selected = state.Path[0]
@@ -5207,7 +5214,8 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 				limitedMenuItems(menus[open].Items, menus[open].ItemCount)[selected].Kind == MenuSubmenu &&
 				!limitedMenuItems(menus[open].Items, menus[open].ItemCount)[selected].Disabled
 			if !opensSubmenu {
-				open = (open + 1) % int32(len(menus))
+				open = Menu_MenuBarMoveTopIndex(open, int32(len(menus)),
+					keyboardDecision.MoveOpenIfNoSubmenuDelta)
 				state.Top = open
 				r.openMenus[id] = open
 				delete(r.openSubmenus, id)
@@ -5225,20 +5233,29 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 	for i, menu := range menus {
 		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
 		item := Menu_MenuGroupItemBounds(x, bounds, w, metrics)
-		if !r.contentDisabled() && r.consumeTap(item) {
+		tapped := !r.contentDisabled() && r.consumeTap(item)
+		openID := Menu_MenuBarOpenIdFor(id, open, int32(len(menus)))
+		itemID := Menu_MenuBarOpenIdFor(id, int32(i), int32(len(menus)))
+		pointerDecision := Menu_MenuGroupPointerDecisionFor(itemID, int32(i),
+			openID, tapped, tapped)
+		if pointerDecision.SetFocus {
 			r.setFocus(id)
-			idx := int32(i)
-			if open == idx {
-				idx = -1
-			}
-			open = idx
+		}
+		if pointerDecision.ChangedOpen {
+			open = Menu_MenuBarOpenIndexFor(id, pointerDecision.NextOpenId,
+				int32(len(menus)))
 			if open < 0 {
 				delete(r.openMenus, id)
 			} else {
 				r.openMenus[id] = open
-				state.Top = open
-				resetMenuPath(state, limitedMenuItems(menu.Items, menu.ItemCount))
 			}
+		}
+		if pointerDecision.ClearSubmenu {
+			delete(r.openSubmenus, id)
+		}
+		if pointerDecision.ResetNavigation {
+			state.Top = pointerDecision.NavigationTop
+			resetMenuPath(state, limitedMenuItems(menu.Items, menu.ItemCount))
 		}
 		itemSelected := open == int32(i)
 		itemFocused := focused && open < 0 && state.Top == int32(i)
@@ -5345,29 +5362,38 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 			state.Path[depth] = selected
 		}
 		if !*handled && depth == len(state.Path)-1 && selected >= 0 {
-			switch {
-			case r.keyDown[KeyUp]:
-				state.Path[depth] = menuItemAt(items, selected, -1)
+			keyboardInput := Menu_MenuKeyboardInputFor(r.keyDown[KeyUp],
+				r.keyDown[KeyDown], r.keyDown[KeyHome], r.keyDown[KeyEnd],
+				r.keyDown[KeyLeft], r.keyDown[KeyRight],
+				r.keyDown[KeyEnter] || r.keyDown[335], r.keyDown[KeySpace],
+				false)
+			keyboardDecision := Menu_MenuKeyboardDecisionFor(keyboardInput,
+				int32(depth), int32(selected))
+			if keyboardDecision.MoveDelta != 0 {
+				state.Path[depth] = menuItemAt(items, selected,
+					int(keyboardDecision.MoveDelta))
 				*handled = true
-			case r.keyDown[KeyDown]:
-				state.Path[depth] = menuItemAt(items, selected, 1)
-				*handled = true
-			case r.keyDown[KeyHome]:
+			} else if keyboardDecision.First {
 				state.Path[depth] = menuFirstItem(items)
 				*handled = true
-			case r.keyDown[KeyEnd]:
+			} else if keyboardDecision.Last {
 				state.Path[depth] = menuLastItem(items)
 				*handled = true
-			case r.keyDown[KeyLeft] && depth > 0:
+			} else if keyboardDecision.CloseParent {
 				state.Path = state.Path[:depth]
 				*handled = true
-			case r.keyDown[KeyRight] || r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace]:
+			} else if keyboardDecision.OpenOrActivate {
 				item := items[selected]
-				if item.Kind == MenuSubmenu && len(limitedMenuItems(item.Submenu, item.SubmenuCount)) > 0 {
+				opensSubmenu := Menu_MenuItemCanOpenSubmenu(int32(item.Kind),
+					item.Disabled, item.Submenu != nil,
+					int32(len(limitedMenuItems(item.Submenu, item.SubmenuCount))),
+					int32(depth), menuMaxDepth)
+				if opensSubmenu {
 					r.openSubmenus[id] = item.ID
 					state.Path = append(state.Path, menuFirstItem(limitedMenuItems(item.Submenu, item.SubmenuCount)))
 					*handled = true
-				} else if !item.Disabled && item.Kind != MenuSeparator {
+				} else if Menu_MenuItemKeyboardActivates(int32(item.Kind),
+					item.Disabled, opensSubmenu) {
 					*handled = true
 					return item.ID, panel
 				}
@@ -5417,13 +5443,31 @@ func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, foc
 			op.Selected = true
 			r.record(op)
 		}
-		if !item.Disabled && r.consumeTap(row) {
-			r.setFocus(focusID)
-			if item.Kind == MenuSubmenu {
-				r.openSubmenus[id] = item.ID
-			} else {
-				return item.ID, panel
+		tapped := !item.Disabled && r.consumeTap(row)
+		pointerDecision := Menu_MenuItemPointerDecisionFor(hovered, tapped,
+			r.focusID == focusID, int32(item.Kind), item.Disabled, item.ID,
+			int32(i), int32(depth), menuMaxDepth)
+		if pointerDecision.ResetNavigation {
+			resetMenuPath(state, items)
+		}
+		if pointerDecision.SetNavigationPath {
+			for len(state.Path) <= int(pointerDecision.NavigationDepth) {
+				state.Path = append(state.Path, menuFirstItem(items))
 			}
+			state.Path[pointerDecision.NavigationDepth] =
+				int(pointerDecision.NavigationIndex)
+			if pointerDecision.ClearChildNavigation {
+				state.Path = state.Path[:int(pointerDecision.NavigationDepth)+1]
+			}
+		}
+		if pointerDecision.SetFocus {
+			r.setFocus(focusID)
+		}
+		if pointerDecision.SetSubmenu {
+			r.openSubmenus[id] = pointerDecision.SubmenuId
+		}
+		if pointerDecision.Activate {
+			return pointerDecision.ActivatedID, panel
 		}
 		textColor := itemStyle.Foreground
 		label := item.Label

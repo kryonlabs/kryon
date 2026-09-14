@@ -38,6 +38,52 @@ type MenuGroupPointerDecision struct {
 	NavigationTop   int32
 }
 
+type MenuItemPointerDecision struct {
+	ConsumeRelease       bool
+	SetFocus             bool
+	ResetNavigation      bool
+	SetNavigationPath    bool
+	NavigationDepth      int32
+	NavigationIndex      int32
+	ClearChildNavigation bool
+	SetSubmenu           bool
+	SubmenuId            int32
+	Activate             bool
+	ActivatedID          int32
+	CloseOpen            bool
+}
+
+type MenuKeyboardInput struct {
+	Up     bool
+	Down   bool
+	Home   bool
+	End    bool
+	Left   bool
+	Right  bool
+	Enter  bool
+	Space  bool
+	Escape bool
+}
+
+type MenuKeyboardDecision struct {
+	KeyHandled     bool
+	MoveDelta      int32
+	First          bool
+	Last           bool
+	CloseParent    bool
+	OpenOrActivate bool
+}
+
+type MenuBarKeyboardDecision struct {
+	MoveTopDelta             int32
+	FirstTop                 bool
+	LastTop                  bool
+	OpenTop                  bool
+	CloseOpen                bool
+	MoveOpenDelta            int32
+	MoveOpenIfNoSubmenuDelta int32
+}
+
 type MenuOutsideCloseDecision struct {
 	CloseOpen      bool
 	ClearSubmenu   bool
@@ -219,6 +265,200 @@ func Menu_MenuItemKeyboardActivates(kind int32, disabled bool, opens_submenu boo
 		value_6 = value_8
 	}
 	return value_6
+}
+
+func Menu_MenuKeyboardInputFor(up bool, down bool, home bool, end bool, left bool, right bool, enter bool, space bool, escape bool) MenuKeyboardInput {
+	var input MenuKeyboardInput = MenuKeyboardInput{}
+	var value_0 bool = up
+	input.Up = value_0
+	var value_1 bool = down
+	input.Down = value_1
+	var value_2 bool = home
+	input.Home = value_2
+	var value_3 bool = end
+	input.End = value_3
+	var value_4 bool = left
+	input.Left = value_4
+	var value_5 bool = right
+	input.Right = value_5
+	var value_6 bool = enter
+	input.Enter = value_6
+	var value_7 bool = space
+	input.Space = value_7
+	var value_8 bool = escape
+	input.Escape = value_8
+	var value_9 MenuKeyboardInput = input
+	return value_9
+}
+
+func Menu_MenuKeyboardDecisionFor(input MenuKeyboardInput, depth int32, selected int32) MenuKeyboardDecision {
+	var decision MenuKeyboardDecision = MenuKeyboardDecision{}
+	var value_0 int32 = selected
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 MenuKeyboardDecision = decision
+		return value_3
+	}
+	var value_4 bool = input.Up
+	if value_4 {
+		var value_5 bool = true
+		decision.KeyHandled = value_5
+		var value_6 int32 = -1
+		decision.MoveDelta = value_6
+		var value_7 MenuKeyboardDecision = decision
+		return value_7
+	}
+	var value_8 bool = input.Down
+	if value_8 {
+		var value_9 bool = true
+		decision.KeyHandled = value_9
+		var value_10 int32 = 1
+		decision.MoveDelta = value_10
+		var value_11 MenuKeyboardDecision = decision
+		return value_11
+	}
+	var value_12 bool = input.Home
+	if value_12 {
+		var value_13 bool = true
+		decision.KeyHandled = value_13
+		var value_14 bool = true
+		decision.First = value_14
+		var value_15 MenuKeyboardDecision = decision
+		return value_15
+	}
+	var value_16 bool = input.End
+	if value_16 {
+		var value_17 bool = true
+		decision.KeyHandled = value_17
+		var value_18 bool = true
+		decision.Last = value_18
+		var value_19 MenuKeyboardDecision = decision
+		return value_19
+	}
+	var value_20 bool = input.Left
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 int32 = depth
+		var value_23 int32 = 0
+		var value_24 bool = value_22 > value_23
+		value_21 = value_24
+	}
+	if value_21 {
+		var value_25 bool = true
+		decision.KeyHandled = value_25
+		var value_26 bool = true
+		decision.CloseParent = value_26
+		var value_27 MenuKeyboardDecision = decision
+		return value_27
+	}
+	var value_28 bool = input.Right
+	var value_29 bool = value_28
+	if !value_29 {
+		var value_30 bool = input.Enter
+		value_29 = value_30
+	}
+	var value_31 bool = value_29
+	if !value_31 {
+		var value_32 bool = input.Space
+		value_31 = value_32
+	}
+	if value_31 {
+		var value_33 bool = true
+		decision.KeyHandled = value_33
+		var value_34 bool = true
+		decision.OpenOrActivate = value_34
+	}
+	var value_35 MenuKeyboardDecision = decision
+	return value_35
+}
+
+func Menu_MenuBarKeyboardDecisionFor(input MenuKeyboardInput, open bool, depth int32) MenuBarKeyboardDecision {
+	var decision MenuBarKeyboardDecision = MenuBarKeyboardDecision{}
+	var value_0 bool = open
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = input.Left
+		if value_2 {
+			var value_3 int32 = -1
+			decision.MoveTopDelta = value_3
+			var value_4 MenuBarKeyboardDecision = decision
+			return value_4
+		}
+		var value_5 bool = input.Right
+		if value_5 {
+			var value_6 int32 = 1
+			decision.MoveTopDelta = value_6
+			var value_7 MenuBarKeyboardDecision = decision
+			return value_7
+		}
+		var value_8 bool = input.Home
+		if value_8 {
+			var value_9 bool = true
+			decision.FirstTop = value_9
+			var value_10 MenuBarKeyboardDecision = decision
+			return value_10
+		}
+		var value_11 bool = input.End
+		if value_11 {
+			var value_12 bool = true
+			decision.LastTop = value_12
+			var value_13 MenuBarKeyboardDecision = decision
+			return value_13
+		}
+		var value_14 bool = input.Enter
+		var value_15 bool = value_14
+		if !value_15 {
+			var value_16 bool = input.Space
+			value_15 = value_16
+		}
+		var value_17 bool = value_15
+		if !value_17 {
+			var value_18 bool = input.Down
+			value_17 = value_18
+		}
+		if value_17 {
+			var value_19 bool = true
+			decision.OpenTop = value_19
+		}
+		var value_20 MenuBarKeyboardDecision = decision
+		return value_20
+	}
+	var value_21 bool = input.Escape
+	if value_21 {
+		var value_22 bool = true
+		decision.CloseOpen = value_22
+		var value_23 MenuBarKeyboardDecision = decision
+		return value_23
+	}
+	var value_24 int32 = depth
+	var value_25 int32 = 0
+	var value_26 bool = value_24 == value_25
+	var value_27 bool = value_26
+	if value_27 {
+		var value_28 bool = input.Left
+		value_27 = value_28
+	}
+	if value_27 {
+		var value_29 int32 = -1
+		decision.MoveOpenDelta = value_29
+		var value_30 MenuBarKeyboardDecision = decision
+		return value_30
+	}
+	var value_31 int32 = depth
+	var value_32 int32 = 0
+	var value_33 bool = value_31 == value_32
+	var value_34 bool = value_33
+	if value_34 {
+		var value_35 bool = input.Right
+		value_34 = value_35
+	}
+	if value_34 {
+		var value_36 int32 = 1
+		decision.MoveOpenIfNoSubmenuDelta = value_36
+	}
+	var value_37 MenuBarKeyboardDecision = decision
+	return value_37
 }
 
 func Menu_MenuItemPointerActivates(kind int32, disabled bool) bool {
@@ -453,6 +693,64 @@ func Menu_MenuGroupPointerDecisionFor(menu_id int32, index int32, open_id int32,
 	}
 	var value_28 MenuGroupPointerDecision = decision
 	return value_28
+}
+
+func Menu_MenuItemPointerDecisionFor(hot bool, mouse_released bool, same_focus bool, kind int32, disabled bool, item_id int32, index int32, depth int32, max_depth int32) MenuItemPointerDecision {
+	var decision MenuItemPointerDecision = MenuItemPointerDecision{}
+	var value_0 int32 = depth
+	decision.NavigationDepth = value_0
+	var value_1 int32 = index
+	decision.NavigationIndex = value_1
+	var value_2 bool = hot
+	var value_3 bool = !value_2
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 bool = mouse_released
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	if value_4 {
+		var value_7 MenuItemPointerDecision = decision
+		return value_7
+	}
+	var value_8 bool = true
+	decision.ConsumeRelease = value_8
+	var value_9 bool = true
+	decision.SetFocus = value_9
+	var value_10 bool = same_focus
+	var value_11 bool = !value_10
+	decision.ResetNavigation = value_11
+	var value_12 int32 = depth
+	var value_13 int32 = max_depth
+	var value_14 bool = value_12 < value_13
+	if value_14 {
+		var value_15 bool = true
+		decision.SetNavigationPath = value_15
+		var value_16 bool = true
+		decision.ClearChildNavigation = value_16
+	}
+	var value_17 int32 = kind
+	var value_18 bool = Menu_MenuItemShowsSubmenu(value_17)
+	if value_18 {
+		var value_19 bool = true
+		decision.SetSubmenu = value_19
+		var value_20 int32 = item_id
+		decision.SubmenuId = value_20
+	} else {
+		var value_21 int32 = kind
+		var value_22 bool = disabled
+		var value_23 bool = Menu_MenuItemPointerActivates(value_21, value_22)
+		if value_23 {
+			var value_24 bool = true
+			decision.Activate = value_24
+			var value_25 int32 = item_id
+			decision.ActivatedID = value_25
+			var value_26 bool = true
+			decision.CloseOpen = value_26
+		}
+	}
+	var value_27 MenuItemPointerDecision = decision
+	return value_27
 }
 
 func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contains_bar bool, panel_valid bool, contains_panel bool) MenuOutsideCloseDecision {
