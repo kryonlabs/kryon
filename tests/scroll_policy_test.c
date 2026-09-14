@@ -11,6 +11,7 @@ main(void)
     ScrollPolicyView view;
     ScrollBarPaint paint;
     ScrollBarDragDecision drag;
+    ScrollBarDragReleaseDecision drag_release;
     ScrollContentDragDecision content_drag;
     Rectangle content;
     ScrollClipGeometry clip;
@@ -148,6 +149,15 @@ main(void)
     assert(!drag.start_drag);
     assert(!drag.continue_drag);
     assert(!drag.cancel_drag);
+    drag_release = ScrollBarDragReleaseFor(1, 1, 0);
+    assert(drag_release.clear_drag);
+    assert(drag_release.consume_release);
+    drag_release = ScrollBarDragReleaseFor(1, 0, 1);
+    assert(drag_release.clear_drag);
+    assert(!drag_release.consume_release);
+    drag_release = ScrollBarDragReleaseFor(0, 1, 0);
+    assert(!drag_release.clear_drag);
+    assert(!drag_release.consume_release);
     content_drag = ScrollContentDragFor(160, 1, 1, 1, 0, 0, 1, 0, 0,
                                         0, 0, 40, 40, 0, 5);
     assert(content_drag.start_drag);

@@ -574,17 +574,20 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                         : paint.thumb_bounds.height / 2;
             }
             if(g_scroll_drag_offset == scroll_offset) {
-                if(ContentDisabled()) g_scroll_drag_offset = NULL;
-                else if(paint.track_span > 0 &&
-                        (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ||
-                         IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
+                ScrollBarDragReleaseDecision release_decision =
+                    ScrollBarDragReleaseFor(
+                        1, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                        ContentDisabled() != 0);
+                if(!ContentDisabled() && paint.track_span > 0 &&
+                   (IsMouseButtonDown(MOUSE_BUTTON_LEFT) ||
+                    IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
                     *scroll_offset = ScrollDragOffsetFor(
                         mouse.y, paint.track_bounds.y, g_scroll_drag_grab,
                         max_scroll, paint);
-                if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+                if(release_decision.consume_release)
                     ConsumeRelease();
+                if(release_decision.clear_drag)
                     g_scroll_drag_offset = NULL;
-                }
             }
             paint = ScrollBarPaintFor(scrollbar_x, (int)bounds.y,
                                       (int)bounds.height, content_height,

@@ -39,6 +39,11 @@ ScrollBarDragDecision :: struct {
     scroll_offset: i32
 }
 
+ScrollBarDragReleaseDecision :: struct {
+    clear_drag: bool
+    consume_release: bool
+}
+
 ScrollContentDragDecision :: struct {
     start_drag: bool
     active: bool
@@ -282,6 +287,14 @@ ScrollBarDragFor :: (mouse_down: bool, input_captured: bool,
     if owns_drag {
         decision.cancel_drag = true
     }
+    return decision
+}
+
+ScrollBarDragReleaseFor :: (drag_active: bool, mouse_released: bool,
+    content_disabled: bool) -> ScrollBarDragReleaseDecision #export {
+    decision: ScrollBarDragReleaseDecision
+    decision.clear_drag = drag_active && (mouse_released || content_disabled)
+    decision.consume_release = drag_active && mouse_released
     return decision
 }
 

@@ -40,6 +40,11 @@ type ScrollBarDragDecision struct {
 	ScrollOffset     int32
 }
 
+type ScrollBarDragReleaseDecision struct {
+	ClearDrag      bool
+	ConsumeRelease bool
+}
+
 type ScrollContentDragDecision struct {
 	StartDrag        bool
 	Active           bool
@@ -752,6 +757,31 @@ func Scroll_ScrollBarDragFor(mouse_down bool, input_captured bool, thumb_active 
 	}
 	var value_28 ScrollBarDragDecision = decision
 	return value_28
+}
+
+func Scroll_ScrollBarDragReleaseFor(drag_active bool, mouse_released bool, content_disabled bool) ScrollBarDragReleaseDecision {
+	var decision ScrollBarDragReleaseDecision = ScrollBarDragReleaseDecision{}
+	var value_0 bool = drag_active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = mouse_released
+		var value_3 bool = value_2
+		if !value_3 {
+			var value_4 bool = content_disabled
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	decision.ClearDrag = value_1
+	var value_5 bool = drag_active
+	var value_6 bool = value_5
+	if value_6 {
+		var value_7 bool = mouse_released
+		value_6 = value_7
+	}
+	decision.ConsumeRelease = value_6
+	var value_8 ScrollBarDragReleaseDecision = decision
+	return value_8
 }
 
 func Scroll_ScrollContentDragFor(max_scroll int32, mouse_pressed bool, mouse_down bool, inside bool, input_captured bool, on_scrollbar bool, pointer_owner_none bool, pointer_owner_scroll bool, blocked_by_other_drag bool, active bool, dragging bool, current_scroll int32, start_scroll int32, delta_y int32, drag_threshold int32) ScrollContentDragDecision {
