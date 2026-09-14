@@ -445,15 +445,16 @@ ui_dropdown(DropdownProps props)
     DropdownTriggerInput trigger_input = DropdownTriggerInputFor(
         IsKeyPressed(KEY_ENTER) != 0, IsKeyPressed(KEY_KP_ENTER) != 0,
         IsKeyPressed(KEY_SPACE) != 0, IsKeyPressed(KEY_DOWN) != 0);
-    int next_open = Trigger(state->open, ContentDisabled(), option_count, focused,
-        !ui_popup_input_keyboard_captures(), pointer_activate,
-        trigger_input.enter, trigger_input.space, trigger_input.down);
-    if(next_open != state->open) {
+    DropdownOpenDecision open_decision = DropdownOpenDecisionFor(
+        state->open, ContentDisabled(), option_count, focused,
+        !ui_popup_input_keyboard_captures(), pointer_activate, trigger_input,
+        h, false, false, false);
+    if(open_decision.changed) {
         ClearTextInputFocus();
         if(pointer_activate)
             ConsumeRelease();
-        state->open = next_open;
-        if(state->open) {
+        state->open = open_decision.open;
+        if(open_decision.opened) {
             close_other_dropdowns(id);
             state->just_opened = 1;
             state->opened_frame = g_ui_frame_serial;

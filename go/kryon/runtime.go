@@ -4024,11 +4024,21 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		}
 	}
 	previousOpen := r.openDropdowns[id]
-	open := Dropdown_Trigger(previousOpen, r.contentDisabled(), int32(len(labels)),
-		id > 0 && r.focusID == id, !r.popupKeyboardCaptures(), pointerActivate,
-		r.keyDown[KeyEnter] || r.keyDown[335], r.keyDown[KeySpace], r.keyDown[KeyDown])
-	pressed := open != previousOpen
-	if pressed && open {
+	keyboardAvailable := r.dropdownKeyboardAvailable(id)
+	panel := r.dropdownPanel(bounds, len(labels), styleClass)
+	outside := r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel)
+	for _, tap := range r.taps {
+		outside = outside || (!pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel))
+	}
+	triggerInput := Dropdown_DropdownTriggerInputFor(r.keyDown[KeyEnter],
+		r.keyDown[335], r.keyDown[KeySpace], r.keyDown[KeyDown])
+	openDecision := Dropdown_DropdownOpenDecisionFor(previousOpen,
+		r.contentDisabled(), int32(len(labels)), id > 0 && r.focusID == id,
+		!r.popupKeyboardCaptures(), pointerActivate, triggerInput,
+		bounds.Height, keyboardAvailable && r.keyDown[KeyEscape], false, outside)
+	open := openDecision.Open
+	pressed := openDecision.Changed
+	if openDecision.Opened {
 		for other := range r.openDropdowns {
 			if other != id {
 				r.closeDropdown(other)
@@ -4048,16 +4058,6 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		delete(r.dropdownGestures, id)
 	}
 	r.openDropdowns[id] = open
-	keyboardAvailable := r.dropdownKeyboardAvailable(id)
-	panel := r.dropdownPanel(bounds, len(labels), styleClass)
-	outside := r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel)
-	for _, tap := range r.taps {
-		outside = outside || (!pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel))
-	}
-	if Dropdown_Dismiss(open, pressed, int32(len(labels)), bounds.Height,
-		keyboardAvailable && r.keyDown[KeyEscape], false, outside) {
-		open = false
-	}
 	changed := false
 	navigating := !pressed && keyboardAvailable && (r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd])
 	if open && (pressed || navigating) {

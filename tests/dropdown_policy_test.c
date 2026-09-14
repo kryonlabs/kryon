@@ -133,6 +133,7 @@ test_existing_policy(void)
     DropdownOptionContent option_content;
     DropdownTriggerInput trigger_input;
     DropdownMenuInput menu_input;
+    DropdownOpenDecision open_decision;
 
     assert(ClampIndex(-2, 3) == 0);
     assert(ClampIndex(5, 3) == 2);
@@ -146,6 +147,26 @@ test_existing_policy(void)
     assert(trigger_input.enter && !trigger_input.space && !trigger_input.down);
     trigger_input = DropdownTriggerInputFor(false, true, true, true);
     assert(trigger_input.enter && trigger_input.space && trigger_input.down);
+    open_decision = DropdownOpenDecisionFor(false, false, 3, true, true,
+                                            false, trigger_input, 24.0f,
+                                            false, false, false);
+    assert(open_decision.open && open_decision.changed &&
+           open_decision.opened && !open_decision.closed);
+    open_decision = DropdownOpenDecisionFor(true, false, 3, true, true,
+                                            true, trigger_input, 24.0f,
+                                            false, false, false);
+    assert(!open_decision.open && open_decision.changed &&
+           !open_decision.opened && open_decision.closed);
+    open_decision = DropdownOpenDecisionFor(true, true, 3, true, true,
+                                            false, trigger_input, 24.0f,
+                                            false, false, false);
+    assert(!open_decision.open && open_decision.changed &&
+           open_decision.closed);
+    open_decision = DropdownOpenDecisionFor(true, false, 3, false, true,
+                                            false, trigger_input, 24.0f,
+                                            false, false, true);
+    assert(!open_decision.open && open_decision.changed &&
+           open_decision.closed);
     menu_input = DropdownMenuInputFor(true, false, true, false, false, false,
                                       false, false, true);
     assert(menu_input.navigating && menu_input.up && !menu_input.commit &&

@@ -66,6 +66,13 @@ DropdownMenuInput :: struct {
     escape: bool
 }
 
+DropdownOpenDecision :: struct {
+    open: bool
+    changed: bool
+    opened: bool
+    closed: bool
+}
+
 # Both native hosts consume Button's resolved content metrics. Geometry does
 # not silently select another size: the standard dropdown uses medium tokens.
 Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
@@ -231,6 +238,24 @@ DropdownMenuInputFor :: (keyboard_available: bool, opening: bool,
 Dismiss :: (open: bool, opening: bool, count: i32, height: float,
     escape: bool, lost_focus: bool, outside: bool) -> bool #export {
     return open && (count <= 0 || height <= 0.0 || escape || lost_focus || (!opening && outside))
+}
+
+DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: i32,
+    focused: bool, keyboard: bool, activated: bool,
+    trigger: DropdownTriggerInput, height: float, escape: bool,
+    lost_focus: bool, outside: bool) -> DropdownOpenDecision #export {
+    decision: DropdownOpenDecision
+    next: bool = Trigger(open, disabled, count, focused, keyboard, activated,
+        trigger.enter, trigger.space, trigger.down)
+    opening: bool = next != open && next
+    if Dismiss(next, opening, count, height, escape, lost_focus, outside) {
+        next = false
+    }
+    decision.open = next
+    decision.changed = next != open
+    decision.opened = decision.changed && next
+    decision.closed = decision.changed && !next
+    return decision
 }
 
 Navigation :: struct {

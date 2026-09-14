@@ -44,6 +44,13 @@ type DropdownMenuInput struct {
 	Escape     bool
 }
 
+type DropdownOpenDecision struct {
+	Open    bool
+	Changed bool
+	Opened  bool
+	Closed  bool
+}
+
 type DropdownIndicator struct {
 	X1 int32
 	Y1 int32
@@ -644,6 +651,65 @@ func Dropdown_Dismiss(open bool, opening bool, count int32, height float32, esca
 		value_1 = value_13
 	}
 	return value_1
+}
+
+func Dropdown_DropdownOpenDecisionFor(open bool, disabled bool, count int32, focused bool, keyboard bool, activated bool, trigger DropdownTriggerInput, height float32, escape bool, lost_focus bool, outside bool) DropdownOpenDecision {
+	var decision DropdownOpenDecision = DropdownOpenDecision{}
+	var value_0 bool = open
+	var value_1 bool = disabled
+	var value_2 int32 = count
+	var value_3 bool = focused
+	var value_4 bool = keyboard
+	var value_5 bool = activated
+	var value_6 bool = trigger.Enter
+	var value_7 bool = trigger.Space
+	var value_8 bool = trigger.Down
+	var value_9 bool = Dropdown_Trigger(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7, value_8)
+	var next bool = value_9
+	var value_10 bool = next
+	var value_11 bool = open
+	var value_12 bool = value_10 != value_11
+	var value_13 bool = value_12
+	if value_13 {
+		var value_14 bool = next
+		value_13 = value_14
+	}
+	var opening bool = value_13
+	var value_15 bool = next
+	var value_16 bool = opening
+	var value_17 int32 = count
+	var value_18 float32 = height
+	var value_19 bool = escape
+	var value_20 bool = lost_focus
+	var value_21 bool = outside
+	var value_22 bool = Dropdown_Dismiss(value_15, value_16, value_17, value_18, value_19, value_20, value_21)
+	if value_22 {
+		var value_23 bool = false
+		next = value_23
+	}
+	var value_24 bool = next
+	decision.Open = value_24
+	var value_25 bool = next
+	var value_26 bool = open
+	var value_27 bool = value_25 != value_26
+	decision.Changed = value_27
+	var value_28 bool = decision.Changed
+	var value_29 bool = value_28
+	if value_29 {
+		var value_30 bool = next
+		value_29 = value_30
+	}
+	decision.Opened = value_29
+	var value_31 bool = decision.Changed
+	var value_32 bool = value_31
+	if value_32 {
+		var value_33 bool = next
+		var value_34 bool = !value_33
+		value_32 = value_34
+	}
+	decision.Closed = value_32
+	var value_35 DropdownOpenDecision = decision
+	return value_35
 }
 
 func Dropdown_StartNavigation(current int32, count int32, up bool, down bool, home bool, end bool) Navigation {
