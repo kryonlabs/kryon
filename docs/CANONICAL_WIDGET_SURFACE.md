@@ -827,7 +827,8 @@ and host plumbing behind the canonical names.
   `runtime/style.kry`; retained `Button(info)` bounds and diameter policy now
   routes through `runtime/button.kry`; immediate `Paragraph` default line-gap
   policy now routes through `runtime/paragraph.kry`. Continue by reducing raw
-  native constants in shared immediate-mode helpers.
+  native constants in shared immediate-mode helpers. Icon slider popup and
+  bottom icon row style icon sizing now route through `runtime/toolbar.kry`.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and
