@@ -698,6 +698,7 @@ Recent retained-tree public C cleanup:
 | `LightenUIColor`, `DarkenUIColor` | `LightenColor`, `DarkenColor` |
 | `BeginUIClip`, `EndUIClip`, `ResetUIClip`, `GetUIClip*` | `BeginClip`, `EndClip`, `ResetClip`, `GetClip*` |
 | `GetFontSize`, `GetSmallFontSize`, `GetTitleFontSize`, `FitFontSize` | Internal native/KSS typography helpers; public code uses explicit text tokens or style props. |
+| `ICON_SIZE_*`, `IconSize` enum | Removed; public code uses numeric `icon_size` props and theme metrics. |
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | Public code uses `Drag(DragProps)` and `Slider(SliderProps)` with value kind/props; scalar/whole helper splits are internal runtime policy only. |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WidgetFlagMovable`/`WidgetFlagResizable`/`WidgetFlagReadOnly` | Internal inspect registration; public code uses canonical widget declarations. |
 | lowercase/variant inspect widget labels such as `button`, `vertical_slider`, `text_area` | Canonical inspect labels such as `Button`, `Slider`, `TextArea`; variants belong in props/state, not separate inspect names. |

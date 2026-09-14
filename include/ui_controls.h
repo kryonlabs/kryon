@@ -9,15 +9,6 @@
 #include "ui_icon_types.h"
 #include <stddef.h>
 
-typedef enum {
-    ICON_SIZE_TINY,
-    ICON_SIZE_SMALL,
-    ICON_SIZE_MEDIUM,
-    ICON_SIZE_LARGE
-} IconSize;
-
-
-
 Style MergeStyle(Style base, Style overrides);
 
 typedef int (*TextInputFilter)(int codepoint, void *user_data);

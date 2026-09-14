@@ -2051,21 +2051,6 @@ Accent indicators use the theme accent rather than the link color. Geometry,
 light falloff, and wrapping are defined in `runtime/surface.kry`; highlights
 preserve the resolved foreground opacity. Loading buttons do not activate.
 
----
-
-## Icon Sizes
-
-```c
-typedef enum {
-    ICON_SIZE_TINY,
-    ICON_SIZE_SMALL,
-    ICON_SIZE_MEDIUM,
-    ICON_SIZE_LARGE
-} IconSize;
-```
-
----
-
 ## Theme IDs
 
 ```c
