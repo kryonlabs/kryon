@@ -72,6 +72,32 @@ InputEffectiveStep :: (step: f64, step_fast: f64, fast: bool) -> f64 #export {
     return step
 }
 
+InputKindIsFloat :: (kind: NumericValueKind) -> bool #export {
+    return (i32)kind == (i32)NumericFloat
+}
+
+InputKindIsInt :: (kind: NumericValueKind) -> bool #export {
+    return (i32)kind == (i32)NumericInt
+}
+
+InputKindIsDouble :: (kind: NumericValueKind) -> bool #export {
+    return (i32)kind == (i32)NumericDouble
+}
+
+InputDefaultFormat :: (kind: NumericValueKind) -> const char* #export {
+    if InputKindIsInt(kind) { return "%d" }
+    if InputKindIsDouble(kind) { return "%.6f" }
+    return "%.3f"
+}
+
+InputRoundValueForKind :: (kind: NumericValueKind, value: f64) -> f64 #export {
+    if InputKindIsInt(kind) {
+        if value < 0.0 { return (f64)((i32)(value - 0.5)) }
+        return (f64)((i32)(value + 0.5))
+    }
+    return value
+}
+
 InputContinuousStepValue :: (value: float, step: float, step_fast: float,
     direction: i32, fast: bool) -> InputContinuousStep #export {
     result: InputContinuousStep
@@ -108,4 +134,26 @@ InputStepValue :: (value: f64, step: f64, step_fast: f64,
     result.value = next
     result.changed = next != value
     return result
+}
+
+InputStepValueForKind :: (kind: NumericValueKind, value: f64, step: f64,
+    step_fast: f64, direction: i32, fast: bool) -> InputStep #export {
+    result: InputStep
+    result.value = value
+    result.changed = false
+    if InputKindIsInt(kind) {
+        stepped: InputDiscreteStep = InputDiscreteStepValue((i32)value,
+            (i32)step, (i32)step_fast, direction, fast)
+        result.value = (f64)stepped.value
+        result.changed = stepped.changed
+        return result
+    }
+    if InputKindIsFloat(kind) {
+        continuous: InputContinuousStep = InputContinuousStepValue(
+            (float)value, (float)step, (float)step_fast, direction, fast)
+        result.value = (f64)continuous.value
+        result.changed = continuous.changed
+        return result
+    }
+    return InputStepValue(value, step, step_fast, direction, fast)
 }

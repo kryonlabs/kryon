@@ -1367,6 +1367,7 @@ test_input_value_policy(void)
     InputContinuousStep float_step;
     InputDiscreteStep int_step;
     InputStep double_step;
+    InputStep generic_step;
     InputCellLayout layout;
 
     check_float("input float effective step",
@@ -1392,6 +1393,29 @@ test_input_value_policy(void)
     double_step = InputStepValue(2.125, 0.125, 1.0, 1, 0);
     check_int("input double changed", double_step.changed ? 1 : 0, 1);
     check_float("input double step value", (float)double_step.value, 2.25f);
+    check_int("input kind float", InputKindIsFloat(NumericFloat) ? 1 : 0, 1);
+    check_int("input kind int", InputKindIsInt(NumericInt) ? 1 : 0, 1);
+    check_int("input kind double", InputKindIsDouble(NumericDouble) ? 1 : 0, 1);
+    check_int("input default float format",
+              strcmp(InputDefaultFormat(NumericFloat), "%.3f") == 0 ? 1 : 0,
+              1);
+    check_int("input default int format",
+              strcmp(InputDefaultFormat(NumericInt), "%d") == 0 ? 1 : 0, 1);
+    check_int("input default double format",
+              strcmp(InputDefaultFormat(NumericDouble), "%.6f") == 0 ? 1 : 0,
+              1);
+    check_float("input round positive int",
+                (float)InputRoundValueForKind(NumericInt, 2.6), 3.0f);
+    check_float("input round negative int",
+                (float)InputRoundValueForKind(NumericInt, -2.6), -3.0f);
+    generic_step = InputStepValueForKind(NumericFloat, 2.5, 0.5, 4.0, 1, 0);
+    check_float("input generic float step", (float)generic_step.value, 3.0f);
+    generic_step = InputStepValueForKind(NumericInt, 6.0, 2.0, 10.0, -1, 1);
+    check_float("input generic int fast minus", (float)generic_step.value,
+                -4.0f);
+    generic_step = InputStepValueForKind(NumericDouble, 2.125, 0.125, 1.0, 1,
+                                         0);
+    check_float("input generic double step", (float)generic_step.value, 2.25f);
 
     layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 1, 0, 24, 1);
     check_int("input layout field width", (int)layout.field.width, 72);

@@ -2919,12 +2919,16 @@ static void
 ui_numeric_format(char *text, size_t text_size, const char *format,
                   int kind, double value)
 {
-    if(kind == 0)
-        snprintf(text, text_size, format != NULL ? format : "%.3f", (float)value);
-    else if(kind == 1)
-        snprintf(text, text_size, format != NULL ? format : "%d", (int)value);
+    const char *resolved_format =
+        format != NULL ? format : InputDefaultFormat((NumericValueKind)kind);
+
+    value = InputRoundValueForKind((NumericValueKind)kind, value);
+    if(InputKindIsInt((NumericValueKind)kind))
+        snprintf(text, text_size, resolved_format, (int)value);
+    else if(InputKindIsFloat((NumericValueKind)kind))
+        snprintf(text, text_size, resolved_format, (float)value);
     else
-        snprintf(text, text_size, format != NULL ? format : "%.6f", value);
+        snprintf(text, text_size, resolved_format, value);
 }
 
 static int
@@ -2977,9 +2981,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             char *end = NULL;
             double value = strtod(state->text, &end);
             if(end != state->text && *end == '\0') {
-                if(kind == 1)
-                    value = value < 0.0 ? (double)((int)(value - 0.5))
-                                        : (double)((int)(value + 0.5));
+                value = InputRoundValueForKind((NumericValueKind)kind, value);
                 if(value != old_value) {
                     ui_numeric_set_value(values, i, kind, value);
                     changed = 1;
@@ -2995,19 +2997,10 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             if(minus_pressed || plus_pressed) {
                 int direction = plus_pressed ? 1 : -1;
                 double value = ui_numeric_value(values, i, kind);
-                if(kind == 0) {
-                    InputContinuousStep result = InputContinuousStepValue((float)value,
-                        (float)step, (float)step_fast, direction, fast);
-                    value = result.value;
-                } else if(kind == 1) {
-                    InputDiscreteStep result = InputDiscreteStepValue((int)value,
-                        (int)step, (int)step_fast, direction, fast);
-                    value = (double)result.value;
-                } else {
-                    InputStep result = InputStepValue(value, step,
-                        step_fast, direction, fast);
-                    value = result.value;
-                }
+                InputStep result = InputStepValueForKind(
+                    (NumericValueKind)kind, value, step, step_fast, direction,
+                    fast);
+                value = result.value;
                 ui_numeric_set_value(values, i, kind, value);
                 ui_numeric_format(state->text, sizeof(state->text), format,
                                   kind, value);
