@@ -804,7 +804,7 @@ and host plumbing behind the canonical names.
    can become reusable `.kry` policy.
 4. Finish rich text migration:
   `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/alignment
-  policy and generated `ParagraphSpec` data, but parsing, line-break ownership,
+  policy, retained selectable text block height, and generated `ParagraphSpec` data, but parsing, line-break ownership,
   icon shaping, and rendering are still host work.
 5. Audit host-owned input/state lifecycles:
    retained menu open/focus/input state, drag/drop payload storage, reorder and

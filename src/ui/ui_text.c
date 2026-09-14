@@ -7,6 +7,7 @@
 #include "ui_scaling.h"
 #include "ui_style_internal.h"
 #include "theme.h"
+#include "runtime/paragraph.h"
 #include "runtime/text.h"
 
 #include <stdio.h>
@@ -1622,7 +1623,7 @@ MeasureSelectableTextBlock(const char *text, int width, int font_size,
     TextBlockLine *lines = NULL;
     int count = ui_text_block_lines(text, width, font_size, &lines);
     int line_h = TextLineHeight(font_size);
-    int height = count > 0 ? count * line_h + (count - 1) * line_gap : 0;
+    int height = ParagraphLayoutTotalHeight(count, line_h, line_gap);
 
     free(lines);
     return height;
@@ -1645,7 +1646,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     count = ui_text_block_lines(block.text, (int)block.bounds.width,
                                 block.font_size, &lines);
     line_h = TextLineHeight(block.font_size);
-    height = count > 0 ? count * line_h + (count - 1) * block.line_gap : 0;
+    height = ParagraphLayoutTotalHeight(count, line_h, block.line_gap);
     captured = InputCapturesClick(mouse);
 
     for(int i = 0; i < count; i++) {
