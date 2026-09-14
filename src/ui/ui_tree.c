@@ -13,6 +13,7 @@
 #include "runtime/paragraph.h"
 #include "runtime/text_input.h"
 #include "runtime/input.h"
+#include "runtime/drag.h"
 #include "runtime/grid.h"
 #include "runtime/image.h"
 #include "ui_image_internal.h"
@@ -1674,7 +1675,8 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
-            .line_gap = Scale(2)
+            .line_gap = ParagraphDefaultLineGap(
+                (float)Scale(1000) / 1000.0f)
         };
         int height = ui_paragraph_height(paragraph);
         y += (int)TextAlignmentOffset((int)bounds.height, height, vertical_align);
@@ -2929,7 +2931,14 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
         int font = GetSmallFontSize();
-        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .wrap=TextWrapNone});
+        float scale = (float)Scale(1000) / 1000.0f;
+        DragTextPaint paint = DragLabelTextPaintFor(bounds,
+            DragTextInsetFor(scale), font, DragLabelGapFor(scale));
+        Text((TextProps){
+            .bounds = {(int)paint.text_x, (int)paint.text_y, 0, 0},
+            .text = label,
+            .wrap = TextWrapNone
+        });
     }
 }
 
