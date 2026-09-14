@@ -1789,10 +1789,6 @@ include/ui_text_layout.h function ParseTextLayout
 include/ui_text_layout.h function ReflowTextLayout
 include/ui_text_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_title_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_tk.h enum ARROW_DOWN
-include/ui_tk.h enum ARROW_LEFT
-include/ui_tk.h enum ARROW_RIGHT
-include/ui_tk.h enum ARROW_UP
 include/ui_tk.h enum CLIPBOARD_SOURCE_CLIPBOARD
 include/ui_tk.h enum CLIPBOARD_SOURCE_PRIMARY
 include/ui_tk.h enum CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD

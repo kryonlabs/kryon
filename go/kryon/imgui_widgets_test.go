@@ -1464,7 +1464,7 @@ func TestNativeBasicImGuiWidgets(t *testing.T) {
 
 	r.QueueTap(20, 100)
 	r.BeginFrame()
-	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 90, 30, 24), ID: 82, Arrow: true, Direction: int32(ArrowDown)}) {
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 90, 30, 24), ID: 82, Arrow: true, Direction: ArrowDown}) {
 		t.Fatal("arrow Button did not consume its tap")
 	}
 	r.Bullet(NewRectangle(50, 90, 20, 20))

@@ -341,15 +341,6 @@ type ThemeFamily struct {
 	Dark  Theme
 }
 
-type ArrowDirection int32
-
-const (
-	ArrowLeft ArrowDirection = iota
-	ArrowRight
-	ArrowUp
-	ArrowDown
-)
-
 type RowProps = ColumnProps
 
 type FlowProps = ColumnProps

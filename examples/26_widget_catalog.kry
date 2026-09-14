@@ -225,7 +225,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {x,y + Scale(204),Scale(120),Scale(28)}, .label = "Small", .size = ControlSizeSmall, .id = 200}) {
             action_count += 1
         }
-        if Button((ButtonProps){.bounds = {x + Scale(140),y + Scale(204),Scale(32),Scale(28)}, .id = 201, .arrow = true, .direction = ARROW_RIGHT}) {
+        if Button((ButtonProps){.bounds = {x + Scale(140),y + Scale(204),Scale(32),Scale(28)}, .id = 201, .arrow = true, .direction = ArrowRight}) {
             action_count += 1
         }
         Selectable((SelectableProps){.bounds = {x,y + Scale(250),Scale(300),Scale(32)}, .id = 202, .label = "Selectable", .selected = &selected})

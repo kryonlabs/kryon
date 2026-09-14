@@ -22,14 +22,14 @@ ButtonActionEnabled :: (disabled: bool, content_disabled: bool) -> bool #export 
     return !disabled && !content_disabled
 }
 
-ButtonArrowGlyph :: (direction: i32) -> i32 #export {
-    if direction == 1 {
+ButtonArrowGlyph :: (direction: ArrowDirection) -> i32 #export {
+    if direction == (ArrowDirection)ArrowRight {
         return 62
     }
-    if direction == 2 {
+    if direction == (ArrowDirection)ArrowUp {
         return 94
     }
-    if direction == 3 {
+    if direction == (ArrowDirection)ArrowDown {
         return 118
     }
     return 60

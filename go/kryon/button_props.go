@@ -3,6 +3,15 @@ package kryon
 
 // #import ui_control_props.generated.h
 // #import ui_menu_props.generated.h
+type ArrowDirection int32
+
+const (
+	ArrowLeft  ArrowDirection = 0
+	ArrowRight ArrowDirection = 1
+	ArrowUp    ArrowDirection = 2
+	ArrowDown  ArrowDirection = 3
+)
+
 type ButtonProps struct {
 	Bounds         Rectangle
 	Label          string
@@ -40,6 +49,6 @@ type ButtonProps struct {
 	Split          bool
 	Arrow          bool
 	Info           bool
-	Direction      int32
+	Direction      ArrowDirection
 	State          ButtonState
 }

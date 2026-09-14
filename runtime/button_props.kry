@@ -2,6 +2,13 @@
 #import "ui_control_props.generated.h"
 #import "ui_menu_props.generated.h"
 
+ArrowDirection :: enum {
+    ArrowLeft = 0
+    ArrowRight = 1
+    ArrowUp = 2
+    ArrowDown = 3
+}
+
 # Shared public contract. Hosts provide the geometry, texture, and style types.
 ButtonProps :: struct {
     bounds: Rectangle
@@ -40,6 +47,6 @@ ButtonProps :: struct {
     split: bool
     arrow: bool
     info: bool
-    direction: i32
+    direction: ArrowDirection
     state: ButtonState
 }

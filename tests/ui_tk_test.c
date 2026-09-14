@@ -447,10 +447,10 @@ test_button_policy(void)
     check_int("action enabled", ButtonActionEnabled(false, false) ? 1 : 0, 1);
     check_int("action own disabled", ButtonActionEnabled(true, false) ? 1 : 0, 0);
     check_int("action parent disabled", ButtonActionEnabled(false, true) ? 1 : 0, 0);
-    check_int("arrow left glyph", ButtonArrowGlyph(ARROW_LEFT), '<');
-    check_int("arrow right glyph", ButtonArrowGlyph(ARROW_RIGHT), '>');
-    check_int("arrow up glyph", ButtonArrowGlyph(ARROW_UP), '^');
-    check_int("arrow down glyph", ButtonArrowGlyph(ARROW_DOWN), 'v');
+    check_int("arrow left glyph", ButtonArrowGlyph(ArrowLeft), '<');
+    check_int("arrow right glyph", ButtonArrowGlyph(ArrowRight), '>');
+    check_int("arrow up glyph", ButtonArrowGlyph(ArrowUp), '^');
+    check_int("arrow down glyph", ButtonArrowGlyph(ArrowDown), 'v');
 
     icon_metrics = IconActionMetricsFor((Rectangle){0, 0, 40, 32},
                                         0, 0, 1.0f, frame);

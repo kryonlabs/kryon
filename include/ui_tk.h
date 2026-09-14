@@ -45,13 +45,6 @@ typedef int (*ClipboardOSC52WriteFn)(void *userdata, const char *text);
 typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
 
-typedef enum {
-    ARROW_LEFT = 0,
-    ARROW_RIGHT,
-    ARROW_UP,
-    ARROW_DOWN
-} ArrowDirection;
-
 typedef struct {
     int key;
     int ctrl;

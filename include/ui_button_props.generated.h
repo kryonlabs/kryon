@@ -22,6 +22,13 @@ static inline bool StringEqual(String a, String b) {
 #include "ui_control_props.generated.h"
 #include "ui_menu_props.generated.h"
 
+typedef enum ArrowDirection {
+    ArrowLeft = 0,
+    ArrowRight = 1,
+    ArrowUp = 2,
+    ArrowDown = 3,
+} ArrowDirection;
+
 typedef struct ButtonProps {
     Rectangle bounds;
     const char* label;
@@ -59,7 +66,7 @@ typedef struct ButtonProps {
     bool split;
     bool arrow;
     bool info;
-    int32_t direction;
+    ArrowDirection direction;
     ButtonState state;
 } ButtonProps;
 

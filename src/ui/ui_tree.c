@@ -3499,7 +3499,7 @@ Button(ButtonProps button)
     }
     if(button.arrow) {
         button.label = ui_tree_arrow_button_label(
-            ButtonArrowGlyph((int)button.direction));
+            ButtonArrowGlyph(button.direction));
         if(button.size == ControlSizeMedium)
             button.size = ControlSizeSmall;
         return ui_tree_surface_button(button, (Rectangle){0}, 0);

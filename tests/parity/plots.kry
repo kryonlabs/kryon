@@ -41,7 +41,7 @@ plots_frame :: () #ui {
         Input((InputProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .kind = NumericDouble, .double_values = plots_input_precise_values, .value_count = 2, .step = 0.01, .step_fast = 1.0})
         Button((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .size = ControlSizeSmall, .id = 930})
         Button((ButtonProps){.bounds = {100,475,40,24}, .id = 931, .invisible = true})
-        Button((ButtonProps){.bounds = {150,475,30,24}, .id = 932, .arrow = 1, .direction = 3})
+        Button((ButtonProps){.bounds = {150,475,30,24}, .id = 932, .arrow = 1, .direction = ArrowDown})
         Bullet((Rectangle){190,475,20,20})
         Separator((SeparatorProps){.bounds = {20,515,220,4}})
         ColorPicker((ColorPickerProps){.bounds = {20,535,220,28}, .id = 933, .label = "RGB edit", .values = edit_color, .value_count = 3})

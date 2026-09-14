@@ -134,30 +134,33 @@ func Button_ButtonActionEnabled(disabled bool, content_disabled bool) bool {
 	return value_2
 }
 
-func Button_ButtonArrowGlyph(direction int32) int32 {
-	var value_0 int32 = direction
-	var value_1 int32 = 1
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 int32 = 62
-		return value_3
+func Button_ButtonArrowGlyph(direction ArrowDirection) int32 {
+	var value_0 ArrowDirection = ArrowDirection(direction)
+	var value_1 int32 = int32(ArrowRight)
+	var value_2 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
+	var value_3 bool = value_0 == value_2
+	if value_3 {
+		var value_4 int32 = 62
+		return value_4
 	}
-	var value_4 int32 = direction
-	var value_5 int32 = 2
-	var value_6 bool = value_4 == value_5
-	if value_6 {
-		var value_7 int32 = 94
-		return value_7
+	var value_5 ArrowDirection = ArrowDirection(direction)
+	var value_6 int32 = int32(ArrowUp)
+	var value_7 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
+	var value_8 bool = value_5 == value_7
+	if value_8 {
+		var value_9 int32 = 94
+		return value_9
 	}
-	var value_8 int32 = direction
-	var value_9 int32 = 3
-	var value_10 bool = value_8 == value_9
-	if value_10 {
-		var value_11 int32 = 118
-		return value_11
+	var value_10 ArrowDirection = ArrowDirection(direction)
+	var value_11 int32 = int32(ArrowDown)
+	var value_12 ArrowDirection = ArrowDirection(int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0)))
+	var value_13 bool = value_10 == value_12
+	if value_13 {
+		var value_14 int32 = 118
+		return value_14
 	}
-	var value_12 int32 = 60
-	return value_12
+	var value_15 int32 = 60
+	return value_15
 }
 
 func Button_ResolveButtonInput(state int32, disabled bool, loading bool, selected bool, sample Activation) ButtonInput {

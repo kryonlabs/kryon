@@ -313,7 +313,7 @@ App :: () #ui {
     Input((InputProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .kind = NumericDouble, .double_values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
     Button((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .size = ControlSizeSmall, .id = 38})
     Button((ButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39, .invisible = true})
-    Button((ButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .arrow = true, .direction = 1})
+    Button((ButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .arrow = true, .direction = ArrowRight})
     Bullet((Rectangle){Scale(392), Scale(554), Scale(20), Scale(20)})
     Separator((SeparatorProps){.bounds = {Scale(250), Scale(582), Scale(160), Scale(4)}})
     ColorPicker((ColorPickerProps){.bounds = {Scale(250), Scale(590), Scale(160), Scale(28)}, .id = 41, .values = edit_color, .value_count = 3})
@@ -630,7 +630,7 @@ grep -q 'kr.Input(kr.InputProps{.*Kind: kr.NumericDouble.*DoubleValues: plot_dou
 grep -q 'Size: kr.ControlSizeSmall' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Invisible: true' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Arrow: true' "$out"
-grep -q 'Direction: int32(1)' "$out"
+grep -q 'Direction: kr.ArrowRight' "$out"
 grep -q 'kr.Bullet(kr.Rectangle{' "$out"
 grep -q 'kr.Separator(kr.SeparatorProps{Bounds: kr.Rectangle{' "$out"
 grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Values: edit_color\[:\].*ValueCount: int32(3)' "$out"
