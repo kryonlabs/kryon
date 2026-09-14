@@ -11,6 +11,50 @@
 #include <stddef.h>
 #include <string.h>
 
+#if ANDROID_BUILD
+#include <android/input.h>
+#include <android_native_app_glue.h>
+
+extern struct android_app *GetAndroidApp(void);
+static int32_t (*android_previous_input)(struct android_app *, AInputEvent *);
+static int android_frame_press;
+static int android_frame_release;
+static int android_frame_cancel;
+
+static int32_t
+android_track_input(struct android_app *app, AInputEvent *event)
+{
+    if(AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
+        int action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
+        if(action == AMOTION_EVENT_ACTION_DOWN)
+            android_frame_press = 1;
+        if(action == AMOTION_EVENT_ACTION_UP)
+            android_frame_release = 1;
+        if(action == AMOTION_EVENT_ACTION_CANCEL) {
+            android_frame_press = 0;
+            android_frame_release = 0;
+            android_frame_cancel = 1;
+        }
+    }
+    return android_previous_input != NULL
+        ? android_previous_input(app, event) : 0;
+}
+
+void
+kry_android_prepare_input_poll(void)
+{
+    struct android_app *app = GetAndroidApp();
+    if(app != NULL && app->onInputEvent != android_track_input) {
+        android_previous_input = app->onInputEvent;
+        app->onInputEvent = android_track_input;
+    }
+    /* Preserve both edges when Android drains a quick tap in one poll. */
+    android_frame_press = 0;
+    android_frame_release = 0;
+    android_frame_cancel = 0;
+}
+#endif
+
 #ifdef KRYON_BACKEND_RAYLIB
 #include <SDL.h>
 #endif
@@ -448,6 +492,10 @@ bool IsMouseButtonPressed(int button)
         return true;
     if(k_input_override_blocks_buttons())
         return false;
+#if ANDROID_BUILD
+    if(button == MOUSE_BUTTON_LEFT && android_frame_press)
+        return true;
+#endif
     return BackendRaw_IsMouseButtonPressed(button);
 }
 
@@ -466,6 +514,14 @@ bool IsMouseButtonReleased(int button)
         return true;
     if(k_input_override_blocks_buttons())
         return false;
+#if ANDROID_BUILD
+    if(button == MOUSE_BUTTON_LEFT) {
+        if(android_frame_cancel)
+            return false;
+        if(android_frame_release)
+            return true;
+    }
+#endif
     return BackendRaw_IsMouseButtonReleased(button);
 }
 

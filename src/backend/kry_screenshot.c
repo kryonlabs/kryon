@@ -88,8 +88,15 @@ kry_shot_armed(void)
     return g_shot_armed;
 }
 
+#if ANDROID_BUILD
+void kry_android_prepare_input_poll(void);
+#endif
+
 void EndDrawing(void)
 {
+#if ANDROID_BUILD
+    kry_android_prepare_input_poll();
+#endif
     if(KryonRaylibBackend_EndDrawing == NULL)
         return; /* non-raylib link: nothing to swap */
     if(!kry_shot_armed()) {
