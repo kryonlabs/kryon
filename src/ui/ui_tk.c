@@ -3057,7 +3057,9 @@ RenderInputPrecise(InputPreciseProps input)
 int
 RenderSpinbox(SpinboxProps spinbox)
 {
-    SpinboxLayout layout = SpinboxLayoutFor(spinbox.bounds, Scale(28));
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    SpinboxLayout layout = SpinboxLayoutFor(
+        spinbox.bounds, SpinboxDefaultButtonWidth(runtime_scale));
     int changed = 0;
     int disabled = spinbox.disabled || ContentDisabled();
     char value_text[32];

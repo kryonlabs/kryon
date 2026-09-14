@@ -5719,7 +5719,7 @@ func styleFrameRectOp(bounds, surface Rectangle, frame StyleFrame) FrameOp {
 
 func (r *runtime) Spinbox(p SpinboxProps) bool {
 	p.Bounds = r.layoutRect(p.Bounds)
-	layout := Spinbox_SpinboxLayoutFor(p.Bounds, 28)
+	layout := Spinbox_SpinboxLayoutFor(p.Bounds, Spinbox_SpinboxDefaultButtonWidth(1.0))
 	l := layout.Left
 	rr := layout.Right
 	disabled := p.Disabled || r.contentDisabled()

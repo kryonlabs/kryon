@@ -1190,13 +1190,18 @@ static void
 test_spinbox_policy(void)
 {
     Rectangle bounds = {10, 20, 100, 30};
-    SpinboxLayout layout = SpinboxLayoutFor(bounds, 28);
+    SpinboxLayout layout = SpinboxLayoutFor(
+        bounds, SpinboxDefaultButtonWidth(1.0f));
     SpinboxStepResult inc = SpinboxStepValue(4, 0, 5, 2, 1, 0);
     SpinboxStepResult dec = SpinboxStepValue(1, 0, 5, 2, -1, 0);
     SpinboxStepResult wrap_inc = SpinboxStepValue(5, 0, 5, 1, 1, 1);
     SpinboxStepResult wrap_dec = SpinboxStepValue(0, 0, 5, 1, -1, 1);
 
     check_int("spinbox default step", SpinboxEffectiveStep(0), 1);
+    check_int("spinbox default button width",
+              SpinboxDefaultButtonWidth(1.0f), 28);
+    check_int("spinbox scaled button width",
+              SpinboxDefaultButtonWidth(2.0f), 56);
     check_int("spinbox left width", (int)layout.left.width, 28);
     check_int("spinbox text x", (int)layout.text.x, 38);
     check_int("spinbox text width", (int)layout.text.width, 44);

@@ -45,6 +45,37 @@ func Spinbox_SpinboxClampValue(value int32, min_value int32, max_value int32) in
 	return value_8
 }
 
+func Spinbox_SpinboxScaledMetric(value float32, scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = value
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_7
+	var value_8 int32 = metric
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 int32 = metric
+	return value_12
+}
+
+func Spinbox_SpinboxDefaultButtonWidth(scale float32) int32 {
+	var value_0 float32 = 28.0
+	var value_1 float32 = scale
+	var value_2 int32 = Spinbox_SpinboxScaledMetric(value_0, value_1)
+	return value_2
+}
+
 func Spinbox_SpinboxLayoutFor(bounds Rectangle, requested_button_width int32) SpinboxLayout {
 	var layout SpinboxLayout = SpinboxLayout{}
 	var value_0 int32 = requested_button_width

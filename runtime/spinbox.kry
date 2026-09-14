@@ -30,6 +30,17 @@ SpinboxClampValue :: (value: i32, min_value: i32, max_value: i32) -> i32 #export
     return value
 }
 
+SpinboxScaledMetric :: (value: float, scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    metric: i32 = (i32)(value * scale)
+    if metric < 0 { return 0 }
+    return metric
+}
+
+SpinboxDefaultButtonWidth :: (scale: float) -> i32 #export {
+    return SpinboxScaledMetric(28.0, scale)
+}
+
 SpinboxLayoutFor :: (bounds: Rectangle, requested_button_width: i32) -> SpinboxLayout #export {
     layout: SpinboxLayout
     layout.button_width = requested_button_width
