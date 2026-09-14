@@ -1047,8 +1047,28 @@ public_text_input_matches="$(
 )"
 
 if [ -n "$public_text_input_matches" ]; then
-    echo "Public text input APIs must use TextInputStyle/TextEdit/SyntaxMode names without stale UIText/UISyntax prefixes:"
+    echo "Public text input APIs must use clean TextInput/TextEdit/SyntaxMode names without stale standalone style or UIText/UISyntax prefixes:"
     echo "$public_text_input_matches"
+    exit 1
+fi
+
+standalone_text_input_style_matches="$(
+    rg -n '\bTextInputStyle\b' \
+        cmd \
+        docs \
+        examples \
+        go \
+        include \
+        runtime \
+        src \
+        web \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$standalone_text_input_style_matches" ]; then
+    echo "Text input styling must stay folded into canonical TextInput/TextField/TextArea props, not a standalone TextInputStyle record:"
+    echo "$standalone_text_input_style_matches"
     exit 1
 fi
 

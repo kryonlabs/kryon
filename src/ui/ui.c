@@ -1897,8 +1897,8 @@ ui_text_input_default_font(int style_kind, int class_name)
                                          resolved.font_size), GetFontSize());
 }
 
-TextInputStyle
-ui_resolve_text_input_style(TextInputStyle style, int style_kind,
+TextInputAppearance
+ui_resolve_text_input_appearance(TextInputAppearance style, int style_kind,
                             int class_name)
 {
     uint32_t requested_fields = style.fields;
@@ -1961,7 +1961,7 @@ ui_resolve_text_input_style(TextInputStyle style, int style_kind,
 }
 
 TextInputMetrics
-ui_text_input_metrics_for_style(TextInputStyle style, int style_kind,
+ui_text_input_metrics_for_appearance(TextInputAppearance style, int style_kind,
                                 int class_name, int default_line_gap)
 {
     float scale = (float)Scale(1000) / 1000.0f;
@@ -2004,9 +2004,9 @@ ui_text_input_motion_key(Rectangle bounds, int focus_id, const char *kind)
 }
 
 static Rectangle
-ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
+ui_text_input_surface(Rectangle bounds, TextInputAppearance style, int focused,
                       int editable, int focus_id, const char *kind,
-                      TextInputStyle requested, int class_name)
+                      TextInputAppearance requested, int class_name)
 {
     int disabled = ContentDisabled();
     int hovered = 0;
@@ -2097,19 +2097,19 @@ static int ui_text_width_before_cursor(const char *text, int font,
 static void
 RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
-                  TextInputStyle style, int selection_start,
+                  TextInputAppearance style, int selection_start,
                   int selection_end, int composition_start,
                   int composition_end, int scroll_x, int focus_id,
                   int class_name)
 {
-    TextInputStyle requested_style = style;
+    TextInputAppearance requested_style = style;
 
-    style = ui_resolve_text_input_style(style, StyleKindTextField(),
+    style = ui_resolve_text_input_appearance(style, StyleKindTextField(),
                                         class_name);
     const char *value = text ? text : "";
     int y = (int)bounds.y;
     int h = (int)bounds.height;
-    TextInputMetrics metrics = ui_text_input_metrics_for_style(
+    TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
         style, StyleKindTextField(), class_name, 0);
     int padding_x = metrics.padding_x;
     float scale = (float)Scale(1000) / 1000.0f;
@@ -2225,7 +2225,7 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focus_id, int class_name)
 {
     RenderTextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, (TextInputStyle){0}, 0, 0, 0, 0,
+                      cursor_visible, font, (TextInputAppearance){0}, 0, 0, 0, 0,
                       0, focus_id, class_name);
 }
 
@@ -2281,7 +2281,7 @@ ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x)
 
 void
 ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
-                             int focused, int font, TextInputStyle style,
+                             int focused, int font, TextInputAppearance style,
                              int selection_start, int selection_end)
 {
     RenderTextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
@@ -2650,9 +2650,9 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 int
 ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
 {
-    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+    TextInputAppearance style = ui_resolve_text_input_appearance((TextInputAppearance){0},
         StyleKindTextArea(), area.class_name);
-    TextInputMetrics metrics = ui_text_input_metrics_for_style(
+    TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
         style, StyleKindTextArea(), area.class_name, 0);
     int font = metrics.font;
     int line_gap = metrics.line_gap;
@@ -3049,7 +3049,7 @@ ui_syntax_make_keyword(const char *text, int len)
 
 static Color
 ui_syntax_token_color(SyntaxMode syntax, const char *text, int len,
-                      int first_token, TextInputStyle style)
+                      int first_token, TextInputAppearance style)
 {
     int dark = GetEffectiveThemeDarkMode();
     Color keyword = dark ? (Color){142, 160, 240, 255} : (Color){36, 72, 172, 255};
@@ -3208,7 +3208,7 @@ ui_draw_text_area_composition(const char *text, int line_start, int line_end,
 
 static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
-                    SyntaxMode syntax, TextInputStyle style)
+                    SyntaxMode syntax, TextInputAppearance style)
 {
     char token[1024];
     int offset = 0;
@@ -3241,7 +3241,7 @@ static void
 ui_draw_text_area_text(const char *text, int cursor, int focused,
                        Rectangle bounds, int font, int line_gap,
                        int scroll_y, int wrap_width, SyntaxMode syntax,
-                       TextInputStyle style, int selection_start,
+                       TextInputAppearance style, int selection_start,
                        int selection_end, int composition_start,
                        int composition_end)
 {
@@ -3251,7 +3251,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     char line[1024];
     int len;
     int line_start = 0;
-    TextInputMetrics metrics = ui_text_input_metrics_for_style(
+    TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
         style, StyleKindTextArea(), 0, 0);
     int padding_x = metrics.padding_x;
     int padding_y = metrics.padding_y;
@@ -3328,9 +3328,9 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
-    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+    TextInputAppearance style = ui_resolve_text_input_appearance((TextInputAppearance){0},
         StyleKindTextArea(), area.class_name);
-    TextInputMetrics metrics = ui_text_input_metrics_for_style(
+    TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
         style, StyleKindTextArea(), area.class_name, 0);
     int font = metrics.font;
     int line_gap = metrics.line_gap;
@@ -3360,15 +3360,15 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     int cursor_h;
     int cursor_y;
     int scroll_y;
-    TextInputStyle style;
+    TextInputAppearance style;
 
     if(area.text == NULL || area.scroll_y == NULL)
         return;
-    style = ui_resolve_text_input_style((TextInputStyle){0},
+    style = ui_resolve_text_input_appearance((TextInputAppearance){0},
                                         StyleKindTextArea(),
                                         area.class_name);
     {
-        TextInputMetrics metrics = ui_text_input_metrics_for_style(
+        TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
             style, StyleKindTextArea(), area.class_name, 0);
         font = metrics.font;
         line_gap = metrics.line_gap;
@@ -3398,8 +3398,8 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
                             int selection_start, int selection_end,
                             int composition_start, int composition_end)
 {
-    TextInputStyle requested_style = {0};
-    TextInputStyle style;
+    TextInputAppearance requested_style = {0};
+    TextInputAppearance style;
     int font;
     int line_gap;
     int padding_x;
@@ -3410,10 +3410,10 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
 
     if(area.text == NULL)
         return;
-    style = ui_resolve_text_input_style((TextInputStyle){0},
+    style = ui_resolve_text_input_appearance((TextInputAppearance){0},
                                         StyleKindTextArea(), area.class_name);
     {
-        TextInputMetrics metrics = ui_text_input_metrics_for_style(
+        TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
             style, StyleKindTextArea(), area.class_name, 0);
         font = metrics.font;
         line_gap = metrics.line_gap;
@@ -3667,14 +3667,14 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     float scale;
     Rectangle gutter;
     TextAreaGutterMetrics gutter_metrics;
-    TextInputStyle style;
+    TextInputAppearance style;
 
     if(gutter_width <= 0)
         return area.bounds;
-    style = ui_resolve_text_input_style((TextInputStyle){0},
+    style = ui_resolve_text_input_appearance((TextInputAppearance){0},
                                         StyleKindTextArea(), area.class_name);
     {
-        TextInputMetrics metrics = ui_text_input_metrics_for_style(
+        TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
             style, StyleKindTextArea(), area.class_name, 0);
         font = metrics.font;
         line_gap = metrics.line_gap;
@@ -3768,7 +3768,7 @@ ui_text_area_render(TextAreaProps area)
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
-    TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
+    TextInputAppearance style = ui_resolve_text_input_appearance((TextInputAppearance){0},
         StyleKindTextArea(), area.class_name);
     memset(&area_edit, 0, sizeof(area_edit));
     area_edit.text = area.text;
@@ -3786,7 +3786,7 @@ ui_text_area_render(TextAreaProps area)
     area.bounds = widget.bounds;
 
     {
-        TextInputMetrics metrics = ui_text_input_metrics_for_style(
+        TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
             style, StyleKindTextArea(), area.class_name, 0);
         font = metrics.font;
         line_gap = metrics.line_gap;
@@ -4392,7 +4392,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     int committed_selection_end;
     TextInputMetrics metrics;
     TextFieldScroll scroll_policy;
-    TextInputStyle layout_style;
+    TextInputAppearance layout_style;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -4464,10 +4464,10 @@ ui_text_field_render_filtered(TextFieldProps field,
                            WidgetFlagResizable);
     field.bounds = widget.bounds;
 
-    layout_style = ui_resolve_text_input_style((TextInputStyle){0},
+    layout_style = ui_resolve_text_input_appearance((TextInputAppearance){0},
                                                StyleKindTextField(),
                                                field.class_name);
-    metrics = ui_text_input_metrics_for_style(layout_style, StyleKindTextField(),
+    metrics = ui_text_input_metrics_for_appearance(layout_style, StyleKindTextField(),
                                               field.class_name, 0);
     font = metrics.font;
     padding_x = metrics.padding_x;
@@ -4987,7 +4987,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                                         field.read_only);
 
     TextInputPaint paint = {
-        .style = (TextInputStyle){0}, .cursor = paint_cursor, .focused = focused,
+        .appearance = (TextInputAppearance){0}, .cursor = paint_cursor, .focused = focused,
         .class_name = field.class_name,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
@@ -5012,7 +5012,7 @@ ui_paint_text_input(Rectangle bounds, const char *text, TextInputPaint paint)
     int previous_font = ui_active_font_token();
     PopTextFont(paint.font_token);
     RenderTextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
-                      paint.caret, paint.font, paint.style,
+                      paint.caret, paint.font, paint.appearance,
                       paint.selection_start, paint.selection_end,
                       paint.composition_start, paint.composition_end,
                       paint.scroll_x, 0, paint.class_name);

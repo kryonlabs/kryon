@@ -1381,10 +1381,10 @@ RouteInput(void)
                     node->kind == WidgetKindTextArea ? StyleKindTextArea()
                                                    : StyleKindTextField(),
                     field->class_name);
-                TextInputStyle style = ui_resolve_text_input_style(
-                    (TextInputStyle){0}, StyleKindTextField(),
+                TextInputAppearance style = ui_resolve_text_input_appearance(
+                    (TextInputAppearance){0}, StyleKindTextField(),
                     field->class_name);
-                TextInputMetrics metrics = ui_text_input_metrics_for_style(
+                TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
                     style, StyleKindTextField(), field->class_name, 0);
                 int padding = metrics.padding_x;
                 double now = GetTime();
@@ -1441,10 +1441,10 @@ RouteInput(void)
                 node->kind == WidgetKindTextArea ? StyleKindTextArea()
                                                : StyleKindTextField(),
                 field->class_name);
-            TextInputStyle style = ui_resolve_text_input_style(
-                (TextInputStyle){0}, StyleKindTextField(),
+            TextInputAppearance style = ui_resolve_text_input_appearance(
+                (TextInputAppearance){0}, StyleKindTextField(),
                 field->class_name);
-            TextInputMetrics metrics = ui_text_input_metrics_for_style(
+            TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
                 style, StyleKindTextField(), field->class_name, 0);
             int padding = metrics.padding_x;
             int cursor;
@@ -1989,7 +1989,7 @@ DrawTree(void)
             }
             {
                 TextInputPaint paint = {
-                    .style = (TextInputStyle){0},
+                    .appearance = (TextInputAppearance){0},
                     .cursor = cursor,
                     .focused = state != NULL ? state->focused : 0,
                     .editable = !field.read_only,

@@ -335,7 +335,7 @@ plus explicit per-call style overrides while those overrides are being retired.
 | Leak | Current location | Target |
 |---|---|---|
 | Inline override table | `ButtonProps.style: ControlStyle` | remove; use class/name/semantic selectors |
-| Raw input styling | `TextInputStyle` in `include/ui_controls.h` and text-input props | remove; style rules cover input families |
+| Raw input styling | standalone text-input style records and text-input props | remove; style rules cover input families |
 | Raw text colors | `TextProps.color`, retained primitive colors | remove from app-facing text; style rules handle foreground and selection |
 | Row, link, page colors | internal row helpers, `ui_page.h` | convert to semantic role/tone plus style rules |
 | Alpha-zero defaults | widget paint fallbacks such as `background.a != 0` | remove; presence bits live in style declarations only |
@@ -1108,7 +1108,7 @@ Unsupported visual properties degrade; they do not fork style resolution.
 ### M4 - Delete visual props
 
 - Remove `ButtonProps.style`.
-- Remove `TextInputStyle`.
+- Remove standalone text-input style records.
 - Remove `TextProps.color` from app-facing text.
 - Remove row/page color props.
 - Remove alpha-zero default behavior.

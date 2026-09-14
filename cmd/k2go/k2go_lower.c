@@ -97,7 +97,7 @@ is_runtime_go_type(const char *type)
         "Theme", "ThemeFamily", "ThemeColors", "ThemeMetrics",
         "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "ImageFit", "ImageStyle", "SemanticKind",
-        "TextInputStyle", "SelectableProps", "CheckboxProps", "ToggleProps",
+        "SelectableProps", "CheckboxProps", "ToggleProps",
 		"Tab", "TabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "ParagraphSpec", "ImageProps", "PageProps",

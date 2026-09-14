@@ -133,7 +133,7 @@ typedef struct {
     Color color;
 } InfoRow;
 
-typedef struct TextInputStyle {
+typedef struct TextInputAppearance {
     uint32_t fields;
     Color background;
     Color border;
@@ -144,12 +144,12 @@ typedef struct TextInputStyle {
     int padding_x;
     int padding_y;
     int line_gap;
-} TextInputStyle;
+} TextInputAppearance;
 
 /* Prepared retained painting only: no editing-state pointers survive
  * submission. This is internal host storage, not a public widget surface. */
 typedef struct TextInputPaint {
-    TextInputStyle style;
+    TextInputAppearance appearance;
     int class_name;
     int cursor;
     int focused;
@@ -429,9 +429,9 @@ Style ui_resolve_button_style_kind(ButtonProps button, ButtonState state,
 StyleFrame ui_resolve_button_spec_frame(ButtonSpec button, ButtonState state,
                                         int automatic, float h, float p,
                                         float f, int style_kind);
-TextInputStyle ui_resolve_text_input_style(TextInputStyle style,
+TextInputAppearance ui_resolve_text_input_appearance(TextInputAppearance style,
                                            int style_kind, int class_name);
-TextInputMetrics ui_text_input_metrics_for_style(TextInputStyle style,
+TextInputMetrics ui_text_input_metrics_for_appearance(TextInputAppearance style,
                                                  int style_kind,
                                                  int class_name,
                                                  int default_line_gap);
@@ -634,7 +634,7 @@ void ui_text_begin_frame(void);
 int ui_text_cursor_at_x(const char *text, int font, int text_x, int mouse_x);
 void ui_draw_text_input_selection(Rectangle bounds, const char *text,
                                   int cursor, int focused, int font,
-                                  TextInputStyle style,
+                                  TextInputAppearance style,
                                   int selection_start, int selection_end);
 int ui_utf8_codepoint_count(const char *text);
 int ui_utf8_encode(int codepoint, char out[5]);
