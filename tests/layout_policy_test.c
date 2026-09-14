@@ -36,6 +36,12 @@ main(void)
     assert(PageSidePaddingFor(400) == 12);
     assert(PageSidePaddingFor(1000) == 20);
     assert(PageSidePaddingFor(3000) == 24);
+    assert(DesktopWidthThresholdFor(0.0f) == 500);
+    assert(DesktopWidthThresholdFor(1.5f) == 750);
+    assert(!IsDesktopWidth(499, 1.0f));
+    assert(IsDesktopWidth(500, 1.0f));
+    assert(!IsDesktopWidth(749, 1.5f));
+    assert(IsDesktopWidth(750, 1.5f));
 
     assert(metrics.gap == 6);
     assert(metrics.padding == 4);

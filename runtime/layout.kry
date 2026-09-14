@@ -38,6 +38,15 @@ PageSidePaddingFor :: (view_width: i32) -> i32 #export {
     return LayoutClamp(padding, 12, 24)
 }
 
+DesktopWidthThresholdFor :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(500.0 * scale + 0.5)
+}
+
+IsDesktopWidth :: (view_width: i32, scale: float) -> bool #export {
+    return view_width >= DesktopWidthThresholdFor(scale)
+}
+
 LayoutMetricsFor :: (bounds: Rectangle, gap: i32, padding: i32) -> LayoutMetrics #export {
     metrics: LayoutMetrics
     if gap < 0 { gap = 0 }

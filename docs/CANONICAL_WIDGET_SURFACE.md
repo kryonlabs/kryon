@@ -761,7 +761,8 @@ and host plumbing behind the canonical names.
   `runtime/text.kry`; shared control-text baseline sample and clip guard now
   route through `runtime/text.kry`; slider/toggle focus stroke width now routes
   through `runtime/focus.kry`; icon button size and padding policy now routes
-  through `runtime/icon.kry`. Continue by reducing raw native constants in
+  through `runtime/icon.kry`; desktop layout breakpoint policy now routes
+  through `runtime/layout.kry`. Continue by reducing raw native constants in
   shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,

@@ -13,6 +13,7 @@
 #include "runtime/focus.h"
 #include "runtime/icon.h"
 #include "runtime/input.h"
+#include "runtime/layout.h"
 #include "runtime/link.h"
 #include "runtime/paragraph.h"
 #include "runtime/scroll.h"
@@ -5085,7 +5086,7 @@ InitInterface(int width, int height, float dpi)
 int
 IsDesktopMode(void)
 {
-    return ui_view_width >= Scale(500);
+    return IsDesktopWidth(ui_view_width, (float)Scale(1000) / 1000.0f);
 }
 
 static void
