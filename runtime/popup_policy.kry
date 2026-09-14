@@ -21,6 +21,10 @@ PopupEscapeDecision :: struct {
     end_input: bool
 }
 
+PopupKeyboardInput :: struct {
+    escape: bool
+}
+
 PopupPanelRole :: () -> i32 #export {
     return 2
 }
@@ -133,4 +137,15 @@ PopupEscapeFor :: (captures_input: bool, escape_pressed: bool,
         decision.end_input = true
     }
     return decision
+}
+
+PopupKeyboardInputFor :: (escape_pressed: bool) -> PopupKeyboardInput #export {
+    input: PopupKeyboardInput
+    input.escape = escape_pressed
+    return input
+}
+
+PopupEscapeDecisionFor :: (captures_input: bool, input: PopupKeyboardInput,
+    keyboard_captured: bool) -> PopupEscapeDecision #export {
+    return PopupEscapeFor(captures_input, input.escape, keyboard_captured)
 }

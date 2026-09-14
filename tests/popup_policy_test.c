@@ -25,6 +25,7 @@ main(void)
     PopupDecision context = PopupDecisionFor(4, false);
     PopupDecision disabled_plain = PopupDecisionFor(0, true);
     PopupDecision invalid = PopupDecisionFor(1 | 2, false);
+    PopupKeyboardInput popup_input;
     PopupEscapeDecision escape;
     Rectangle bounds = {10, 20, 30, 40};
     Rectangle trigger = {1, 2, 3, 4};
@@ -82,6 +83,12 @@ main(void)
     escape = PopupEscapeFor(true, false, false);
     assert(!escape.close);
     escape = PopupEscapeFor(true, true, true);
+    assert(!escape.close);
+    popup_input = PopupKeyboardInputFor(true);
+    escape = PopupEscapeDecisionFor(true, popup_input, false);
+    assert(escape.close);
+    assert(escape.end_input);
+    escape = PopupEscapeDecisionFor(true, popup_input, true);
     assert(!escape.close);
     return 0;
 }

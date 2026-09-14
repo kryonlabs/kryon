@@ -95,7 +95,7 @@ surface review:
 | `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props and mode names | `.kry canonical` |
-| `runtime/popup_policy.kry` | Popup mode/input/Escape-close policy | `.kry canonical` |
+| `runtime/popup_policy.kry` | Popup mode/input record/Escape-close policy | `.kry canonical` |
 | `runtime/popup_props.kry` | Popup props | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
 | `runtime/profile_header.kry` | Profile header geometry/text placement plus profile image picker geometry and selection/click policy | `.kry support` |
@@ -701,8 +701,8 @@ behind the canonical names.
 1. Finish C geometry-to-`.kry` migration:
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
    widgets already have `.kry` policy, but raw widget constants still remain in
-   native files. The latest focused audits moved context-popup activation and
-   Escape-close policy into `runtime/popup_policy.kry` and label text-field row layout into
+   native files. The latest focused audits moved context-popup activation,
+   popup input records, and Escape-close policy into `runtime/popup_policy.kry` and label text-field row layout into
   `runtime/rows.kry`; InfoRows background/text/separator geometry and
   button-row wrap height/advance now also
   route through `runtime/rows.kry`; dropdown panel/option/scrollbar role
