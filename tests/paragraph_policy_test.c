@@ -68,5 +68,11 @@ main(void)
     assert(ParagraphLineIndexFor(0.0f, 10.0f, 20, 3) == 0);
     assert(ParagraphLineIndexFor(10.0f, 10.0f, 0, 3) == 0);
     assert(ParagraphLineIndexFor(10.0f, 10.0f, 20, 0) == -1);
+    assert(ParagraphSelectionLocalOffsetFor(5.0f, 10.0f, 80, 12, 6) == 0);
+    assert(ParagraphSelectionLocalOffsetFor(95.0f, 10.0f, 80, 12, 6) == 12);
+    assert(ParagraphSelectionLocalOffsetFor(40.0f, 10.0f, 80, 12, 6) == 6);
+    assert(ParagraphSelectionLocalOffsetFor(40.0f, 10.0f, 80, 12, -2) == 0);
+    assert(ParagraphSelectionLocalOffsetFor(40.0f, 10.0f, 80, 12, 20) == 12);
+    assert(ParagraphSelectionLocalOffsetFor(95.0f, 10.0f, 80, -1, 6) == 0);
     return 0;
 }

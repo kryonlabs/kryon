@@ -123,3 +123,23 @@ ParagraphLineIndexFor :: (mouse_y: float, bounds_y: float,
     }
     return index
 }
+
+ParagraphSelectionLocalOffsetFor :: (mouse_y: float, bounds_y: float,
+    block_height: i32, line_length: i32, measured_offset: i32) -> i32 #export {
+    if line_length < 0 {
+        line_length = 0
+    }
+    if mouse_y < bounds_y {
+        return 0
+    }
+    if mouse_y > bounds_y + (float)block_height {
+        return line_length
+    }
+    if measured_offset < 0 {
+        return 0
+    }
+    if measured_offset > line_length {
+        return line_length
+    }
+    return measured_offset
+}

@@ -1697,11 +1697,11 @@ RenderSelectableTextBlock(SelectableTextBlock block)
                                                line_stride, count);
             line = ui_text_slice(block.text, lines[line_index].start,
                                  lines[line_index].end);
-            local = mouse.y < block.bounds.y ? 0 :
-                    mouse.y > block.bounds.y + height ?
-                        lines[line_index].end - lines[line_index].start :
-                        ui_text_byte_offset_at_x(line, block.font_size,
-                                                 (int)(mouse.x - block.bounds.x));
+            local = ParagraphSelectionLocalOffsetFor(
+                mouse.y, block.bounds.y, height,
+                lines[line_index].end - lines[line_index].start,
+                ui_text_byte_offset_at_x(line, block.font_size,
+                                         (int)(mouse.x - block.bounds.x)));
             free(line);
             g_ui_text_block_selection.cursor = lines[line_index].start + local;
             g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
