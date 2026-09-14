@@ -90,6 +90,11 @@ MenuOutsideCloseDecision :: struct {
     open_index: i32
 }
 
+MenuContextOpenResult :: struct {
+    open: bool
+    changed: bool
+}
+
 MenuBarRole :: () -> i32 #export {
     return 1
 }
@@ -347,6 +352,23 @@ MenuOutsideCloseDecisionFor :: (open_id: i32, mouse_released: bool,
         decision.consume_release = true
     }
     return decision
+}
+
+MenuContextOpenFor :: (open: bool, open_requested: bool,
+    close_requested: bool, has_open: bool) -> MenuContextOpenResult #export {
+    result: MenuContextOpenResult
+    result.open = open
+    if !has_open {
+        return result
+    }
+    if open_requested {
+        result.open = true
+    }
+    if close_requested {
+        result.open = false
+    }
+    result.changed = result.open != open
+    return result
 }
 
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,

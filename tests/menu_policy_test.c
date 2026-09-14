@@ -313,5 +313,15 @@ main(void)
     close_decision = MenuOutsideCloseDecisionFor(0, true, false, false,
                                                 false);
     assert(!close_decision.close_open);
+    MenuContextOpenResult context_open =
+        MenuContextOpenFor(false, true, false, true);
+    assert(context_open.open);
+    assert(context_open.changed);
+    context_open = MenuContextOpenFor(true, false, true, true);
+    assert(!context_open.open);
+    assert(context_open.changed);
+    context_open = MenuContextOpenFor(false, true, true, false);
+    assert(!context_open.open);
+    assert(!context_open.changed);
     return 0;
 }

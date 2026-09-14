@@ -79,7 +79,7 @@ surface review:
 | `runtime/list_box.kry` | ListBox layout/navigation and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly with typed `MaterialKind` policy | `.kry canonical` |
-| `runtime/menu.kry` | Menu metrics, geometry, selectable/keyboard navigation, bar open/index policy, and group pointer open/close decisions | `.kry canonical` |
+| `runtime/menu.kry` | Menu metrics, geometry, selectable/keyboard navigation, bar/context open/index policy, and group pointer open/close decisions | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
 | `runtime/list_box_multi.kry` | ListBox multi-selection row/keyboard navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar default-height, item interaction, paint, and configuration layout/count/default policy | `.kry canonical` |
@@ -556,7 +556,7 @@ should use canonical `.kry` names and blocks.
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | Item interaction/state, paint, sizing, and configuration modal layout/count/default policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
 | `Toolbar` | `.kry canonical` | Metrics, geometry, icon style-size, and icon slider popup open/close policy are in `.kry`; host handles input, drawing, state storage, and child `Button`/`Dropdown` calls. |
-| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable/keyboard navigation, bar open/index policy, and group pointer open/close decisions are in `.kry`. |
+| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable/keyboard navigation, bar/context open/index policy, and group pointer open/close decisions are in `.kry`. |
 | `TabBar` | `.kry canonical` | Sizing, scroll, keyboard index, reorder marker/drag lifecycle, and double-click decision policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, stored drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Effective height/state, layout, and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | `.kry canonical` | Navigation runtime, not a visual widget. Routes, state, props, and result live in `runtime/router_props.kry`. |

@@ -5537,7 +5537,8 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 		r.setFocus(props.ID)
 		resetMenuPath(r.menuNav(props.ID), limitedMenuItems(props.Items, props.ItemCount))
 		if props.Open != nil {
-			*props.Open = 1
+			openResult := Menu_MenuContextOpenFor(*props.Open != 0, true, false, props.Open != nil)
+			*props.Open = boolInt(openResult.Open)
 		}
 		if props.X != nil {
 			*props.X = int32(r.mousePos.X)
@@ -5558,7 +5559,8 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 		delete(r.openSubmenus, props.ID)
 		r.menuNav(props.ID).Path = r.menuNav(props.ID).Path[:0]
 		if props.Open != nil {
-			*props.Open = 0
+			openResult := Menu_MenuContextOpenFor(*props.Open != 0, false, true, props.Open != nil)
+			*props.Open = boolInt(openResult.Open)
 		}
 		return 0
 	}
@@ -5579,7 +5581,8 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 		delete(r.openSubmenus, props.ID)
 		r.menuNav(props.ID).Path = r.menuNav(props.ID).Path[:0]
 		if props.Open != nil {
-			*props.Open = 0
+			openResult := Menu_MenuContextOpenFor(*props.Open != 0, false, true, props.Open != nil)
+			*props.Open = boolInt(openResult.Open)
 		}
 	}
 	return selected

@@ -1786,15 +1786,20 @@ RenderContextMenu(MenuProps menu)
         menu.y = &y_local;
     if(state->context_pending_id == menu.id) {
         int activated = state->context_pending_activated;
+        MenuContextOpenResult open_result =
+            MenuContextOpenFor(*menu.open != 0, 0, 1, menu.open != NULL);
 
         state->context_pending_id = 0;
         state->context_pending_activated = 0;
-        *menu.open = 0;
+        *menu.open = open_result.open;
         return activated;
     }
     if(state->context_pending_closed_id == menu.id) {
+        MenuContextOpenResult open_result =
+            MenuContextOpenFor(*menu.open != 0, 0, 1, menu.open != NULL);
+
         state->context_pending_closed_id = 0;
-        *menu.open = 0;
+        *menu.open = open_result.open;
         return 0;
     }
     activation = PopupContextActivationFor(PopupDecisionFor(PopupContext, 0),
@@ -1804,7 +1809,10 @@ RenderContextMenu(MenuProps menu)
                                            IsMouseButtonReleased(
                                                MOUSE_BUTTON_RIGHT) != 0);
     if(activation.open) {
-        *menu.open = 1;
+        MenuContextOpenResult open_result =
+            MenuContextOpenFor(*menu.open != 0, 1, 0, menu.open != NULL);
+
+        *menu.open = open_result.open;
         *menu.x = (int)activation.origin.x;
         *menu.y = (int)activation.origin.y;
         SetFocus(menu.id);
@@ -1827,7 +1835,10 @@ RenderContextMenu(MenuProps menu)
     focused = !ContentDisabled() && menu.id > 0 && RegisterFocus(menu.id,panel) &&
               !ui_popup_input_focus_captures(menu.id);
     if(focused && IsKeyPressed(KEY_ESCAPE)) {
-        *menu.open = 0;
+        MenuContextOpenResult open_result =
+            MenuContextOpenFor(*menu.open != 0, 0, 1, menu.open != NULL);
+
+        *menu.open = open_result.open;
         state->context_open_id = 0;
         state->submenu_id = 0;
         menu_navigation_reset(0,NULL,0);

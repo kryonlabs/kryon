@@ -91,6 +91,11 @@ type MenuOutsideCloseDecision struct {
 	OpenIndex      int32
 }
 
+type MenuContextOpenResult struct {
+	Open    bool
+	Changed bool
+}
+
 func Menu_MenuBarRole() int32 {
 	var value_0 int32 = 1
 	return value_0
@@ -793,6 +798,34 @@ func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contai
 	}
 	var value_18 MenuOutsideCloseDecision = decision
 	return value_18
+}
+
+func Menu_MenuContextOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) MenuContextOpenResult {
+	var result MenuContextOpenResult = MenuContextOpenResult{}
+	var value_0 bool = open
+	result.Open = value_0
+	var value_1 bool = has_open
+	var value_2 bool = !value_1
+	if value_2 {
+		var value_3 MenuContextOpenResult = result
+		return value_3
+	}
+	var value_4 bool = open_requested
+	if value_4 {
+		var value_5 bool = true
+		result.Open = value_5
+	}
+	var value_6 bool = close_requested
+	if value_6 {
+		var value_7 bool = false
+		result.Open = value_7
+	}
+	var value_8 bool = result.Open
+	var value_9 bool = open
+	var value_10 bool = value_8 != value_9
+	result.Changed = value_10
+	var value_11 MenuContextOpenResult = result
+	return value_11
 }
 
 func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
