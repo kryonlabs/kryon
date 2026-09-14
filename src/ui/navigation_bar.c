@@ -252,9 +252,7 @@ ui_navigation_bar_metric_frame(int class_name, int role)
 {
     StyleFrame frame = {0};
     frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name, role,
-            ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
-            ButtonStateNormal),
+        NavigationBarRoleFactsFor(class_name, role, ButtonStateNormal),
         ButtonStateNormal);
     return frame;
 }

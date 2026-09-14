@@ -4989,8 +4989,13 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 	if viewH <= 0 {
 		viewH = r.GetScreenHeight()
 	}
-	itemBaseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
-	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBar(), StyleSheet_StyleAny())
+	itemBaseFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+		NavigationBar_NavigationBarItemFactsFor(props.ClassName,
+			int32(ButtonToneNeutral), int32(ButtonEmphasisSoft),
+			int32(ButtonStateNormal)), int32(ButtonStateNormal))}
+	barFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+		NavigationBar_NavigationBarFactsFor(props.ClassName,
+			int32(ButtonStateNormal)), int32(ButtonStateNormal))}
 	paint := NavigationBar_NavigationBarPaintFor(NavigationBarSpec{
 		ViewWidth:    w,
 		ViewHeight:   viewH,
@@ -5013,15 +5018,23 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		if item.Active && !item.Disabled {
 			itemState = ButtonStateSelected
 		}
-		baseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
+		baseFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+			NavigationBar_NavigationBarItemFactsFor(props.ClassName,
+				int32(ButtonToneNeutral), int32(ButtonEmphasisSoft),
+				int32(checkboxButtonState(false, false, false, item.Disabled))),
+			int32(checkboxButtonState(false, false, false, item.Disabled)))}
 		baseStyle := unpackStyle(baseFrame.Value)
 		labelFont, labelFontID := styleTextFace(baseStyle, Text14)
-		faceFrame := simpleStyleFrameWithClassRole(func() ButtonTone {
-			if item.Active {
-				return ButtonToneAccent
-			}
-			return ButtonToneNeutral
-		}(), itemState, item.Disabled, item.Active, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
+		faceTone := ButtonToneNeutral
+		faceEmphasis := ButtonEmphasisSoft
+		if item.Active {
+			faceTone = ButtonToneAccent
+			faceEmphasis = ButtonEmphasisFilled
+		}
+		faceFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+			NavigationBar_NavigationBarItemFactsFor(props.ClassName,
+				int32(faceTone), int32(faceEmphasis), int32(itemState)),
+			int32(itemState))}
 		itemPaint := NavigationBar_NavigationBarItemPaintFor(NavigationBarItemSpec{
 			Bar:         paint,
 			Index:       int32(i),

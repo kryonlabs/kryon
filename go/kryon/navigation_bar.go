@@ -5,6 +5,7 @@ package kryon
 // #import control_props
 // #import drawing_props
 // #import style
+// #import style_sheet
 type NavigationBarSpec struct {
 	ViewWidth    int32
 	ViewHeight   int32
@@ -126,6 +127,45 @@ func NavigationBar_NavigationBarActionRole() int32 {
 func NavigationBar_NavigationBarRouteRole() int32 {
 	var value_0 int32 = 18
 	return value_0
+}
+
+func NavigationBar_NavigationBarFactsFor(class_name int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindNavigationBar()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = StyleSheet_StyleAny()
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
+}
+
+func NavigationBar_NavigationBarRoleFactsFor(class_name int32, role int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindNavigationBar()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = role
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
+}
+
+func NavigationBar_NavigationBarItemFactsFor(class_name int32, tone int32, emphasis int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindNavigationBarItem()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = StyleSheet_StyleAny()
+	var value_4 int32 = tone
+	var value_5 int32 = emphasis
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
 }
 
 func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {

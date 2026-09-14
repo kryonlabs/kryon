@@ -31,12 +31,11 @@ Update this file whenever a phase advances. Files 01-09 describe the target desi
 
 ## Remaining Direct Facts Construction (Phase 3 Queue)
 
-- `src/ui/navigation_bar.c:255` - NavigationBar role frames
 - `src/ui/tab_bar.c:778` - PanedView handle frame
 - `src/ui/button.c:33` - generic control facts path (decide: shared `.kry` helper or widget-local)
 - `go/kryon/runtime.go:1747` - `resolveMinimalControlRoleState` generic helper
 
-Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`).
+Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`); NavigationBar (C `navigation_bar.c` and the Go retained path now use generated facts helpers with zero base, replacing `simpleStyleFrameWithClassRole` and its hidden `minimalControlStyleData` base).
 
 Tests that construct `StyleControlFacts` directly are valid and stay.
 
@@ -54,7 +53,7 @@ Tests that construct `StyleControlFacts` directly are valid and stay.
 Next commits, in order:
 
 1. [done 2026-09-14] TableView facts helper in `runtime/table_view.kry` (C `ui_tk.c` sites + Go `runtime.go` in one commit).
-2. NavigationBar facts helper (C `navigation_bar.c` + Go retained path).
+2. [done 2026-09-14] NavigationBar facts helper (C `navigation_bar.c` + Go retained path, zero base).
 3. PanedView handle facts helper (`tab_bar.c`).
 4. Button generic facts path decision (`button.c` + `resolveMinimalControlRoleState`).
 5. Phase 4 visual bases, one widget per commit, moving needed values into the built-in packs.

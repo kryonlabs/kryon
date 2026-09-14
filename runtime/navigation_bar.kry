@@ -3,6 +3,7 @@
 #import "control_props"
 #import "drawing_props"
 #import "style"
+#import "style_sheet"
 
 NavigationBarSpec :: struct {
     view_width: i32
@@ -121,6 +122,23 @@ NavigationBarActionRole :: () -> i32 #export {
 
 NavigationBarRouteRole :: () -> i32 #export {
     return 18
+}
+
+NavigationBarFactsFor :: (class_name: i32, state: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name,
+        StyleAny(), ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+        state)
+}
+
+NavigationBarRoleFactsFor :: (class_name: i32, role: i32, state: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name, role,
+        ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium, state)
+}
+
+NavigationBarItemFactsFor :: (class_name: i32, tone: i32, emphasis: i32,
+    state: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindNavigationBarItem(), 0, class_name,
+        StyleAny(), tone, emphasis, ControlSizeMedium, state)
 }
 
 NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
