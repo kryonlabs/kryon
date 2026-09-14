@@ -3857,6 +3857,7 @@ ui_text_area_render(TextAreaProps area)
             int click_dy = (int)mouse_world.y - g_ui_text_area_last_click_y;
             float scale = (float)Scale(1000) / 1000.0f;
             int double_click_slop = TextInputDoubleClickSlopFor(scale);
+            TextInputDoubleClickDecision click_decision;
 
             focused = 1;
             ClaimTextAreaFocus(area.focused);
@@ -3866,13 +3867,12 @@ ui_text_area_render(TextAreaProps area)
                 (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
                 (int)mouse_world.x, (int)mouse_world.y, scroll_y);
             *area.cursor_position = clicked_cursor;
-            if(g_ui_text_area_last_click_owner == area.focused &&
-               (drag_id <= 0 || g_ui_text_area_last_click_id == drag_id) &&
-               now - g_ui_text_area_last_click_time <= 0.45 &&
-               click_dx >= -double_click_slop &&
-               click_dx <= double_click_slop &&
-               click_dy >= -double_click_slop &&
-               click_dy <= double_click_slop) {
+            click_decision = TextInputDoubleClickDecisionFor(
+                g_ui_text_area_last_click_owner == area.focused,
+                g_ui_text_area_last_click_id == drag_id,
+                (float)(now - g_ui_text_area_last_click_time),
+                click_dx, click_dy, double_click_slop);
+            if(click_decision.double_click) {
                 int line_start;
                 int line_end;
 
