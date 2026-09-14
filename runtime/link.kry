@@ -27,6 +27,11 @@ LinkBoundsFor :: (bounds: Rectangle, text_width: i32,
     return result
 }
 
+LinkUnderlineYFor :: (bounds: Rectangle, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(bounds.y + bounds.height) - (i32)(2.0 * scale)
+}
+
 ResolveLinkAppearance :: (frame: StyleFrame, hovered: bool,
     disabled: bool) -> LinkAppearance #export {
     state: i32 = LinkStateNormal

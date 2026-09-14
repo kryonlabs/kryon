@@ -2450,7 +2450,8 @@ RenderLink(LinkProps link)
                ControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(appearance.underline && text_w > 0) {
-        int underline_y = (int)(bounds.y + bounds.height) - Scale(2);
+        int underline_y = LinkUnderlineYFor(
+            bounds, (float)Scale(1000) / 1000.0f);
         DrawLine((int)bounds.x, underline_y, (int)bounds.x + text_w,
                  underline_y, color);
     }

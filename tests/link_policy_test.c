@@ -39,6 +39,9 @@ main(void)
     check_bool("link fills zero height", (int)bounds.height == 18, 1);
     bounds = LinkBoundsFor((Rectangle){10, 20, 0, 0}, 0, 0, 16);
     check_bool("link falls back to font height", (int)bounds.height == 16, 1);
+    check_bool("link underline y",
+               LinkUnderlineYFor((Rectangle){10, 20, 72, 18}, 2.0f) == 34,
+               1);
 
     paint = ResolveLinkAppearance(normal, false, false);
     check_u32("normal link color", paint.color, normal.value.foreground);
