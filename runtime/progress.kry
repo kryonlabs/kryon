@@ -69,6 +69,20 @@ ProgressFillBounds :: (bounds: Rectangle, ratio: float) -> Rectangle #export {
     return fill
 }
 
+ProgressDrawRadius :: (bounds: Rectangle, radius: float) -> float #export {
+    if bounds.height <= 0.0 {
+        return 0.0
+    }
+    radius = radius / bounds.height
+    if radius < 0.0 {
+        return 0.0
+    }
+    if radius > 1.0 {
+        return 1.0
+    }
+    return radius
+}
+
 ProgressLabelX :: (bounds: Rectangle, fill_width: float,
     label_width: float, padding: float) -> float #export {
     x: float = bounds.x + (bounds.width - label_width) * 0.5

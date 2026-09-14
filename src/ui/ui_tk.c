@@ -2048,13 +2048,7 @@ RenderProgress(ProgressProps progress)
     if(!IsWindowReady())
         return;
     if(ui_modern_style() || ui_default_style()) {
-        float radius = progress.bounds.height > 0.0f
-            ? paint.radius / progress.bounds.height
-            : 0.0f;
-        if(radius < 0.0f)
-            radius = 0.0f;
-        if(radius > 1.0f)
-            radius = 1.0f;
+        float radius = ProgressDrawRadius(progress.bounds, paint.radius);
         DrawRectangleRounded(progress.bounds, radius, 12,
                              GetColor(paint.track_color));
         if(fill.width > 0.0f)

@@ -718,6 +718,12 @@ test_progress_layout_policy(void)
     check_int("progress clamped ratio",
               (int)(clamped.ratio * 100.0f + 0.5f), 100);
     check_int("progress clamped fill", (int)clamped.fill_bounds.width, 100);
+    check_float("progress draw radius normalizes",
+                ProgressDrawRadius(bounds, 5.0f), 0.5f);
+    check_float("progress draw radius clamps high",
+                ProgressDrawRadius(bounds, 50.0f), 1.0f);
+    check_float("progress draw radius clamps empty height",
+                ProgressDrawRadius((Rectangle){10, 20, 100, 0}, 5.0f), 0.0f);
 }
 
 static void
