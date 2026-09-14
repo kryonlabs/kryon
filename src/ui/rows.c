@@ -241,7 +241,7 @@ GetButtonRowHeight(ButtonRowProps row)
         row_w = wrap.row_width;
     }
 
-    return rows * height + (rows - 1) * gap;
+    return ButtonRowTotalHeight(rows, height, gap);
 }
 
 int
@@ -474,7 +474,7 @@ RenderButtonRow(ButtonRowProps row)
                     clicked = item_index;
                 x += button_w + gap;
             }
-            y += row.height + gap;
+            y = ButtonRowNextY(y, row.height, gap);
         }
 
         row_start = i;

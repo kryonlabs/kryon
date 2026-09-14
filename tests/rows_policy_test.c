@@ -156,6 +156,11 @@ main(void)
     assert(button_placement.button_width == 0);
     assert(button_placement.total_width == 0);
     assert(button_placement.start_x == 10);
+    assert(ButtonRowTotalHeight(3, 30, 6) == 102);
+    assert(ButtonRowTotalHeight(0, 30, 6) == 0);
+    assert(ButtonRowTotalHeight(2, -30, -6) == 0);
+    assert(ButtonRowNextY(20, 30, 6) == 56);
+    assert(ButtonRowNextY(20, -30, -6) == 20);
     row.value.fields = StyleContentOffset | StyleGap;
     row.value.offset_y = 20.0f;
     row.value.gap = 0.0f;

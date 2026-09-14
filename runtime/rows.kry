@@ -260,6 +260,19 @@ ButtonRowPlacementFor :: (x: i32, width: i32, row_count: i32,
     return placement
 }
 
+ButtonRowTotalHeight :: (row_count: i32, row_height: i32, gap: i32) -> i32 #export {
+    if row_count <= 0 { return 0 }
+    if row_height < 0 { row_height = 0 }
+    if gap < 0 { gap = 0 }
+    return row_count * row_height + (row_count - 1) * gap
+}
+
+ButtonRowNextY :: (y: i32, row_height: i32, gap: i32) -> i32 #export {
+    if row_height < 0 { row_height = 0 }
+    if gap < 0 { gap = 0 }
+    return y + row_height + gap
+}
+
 SpinboxRowMetricsFor :: (row_height: i32, control_width: i32,
     scale: float, row: StyleFrame, control: StyleFrame) -> SpinboxRowMetrics #export {
     metrics: SpinboxRowMetrics

@@ -106,7 +106,7 @@ surface review:
 | `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, target-index, lifecycle gates, and result normalization policy | `.kry support` |
 | `runtime/reorder_props.kry` | Reorder support state, data, and result records | `.kry support` |
 | `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
-| `runtime/rows.kry` | Info/form row sizing and layout fallback policy | `.kry canonical` |
+| `runtime/rows.kry` | Info/form/button row sizing, wrapping, and layout fallback policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout, gap, font fallback, wrapping, and segment sizing policy | `.kry canonical` |
 | `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
@@ -748,7 +748,8 @@ and host plumbing behind the canonical names.
    widgets already have `.kry` policy, but raw widget constants still remain in
    native files. The latest focused audits moved context-popup activation into
    `runtime/popup_policy.kry` and label text-field row layout into
-  `runtime/rows.kry`; InfoRows background/text/separator geometry now also
+  `runtime/rows.kry`; InfoRows background/text/separator geometry and
+  button-row wrap height/advance now also
   routes through `runtime/rows.kry`; menu selectable-item, submenu activation,
   wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
