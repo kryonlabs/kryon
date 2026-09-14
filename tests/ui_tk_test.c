@@ -1480,8 +1480,13 @@ test_input_value_policy(void)
     generic_step = InputStepValueForKind(NumericDouble, 2.125, 0.125, 1.0, 1,
                                          0);
     check_float("input generic double step", (float)generic_step.value, 2.25f);
+    check_int("input default step button width",
+              InputDefaultStepButtonWidth(1.0f), 24);
+    check_int("input scaled step button width",
+              InputDefaultStepButtonWidth(2.0f), 48);
 
-    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 1, 0, 24, 1);
+    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 1, 0,
+                                InputDefaultStepButtonWidth(1.0f), 1);
     check_int("input layout field width", (int)layout.field.width, 72);
     check_int("input layout minus x", (int)layout.minus.x, 82);
     check_int("input layout plus x", (int)layout.plus.x, 106);
@@ -1493,7 +1498,8 @@ test_input_value_policy(void)
     check_int("input multi field width", (int)layout.field.width, 16);
     check_int("input multi plus x", (int)layout.plus.x, 78);
 
-    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 2, 1, 24, 0);
+    layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 2, 1,
+                                InputDefaultStepButtonWidth(1.0f), 0);
     check_int("input no-step field x", (int)layout.field.x, 70);
     check_int("input no-step field width", (int)layout.field.width, 60);
     check_int("input no-step has buttons", layout.has_step_buttons ? 1 : 0, 0);

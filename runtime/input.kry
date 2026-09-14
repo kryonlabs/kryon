@@ -24,6 +24,17 @@ InputCellLayout :: struct {
     has_step_buttons: bool
 }
 
+InputScaledMetric :: (value: float, scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    metric: i32 = (i32)(value * scale)
+    if metric < 0 { return 0 }
+    return metric
+}
+
+InputDefaultStepButtonWidth :: (scale: float) -> i32 #export {
+    return InputScaledMetric(24.0, scale)
+}
+
 InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
     requested_button_width: i32, has_step: bool) -> InputCellLayout #export {
     layout: InputCellLayout

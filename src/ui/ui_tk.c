@@ -2947,17 +2947,13 @@ ui_numeric_format(char *text, size_t text_size, const char *format,
 }
 
 static int
-ui_numeric_step_button_width(void)
-{
-    return Scale(24);
-}
-
-static int
 ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                  int count, double step, double step_fast, const char *format,
                  int disabled, int kind)
 {
     int changed = 0;
+    int step_button_width = InputDefaultStepButtonWidth(
+        (float)Scale(1000) / 1000.0f);
 
     if(values == NULL || count <= 0)
         return 0;
@@ -2966,7 +2962,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         NumericInputState *state = ui_numeric_input_state(kind, id, i);
         int token = state->token;
         InputCellLayout layout = InputCellLayoutFor(
-            bounds, count, i, ui_numeric_step_button_width(), step != 0.0);
+            bounds, count, i, step_button_width, step != 0.0);
         Rectangle field_bounds = layout.field;
         Rectangle minus = layout.minus;
         Rectangle plus = layout.plus;
