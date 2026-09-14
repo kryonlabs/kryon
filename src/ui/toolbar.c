@@ -12,6 +12,7 @@ RenderToolbar(ToolbarProps toolbar)
     Style bar;
     Style divider;
     Style action_style;
+    ToolbarDividerLine divider_line;
     bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
@@ -57,8 +58,9 @@ RenderToolbar(ToolbarProps toolbar)
                      bar.border, bar.radius, bar.border_width, 0.0f, 0.0f,
                      0, bar.focus, 0.0f, bar.opacity, ui_style_fill(bar),
                      bar.material);
-    DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
-             toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
+    divider_line = ToolbarDividerLineFor(toolbar.x, toolbar.y, toolbar.width,
+                                         toolbar.height);
+    DrawLine(divider_line.x1, divider_line.y1, divider_line.x2, divider_line.y2,
              divider.border);
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {

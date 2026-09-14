@@ -36,6 +36,13 @@ ToolbarLayout :: struct {
     side_padding: i32
 }
 
+ToolbarDividerLine :: struct {
+    x1: i32
+    y1: i32
+    x2: i32
+    y2: i32
+}
+
 ToolbarMetric :: (fields: u32, field: u32, value: i32, fallback: float,
     scale: float) -> i32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -84,6 +91,16 @@ ToolbarActionIdFor :: (toolbar_id: i32, index: i32) -> i32 #export {
         return 0
     }
     return toolbar_id * 100 + index + 1
+}
+
+ToolbarDividerLineFor :: (x: i32, y: i32, width: i32, height: i32) -> ToolbarDividerLine #export {
+    line: ToolbarDividerLine
+    if width < 0 { width = 0 }
+    line.x1 = x
+    line.x2 = x + width
+    line.y1 = y + height - 1
+    line.y2 = line.y1
+    return line
 }
 
 ToolbarSidePadding :: (value: i32, fields: u32, scale: float) -> i32 #export {

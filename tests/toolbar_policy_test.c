@@ -9,6 +9,7 @@ test_toolbar_action_bounds(void)
         .x = 0, .y = 0, .width = 320, .height = 48,
         .action_count = 2, .scale = 2.0f
     });
+    ToolbarDividerLine divider = ToolbarDividerLineFor(5, 7, 120, 44);
     Rectangle first = ToolbarActionBoundsFor(layout, 0, 2);
     Rectangle second = ToolbarActionBoundsFor(layout, 1, 2);
 
@@ -26,6 +27,10 @@ test_toolbar_action_bounds(void)
     assert(ToolbarActionIdFor(7, -1) == 0);
     assert(ToolbarActionIdFor(7, 0) == 701);
     assert(ToolbarActionIdFor(7, 1) == 702);
+    assert(divider.x1 == 5);
+    assert(divider.y1 == 50);
+    assert(divider.x2 == 125);
+    assert(divider.y2 == 50);
     assert(first.x == 140.0f);
     assert(first.y == -12.0f);
     assert(second.x == 224.0f);
