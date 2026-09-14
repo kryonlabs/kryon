@@ -51,6 +51,8 @@ int main(void)
     assert(TextControlClipGuardFor(2.0f) == 2);
     Rectangle clip = TextControlClipBounds((Rectangle){10, 20, 30, 40}, 2.0f);
     assert(clip.x == 10 && clip.y == 18 && clip.width == 30 && clip.height == 44);
+    assert(TextCenteredY((Rectangle){10, 20, 30, 40}, 16) == 32);
+    assert(TextCenteredY((Rectangle){10, 20, 30, 15}, 16) == 20);
     assert(TextSelectionLineEndPaddingFor(2.0f) == 12);
     assert(TextSelectionMinWidthFor(2.0f) == 8);
     assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);

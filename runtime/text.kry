@@ -97,6 +97,10 @@ TextControlClipBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export 
     return clip
 }
 
+TextCenteredY :: (bounds: Rectangle, line_height: i32) -> i32 #export {
+    return (i32)bounds.y + ((i32)bounds.height - line_height) / 2
+}
+
 TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(6.0 * scale)

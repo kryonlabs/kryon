@@ -30,6 +30,7 @@
 #include "runtime/spinbox.h"
 #include "runtime/style.h"
 #include "runtime/table_view.h"
+#include "runtime/text.h"
 #include "runtime/tree_view.h"
 #include <limits.h>
 
@@ -500,7 +501,7 @@ ui_menu_bar_owns_open_menu(int id, int menu_count)
 static int
 ui_row_text_y(Rectangle bounds, int font)
 {
-    return (int)bounds.y + ((int)bounds.height - TextLineHeight(font)) / 2;
+    return TextCenteredY(bounds, TextLineHeight(font));
 }
 
 static StyleFrame
