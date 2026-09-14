@@ -10,6 +10,7 @@
 #include "runtime/style.h"
 #include "runtime/surface.h"
 #include "runtime/text.h"
+#include "runtime/paragraph.h"
 #include "runtime/text_input.h"
 #include "runtime/input.h"
 #include "runtime/grid.h"
@@ -2487,7 +2488,8 @@ Text(TextProps props)
         if(bounded && props.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
-                .line_gap = Scale(2)
+                .line_gap = ParagraphDefaultLineGap(
+                    (float)Scale(1000) / 1000.0f)
             };
             measured_height = (float)ui_paragraph_height(paragraph);
         } else {
