@@ -3841,9 +3841,9 @@ RenderTableView(TableViewProps table)
                                                       (float)GetScale(),
                                                       metrics);
             if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                int width = toolkit->resize_start_width + (int)mouse.x - toolkit->resize_start_x;
-                if(width < minimum)
-                    width = minimum;
+                int width = TableViewResizeColumnWidthFor(
+                    toolkit->resize_start_width, toolkit->resize_start_x,
+                    (int)mouse.x, minimum);
                 if(table.column_widths[toolkit->resize_column] != width) {
                     table.column_widths[toolkit->resize_column] = width;
                     changed = 1;

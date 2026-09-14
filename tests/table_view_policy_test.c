@@ -46,6 +46,9 @@ main(void)
     assert(TableViewColumnWidth(72, 100) == 72);
     assert(TableViewMinimumColumnWidth(0, 2.0f, metrics) == 64);
     assert(TableViewMinimumColumnWidth(40, 2.0f, metrics) == 80);
+    assert(TableViewResizeColumnWidthFor(120, 50, 90, 64) == 160);
+    assert(TableViewResizeColumnWidthFor(120, 50, 10, 64) == 80);
+    assert(TableViewResizeColumnWidthFor(120, 50, -20, 64) == 64);
     assert(TableViewSelectedRowFor(-1, 4) == 0);
     assert(TableViewSelectedRowFor(9, 4) == 3);
     assert(TableViewSelectedRowFor(2, 4) == 2);
