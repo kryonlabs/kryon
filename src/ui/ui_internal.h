@@ -294,10 +294,7 @@ const char *ui_inspect_control_id(char *buf, size_t buf_size,
                                   const char *label);
 int ReleaseConsumed(void);
 void ConsumeRelease(void);
-int PointerReleaseAvailable(Vector2 point);
-int PointerReleaseOutside(Rectangle bounds);
 int press_started_inside(Rectangle bounds);
-int mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active);
 void ClearTextInputFocus(void);
 int HandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);

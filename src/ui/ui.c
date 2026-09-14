@@ -886,23 +886,6 @@ press_started_inside_circle(Vector2 center, float radius)
 }
 
 int
-mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active)
-{
-    return active &&
-           IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-           !g_ui_release_consumed &&
-           !InputCapturesClick(mouse) &&
-           press_started_inside(bounds);
-}
-
-int
-PointerReleaseAvailable(Vector2 point)
-{
-    return IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-           !InputCapturesClick(point);
-}
-
-int
 HandleClick(Rectangle bounds, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
@@ -968,15 +951,6 @@ HandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
         return 1;
     }
     return 0;
-}
-
-int
-PointerReleaseOutside(Rectangle bounds)
-{
-    Vector2 mouse = ui_mouse_world();
-
-    return PointerReleaseAvailable(mouse) &&
-           !CheckCollisionPointRec(mouse, bounds);
 }
 
 int
