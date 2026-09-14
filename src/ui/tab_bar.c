@@ -642,11 +642,13 @@ RenderTabBar(TabBarProps bar)
                 double now = GetTime();
 
                 if(bar.double_clicked_index != NULL &&
-                   ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                            tab_bar_store->last_clicked_bar_id,
-                                            tab_bar_store->last_clicked_bar_bounds) &&
-                   tab_bar_store->last_clicked_tab == i &&
-                   now - tab_bar_store->last_click_time <= 0.45)
+                   TabBarDoubleClickShouldRun(
+                       ui_tab_bar_same_identity(
+                           bar.id, bar.bounds,
+                           tab_bar_store->last_clicked_bar_id,
+                           tab_bar_store->last_clicked_bar_bounds),
+                       tab_bar_store->last_clicked_tab, i,
+                       (float)tab_bar_store->last_click_time, (float)now))
                     *bar.double_clicked_index = i;
                 tab_bar_store->last_clicked_tab = i;
                 tab_bar_store->last_clicked_bar_id = bar.id;

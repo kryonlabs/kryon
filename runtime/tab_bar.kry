@@ -250,6 +250,23 @@ TabBarWrappedIndex :: (from: i32, direction: i32, step: i32,
     return index
 }
 
+TabBarDoubleClickShouldRun :: (same_bar: bool, last_index: i32,
+    index: i32, last_time: float, now: float) -> bool #export {
+    if !same_bar {
+        return false
+    }
+    if last_index != index {
+        return false
+    }
+    if last_time < 0.0 {
+        return false
+    }
+    if now - last_time > 0.45 {
+        return false
+    }
+    return true
+}
+
 TabBarScrollFor :: (bounds_width: float, total_width: i32, scroll: i32) -> TabBarScroll #export {
     result: TabBarScroll
     result.equal_tabs = (float)total_width <= bounds_width

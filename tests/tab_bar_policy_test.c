@@ -91,6 +91,11 @@ main(void)
     assert(TabBarWrappedIndex(2, 1, 1, 3) == 0);
     assert(TabBarWrappedIndex(1, 0, 2, 3) == 0);
     assert(TabBarWrappedIndex(1, 1, 2, 0) == -1);
+    assert(TabBarDoubleClickShouldRun(1, 2, 2, 10.0f, 10.30f));
+    assert(!TabBarDoubleClickShouldRun(0, 2, 2, 10.0f, 10.30f));
+    assert(!TabBarDoubleClickShouldRun(1, 1, 2, 10.0f, 10.30f));
+    assert(!TabBarDoubleClickShouldRun(1, 2, 2, -1.0f, 10.30f));
+    assert(!TabBarDoubleClickShouldRun(1, 2, 2, 10.0f, 10.50f));
     assert(scroll.equal_tabs == 1);
     assert(scroll.scroll == 0);
     check_rect(TabBarEqualTabBounds(bounds, 3, 2), 170, 20, 80, 32);
