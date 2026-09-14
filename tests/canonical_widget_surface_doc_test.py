@@ -492,11 +492,7 @@ def main() -> int:
     for kind in retained_expected:
         if kind not in retained_doc_rows:
             errors.append(f"missing retained node kind row: {kind}")
-    for kind in sorted(
-        set(retained_doc_rows)
-        - set(retained_expected)
-        - {"WIDGET_READONLY_TEXT_BOX", "WIDGET_PARAGRAPH_MODAL", "WIDGET_TEXT_INPUT_PAINT"}
-    ):
+    for kind in sorted(set(retained_doc_rows) - set(retained_expected)):
         errors.append(f"retained node kind row is not in runtime/widget_kind.kry: {kind}")
     if compat_expected != NATIVE_COMPAT_EXPORTS:
         for name in sorted(compat_expected - NATIVE_COMPAT_EXPORTS):

@@ -94,7 +94,7 @@ and CHECKBOX;
 every other kind renders through its immediate-mode call during the
 declaration pass (`src/ui/ui_tree.c`).
 
-### UI/Display
+### Display
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -110,7 +110,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Image style / image Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Plot | ✅ | ✅ | ✅ | ✅ | ✅ `Plot` | ✗ |
 
-### UI/Input
+### Input
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -137,7 +137,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Separator labels | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | ColorPicker / swatch Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 
-### UI/Layout
+### Layout
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -152,7 +152,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Geometry layout (`Rectangle`, `Grid`, `Column`, `Row`, `Stack`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ structural |
 | Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Canvas` block | ✅ host canvas scope + hit-test | ✗ |
 
-### UI/Collections
+### Collections
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -164,7 +164,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | ListBox multi-select props (focus, keyboard navigation, Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Nested disabled scope | ✅ | ✅ | ✅ | ✅ | ✅ `Disabled` block | ✗ |
 
-### UI/Navigation
+### Navigation
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -177,7 +177,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Toolbar | ✅ | ✅ | ✅ | ◐ `Toolbar` only | ✅ `Toolbar` | ✗ |
 | TitleBar family | ✅ | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
 
-### UI/Overlays
+### Overlays
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
@@ -185,7 +185,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Toast | ✅ | ✅ | ✅ | ✅ `Toast` | ✅ `Toast` | ✗ |
 | Transition/focus policy | ✅ | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
 
-### UI/Composite And App Framework
+### Composite And App Framework
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|

@@ -187,44 +187,44 @@ has a single place to land.
 
 | Public name | Registry group | Detail | Runtime `.kry` source | State | Migration note |
 |---|---|---|---|---|---|
-| `Background` | `UI/Display` | Fill | `runtime/primitive.kry` | `.kry-backed` | Viewport bounds and app fallback policy are `.kry`; host keeps immediate fill drawing and retained paint ordering. |
-| `Text` | `UI/Display` | Label | `runtime/text.kry`, `runtime/text_input.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface; retained tree typography uses resolved KSS font sizes directly; selectable range normalization uses shared `.kry` text-input policy, and selectable highlight/double-click line-selection policy is `.kry`. |
-| `Paragraph` | `UI/Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry`, `runtime/text.kry`, `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, line-step, height, line-stride, alignment, selectable line-index/local-offset and double-click line-selection policy, `ParagraphSpec` data, and selectable range normalization are `.kry`; text parsing, line-break array ownership, icon shaping, selection ownership/drawing, and drawing remain host support. |
-| `Box` | `UI/Display` | Shape | `runtime/primitive.kry` | `.kry-backed` | Rectangle bounds policy is `.kry`; host keeps fill/border drawing. |
-| `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
-| `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
-| `Icon` | `UI/Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
-| `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; placeholder typography uses resolved KSS font sizes directly; cache/loading/drawing remain host support. |
-| `Card` | `UI/Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
-| `Button` | `UI/Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition; retained and immediate typography defaults plus fallback/terminal paint policy are `.kry`/KSS-owned. |
-| `Link` | `UI/Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Bounds, interaction, activation, state, and color policy are `.kry`; URL dispatch remains host support. |
-| `TextField` | `UI/Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
-| `Dropdown` | `UI/Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, popup placement, row/window, scrollbar, scrolling, navigation, indicator geometry, and rich option data are generated from `.kry`. |
-| `Slider` | `UI/Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
-| `Toggle` | `UI/Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
-| `Checkbox` | `UI/Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint, row/text layout, and flag policy are `.kry`; box, mark, and label roles are KSS-owned. |
-| `Radio` | `UI/Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, and marker text policy are `.kry`; host keeps group input. |
-| `Progress` | `UI/Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
-| `Spinbox` | `UI/Input` | Number | `runtime/spinbox.kry` | `.kry-backed` | Layout/step policy is `.kry`; host keeps text/button input. |
-| `ColorPicker` | `UI/Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
-| `SegmentedControl` | `UI/Input` | Segments | `runtime/segmented_control.kry` | `.kry-backed` | Layout, gap, font fallback, wrapping, and segment sizing policy are `.kry`; host keeps label measurement, input sampling, and button drawing. |
-| `Group` | `UI/Layout` | Container | `runtime/group.kry` | `.kry-backed` | Canonical non-layout grouping scope; bounds/content policy is `.kry`, host keeps retained tree scope ownership. |
-| `Separator` | `UI/Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
-| `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
-| `PanedView` | `UI/Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp, layout, handle geometry, pointer split, drag lifecycle, and change policy are `.kry`; host keeps active split pointer storage and popup input owner binding. |
-| `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, marker text, pointer/body toggle, close, keyboard open, and tree focus-routing policy are `.kry`/KSS-owned; host keeps input sampling, focus application, and drawing. |
-| `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation and row paint geometry policy is `.kry`; host keeps input/scroll sampling. |
-| `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, marker text, text bounds, paint geometry, and row-selection decision policy are `.kry`; item typography defaults are KSS-owned; host keeps input sampling, selected-id storage, expansion state, and drawing. |
-| `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header/row pointer decisions, keyboard selection, activation, clear-selection, resize lifecycle/width, and clipboard intent policy are `.kry`; host keeps column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
-| `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
-| `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
-| `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data and bar, popup, and context behavior props are generated from `.kry`. |
-| `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Item interaction/state, paint, sizing, and configuration modal layout/count/default policy are `.kry`. |
-| `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry/style-size and icon slider popup close policy are `.kry`; host dispatches child actions. |
-| `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing, scroll, keyboard index, reorder marker/drag lifecycle, and double-click decision policy are `.kry`; host keeps input sampling and state storage. |
-| `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Effective height/state, layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
-| `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry and keyboard activation policy are `.kry`; host keeps focus state, registration, key sampling, popup capture lookup, and drawing. |
-| `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback/result, and action sizing/row policy are `.kry`; host keeps capture application, release consumption, text editing, and drawing. |
+| `Background` | `Display` | Fill | `runtime/primitive.kry` | `.kry-backed` | Viewport bounds and app fallback policy are `.kry`; host keeps immediate fill drawing and retained paint ordering. |
+| `Text` | `Display` | Label | `runtime/text.kry`, `runtime/text_input.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface; retained tree typography uses resolved KSS font sizes directly; selectable range normalization uses shared `.kry` text-input policy, and selectable highlight/double-click line-selection policy is `.kry`. |
+| `Paragraph` | `Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry`, `runtime/text.kry`, `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, line-step, height, line-stride, alignment, selectable line-index/local-offset and double-click line-selection policy, `ParagraphSpec` data, and selectable range normalization are `.kry`; text parsing, line-break array ownership, icon shaping, selection ownership/drawing, and drawing remain host support. |
+| `Box` | `Display` | Shape | `runtime/primitive.kry` | `.kry-backed` | Rectangle bounds policy is `.kry`; host keeps fill/border drawing. |
+| `Line` | `Display` | Stroke | `runtime/primitive.kry` | `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
+| `Bevel` | `Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
+| `Icon` | `Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
+| `Image` | `Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; placeholder typography uses resolved KSS font sizes directly; cache/loading/drawing remain host support. |
+| `Card` | `Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
+| `Button` | `Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition; retained and immediate typography defaults plus fallback/terminal paint policy are `.kry`/KSS-owned. |
+| `Link` | `Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Bounds, interaction, activation, state, and color policy are `.kry`; URL dispatch remains host support. |
+| `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
+| `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, popup placement, row/window, scrollbar, scrolling, navigation, indicator geometry, and rich option data are generated from `.kry`. |
+| `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
+| `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
+| `Checkbox` | `Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint, row/text layout, and flag policy are `.kry`; box, mark, and label roles are KSS-owned. |
+| `Radio` | `Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, and marker text policy are `.kry`; host keeps group input. |
+| `Progress` | `Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
+| `Spinbox` | `Input` | Number | `runtime/spinbox.kry` | `.kry-backed` | Layout/step policy is `.kry`; host keeps text/button input. |
+| `ColorPicker` | `Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
+| `SegmentedControl` | `Input` | Segments | `runtime/segmented_control.kry` | `.kry-backed` | Layout, gap, font fallback, wrapping, and segment sizing policy are `.kry`; host keeps label measurement, input sampling, and button drawing. |
+| `Group` | `Layout` | Container | `runtime/group.kry` | `.kry-backed` | Canonical non-layout grouping scope; bounds/content policy is `.kry`, host keeps retained tree scope ownership. |
+| `Separator` | `Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
+| `Fieldset` | `Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
+| `PanedView` | `Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp, layout, handle geometry, pointer split, drag lifecycle, and change policy are `.kry`; host keeps active split pointer storage and popup input owner binding. |
+| `Collapsible` | `Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, marker text, pointer/body toggle, close, keyboard open, and tree focus-routing policy are `.kry`/KSS-owned; host keeps input sampling, focus application, and drawing. |
+| `ListBox` | `Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation and row paint geometry policy is `.kry`; host keeps input/scroll sampling. |
+| `TreeView` | `Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, marker text, text bounds, paint geometry, and row-selection decision policy are `.kry`; item typography defaults are KSS-owned; host keeps input sampling, selected-id storage, expansion state, and drawing. |
+| `TableView` | `Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header/row pointer decisions, keyboard selection, activation, clear-selection, resize lifecycle/width, and clipboard intent policy are `.kry`; host keeps column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
+| `TextArea` | `Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
+| `CanvasGrid` | `Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
+| `Menu` | `Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data and bar, popup, and context behavior props are generated from `.kry`. |
+| `NavigationBar` | `Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Item interaction/state, paint, sizing, and configuration modal layout/count/default policy are `.kry`. |
+| `Toolbar` | `Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry/style-size and icon slider popup close policy are `.kry`; host dispatches child actions. |
+| `TabBar` | `Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing, scroll, keyboard index, reorder marker/drag lifecycle, and double-click decision policy are `.kry`; host keeps input sampling and state storage. |
+| `TitleBar` | `Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Effective height/state, layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
+| `Focus` | `Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry and keyboard activation policy are `.kry`; host keeps focus state, registration, key sampling, popup capture lookup, and drawing. |
+| `Modal` | `Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback/result, and action sizing/row policy are `.kry`; host keeps capture application, release consumption, text editing, and drawing. |
 | `Scene` | `Game2D/Core` | Scene root | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public declaration props/defaults and kind values are `.kry`; scene ownership, lifecycle, physics world, and rendering remain native Game2D support. |
 | `Node2D` | `Game2D/Core` | Transform | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public transform declaration props/defaults and kind values are `.kry`; runtime tree mutation and world transform propagation remain native. |
 | `Camera2D` | `Game2D/Core` | Camera | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; scene lifecycle and camera activation remain native Game2D support. |
@@ -642,10 +642,8 @@ stays prefix-free.
 | `WidgetKindToggle` | `Toggle` | `.kry canonical` |
 | `WidgetKindCheckbox` | `Checkbox` | `.kry canonical` |
 | `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/double-click line-selection policy is `.kry-backed` |
-| `WIDGET_READONLY_TEXT_BOX` | Removed | Old retained node/helper deleted; use `TextArea` with read-only props. |
 | `WidgetKindNavigationBar` | `NavigationBar` | `.kry canonical` |
 | `WidgetKindTabBar` | `TabBar` | `.kry canonical` |
-| `WIDGET_PARAGRAPH_MODAL` | Removed | Old retained measuring helper deleted; compose `Modal` with `Paragraph`/`Text`. |
 | `WidgetKindTitleBar` | `TitleBar` | `.kry canonical` |
 | `WidgetKindGroup` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
 | `WidgetKindColumn` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |
@@ -655,7 +653,6 @@ stays prefix-free.
 | `WidgetKindImage` | `Image` | `.kry canonical`; fit and missing-placeholder layout policy are `.kry-backed` |
 | `WidgetKindCustom` | `Custom` | Internal support escape hatch |
 | `WidgetKindDrag` | `Drag` | `.kry canonical` |
-| `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WidgetKindCustom` with a private runtime flag. |
 | `WidgetKindRouter` | `Router` | `.kry canonical` |
 | `WidgetKindCard` | `Card` | `.kry canonical` |
 
@@ -689,63 +686,17 @@ which concepts deserve dedicated retained node kinds later.
 | `StylePicker` | `WidgetKindCustom` | `.kry canonical`; public props and option state live in `runtime/style_picker_props.kry` |
 | `Guide` | `WidgetKindCustom` | `.kry canonical`; guide and pager policy live in `runtime/guide.kry` and `runtime/guide_pager.kry` |
 
-Recent retained-tree public C cleanup:
-
-| Old public name | Current name |
-|---|---|
-| `UIEventKind`, `UI_EVENT_*` | `EventKind`, `EVENT_*` |
-| `UIEvent` | `Event` |
-| `UIInvalidation`, `UI_INVALIDATE_*` | `Invalidation`, `INVALIDATE_*` |
-| `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `int` as an opaque integer plus `GetNodeKindName(kind)` |
-| scene `NODE_*`, `NODE_FLAG_*` constants | Generated `NodeKind*` and `NodeFlag*` values from `runtime/scene_tree_props.kry` |
-| `UIWidgetNode` | Opaque `TreeNode` inspection handle plus `GetNode*` accessors |
-| `UIWidgetData` | Internal `WidgetData`; public code uses clean node inspection helpers |
-| public C `ButtonSpec` | Internal retained/render payload; public code uses `Button(ButtonProps)` |
-| text input paint snapshot | Internal `TextInputPaint` host snapshot. |
-| `UIAccessibilitySink` | `AccessibilitySink` |
-| `UIInspect*`, `BeginUIInspect*`, `PushUIInspect*`, `IsUIInspectActive` | `Inspect*`, `BeginInspect*`, `PushInspect*`, `IsInspectActive` |
-| `UIDPIState`, `UI_DPI_BASE_*`, `InitUIDPI`, `GetUIDPI*` | `DPIState`, `DPI_BASE_*`, `InitDPI`, `GetDPI*` |
-| `UIFrameState`, `InitUI`, `BeginUIFrame`, `EndUIFrame` | `FrameState`, `InitInterface`, `BeginInterfaceFrame`, `EndInterfaceFrame` |
-| `SetUI*`, `GetUI*`, `IsUI*`, `ClearUI*`, `PushUI*`, `PopUI*` focus/input helpers | `Set*`, `Get*`, `Is*`, `Clear*`, `Push*`, `Pop*` focus/input helpers |
-| `UIFont*`, `UI_FONT_*`, `EnsureUIDefaultFont`, `RegisterUISmallFont` | `TextFont*`, `TEXT_FONT_*`, `EnsureDefaultFont`, `RegisterSmallTextFont` |
-| `UIClipboard*`, `UI_CLIPBOARD_*`, `UIPrimarySelection*` | `Clipboard*`, `CLIPBOARD_*`, `PrimarySelection*` |
-| `ICON_SHEET_UI` | `ICON_SHEET_CORE` |
-| old profile image helpers | `ProfileImage*`, `SyncProfileIcon`, `SYNC_PROFILE_ICON_*` |
-| `SetUIViewSize`, `GetUIViewWidth`, `GetUIViewHeight` | `SetViewSize`, `GetViewWidth`, `GetViewHeight` |
-| `GetUICenteredColumn`, `GetUIPageSidePadding` | `GetCenteredColumn`, `GetPageSidePadding` |
-| `SetUIScale`, `GetUIScale`, `ClampUIPx` | `SetScale`, `GetScale`, `ClampPx` |
-| `LightenUIColor`, `DarkenUIColor` | `LightenColor`, `DarkenColor` |
-| `BeginUIClip`, `EndUIClip`, `ResetUIClip`, `GetUIClip*` | `BeginClip`, `EndClip`, `ResetClip`, `GetClip*` |
-| `GetFontSize`, `GetSmallFontSize`, `GetTitleFontSize`, `FitFontSize` | Internal native/KSS typography helpers; public code uses explicit text tokens or style props. |
-| `TextWidth`, `TextHeight`, `TextLineHeight`, `TextBaselineY` | Internal font plumbing; public code uses `Text`/`MeasureText` policy. |
-| `ICON_SIZE_*`, `IconSize` enum | Removed; public code uses numeric `icon_size` props and theme metrics. |
-| `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | Public code uses `Drag(DragProps)` and `Slider(SliderProps)` with value kind/props; scalar/whole helper splits are internal runtime policy only. |
-| `BeginWidget`, `EndWidget`, `WidgetSet*`, `WidgetFlagMovable`/`WidgetFlagResizable`/`WidgetFlagReadOnly` | Internal inspect registration; public code uses canonical widget declarations. |
-| lowercase/variant inspect widget labels such as `button`, `vertical_slider`, `text_area` | Canonical inspect labels such as `Button`, `Slider`, `TextArea`; variants belong in props/state, not separate inspect names. |
-| retained-tree `NODE_*` state flags | Generated `TreeNodeFlag*` support names in `runtime/widget_kind.kry`; not public widget concepts. |
-| `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
-| app-facing `Texture`, `DrawTexture`, `DrawTexturePro`, `DrawTextureRec` fixes | `Image(ImageProps)`; if `ImageProps` cannot express the app case, add the reusable Kryon image primitive first. |
-| Go package-level `BeginButton`, `BeginCard` | Removed; public Go code uses `kr.Button` and `kr.Card`. Composed block lowering uses internal `ButtonScope`/`CardScope` hooks until direct child lowering is canonicalized. |
-| Go package-level `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Internal tests use `popupCloseScope` until direct popup-close lowering is removed. |
-| public C `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Native tests use the internal `popup_close_scope` hook. |
-| `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
-| generated `ScrollScope`/`ScrollEndScope` and `TableCellScope`/`TableCellEndScope` hooks | `Scroll` and `TableCell` lexical blocks for authored `.kry`; generated hooks stay outside the public runtime contract, and authored calls are parser errors. |
-| generated `CanvasScope`/`CanvasEndScope` hooks | `Canvas` lexical block for authored `.kry`; generated hooks stay outside the public runtime contract, and authored calls are parser errors. |
-| generated `DisabledScope`/`DisabledEndScope`, `PopupScope`/`PopupEndScope`, `ButtonScope`, `CardScope` hooks | `Disabled`, `Popup`, `Button`, and `Card` lexical blocks for authored `.kry`; generated hooks stay outside the public runtime contract, and authored calls are parser errors. |
-
-`include/*.h` and `docs/PUBLIC_API_SNAPSHOT.txt` are guarded by
-`canonical-surface-test`: public `UI*`/`UI_*` prefixes are not accepted there.
+The public retained-tree and generated-code surface is guarded by
+`canonical-surface-test` and `public-api-names-check`. Public names must be the
+canonical names listed above; historical prefix names, spelling aliases, split
+numeric widget names, and lowered host hooks stay out of docs, headers, Go
+package exports, web runtime exports, parser call names, and snapshots.
 
 ## Cleanup Queue
 
-The public surface is now guarded: `canonical-surface-test` and
-`public-api-names-check` reject old public widget names such as `Href`,
-`Picture`, `Combo`, `MenuButton`, `SplitButton`, `InfoButton`, `ArrowButton`,
-typed `Drag`/`Slider` splits, and public `UI*` prefixes in the exported API.
-The implementation source has also had the old internal `UI*` type, enum,
-capacity, node-flag, inspect, guard, and log prefixes removed. Remaining work is
-not "choose the names again"; it is finishing the migration of internal policy
-and host plumbing behind the canonical names.
+The public surface is now guarded. Remaining work is not choosing the names
+again; it is finishing the migration of internal policy and host plumbing
+behind the canonical names.
 
 1. Finish C geometry-to-`.kry` migration:
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
@@ -834,10 +785,9 @@ and host plumbing behind the canonical names.
   default state-layer alpha, legacy box radius, elevation shadow policy, and
   ripple paint policy now route through `runtime/style.kry`.
 2. Keep prefix cleanup verified:
-   Guard tests intentionally mention old names so they can reject regressions,
-   but `src/ui` and public headers should stay free of Kryon-owned `UI*` and
-   `UI_*` surface names. Re-run the prefix scans after each widget migration so
-   compatibility shims do not creep back in.
+   Guard tests intentionally mention old names so they can reject regressions.
+   Re-run the prefix scans after each widget migration so compatibility shims do
+   not creep back in.
 3. Finish text editing policy migration:
    `TextField` and `TextArea` already own metrics, paint geometry,
    buffer-limit, navigation, edit-intent, selection range, preedit

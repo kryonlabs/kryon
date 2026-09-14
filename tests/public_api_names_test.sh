@@ -58,6 +58,34 @@ if [ -n "$removed_web_alias_matches" ]; then
     exit 1
 fi
 
+canonical_doc_legacy_matches="$(
+    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags|MenuButton|SplitButton|InfoButton|ArrowButton|SelectableText|ShowToast|ShowToastFor|BeginWidget|EndWidget|WidgetSet[A-Za-z0-9_]*|WidgetFlag[A-Za-z0-9_]*|DragFloat|DragInt|SliderFloat|SliderInt|FloatDrag|IntDrag|FloatSlider|IntSlider|WIDGET_[A-Z0-9_]+|UI[A-Za-z0-9_]+|UI_[A-Z0-9_]+)\b|UI/' \
+        docs/CANONICAL_WIDGET_SURFACE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$canonical_doc_legacy_matches" ]; then
+    echo "Canonical widget surface doc must show only current clean public names, not historical aliases or UI-prefixed categories:"
+    echo "$canonical_doc_legacy_matches"
+    exit 1
+fi
+
+registry_group_prefix_matches="$(
+    rg -n 'UI/' \
+        src/ui/ui_node_registry.c \
+        docs/FEATURE_MATRIX.md \
+        docs/FEATURE_MATRIX.html \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$registry_group_prefix_matches" ]; then
+    echo "Node registry groups are public review surface; use clean groups such as Display/Input/Layout without UI/ prefixes:"
+    echo "$registry_group_prefix_matches"
+    exit 1
+fi
+
 icon_size_matches="$(
     rg -n '\bICON_SIZE_(TINY|SMALL|MEDIUM|LARGE)\b|\bICON_SHEET_UI\b' \
         include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity go web \

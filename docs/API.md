@@ -1651,7 +1651,7 @@ int GetNodeHeightById(int id);
 ```
 
 `GetNodeKindName` returns clean inspection names such as `"Button"`,
-`"TextField"`, and `"Image"`; retained `WIDGET_*` constants and retained node
+`"TextField"`, and `"Image"`; retained numeric kind values and retained node
 payloads are internal.
 
 ---

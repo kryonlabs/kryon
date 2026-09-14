@@ -54,7 +54,7 @@ li{margin:.25rem 0}
 <p>The upstream widget-family crosswalk and its remaining semantic gaps are kept in [<code>IMGUI_WIDGET_COVERAGE.md</code>](IMGUI_WIDGET_COVERAGE.md).</p>
 <p>Columns: <b>C</b> = the C API · <b>k2c</b> = <code>.kry</code>→C codegen (always equal to C) · <b>k2cpp</b> = <code>.kry</code>→C++ codegen (mirrors <code>k2c</code>) · <b>k2go</b> = <code>.kry</code>→Go codegen (pure Go importing <code>go/kryon</code> as <code>kryon</code> and calling <code>kryon.&lt;Widget&gt;</code>) · <b>Go</b> = hand-written Go via the <code>go/kryon</code> package API · <b>KRB</b> = lowered into a cartridge by <code>k2b</code>.</p>
 <p>Retained-tree caveat that applies to the whole C column: <code>#ui</code> lowering records ~29 widget kinds, while the retained painter covers BACKGROUND, TEXT, RECT, LINE, BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX. It routes retained interaction for BUTTON, TEXT_FIELD, TEXT_AREA, SLIDER, TOGGLE, and CHECKBOX; every other kind renders through its immediate-mode call during the declaration pass (<code>src/ui/ui_tree.c</code>).</p>
-<h3>UI/Display</h3>
+<h3>Display</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Background</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Background</code></td><td class="ok">✅ node</td></tr>
@@ -69,7 +69,7 @@ li{margin:.25rem 0}
 <tr><td class="">Image style / image Button</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
 <tr><td class="">Plot</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Plot</code></td><td class="no">✗</td></tr>
 </table>
-<h3>UI/Input</h3>
+<h3>Input</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Button (ButtonProps)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>kryon.Button(kryon.ButtonProps)</code></td><td class="ok">✅ node</td></tr>
@@ -95,7 +95,7 @@ li{margin:.25rem 0}
 <tr><td class="">Separator labels</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
 <tr><td class="">ColorPicker / swatch Button</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
 </table>
-<h3>UI/Layout</h3>
+<h3>Layout</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Column / Row / Stack (flex-like)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ all three</td><td class="ok">✅ all three</td><td class="ok">✅ structural no-ops (node table is the tree)</td></tr>
@@ -109,7 +109,7 @@ li{margin:.25rem 0}
 <tr><td class="">Geometry layout (<code>Rectangle</code>, <code>Grid</code>, <code>Column</code>, <code>Row</code>, <code>Stack</code>)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ structural</td></tr>
 <tr><td class="">Canvas (pan/zoom, hit-test, grid)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Canvas</code> block</td><td class="ok">✅ host canvas scope + hit-test</td><td class="no">✗</td></tr>
 </table>
-<h3>UI/Collections</h3>
+<h3>Collections</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">ListBox (+ disabled)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>ListBox</code></td><td class="no">✗</td></tr>
@@ -120,7 +120,7 @@ li{margin:.25rem 0}
 <tr><td class="">ListBox multi-select props (focus, keyboard navigation, Ctrl/Shift range selection)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td></tr>
 <tr><td class="">Nested disabled scope</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Disabled</code> block</td><td class="no">✗</td></tr>
 </table>
-<h3>UI/Navigation</h3>
+<h3>Navigation</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Menu (bar, popup, and context modes)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Menu</code></td><td class="no">✗</td></tr>
@@ -132,14 +132,14 @@ li{margin:.25rem 0}
 <tr><td class="">Toolbar</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>Toolbar</code> only</td><td class="ok">✅ <code>Toolbar</code></td><td class="no">✗</td></tr>
 <tr><td class="">TitleBar family</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="part">◐ <code>TitleBar</code> only</td><td class="ok">✅ <code>TitleBar</code></td><td class="no">✗</td></tr>
 </table>
-<h3>UI/Overlays</h3>
+<h3>Overlays</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Modal</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Modal</code></td><td class="ok">✅ <code>Modal</code></td><td class="no">✗</td></tr>
 <tr><td class="">Toast</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅ <code>Toast</code></td><td class="ok">✅ <code>Toast</code></td><td class="no">✗</td></tr>
 <tr><td class="">Transition/focus policy</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="part">◐ <code>AnimNode</code> + <code>TIME</code> opcode drive animation</td></tr>
 </table>
-<h3>UI/Composite And App Framework</h3>
+<h3>Composite And App Framework</h3>
 <table>
 <tr><th>Widget</th><th>C</th><th>k2c</th><th>k2cpp</th><th>k2go</th><th>Go</th><th>KRB</th></tr>
 <tr><td class="">Reorder (drag handle + placeholder)</td><td class="ok">✅</td><td class="ok">✅</td><td class="ok">✅</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr>
