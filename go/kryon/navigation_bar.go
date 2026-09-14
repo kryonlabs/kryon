@@ -114,6 +114,27 @@ func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	return value_7
 }
 
+func NavigationBar_NavigationBarDefaultHeightFor(classic bool, scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 bool = classic
+	if value_4 {
+		var value_5 float32 = 40.0
+		var value_6 float32 = scale
+		var value_7 float32 = value_5 * value_6
+		var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+		return value_8
+	}
+	var value_9 float32 = scale
+	var value_10 int32 = NavigationBar_NavigationBarDefaultHeight(value_9)
+	return value_10
+}
+
 func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) int32 {
 	var value_0 int32 = style_font
 	var value_1 int32 = 0

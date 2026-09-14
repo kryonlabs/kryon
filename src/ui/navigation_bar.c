@@ -14,9 +14,8 @@ static const Vector2 kryon_zero_vector2;
 int
 ui_navigation_bar_height(void)
 {
-    if(ui_classic_style())
-        return Scale(40);
-    return NavigationBarDefaultHeight((float)Scale(1000) / 1000.0f);
+    return NavigationBarDefaultHeightFor(
+        ui_classic_style(), (float)Scale(1000) / 1000.0f);
 }
 
 static int

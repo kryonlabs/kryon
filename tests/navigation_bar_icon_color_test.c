@@ -186,6 +186,10 @@ main(void)
 
     check_int("compact navigation bar default height",
               NavigationBarDefaultHeight(1.0f), 86);
+    check_int("classic navigation bar default height",
+              NavigationBarDefaultHeightFor(1, 1.0f), 40);
+    check_int("modern navigation bar default height",
+              NavigationBarDefaultHeightFor(0, 1.0f), 86);
     check_int("compact navigation bar default font fallback",
               NavigationBarFontFor(11, 0), 11);
     check_int("compact navigation bar style font override",

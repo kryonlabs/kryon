@@ -103,6 +103,12 @@ NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     return (i32)(86.0 * scale)
 }
 
+NavigationBarDefaultHeightFor :: (classic: bool, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if classic { return (i32)(40.0 * scale) }
+    return NavigationBarDefaultHeight(scale)
+}
+
 NavigationBarFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     if style_font > 0 { return style_font }
     return default_font
