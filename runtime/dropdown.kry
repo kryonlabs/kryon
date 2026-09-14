@@ -6,10 +6,22 @@
 
 # Roles select semantic facts for host-side style resolution. They do not
 # manufacture color, material, gradient, radius, or border recipes.
-# 0: trigger, 1: floating panel, 2: option row.
+# 0: trigger, 2: floating panel, 26: option row, 27: scrollbar.
+DropdownPanelRole :: () -> i32 #export {
+    return 2
+}
+
+DropdownOptionRole :: () -> i32 #export {
+    return 26
+}
+
+DropdownScrollbarRole :: () -> i32 #export {
+    return 27
+}
+
 Appearance :: (base: StyleData, accent: StyleData, role: i32,
     state: i32, selected: bool) -> StyleData #export {
-    if role == 2 && selected && state != ButtonStateDisabled {
+    if role == DropdownOptionRole() && selected && state != ButtonStateDisabled {
         return accent
     }
     return base

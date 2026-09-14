@@ -1,11 +1,5 @@
 package kryon
 
-const (
-	dropdownRolePanel     int32 = 2
-	dropdownRoleOption    int32 = 26
-	dropdownRoleScrollbar int32 = 27
-)
-
 func (r *runtime) dropdownRoleFrame(role int32, className int32) StyleFrame {
 	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, ClassName: className}
 	return resolveMinimalControlRoleFrame(props, ButtonStateNormal, false, 0, 0, 0,
@@ -18,10 +12,10 @@ func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState, cl
 	if len(className) > 0 {
 		props.ClassName = className[0]
 	}
-	if role == 1 {
+	if role == Dropdown_DropdownPanelRole() {
 		props.Emphasis = ButtonEmphasisFilled
 	}
-	if role == 2 && selected && state != ButtonStateDisabled {
+	if role == Dropdown_DropdownOptionRole() && selected && state != ButtonStateDisabled {
 		props.Tone = ButtonToneAccent
 		props.Emphasis = ButtonEmphasisFilled
 		props.Selected = true
@@ -29,7 +23,7 @@ func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState, cl
 	}
 	base := resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
 		props, state, StyleSheet_StyleKindDropdown())
-	if role != 2 {
+	if role != Dropdown_DropdownOptionRole() {
 		return base
 	}
 	accentProps := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled, Selected: selected, ClassName: props.ClassName}
@@ -49,7 +43,7 @@ func (r *runtime) dropdownSurface(bounds Rectangle, role int32, selected bool, s
 		FocusColor: paint.Focus, AmbientColor: r.appAmbientColor(),
 		Radius: paint.Radius, BorderWidth: paint.BorderWidth, Opacity: paint.Opacity,
 		Material: paint.Material, FillStates: styleFill(paint), FillStatesValid: true,
-		Hovered: role == 2 && !selected && state == ButtonStateHover}
+		Hovered: role == Dropdown_DropdownOptionRole() && !selected && state == ButtonStateHover}
 }
 
 func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool, className ...int32) Color {

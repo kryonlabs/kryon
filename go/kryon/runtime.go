@@ -4104,13 +4104,13 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		r.endPopupInput(input)
 		r.endPaintLayer(layer)
 	}()
-	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal, styleClass)
+	surface := r.dropdownSurface(panel, Dropdown_DropdownPanelRole(), false, ButtonStateNormal, styleClass)
 	surface.ID = id
 	r.record(surface)
 	menuMetrics := Dropdown_DropdownMenuMetricsFor(1,
-		r.dropdownRoleFrame(dropdownRolePanel, styleClass),
-		r.dropdownRoleFrame(dropdownRoleOption, styleClass),
-		r.dropdownRoleFrame(dropdownRoleScrollbar, styleClass))
+		r.dropdownRoleFrame(Dropdown_DropdownPanelRole(), styleClass),
+		r.dropdownRoleFrame(Dropdown_DropdownOptionRole(), styleClass),
+		r.dropdownRoleFrame(Dropdown_DropdownScrollbarRole(), styleClass))
 	menuLayout := Dropdown_MenuLayoutFor(panel, int32(len(labels)), int32(itemH),
 		menuMetrics.PaddingTop, menuMetrics.PaddingBottom,
 		menuMetrics.ScrollbarWidth, menuMetrics.ScrollbarGap)
@@ -4179,7 +4179,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		if disabledRow(int32(i)) {
 			state = ButtonStateDisabled
 		}
-		paint := r.dropdownSurface(optionPaint.HighlightBounds, 2, selectedRow, state, styleClass)
+		paint := r.dropdownSurface(optionPaint.HighlightBounds, Dropdown_DropdownOptionRole(), selectedRow, state, styleClass)
 		paint.ID, paint.Row, paint.Selected, paint.Focused = id, int32(i), selectedRow, highlighted
 		if selectedRow || highlighted {
 			r.record(paint)

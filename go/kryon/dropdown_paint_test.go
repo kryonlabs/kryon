@@ -149,7 +149,7 @@ func TestDropdownStyleComesFromKSS(t *testing.T) {
 		trigger.Material != MaterialFlat || trigger.Radius != 8 {
 		t.Fatalf("material dropdown did not come from KSS: %#v", trigger)
 	}
-	selected := r.dropdownStyle(2, true, ButtonStateNormal)
+	selected := r.dropdownStyle(Dropdown_DropdownOptionRole(), true, ButtonStateNormal)
 	if selected.Background != (Color{0xc9, 0xa8, 0xff, 0xff}) ||
 		selected.Foreground != (Color{0x17, 0x10, 0x22, 0xff}) {
 		t.Fatalf("selected dropdown row did not use KSS accent facts: %#v", selected)

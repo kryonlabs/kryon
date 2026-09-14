@@ -1,6 +1,7 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
 #include "runtime/collapsible.h"
+#include "runtime/dropdown.h"
 #include "runtime/fieldset.h"
 #include "runtime/focus.h"
 #include "runtime/image.h"
@@ -147,6 +148,11 @@ main(void)
     if(MenuBarRole() != 1 || MenuPopupRole() != 2 ||
        MenuContextRole() != 3) {
         fprintf(stderr, "menu role policy changed\n");
+        return 1;
+    }
+    if(DropdownPanelRole() != 2 || DropdownOptionRole() != 26 ||
+       DropdownScrollbarRole() != 27) {
+        fprintf(stderr, "dropdown role policy changed\n");
         return 1;
     }
     if(ModalPanelRole() != 2 || ModalTitleRole() != 16 ||

@@ -36,12 +36,6 @@ typedef struct DropdownState {
     unsigned long opened_frame;
 } DropdownState;
 
-enum {
-    DROPDOWN_ROLE_PANEL = 2,
-    DROPDOWN_ROLE_OPTION = 26,
-    DROPDOWN_ROLE_SCROLLBAR = 27
-};
-
 struct DropdownStore {
     DropdownState *states;
     int clip_top;
@@ -147,9 +141,9 @@ dropdown_style_frame(int role, int selected, ButtonState state, int class_name)
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     props.class_name = class_name;
-    if(role == 1)
+    if(role == DropdownPanelRole())
         props.emphasis = ButtonEmphasisFilled;
-    if(role == 2 && selected && state != ButtonStateDisabled) {
+    if(role == DropdownOptionRole() && selected && state != ButtonStateDisabled) {
         props.tone = ButtonToneAccent;
         props.emphasis = ButtonEmphasisFilled;
         props.selected = 1;
@@ -157,7 +151,7 @@ dropdown_style_frame(int role, int selected, ButtonState state, int class_name)
     }
     base = ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
         0.0f, StyleKindDropdown(), role);
-    if(role != DROPDOWN_ROLE_OPTION)
+    if(role != DropdownOptionRole())
         return base;
 
     props.tone = ButtonToneAccent;
@@ -268,7 +262,7 @@ dropdown_menu_bounds(const DropdownState *state)
 {
     int bottom = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
     Rectangle view = {0, state->clip_top, ui_view_width, bottom - state->clip_top};
-    StyleFrame panel_frame = dropdown_style_frame(DROPDOWN_ROLE_PANEL, 0,
+    StyleFrame panel_frame = dropdown_style_frame(DropdownPanelRole(), 0,
                                                   ButtonStateNormal,
                                                   state->class_name);
     return PopupBounds((Rectangle){state->x, state->y, state->w, state->h},
@@ -537,13 +531,13 @@ dropdown_paint_menu(int id)
     int max_scroll;
     Rectangle btn_bounds = {x, y, w, h};
     Rectangle menu_bounds = dropdown_menu_bounds(state);
-    StyleFrame panel_frame = dropdown_style_frame(DROPDOWN_ROLE_PANEL, 0,
+    StyleFrame panel_frame = dropdown_style_frame(DropdownPanelRole(), 0,
                                                   ButtonStateNormal,
                                                   state->class_name);
-    StyleFrame option_frame = dropdown_style_frame(DROPDOWN_ROLE_OPTION, 0,
+    StyleFrame option_frame = dropdown_style_frame(DropdownOptionRole(), 0,
                                                    ButtonStateNormal,
                                                    state->class_name);
-    StyleFrame scrollbar_frame = dropdown_style_frame(DROPDOWN_ROLE_SCROLLBAR,
+    StyleFrame scrollbar_frame = dropdown_style_frame(DropdownScrollbarRole(),
         0, ButtonStateNormal, state->class_name);
     DropdownMenuMetrics metrics = DropdownMenuMetricsFor(
         (float)Scale(1000) / 1000.0f, panel_frame, option_frame,
@@ -660,7 +654,7 @@ dropdown_paint_menu(int id)
         Color row_text = content_style.foreground;
         if(can_draw) {
             int selected = state->selected_index == i;
-            Style paint = dropdown_style(DROPDOWN_ROLE_OPTION, selected,
+            Style paint = dropdown_style(DropdownOptionRole(), selected,
                 options[i].disabled ? ButtonStateDisabled :
                 (option_hover ? ButtonStateHover : ButtonStateNormal),
                 state->class_name);

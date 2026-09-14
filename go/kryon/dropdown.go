@@ -96,9 +96,24 @@ type PopupGesture struct {
 	Offset       int32
 }
 
+func Dropdown_DropdownPanelRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func Dropdown_DropdownOptionRole() int32 {
+	var value_0 int32 = 26
+	return value_0
+}
+
+func Dropdown_DropdownScrollbarRole() int32 {
+	var value_0 int32 = 27
+	return value_0
+}
+
 func Dropdown_Appearance(base StyleData, accent StyleData, role int32, state int32, selected bool) StyleData {
 	var value_0 int32 = role
-	var value_1 int32 = 2
+	var value_1 int32 = Dropdown_DropdownOptionRole()
 	var value_2 bool = value_0 == value_1
 	var value_3 bool = value_2
 	if value_3 {

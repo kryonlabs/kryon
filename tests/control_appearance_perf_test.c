@@ -229,16 +229,16 @@ make_dropdown_style(int role, int selected, ButtonState state)
     memset(&props, 0, sizeof(props));
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
-    if(role == 1)
+    if(role == DropdownPanelRole())
         props.emphasis = ButtonEmphasisFilled;
-    if(role == 2 && selected && state != ButtonStateDisabled) {
+    if(role == DropdownOptionRole() && selected && state != ButtonStateDisabled) {
         props.tone = ButtonToneAccent;
         props.emphasis = ButtonEmphasisFilled;
         props.selected = 1;
         state = ButtonStateSelected;
     }
     base = ui_resolve_button_style_kind(props, state, StyleKindDropdown());
-    if(role != 2)
+    if(role != DropdownOptionRole())
         return ui_style_apply_effects(base);
 
     props.tone = ButtonToneAccent;
