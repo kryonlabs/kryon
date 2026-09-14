@@ -37,6 +37,21 @@ MenuGroupPointerDecision :: struct {
     navigation_top: i32
 }
 
+MenuItemPointerDecision :: struct {
+    consume_release: bool
+    set_focus: bool
+    reset_navigation: bool
+    set_navigation_path: bool
+    navigation_depth: i32
+    navigation_index: i32
+    clear_child_navigation: bool
+    set_submenu: bool
+    submenu_id: i32
+    activate: bool
+    activated_id: i32
+    close_open: bool
+}
+
 MenuOutsideCloseDecision :: struct {
     close_open: bool
     clear_submenu: bool
@@ -167,6 +182,33 @@ MenuGroupPointerDecisionFor :: (menu_id: i32, index: i32,
         decision.changed_open = true
         decision.next_open_id = menu_id
         decision.clear_submenu = true
+    }
+    return decision
+}
+
+MenuItemPointerDecisionFor :: (hot: bool, mouse_released: bool,
+    same_focus: bool, kind: i32, disabled: bool, item_id: i32,
+    index: i32, depth: i32, max_depth: i32) -> MenuItemPointerDecision #export {
+    decision: MenuItemPointerDecision
+    decision.navigation_depth = depth
+    decision.navigation_index = index
+    if !hot || !mouse_released {
+        return decision
+    }
+    decision.consume_release = true
+    decision.set_focus = true
+    decision.reset_navigation = !same_focus
+    if depth < max_depth {
+        decision.set_navigation_path = true
+        decision.clear_child_navigation = true
+    }
+    if MenuItemShowsSubmenu(kind) {
+        decision.set_submenu = true
+        decision.submenu_id = item_id
+    } else if MenuItemPointerActivates(kind, disabled) {
+        decision.activate = true
+        decision.activated_id = item_id
+        decision.close_open = true
     }
     return decision
 }

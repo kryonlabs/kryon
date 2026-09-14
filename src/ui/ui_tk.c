@@ -1364,23 +1364,34 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             if(sub != 0)
                 activated = sub;
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        MenuItemPointerDecision pointer_decision =
+            MenuItemPointerDecisionFor(
+                hot != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                state->navigation.focus_id == focus_id,
+                (int)item->kind, item->disabled, item->id, i, depth,
+                TK_MENU_DEPTH_MAX);
+        if(pointer_decision.consume_release)
             ConsumeRelease();
-            if(state->navigation.focus_id != focus_id)
-                menu_navigation_reset(focus_id,items,item_count);
-            if(depth < TK_MENU_DEPTH_MAX) {
-                state->navigation.path[depth] = i;
-                state->navigation.depth = depth;
-            }
-            SetFocus(focus_id);
-            if(MenuItemShowsSubmenu((int)item->kind))
-                state->submenu_id = item->id;
-            else if(MenuItemPointerActivates((int)item->kind,
-                                             item->disabled)) {
-                activated = item->id;
-                state->open_id = 0;
+        if(pointer_decision.reset_navigation)
+            menu_navigation_reset(focus_id,items,item_count);
+        if(pointer_decision.set_navigation_path) {
+            state->navigation.path[pointer_decision.navigation_depth] =
+                pointer_decision.navigation_index;
+            state->navigation.depth = pointer_decision.navigation_depth;
+            if(pointer_decision.clear_child_navigation) {
+                for(int child = pointer_decision.navigation_depth + 1;
+                    child < TK_MENU_DEPTH_MAX; child++)
+                    state->navigation.path[child] = -1;
             }
         }
+        if(pointer_decision.set_focus)
+            SetFocus(focus_id);
+        if(pointer_decision.set_submenu)
+            state->submenu_id = pointer_decision.submenu_id;
+        if(pointer_decision.activate)
+            activated = pointer_decision.activated_id;
+        if(pointer_decision.close_open)
+            state->open_id = 0;
     }
 
     return activated;

@@ -785,7 +785,7 @@ and host plumbing behind the canonical names.
   button-row wrap height/advance now also
   routes through `runtime/rows.kry`; dropdown panel/option/scrollbar role
   policy and selected-option appearance now route through `runtime/dropdown.kry`;
-  menu selectable-item, submenu activation,
+  menu selectable-item, submenu activation, pointer item effects,
   wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
   through `runtime/menu.kry`; ListBox row selection policy now routes through

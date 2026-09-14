@@ -156,6 +156,41 @@ main(void)
     assert(!MenuItemPointerActivates(4, 0));
     assert(!MenuItemPointerActivates(3, 0));
     assert(!MenuItemPointerActivates(0, 1));
+    MenuItemPointerDecision pointer_decision =
+        MenuItemPointerDecisionFor(true, true, false, 0, false, 42, 2, 1, 4);
+    assert(pointer_decision.consume_release);
+    assert(pointer_decision.set_focus);
+    assert(pointer_decision.reset_navigation);
+    assert(pointer_decision.set_navigation_path);
+    assert(pointer_decision.navigation_depth == 1);
+    assert(pointer_decision.navigation_index == 2);
+    assert(pointer_decision.clear_child_navigation);
+    assert(!pointer_decision.set_submenu);
+    assert(pointer_decision.activate);
+    assert(pointer_decision.activated_id == 42);
+    assert(pointer_decision.close_open);
+    pointer_decision =
+        MenuItemPointerDecisionFor(true, true, true, 4, false, 43, 3, 2, 4);
+    assert(pointer_decision.consume_release);
+    assert(!pointer_decision.reset_navigation);
+    assert(pointer_decision.set_navigation_path);
+    assert(pointer_decision.set_submenu);
+    assert(pointer_decision.submenu_id == 43);
+    assert(!pointer_decision.activate);
+    assert(!pointer_decision.close_open);
+    pointer_decision =
+        MenuItemPointerDecisionFor(true, true, true, 0, true, 44, 1, 1, 4);
+    assert(pointer_decision.consume_release);
+    assert(!pointer_decision.activate);
+    assert(!pointer_decision.close_open);
+    pointer_decision =
+        MenuItemPointerDecisionFor(true, false, true, 0, false, 45, 1, 1, 4);
+    assert(!pointer_decision.consume_release);
+    assert(!pointer_decision.activate);
+    pointer_decision =
+        MenuItemPointerDecisionFor(true, true, true, 0, false, 46, 1, 4, 4);
+    assert(!pointer_decision.set_navigation_path);
+    assert(pointer_decision.activate);
     assert(MenuBarCountFor(-2, 8) == 0);
     assert(MenuBarCountFor(12, 8) == 8);
     assert(MenuBarCountFor(3, 8) == 3);
