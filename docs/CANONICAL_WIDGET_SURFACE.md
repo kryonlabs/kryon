@@ -81,7 +81,7 @@ surface review:
 | `runtime/material.kry` | Material layer assembly with typed `MaterialKind` policy | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics, geometry, selectable/keyboard navigation, bar open/index policy, and group pointer open/close decisions | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
-| `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
+| `runtime/list_box_multi.kry` | ListBox multi-selection row/keyboard navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar default-height, item interaction, paint, and configuration layout/count/default policy | `.kry canonical` |
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
@@ -543,7 +543,7 @@ should use canonical `.kry` names and blocks.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `ListBox` | `.kry canonical` | Layout/navigation and row paint geometry policy is in `.kry`; item typography is KSS-owned. Multi-selection uses `selected`, `selected_count`, and `anchor` props. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
+| `ListBox` | `.kry canonical` | Layout/navigation and row paint geometry policy is in `.kry`; item typography is KSS-owned. Multi-selection uses `selected`, `selected_count`, and `anchor` props, with keyboard input/navigation/selection policy in `.kry`. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
 | `TreeView` | `.kry canonical` | Row/window, marker text, paint geometry, and row-selection decision policy is in `.kry`; item typography defaults are KSS-owned; host handles input sampling, selected-id storage, expansion state, and drawing. |
 | `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/scrollbar/cell geometry, header/row pointer decisions, keyboard selection, activation, clear-selection, resize lifecycle/width, and clipboard intent policy are in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input sampling, stored selection pointers, resize pointer ownership, clipboard IO, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
@@ -711,7 +711,8 @@ behind the canonical names.
   row and bar keyboard input decisions, wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
   through `runtime/menu.kry`; ListBox row selection policy now routes through
-  `runtime/list_box.kry`; centered-column and page side-padding policy now route
+  `runtime/list_box.kry`; ListBox multi-select keyboard input now routes
+  through `runtime/list_box_multi.kry`; centered-column and page side-padding policy now route
   through `runtime/layout.kry`; reorder lifecycle gates now route through
   `runtime/reorder.kry`; swipe drag/release lifecycle effects now route through
   `runtime/swipe.kry`; drag/drop source/target lifecycle decisions now route

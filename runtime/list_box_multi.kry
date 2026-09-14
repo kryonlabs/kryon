@@ -12,6 +12,15 @@ ListBoxMultiNavResult :: struct {
     range_anchor: i32
 }
 
+ListBoxMultiInput :: struct {
+    home: bool
+    end: bool
+    up: bool
+    down: bool
+    space: bool
+    enter: bool
+}
+
 ListBoxMultiMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -56,9 +65,20 @@ ListBoxMultiFocusedRow :: (anchor: i32, selected_first: i32, item_count: i32) ->
     return 0
 }
 
+ListBoxMultiInputFor :: (home: bool, end: bool, up: bool, down: bool,
+    space: bool, enter: bool) -> ListBoxMultiInput #export {
+    input: ListBoxMultiInput
+    input.home = home
+    input.end = end
+    input.up = up
+    input.down = down
+    input.space = space
+    input.enter = enter
+    return input
+}
+
 ListBoxMultiNavigate :: (item_count: i32, cursor: i32, control: bool,
-    shift: bool, home: bool, end: bool, up: bool, down: bool,
-    space: bool, enter: bool) -> ListBoxMultiNavResult #export {
+    shift: bool, input: ListBoxMultiInput) -> ListBoxMultiNavResult #export {
     result: ListBoxMultiNavResult
     result.clicked = -1
     result.anchor = cursor
@@ -71,20 +91,20 @@ ListBoxMultiNavigate :: (item_count: i32, cursor: i32, control: bool,
     if cursor >= item_count { cursor = item_count - 1 }
     next: i32 = cursor
     navigate: bool = true
-    if home {
+    if input.home {
         next = 0
-    } else if end {
+    } else if input.end {
         next = item_count - 1
-    } else if up {
+    } else if input.up {
         if next > 0 { next = next - 1 }
-    } else if down {
+    } else if input.down {
         if next + 1 < item_count { next = next + 1 }
-    } else if space {
+    } else if input.space {
         result.clicked = cursor
         result.control = true
         result.shift = false
         navigate = false
-    } else if enter {
+    } else if input.enter {
         result.clicked = cursor
         result.control = false
         result.shift = false

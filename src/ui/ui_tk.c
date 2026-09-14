@@ -791,11 +791,13 @@ RenderListBoxMulti(ListBoxProps list)
                 if(list.selected[i]) { selected_first = i; break; }
         cursor = ListBoxMultiFocusedRow(cursor, selected_first,
                                        list.item_count);
+        ListBoxMultiInput keyboard_input = ListBoxMultiInputFor(
+            IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+            IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+            IsKeyPressed(KEY_SPACE) != 0,
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) != 0);
         nav = ListBoxMultiNavigate(list.item_count, cursor, control != 0,
-            shift != 0, IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
-            IsKeyPressed(KEY_UP), IsKeyPressed(KEY_DOWN),
-            IsKeyPressed(KEY_SPACE),
-            IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER));
+            shift != 0, keyboard_input);
         clicked = nav.clicked;
         control = nav.control ? 1 : 0;
         shift = nav.shift ? 1 : 0;

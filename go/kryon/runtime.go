@@ -2122,9 +2122,10 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			}
 		}
 		cursor = ListBoxMulti_ListBoxMultiFocusedRow(cursor, selectedFirst, int32(count))
-		nav := ListBoxMulti_ListBoxMultiNavigate(int32(count), cursor, control, shift,
+		input := ListBoxMulti_ListBoxMultiInputFor(
 			r.keyDown[KeyHome], r.keyDown[KeyEnd], r.keyDown[KeyUp],
 			r.keyDown[KeyDown], r.keyDown[KeySpace], r.keyDown[KeyEnter])
+		nav := ListBoxMulti_ListBoxMultiNavigate(int32(count), cursor, control, shift, input)
 		clicked = nav.Clicked
 		control = nav.Control
 		shift = nav.Shift

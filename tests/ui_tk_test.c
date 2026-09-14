@@ -972,12 +972,14 @@ test_multi_select_policy(void)
     Rectangle bounds = {10, 20, 120, 90};
     StyleFrame item = {0};
     Rectangle row = ListBoxMultiRowBounds(bounds, 2, 28);
+    ListBoxMultiInput down_input = ListBoxMultiInputFor(0, 0, 0, 1, 0, 0);
+    ListBoxMultiInput space_input = ListBoxMultiInputFor(0, 0, 0, 0, 1, 0);
     ListBoxMultiNavResult down = ListBoxMultiNavigate(3, 0, 0, 0,
-        0, 0, 0, 1, 0, 0);
+        down_input);
     ListBoxMultiNavResult shift_down = ListBoxMultiNavigate(3, 1, 0, 1,
-        0, 0, 0, 1, 0, 0);
+        down_input);
     ListBoxMultiNavResult space = ListBoxMultiNavigate(3, 2, 0, 0,
-        0, 0, 0, 0, 1, 0);
+        space_input);
 
     item.value.fields = StyleIconSize | StyleContentOffset;
     item.value.icon_size = 34.0f;

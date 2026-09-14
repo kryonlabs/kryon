@@ -13,6 +13,15 @@ type ListBoxMultiNavResult struct {
 	RangeAnchor   int32
 }
 
+type ListBoxMultiInput struct {
+	Home  bool
+	End   bool
+	Up    bool
+	Down  bool
+	Space bool
+	Enter bool
+}
+
 func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -176,7 +185,25 @@ func ListBoxMulti_ListBoxMultiFocusedRow(anchor int32, selected_first int32, ite
 	return value_20
 }
 
-func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control bool, shift bool, home bool, end bool, up bool, down bool, space bool, enter bool) ListBoxMultiNavResult {
+func ListBoxMulti_ListBoxMultiInputFor(home bool, end bool, up bool, down bool, space bool, enter bool) ListBoxMultiInput {
+	var input ListBoxMultiInput = ListBoxMultiInput{}
+	var value_0 bool = home
+	input.Home = value_0
+	var value_1 bool = end
+	input.End = value_1
+	var value_2 bool = up
+	input.Up = value_2
+	var value_3 bool = down
+	input.Down = value_3
+	var value_4 bool = space
+	input.Space = value_4
+	var value_5 bool = enter
+	input.Enter = value_5
+	var value_6 ListBoxMultiInput = input
+	return value_6
+}
+
+func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control bool, shift bool, input ListBoxMultiInput) ListBoxMultiNavResult {
 	var result ListBoxMultiNavResult = ListBoxMultiNavResult{}
 	var value_0 int32 = -1
 	result.Clicked = value_0
@@ -217,19 +244,19 @@ func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control b
 	var next int32 = value_20
 	var value_21 bool = true
 	var navigate bool = value_21
-	var value_22 bool = home
+	var value_22 bool = input.Home
 	if value_22 {
 		var value_23 int32 = 0
 		next = value_23
 	} else {
-		var value_24 bool = end
+		var value_24 bool = input.End
 		if value_24 {
 			var value_25 int32 = item_count
 			var value_26 int32 = 1
 			var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 2))
 			next = value_27
 		} else {
-			var value_28 bool = up
+			var value_28 bool = input.Up
 			if value_28 {
 				var value_29 int32 = next
 				var value_30 int32 = 0
@@ -241,7 +268,7 @@ func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control b
 					next = value_34
 				}
 			} else {
-				var value_35 bool = down
+				var value_35 bool = input.Down
 				if value_35 {
 					var value_36 int32 = next
 					var value_37 int32 = 1
@@ -255,7 +282,7 @@ func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control b
 						next = value_43
 					}
 				} else {
-					var value_44 bool = space
+					var value_44 bool = input.Space
 					if value_44 {
 						var value_45 int32 = cursor
 						result.Clicked = value_45
@@ -266,7 +293,7 @@ func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control b
 						var value_48 bool = false
 						navigate = value_48
 					} else {
-						var value_49 bool = enter
+						var value_49 bool = input.Enter
 						if value_49 {
 							var value_50 int32 = cursor
 							result.Clicked = value_50
