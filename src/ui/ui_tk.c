@@ -479,8 +479,9 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
         MarkClickable();
     else if(interaction.disabled_marker)
         MarkDisabled();
-    if(interaction.activated) {
+    if(interaction.consume_release)
         ConsumeRelease();
+    if(interaction.activated) {
         if(id > 0)
             SetFocus(id);
         *focused = id > 0;
