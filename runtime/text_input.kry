@@ -470,6 +470,17 @@ TextAreaRevealCursorShouldRun :: (focused: bool, changed: bool,
     return focused && (changed || navigation_pressed)
 }
 
+TextAreaRevealScroll :: (scroll: i32, cursor_y: i32, cursor_height: i32,
+    viewport_height: i32) -> i32 #export {
+    if cursor_y < scroll {
+        return cursor_y
+    }
+    if cursor_y + cursor_height > scroll + viewport_height {
+        return cursor_y + cursor_height - viewport_height
+    }
+    return scroll
+}
+
 TextFieldRevealCursorShouldRun :: (focused: bool) -> bool #export {
     return focused
 }

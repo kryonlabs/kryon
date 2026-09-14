@@ -4273,10 +4273,8 @@ ui_text_area_render(TextAreaProps area)
             &cursor_h);
         int viewport_h = (int)area.bounds.height - padding_y * 2;
 
-        if(cursor_y < scroll_y)
-            scroll_y = cursor_y;
-        else if(cursor_y + cursor_h > scroll_y + viewport_h)
-            scroll_y = cursor_y + cursor_h - viewport_h;
+        scroll_y = TextAreaRevealScroll(scroll_y, cursor_y, cursor_h,
+                                        viewport_h);
     }
     scroll_y = ui_clampi(scroll_y, 0, max_scroll);
     if(area.scroll_y != NULL)

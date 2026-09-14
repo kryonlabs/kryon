@@ -447,6 +447,9 @@ main(void)
     assert(TextAreaRevealCursorShouldRun(true, false, true));
     assert(!TextAreaRevealCursorShouldRun(false, true, true));
     assert(!TextAreaRevealCursorShouldRun(true, false, false));
+    assert(TextAreaRevealScroll(30, 10, 12, 80) == 10);
+    assert(TextAreaRevealScroll(30, 90, 20, 60) == 50);
+    assert(TextAreaRevealScroll(30, 40, 12, 80) == 30);
     assert(TextFieldRevealCursorShouldRun(true));
     assert(!TextFieldRevealCursorShouldRun(false));
     assert(TextFieldContextShouldRegister(false));
