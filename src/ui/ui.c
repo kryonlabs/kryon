@@ -1549,9 +1549,9 @@ BeginFocusScope(void)
      * This lets a new screens autofocus adopt cleanly, while still preventing
      * two live widgets from both showing a caret within a single frame. */
     g_ui_text_focus_frame++;
-    if(g_ui_text_focus_owner != NULL &&
-       g_ui_text_focus_owner_frame != g_ui_text_focus_frame - 1 &&
-       g_ui_text_focus_owner_frame != g_ui_text_focus_frame)
+    if(TextFocusOwnerIsStale(g_ui_text_focus_owner != NULL,
+                             (int64_t)g_ui_text_focus_owner_frame,
+                             (int64_t)g_ui_text_focus_frame))
         g_ui_text_focus_owner = NULL;
     g_ui_text_focus_owner_this_frame = NULL;
     if(IsKeyPressed(KEY_TAB))

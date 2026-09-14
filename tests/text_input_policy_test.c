@@ -211,6 +211,11 @@ main(void)
     assert(!focus_owner.adopt_owner);
     assert(!focus_owner.mark_frame_owner);
     assert(focus_owner.clear_target);
+    assert(!TextFocusOwnerIsStale(false, 1, 10));
+    assert(!TextFocusOwnerIsStale(true, 10, 10));
+    assert(!TextFocusOwnerIsStale(true, 9, 10));
+    assert(TextFocusOwnerIsStale(true, 8, 10));
+    assert(TextFocusOwnerIsStale(true, 0, 10));
     composition_input = TextCompositionInputDecisionFor(true, false);
     assert(composition_input.accept_events);
     assert(!composition_input.cancel);

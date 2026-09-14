@@ -205,6 +205,12 @@ TextFocusOwnerDecisionFor :: (has_target: bool, owns_focus: bool,
     return decision
 }
 
+TextFocusOwnerIsStale :: (has_owner: bool, owner_frame: i64,
+    current_frame: i64) -> bool #export {
+    return has_owner && owner_frame != current_frame - 1 &&
+        owner_frame != current_frame
+}
+
 TextFocusReleaseDecisionFor :: (has_target: bool, owns_focus: bool,
     owns_frame_focus: bool, active_focus_matches: bool,
     owns_field_drag: bool, owns_area_drag: bool) -> TextFocusReleaseDecision #export {
