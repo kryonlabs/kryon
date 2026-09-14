@@ -1408,11 +1408,16 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         Vector2 mouse = ui_mouse_world();
         int inside = CheckCollisionPointRec(mouse, bounds);
         int captured = InputCapturesClick(mouse);
+        TextSelectionPointerDecision pointer = TextSelectionPointerDecisionFor(
+            inside != 0, captured != 0,
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
+        TextSelectionDragDecision drag;
+        TextSelectionCopyDecision copy;
 
-        if(inside && !captured)
+        if(pointer.hover)
             MarkCursor(MOUSE_CURSOR_IBEAM);
 
-        if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(pointer.begin) {
             int offset = ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
 
             g_ui_text_selection.id = id;
@@ -1421,23 +1426,26 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
             g_ui_text_selection.dragging = 1;
             g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
         }
-        if(g_ui_text_selection.id == id && g_ui_text_selection.dragging) {
-            if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-                g_ui_text_selection.cursor =
-                    ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
-            } else {
-                g_ui_text_selection.dragging = 0;
-            }
+        drag = TextSelectionDragDecisionFor(g_ui_text_selection.id == id,
+                                            g_ui_text_selection.dragging != 0,
+                                            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
+        if(drag.update) {
+            g_ui_text_selection.cursor =
+                ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
+        } else if(drag.finish) {
+            g_ui_text_selection.dragging = 0;
         }
-        if(g_ui_text_selection.id == id && IsKeyboardInputEnabled() &&
-           ui_text_mod_key_down() &&
-           IsKeyPressed(KEY_C)) {
+        copy = TextSelectionCopyDecisionFor(g_ui_text_selection.id == id,
+                                            IsKeyboardInputEnabled() != 0,
+                                            ui_text_mod_key_down() != 0,
+                                            IsKeyPressed(KEY_C) != 0);
+        if(copy.copy) {
             TextSelectionRange range = TextSelectionRangeForLength(
                 g_ui_text_selection.anchor, g_ui_text_selection.cursor,
                 byte_len);
             ui_text_copy_selection(text, range.start, range.end);
         }
-        if(g_ui_text_selection.id == id) {
+        if(TextSelectionRangeShouldShow(g_ui_text_selection.id == id)) {
             TextSelectionRange range = TextSelectionRangeForLength(
                 g_ui_text_selection.anchor, g_ui_text_selection.cursor,
                 byte_len);
@@ -1644,10 +1652,13 @@ RenderSelectableTextBlock(SelectableTextBlock block)
         int line_w = line != NULL ? TextWidth(line, block.font_size) : 0;
         Rectangle hit = {block.bounds.x, (float)y, (float)line_w, (float)line_h};
         int inside = CheckCollisionPointRec(mouse, hit);
+        TextSelectionPointerDecision pointer = TextSelectionPointerDecisionFor(
+            inside != 0, captured != 0,
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
 
-        if(inside && !captured)
+        if(pointer.hover)
             MarkCursor(MOUSE_CURSOR_IBEAM);
-        if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(pointer.begin) {
             int local = ui_text_byte_offset_at_x(line, block.font_size,
                                                  (int)(mouse.x - block.bounds.x));
             double now = GetTime();
@@ -1684,38 +1695,44 @@ RenderSelectableTextBlock(SelectableTextBlock block)
         free(line);
     }
 
-    if(g_ui_text_block_selection.id == block.id &&
-       g_ui_text_block_selection.dragging) {
-        if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int line_index;
-            char *line;
-            int local;
+    TextSelectionDragDecision drag = TextSelectionDragDecisionFor(
+        g_ui_text_block_selection.id == block.id,
+        g_ui_text_block_selection.dragging != 0,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
+    if(drag.update) {
+        int line_index;
+        char *line;
+        int local;
 
-            line_index = ParagraphLineIndexFor(mouse.y, block.bounds.y,
-                                               line_stride, count);
-            line = ui_text_slice(block.text, lines[line_index].start,
-                                 lines[line_index].end);
-            local = ParagraphSelectionLocalOffsetFor(
-                mouse.y, block.bounds.y, height,
-                lines[line_index].end - lines[line_index].start,
-                ui_text_byte_offset_at_x(line, block.font_size,
-                                         (int)(mouse.x - block.bounds.x)));
-            free(line);
-            g_ui_text_block_selection.cursor = lines[line_index].start + local;
-            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
-        } else {
-            g_ui_text_block_selection.dragging = 0;
-        }
+        line_index = ParagraphLineIndexFor(mouse.y, block.bounds.y,
+                                           line_stride, count);
+        line = ui_text_slice(block.text, lines[line_index].start,
+                             lines[line_index].end);
+        local = ParagraphSelectionLocalOffsetFor(
+            mouse.y, block.bounds.y, height,
+            lines[line_index].end - lines[line_index].start,
+            ui_text_byte_offset_at_x(line, block.font_size,
+                                     (int)(mouse.x - block.bounds.x)));
+        free(line);
+        g_ui_text_block_selection.cursor = lines[line_index].start + local;
+        g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
+    } else if(drag.finish) {
+        g_ui_text_block_selection.dragging = 0;
     }
 
-    if(g_ui_text_block_selection.id == block.id) {
+    if(TextSelectionRangeShouldShow(g_ui_text_block_selection.id == block.id)) {
         TextSelectionRange range = TextSelectionRangeForLength(
             g_ui_text_block_selection.anchor,
             g_ui_text_block_selection.cursor, (int)strlen(block.text));
+        TextSelectionCopyDecision copy;
+
         selected_start = range.start;
         selected_end = range.end;
-        if(IsKeyboardInputEnabled() && ui_text_mod_key_down() &&
-           IsKeyPressed(KEY_C))
+        copy = TextSelectionCopyDecisionFor(g_ui_text_block_selection.id == block.id,
+                                            IsKeyboardInputEnabled() != 0,
+                                            ui_text_mod_key_down() != 0,
+                                            IsKeyPressed(KEY_C) != 0);
+        if(copy.copy)
             ui_text_copy_selection(block.text, selected_start, selected_end);
     }
 

@@ -68,6 +68,36 @@ int main(void)
     assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);
     assert(TextSelectionHighlightEndX(10, 10, false, 1.0f) == 14);
     assert(TextSelectionHighlightEndX(10, 2, true, 1.0f) == 14);
+    TextSelectionPointerDecision pointer =
+        TextSelectionPointerDecisionFor(true, false, false);
+    assert(pointer.hover);
+    assert(!pointer.begin);
+    pointer = TextSelectionPointerDecisionFor(true, false, true);
+    assert(pointer.hover);
+    assert(pointer.begin);
+    pointer = TextSelectionPointerDecisionFor(true, true, true);
+    assert(!pointer.hover);
+    assert(!pointer.begin);
+    TextSelectionDragDecision drag =
+        TextSelectionDragDecisionFor(true, true, true);
+    assert(drag.active);
+    assert(drag.update);
+    assert(!drag.finish);
+    drag = TextSelectionDragDecisionFor(true, true, false);
+    assert(drag.active);
+    assert(!drag.update);
+    assert(drag.finish);
+    drag = TextSelectionDragDecisionFor(false, true, true);
+    assert(!drag.active);
+    assert(!drag.update);
+    assert(!drag.finish);
+    TextSelectionCopyDecision copy =
+        TextSelectionCopyDecisionFor(true, true, true, true);
+    assert(copy.copy);
+    copy = TextSelectionCopyDecisionFor(true, true, false, true);
+    assert(!copy.copy);
+    assert(TextSelectionRangeShouldShow(true));
+    assert(!TextSelectionRangeShouldShow(false));
     assert(TextAlignmentOffset(100, 40, 0) == 0);
     assert(TextAlignmentOffset(100, 40, 1) == 30);
     assert(TextAlignmentOffset(100, 40, 2) == 60);

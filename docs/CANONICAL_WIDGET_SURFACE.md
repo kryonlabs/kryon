@@ -128,7 +128,7 @@ surface review:
 | `runtime/tab_bar.kry` | TabBar sizing, scroll, keyboard index, reorder marker/drag lifecycle, and double-click decision policy | `.kry canonical` |
 | `runtime/tab_bar_props.kry` | TabBar props | `.kry canonical` |
 | `runtime/terminal_pane.kry` | TerminalPane font, content, grid clamp, and scroll indicator metrics policy | `.kry support` |
-| `runtime/text.kry` | Text composition, selectable highlight geometry, and double-click line-selection policy | `.kry canonical` |
+| `runtime/text.kry` | Text composition, selectable pointer/drag/copy/show decisions, highlight geometry, and double-click line-selection policy | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, cursor normalization, navigation, selection state/paint-span policy, double-click/pan decisions, text-buffer mutation/range/bracket policy, focus ownership, platform text-input sync, and edit-intent policy | `.kry canonical` |
 | `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
@@ -161,7 +161,7 @@ text measurement, painting, storage, or platform services.
 
 | Group | `.kry`-backed today | Still native-only or compatibility |
 |---|---|---|
-| Text and drawing | `Text` style resolution, centered row text placement, selectable range normalization/highlight geometry/double-click line-selection policy, `Paragraph` metrics/default line-gap/layout spacing/line-step/height/line-stride/alignment/selectable line-index/local-offset policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/line storage/drawing, selectable text ownership/drawing |
+| Text and drawing | `Text` style resolution, centered row text placement, selectable range normalization/pointer/drag/copy/show decisions/highlight geometry/double-click line-selection policy, `Paragraph` metrics/default line-gap/layout spacing/line-step/height/line-stride/alignment/selectable line-index/local-offset policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/line storage/drawing, selectable text ownership/drawing |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options; button fallback/terminal paint constants | helper button variants belong in `ButtonProps` or composition; invisible hit testing and rasterization are host support |
 | Inputs | `Checkbox` paint/row/text/value/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/keyboard-intent/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` step-button default, component/step-button layout, value, and temp-edit activation policy, `Progress`, `Radio`, `SegmentedControl` layout/selection policy, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox` button-width/layout/button-input/value policy, `TextField`/`TextArea` defaults/metrics/paint geometry/buffer-limit/cursor normalization/navigation/edit intent/selection state/paint-span/double-click/pan/focus/text-buffer/range decision policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition, raw string storage/memmove/scanning, and platform text services |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry plus pointer/close/keyboard/open-state decisions, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/lifecycle gate/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership storage and reorder pointer ownership storage remain host support |
@@ -188,8 +188,8 @@ has a single place to land.
 | Public name | Registry group | Detail | Runtime `.kry` source | State | Migration note |
 |---|---|---|---|---|---|
 | `Background` | `Display` | Fill | `runtime/primitive.kry` | `.kry-backed` | Viewport bounds and app fallback policy are `.kry`; host keeps immediate fill drawing and retained paint ordering. |
-| `Text` | `Display` | Label | `runtime/text.kry`, `runtime/text_input.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface; retained tree typography uses resolved KSS font sizes directly; selectable range normalization uses shared `.kry` text-input policy, and selectable highlight/double-click line-selection policy is `.kry`. |
-| `Paragraph` | `Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry`, `runtime/text.kry`, `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, line-step, height, line-stride, alignment, selectable line-index/local-offset and double-click line-selection policy, `ParagraphSpec` data, and selectable range normalization are `.kry`; text parsing, line-break array ownership, icon shaping, selection ownership/drawing, and drawing remain host support. |
+| `Text` | `Display` | Label | `runtime/text.kry`, `runtime/text_input.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface; retained tree typography uses resolved KSS font sizes directly; selectable range normalization uses shared `.kry` text-input policy, and selectable pointer/drag/copy/show/highlight/double-click line-selection policy is `.kry`. |
+| `Paragraph` | `Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry`, `runtime/text.kry`, `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, line-step, height, line-stride, alignment, selectable line-index/local-offset, text-selection pointer/drag/copy/show decisions and double-click line-selection policy, `ParagraphSpec` data, and selectable range normalization are `.kry`; text parsing, line-break array ownership, icon shaping, selection ownership/drawing, and drawing remain host support. |
 | `Box` | `Display` | Shape | `runtime/primitive.kry` | `.kry-backed` | Rectangle bounds policy is `.kry`; host keeps fill/border drawing. |
 | `Line` | `Display` | Stroke | `runtime/primitive.kry` | `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
@@ -467,8 +467,8 @@ should use canonical `.kry` names and blocks.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `Background` | `.kry canonical` | Viewport bounds policy is in `.kry`; host keeps immediate fill drawing and retained paint ordering. |
-| `Text` | `.kry canonical` | Public props live in `runtime/text_props.kry`; single canonical signature is `Text(TextProps)`. Selectable highlight geometry and double-click line-selection policy are in `.kry`. |
-| `Paragraph` | `.kry canonical` | Metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/double-click line-selection policy is in `.kry`; host keeps rich text parsing, line-break storage, icon shaping, and drawing. |
+| `Text` | `.kry canonical` | Public props live in `runtime/text_props.kry`; single canonical signature is `Text(TextProps)`. Selectable pointer/drag/copy/show decisions, highlight geometry, and double-click line-selection policy are in `.kry`. |
+| `Paragraph` | `.kry canonical` | Metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection policy is in `.kry`; host keeps rich text parsing, line-break storage, icon shaping, and drawing. |
 | `Box` | `.kry canonical` | Rectangle primitive with `Rectangle` bounds. |
 | `Rect` | Removed | Old positional rectangle helper; use `Box`. |
 | `Circle` | `.kry canonical` | Retained bounds policy is in `.kry`; host keeps circle drawing. Replaces raylib-style `DrawCircleV` in `.kry` surface. |
@@ -641,7 +641,7 @@ stays prefix-free.
 | `WidgetKindSlider` | `Slider` | `.kry canonical` |
 | `WidgetKindToggle` | `Toggle` | `.kry canonical` |
 | `WidgetKindCheckbox` | `Checkbox` | `.kry canonical` |
-| `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/double-click line-selection policy is `.kry-backed` |
+| `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default line-gap/layout spacing/height/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection policy is `.kry-backed` |
 | `WidgetKindNavigationBar` | `NavigationBar` | `.kry canonical` |
 | `WidgetKindTabBar` | `TabBar` | `.kry canonical` |
 | `WidgetKindTitleBar` | `TitleBar` | `.kry canonical` |
@@ -736,7 +736,7 @@ behind the canonical names.
   `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
   `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy
   now routes through `runtime/scroll.kry`; numeric temp-edit double-click activation
-  and selectable text double-click slop metrics, including retained text widget click slop,
+  and selectable text pointer/drag/copy/show/double-click slop metrics, including retained text widget click slop,
   now route through `runtime/input.kry` and `runtime/text.kry`;
   `TextField`/`TextArea` double-click slop, field pan
   drag threshold, and `TextArea` gutter metrics now route through
@@ -811,7 +811,7 @@ behind the canonical names.
    ownership/painting, and the final decision about how much of that can become
    reusable `.kry` policy.
 4. Finish rich text migration:
-  `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment/selectable line-index/local-offset/double-click line-selection
+  `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection
   policy, retained selectable text block height/line advance, and generated `ParagraphSpec` data, but parsing, line-break ownership,
   icon shaping, and rendering are still host work.
 5. Audit host-owned input/state lifecycles:

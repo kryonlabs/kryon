@@ -157,6 +157,49 @@ TextSelectionHighlightEndX :: (start_x: i32, end_x: i32,
     return end_x
 }
 
+TextSelectionPointerDecision :: struct {
+    hover: bool
+    begin: bool
+}
+
+TextSelectionDragDecision :: struct {
+    active: bool
+    update: bool
+    finish: bool
+}
+
+TextSelectionCopyDecision :: struct {
+    copy: bool
+}
+
+TextSelectionPointerDecisionFor :: (inside: bool, captured: bool,
+    pressed: bool) -> TextSelectionPointerDecision #export {
+    out: TextSelectionPointerDecision
+    out.hover = inside && !captured
+    out.begin = out.hover && pressed
+    return out
+}
+
+TextSelectionDragDecisionFor :: (same_id: bool, dragging: bool,
+    down: bool) -> TextSelectionDragDecision #export {
+    out: TextSelectionDragDecision
+    out.active = same_id && dragging
+    out.update = out.active && down
+    out.finish = out.active && !down
+    return out
+}
+
+TextSelectionCopyDecisionFor :: (same_id: bool, keyboard_enabled: bool,
+    modifier_down: bool, copy_pressed: bool) -> TextSelectionCopyDecision #export {
+    out: TextSelectionCopyDecision
+    out.copy = same_id && keyboard_enabled && modifier_down && copy_pressed
+    return out
+}
+
+TextSelectionRangeShouldShow :: (same_id: bool) -> bool #export {
+    return same_id
+}
+
 TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> float #export {
     if alignment == 1 {
         return (available - measured) * 0.5

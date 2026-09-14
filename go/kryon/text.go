@@ -8,6 +8,21 @@ type TextAppearance struct {
 	LetterSpacing int32
 }
 
+type TextSelectionPointerDecision struct {
+	Hover bool
+	Begin bool
+}
+
+type TextSelectionDragDecision struct {
+	Active bool
+	Update bool
+	Finish bool
+}
+
+type TextSelectionCopyDecision struct {
+	Copy bool
+}
+
 func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, fallback_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
 	var style TextAppearance = TextAppearance{}
 	var value_0 int32 = font
@@ -408,6 +423,83 @@ func Text_TextSelectionHighlightEndX(start_x int32, end_x int32, continues_past_
 	}
 	var value_11 int32 = end_x
 	return value_11
+}
+
+func Text_TextSelectionPointerDecisionFor(inside bool, captured bool, pressed bool) TextSelectionPointerDecision {
+	var out TextSelectionPointerDecision = TextSelectionPointerDecision{}
+	var value_0 bool = inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	out.Hover = value_1
+	var value_4 bool = out.Hover
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = pressed
+		value_5 = value_6
+	}
+	out.Begin = value_5
+	var value_7 TextSelectionPointerDecision = out
+	return value_7
+}
+
+func Text_TextSelectionDragDecisionFor(same_id bool, dragging bool, down bool) TextSelectionDragDecision {
+	var out TextSelectionDragDecision = TextSelectionDragDecision{}
+	var value_0 bool = same_id
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = dragging
+		value_1 = value_2
+	}
+	out.Active = value_1
+	var value_3 bool = out.Active
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = down
+		value_4 = value_5
+	}
+	out.Update = value_4
+	var value_6 bool = out.Active
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = down
+		var value_9 bool = !value_8
+		value_7 = value_9
+	}
+	out.Finish = value_7
+	var value_10 TextSelectionDragDecision = out
+	return value_10
+}
+
+func Text_TextSelectionCopyDecisionFor(same_id bool, keyboard_enabled bool, modifier_down bool, copy_pressed bool) TextSelectionCopyDecision {
+	var out TextSelectionCopyDecision = TextSelectionCopyDecision{}
+	var value_0 bool = same_id
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = modifier_down
+		value_3 = value_4
+	}
+	var value_5 bool = value_3
+	if value_5 {
+		var value_6 bool = copy_pressed
+		value_5 = value_6
+	}
+	out.Copy = value_5
+	var value_7 TextSelectionCopyDecision = out
+	return value_7
+}
+
+func Text_TextSelectionRangeShouldShow(same_id bool) bool {
+	var value_0 bool = same_id
+	return value_0
 }
 
 func Text_TextAlignmentOffset(available float32, measured float32, alignment int32) float32 {
