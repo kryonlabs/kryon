@@ -76,6 +76,17 @@ TextFieldPanDecision :: struct {
     pan: bool
 }
 
+TextCompositionSelectionLength :: (preedit_len: i32, cursor: i32,
+    selection_length: i32) -> i32 #export {
+    if preedit_len < 0 { preedit_len = 0 }
+    if cursor < 0 { cursor = 0 }
+    if cursor > preedit_len { cursor = preedit_len }
+    if selection_length < 0 { selection_length = 0 }
+    max_length: i32 = preedit_len - cursor
+    if selection_length > max_length { return max_length }
+    return selection_length
+}
+
 TextSelectionRange :: struct {
     start: i32
     end: i32

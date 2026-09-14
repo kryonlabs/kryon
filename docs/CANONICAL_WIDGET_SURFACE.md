@@ -837,7 +837,8 @@ and host plumbing behind the canonical names.
    compatibility shims do not creep back in.
 3. Finish text editing policy migration:
    `TextField` and `TextArea` already own metrics, paint geometry,
-   buffer-limit, navigation, edit-intent, and selection range policy in
+   buffer-limit, navigation, edit-intent, selection range, and preedit
+   selection-length policy in
    `.kry`; remaining native work is buffer mutation, IME/composition,
    selection ownership/painting, and the final decision about how much of that
    can become reusable `.kry` policy.

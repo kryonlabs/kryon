@@ -109,6 +109,10 @@ main(void)
     assert(TextInputStrokeWidth(1.0f) == 2);
     assert(TextInputStrokeWidth(0.25f) == 1);
     assert(TextInputDoubleClickSlopFor(2.0f) == 12);
+    assert(TextCompositionSelectionLength(6, 2, 3) == 3);
+    assert(TextCompositionSelectionLength(6, 2, 99) == 4);
+    assert(TextCompositionSelectionLength(6, 9, 2) == 0);
+    assert(TextCompositionSelectionLength(-1, -2, -3) == 0);
     assert(fabsf(TextInputDoubleClickMaxSeconds() - 0.45f) < 0.001f);
     double_click = TextInputDoubleClickDecisionFor(true, true, 0.30f,
                                                    4, -4, 6);

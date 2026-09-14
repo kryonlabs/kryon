@@ -94,10 +94,8 @@ ui_text_composition_view(const char *text, int selection_start,
         end = swap;
     }
     cursor = ui_utf8_clamp_offset(preedit, preedit_cursor);
-    if(preedit_selection_length < 0)
-        preedit_selection_length = 0;
-    if(preedit_selection_length > preedit_len - cursor)
-        preedit_selection_length = preedit_len - cursor;
+    preedit_selection_length = TextCompositionSelectionLength(
+        preedit_len, cursor, preedit_selection_length);
     selected_end = ui_utf8_clamp_offset(
         preedit, cursor + preedit_selection_length);
 
