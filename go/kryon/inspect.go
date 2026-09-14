@@ -7,6 +7,11 @@ type InspectEdit struct {
 	ScreenBounds Rectangle
 }
 
+type InspectReleaseDecision struct {
+	EndEdit        bool
+	ConsumeRelease bool
+}
+
 func Inspect_InspectClampBounds(bounds Rectangle, min_size float32) Rectangle {
 	var value_0 float32 = min_size
 	var value_1 float32 = 0.0
@@ -150,6 +155,26 @@ func Inspect_InspectEditForDelta(start Rectangle, screen_start Rectangle, dx flo
 	edit.Bounds = value_33
 	var value_34 InspectEdit = edit
 	return value_34
+}
+
+func Inspect_InspectReleaseDecisionFor(released bool, dragging bool, resizing bool) InspectReleaseDecision {
+	var decision InspectReleaseDecision = InspectReleaseDecision{}
+	var value_0 bool = released
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = dragging
+		var value_3 bool = value_2
+		if !value_3 {
+			var value_4 bool = resizing
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	decision.EndEdit = value_1
+	var value_5 bool = decision.EndEdit
+	decision.ConsumeRelease = value_5
+	var value_6 InspectReleaseDecision = decision
+	return value_6
 }
 
 func Inspect_InspectKeyboardStep(shift bool) float32 {

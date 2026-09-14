@@ -6,6 +6,11 @@ InspectEdit :: struct {
     screen_bounds: Rectangle
 }
 
+InspectReleaseDecision :: struct {
+    end_edit: bool
+    consume_release: bool
+}
+
 InspectClampBounds :: (bounds: Rectangle, min_size: float) -> Rectangle #export {
     if min_size <= 0.0 { min_size = 4.0 }
     if bounds.width < min_size { bounds.width = min_size }
@@ -52,6 +57,14 @@ InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
     }
     edit.bounds = InspectClampBounds(edit.bounds, min_size)
     return edit
+}
+
+InspectReleaseDecisionFor :: (released: bool, dragging: bool,
+    resizing: bool) -> InspectReleaseDecision #export {
+    decision: InspectReleaseDecision
+    decision.end_edit = released && (dragging || resizing)
+    decision.consume_release = decision.end_edit
+    return decision
 }
 
 InspectKeyboardStep :: (shift: bool) -> float #export {

@@ -17,6 +17,7 @@ main(void)
 {
     Rectangle bounds = {10, 20, 2, 3};
     InspectEdit edit;
+    InspectReleaseDecision release;
 
     check_rect(InspectClampBounds(bounds, 4.0f), 10, 20, 4, 4);
     check_rect(InspectResizeHandleBounds((Rectangle){10, 20, 80, 40}, 12),
@@ -41,6 +42,19 @@ main(void)
                                -4, -6, 2.0f, true, 4.0f);
     check_rect(edit.bounds, 10, 20, 4, 4);
     check_rect(edit.screen_bounds, 100, 120, 2, 2);
+
+    release = InspectReleaseDecisionFor(true, true, false);
+    assert(release.end_edit);
+    assert(release.consume_release);
+    release = InspectReleaseDecisionFor(true, false, true);
+    assert(release.end_edit);
+    assert(release.consume_release);
+    release = InspectReleaseDecisionFor(true, false, false);
+    assert(!release.end_edit);
+    assert(!release.consume_release);
+    release = InspectReleaseDecisionFor(false, true, true);
+    assert(!release.end_edit);
+    assert(!release.consume_release);
 
     assert(fabsf(InspectKeyboardStep(false) - 1.0f) < 0.001f);
     assert(fabsf(InspectKeyboardStep(true) - 8.0f) < 0.001f);

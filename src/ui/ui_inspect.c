@@ -707,11 +707,15 @@ ui_inspect_update_interaction(void)
         ui_inspect_commit_selected(bounds);
         selected->screen_bounds = screen_bounds;
     }
-    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    InspectReleaseDecision release = InspectReleaseDecisionFor(
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        g_ui_inspect.dragging != 0, g_ui_inspect.resizing != 0);
+    if(release.end_edit) {
         g_ui_inspect.dragging = 0;
         g_ui_inspect.resizing = 0;
-        ConsumeRelease();
     }
+    if(release.consume_release)
+        ConsumeRelease();
     if(g_ui_inspect.selected >= 0 &&
        g_ui_inspect.selected < g_ui_inspect.widget_count) {
         float step = InspectKeyboardStep(IsKeyDown(KEY_LEFT_SHIFT) ||
