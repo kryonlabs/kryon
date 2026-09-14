@@ -47,6 +47,7 @@ main(void)
     TextCompositionInputDecision composition_input;
     TextCompositionSessionDecision composition_session;
     TextCompositionPhaseDecision composition_phase;
+    TextCompositionViewRange composition_range;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -157,6 +158,22 @@ main(void)
     assert(TextCompositionSelectionLength(6, 2, 99) == 4);
     assert(TextCompositionSelectionLength(6, 9, 2) == 0);
     assert(TextCompositionSelectionLength(-1, -2, -3) == 0);
+    composition_range = TextCompositionViewRangeFor(4, 1, 5, 2, 4);
+    assert(composition_range.replace_start == 1);
+    assert(composition_range.replace_end == 4);
+    assert(composition_range.cursor == 3);
+    assert(composition_range.selection_start == 3);
+    assert(composition_range.selection_end == 5);
+    assert(composition_range.composition_start == 1);
+    assert(composition_range.composition_end == 6);
+    composition_range = TextCompositionViewRangeFor(-3, -1, -2, -9, -4);
+    assert(composition_range.replace_start == 0);
+    assert(composition_range.replace_end == 0);
+    assert(composition_range.cursor == 0);
+    assert(composition_range.selection_start == 0);
+    assert(composition_range.selection_end == 0);
+    assert(composition_range.composition_start == 0);
+    assert(composition_range.composition_end == 0);
     assert(fabsf(TextInputDoubleClickMaxSeconds() - 0.45f) < 0.001f);
     double_click = TextInputDoubleClickDecisionFor(true, true, 0.30f,
                                                    4, -4, 6);

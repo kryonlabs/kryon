@@ -74,6 +74,7 @@ ui_text_composition_view(const char *text, int selection_start,
     int end;
     int cursor;
     int selected_end;
+    TextCompositionViewRange range;
     size_t view_len;
 
     if(view == NULL)
@@ -98,21 +99,23 @@ ui_text_composition_view(const char *text, int selection_start,
         preedit_len, cursor, preedit_selection_length);
     selected_end = ui_utf8_clamp_offset(
         preedit, cursor + preedit_selection_length);
+    range = TextCompositionViewRangeFor(start, end, preedit_len, cursor,
+                                        selected_end);
 
     view_len = (size_t)text_len - (size_t)(end - start) +
                (size_t)preedit_len;
     view->text = malloc(view_len + 1);
     if(view->text == NULL)
         return 0;
-    memcpy(view->text, text, (size_t)start);
-    memcpy(view->text + start, preedit, (size_t)preedit_len);
-    memcpy(view->text + start + preedit_len, text + end,
-           (size_t)(text_len - end + 1));
-    view->cursor = start + cursor;
-    view->selection_start = start + cursor;
-    view->selection_end = start + selected_end;
-    view->composition_start = start;
-    view->composition_end = start + preedit_len;
+    memcpy(view->text, text, (size_t)range.replace_start);
+    memcpy(view->text + range.replace_start, preedit, (size_t)preedit_len);
+    memcpy(view->text + range.replace_start + preedit_len,
+           text + range.replace_end, (size_t)(text_len - range.replace_end + 1));
+    view->cursor = range.cursor;
+    view->selection_start = range.selection_start;
+    view->selection_end = range.selection_end;
+    view->composition_start = range.composition_start;
+    view->composition_end = range.composition_end;
     return 1;
 }
 

@@ -89,6 +89,16 @@ TextCompositionPhaseDecision :: struct {
     cancel: bool
 }
 
+TextCompositionViewRange :: struct {
+    replace_start: i32
+    replace_end: i32
+    cursor: i32
+    selection_start: i32
+    selection_end: i32
+    composition_start: i32
+    composition_end: i32
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
 }
@@ -132,6 +142,36 @@ TextCompositionSelectionLength :: (preedit_len: i32, cursor: i32,
     max_length: i32 = preedit_len - cursor
     if selection_length > max_length { return max_length }
     return selection_length
+}
+
+TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
+    preedit_len: i32, preedit_cursor: i32,
+    preedit_selection_end: i32) -> TextCompositionViewRange #export {
+    range: TextCompositionViewRange
+    if selection_start < 0 { selection_start = 0 }
+    if selection_end < 0 { selection_end = 0 }
+    if selection_start <= selection_end {
+        range.replace_start = selection_start
+        range.replace_end = selection_end
+    } else {
+        range.replace_start = selection_end
+        range.replace_end = selection_start
+    }
+    if preedit_len < 0 { preedit_len = 0 }
+    if preedit_cursor < 0 { preedit_cursor = 0 }
+    if preedit_cursor > preedit_len { preedit_cursor = preedit_len }
+    if preedit_selection_end < preedit_cursor {
+        preedit_selection_end = preedit_cursor
+    }
+    if preedit_selection_end > preedit_len {
+        preedit_selection_end = preedit_len
+    }
+    range.cursor = range.replace_start + preedit_cursor
+    range.selection_start = range.cursor
+    range.selection_end = range.replace_start + preedit_selection_end
+    range.composition_start = range.replace_start
+    range.composition_end = range.replace_start + preedit_len
+    return range
 }
 
 TextSelectionRange :: struct {

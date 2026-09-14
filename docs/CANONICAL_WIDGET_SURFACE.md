@@ -839,7 +839,8 @@ and host plumbing behind the canonical names.
    `TextField` and `TextArea` already own metrics, paint geometry,
    buffer-limit, navigation, edit-intent, selection range, preedit
    accept/cancel/drain gating, composition session visibility/cancel policy,
-   composition phase classification, and preedit selection-length policy in
+   composition phase classification, preedit selection-length policy, and
+   composition view range/offset policy in
    `.kry`; remaining native work is buffer mutation, IME/composition,
    selection ownership/painting, and the final decision about how much of that
    can become reusable `.kry` policy.
