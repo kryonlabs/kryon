@@ -251,7 +251,7 @@ NodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Slider") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    slider_%d: [1] int = {50}\n"
-                 "    Slider((SliderProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(56)}, .id = %d, .label = \"Value\", .kind = 1, .int_values = slider_%d, .value_count = 1, .min = 0.0, .max = 100.0})\n",
+                 "    Slider((SliderProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(56)}, .id = %d, .label = \"Value\", .kind = NumericInt, .int_values = slider_%d, .value_count = 1, .min = 0.0, .max = 100.0})\n",
                  id, x, y, 7200 + (id % 1000), id);
     } else if(strcmp(type->name, "Checkbox") == 0) {
         snprintf(dst, (size_t)cap,

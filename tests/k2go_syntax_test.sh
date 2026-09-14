@@ -234,7 +234,7 @@ App :: () #ui {
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .wrap=TextWrapNone})
     End()
     slider_values: [1] int = {slider_val}
-    Slider((SliderProps){.bounds = {Scale(4), Scale(170), Scale(180), Scale(56)}, .id = 9, .label = "S", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0, .format = "%"})
+    Slider((SliderProps){.bounds = {Scale(4), Scale(170), Scale(180), Scale(56)}, .id = 9, .label = "S", .kind = NumericInt, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0, .format = "%"})
     Toggle((ToggleProps){.bounds = {Scale(200), Scale(170), Scale(120), Scale(34)}, .id = 10, .value = &toggle_val, .off_label = "Off", .on_label = "On"})
     Stack smoke_stack: {
         bounds = {Scale(4), Scale(190), Scale(100), Scale(40)}
@@ -276,7 +276,7 @@ App :: () #ui {
         zoom = &canvas_zoom
         Circle((int)canvas_result.world.x, (int)canvas_result.world.y, Scale(3), GetThemeSurface())
     }
-    Slider((SliderProps){.bounds = {Scale(250), Scale(8), Scale(60), Scale(56)}, .id = 23, .kind = 1, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0})
+    Slider((SliderProps){.bounds = {Scale(250), Scale(8), Scale(60), Scale(56)}, .id = 23, .kind = NumericInt, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0})
     CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
     Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .wrap=TextWrapNone, .selectable=1})
     Toast((ToastProps){.message = "toast from kry"})
@@ -299,18 +299,18 @@ App :: () #ui {
     Progress((ProgressProps){{Scale(140), Scale(210), Scale(100), Scale(10)}, 0, 100, nums[0] + scalar, ""})
     Plot((PlotProps){.bounds = {Scale(250), Scale(210), Scale(100), Scale(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
     Plot((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1, .mode = 1})
-    Drag((DragProps){.bounds = {Scale(250), Scale(298), Scale(100), Scale(28)}, .id = 28, .label = "Float", .kind = 0, .float_values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0, .max = 1.0})
-    Drag((DragProps){.bounds = {Scale(250), Scale(330), Scale(100), Scale(28)}, .id = 29, .label = "Int", .kind = 1, .int_values = nums, .value_count = 2, .speed = 1.0f, .min = 0.0, .max = 10.0})
-    Drag((DragProps){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .kind = 0, .mode = 1, .float_min = &drag_continuous_min, .float_max = &drag_continuous_max, .speed = 0.1f, .min = 0.0, .max = 10.0, .format_max = "max %.1f"})
-    Drag((DragProps){.bounds = {Scale(250),Scale(378),Scale(100),Scale(28)}, .id = 53, .label = "Int range", .kind = 1, .mode = 1, .int_min = &drag_discrete_min, .int_max = &drag_discrete_max, .min = 0.0, .max = 10.0, .format_max = "max %d"})
-    Slider((SliderProps){.bounds = {Scale(250), Scale(362), Scale(100), Scale(28)}, .id = 30, .label = "Slider float", .kind = 0, .float_values = plot_values, .value_count = 2, .min = 0.0, .max = 1.0})
-    Slider((SliderProps){.bounds = {Scale(250), Scale(394), Scale(100), Scale(28)}, .id = 31, .label = "Slider int", .kind = 1, .int_values = nums, .value_count = 2, .min = 0.0, .max = 10.0})
-    Slider((SliderProps){.bounds = {Scale(362), Scale(298), Scale(28), Scale(100)}, .id = 32, .kind = 0, .float_values = plot_values, .value_count = 1, .min = 0.0, .max = 1.0, .vertical = true})
-    Slider((SliderProps){.bounds = {Scale(394), Scale(298), Scale(28), Scale(100)}, .id = 33, .kind = 1, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0, .vertical = true})
+    Drag((DragProps){.bounds = {Scale(250), Scale(298), Scale(100), Scale(28)}, .id = 28, .label = "Float", .kind = NumericFloat, .float_values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0, .max = 1.0})
+    Drag((DragProps){.bounds = {Scale(250), Scale(330), Scale(100), Scale(28)}, .id = 29, .label = "Int", .kind = NumericInt, .int_values = nums, .value_count = 2, .speed = 1.0f, .min = 0.0, .max = 10.0})
+    Drag((DragProps){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .kind = NumericFloat, .mode = DragRange, .float_min = &drag_continuous_min, .float_max = &drag_continuous_max, .speed = 0.1f, .min = 0.0, .max = 10.0, .format_max = "max %.1f"})
+    Drag((DragProps){.bounds = {Scale(250),Scale(378),Scale(100),Scale(28)}, .id = 53, .label = "Int range", .kind = NumericInt, .mode = DragRange, .int_min = &drag_discrete_min, .int_max = &drag_discrete_max, .min = 0.0, .max = 10.0, .format_max = "max %d"})
+    Slider((SliderProps){.bounds = {Scale(250), Scale(362), Scale(100), Scale(28)}, .id = 30, .label = "Slider float", .kind = NumericFloat, .float_values = plot_values, .value_count = 2, .min = 0.0, .max = 1.0})
+    Slider((SliderProps){.bounds = {Scale(250), Scale(394), Scale(100), Scale(28)}, .id = 31, .label = "Slider int", .kind = NumericInt, .int_values = nums, .value_count = 2, .min = 0.0, .max = 10.0})
+    Slider((SliderProps){.bounds = {Scale(362), Scale(298), Scale(28), Scale(100)}, .id = 32, .kind = NumericFloat, .float_values = plot_values, .value_count = 1, .min = 0.0, .max = 1.0, .vertical = true})
+    Slider((SliderProps){.bounds = {Scale(394), Scale(298), Scale(28), Scale(100)}, .id = 33, .kind = NumericInt, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0, .vertical = true})
     Slider((SliderProps){.bounds = {Scale(250), Scale(426), Scale(100), Scale(28)}, .id = 34, .float_value = &plot_values[0], .min = -180.0, .max = 180.0, .angle = true})
-    Input((InputProps){.bounds = {Scale(250), Scale(458), Scale(100), Scale(28)}, .id = 35, .kind = 0, .float_values = plot_values, .value_count = 2, .step = 0.1, .step_fast = 1.0})
-    Input((InputProps){.bounds = {Scale(250), Scale(490), Scale(100), Scale(28)}, .id = 36, .kind = 1, .int_values = nums, .value_count = 2, .step = 1.0, .step_fast = 10.0})
-    Input((InputProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .kind = 2, .double_values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+    Input((InputProps){.bounds = {Scale(250), Scale(458), Scale(100), Scale(28)}, .id = 35, .kind = NumericFloat, .float_values = plot_values, .value_count = 2, .step = 0.1, .step_fast = 1.0})
+    Input((InputProps){.bounds = {Scale(250), Scale(490), Scale(100), Scale(28)}, .id = 36, .kind = NumericInt, .int_values = nums, .value_count = 2, .step = 1.0, .step_fast = 10.0})
+    Input((InputProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .kind = NumericDouble, .double_values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
     Button((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .size = ControlSizeSmall, .id = 38})
     Button((ButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39, .invisible = true})
     Button((ButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .arrow = true, .direction = 1})
@@ -616,17 +616,17 @@ grep -q 'kr.ListBox(kr.ListBoxProps{' "$out"
 grep -q 'kr.TreeView(kr.TreeViewProps{.*Items: tree_items\[:\].*SelectedID: &st.Pick' "$out"
 grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*ValueCount: int32(4)' "$out"
 grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: int32(1).*Mode: int32(1)' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*FloatMin: &st.DragContinuousMin.*FloatMax: &st.DragContinuousMax.*FormatMax: "max %.1f"' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*IntMin: &st.DragDiscreteMin.*IntMax: &st.DragDiscreteMax.*FormatMax: "max %d"' "$out"
-grep -q 'kr.Slider(kr.SliderProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Slider(kr.SliderProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Kind: kr.NumericFloat.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Kind: kr.NumericInt.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Mode: kr.DragRange.*FloatMin: &st.DragContinuousMin.*FloatMax: &st.DragContinuousMax.*FormatMax: "max %.1f"' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Mode: kr.DragRange.*IntMin: &st.DragDiscreteMin.*IntMax: &st.DragDiscreteMax.*FormatMax: "max %d"' "$out"
+grep -q 'kr.Slider(kr.SliderProps{.*Kind: kr.NumericFloat.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Slider(kr.SliderProps{.*Kind: kr.NumericInt.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*Vertical: true' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*FloatValue: &plot_values\[0\].*Angle: true' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 2.*DoubleValues: plot_doubles\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: kr.NumericFloat.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: kr.NumericInt.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: kr.NumericDouble.*DoubleValues: plot_doubles\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'Size: kr.ControlSizeSmall' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Invisible: true' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Arrow: true' "$out"

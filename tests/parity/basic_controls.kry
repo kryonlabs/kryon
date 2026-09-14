@@ -19,7 +19,7 @@ state {
 
 controls_frame :: () #ui {
     Screen root: {
-        Slider((SliderProps){.bounds = {20, 20, 180, 56}, .id = 801, .label = "Slider", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0})
+        Slider((SliderProps){.bounds = {20, 20, 180, 56}, .id = 801, .label = "Slider", .kind = NumericInt, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0})
         slider_value = slider_values[0]
         Toggle((ToggleProps){.bounds = {20, 80, 120, 34}, .id = 802, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
         Checkbox((CheckboxProps){.bounds = {20, 128, 120, 34}, .id = 803, .label = "Check", .value = &checkbox_value})
