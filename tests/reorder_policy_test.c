@@ -19,6 +19,7 @@ main(void)
     StyleFrame placeholder_frame = {0};
     ReorderMetrics metrics;
     ReorderDragMotion motion;
+    ReorderListResult result;
     Rectangle handle;
     ReorderHandlePaint handle_paint;
     ReorderPlaceholderPaint placeholder;
@@ -133,6 +134,43 @@ main(void)
                              (Rectangle){0, 40, 100, 20}) == 1);
     assert(ReorderTargetStep(1, 2, 1, 55,
                              (Rectangle){0, 40, 100, 20}) == 2);
+
+    result = ReorderListResultDefault(88);
+    assert(result.from_index == -1);
+    assert(result.to_index == -1);
+    assert(result.active_index == -1);
+    assert(result.target_index == -1);
+    assert(result.pointer_y == 88);
+    assert(result.active == 0);
+
+    result = ReorderListPressResultFor(2, 42, 90);
+    assert(result.active == 1);
+    assert(result.from_index == 2);
+    assert(result.to_index == 2);
+    assert(result.active_index == 2);
+    assert(result.target_index == 2);
+    assert(result.active_id == 42);
+    assert(result.pointer_y == 90);
+
+    result = ReorderListActiveResultFor(1, 3, 4, 99, 120, 75);
+    assert(result.active == 1);
+    assert(result.from_index == 1);
+    assert(result.to_index == 4);
+    assert(result.active_index == 3);
+    assert(result.target_index == 4);
+    assert(result.active_id == 99);
+    assert(result.drag_delta_y == 45);
+
+    result = ReorderListCommitResultFor(result, 6);
+    assert(result.committed == 1);
+    assert(result.dragging == 0);
+    assert(result.from_index == 3);
+    result = ReorderListCommitResultFor(
+        ReorderListActiveResultFor(1, 3, 3, 99, 120, 75), 6);
+    assert(result.committed == 0);
+    result = ReorderListCommitResultFor(
+        ReorderListActiveResultFor(1, 3, 7, 99, 120, 75), 6);
+    assert(result.committed == 0);
 
     metrics = (ReorderMetrics){.drag_threshold = 10,
                                .auto_scroll_margin = 20,

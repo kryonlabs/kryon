@@ -187,6 +187,55 @@ ReorderTargetIndexFor :: (target: i32, item_count: i32) -> i32 #export {
     return target
 }
 
+ReorderListResultDefault :: (pointer_y: i32) -> ReorderListResult #export {
+    result: ReorderListResult
+    result.from_index = -1
+    result.to_index = -1
+    result.active_index = -1
+    result.target_index = -1
+    result.pointer_y = pointer_y
+    return result
+}
+
+ReorderListPressResultFor :: (index: i32, item_id: i32,
+    pointer_y: i32) -> ReorderListResult #export {
+    result: ReorderListResult = ReorderListResultDefault(pointer_y)
+    result.active = 1
+    result.from_index = index
+    result.to_index = index
+    result.active_index = index
+    result.target_index = index
+    result.active_id = item_id
+    return result
+}
+
+ReorderListActiveResultFor :: (from_index: i32, active_index: i32,
+    target_index: i32, active_id: i32, pointer_y: i32,
+    press_y: i32) -> ReorderListResult #export {
+    result: ReorderListResult = ReorderListResultDefault(pointer_y)
+    result.active = 1
+    result.from_index = from_index
+    result.to_index = target_index
+    result.active_index = active_index
+    result.target_index = target_index
+    result.active_id = active_id
+    result.drag_delta_y = pointer_y - press_y
+    return result
+}
+
+ReorderListCommitResultFor :: (active: ReorderListResult,
+    item_count: i32) -> ReorderListResult #export {
+    result: ReorderListResult = active
+    result.dragging = 0
+    result.from_index = active.active_index
+    result.committed = 0
+    if result.target_index >= 0 && result.target_index < item_count &&
+       result.target_index != active.active_index {
+        result.committed = 1
+    }
+    return result
+}
+
 ReorderDragMotionFor :: (pointer_y: i32, press_y: i32, was_dragging: i32,
     bounds: Rectangle, viewport_top: i32, viewport_bottom: i32,
     scroll_offset: i32, max_scroll: i32,

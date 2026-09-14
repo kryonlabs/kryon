@@ -65,18 +65,11 @@ ui_reorder_cancel(void)
 ReorderListResult
 UpdateReorderList(ReorderList list)
 {
-    ReorderListResult result = {0};
     Vector2 mouse = ui_mouse_world();
     int pointer_y = (int)mouse.y;
+    ReorderListResult result = ReorderListResultDefault(pointer_y);
     int captured = ui_input_captures_click_internal(mouse, 0);
     ReorderMetrics metrics = ui_reorder_metrics_for_list(list);
-
-    result.from_index = -1;
-    result.to_index = -1;
-    result.active_index = -1;
-    result.target_index = -1;
-    result.active_id = 0;
-    result.pointer_y = pointer_y;
 
     if(list.item_count < 0)
         list.item_count = 0;
@@ -91,7 +84,6 @@ UpdateReorderList(ReorderList list)
     if(g_ui_reorder_state.list_id == list.id) {
         int active_index = ui_reorder_find_index(&list,
                                                  g_ui_reorder_state.item_id);
-        int dy = pointer_y - g_ui_reorder_state.press_y;
         int dragged_center_y;
 
         if(active_index < 0 || active_index >= list.item_count ||
@@ -100,17 +92,13 @@ UpdateReorderList(ReorderList list)
             return result;
         }
 
-        result.active = 1;
-        result.from_index = g_ui_reorder_state.from_index;
-        result.active_index = active_index;
-        result.active_id = g_ui_reorder_state.item_id;
-        result.drag_delta_y = dy;
         dragged_center_y = ReorderDraggedCenterY(
             pointer_y, g_ui_reorder_state.press_offset_y,
             list.items[active_index].bounds.height);
-        result.target_index = ui_reorder_target_index(&list, active_index,
-                                                      dragged_center_y);
-        result.to_index = result.target_index;
+        result = ReorderListActiveResultFor(
+            g_ui_reorder_state.from_index, active_index,
+            ui_reorder_target_index(&list, active_index, dragged_center_y),
+            g_ui_reorder_state.item_id, pointer_y, g_ui_reorder_state.press_y);
 
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             ReorderDragMotion motion = ReorderDragMotionFor(
@@ -137,11 +125,7 @@ UpdateReorderList(ReorderList list)
             PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
             if(g_ui_reorder_state.dragging) {
-                result.dragging = 0;
-                result.committed = result.to_index >= 0 &&
-                                   result.to_index < list.item_count &&
-                                   result.to_index != active_index;
-                result.from_index = active_index;
+                result = ReorderListCommitResultFor(result, list.item_count);
             }
         }
         ui_reorder_cancel();
@@ -172,12 +156,7 @@ UpdateReorderList(ReorderList list)
             g_ui_reorder_state.scroll_start =
                 list.scroll_offset != NULL ? *list.scroll_offset : 0;
             g_ui_reorder_state.dragging = 0;
-            result.active = 1;
-            result.from_index = i;
-            result.to_index = i;
-            result.active_index = i;
-            result.target_index = i;
-            result.active_id = item->id;
+            result = ReorderListPressResultFor(i, item->id, pointer_y);
             PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
             return result;
