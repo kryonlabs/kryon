@@ -68,7 +68,7 @@ Priority (remaining call sites from `00-status.md`):
 
 1. [done 2026-09-14] TableView - `src/ui/ui_tk.c`, `go/kryon/runtime.go`
 2. [done 2026-09-14] NavigationBar - `src/ui/navigation_bar.c`, Go retained path (zero base)
-3. PanedView handle - `src/ui/tab_bar.c:778`
+3. [done 2026-09-14] PanedView handle - `src/ui/tab_bar.c`, Go retained path (zero base)
 4. Button generic facts path - `src/ui/button.c:33`, `go/kryon/runtime.go:1747`
 5. Modal
 6. Menu/ListBox/TreeView

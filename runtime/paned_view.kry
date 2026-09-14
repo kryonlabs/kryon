@@ -3,6 +3,7 @@
 #import "drawing_props"
 #import "paned_view_props"
 #import "style"
+#import "style_sheet"
 
 PanedViewMetrics :: struct {
     grip: i32
@@ -24,6 +25,12 @@ PanedViewDragDecision :: struct {
 
 PanedViewHandleRole :: () -> i32 #export {
     return 12
+}
+
+PanedViewHandleFactsFor :: (class_name: i32, state: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindPanedView(), 0, class_name,
+        PanedViewHandleRole(), ButtonToneNeutral, ButtonEmphasisSoft,
+        ControlSizeMedium, state)
 }
 
 PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {

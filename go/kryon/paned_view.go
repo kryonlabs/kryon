@@ -5,6 +5,7 @@ package kryon
 // #import drawing_props
 // #import paned_view_props
 // #import style
+// #import style_sheet
 type PanedViewMetrics struct {
 	Grip     int32
 	DropEdge int32
@@ -26,6 +27,19 @@ type PanedViewDragDecision struct {
 func PanedView_PanedViewHandleRole() int32 {
 	var value_0 int32 = 12
 	return value_0
+}
+
+func PanedView_PanedViewHandleFactsFor(class_name int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindPanedView()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = PanedView_PanedViewHandleRole()
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
 }
 
 func PanedView_PanedViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {

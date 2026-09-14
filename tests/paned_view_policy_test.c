@@ -21,6 +21,13 @@ main(void)
     PanedViewDragDecision drag;
     assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
     assert(PanedViewMetricsFor(0.0f, handle).drop_edge == 46);
+    assert(PanedViewHandleFactsFor(55, ButtonStateNormal).kind ==
+           StyleKindPanedView());
+    assert(PanedViewHandleFactsFor(55, ButtonStateNormal).class_name == 55);
+    assert(PanedViewHandleFactsFor(55, ButtonStateNormal).role ==
+           PanedViewHandleRole());
+    assert(PanedViewHandleFactsFor(55, ButtonStatePressed).state ==
+           ButtonStatePressed);
 
     handle.value.fields = StyleIconSize | StylePaddingX;
     handle.value.icon_size = 7.0f;

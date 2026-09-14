@@ -651,8 +651,8 @@ collapsible-policy-test: $(GENERATED_SRC_DIR)/runtime/collapsible.c $(GENERATED_
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/collapsible_policy_test.c $(GENERATED_SRC_DIR)/runtime/collapsible.c -lm -o $(COLLAPSIBLE_POLICY_TEST)
 	$(COLLAPSIBLE_POLICY_TEST)
 
-paned-view-policy-test: $(GENERATED_SRC_DIR)/runtime/paned_view.c $(GENERATED_SRC_DIR)/runtime/paned_view.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/paned_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/paned_view.c -lm -o $(PANED_VIEW_POLICY_TEST)
+paned-view-policy-test: $(GENERATED_SRC_DIR)/runtime/paned_view.c $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/paned_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/paned_view.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $(PANED_VIEW_POLICY_TEST)
 	$(PANED_VIEW_POLICY_TEST)
 
 title-bar-policy-test: $(GENERATED_SRC_DIR)/runtime/title_bar.c $(GENERATED_SRC_DIR)/runtime/title_bar.h

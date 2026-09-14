@@ -5857,9 +5857,9 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	}
 	p.Bounds = r.layoutRect(p.Bounds)
 	split := *p.Split
-	normalFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
-		ButtonStateNormal, false, false, p.ClassName,
-		StyleSheet_StyleKindPanedView(), PanedView_PanedViewHandleRole())
+	normalFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+		PanedView_PanedViewHandleFactsFor(p.ClassName, int32(ButtonStateNormal)),
+		int32(ButtonStateNormal))}
 	metrics := PanedView_PanedViewMetricsFor(1, normalFrame)
 	limit := PanedView_PanedViewLimit(PanedView_PanedViewSize(p.Bounds, p.Vertical), p.MinFirst, p.MinSecond)
 	split = PanedView_PanedViewClampSplit(split, p.MinFirst, limit)
@@ -5895,8 +5895,9 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	if changed != 0 {
 		state = ButtonStatePressed
 	}
-	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, false, false,
-		p.ClassName, StyleSheet_StyleKindPanedView(), PanedView_PanedViewHandleRole())
+	frame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+		PanedView_PanedViewHandleFactsFor(p.ClassName, int32(state)),
+		int32(state))}
 	op := styleFrameRectOp(h, p.Bounds, frame)
 	op.ID = p.ID
 	op.Pressed = changed != 0
