@@ -64,16 +64,16 @@ AnimationApply(Scene *scene, const Animation *anim, float t)
                 n->local.position.x = v;
             else if(track->component == 1)
                 n->local.position.y = v;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
         } else if(strcmp(track->property, "rotation") == 0) {
             n->local.rotation = v;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
         } else if(strcmp(track->property, "scale") == 0) {
             if(track->component == 0)
                 n->local.scale.x = v;
             else if(track->component == 1)
                 n->local.scale.y = v;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
         }
     }
 }

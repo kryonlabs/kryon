@@ -1,0 +1,23 @@
+#module "scene_tree_props"
+
+NodeKind :: enum {
+    NodeKindRoot = 0
+    NodeKindNode2D = 1
+    NodeKindCamera2D = 2
+    NodeKindSprite2D = 3
+    NodeKindAnimatedSprite2D = 4
+    NodeKindTileMap = 5
+    NodeKindCollisionShape2D = 6
+    NodeKindArea2D = 7
+    NodeKindBody2D = 8
+    NodeKindAnimationPlayer = 9
+    NodeKindAudioSource = 10
+    NodeKindLight2D = 11
+    NodeKindCustom = 12
+}
+
+NodeFlag :: enum {
+    NodeFlagAlive = 1
+    NodeFlagReady = 2
+    NodeFlagDirty = 4
+}

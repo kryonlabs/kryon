@@ -14,6 +14,7 @@
 
 #include "kryon_compat.generated.h"
 #include "kry_math.h"
+#include "ui_scene_tree_props.generated.h"
 
 #define SCENE_MAX_NODES 4096
 #define SCENE_NAME_MAX 64
@@ -23,28 +24,6 @@ typedef int NodeId;
 /* Forward declarations so the NodeOps vtable can reference Scene. */
 typedef struct Scene Scene;
 typedef struct Node Node;
-
-typedef enum NodeKind {
-    NODE_ROOT,
-    NODE_NODE2D,
-    NODE_CAMERA2D,
-    NODE_SPRITE2D,
-    NODE_ANIMATED_SPRITE2D,
-    NODE_TILEMAP,
-    NODE_COLLISION_SHAPE2D,
-    NODE_AREA2D,
-    NODE_BODY2D,
-    NODE_ANIMATION_PLAYER,
-    NODE_AUDIO_SOURCE,
-    NODE_LIGHT2D,
-    NODE_CUSTOM
-} NodeKind;
-
-typedef enum NodeFlags {
-    NODE_FLAG_ALIVE = 1 << 0,
-    NODE_FLAG_READY = 1 << 1,   /* _ready has been called */
-    NODE_FLAG_DIRTY = 1 << 2    /* world transform needs recomputation */
-} NodeFlags;
 
 /*
  * Per-kind lifecycle vtable. Any slot may be NULL. The runtime calls these

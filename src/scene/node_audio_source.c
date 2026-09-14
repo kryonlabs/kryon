@@ -77,8 +77,8 @@ static const NodeOps kry_audio_source_ops = {
 void
 kry_register_audio_source(void)
 {
-    NodeRegisterOps(NODE_AUDIO_SOURCE, &kry_audio_source_ops);
-    NodeRegisterDestroy(NODE_AUDIO_SOURCE, kry_audio_source_destroy);
+    NodeRegisterOps(NodeKindAudioSource, &kry_audio_source_ops);
+    NodeRegisterDestroy(NodeKindAudioSource, kry_audio_source_destroy);
 }
 
 AudioSourceProps *

@@ -47,6 +47,6 @@ static const NodeOps kry_area2d_ops = {
 void
 kry_register_area2d(void)
 {
-    NodeRegisterOps(NODE_AREA2D, &kry_area2d_ops);
-    NodeRegisterDestroy(NODE_AREA2D, kry_area2d_destroy);
+    NodeRegisterOps(NodeKindArea2D, &kry_area2d_ops);
+    NodeRegisterDestroy(NodeKindArea2D, kry_area2d_destroy);
 }

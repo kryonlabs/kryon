@@ -43,6 +43,6 @@ static const NodeOps kry_camera2d_ops = {
 void
 kry_register_camera2d(void)
 {
-    NodeRegisterOps(NODE_CAMERA2D, &kry_camera2d_ops);
-    NodeRegisterDestroy(NODE_CAMERA2D, kry_camera2d_destroy);
+    NodeRegisterOps(NodeKindCamera2D, &kry_camera2d_ops);
+    NodeRegisterDestroy(NodeKindCamera2D, kry_camera2d_destroy);
 }

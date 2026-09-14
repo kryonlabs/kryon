@@ -22,7 +22,7 @@ kry_find_body_ancestor(Scene *scene, NodeId node)
         n = NodeGet(scene, parent);
         if(n == NULL)
             return -1;
-        if(n->kind == NODE_BODY2D && n->props != NULL)
+        if(n->kind == NodeKindBody2D && n->props != NULL)
             return parent;
         parent = n->parent;
     }
@@ -92,7 +92,7 @@ static const NodeOps kry_collision_shape2d_ops = {
 void
 kry_register_collision_shape2d(void)
 {
-    NodeRegisterOps(NODE_COLLISION_SHAPE2D, &kry_collision_shape2d_ops);
-    NodeRegisterDestroy(NODE_COLLISION_SHAPE2D,
+    NodeRegisterOps(NodeKindCollisionShape2D, &kry_collision_shape2d_ops);
+    NodeRegisterDestroy(NodeKindCollisionShape2D,
                            kry_collision_shape2d_destroy);
 }

@@ -22,7 +22,7 @@ scene main {
         map_data[i] = ((i + i / MAP_W) % 3) + 1
         i = i + 1
     }
-    tiles := NodeCreate(scene, 0, NODE_TILEMAP, "tiles")
+    tiles := NodeCreate(scene, 0, NodeKindTileMap, "tiles")
     NodeSetPosition(scene, tiles, 64.0, 64.0)
     props := TileMapPropsAlloc("tiles/tile.png", 32, 32, 4, MAP_W, MAP_H)
     props->tiles = map_data

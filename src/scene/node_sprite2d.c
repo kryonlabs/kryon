@@ -66,6 +66,6 @@ static const NodeOps kry_sprite2d_ops = {
 void
 kry_register_sprite2d(void)
 {
-    NodeRegisterOps(NODE_SPRITE2D, &kry_sprite2d_ops);
-    NodeRegisterDestroy(NODE_SPRITE2D, kry_sprite2d_destroy);
+    NodeRegisterOps(NodeKindSprite2D, &kry_sprite2d_ops);
+    NodeRegisterDestroy(NodeKindSprite2D, kry_sprite2d_destroy);
 }

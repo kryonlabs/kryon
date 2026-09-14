@@ -85,6 +85,7 @@ surface review:
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D node props and enums | `.kry canonical` |
 | `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
+| `runtime/scene_tree_props.kry` | Game2D scene node kind and flag values | `.kry support` |
 | `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
@@ -163,7 +164,7 @@ text measurement, painting, storage, or platform services.
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
-| Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
+| Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
 
 The remaining migration target is the native support around text editing and
 content wrappers: `TextField` and `TextArea` own metrics/paint geometry/buffer-limit/navigation/edit-intent
@@ -599,13 +600,15 @@ No web runtime widget entries are accepted as public compatibility names.
 
 Game2D has its own node family. These are canonical for the Game2D domain and
 stay separate from general UI widgets. Concrete node props/enums live in
-`runtime/node2d_props.kry`; scene graph ownership and host resources remain
-native Game2D support.
+`runtime/node2d_props.kry`; scene kind/flag values live in
+`runtime/scene_tree_props.kry`; scene graph ownership and host resources remain
+native Game2D support. Public code uses generated `NodeKind*` and `NodeFlag*`
+names, not the old `NODE_*`/`NODE_FLAG_*` C constants.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `Scene` | Game2D native scene | Root game scene; add `.kry` declaration support later. |
-| `Node2D` | Game2D native scene | Base 2D node; add `.kry` declaration support later. |
+| `Scene` / `NodeKindRoot` | Game2D native scene | Root game scene; add `.kry` declaration support later. |
+| `Node2D` / `NodeKindNode2D` | Game2D native scene | Base 2D node; add `.kry` declaration support later. |
 | `Camera2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; lifecycle remains native. |
 | `Sprite2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; asset loading and drawing remain native. |
 | `AnimatedSprite2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; frame playback remains native. |
@@ -616,6 +619,7 @@ native Game2D support.
 | `AnimationPlayer` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; playback/lifecycle remain native. |
 | `AudioSource` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; playback handles remain native. |
 | `Light2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; light rendering remains native. |
+| `NodeFlagAlive`, `NodeFlagReady`, `NodeFlagDirty` | `.kry support` | Generated scene-tree flags from `runtime/scene_tree_props.kry`; host code owns lifecycle mutation. |
 
 ## Escape Hatches
 
@@ -674,6 +678,7 @@ Recent retained-tree public C cleanup:
 | `UIEvent` | `Event` |
 | `UIInvalidation`, `UI_INVALIDATE_*` | `Invalidation`, `INVALIDATE_*` |
 | `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `int` as an opaque integer plus `GetNodeKindName(kind)` |
+| scene `NODE_*`, `NODE_FLAG_*` constants | Generated `NodeKind*` and `NodeFlag*` values from `runtime/scene_tree_props.kry` |
 | `UIWidgetNode` | Opaque `TreeNode` inspection handle plus `GetNode*` accessors |
 | `UIWidgetData` | Internal `WidgetData`; public code uses clean node inspection helpers |
 | public C `ButtonSpec` | Internal retained/render payload; public code uses `Button(ButtonProps)` |

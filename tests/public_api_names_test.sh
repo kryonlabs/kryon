@@ -830,27 +830,27 @@ from pathlib import Path
 import re
 
 registry = Path("src/ui/ui_node_registry.c").read_text()
-scene = Path("include/scene_tree.h").read_text()
+scene = Path("runtime/scene_tree_props.kry").read_text()
 entries = re.findall(r'\{"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"', registry)
-kinds = set(re.findall(r'\bNODE_([A-Z0-9_]+)\b', scene))
+kinds = set(re.findall(r'\bNodeKind[A-Za-z0-9]+\b', scene))
 aliases = {
-    "Scene": "ROOT",
-    "Node2D": "NODE2D",
-    "Camera2D": "CAMERA2D",
-    "Sprite2D": "SPRITE2D",
-    "AnimatedSprite2D": "ANIMATED_SPRITE2D",
-    "TileMap": "TILEMAP",
-    "CollisionShape2D": "COLLISION_SHAPE2D",
-    "Area2D": "AREA2D",
-    "Body2D": "BODY2D",
-    "Light2D": "LIGHT2D",
+    "Scene": "NodeKindRoot",
+    "Node2D": "NodeKindNode2D",
+    "Camera2D": "NodeKindCamera2D",
+    "Sprite2D": "NodeKindSprite2D",
+    "AnimatedSprite2D": "NodeKindAnimatedSprite2D",
+    "TileMap": "NodeKindTileMap",
+    "CollisionShape2D": "NodeKindCollisionShape2D",
+    "Area2D": "NodeKindArea2D",
+    "Body2D": "NodeKindBody2D",
+    "Light2D": "NodeKindLight2D",
 }
 for name, group in entries:
     if not group.startswith("Game2D/"):
         continue
-    expected = aliases.get(name, re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', name).upper())
+    expected = aliases.get(name, "NodeKind" + name)
     if expected not in kinds:
-        print(f"{name}: missing NODE_{expected}")
+        print(f"{name}: missing {expected}")
 PY
 )"
 

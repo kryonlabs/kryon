@@ -83,8 +83,8 @@ static const NodeOps kry_animated_sprite2d_ops = {
 void
 kry_register_animated_sprite2d(void)
 {
-    NodeRegisterOps(NODE_ANIMATED_SPRITE2D, &kry_animated_sprite2d_ops);
-    NodeRegisterDestroy(NODE_ANIMATED_SPRITE2D,
+    NodeRegisterOps(NodeKindAnimatedSprite2D, &kry_animated_sprite2d_ops);
+    NodeRegisterDestroy(NodeKindAnimatedSprite2D,
                            kry_animated_sprite2d_destroy);
 }
 

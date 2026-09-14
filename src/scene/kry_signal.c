@@ -102,7 +102,7 @@ SignalEmit(Scene *scene, NodeId emitter, const char *signal,
            strcmp(c->signal, signal) != 0)
             continue;
         target = NodeGet(scene, c->target);
-        if(target == NULL || !(target->flags & NODE_FLAG_ALIVE))
+        if(target == NULL || !(target->flags & NodeFlagAlive))
             continue;
         handler_fn = g_signal_handlers[target->kind];
         if(handler_fn != NULL) {

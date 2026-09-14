@@ -72,6 +72,6 @@ static const NodeOps kry_body2d_ops = {
 void
 kry_register_body2d(void)
 {
-    NodeRegisterOps(NODE_BODY2D, &kry_body2d_ops);
-    NodeRegisterDestroy(NODE_BODY2D, kry_body2d_destroy);
+    NodeRegisterOps(NodeKindBody2D, &kry_body2d_ops);
+    NodeRegisterDestroy(NodeKindBody2D, kry_body2d_destroy);
 }

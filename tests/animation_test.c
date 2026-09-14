@@ -32,7 +32,7 @@ main(void)
 
     SceneRegisterBuiltins();
     SceneInit(&scene);
-    target = NodeCreate(&scene, scene.root, NODE_NODE2D, "t");
+    target = NodeCreate(&scene, scene.root, NodeKindNode2D, "t");
 
     /* linear track: 0->100 over t=0..1 */
     track.target = target;

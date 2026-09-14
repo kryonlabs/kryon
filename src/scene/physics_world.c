@@ -131,7 +131,7 @@ kry_body2d_sync(Scene *scene, NodeId node, Body2DProps *props)
     xf = b2Body_GetTransform(bid);
     n->local.position = (Vector2){xf.p.x, xf.p.y};
     n->local.rotation = b2Rot_GetAngle(xf.q);
-    n->flags |= NODE_FLAG_DIRTY;
+    n->flags |= NodeFlagDirty;
 }
 
 void
@@ -207,7 +207,7 @@ KryBody2DSetTransform(Scene *scene, NodeId node, float x, float y)
     Body2DProps *props;
     b2BodyId bid;
 
-    if(n == NULL || n->kind != NODE_BODY2D)
+    if(n == NULL || n->kind != NodeKindBody2D)
         return;
     props = (Body2DProps *)n->props;
     if(props == NULL || props->body_id_index == 0)
@@ -216,7 +216,7 @@ KryBody2DSetTransform(Scene *scene, NodeId node, float x, float y)
     if(!b2Body_IsValid(bid))
         return;
     b2Body_SetTransform(bid, (b2Vec2){x, y}, b2Body_GetRotation(bid));
-    n->flags |= NODE_FLAG_DIRTY;
+    n->flags |= NodeFlagDirty;
 }
 
 void
@@ -226,7 +226,7 @@ KryBody2DSetVelocity(Scene *scene, NodeId node, float vx, float vy)
     Body2DProps *props;
     b2BodyId bid;
 
-    if(n == NULL || n->kind != NODE_BODY2D)
+    if(n == NULL || n->kind != NodeKindBody2D)
         return;
     props = (Body2DProps *)n->props;
     if(props == NULL || props->body_id_index == 0)
@@ -249,7 +249,7 @@ KryBody2DGetVelocity(Scene *scene, NodeId node, float *vx, float *vy)
         *vx = 0.0f;
     if(vy != NULL)
         *vy = 0.0f;
-    if(n == NULL || n->kind != NODE_BODY2D)
+    if(n == NULL || n->kind != NodeKindBody2D)
         return;
     props = (Body2DProps *)n->props;
     if(props == NULL || props->body_id_index == 0)
@@ -279,7 +279,7 @@ kry_sensor_owner(Scene *scene, b2ShapeId shape, NodeKind wanted)
     if(!b2Shape_IsValid(shape))
         return -1;
     n = NodeGet(scene, (NodeId)(intptr_t)b2Shape_GetUserData(shape));
-    while(n != NULL && (n->flags & NODE_FLAG_ALIVE) != 0) {
+    while(n != NULL && (n->flags & NodeFlagAlive) != 0) {
         if(n->kind == wanted)
             return n->id;
         if(n->parent < 0)
@@ -293,8 +293,8 @@ static void
 kry_sensor_signal(Scene *scene, b2ShapeId sensor_shape, b2ShapeId visitor_shape,
                   int begin)
 {
-    NodeId area = kry_sensor_owner(scene, sensor_shape, NODE_AREA2D);
-    NodeId body = kry_sensor_owner(scene, visitor_shape, NODE_BODY2D);
+    NodeId area = kry_sensor_owner(scene, sensor_shape, NodeKindArea2D);
+    NodeId body = kry_sensor_owner(scene, visitor_shape, NodeKindBody2D);
     Node *area_node;
     Node *body_node;
     Area2DProps *props;

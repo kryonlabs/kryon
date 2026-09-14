@@ -8,6 +8,7 @@
  */
 
 #include "scene_inspect.h"
+#include "runtime/scene_tree_props.h"
 #include "platform.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -102,27 +103,6 @@ buf_json_string(InspectState *st, const char *s)
     buf_str(st, "\"");
 }
 
-static const char *
-builtin_kind_name(int kind)
-{
-    switch(kind) {
-    case NODE_ROOT: return "Root";
-    case NODE_NODE2D: return "Node2D";
-    case NODE_CAMERA2D: return "Camera2D";
-    case NODE_SPRITE2D: return "Sprite2D";
-    case NODE_ANIMATED_SPRITE2D: return "AnimatedSprite2D";
-    case NODE_TILEMAP: return "TileMap";
-    case NODE_COLLISION_SHAPE2D: return "CollisionShape2D";
-    case NODE_AREA2D: return "Area2D";
-    case NODE_BODY2D: return "Body2D";
-    case NODE_ANIMATION_PLAYER: return "AnimationPlayer";
-    case NODE_AUDIO_SOURCE: return "AudioSource";
-    case NODE_LIGHT2D: return "Light2D";
-    case NODE_CUSTOM: return "Custom";
-    default: return NULL;
-    }
-}
-
 static void
 buf_property_value(InspectState *st, PropertyValue v)
 {
@@ -174,7 +154,7 @@ SceneInspectPoll(Scene *scene)
     st->next_len = 0;
 
     for(i = 0; i < scene->count; i++)
-        if(scene->nodes[i].flags & NODE_FLAG_ALIVE)
+        if(scene->nodes[i].flags & NodeFlagAlive)
             alive_count++;
 
     buf_str(st, "{\"count\":");
@@ -185,11 +165,9 @@ SceneInspectPoll(Scene *scene)
         int spec_count = 0;
         const char *kind;
 
-        if(!(n->flags & NODE_FLAG_ALIVE))
+        if(!(n->flags & NodeFlagAlive))
             continue;
-        kind = builtin_kind_name(n->kind);
-        if(kind == NULL)
-            kind = NodeKindName(n->kind);
+        kind = NodeKindName(n->kind);
         if(kind == NULL)
             kind = "Unknown";
         if(alive_count-- == 0)

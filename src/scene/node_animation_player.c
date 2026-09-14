@@ -67,8 +67,8 @@ static const NodeOps kry_animation_player_ops = {
 void
 kry_register_animation_player(void)
 {
-    NodeRegisterOps(NODE_ANIMATION_PLAYER, &kry_animation_player_ops);
-    NodeRegisterDestroy(NODE_ANIMATION_PLAYER, kry_animation_player_destroy);
+    NodeRegisterOps(NodeKindAnimationPlayer, &kry_animation_player_ops);
+    NodeRegisterDestroy(NodeKindAnimationPlayer, kry_animation_player_destroy);
 }
 
 AnimationPlayerProps *

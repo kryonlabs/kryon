@@ -62,8 +62,8 @@ main(void)
     SceneInit(&scene);
 
     /* --- property model: Node2D transform fields --- */
-    node_a = NodeCreate(&scene, scene.root, NODE_NODE2D, "a");
-    specs = ScenePropertySpecs(NODE_NODE2D, &spec_count);
+    node_a = NodeCreate(&scene, scene.root, NodeKindNode2D, "a");
+    specs = ScenePropertySpecs(NodeKindNode2D, &spec_count);
     check_int("Node2D property count", spec_count, 3);
     check_int("first Node2D property is position",
               strcmp(specs[0].id, "position"), 0);
@@ -84,22 +84,22 @@ main(void)
 
     /* dirty flag is set when transform props change */
     check_int("transform set marks node dirty",
-              (NodeGet(&scene, node_a)->flags & NODE_FLAG_DIRTY) != 0, 1);
+              (NodeGet(&scene, node_a)->flags & NodeFlagDirty) != 0, 1);
 
     /* --- property model: Sprite2D kind-specific props --- */
-    sprite = NodeCreate(&scene, scene.root, NODE_SPRITE2D, "s");
+    sprite = NodeCreate(&scene, scene.root, NodeKindSprite2D, "s");
     NodeSetProps(&scene, sprite, Sprite2DPropsAlloc("tiles/tile.png", 96.0f, 96.0f));
-    specs = ScenePropertySpecs(NODE_SPRITE2D, &spec_count);
+    specs = ScenePropertySpecs(NodeKindSprite2D, &spec_count);
     check_int("Sprite2D property count", spec_count, 6);
     v = SceneNodeGetPropertyByName(&scene, sprite, "asset_path");
     check_int("asset_path property kind", v.kind, PROPERTY_ASSET_PATH);
     check_int("asset_path value", strcmp(v.as.string_value, "tiles/tile.png"), 0);
 
     /* --- property model: Light2D rendering props --- */
-    light = NodeCreate(&scene, scene.root, NODE_LIGHT2D, "lamp");
+    light = NodeCreate(&scene, scene.root, NodeKindLight2D, "lamp");
     NodeSetProps(&scene, light,
                  Light2DPropsAlloc(96.0f, (Color){120, 80, 220, 180}, 0.75f));
-    specs = ScenePropertySpecs(NODE_LIGHT2D, &spec_count);
+    specs = ScenePropertySpecs(NodeKindLight2D, &spec_count);
     check_int("Light2D property count", spec_count, 7);
     v = SceneNodeGetPropertyByName(&scene, light, "radius");
     check_float("Light2D radius", v.as.float_value, 96.0f, 0.001f);
@@ -109,8 +109,8 @@ main(void)
     check_int("Light2D enabled round-trips", v.as.bool_value, 0);
 
     /* --- signals: connect + emit + dispatch --- */
-    node_b = NodeCreate(&scene, scene.root, NODE_NODE2D, "b");
-    NodeKindRegisterSignalHandler(NODE_NODE2D, test_signal_handler);
+    node_b = NodeCreate(&scene, scene.root, NodeKindNode2D, "b");
+    NodeKindRegisterSignalHandler(NodeKindNode2D, test_signal_handler);
 
     check_int("connect returns 1",
               SignalConnect(&scene, node_a, "hit", node_b, "on_hit"), 1);

@@ -73,8 +73,8 @@ static const NodeOps kry_tilemap_ops = {
 void
 kry_register_tilemap(void)
 {
-    NodeRegisterOps(NODE_TILEMAP, &kry_tilemap_ops);
-    NodeRegisterDestroy(NODE_TILEMAP, kry_tilemap_destroy);
+    NodeRegisterOps(NodeKindTileMap, &kry_tilemap_ops);
+    NodeRegisterDestroy(NodeKindTileMap, kry_tilemap_destroy);
 }
 
 TileMapProps *

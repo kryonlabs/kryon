@@ -59,6 +59,6 @@ static const NodeOps kry_light2d_ops = {
 void
 kry_register_light2d(void)
 {
-    NodeRegisterOps(NODE_LIGHT2D, &kry_light2d_ops);
-    NodeRegisterDestroy(NODE_LIGHT2D, kry_light2d_destroy);
+    NodeRegisterOps(NodeKindLight2D, &kry_light2d_ops);
+    NodeRegisterDestroy(NodeKindLight2D, kry_light2d_destroy);
 }

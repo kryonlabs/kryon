@@ -44,7 +44,7 @@ SceneRegisterCustomKind(NodeKind kind, const PropertySpec *specs,
                            int count, ScenePropertyGetFn get,
                            ScenePropertySetFn set)
 {
-    if(kind <= NODE_CUSTOM || kind >= KRY_PROPERTY_KIND_MAX)
+    if(kind <= NodeKindCustom || kind >= KRY_PROPERTY_KIND_MAX)
         return 0;
     g_property_tables[kind].specs = specs;
     g_property_tables[kind].count = count;
@@ -109,7 +109,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
     if(specs == NULL || index < 0 || index >= count)
         return out;
 
-    if(n->kind > NODE_CUSTOM) {
+    if(n->kind > NodeKindCustom) {
         KryPropertyTable *t = &g_property_tables[n->kind];
 
         /* indices 0..2 are shared transform fields on every kind */
@@ -125,10 +125,10 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
     }
 
     switch(n->kind) {
-    case NODE_NODE2D:
-    case NODE_CAMERA2D:
-    case NODE_SPRITE2D:
-    case NODE_LIGHT2D:
+    case NodeKindNode2D:
+    case NodeKindCamera2D:
+    case NodeKindSprite2D:
+    case NodeKindLight2D:
         /* indices 0..2 are shared transform fields on every Node2D-base kind */
         if(index == 0)
             return PropertyVector2(n->local.position);
@@ -141,7 +141,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
         break;
     }
 
-    if(n->kind == NODE_CAMERA2D && n->props != NULL) {
+    if(n->kind == NodeKindCamera2D && n->props != NULL) {
         Camera2DProps *p = (Camera2DProps *)n->props;
         if(index == 3)
             return PropertyFloat(p->zoom);
@@ -149,7 +149,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
             return PropertyBool(p->active);
     }
 
-    if(n->kind == NODE_SPRITE2D && n->props != NULL) {
+    if(n->kind == NodeKindSprite2D && n->props != NULL) {
         Sprite2DProps *p = (Sprite2DProps *)n->props;
         if(index == 3)
             return PropertyAssetPathValue(p->asset_path != NULL ? p->asset_path : "");
@@ -159,7 +159,7 @@ SceneNodeGetProperty(Scene *scene, NodeId node, int index)
             return PropertyColor(p->tint);
     }
 
-    if(n->kind == NODE_LIGHT2D && n->props != NULL) {
+    if(n->kind == NodeKindLight2D && n->props != NULL) {
         Light2DProps *p = (Light2DProps *)n->props;
         if(index == 3)
             return PropertyFloat(p->radius);
@@ -191,27 +191,27 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
     if(specs[index].kind != value.kind)
         return 0;
 
-    if(n->kind > NODE_CUSTOM) {
+    if(n->kind > NodeKindCustom) {
         KryPropertyTable *t = &g_property_tables[n->kind];
 
         if(index == 0) {
             n->local.position = value.as.vector2_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         if(index == 1) {
             n->local.rotation = value.as.float_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         if(index == 2) {
             n->local.scale = value.as.vector2_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         if(t->set != NULL) {
             if(t->set(scene, node, index, value)) {
-                n->flags |= NODE_FLAG_DIRTY;
+                n->flags |= NodeFlagDirty;
                 return 1;
             }
         }
@@ -219,23 +219,23 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
     }
 
     switch(n->kind) {
-    case NODE_NODE2D:
-    case NODE_CAMERA2D:
-    case NODE_SPRITE2D:
-    case NODE_LIGHT2D:
+    case NodeKindNode2D:
+    case NodeKindCamera2D:
+    case NodeKindSprite2D:
+    case NodeKindLight2D:
         if(index == 0) {
             n->local.position = value.as.vector2_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         if(index == 1) {
             n->local.rotation = value.as.float_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         if(index == 2) {
             n->local.scale = value.as.vector2_value;
-            n->flags |= NODE_FLAG_DIRTY;
+            n->flags |= NodeFlagDirty;
             return 1;
         }
         break;
@@ -243,7 +243,7 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
         break;
     }
 
-    if(n->kind == NODE_CAMERA2D && n->props != NULL) {
+    if(n->kind == NodeKindCamera2D && n->props != NULL) {
         Camera2DProps *p = (Camera2DProps *)n->props;
         if(index == 3) {
             p->zoom = value.as.float_value;
@@ -255,7 +255,7 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
         }
     }
 
-    if(n->kind == NODE_SPRITE2D && n->props != NULL) {
+    if(n->kind == NodeKindSprite2D && n->props != NULL) {
         Sprite2DProps *p = (Sprite2DProps *)n->props;
         if(index == 3) {
             /* asset_path is owned by the builder; the editor copies into the
@@ -273,7 +273,7 @@ SceneNodeSetProperty(Scene *scene, NodeId node, int index,
         }
     }
 
-    if(n->kind == NODE_LIGHT2D && n->props != NULL) {
+    if(n->kind == NodeKindLight2D && n->props != NULL) {
         Light2DProps *p = (Light2DProps *)n->props;
         if(index == 3) {
             p->radius = value.as.float_value;
@@ -366,12 +366,12 @@ static const PropertySpec kry_light2d_props[] = {
 void
 SceneRegisterBuiltinProperties(void)
 {
-    SceneRegisterProperties(NODE_NODE2D, kry_node2d_props,
+    SceneRegisterProperties(NodeKindNode2D, kry_node2d_props,
                                (int)(sizeof(kry_node2d_props) / sizeof(kry_node2d_props[0])));
-    SceneRegisterProperties(NODE_CAMERA2D, kry_camera2d_props,
+    SceneRegisterProperties(NodeKindCamera2D, kry_camera2d_props,
                                (int)(sizeof(kry_camera2d_props) / sizeof(kry_camera2d_props[0])));
-    SceneRegisterProperties(NODE_SPRITE2D, kry_sprite2d_props,
+    SceneRegisterProperties(NodeKindSprite2D, kry_sprite2d_props,
                                (int)(sizeof(kry_sprite2d_props) / sizeof(kry_sprite2d_props[0])));
-    SceneRegisterProperties(NODE_LIGHT2D, kry_light2d_props,
+    SceneRegisterProperties(NodeKindLight2D, kry_light2d_props,
                                (int)(sizeof(kry_light2d_props) / sizeof(kry_light2d_props[0])));
 }

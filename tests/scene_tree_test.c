@@ -76,14 +76,14 @@ main(void)
     check_int("scene starts with one node (the root)", scene.count, 1);
 
     root = scene.root;
-    parent = NodeCreate(&scene, root, NODE_NODE2D, "parent");
+    parent = NodeCreate(&scene, root, NodeKindNode2D, "parent");
     check_int("parent created", parent, 1);
     check_int("parent is child of root", scene.nodes[parent].parent, root);
     check_int("root first child is parent", scene.nodes[root].first_child, parent);
     check_int("root child count", scene.nodes[root].child_count, 1);
 
-    child_a = NodeCreate(&scene, parent, NODE_NODE2D, "a");
-    child_b = NodeCreate(&scene, parent, NODE_NODE2D, "b");
+    child_a = NodeCreate(&scene, parent, NodeKindNode2D, "a");
+    child_b = NodeCreate(&scene, parent, NodeKindNode2D, "b");
     check_int("child_a is child of parent", scene.nodes[child_a].parent, parent);
     check_int("child_b is child of parent", scene.nodes[child_b].parent, parent);
     check_int("parent first child is a", scene.nodes[parent].first_child, child_a);
@@ -112,12 +112,12 @@ main(void)
     /* remove a node: it detaches and frees its subtree */
     NodeRemove(&scene, child_b);
     check_int("removed node is not alive",
-              (scene.nodes[child_b].flags & NODE_FLAG_ALIVE) == 0, 1);
+              (scene.nodes[child_b].flags & NodeFlagAlive) == 0, 1);
     check_int("parent child count after remove", scene.nodes[parent].child_count, 1);
 
     /* active camera selection: a Camera2D with active=1 claims the scene */
     {
-        NodeId cam = NodeCreate(&scene, root, NODE_CAMERA2D, "cam");
+        NodeId cam = NodeCreate(&scene, root, NodeKindCamera2D, "cam");
         Camera2DProps *props = Camera2DPropsAlloc(2.0f, 1);
         NodeSetProps(&scene, cam, props);
         SceneTick(&scene, 0.016f); /* fires ready on cam -> claims active_camera */
@@ -132,7 +132,7 @@ main(void)
             ready_probe_ready, NULL, NULL, NULL
         };
         NodeKind custom = NodeRegisterCustomKind("ready_world_probe");
-        NodeId parent2 = NodeCreate(&scene, root, NODE_NODE2D, "p2");
+        NodeId parent2 = NodeCreate(&scene, root, NodeKindNode2D, "p2");
         NodeId probe;
 
         check_int("custom kind registered", custom >= 0, 1);
@@ -158,10 +158,10 @@ main(void)
      * physics step emits body_enter signals). A sensor shape attaches to
      * the nearest Body2D ancestor, so the area rides a static body. */
     {
-        NodeId anchor = NodeCreate(&scene, root, NODE_BODY2D, "anchor");
-        NodeId area = NodeCreate(&scene, anchor, NODE_AREA2D, "trigger");
+        NodeId anchor = NodeCreate(&scene, root, NodeKindBody2D, "anchor");
+        NodeId area = NodeCreate(&scene, anchor, NodeKindArea2D, "trigger");
         NodeId area_shape;
-        NodeId faller = NodeCreate(&scene, root, NODE_BODY2D, "faller");
+        NodeId faller = NodeCreate(&scene, root, NodeKindBody2D, "faller");
         NodeId faller_shape;
         Area2DProps *ap;
         Body2DProps *bp;
@@ -174,7 +174,7 @@ main(void)
         ap = Area2DPropsAlloc();
         ap->monitoring = 1;
         NodeSetProps(&scene, area, ap);
-        area_shape = NodeCreate(&scene, area, NODE_COLLISION_SHAPE2D, "s1");
+        area_shape = NodeCreate(&scene, area, NodeKindCollisionShape2D, "s1");
         sp = CollisionShape2DPropsAlloc(Shape2DBox, 40.0f, 40.0f);
         sp->is_sensor = 1;
         NodeSetProps(&scene, area_shape, sp);
@@ -182,21 +182,21 @@ main(void)
         /* static decoration resting inside the sensor must not count as
          * a body_enter (Box2D reports static-static sensor overlaps) */
         {
-            NodeId deco = NodeCreate(&scene, root, NODE_BODY2D, "deco");
+            NodeId deco = NodeCreate(&scene, root, NodeKindBody2D, "deco");
             NodeId deco_shape;
 
             bp = Body2DPropsAlloc(Body2DStatic);
             NodeSetProps(&scene, deco, bp);
             NodeSetPosition(&scene, deco, 15.0f, 60.0f); /* inside the sensor,
                                                              off the faller column */
-            deco_shape = NodeCreate(&scene, deco, NODE_COLLISION_SHAPE2D, "s0");
+            deco_shape = NodeCreate(&scene, deco, NodeKindCollisionShape2D, "s0");
             NodeSetProps(&scene, deco_shape, CollisionShape2DPropsAlloc(
                              Shape2DBox, 8.0f, 8.0f));
         }
 
         bp = Body2DPropsAlloc(Body2DDynamic);
         NodeSetProps(&scene, faller, bp);
-        faller_shape = NodeCreate(&scene, faller, NODE_COLLISION_SHAPE2D, "s2");
+        faller_shape = NodeCreate(&scene, faller, NodeKindCollisionShape2D, "s2");
         NodeSetProps(&scene, faller_shape, CollisionShape2DPropsAlloc(
                          Shape2DBox, 10.0f, 10.0f));
         NodeSetPosition(&scene, faller, 0.0f, 0.0f);
@@ -229,7 +229,7 @@ main(void)
      * kind ids sit beyond the builtins in the handler table */
     {
         NodeKind k = NodeRegisterCustomKind("sig_target");
-        NodeId emitter = NodeCreate(&scene, root, NODE_NODE2D, "emitter2");
+        NodeId emitter = NodeCreate(&scene, root, NodeKindNode2D, "emitter2");
         NodeId target;
 
         check_int("sig custom kind registered", k >= 0, 1);

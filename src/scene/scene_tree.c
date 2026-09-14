@@ -10,6 +10,7 @@
 #include "scene_tree.h"
 #include "kry_signal.h"
 #include "node2d_props.h"
+#include "runtime/scene_tree_props.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -26,7 +27,28 @@
 static NodeOps g_kry_node_ops[KRY_KIND_MAX];
 static NodeDestroyFn g_kry_node_destroy[KRY_KIND_MAX];
 static char g_kry_kind_names[KRY_KIND_MAX][SCENE_NAME_MAX];
-static int g_kry_kind_count = NODE_CUSTOM + 1;
+static int g_kry_kind_count = NodeKindCustom + 1;
+
+static const char *
+kry_builtin_node_kind_name(NodeKind kind)
+{
+    switch(kind) {
+    case NodeKindRoot: return "Root";
+    case NodeKindNode2D: return "Node2D";
+    case NodeKindCamera2D: return "Camera2D";
+    case NodeKindSprite2D: return "Sprite2D";
+    case NodeKindAnimatedSprite2D: return "AnimatedSprite2D";
+    case NodeKindTileMap: return "TileMap";
+    case NodeKindCollisionShape2D: return "CollisionShape2D";
+    case NodeKindArea2D: return "Area2D";
+    case NodeKindBody2D: return "Body2D";
+    case NodeKindAnimationPlayer: return "AnimationPlayer";
+    case NodeKindAudioSource: return "AudioSource";
+    case NodeKindLight2D: return "Light2D";
+    case NodeKindCustom: return "Custom";
+    default: return NULL;
+    }
+}
 
 int
 NodeKindCount(void)
@@ -41,6 +63,8 @@ NodeKindName(NodeKind kind)
 
     if(kind_id < 0 || kind_id >= g_kry_kind_count)
         return NULL;
+    if(kind_id <= NodeKindCustom)
+        return kry_builtin_node_kind_name(kind);
     return g_kry_kind_names[kind];
 }
 
@@ -70,7 +94,7 @@ static int
 kry_node_is_valid(Scene *scene, NodeId node)
 {
     return scene != NULL && node >= 0 && node < scene->count &&
-           (scene->nodes[node].flags & NODE_FLAG_ALIVE);
+           (scene->nodes[node].flags & NodeFlagAlive);
 }
 
 void
@@ -90,8 +114,8 @@ SceneInit(Scene *scene)
     root->parent = -1;
     root->first_child = -1;
     root->next_sibling = -1;
-    root->kind = NODE_ROOT;
-    root->flags = NODE_FLAG_ALIVE;
+    root->kind = NodeKindRoot;
+    root->flags = NodeFlagAlive;
     strncpy(root->name, "root", sizeof(root->name) - 1);
     root->local = Transform2DIdentity();
     root->world = Transform2DIdentity();
@@ -107,7 +131,7 @@ SceneDestroy(Scene *scene)
     if(scene == NULL)
         return;
     for(i = 0; i < scene->count; i++) {
-        if(!(scene->nodes[i].flags & NODE_FLAG_ALIVE))
+        if(!(scene->nodes[i].flags & NodeFlagAlive))
             continue;
         destroy = g_kry_node_destroy[scene->nodes[i].kind];
         if(destroy != NULL)
@@ -153,7 +177,7 @@ NodeCreate(Scene *scene, NodeId parent, NodeKind kind,
     if(scene == NULL || scene->count >= SCENE_MAX_NODES)
         return -1;
     if(parent < 0 || parent >= scene->count ||
-       !(scene->nodes[parent].flags & NODE_FLAG_ALIVE))
+       !(scene->nodes[parent].flags & NodeFlagAlive))
         return -1;
     if(scene->free_head >= 0) {
         index = scene->free_head;
@@ -168,7 +192,7 @@ NodeCreate(Scene *scene, NodeId parent, NodeKind kind,
     node->first_child = -1;
     node->next_sibling = -1;
     node->kind = kind;
-    node->flags = NODE_FLAG_ALIVE | NODE_FLAG_DIRTY;
+    node->flags = NodeFlagAlive | NodeFlagDirty;
     if(name != NULL)
         strncpy(node->name, name, sizeof(node->name) - 1);
     node->local = Transform2DIdentity();
@@ -195,7 +219,7 @@ kry_node_free_recursive(Scene *scene, NodeId node)
     if(node < 0 || node >= scene->count)
         return;
     n = &scene->nodes[node];
-    if(!(n->flags & NODE_FLAG_ALIVE))
+    if(!(n->flags & NodeFlagAlive))
         return;
     child = n->first_child;
     while(child >= 0) {
@@ -206,7 +230,7 @@ kry_node_free_recursive(Scene *scene, NodeId node)
     destroy = g_kry_node_destroy[n->kind];
     if(destroy != NULL)
         destroy(scene, n);
-    n->flags &= ~NODE_FLAG_ALIVE;
+    n->flags &= ~NodeFlagAlive;
     n->first_child = -1;
     n->parent = -1;
     /* recycle: chain the dead slot onto the freelist (next_sibling is free
@@ -258,7 +282,7 @@ NodeSetPosition(Scene *scene, NodeId node, float x, float y)
     Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.position = (Vector2){x, y};
-        n->flags |= NODE_FLAG_DIRTY;
+        n->flags |= NodeFlagDirty;
     }
 }
 
@@ -268,7 +292,7 @@ NodeSetRotation(Scene *scene, NodeId node, float radians)
     Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.rotation = radians;
-        n->flags |= NODE_FLAG_DIRTY;
+        n->flags |= NodeFlagDirty;
     }
 }
 
@@ -278,7 +302,7 @@ NodeSetScale(Scene *scene, NodeId node, float sx, float sy)
     Node *n = NodeGet(scene, node);
     if(n != NULL) {
         n->local.scale = (Vector2){sx, sy};
-        n->flags |= NODE_FLAG_DIRTY;
+        n->flags |= NodeFlagDirty;
     }
 }
 
@@ -333,7 +357,7 @@ kry_node_update_world(Scene *scene, NodeId node)
         n->world = n->local;
     else
         n->world = Transform2DCompose(scene->nodes[n->parent].world, n->local);
-    n->flags &= ~NODE_FLAG_DIRTY;
+    n->flags &= ~NodeFlagDirty;
 
     child = n->first_child;
     while(child >= 0) {
@@ -349,13 +373,13 @@ kry_node_fire_ready(Scene *scene, NodeId node)
     const NodeOps *ops;
     NodeId child;
 
-    if(!(n->flags & NODE_FLAG_ALIVE))
+    if(!(n->flags & NodeFlagAlive))
         return;
-    if(!(n->flags & NODE_FLAG_READY)) {
+    if(!(n->flags & NodeFlagReady)) {
         ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->ready != NULL)
             ops->ready(scene, node);
-        n->flags |= NODE_FLAG_READY;
+        n->flags |= NodeFlagReady;
     }
     child = n->first_child;
     while(child >= 0) {
@@ -382,8 +406,8 @@ SceneTick(Scene *scene, float dt)
     /* A ready hook may mutate local transforms (marking them dirty); fold
      * those into this tick's world state before process hooks run. */
     for(i = 0; i < scene->count; i++) {
-        if((scene->nodes[i].flags & NODE_FLAG_ALIVE) &&
-           (scene->nodes[i].flags & NODE_FLAG_DIRTY)) {
+        if((scene->nodes[i].flags & NodeFlagAlive) &&
+           (scene->nodes[i].flags & NodeFlagDirty)) {
             kry_node_update_world(scene, scene->root);
             break;
         }
@@ -392,7 +416,7 @@ SceneTick(Scene *scene, float dt)
     scaled_dt = dt * scene->time_scale;
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & NODE_FLAG_ALIVE))
+        if(!(n->flags & NodeFlagAlive))
             continue;
         ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->process != NULL)
@@ -418,7 +442,7 @@ ScenePhysicsTick(Scene *scene, float dt)
      * physics_world.c at registration time. */
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & NODE_FLAG_ALIVE))
+        if(!(n->flags & NodeFlagAlive))
             continue;
         ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->physics_process != NULL)
@@ -450,7 +474,7 @@ SceneDraw(Scene *scene)
 
     if(scene->active_camera >= 0 && scene->active_camera < scene->count) {
         n = &scene->nodes[scene->active_camera];
-        if((n->flags & NODE_FLAG_ALIVE) && n->kind == NODE_CAMERA2D) {
+        if((n->flags & NodeFlagAlive) && n->kind == NodeKindCamera2D) {
             float zoom = 1.0f;
             Camera2DProps *cp = (Camera2DProps *)n->props;
             if(cp != NULL)
@@ -463,7 +487,7 @@ SceneDraw(Scene *scene)
 
     for(i = 0; i < scene->count; i++) {
         n = &scene->nodes[i];
-        if(!(n->flags & NODE_FLAG_ALIVE))
+        if(!(n->flags & NodeFlagAlive))
             continue;
         ops = NodeOpsFor(n->kind);
         if(ops != NULL && ops->draw != NULL)
