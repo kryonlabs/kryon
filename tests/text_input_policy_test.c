@@ -436,6 +436,21 @@ main(void)
     assert(TextEditCommitShouldRun(true, 0));
     assert(TextEditCommitShouldRun(false, 1));
     assert(!TextEditCommitShouldRun(false, 0));
+    assert(TextAreaScrollbarShouldShow(true, 1));
+    assert(!TextAreaScrollbarShouldShow(false, 1));
+    assert(!TextAreaScrollbarShouldShow(true, 0));
+    assert(TextAreaWheelShouldScroll(true, false, false));
+    assert(!TextAreaWheelShouldScroll(false, false, false));
+    assert(!TextAreaWheelShouldScroll(true, true, false));
+    assert(!TextAreaWheelShouldScroll(true, false, true));
+    assert(TextAreaRevealCursorShouldRun(true, true, false));
+    assert(TextAreaRevealCursorShouldRun(true, false, true));
+    assert(!TextAreaRevealCursorShouldRun(false, true, true));
+    assert(!TextAreaRevealCursorShouldRun(true, false, false));
+    assert(TextFieldRevealCursorShouldRun(true));
+    assert(!TextFieldRevealCursorShouldRun(false));
+    assert(TextFieldContextShouldRegister(false));
+    assert(!TextFieldContextShouldRegister(true));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

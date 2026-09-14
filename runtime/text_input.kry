@@ -455,6 +455,29 @@ TextEditCommitShouldRun :: (enter_pressed: bool,
     return enter_pressed || queued_enter_count > 0
 }
 
+TextAreaScrollbarShouldShow :: (has_scroll_storage: bool,
+    max_scroll: i32) -> bool #export {
+    return has_scroll_storage && max_scroll > 0
+}
+
+TextAreaWheelShouldScroll :: (mouse_inside: bool, captured: bool,
+    modifier: bool) -> bool #export {
+    return mouse_inside && !captured && !modifier
+}
+
+TextAreaRevealCursorShouldRun :: (focused: bool, changed: bool,
+    navigation_pressed: bool) -> bool #export {
+    return focused && (changed || navigation_pressed)
+}
+
+TextFieldRevealCursorShouldRun :: (focused: bool) -> bool #export {
+    return focused
+}
+
+TextFieldContextShouldRegister :: (secure: bool) -> bool #export {
+    return !secure
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }

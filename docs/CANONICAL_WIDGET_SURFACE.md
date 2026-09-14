@@ -846,10 +846,11 @@ and host plumbing behind the canonical names.
    context-menu plus keyboard edit-command decision policy, text-area shortcut
    focus-claim policy, delete/replacement/native-edit/commit gate policy,
    navigation/enter/collapse gate policy, keyboard/escape/selection-range/
-   composition-display gate policy, and older `EditText` shortcut/commit gate
-   policy in `.kry`; remaining native work is buffer mutation,
-   IME/composition, selection ownership/painting, and the final decision about
-   how much of that can become reusable `.kry` policy.
+   composition-display gate policy, older `EditText` shortcut/commit gate
+   policy, and text reveal/scroll/context-registration gate policy in `.kry`;
+   remaining native work is buffer mutation, IME/composition, selection
+   ownership/painting, and the final decision about how much of that can become
+   reusable `.kry` policy.
 4. Finish rich text migration:
   `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment
   policy, retained selectable text block height/line advance, and generated `ParagraphSpec` data, but parsing, line-break ownership,

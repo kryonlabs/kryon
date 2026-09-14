@@ -4255,16 +4255,17 @@ ui_text_area_render(TextAreaProps area)
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
         max_scroll = 0;
-    scrollbar_w = area.scroll_y != NULL && max_scroll > 0
+    scrollbar_w = TextAreaScrollbarShouldShow(area.scroll_y != NULL,
+        max_scroll)
         ? TextAreaScrollbarWidthFor((float)Scale(1000) / 1000.0f)
         : 0;
-    if(mouse_inside && !captured && !ui_mod_key_down())
+    if(TextAreaWheelShouldScroll(mouse_inside, captured, ui_mod_key_down()))
         scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
-    reveal_cursor = focused &&
-        (changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-         IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
-         IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-         IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN));
+    reveal_cursor = TextAreaRevealCursorShouldRun(focused, changed,
+        IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+        IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||
+        IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+        IsKeyPressed(KEY_PAGE_UP) || IsKeyPressed(KEY_PAGE_DOWN));
     if(reveal_cursor) {
         int cursor_h = TextLineHeight(font);
         int cursor_y = ui_text_area_cursor_y(
@@ -4971,7 +4972,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     clip_w = scroll_policy.clip_width;
     max_scroll_x = scroll_policy.max_scroll;
     *scroll_x_ptr = scroll_policy.scroll;
-    if(focused) {
+    if(TextFieldRevealCursorShouldRun(focused)) {
         int cursor_text_x = ui_text_width_before_cursor(
             display_text, font, paint_cursor);
         int margin = TextFieldRevealMargin((float)Scale(1000) / 1000.0f);
@@ -4980,7 +4981,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                                               clip_w, cursor_text_x, margin);
     }
 
-    if(!field.secure)
+    if(TextFieldContextShouldRegister(field.secure))
         ui_text_context_register_target(TEXT_CONTEXT_FIELD, field.focus_id,
                                         field.focused, field.text,
                                         field.text_size, field.cursor_position,
