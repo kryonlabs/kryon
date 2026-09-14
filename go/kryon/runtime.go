@@ -1837,13 +1837,14 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	selected := props.Selected != nil && *props.Selected != 0
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
-	if pressed && props.Selected != nil {
-		if selected {
-			*props.Selected = 0
-		} else {
+	toggle := Selectable_SelectableToggleFor(selected, pressed, props.Selected != nil)
+	selected = toggle.Selected
+	if toggle.Changed && props.Selected != nil {
+		if toggle.Selected {
 			*props.Selected = 1
+		} else {
+			*props.Selected = 0
 		}
-		selected = !selected
 	}
 	state := ButtonStateNormal
 	if props.Disabled {
