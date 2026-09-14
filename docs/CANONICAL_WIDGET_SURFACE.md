@@ -143,6 +143,7 @@ surface review:
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
 | `runtime/table_view.kry` | TableView layout, scroll, scrollbar, cell geometry, and keyboard selection policy | `.kry canonical` |
 | `runtime/table_view_props.kry` | TableView row and props | `.kry canonical` |
+| `runtime/widget_kind.kry` | Retained tree node kind values | `.kry support` |
 
 ## Current Implementation Audit
 
@@ -630,38 +631,38 @@ stays prefix-free.
 
 | Current node kind | Public widget/concept | Decision |
 |---|---|---|
-| `WIDGET_SCREEN` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
-| `WIDGET_BACKGROUND` | `Background` | `.kry-backed`; bounds and app fallback policy live in runtime primitive policy |
-| `WIDGET_TEXT` | `Text` | `.kry canonical` |
-| `WIDGET_BOX` | `Box` | `.kry-backed`; retained node kind now matches the public `Box` concept |
-| `WIDGET_CIRCLE` | `Circle` | `.kry-backed`; public code uses `Circle` |
-| `WIDGET_RING` | `Ring` | `.kry-backed`; public code uses `Ring` |
-| `WIDGET_LINE` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |
-| `WIDGET_TRIANGLE` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
-| `WIDGET_BUTTON` | `Button` | `.kry canonical` |
-| `WIDGET_TEXT_FIELD` | `TextField` | `.kry canonical`; metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, and edit intent migrated; buffer mutation and IME still host support |
-| `WIDGET_TEXT_AREA` | `TextArea` | `.kry canonical`; metrics, page rows, paint geometry, buffer-limit, navigation, selection state, and edit intent migrated; buffer mutation and IME still host support |
-| `WIDGET_DROPDOWN` | `Dropdown` | `.kry canonical` |
-| `WIDGET_SLIDER` | `Slider` | `.kry canonical` |
-| `WIDGET_TOGGLE` | `Toggle` | `.kry canonical` |
-| `WIDGET_CHECKBOX` | `Checkbox` | `.kry canonical` |
-| `WIDGET_PARAGRAPH` | `Paragraph` | `.kry canonical`; rich text metrics/default policy is `.kry-backed` |
+| `WidgetKindScreen` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
+| `WidgetKindBackground` | `Background` | `.kry-backed`; bounds and app fallback policy live in runtime primitive policy |
+| `WidgetKindText` | `Text` | `.kry canonical` |
+| `WidgetKindBox` | `Box` | `.kry-backed`; retained node kind now matches the public `Box` concept |
+| `WidgetKindCircle` | `Circle` | `.kry-backed`; public code uses `Circle` |
+| `WidgetKindRing` | `Ring` | `.kry-backed`; public code uses `Ring` |
+| `WidgetKindLine` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |
+| `WidgetKindTriangle` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
+| `WidgetKindButton` | `Button` | `.kry canonical` |
+| `WidgetKindTextField` | `TextField` | `.kry canonical`; metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, and edit intent migrated; buffer mutation and IME still host support |
+| `WidgetKindTextArea` | `TextArea` | `.kry canonical`; metrics, page rows, paint geometry, buffer-limit, navigation, selection state, and edit intent migrated; buffer mutation and IME still host support |
+| `WidgetKindDropdown` | `Dropdown` | `.kry canonical` |
+| `WidgetKindSlider` | `Slider` | `.kry canonical` |
+| `WidgetKindToggle` | `Toggle` | `.kry canonical` |
+| `WidgetKindCheckbox` | `Checkbox` | `.kry canonical` |
+| `WidgetKindParagraph` | `Paragraph` | `.kry canonical`; rich text metrics/default policy is `.kry-backed` |
 | `WIDGET_READONLY_TEXT_BOX` | Removed | Old retained node/helper deleted; use `TextArea` with read-only props. |
-| `WIDGET_NAVIGATION_BAR` | `NavigationBar` | `.kry canonical` |
-| `WIDGET_TAB_BAR` | `TabBar` | `.kry canonical` |
+| `WidgetKindNavigationBar` | `NavigationBar` | `.kry canonical` |
+| `WidgetKindTabBar` | `TabBar` | `.kry canonical` |
 | `WIDGET_PARAGRAPH_MODAL` | Removed | Old retained measuring helper deleted; compose `Modal` with `Paragraph`/`Text`. |
-| `WIDGET_TITLE_BAR` | `TitleBar` | `.kry canonical` |
-| `WIDGET_GROUP` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
-| `WIDGET_COLUMN` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WIDGET_ROW` | `Row` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WIDGET_STACK` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |
-| `WIDGET_GRID` | `Grid` | `.kry canonical`; metrics and cursor placement policy are `.kry-backed` |
-| `WIDGET_IMAGE` | `Image` | `.kry canonical` |
-| `WIDGET_CUSTOM` | `Custom` | Internal support escape hatch |
-| `WIDGET_DRAG` | `Drag` | `.kry canonical` |
-| `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WIDGET_CUSTOM` with a private runtime flag. |
-| `WIDGET_ROUTER` | `Router` | `.kry canonical` |
-| `WIDGET_CARD` | `Card` | `.kry canonical` |
+| `WidgetKindTitleBar` | `TitleBar` | `.kry canonical` |
+| `WidgetKindGroup` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
+| `WidgetKindColumn` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |
+| `WidgetKindRow` | `Row` | `.kry canonical`; placement policy is `.kry-backed` |
+| `WidgetKindStack` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |
+| `WidgetKindGrid` | `Grid` | `.kry canonical`; metrics and cursor placement policy are `.kry-backed` |
+| `WidgetKindImage` | `Image` | `.kry canonical` |
+| `WidgetKindCustom` | `Custom` | Internal support escape hatch |
+| `WidgetKindDrag` | `Drag` | `.kry canonical` |
+| `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WidgetKindCustom` with a private runtime flag. |
+| `WidgetKindRouter` | `Router` | `.kry canonical` |
+| `WidgetKindCard` | `Card` | `.kry canonical` |
 
 Recent retained-tree public C cleanup:
 

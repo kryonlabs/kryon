@@ -427,11 +427,11 @@ def main() -> int:
             errors.append(f"Guide must stay .kry canonical, found {decision}")
         if "Guide(GuideProps)" not in notes:
             errors.append("Guide row must name the clean Guide(GuideProps) surface")
-    paragraph_node_row = re.search(r"^\| `WIDGET_PARAGRAPH` \| `Paragraph` \| (?P<decision>[^|]+) \|$", doc, re.M)
+    paragraph_node_row = re.search(r"^\| `WidgetKindParagraph` \| `Paragraph` \| (?P<decision>[^|]+) \|$", doc, re.M)
     if not paragraph_node_row:
-        errors.append("missing WIDGET_PARAGRAPH retained node row")
+        errors.append("missing WidgetKindParagraph retained node row")
     elif "Rename review" in paragraph_node_row.group("decision"):
-        errors.append("Paragraph is canonical rich text; WIDGET_PARAGRAPH must not be in rename review")
+        errors.append("Paragraph is canonical rich text; WidgetKindParagraph must not be in rename review")
     for name in parser_expected:
         if name not in parser_doc_rows:
             errors.append(f"missing parser statement surface row: {name}")

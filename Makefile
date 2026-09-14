@@ -963,7 +963,7 @@ $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
 $(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
 
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/icon.h
 
 $(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h

@@ -1,5 +1,5 @@
 #include "ui_internal.h"
-#include "ui_tree_kind_internal.h"
+#include "runtime/widget_kind.h"
 #include "runtime/icon.h"
 #include "ui_style_internal.h"
 #include "runtime/button.h"
@@ -424,9 +424,9 @@ ui_tree_owned_text_size(const TreeNode *node)
 {
     if(node->owned_text == NULL) return 0;
     size_t offset = 0;
-    if(node->kind == WIDGET_SLIDER)
+    if(node->kind == WidgetKindSlider)
         offset = node->data.slider.format_offset;
-    if(node->kind == WIDGET_DRAG)
+    if(node->kind == WidgetKindDrag)
         offset = node->data.drag.format_offset;
     return offset+strlen(node->owned_text+offset)+1;
 }
@@ -434,7 +434,7 @@ ui_tree_owned_text_size(const TreeNode *node)
 static int
 ui_tree_button_like_kind(int kind)
 {
-    return kind == WIDGET_BUTTON || kind == WIDGET_CARD;
+    return kind == WidgetKindButton || kind == WidgetKindCard;
 }
 
 static int
@@ -442,7 +442,7 @@ ui_tree_interactive_button_like(const TreeNode *node)
 {
     if(node == NULL || !ui_tree_button_like_kind(node->kind))
         return 0;
-    if(node->kind == WIDGET_CARD && node->data.button.props.id <= 0)
+    if(node->kind == WidgetKindCard && node->data.button.props.id <= 0)
         return 0;
     return CanActivate(node->data.button.props.disabled,
                        node->data.button.props.loading);
@@ -573,12 +573,12 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
     }
     if(node->parent >= 0 && bounds.x == 0 && bounds.y == 0) {
         parent = ui_tree_node(node->parent);
-        if(parent->kind == WIDGET_GRID)
+        if(parent->kind == WidgetKindGrid)
             ui_layout_grid_children(ui_tree_nodes, parent);
-        if(parent->kind == WIDGET_ROW || parent->kind == WIDGET_COLUMN) {
+        if(parent->kind == WidgetKindRow || parent->kind == WidgetKindColumn) {
             int sibling_count = 0;
             float previous_extent_sum = 0.0f;
-            int horizontal = parent->kind == WIDGET_ROW;
+            int horizontal = parent->kind == WidgetKindRow;
             LayoutMetrics metrics = LayoutMetricsFor(parent->bounds,
                                                      parent->data.layout.gap,
                                                      parent->data.layout.padding);
@@ -683,11 +683,11 @@ ui_tree_node_uses_retained_layout(NodeId id)
     parent = ui_tree_node(node->parent);
     if(parent == NULL)
         return 0;
-    return parent->kind == WIDGET_COLUMN ||
-           parent->kind == WIDGET_ROW ||
-           parent->kind == WIDGET_GRID ||
-           parent->kind == WIDGET_STACK ||
-           parent->kind == WIDGET_ROUTER ||
+    return parent->kind == WidgetKindColumn ||
+           parent->kind == WidgetKindRow ||
+           parent->kind == WidgetKindGrid ||
+           parent->kind == WidgetKindStack ||
+           parent->kind == WidgetKindRouter ||
            ui_tree_button_like_kind(parent->kind);
 }
 
@@ -730,34 +730,34 @@ ui_measure_title_bar(TreeNode node)
 }
 
 static const WidgetOps ui_widget_ops[] = {
-    [WIDGET_SCREEN] = {ui_measure_bounds_height},
-    [WIDGET_BACKGROUND] = {ui_measure_bounds_height},
-    [WIDGET_TEXT] = {ui_measure_bounds_height},
-    [WIDGET_BOX] = {ui_measure_bounds_height},
-    [WIDGET_CIRCLE] = {ui_measure_bounds_height},
-    [WIDGET_LINE] = {ui_measure_bounds_height},
-    [WIDGET_TRIANGLE] = {ui_measure_bounds_height},
-    [WIDGET_BUTTON] = {ui_measure_bounds_height},
-    [WIDGET_TEXT_FIELD] = {ui_measure_bounds_height},
-    [WIDGET_TEXT_AREA] = {ui_measure_bounds_height},
-    [WIDGET_DROPDOWN] = {ui_measure_bounds_height},
-    [WIDGET_SLIDER] = {ui_measure_bounds_height},
-    [WIDGET_TOGGLE] = {ui_measure_bounds_height},
-    [WIDGET_CHECKBOX] = {ui_measure_bounds_height},
-    [WIDGET_PARAGRAPH] = {ui_measure_paragraph},
-    [WIDGET_NAVIGATION_BAR] = {ui_measure_navigation_bar},
-    [WIDGET_TAB_BAR] = {ui_measure_tab_bar},
-    [WIDGET_TITLE_BAR] = {ui_measure_title_bar},
-    [WIDGET_GROUP] = {ui_measure_bounds_height},
-    [WIDGET_COLUMN] = {ui_measure_bounds_height},
-    [WIDGET_ROW] = {ui_measure_bounds_height},
-    [WIDGET_STACK] = {ui_measure_bounds_height},
-    [WIDGET_GRID] = {ui_measure_bounds_height},
-    [WIDGET_IMAGE] = {ui_measure_bounds_height},
-    [WIDGET_CUSTOM] = {ui_measure_bounds_height},
-    [WIDGET_DRAG] = {ui_measure_bounds_height},
-    [WIDGET_ROUTER] = {ui_measure_bounds_height},
-    [WIDGET_CARD] = {ui_measure_bounds_height},
+    [WidgetKindScreen] = {ui_measure_bounds_height},
+    [WidgetKindBackground] = {ui_measure_bounds_height},
+    [WidgetKindText] = {ui_measure_bounds_height},
+    [WidgetKindBox] = {ui_measure_bounds_height},
+    [WidgetKindCircle] = {ui_measure_bounds_height},
+    [WidgetKindLine] = {ui_measure_bounds_height},
+    [WidgetKindTriangle] = {ui_measure_bounds_height},
+    [WidgetKindButton] = {ui_measure_bounds_height},
+    [WidgetKindTextField] = {ui_measure_bounds_height},
+    [WidgetKindTextArea] = {ui_measure_bounds_height},
+    [WidgetKindDropdown] = {ui_measure_bounds_height},
+    [WidgetKindSlider] = {ui_measure_bounds_height},
+    [WidgetKindToggle] = {ui_measure_bounds_height},
+    [WidgetKindCheckbox] = {ui_measure_bounds_height},
+    [WidgetKindParagraph] = {ui_measure_paragraph},
+    [WidgetKindNavigationBar] = {ui_measure_navigation_bar},
+    [WidgetKindTabBar] = {ui_measure_tab_bar},
+    [WidgetKindTitleBar] = {ui_measure_title_bar},
+    [WidgetKindGroup] = {ui_measure_bounds_height},
+    [WidgetKindColumn] = {ui_measure_bounds_height},
+    [WidgetKindRow] = {ui_measure_bounds_height},
+    [WidgetKindStack] = {ui_measure_bounds_height},
+    [WidgetKindGrid] = {ui_measure_bounds_height},
+    [WidgetKindImage] = {ui_measure_bounds_height},
+    [WidgetKindCustom] = {ui_measure_bounds_height},
+    [WidgetKindDrag] = {ui_measure_bounds_height},
+    [WidgetKindRouter] = {ui_measure_bounds_height},
+    [WidgetKindCard] = {ui_measure_bounds_height},
 };
 
 static void
@@ -817,7 +817,7 @@ BeginTree(KeyID screen_key)
     ui_tree_building = 1;
     ui_tree_build_activation = 0;
     ui_tree_stack_depth = 0;
-    root = ui_tree_add(ui_tree_screen_id, WIDGET_SCREEN,
+    root = ui_tree_add(ui_tree_screen_id, WidgetKindScreen,
                        LayoutScopeBounds((Rectangle){0}, ui_view_width,
                                          ui_view_height),
                        NULL);
@@ -949,11 +949,11 @@ SetSelection(KeyID key, int anchor, int cursor)
         int length;
 
         if(node->key != key ||
-           (node->kind != WIDGET_TEXT_FIELD &&
-            node->kind != WIDGET_TEXT_AREA))
+           (node->kind != WidgetKindTextField &&
+            node->kind != WidgetKindTextArea))
             continue;
         state = node->state;
-        if(node->kind == WIDGET_TEXT_FIELD) {
+        if(node->kind == WidgetKindTextField) {
             if(state == NULL || node->data.text_field.text == NULL)
                 return 0;
             length = (int)strlen(node->data.text_field.text);
@@ -964,7 +964,7 @@ SetSelection(KeyID key, int anchor, int cursor)
         }
         state->anchor = ui_clampi(anchor, 0, length);
         state->cursor = ui_clampi(cursor, 0, length);
-        if(node->kind == WIDGET_TEXT_FIELD) {
+        if(node->kind == WidgetKindTextField) {
             if(node->data.text_field.cursor_position != NULL)
                 *node->data.text_field.cursor_position = state->cursor;
         } else if(node->data.text_area.cursor_position != NULL) {
@@ -1082,18 +1082,18 @@ ReconcileTree(void)
     for(i = 0; i < ui_tree_node_count; i++) {
         TreeNode *node = &ui_committed_nodes[i];
 
-        if((node->kind == WIDGET_TEXT_FIELD ||
-            node->kind == WIDGET_TEXT_AREA) &&
+        if((node->kind == WidgetKindTextField ||
+            node->kind == WidgetKindTextArea) &&
            node->state == NULL) {
             TextFieldState *state = calloc(1, sizeof(*state));
 
             if(state != NULL) {
-                char *text = node->kind == WIDGET_TEXT_FIELD
+                char *text = node->kind == WidgetKindTextField
                     ? node->data.text_field.text : node->data.text_area.text;
-                int *cursor_position = node->kind == WIDGET_TEXT_FIELD
+                int *cursor_position = node->kind == WidgetKindTextField
                     ? node->data.text_field.cursor_position
                     : node->data.text_area.cursor_position;
-                int *focused = node->kind == WIDGET_TEXT_FIELD
+                int *focused = node->kind == WidgetKindTextField
                     ? node->data.text_field.focused : node->data.text_area.focused;
                 int length = text != NULL ? (int)strlen(text) : 0;
 
@@ -1145,10 +1145,10 @@ LayoutTree(void)
         float content_h;
         LayoutMetrics layout_metrics = {0};
 
-        if(parent->kind != WIDGET_COLUMN &&
-           parent->kind != WIDGET_ROW &&
-           parent->kind != WIDGET_STACK &&
-           parent->kind != WIDGET_GRID &&
+        if(parent->kind != WidgetKindColumn &&
+           parent->kind != WidgetKindRow &&
+           parent->kind != WidgetKindStack &&
+           parent->kind != WidgetKindGrid &&
            !ui_tree_button_like_kind(parent->kind))
             continue;
         if(ui_tree_button_like_kind(parent->kind)) {
@@ -1175,8 +1175,8 @@ LayoutTree(void)
             content_w = 0;
         if(content_h < 0)
             content_h = 0;
-        cursor = parent->kind == WIDGET_ROW ? content_x : content_y;
-        if(parent->kind == WIDGET_GRID) {
+        cursor = parent->kind == WidgetKindRow ? content_x : content_y;
+        if(parent->kind == WidgetKindGrid) {
             ui_layout_grid_children(ui_committed_nodes, parent);
             continue;
         }
@@ -1195,13 +1195,13 @@ LayoutTree(void)
             TreeNode *node = &ui_committed_nodes[child];
 
             if(node->declared_bounds.x != 0 || node->declared_bounds.y != 0) continue;
-            if(parent->kind == WIDGET_COLUMN) {
+            if(parent->kind == WidgetKindColumn) {
                 node->bounds = LayoutChildBounds(node->declared_bounds,
                                                  node->bounds,
                                                  layout_metrics, false,
                                                  cursor);
                 cursor += node->bounds.height + layout_metrics.gap;
-            } else if(parent->kind == WIDGET_ROW) {
+            } else if(parent->kind == WidgetKindRow) {
                 node->bounds = LayoutChildBounds(node->declared_bounds,
                                                  node->bounds,
                                                  layout_metrics, true,
@@ -1244,9 +1244,9 @@ RouteInput(void)
         int focus_id = 0;
 
         if((node->flags & NODE_SCOPE_DISABLED) != 0) continue;
-        if(node->kind == WIDGET_TEXT_FIELD)
+        if(node->kind == WidgetKindTextField)
             focus_id = node->data.text_field.focus_id;
-        else if(node->kind == WIDGET_TEXT_AREA)
+        else if(node->kind == WidgetKindTextArea)
             focus_id = node->data.text_area.focus_id;
         else if(ui_tree_interactive_button_like(node))
             focus_id = node->data.button.props.id;
@@ -1324,12 +1324,12 @@ RouteInput(void)
         int codepoint;
         int modifier;
 
-        if((node->kind != WIDGET_TEXT_FIELD &&
-            node->kind != WIDGET_TEXT_AREA) ||
+        if((node->kind != WidgetKindTextField &&
+            node->kind != WidgetKindTextArea) ||
            node->state == NULL)
             continue;
         if((node->flags & NODE_SCOPE_DISABLED) != 0) {
-            int id = node->kind == WIDGET_TEXT_FIELD
+            int id = node->kind == WidgetKindTextField
                 ? node->data.text_field.focus_id : node->data.text_area.focus_id;
             /* Input sent to a disabled focused editor must not be replayed
                after the editor is enabled again. */
@@ -1342,7 +1342,7 @@ RouteInput(void)
             }
             continue;
         }
-        if(node->kind == WIDGET_TEXT_FIELD) {
+        if(node->kind == WidgetKindTextField) {
             field = &node->data.text_field;
         } else {
             TextAreaProps *area = &node->data.text_area;
@@ -1380,7 +1380,7 @@ RouteInput(void)
             }
             if(focused) {
                 int font = ui_text_input_default_font(
-                    node->kind == WIDGET_TEXT_AREA ? StyleKindTextArea()
+                    node->kind == WidgetKindTextArea ? StyleKindTextArea()
                                                    : StyleKindTextField(),
                     field->class_name);
                 TextInputStyle style = ui_resolve_text_input_style(
@@ -1404,7 +1404,7 @@ RouteInput(void)
                         ? (int)strlen(field->text) : 0);
                     state->dragging = 0;
                 } else {
-                    if(node->kind == WIDGET_TEXT_AREA)
+                    if(node->kind == WidgetKindTextArea)
                         state->cursor = ui_text_area_cursor_at_point(
                             node->data.text_area, (int)mouse.x, (int)mouse.y);
                     else
@@ -1437,7 +1437,7 @@ RouteInput(void)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             int font = ui_text_input_default_font(
-                node->kind == WIDGET_TEXT_AREA ? StyleKindTextArea()
+                node->kind == WidgetKindTextArea ? StyleKindTextArea()
                                                : StyleKindTextField(),
                 field->class_name);
             TextInputStyle style = ui_resolve_text_input_style(
@@ -1448,7 +1448,7 @@ RouteInput(void)
             int padding = metrics.padding_x;
             int cursor;
 
-            if(node->kind == WIDGET_TEXT_AREA)
+            if(node->kind == WidgetKindTextArea)
                 cursor = ui_text_area_cursor_at_point(
                     node->data.text_area, (int)mouse.x, (int)mouse.y);
             else
@@ -1505,7 +1505,7 @@ RouteInput(void)
                     field->text, field->text_size, &state->cursor, start, end);
             {
                 int allow_newlines =
-                    node->kind == WIDGET_TEXT_AREA;
+                    node->kind == WidgetKindTextArea;
                 TextEdit edit;
 
                 memset(&edit, 0, sizeof(edit));
@@ -1521,7 +1521,7 @@ RouteInput(void)
         }
         {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            int multiline = node->kind == WIDGET_TEXT_AREA;
+            int multiline = node->kind == WidgetKindTextArea;
             int navigation_key = ui_text_navigation_key(multiline);
             int font = ui_text_input_default_font(
                 multiline ? StyleKindTextArea() : StyleKindTextField(),
@@ -1571,7 +1571,7 @@ RouteInput(void)
             };
             TextCompositionResult composition = ui_text_composition_apply(
                 edit, &state->anchor, state, state->focused,
-                field->read_only, node->kind == WIDGET_TEXT_AREA);
+                field->read_only, node->kind == WidgetKindTextArea);
 
             changed |= composition.text_changed;
             selection_changed |= composition.selection_changed;
@@ -1597,7 +1597,7 @@ RouteInput(void)
             selection_changed = changed;
         }
         if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-            if(node->kind == WIDGET_TEXT_AREA && !field->read_only) {
+            if(node->kind == WidgetKindTextArea && !field->read_only) {
                 if(end > start)
                     changed |= ui_text_delete_range(
                         field->text, field->text_size, &state->cursor,
@@ -1623,7 +1623,7 @@ RouteInput(void)
         }
         if(field->cursor_position != NULL)
             *field->cursor_position = state->cursor;
-        if(node->kind == WIDGET_TEXT_AREA &&
+        if(node->kind == WidgetKindTextArea &&
            (changed || selection_changed))
             ui_text_area_reveal_cursor(node->data.text_area, state->cursor);
         if(changed)
@@ -1705,7 +1705,7 @@ ui_tree_inherit_foreground(int parent, Color foreground, bool disabled)
         /* Nested buttons establish their own style when they are painted. */
         if(ui_tree_button_like_kind(node->kind))
             continue;
-        if(node->kind == WIDGET_TEXT &&
+        if(node->kind == WidgetKindText &&
            (node->flags & NODE_INHERIT_FOREGROUND) != 0) {
             TextAppearance appearance = ResolveTextStyle(0, 0, 16, 0,
                 ColorToInt(foreground), 0, true, false,
@@ -1739,10 +1739,10 @@ DrawTree(void)
         /* Slider/toggle/checkbox helpers also route their legacy input. Keep
          * that state update alive in headless and software parity runs while
          * suppressing draw-only nodes until a window exists. */
-        if(!window_ready && node->kind != WIDGET_SLIDER &&
-           node->kind != WIDGET_DRAG &&
-           node->kind != WIDGET_TOGGLE &&
-           node->kind != WIDGET_CHECKBOX)
+        if(!window_ready && node->kind != WidgetKindSlider &&
+           node->kind != WidgetKindDrag &&
+           node->kind != WidgetKindToggle &&
+           node->kind != WidgetKindCheckbox)
             continue;
 
         if(window_ready && node->paint_capture != 0) {
@@ -1774,7 +1774,7 @@ DrawTree(void)
             continue;
         }
         switch(node->kind) {
-        case WIDGET_DRAG: {
+        case WidgetKindDrag: {
             DragProps drag = node->data.drag.props;
             drag.bounds = node->bounds;
             drag.label = node->owned_text;
@@ -1795,7 +1795,7 @@ DrawTree(void)
             }
             break;
         }
-        case WIDGET_SLIDER: {
+        case WidgetKindSlider: {
             SliderProps slider = node->data.slider.props;
             slider.bounds = node->bounds;
             slider.label = node->owned_text;
@@ -1822,10 +1822,10 @@ DrawTree(void)
             }
             break;
         }
-        case WIDGET_BACKGROUND:
+        case WidgetKindBackground:
             DrawRectangleRec(node->bounds, node->data.primitive.color);
             break;
-        case WIDGET_TEXT:
+        case WidgetKindText:
             if((node->flags & NODE_PAINTED_IMMEDIATE) != 0)
                 break;
             if(node->data.primitive.heading_level > 0)
@@ -1839,7 +1839,7 @@ DrawTree(void)
                 node->data.primitive.vertical_align,
                 node->data.primitive.font_token, node->data.primitive.letter_spacing);
             break;
-        case WIDGET_BOX:
+        case WidgetKindBox:
             if(node->data.primitive.styled) {
                 ui_paint_surface(node->bounds, node->data.primitive.style);
                 break;
@@ -1849,13 +1849,13 @@ DrawTree(void)
                 DrawRectangleLinesEx(node->bounds, 1.0f,
                                      node->data.primitive.border);
             break;
-        case WIDGET_CIRCLE:
+        case WidgetKindCircle:
             DrawCircle((int)(node->bounds.x + node->bounds.width / 2.0f),
                        (int)(node->bounds.y + node->bounds.height / 2.0f),
                        node->bounds.width / 2.0f,
                        node->data.primitive.color);
             break;
-        case WIDGET_RING:
+        case WidgetKindRing:
             DrawRing((Vector2){node->bounds.x + node->bounds.width / 2.0f,
                                node->bounds.y + node->bounds.height / 2.0f},
                      (float)node->data.primitive.x1,
@@ -1863,12 +1863,12 @@ DrawTree(void)
                      0.0f, 360.0f, 0,
                      node->data.primitive.color);
             break;
-        case WIDGET_LINE:
+        case WidgetKindLine:
             DrawLine(node->data.primitive.x1, node->data.primitive.y1,
                      node->data.primitive.x2, node->data.primitive.y2,
                      node->data.primitive.color);
             break;
-        case WIDGET_TRIANGLE:
+        case WidgetKindTriangle:
             DrawTriangle((Vector2){(float)node->data.primitive.x1,
                                    (float)node->data.primitive.y1},
                          (Vector2){(float)node->data.primitive.x2,
@@ -1877,8 +1877,8 @@ DrawTree(void)
                                    (float)node->data.primitive.y3},
                          node->data.primitive.color);
             break;
-        case WIDGET_BUTTON:
-        case WIDGET_CARD: {
+        case WidgetKindButton:
+        case WidgetKindCard: {
             ButtonSpec spec = node->data.button;
             int hovered;
             int pressed;
@@ -1894,7 +1894,7 @@ DrawTree(void)
             ui_tree_inherit_foreground(i, foreground, node->data.button.props.disabled);
             break;
         }
-        case WIDGET_TEXT_AREA: {
+        case WidgetKindTextArea: {
             TextFieldState *state = node->state;
             TextAreaProps area = node->data.text_area;
             int cursor = state != NULL ? state->cursor : 0;
@@ -1934,7 +1934,7 @@ DrawTree(void)
             PopTextFont(previous_font);
             break;
         }
-        case WIDGET_TEXT_FIELD: {
+        case WidgetKindTextField: {
             TextFieldProps field;
             TextFieldState *state = node->state;
             const char *display;
@@ -2007,13 +2007,13 @@ DrawTree(void)
             ui_text_composition_view_free(&composition);
             break;
         }
-        case WIDGET_TOGGLE:
-        case WIDGET_CHECKBOX: {
-            int *value = node->kind == WIDGET_TOGGLE
+        case WidgetKindToggle:
+        case WidgetKindCheckbox: {
+            int *value = node->kind == WidgetKindToggle
                 ? node->data.toggle.value : node->data.checkbox.value;
             int changed;
 
-            if(node->kind == WIDGET_TOGGLE) {
+            if(node->kind == WidgetKindToggle) {
                 changed = ToggleSwitch(
                     (int)node->bounds.x, (int)node->bounds.y,
                     (int)node->bounds.width, (int)node->bounds.height,
@@ -2101,39 +2101,39 @@ GetNodeKind(const TreeNode *node)
 const char *
 GetNodeKindName(int kind)
 {
-    static const char *const names[WIDGET_KIND_COUNT] = {
-        [WIDGET_SCREEN] = "Screen",
-        [WIDGET_BACKGROUND] = "Background",
-        [WIDGET_TEXT] = "Text",
-        [WIDGET_BOX] = "Box",
-        [WIDGET_CIRCLE] = "Circle",
-        [WIDGET_RING] = "Ring",
-        [WIDGET_LINE] = "Line",
-        [WIDGET_TRIANGLE] = "Triangle",
-        [WIDGET_BUTTON] = "Button",
-        [WIDGET_TEXT_FIELD] = "TextField",
-        [WIDGET_TEXT_AREA] = "TextArea",
-        [WIDGET_DROPDOWN] = "Dropdown",
-        [WIDGET_SLIDER] = "Slider",
-        [WIDGET_TOGGLE] = "Toggle",
-        [WIDGET_CHECKBOX] = "Checkbox",
-        [WIDGET_PARAGRAPH] = "Paragraph",
-        [WIDGET_NAVIGATION_BAR] = "NavigationBar",
-        [WIDGET_TAB_BAR] = "TabBar",
-        [WIDGET_TITLE_BAR] = "TitleBar",
-        [WIDGET_GROUP] = "Group",
-        [WIDGET_COLUMN] = "Column",
-        [WIDGET_ROW] = "Row",
-        [WIDGET_STACK] = "Stack",
-        [WIDGET_GRID] = "Grid",
-        [WIDGET_IMAGE] = "Image",
-        [WIDGET_CUSTOM] = "Custom",
-        [WIDGET_DRAG] = "Drag",
-        [WIDGET_ROUTER] = "Router",
-        [WIDGET_CARD] = "Card",
+    static const char *const names[WidgetKindCount] = {
+        [WidgetKindScreen] = "Screen",
+        [WidgetKindBackground] = "Background",
+        [WidgetKindText] = "Text",
+        [WidgetKindBox] = "Box",
+        [WidgetKindCircle] = "Circle",
+        [WidgetKindRing] = "Ring",
+        [WidgetKindLine] = "Line",
+        [WidgetKindTriangle] = "Triangle",
+        [WidgetKindButton] = "Button",
+        [WidgetKindTextField] = "TextField",
+        [WidgetKindTextArea] = "TextArea",
+        [WidgetKindDropdown] = "Dropdown",
+        [WidgetKindSlider] = "Slider",
+        [WidgetKindToggle] = "Toggle",
+        [WidgetKindCheckbox] = "Checkbox",
+        [WidgetKindParagraph] = "Paragraph",
+        [WidgetKindNavigationBar] = "NavigationBar",
+        [WidgetKindTabBar] = "TabBar",
+        [WidgetKindTitleBar] = "TitleBar",
+        [WidgetKindGroup] = "Group",
+        [WidgetKindColumn] = "Column",
+        [WidgetKindRow] = "Row",
+        [WidgetKindStack] = "Stack",
+        [WidgetKindGrid] = "Grid",
+        [WidgetKindImage] = "Image",
+        [WidgetKindCustom] = "Custom",
+        [WidgetKindDrag] = "Drag",
+        [WidgetKindRouter] = "Router",
+        [WidgetKindCard] = "Card",
     };
 
-    if(kind < 0 || kind >= WIDGET_KIND_COUNT || names[kind] == NULL)
+    if(kind < 0 || kind >= WidgetKindCount || names[kind] == NULL)
         return "";
     return names[kind];
 }
@@ -2187,25 +2187,25 @@ static const char *
 ui_accessibility_role(int kind)
 {
     switch(kind) {
-    case WIDGET_SCREEN: return "main";
-    case WIDGET_TEXT:
-    case WIDGET_PARAGRAPH: return "text";
-    case WIDGET_BUTTON: return "button";
-    case WIDGET_CARD: return "group";
-    case WIDGET_TEXT_FIELD:
-    case WIDGET_TEXT_AREA: return "textbox";
-    case WIDGET_DROPDOWN: return "combobox";
-    case WIDGET_SLIDER: return "slider";
-    case WIDGET_TOGGLE:
-    case WIDGET_CHECKBOX: return "checkbox";
-    case WIDGET_TAB_BAR: return "tablist";
-    case WIDGET_COLUMN:
-    case WIDGET_ROW:
-    case WIDGET_STACK:
-    case WIDGET_GRID:
-    case WIDGET_ROUTER:
-    case WIDGET_GROUP: return "group";
-    case WIDGET_IMAGE: return "img";
+    case WidgetKindScreen: return "main";
+    case WidgetKindText:
+    case WidgetKindParagraph: return "text";
+    case WidgetKindButton: return "button";
+    case WidgetKindCard: return "group";
+    case WidgetKindTextField:
+    case WidgetKindTextArea: return "textbox";
+    case WidgetKindDropdown: return "combobox";
+    case WidgetKindSlider: return "slider";
+    case WidgetKindToggle:
+    case WidgetKindCheckbox: return "checkbox";
+    case WidgetKindTabBar: return "tablist";
+    case WidgetKindColumn:
+    case WidgetKindRow:
+    case WidgetKindStack:
+    case WidgetKindGrid:
+    case WidgetKindRouter:
+    case WidgetKindGroup: return "group";
+    case WidgetKindImage: return "img";
     default: return NULL;
     }
 }
@@ -2221,7 +2221,7 @@ ui_tree_first_text(const TreeNode *nodes, int count, int parent)
         child = nodes[child].next_sibling) {
         const char *nested;
 
-        if(nodes[child].kind == WIDGET_TEXT &&
+        if(nodes[child].kind == WidgetKindText &&
            nodes[child].owned_text != NULL &&
            nodes[child].owned_text[0] != '\0')
             return nodes[child].owned_text;
@@ -2243,10 +2243,10 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
         const char *role = ui_accessibility_role(node->kind);
         const char *label = node->owned_text;
 
-        if(node->kind == WIDGET_TEXT && node->parent >= 0 &&
+        if(node->kind == WidgetKindText && node->parent >= 0 &&
            ui_tree_button_like_kind(ui_committed_nodes[node->parent].kind))
             continue;
-        if(node->kind == WIDGET_CARD && node->data.button.props.id > 0)
+        if(node->kind == WidgetKindCard && node->data.button.props.id > 0)
             role = "button";
         if(role == NULL)
             continue;
@@ -2257,19 +2257,19 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
             if(label == NULL)
                 label = node->data.button.props.label;
         }
-        else if(label == NULL && node->kind == WIDGET_CHECKBOX)
+        else if(label == NULL && node->kind == WidgetKindCheckbox)
             label = node->data.checkbox.label;
         if(nodes != NULL && count < capacity) {
             memset(&nodes[count], 0, sizeof(nodes[count]));
             nodes[count].bounds = node->bounds;
             nodes[count].role = role;
             nodes[count].label = label != NULL ? label : "";
-            nodes[count].focused = node->kind == WIDGET_TEXT_FIELD &&
+            nodes[count].focused = node->kind == WidgetKindTextField &&
                 node->state != NULL &&
                 ((TextFieldState *)node->state)->focused;
             nodes[count].disabled = ui_tree_button_like_kind(node->kind) &&
                 !CanActivate(node->data.button.props.disabled, node->data.button.props.loading);
-            nodes[count].checked = node->kind == WIDGET_CHECKBOX &&
+            nodes[count].checked = node->kind == WidgetKindCheckbox &&
                 node->data.checkbox.value != NULL &&
                 *node->data.checkbox.value != 0;
         }
@@ -2316,7 +2316,7 @@ NodeParagraph(ParagraphSpec paragraph, int x, int y)
 {
     TreeNode node;
 
-    node = ui_node(0, WIDGET_PARAGRAPH,
+    node = ui_node(0, WidgetKindParagraph,
                    (Rectangle){x, y, paragraph.width, 0});
     node.data.paragraph = paragraph;
     return node;
@@ -2329,7 +2329,7 @@ NodeNavigationBar(NavigationBarProps nav)
     int height;
 
     height = nav.height > 0 ? nav.height : 0;
-    node = ui_node(0, WIDGET_NAVIGATION_BAR,
+    node = ui_node(0, WidgetKindNavigationBar,
                    (Rectangle){0, 0, nav.view_width, height});
     return node;
 }
@@ -2337,13 +2337,13 @@ NodeNavigationBar(NavigationBarProps nav)
 TreeNode
 NodeTabBar(TabBarProps bar)
 {
-    return ui_node(0, WIDGET_TAB_BAR, bar.bounds);
+    return ui_node(0, WidgetKindTabBar, bar.bounds);
 }
 
 TreeNode
 NodeTitleBar(int height)
 {
-    return ui_node(0, WIDGET_TITLE_BAR,
+    return ui_node(0, WidgetKindTitleBar,
                    (Rectangle){0, 0, ui_view_width, height});
 }
 
@@ -2356,7 +2356,7 @@ RenderImage(ImageProps image)
     if(image.alt_text != NULL && image.alt_text[0] != '\0')
         ui_page_semantic_next(SEMANTIC_IMAGE, image.alt_text, NULL, "img", 0,
                               -1);
-    ui_tree_add(0, WIDGET_IMAGE, image.bounds, image.asset_path);
+    ui_tree_add(0, WidgetKindImage, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);
     if(texture.id == 0) {
         Style image_style = ui_unpack_style(ui_control_style_frame_kind(
@@ -2401,7 +2401,7 @@ void
 Background(Color color)
 {
     Rectangle bounds = PrimitiveBackgroundBounds(ui_view_width, ui_view_height);
-    NodeId node = ui_tree_add(0, WIDGET_BACKGROUND,
+    NodeId node = ui_tree_add(0, WidgetKindBackground,
                               bounds, NULL);
 
     if(node >= 0)
@@ -2493,7 +2493,7 @@ Text(TextProps props)
         }
     }
     bounds.height = TextExtent(bounds.height, measured_height);
-    node = ui_tree_add(0, WIDGET_TEXT, bounds, NULL);
+    node = ui_tree_add(0, WidgetKindText, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(value);
         ui_tree_nodes[node].data.primitive.font = font;
@@ -2546,7 +2546,7 @@ Paragraph(ParagraphSpec paragraph, int x, int *y)
     NodeId id;
     int start_y = y != NULL ? *y : 0;
 
-    id = ui_tree_add(0, WIDGET_PARAGRAPH,
+    id = ui_tree_add(0, WidgetKindParagraph,
                      (Rectangle){x, start_y, paragraph.width, 0}, NULL);
     node = NodeParagraph(paragraph, x, start_y);
     ui_tree_store_node(id, node);
@@ -2558,7 +2558,7 @@ Surface(Rectangle bounds, Style style)
 {
     Style defaults = ui_surface_style();
     style = MergeStyle(defaults, style);
-    NodeId node = ui_tree_add(0, WIDGET_BOX, bounds, NULL);
+    NodeId node = ui_tree_add(0, WidgetKindBox, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.styled = 1;
         ui_tree_nodes[node].data.primitive.style = style;
@@ -2577,7 +2577,7 @@ static void
 rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
 {
     Rectangle bounds = PrimitiveRectBounds(x, y, w, h);
-    NodeId node = ui_tree_add(0, WIDGET_BOX, bounds, NULL);
+    NodeId node = ui_tree_add(0, WidgetKindBox, bounds, NULL);
 
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.color = fill;
@@ -2601,7 +2601,7 @@ Box(Rectangle bounds, Color fill, Color border)
 void
 Circle(int center_x, int center_y, int radius, Color color)
 {
-    NodeId node = ui_tree_add(0, WIDGET_CIRCLE,
+    NodeId node = ui_tree_add(0, WidgetKindCircle,
                               PrimitiveCircleBounds(center_x, center_y,
                                                     radius),
                               NULL);
@@ -2617,7 +2617,7 @@ void
 Ring(int center_x, int center_y, int inner_radius, int outer_radius,
      Color color)
 {
-    NodeId node = ui_tree_add(0, WIDGET_RING,
+    NodeId node = ui_tree_add(0, WidgetKindRing,
                               PrimitiveRingBounds(center_x, center_y,
                                                   outer_radius),
                               NULL);
@@ -2637,7 +2637,7 @@ void
 Line(int x1, int y1, int x2, int y2, Color color)
 {
     LinePrimitive line = PrimitiveLineFor(x1, y1, x2, y2);
-    NodeId node = ui_tree_add(0, WIDGET_LINE, line.bounds, NULL);
+    NodeId node = ui_tree_add(0, WidgetKindLine, line.bounds, NULL);
 
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.x1 = line.x1;
@@ -2655,7 +2655,7 @@ void
 Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
 {
     TrianglePrimitive triangle = PrimitiveTriangleFor(x1, y1, x2, y2, x3, y3);
-    NodeId node = ui_tree_add(0, WIDGET_TRIANGLE, triangle.bounds, NULL);
+    NodeId node = ui_tree_add(0, WidgetKindTriangle, triangle.bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.primitive.x1 = triangle.x1;
         ui_tree_nodes[node].data.primitive.y1 = triangle.y1;
@@ -2675,7 +2675,7 @@ Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
 void
 Bevel(int x, int y, int w, int h, Color light, Color dark)
 {
-    ui_tree_add(0, WIDGET_BOX, (Rectangle){x, y, w, h}, NULL);
+    ui_tree_add(0, WidgetKindBox, (Rectangle){x, y, w, h}, NULL);
     RenderBevel(x, y, w, h, light, dark);
 }
 
@@ -2685,7 +2685,7 @@ ButtonNode(ButtonSpec button)
     NodeId node;
     int clicked;
 
-    node = ui_tree_add(button.props.id, WIDGET_BUTTON, button.props.bounds,
+    node = ui_tree_add(button.props.id, WidgetKindButton, button.props.bounds,
                        NULL);
     if(node >= 0) {
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.props.label);
@@ -2706,7 +2706,7 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
         ui_paint_text_input(bounds, text, paint);
         return;
     }
-    NodeId id = ui_tree_add(focus_id, WIDGET_CUSTOM, bounds, NULL);
+    NodeId id = ui_tree_add(focus_id, WidgetKindCustom, bounds, NULL);
     if(id >= 0) {
         ui_tree_nodes[id].flags |= NODE_TEXT_INPUT_PAINT;
         ui_tree_nodes[id].owned_text = ui_tree_strdup(text);
@@ -2718,7 +2718,7 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
 int
 TextField(TextFieldProps field)
 {
-    NodeId node = ui_tree_add(field.focus_id, WIDGET_TEXT_FIELD,
+    NodeId node = ui_tree_add(field.focus_id, WidgetKindTextField,
                                 field.bounds, NULL);
 
     if(field.commit_pressed != NULL)
@@ -2737,7 +2737,7 @@ Icon(int id, int x, int y, int size, IconType icon, Color tint)
 {
     IconLayout layout = IconLayoutFor(x, y, size);
 
-    ui_tree_add(id, WIDGET_CUSTOM, layout.bounds, NULL);
+    ui_tree_add(id, WidgetKindCustom, layout.bounds, NULL);
     if(layout.drawable)
         DrawIcon(icon, layout.bounds, tint);
 }
@@ -2745,7 +2745,7 @@ Icon(int id, int x, int y, int size, IconType icon, Color tint)
 int
 Dropdown(DropdownProps dropdown)
 {
-    ui_tree_add(dropdown.id, WIDGET_DROPDOWN, dropdown.bounds,
+    ui_tree_add(dropdown.id, WidgetKindDropdown, dropdown.bounds,
                 dropdown.selected_index);
     return ui_dropdown(dropdown);
 }
@@ -2759,7 +2759,7 @@ Toggle(ToggleProps toggle)
     int id = toggle.id;
     int *value = toggle.value;
     Rectangle bounds = toggle.bounds;
-    NodeId node = ui_tree_add(id, WIDGET_TOGGLE, bounds, NULL);
+    NodeId node = ui_tree_add(id, WidgetKindToggle, bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.toggle.value = value;
         ui_tree_nodes[node].data.toggle.class_name = toggle.class_name;
@@ -2797,7 +2797,7 @@ int
 Checkbox(CheckboxProps checkbox)
 {
     int changed;
-    NodeId node = ui_tree_add(checkbox.id, WIDGET_CHECKBOX,
+    NodeId node = ui_tree_add(checkbox.id, WidgetKindCheckbox,
                               checkbox.bounds, NULL);
     if(node >= 0) {
         ui_tree_nodes[node].data.checkbox.value = checkbox.value;
@@ -2822,35 +2822,35 @@ Checkbox(CheckboxProps checkbox)
 void
 Separator(SeparatorProps separator)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, separator.bounds, &separator);
+    ui_tree_add(0, WidgetKindCustom, separator.bounds, &separator);
     RenderSeparator(separator);
 }
 
 int
 DragDrop(DragDropProps drag_drop)
 {
-    ui_tree_add(drag_drop.id, WIDGET_CUSTOM, drag_drop.bounds, &drag_drop);
+    ui_tree_add(drag_drop.id, WidgetKindCustom, drag_drop.bounds, &drag_drop);
     return RenderDragDrop(drag_drop);
 }
 
 int
 Radio(RadioProps radio)
 {
-    ui_tree_add(radio.id, WIDGET_CUSTOM, radio.bounds, &radio);
+    ui_tree_add(radio.id, WidgetKindCustom, radio.bounds, &radio);
     return RenderRadio(radio);
 }
 
 void
 Progress(ProgressProps progress)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, progress.bounds, &progress);
+    ui_tree_add(0, WidgetKindCustom, progress.bounds, &progress);
     RenderProgress(progress);
 }
 
 void
 Plot(PlotProps plot)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, plot.bounds, &plot);
+    ui_tree_add(0, WidgetKindCustom, plot.bounds, &plot);
     if(plot.mode == PlotBars)
         RenderPlotHistogram(plot);
     else
@@ -2860,7 +2860,7 @@ Plot(PlotProps plot)
 int
 ui_tree_drag_continuous(DragContinuousProps drag)
 {
-    NodeId id = ui_tree_add(drag.id, WIDGET_DRAG, drag.bounds, NULL);
+    NodeId id = ui_tree_add(drag.id, WidgetKindDrag, drag.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
         TreeNode *node = &ui_tree_nodes[id];
@@ -2885,7 +2885,7 @@ ui_tree_drag_continuous(DragContinuousProps drag)
 int
 ui_tree_drag_discrete(DragDiscreteProps drag)
 {
-    NodeId id = ui_tree_add(drag.id, WIDGET_DRAG, drag.bounds, NULL);
+    NodeId id = ui_tree_add(drag.id, WidgetKindDrag, drag.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
         TreeNode *node = &ui_tree_nodes[id];
@@ -3028,7 +3028,7 @@ ui_tree_numeric_text(const char *label, const char *format, size_t *offset)
 static int
 ui_tree_scalar_slider(SliderContinuousProps slider, int vertical)
 {
-    NodeId id = ui_tree_add(slider.id, WIDGET_SLIDER,
+    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
                             slider.bounds, NULL);
     if(id >= 0) {
         /* Caller-owned values can change without an input event. */
@@ -3055,7 +3055,7 @@ ui_tree_scalar_slider(SliderContinuousProps slider, int vertical)
 static int
 ui_tree_whole_slider(SliderDiscreteProps slider, int vertical)
 {
-    NodeId id = ui_tree_add(slider.id, WIDGET_SLIDER,
+    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
                             slider.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
@@ -3104,7 +3104,7 @@ ui_tree_vslider_discrete(SliderDiscreteProps slider)
 int
 ui_tree_slider_angle(SliderAngleProps slider)
 {
-    NodeId id = ui_tree_add(slider.id, WIDGET_SLIDER,
+    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
                             slider.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
@@ -3159,7 +3159,7 @@ static int
 ui_numeric_input_begin(int id, Rectangle *bounds)
 {
     int depth = ui_tree_stack_depth;
-    NodeId node = ui_tree_add(id, WIDGET_CUSTOM, *bounds, NULL);
+    NodeId node = ui_tree_add(id, WidgetKindCustom, *bounds, NULL);
     if(node >= 0) {
         *bounds = ui_tree_nodes[node].bounds;
         if(ui_tree_stack_depth >= TREE_MAX_DEPTH) abort();
@@ -3221,21 +3221,21 @@ Input(InputProps input)
 int
 Spinbox(SpinboxProps spinbox)
 {
-    ui_tree_add(spinbox.id, WIDGET_CUSTOM, spinbox.bounds, &spinbox);
+    ui_tree_add(spinbox.id, WidgetKindCustom, spinbox.bounds, &spinbox);
     return RenderSpinbox(spinbox);
 }
 
 void
 Fieldset(FieldsetProps frame)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, frame.bounds, &frame);
+    ui_tree_add(0, WidgetKindCustom, frame.bounds, &frame);
     RenderFieldset(frame);
 }
 
 int
 ListBox(ListBoxProps list)
 {
-    ui_tree_add(list.id, WIDGET_CUSTOM, list.bounds, &list);
+    ui_tree_add(list.id, WidgetKindCustom, list.bounds, &list);
     if(list.selected != NULL)
         return RenderListBoxMulti(list);
     return RenderListBox(list);
@@ -3244,21 +3244,21 @@ ListBox(ListBoxProps list)
 int
 TreeView(TreeViewProps tree)
 {
-    ui_tree_add(tree.id, WIDGET_CUSTOM, tree.bounds, &tree);
+    ui_tree_add(tree.id, WidgetKindCustom, tree.bounds, &tree);
     return RenderTreeView(tree);
 }
 
 int
 TableView(TableViewProps table)
 {
-    ui_tree_add(table.id, WIDGET_CUSTOM, table.bounds, &table);
+    ui_tree_add(table.id, WidgetKindCustom, table.bounds, &table);
     return RenderTableView(table);
 }
 
 int
 TextArea(TextAreaProps area)
 {
-    NodeId node = ui_tree_add(area.focus_id, WIDGET_TEXT_AREA,
+    NodeId node = ui_tree_add(area.focus_id, WidgetKindTextArea,
                                 area.bounds, NULL);
 
     if(node >= 0) {
@@ -3276,28 +3276,28 @@ TextArea(TextAreaProps area)
 void
 CanvasGrid(Rectangle bounds, int step, Color color)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, bounds, NULL);
+    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
     RenderCanvasGrid(bounds, step, color);
 }
 
 int
 PanedView(PanedViewProps panes)
 {
-    ui_tree_add(panes.id, WIDGET_CUSTOM, panes.bounds, &panes);
+    ui_tree_add(panes.id, WidgetKindCustom, panes.bounds, &panes);
     return RenderPanedView(panes);
 }
 
 int
 Collapsible(CollapsibleProps section)
 {
-    ui_tree_add(section.id, WIDGET_CUSTOM, section.bounds, &section);
+    ui_tree_add(section.id, WidgetKindCustom, section.bounds, &section);
     return RenderCollapsible(section);
 }
 
 int
 ColorPicker(ColorPickerProps picker)
 {
-    ui_tree_add(picker.id, WIDGET_CUSTOM, picker.bounds, &picker);
+    ui_tree_add(picker.id, WidgetKindCustom, picker.bounds, &picker);
     return RenderColorPicker(picker);
 }
 
@@ -3327,21 +3327,21 @@ int
 Modal(ModalProps modal)
 {
     ui_tree_paint_before_overlay();
-    ui_tree_add(0, WIDGET_CUSTOM, (Rectangle){0, 0, 0, 0}, &modal);
+    ui_tree_add(0, WidgetKindCustom, (Rectangle){0, 0, 0, 0}, &modal);
     return RenderActionModal(modal);
 }
 
 void
 Focus(Rectangle bounds)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, bounds, NULL);
+    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
     RenderFocus(bounds);
 }
 
 NavigationBarResult
 NavigationBar(NavigationBarProps nav)
 {
-    ui_tree_add(0, WIDGET_NAVIGATION_BAR,
+    ui_tree_add(0, WidgetKindNavigationBar,
                 (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav);
     return RenderNavigationBar(nav);
 }
@@ -3349,7 +3349,7 @@ NavigationBar(NavigationBarProps nav)
 ToolbarResult
 Toolbar(ToolbarProps toolbar)
 {
-    ui_tree_add(toolbar.id, WIDGET_CUSTOM,
+    ui_tree_add(toolbar.id, WidgetKindCustom,
                 (Rectangle){toolbar.x, toolbar.y, toolbar.width, toolbar.height}, &toolbar);
     return RenderToolbar(toolbar);
 }
@@ -3359,7 +3359,7 @@ TabBar(TabBarProps bar)
 {
     int clicked;
 
-    ui_tree_add(0, WIDGET_TAB_BAR, bar.bounds, &bar);
+    ui_tree_add(0, WidgetKindTabBar, bar.bounds, &bar);
     clicked = RenderTabBar(bar);
     ui_tree_note_build_activation(clicked >= 0);
     return clicked;
@@ -3371,7 +3371,7 @@ TitleBar(TitleBarProps title_bar)
     int id = title_bar.has_dropdown ? title_bar.dropdown.id : 0;
     int height = title_bar.height > 0 ? title_bar.height : ui_title_bar_height();
 
-    ui_tree_add(id, WIDGET_TITLE_BAR,
+    ui_tree_add(id, WidgetKindTitleBar,
                 (Rectangle){0, 0, ui_view_width, height}, &title_bar);
     return RenderTitleBar(title_bar);
 }
@@ -3443,7 +3443,7 @@ ui_tree_surface_button(ButtonProps button, Rectangle surface_bounds, int disclos
     button.bounds = resolve_button_bounds(button, disclosure);
     button.id = ResolveFocusID(button.id);
     ButtonSpec spec = ui_tree_button_spec(button, surface_bounds, disclosure);
-    NodeId node = ui_tree_add(button.id, WIDGET_BUTTON,
+    NodeId node = ui_tree_add(button.id, WidgetKindButton,
                                 button.bounds, NULL);
     int clicked;
 
@@ -3488,7 +3488,7 @@ Button(ButtonProps button)
             bounds.width = diameter;
         if(bounds.height <= 0)
             bounds.height = diameter;
-        NodeId node = ui_tree_add(button.id, WIDGET_BUTTON,
+        NodeId node = ui_tree_add(button.id, WidgetKindButton,
                                   bounds, NULL);
         int clicked = RenderButtonInfoIndicator((int)(bounds.x + bounds.width / 2),
                                        (int)(bounds.y + bounds.height / 2),
@@ -3588,7 +3588,7 @@ ButtonScope(ButtonProps button)
     spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
     spec.props.label = "";
 
-    node = ui_tree_add(button.id, WIDGET_BUTTON, button.bounds, NULL);
+    node = ui_tree_add(button.id, WidgetKindButton, button.bounds, NULL);
     if(node < 0)
         return node;
     spec.props.bounds = ui_tree_nodes[node].bounds;
@@ -3616,7 +3616,7 @@ Card(CardProps card)
                                         StyleKindCard());
     spec.props.label = "";
 
-    node = ui_tree_add(button.id, WIDGET_CARD, button.bounds, NULL);
+    node = ui_tree_add(button.id, WidgetKindCard, button.bounds, NULL);
     if(node >= 0) {
         spec.props.bounds = ui_tree_nodes[node].bounds;
         ui_tree_nodes[node].data.button = spec;
@@ -3635,7 +3635,7 @@ Menu(MenuProps menu)
 {
     Rectangle bounds = menu.mode == MenuModeContext ? menu.trigger : menu.bounds;
 
-    ui_tree_add(menu.id, WIDGET_CUSTOM, bounds, &menu);
+    ui_tree_add(menu.id, WidgetKindCustom, bounds, &menu);
     return RenderMenu(menu);
 }
 
@@ -3653,7 +3653,7 @@ CardScope(CardProps card)
                                         StyleKindCard());
     spec.props.label = "";
 
-    node = ui_tree_add(button.id, WIDGET_CARD, button.bounds, NULL);
+    node = ui_tree_add(button.id, WidgetKindCard, button.bounds, NULL);
     if(node < 0)
         return node;
     spec.props.bounds = ui_tree_nodes[node].bounds;
@@ -3672,7 +3672,7 @@ CardScope(CardProps card)
 int
 Selectable(SelectableProps selectable)
 {
-    ui_tree_add(selectable.id, WIDGET_CUSTOM, selectable.bounds,
+    ui_tree_add(selectable.id, WidgetKindCustom, selectable.bounds,
                 &selectable);
     return RenderSelectable(selectable);
 }
@@ -3680,7 +3680,7 @@ Selectable(SelectableProps selectable)
 void
 Bullet(Rectangle bounds)
 {
-    ui_tree_add(0, WIDGET_CUSTOM, bounds, NULL);
+    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
     RenderBullet(bounds);
 }
 
@@ -3711,21 +3711,21 @@ ui_begin_layout_node(int kind, KeyID key, Rectangle bounds,
 NodeId
 Column(ColumnProps props)
 {
-    return ui_begin_layout_node(WIDGET_COLUMN, props.key, props.bounds,
+    return ui_begin_layout_node(WidgetKindColumn, props.key, props.bounds,
                                 props.gap, props.padding);
 }
 
 NodeId
 Row(RowProps props)
 {
-    return ui_begin_layout_node(WIDGET_ROW, props.key, props.bounds,
+    return ui_begin_layout_node(WidgetKindRow, props.key, props.bounds,
                                 props.gap, props.padding);
 }
 
 NodeId
 Grid(GridProps props)
 {
-    NodeId node = ui_begin_layout_node(WIDGET_GRID, props.key,
+    NodeId node = ui_begin_layout_node(WidgetKindGrid, props.key,
                                        props.bounds, props.gap,
                                        props.padding);
 
@@ -3740,7 +3740,7 @@ Grid(GridProps props)
 NodeId
 Stack(ColumnProps props)
 {
-    return ui_begin_layout_node(WIDGET_STACK, props.key, props.bounds,
+    return ui_begin_layout_node(WidgetKindStack, props.key, props.bounds,
                                 props.gap, props.padding);
 }
 
@@ -3749,7 +3749,7 @@ Group(ColumnProps props)
 {
     GroupPolicy policy = GroupPolicyFor(props.bounds, props.gap,
                                         props.padding);
-    return ui_begin_layout_node(WIDGET_GROUP, props.key, policy.bounds,
+    return ui_begin_layout_node(WidgetKindGroup, props.key, policy.bounds,
                                 policy.gap, policy.padding);
 }
 
@@ -3759,7 +3759,7 @@ Screen(ColumnProps props)
     GroupPolicy policy = ScreenGroupPolicyFor(props.bounds, ui_view_width,
                                               ui_view_height, props.gap,
                                               props.padding);
-    return ui_begin_layout_node(WIDGET_GROUP, props.key, policy.bounds,
+    return ui_begin_layout_node(WidgetKindGroup, props.key, policy.bounds,
                                 policy.gap, policy.padding);
 }
 
@@ -3963,7 +3963,7 @@ Router(RouterProps props)
 
     node = ui_tree_add((int)((props.key != 0 ? props.key : Key("Router")) &
                              0x7fffffffU),
-                       WIDGET_ROUTER, props.bounds, NULL);
+                       WidgetKindRouter, props.bounds, NULL);
     if(node >= 0)
         ui_tree_nodes[node].key = props.key != 0 ? props.key : Key("Router");
 

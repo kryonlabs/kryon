@@ -442,7 +442,7 @@ retained_rect_kind_matches="$(
 )"
 
 if [ -n "$retained_rect_kind_matches" ]; then
-    echo "Retained rectangle nodes must use WIDGET_BOX so node names match the canonical Box widget:"
+    echo "Retained rectangle nodes must use WidgetKindBox so node names match the canonical Box widget:"
     echo "$retained_rect_kind_matches"
     exit 1
 fi

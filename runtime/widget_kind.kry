@@ -1,0 +1,34 @@
+#module "widget_kind"
+
+WidgetKind :: enum {
+    WidgetKindScreen = 0
+    WidgetKindBackground = 1
+    WidgetKindText = 2
+    WidgetKindBox = 3
+    WidgetKindCircle = 4
+    WidgetKindRing = 5
+    WidgetKindLine = 6
+    WidgetKindTriangle = 7
+    WidgetKindButton = 8
+    WidgetKindTextField = 9
+    WidgetKindTextArea = 10
+    WidgetKindDropdown = 11
+    WidgetKindSlider = 12
+    WidgetKindToggle = 13
+    WidgetKindCheckbox = 14
+    WidgetKindParagraph = 15
+    WidgetKindNavigationBar = 16
+    WidgetKindTabBar = 17
+    WidgetKindTitleBar = 18
+    WidgetKindGroup = 19
+    WidgetKindColumn = 20
+    WidgetKindRow = 21
+    WidgetKindStack = 22
+    WidgetKindGrid = 23
+    WidgetKindImage = 24
+    WidgetKindCustom = 25
+    WidgetKindDrag = 26
+    WidgetKindRouter = 27
+    WidgetKindCard = 28
+    WidgetKindCount = 29
+}
