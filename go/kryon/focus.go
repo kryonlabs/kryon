@@ -66,6 +66,44 @@ func Focus_FocusStrokeWidthFor(scale float32) int32 {
 	return value_7
 }
 
+func Focus_FocusActivationFor(active bool, keyboard_enabled bool, content_disabled bool, captured bool, enter_pressed bool, space_pressed bool, text_input_active bool) bool {
+	var value_0 bool = active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = content_disabled
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	var value_6 bool = value_3
+	if value_6 {
+		var value_7 bool = captured
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	var value_9 bool = value_6
+	if value_9 {
+		var value_10 bool = enter_pressed
+		var value_11 bool = value_10
+		if !value_11 {
+			var value_12 bool = text_input_active
+			var value_13 bool = !value_12
+			var value_14 bool = value_13
+			if value_14 {
+				var value_15 bool = space_pressed
+				value_14 = value_15
+			}
+			value_11 = value_14
+		}
+		value_9 = value_11
+	}
+	return value_9
+}
+
 func Focus_FocusDefaultOutlineBounds(bounds Rectangle, scale float32) Rectangle {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

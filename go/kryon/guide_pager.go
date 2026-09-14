@@ -27,6 +27,13 @@ type GuidePagerPolicy struct {
 	Finished bool
 }
 
+type GuidePagerInput struct {
+	PreviousRequested bool
+	NextRequested     bool
+	CloseRequested    bool
+	KeyboardFinish    bool
+}
+
 func GuidePager_GuidePagerHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -398,4 +405,34 @@ func GuidePager_GuidePagerPolicyFor(page int32, page_count int32, previous bool,
 	}
 	var value_42 GuidePagerPolicy = policy
 	return value_42
+}
+
+func GuidePager_GuidePagerInputFor(left_pressed bool, right_pressed bool, enter_pressed bool, back_pressed bool, escape_pressed bool, swipe_active bool) GuidePagerInput {
+	var input GuidePagerInput = GuidePagerInput{}
+	var value_0 bool = left_pressed
+	input.PreviousRequested = value_0
+	var value_1 bool = right_pressed
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = enter_pressed
+		value_2 = value_3
+	}
+	input.NextRequested = value_2
+	var value_4 bool = back_pressed
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 bool = escape_pressed
+		value_5 = value_6
+	}
+	input.CloseRequested = value_5
+	var value_7 bool = input.NextRequested
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = swipe_active
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	input.KeyboardFinish = value_8
+	var value_11 GuidePagerInput = input
+	return value_11
 }

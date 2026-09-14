@@ -21,6 +21,21 @@ type StyleShinePaint struct {
 	Visible bool
 }
 
+type StyleElevationPaint struct {
+	Level      int32
+	FarAlpha   int32
+	NearAlpha  int32
+	FarOffset  int32
+	NearOffset int32
+	Visible    bool
+}
+
+type StyleRipplePaint struct {
+	Radius  float32
+	Alpha   int32
+	Visible bool
+}
+
 type StyleData struct {
 	Fields        uint32
 	Background    uint32
@@ -632,6 +647,110 @@ func Style_StyleShinePaintFor(bounds Rectangle, radius float32, shine_alpha int3
 	return value_55
 }
 
+func Style_StyleStateLayerAlpha(pressed bool, focused bool, hovered bool) int32 {
+	var value_0 bool = pressed
+	if value_0 {
+		var value_1 int32 = 31
+		return value_1
+	}
+	var value_2 bool = focused
+	if value_2 {
+		var value_3 int32 = 31
+		return value_3
+	}
+	var value_4 bool = hovered
+	if value_4 {
+		var value_5 int32 = 20
+		return value_5
+	}
+	var value_6 int32 = 0
+	return value_6
+}
+
+func Style_StyleDisabledAlpha() uint8 {
+	var value_0 int32 = 96
+	var value_1 uint8 = uint8(number_runtime_bits(uint64(value_0), uint64(0), 8, false, 0))
+	return value_1
+}
+
+func Style_StyleDefaultFocusOutlineAlpha() uint8 {
+	var value_0 int32 = 220
+	var value_1 uint8 = uint8(number_runtime_bits(uint64(value_0), uint64(0), 8, false, 0))
+	return value_1
+}
+
+func Style_StyleLegacyBoxRadius(requested float32) float32 {
+	var value_0 float32 = requested
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 >= value_1
+	if value_2 {
+		var value_3 float32 = requested
+		return value_3
+	}
+	var value_4 float32 = 0.12
+	return value_4
+}
+
+func Style_StyleElevationPaintFor(level int32) StyleElevationPaint {
+	var paint StyleElevationPaint = StyleElevationPaint{}
+	var value_0 int32 = level
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 StyleElevationPaint = paint
+		return value_3
+	}
+	var value_4 int32 = level
+	var value_5 int32 = 4
+	var value_6 bool = value_4 > value_5
+	if value_6 {
+		var value_7 int32 = 4
+		level = value_7
+	}
+	var value_8 int32 = level
+	paint.Level = value_8
+	var value_9 int32 = 18
+	var value_10 int32 = level
+	var value_11 int32 = 6
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 3))
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_12), 32, true, 1))
+	paint.FarAlpha = value_13
+	var value_14 int32 = 10
+	var value_15 int32 = level
+	var value_16 int32 = 4
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 3))
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_17), 32, true, 1))
+	paint.NearAlpha = value_18
+	var value_19 int32 = level
+	var value_20 int32 = 2
+	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 3))
+	paint.FarOffset = value_21
+	var value_22 int32 = level
+	paint.NearOffset = value_22
+	var value_23 bool = true
+	paint.Visible = value_23
+	var value_24 StyleElevationPaint = paint
+	return value_24
+}
+
+func Style_StyleRippleFallbackOrigin(bounds Rectangle) Vector2 {
+	var origin Vector2 = Vector2{}
+	var value_0 float32 = bounds.X
+	var value_1 float32 = bounds.Width
+	var value_2 float32 = 0.5
+	var value_3 float32 = value_1 * value_2
+	var value_4 float32 = value_0 + value_3
+	origin.X = value_4
+	var value_5 float32 = bounds.Y
+	var value_6 float32 = bounds.Height
+	var value_7 float32 = 0.5
+	var value_8 float32 = value_6 * value_7
+	var value_9 float32 = value_5 + value_8
+	origin.Y = value_9
+	var value_10 Vector2 = origin
+	return value_10
+}
+
 func Style_StyleRippleRadius(radius float32, max_radius float32, scale float32) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -660,6 +779,79 @@ func Style_StyleRippleRadius(radius float32, max_radius float32, scale float32) 
 	}
 	var value_15 float32 = radius
 	return value_15
+}
+
+func Style_StyleRipplePaintFor(age float32, pressed bool, max_radius float32, scale float32) StyleRipplePaint {
+	var paint StyleRipplePaint = StyleRipplePaint{}
+	var value_0 float32 = 0.32
+	var duration float32 = value_0
+	var value_1 int32 = 28
+	var base_alpha int32 = value_1
+	var value_2 float32 = age
+	var value_3 float32 = 0.0
+	var value_4 bool = value_2 < value_3
+	if value_4 {
+		var value_5 float32 = 0.0
+		age = value_5
+	}
+	var value_6 bool = pressed
+	var value_7 bool = !value_6
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 float32 = age
+		var value_10 float32 = duration
+		var value_11 bool = value_9 > value_10
+		value_8 = value_11
+	}
+	if value_8 {
+		var value_12 StyleRipplePaint = paint
+		return value_12
+	}
+	var value_13 float32 = age
+	var value_14 float32 = duration
+	var value_15 float32 = value_13 / value_14
+	var progress float32 = value_15
+	var value_16 float32 = progress
+	var value_17 float32 = 0.0
+	var value_18 bool = value_16 < value_17
+	if value_18 {
+		var value_19 float32 = 0.0
+		progress = value_19
+	}
+	var value_20 float32 = progress
+	var value_21 float32 = 1.0
+	var value_22 bool = value_20 > value_21
+	if value_22 {
+		var value_23 float32 = 1.0
+		progress = value_23
+	}
+	var value_24 float32 = max_radius
+	var value_25 float32 = progress
+	var value_26 float32 = value_24 * value_25
+	var value_27 float32 = max_radius
+	var value_28 float32 = scale
+	var value_29 float32 = Style_StyleRippleRadius(value_26, value_27, value_28)
+	paint.Radius = value_29
+	var value_30 int32 = base_alpha
+	paint.Alpha = value_30
+	var value_31 bool = pressed
+	var value_32 bool = !value_31
+	if value_32 {
+		var value_33 int32 = base_alpha
+		var value_34 float32 = float32(value_33)
+		var value_35 float32 = 1.0
+		var value_36 float32 = progress
+		var value_37 float32 = value_35 - value_36
+		var value_38 float32 = value_34 * value_37
+		var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
+		paint.Alpha = value_39
+	}
+	var value_40 int32 = paint.Alpha
+	var value_41 int32 = 0
+	var value_42 bool = value_40 > value_41
+	paint.Visible = value_42
+	var value_43 StyleRipplePaint = paint
+	return value_43
 }
 
 func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleData {

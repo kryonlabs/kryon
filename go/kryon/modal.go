@@ -70,6 +70,11 @@ type ModalResultDecision struct {
 	Result int32
 }
 
+type ModalPromptInput struct {
+	Commit bool
+	Escape bool
+}
+
 func Modal_ModalPanelRole() int32 {
 	var value_0 int32 = 2
 	return value_0
@@ -679,7 +684,34 @@ func Modal_ModalMessageLineGap(scale float32) int32 {
 	return value_7
 }
 
-func Modal_ModalPromptFocusIdFor(requested_focus_id int32, fallback_focus_id int32) int32 {
+func Modal_ModalHasPromptFor(has_text bool, text_size int32, has_cursor bool, has_focus bool) bool {
+	var value_0 bool = has_text
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 int32 = text_size
+		var value_3 int32 = 0
+		var value_4 bool = value_2 > value_3
+		value_1 = value_4
+	}
+	var value_5 bool = value_1
+	if value_5 {
+		var value_6 bool = has_cursor
+		value_5 = value_6
+	}
+	var value_7 bool = value_5
+	if value_7 {
+		var value_8 bool = has_focus
+		value_7 = value_8
+	}
+	return value_7
+}
+
+func Modal_ModalPromptFallbackFocusId() int32 {
+	var value_0 int32 = 7301
+	return value_0
+}
+
+func Modal_ModalPromptFocusIdFor(requested_focus_id int32) int32 {
 	var value_0 int32 = requested_focus_id
 	var value_1 int32 = 0
 	var value_2 bool = value_0 > value_1
@@ -687,7 +719,7 @@ func Modal_ModalPromptFocusIdFor(requested_focus_id int32, fallback_focus_id int
 		var value_3 int32 = requested_focus_id
 		return value_3
 	}
-	var value_4 int32 = fallback_focus_id
+	var value_4 int32 = Modal_ModalPromptFallbackFocusId()
 	return value_4
 }
 
@@ -701,6 +733,16 @@ func Modal_ModalPromptCommitResult(action_count int32) int32 {
 	}
 	var value_4 int32 = 1
 	return value_4
+}
+
+func Modal_ModalPromptInputFor(commit_pressed bool, escape_pressed bool) ModalPromptInput {
+	var input ModalPromptInput = ModalPromptInput{}
+	var value_0 bool = commit_pressed
+	input.Commit = value_0
+	var value_1 bool = escape_pressed
+	input.Escape = value_1
+	var value_2 ModalPromptInput = input
+	return value_2
 }
 
 func Modal_ModalPromptResultFor(current_result int32, has_prompt bool, commit_pressed bool, escape_pressed bool, action_count int32) ModalResultDecision {
@@ -735,6 +777,16 @@ func Modal_ModalPromptResultFor(current_result int32, has_prompt bool, commit_pr
 	}
 	var value_14 ModalResultDecision = decision
 	return value_14
+}
+
+func Modal_ModalPromptResultDecisionFor(current_result int32, has_prompt bool, input ModalPromptInput, action_count int32) ModalResultDecision {
+	var value_0 int32 = current_result
+	var value_1 bool = has_prompt
+	var value_2 bool = input.Commit
+	var value_3 bool = input.Escape
+	var value_4 int32 = action_count
+	var value_5 ModalResultDecision = Modal_ModalPromptResultFor(value_0, value_1, value_2, value_3, value_4)
+	return value_5
 }
 
 func Modal_ModalOutsideDismissalFor(released bool, release_consumed bool, pointer_inside bool) ModalDismissal {

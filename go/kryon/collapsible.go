@@ -27,9 +27,56 @@ type CollapsibleLayout struct {
 	HasClose    bool
 }
 
+type CollapsiblePointerDecision struct {
+	MarkClickable  bool
+	Focus          bool
+	ToggleOpen     bool
+	ConsumeRelease bool
+	Changed        bool
+}
+
+type CollapsibleCloseDecision struct {
+	Hide    bool
+	Changed bool
+}
+
+type CollapsibleKeyboardDecision struct {
+	MoveFocus  bool
+	FocusKey   int32
+	SetOpen    bool
+	Open       bool
+	ToggleOpen bool
+	Handled    bool
+}
+
 type CollapsibleOpenResult struct {
 	Open    bool
 	Changed bool
+}
+
+func Collapsible_CollapsibleKeyNone() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func Collapsible_CollapsibleKeyLeft() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func Collapsible_CollapsibleKeyRight() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func Collapsible_CollapsibleKeyUp() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func Collapsible_CollapsibleKeyDown() int32 {
+	var value_0 int32 = 4
+	return value_0
 }
 
 func Collapsible_CollapsibleHeaderRole() int32 {
@@ -274,19 +321,222 @@ func Collapsible_CollapsibleLayoutFor(bounds Rectangle, tree bool, depth int32, 
 	return value_45
 }
 
+func Collapsible_CollapsiblePointerDecisionFor(enabled bool, closed bool, hot_body bool, released bool, leaf bool, has_open bool) CollapsiblePointerDecision {
+	var decision CollapsiblePointerDecision = CollapsiblePointerDecision{}
+	var value_0 bool = enabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = closed
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if !value_4 {
+		var value_5 bool = hot_body
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	if value_4 {
+		var value_7 CollapsiblePointerDecision = decision
+		return value_7
+	}
+	var value_8 bool = true
+	decision.MarkClickable = value_8
+	var value_9 bool = released
+	var value_10 bool = !value_9
+	if value_10 {
+		var value_11 CollapsiblePointerDecision = decision
+		return value_11
+	}
+	var value_12 bool = true
+	decision.Focus = value_12
+	var value_13 bool = true
+	decision.ConsumeRelease = value_13
+	var value_14 bool = leaf
+	var value_15 bool = !value_14
+	var value_16 bool = value_15
+	if value_16 {
+		var value_17 bool = has_open
+		value_16 = value_17
+	}
+	decision.ToggleOpen = value_16
+	var value_18 bool = decision.ToggleOpen
+	decision.Changed = value_18
+	var value_19 CollapsiblePointerDecision = decision
+	return value_19
+}
+
+func Collapsible_CollapsibleCloseDecisionFor(enabled bool, has_visible bool, clicked bool) CollapsibleCloseDecision {
+	var decision CollapsibleCloseDecision = CollapsibleCloseDecision{}
+	var value_0 bool = enabled
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = has_visible
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = clicked
+		value_3 = value_4
+	}
+	decision.Hide = value_3
+	var value_5 bool = decision.Hide
+	decision.Changed = value_5
+	var value_6 CollapsibleCloseDecision = decision
+	return value_6
+}
+
+func Collapsible_CollapsibleKeyboardDecisionFor(focused bool, focus_captured bool, key_already_handled bool, tree bool, key int32, open bool, leaf bool, has_open bool, activate bool) CollapsibleKeyboardDecision {
+	var decision CollapsibleKeyboardDecision = CollapsibleKeyboardDecision{}
+	var value_0 bool = focused
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = focus_captured
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if !value_4 {
+		var value_5 bool = key_already_handled
+		value_4 = value_5
+	}
+	if value_4 {
+		var value_6 CollapsibleKeyboardDecision = decision
+		return value_6
+	}
+	var value_7 bool = tree
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 int32 = key
+		var value_10 int32 = Collapsible_CollapsibleKeyDown()
+		var value_11 bool = value_9 == value_10
+		var value_12 bool = value_11
+		if !value_12 {
+			var value_13 int32 = key
+			var value_14 int32 = Collapsible_CollapsibleKeyUp()
+			var value_15 bool = value_13 == value_14
+			value_12 = value_15
+		}
+		var value_16 bool = value_12
+		if !value_16 {
+			var value_17 int32 = key
+			var value_18 int32 = Collapsible_CollapsibleKeyRight()
+			var value_19 bool = value_17 == value_18
+			var value_20 bool = value_19
+			if value_20 {
+				var value_21 bool = open
+				value_20 = value_21
+			}
+			var value_22 bool = value_20
+			if value_22 {
+				var value_23 bool = leaf
+				var value_24 bool = !value_23
+				value_22 = value_24
+			}
+			value_16 = value_22
+		}
+		var value_25 bool = value_16
+		if !value_25 {
+			var value_26 int32 = key
+			var value_27 int32 = Collapsible_CollapsibleKeyLeft()
+			var value_28 bool = value_26 == value_27
+			var value_29 bool = value_28
+			if value_29 {
+				var value_30 bool = open
+				var value_31 bool = !value_30
+				var value_32 bool = value_31
+				if !value_32 {
+					var value_33 bool = leaf
+					value_32 = value_33
+				}
+				value_29 = value_32
+			}
+			value_25 = value_29
+		}
+		value_8 = value_25
+	}
+	if value_8 {
+		var value_34 bool = true
+		decision.MoveFocus = value_34
+		var value_35 int32 = key
+		decision.FocusKey = value_35
+		var value_36 bool = true
+		decision.Handled = value_36
+		var value_37 CollapsibleKeyboardDecision = decision
+		return value_37
+	}
+	var value_38 bool = leaf
+	var value_39 bool = !value_38
+	var value_40 bool = value_39
+	if value_40 {
+		var value_41 bool = has_open
+		value_40 = value_41
+	}
+	if value_40 {
+		var value_42 int32 = key
+		var value_43 int32 = Collapsible_CollapsibleKeyRight()
+		var value_44 bool = value_42 == value_43
+		if value_44 {
+			var value_45 bool = true
+			decision.SetOpen = value_45
+			var value_46 bool = true
+			decision.Open = value_46
+		}
+		var value_47 int32 = key
+		var value_48 int32 = Collapsible_CollapsibleKeyLeft()
+		var value_49 bool = value_47 == value_48
+		if value_49 {
+			var value_50 bool = true
+			decision.SetOpen = value_50
+			var value_51 bool = false
+			decision.Open = value_51
+		}
+		var value_52 bool = activate
+		if value_52 {
+			var value_53 bool = true
+			decision.ToggleOpen = value_53
+		}
+		var value_54 int32 = key
+		var value_55 int32 = Collapsible_CollapsibleKeyNone()
+		var value_56 bool = value_54 != value_55
+		var value_57 bool = value_56
+		if !value_57 {
+			var value_58 bool = activate
+			value_57 = value_58
+		}
+		decision.Handled = value_57
+	}
+	var value_59 CollapsibleKeyboardDecision = decision
+	return value_59
+}
+
 func Collapsible_CollapsibleOpenApply(open bool, toggle_open bool, set_open bool, next_open bool, has_open bool) CollapsibleOpenResult {
 	var result CollapsibleOpenResult = CollapsibleOpenResult{}
-	result.Open = open
-	result.Changed = false
-	if !has_open {
-		return result
+	var value_0 bool = open
+	result.Open = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 bool = has_open
+	var value_3 bool = !value_2
+	if value_3 {
+		var value_4 CollapsibleOpenResult = result
+		return value_4
 	}
-	if set_open {
-		result.Open = next_open
+	var value_5 bool = set_open
+	if value_5 {
+		var value_6 bool = next_open
+		result.Open = value_6
 	}
-	if toggle_open {
-		result.Open = !result.Open
+	var value_7 bool = toggle_open
+	if value_7 {
+		var value_8 bool = result.Open
+		var value_9 bool = !value_8
+		result.Open = value_9
 	}
-	result.Changed = result.Open != open
-	return result
+	var value_10 bool = result.Open
+	var value_11 bool = open
+	var value_12 bool = value_10 != value_11
+	result.Changed = value_12
+	var value_13 CollapsibleOpenResult = result
+	return value_13
 }

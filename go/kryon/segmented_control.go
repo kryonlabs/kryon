@@ -265,17 +265,34 @@ func SegmentedControl_SegmentedShouldWrap(wrap bool, row_width int32, next_width
 }
 
 func SegmentedControl_SegmentedRowAdvanceFor(wrap bool, row_width int32, row_count int32, item_width int32, available_width int32, metrics SegmentedMetrics) SegmentedRowAdvance {
-	var advance SegmentedRowAdvance
-	next_width := SegmentedControl_SegmentedNextRowWidth(row_width, item_width, metrics.Gap)
-	advance.WrapBefore = SegmentedControl_SegmentedShouldWrap(wrap, row_width, next_width, available_width)
-	if advance.WrapBefore {
-		advance.RowWidth = item_width
-		advance.RowCount = 1
+	var advance SegmentedRowAdvance = SegmentedRowAdvance{}
+	var value_0 int32 = row_width
+	var value_1 int32 = item_width
+	var value_2 int32 = metrics.Gap
+	var value_3 int32 = SegmentedControl_SegmentedNextRowWidth(value_0, value_1, value_2)
+	var next_width int32 = value_3
+	var value_4 bool = wrap
+	var value_5 int32 = row_width
+	var value_6 int32 = next_width
+	var value_7 int32 = available_width
+	var value_8 bool = SegmentedControl_SegmentedShouldWrap(value_4, value_5, value_6, value_7)
+	advance.WrapBefore = value_8
+	var value_9 bool = advance.WrapBefore
+	if value_9 {
+		var value_10 int32 = item_width
+		advance.RowWidth = value_10
+		var value_11 int32 = 1
+		advance.RowCount = value_11
 	} else {
-		advance.RowWidth = next_width
-		advance.RowCount = row_count + 1
+		var value_12 int32 = next_width
+		advance.RowWidth = value_12
+		var value_13 int32 = row_count
+		var value_14 int32 = 1
+		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
+		advance.RowCount = value_15
 	}
-	return advance
+	var value_16 SegmentedRowAdvance = advance
+	return value_16
 }
 
 func SegmentedControl_SegmentedHeightForRows(rows int32, row_height int32, gap int32) int32 {
@@ -332,14 +349,30 @@ func SegmentedControl_SegmentedFocusIdFor(control_id int32, index int32) int32 {
 
 func SegmentedControl_SegmentedSelectionFor(selected_index int32, clicked_index int32, has_selected_index bool) SegmentedSelectionResult {
 	var result SegmentedSelectionResult = SegmentedSelectionResult{}
-	result.SelectedIndex = selected_index
-	result.Changed = false
-	if clicked_index < 0 {
-		return result
+	var value_0 int32 = selected_index
+	result.SelectedIndex = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 int32 = clicked_index
+	var value_3 int32 = 0
+	var value_4 bool = value_2 < value_3
+	if value_4 {
+		var value_5 SegmentedSelectionResult = result
+		return value_5
 	}
-	result.SelectedIndex = clicked_index
-	result.Changed = has_selected_index && selected_index != clicked_index
-	return result
+	var value_6 int32 = clicked_index
+	result.SelectedIndex = value_6
+	var value_7 bool = has_selected_index
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 int32 = selected_index
+		var value_10 int32 = clicked_index
+		var value_11 bool = value_9 != value_10
+		value_8 = value_11
+	}
+	result.Changed = value_8
+	var value_12 SegmentedSelectionResult = result
+	return value_12
 }
 
 func SegmentedControl_SegmentedRowFor(bounds_x float32, bounds_width float32, y int32, row_start int32, row_count int32, row_width int32, wrap bool, metrics SegmentedMetrics) SegmentedRow {

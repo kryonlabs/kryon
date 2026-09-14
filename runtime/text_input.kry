@@ -346,15 +346,15 @@ TextCompositionSelectionLength :: (preedit_len: i32, cursor: i32,
 TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
     preedit_len: i32, preedit_cursor: i32,
     preedit_selection_end: i32) -> TextCompositionViewRange #export {
-    range: TextCompositionViewRange
+    view_range: TextCompositionViewRange
     if selection_start < 0 { selection_start = 0 }
     if selection_end < 0 { selection_end = 0 }
     if selection_start <= selection_end {
-        range.replace_start = selection_start
-        range.replace_end = selection_end
+        view_range.replace_start = selection_start
+        view_range.replace_end = selection_end
     } else {
-        range.replace_start = selection_end
-        range.replace_end = selection_start
+        view_range.replace_start = selection_end
+        view_range.replace_end = selection_start
     }
     if preedit_len < 0 { preedit_len = 0 }
     if preedit_cursor < 0 { preedit_cursor = 0 }
@@ -365,12 +365,12 @@ TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
     if preedit_selection_end > preedit_len {
         preedit_selection_end = preedit_len
     }
-    range.cursor = range.replace_start + preedit_cursor
-    range.selection_start = range.cursor
-    range.selection_end = range.replace_start + preedit_selection_end
-    range.composition_start = range.replace_start
-    range.composition_end = range.replace_start + preedit_len
-    return range
+    view_range.cursor = view_range.replace_start + preedit_cursor
+    view_range.selection_start = view_range.cursor
+    view_range.selection_end = view_range.replace_start + preedit_selection_end
+    view_range.composition_start = view_range.replace_start
+    view_range.composition_end = view_range.replace_start + preedit_len
+    return view_range
 }
 
 TextCompositionPaintSpanForText :: (composition_start: i32,

@@ -60,6 +60,7 @@ type ButtonFallbackPolicy struct {
 	TermiBorderLighten      int32
 	TermiHoverBorderLighten int32
 	OutlineWidth            float32
+	OutlineAlpha            uint8
 	OutlineAdjust           int32
 	OutlineWhite            bool
 }
@@ -407,6 +408,69 @@ func Button_IconActionMetricsFor(bounds Rectangle, requested_icon_size int32, re
 	return value_36
 }
 
+func Button_IconActionStyleIconSize(icon_size int32, scale float32) float32 {
+	var value_0 int32 = icon_size
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		icon_size = value_3
+	}
+	var value_4 float32 = scale
+	var value_5 float32 = 0.0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 float32 = 1.0
+		scale = value_7
+	}
+	var value_8 int32 = icon_size
+	var value_9 float32 = float32(value_8)
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 / value_10
+	return value_11
+}
+
+func Button_IconActionStyleRadius(radius float32, bounds Rectangle, scale float32) float32 {
+	var value_0 float32 = radius
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 0.0
+		return value_3
+	}
+	var value_4 float32 = scale
+	var value_5 float32 = 0.0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 float32 = 1.0
+		scale = value_7
+	}
+	var value_8 float32 = bounds.Width
+	var side float32 = value_8
+	var value_9 float32 = bounds.Height
+	var value_10 float32 = side
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 float32 = bounds.Height
+		side = value_12
+	}
+	var value_13 float32 = side
+	var value_14 float32 = 0.0
+	var value_15 bool = value_13 < value_14
+	if value_15 {
+		var value_16 float32 = 0.0
+		side = value_16
+	}
+	var value_17 float32 = radius
+	var value_18 float32 = side
+	var value_19 float32 = value_17 * value_18
+	var value_20 float32 = 2.0
+	var value_21 float32 = scale
+	var value_22 float32 = value_20 * value_21
+	var value_23 float32 = value_19 / value_22
+	return value_23
+}
+
 func Button_TextButtonMetricsFor(scale float32, face StyleFrame) TextButtonMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -589,29 +653,32 @@ func Button_ButtonFallbackPolicyFor(hovered bool, pressed bool, disabled bool, c
 		value_17 = value_19
 	}
 	policy.OutlineWidth = value_17
-	var value_20 int32 = 36
-	policy.OutlineAdjust = value_20
-	var value_21 bool = disabled
-	if value_21 {
-		var value_22 int32 = -45
-		policy.OutlineAdjust = value_22
+	var value_20 int32 = 255
+	var value_21 uint8 = uint8(number_runtime_bits(uint64(value_20), uint64(0), 8, false, 0))
+	policy.OutlineAlpha = value_21
+	var value_22 int32 = 36
+	policy.OutlineAdjust = value_22
+	var value_23 bool = disabled
+	if value_23 {
+		var value_24 int32 = -45
+		policy.OutlineAdjust = value_24
 	} else {
-		var value_23 bool = pressed
-		if value_23 {
-			var value_24 int32 = 0
-			policy.OutlineAdjust = value_24
-			var value_25 bool = true
-			policy.OutlineWhite = value_25
+		var value_25 bool = pressed
+		if value_25 {
+			var value_26 int32 = 0
+			policy.OutlineAdjust = value_26
+			var value_27 bool = true
+			policy.OutlineWhite = value_27
 		} else {
-			var value_26 bool = hovered
-			if value_26 {
-				var value_27 int32 = 72
-				policy.OutlineAdjust = value_27
+			var value_28 bool = hovered
+			if value_28 {
+				var value_29 int32 = 72
+				policy.OutlineAdjust = value_29
 			}
 		}
 	}
-	var value_28 ButtonFallbackPolicy = policy
-	return value_28
+	var value_30 ButtonFallbackPolicy = policy
+	return value_30
 }
 
 func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {

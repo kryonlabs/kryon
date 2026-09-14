@@ -128,6 +128,36 @@ func Progress_ProgressFillBounds(bounds Rectangle, ratio float32) Rectangle {
 	return value_12
 }
 
+func Progress_ProgressDrawRadius(bounds Rectangle, radius float32) float32 {
+	var value_0 float32 = bounds.Height
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 0.0
+		return value_3
+	}
+	var value_4 float32 = radius
+	var value_5 float32 = bounds.Height
+	var value_6 float32 = value_4 / value_5
+	radius = value_6
+	var value_7 float32 = radius
+	var value_8 float32 = 0.0
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 float32 = 0.0
+		return value_10
+	}
+	var value_11 float32 = radius
+	var value_12 float32 = 1.0
+	var value_13 bool = value_11 > value_12
+	if value_13 {
+		var value_14 float32 = 1.0
+		return value_14
+	}
+	var value_15 float32 = radius
+	return value_15
+}
+
 func Progress_ProgressLabelX(bounds Rectangle, fill_width float32, label_width float32, padding float32) float32 {
 	var value_0 float32 = bounds.X
 	var value_1 float32 = bounds.Width

@@ -257,14 +257,31 @@ func Toggle_ToggleLabelRole() int32 {
 }
 
 func Toggle_ToggleValueFor(value bool, activated bool, enabled bool, has_value bool) ToggleValueResult {
-	var result ToggleValueResult
-	result.Value = value
-	result.Changed = false
-	if activated && enabled && has_value {
-		result.Value = !value
-		result.Changed = true
+	var result ToggleValueResult = ToggleValueResult{}
+	var value_0 bool = value
+	result.Value = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 bool = activated
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = enabled
+		value_3 = value_4
 	}
-	return result
+	var value_5 bool = value_3
+	if value_5 {
+		var value_6 bool = has_value
+		value_5 = value_6
+	}
+	if value_5 {
+		var value_7 bool = value
+		var value_8 bool = !value_7
+		result.Value = value_8
+		var value_9 bool = true
+		result.Changed = value_9
+	}
+	var value_10 ToggleValueResult = result
+	return value_10
 }
 
 func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_width int32, scale float32, track StyleFrame, active StyleFrame, label StyleFrame) int32 {

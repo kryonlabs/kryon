@@ -20,6 +20,13 @@ type ListBoxNavigation struct {
 	Changed  bool
 }
 
+type ListBoxRowDecision struct {
+	Select         bool
+	ConsumeRelease bool
+	Selected       int32
+	Changed        bool
+}
+
 type ListBoxItemPaint struct {
 	TextX int32
 	TextY int32
@@ -356,6 +363,42 @@ func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll
 	nav.Scroll = value_67
 	var value_68 ListBoxNavigation = nav
 	return value_68
+}
+
+func ListBox_ListBoxRowDecisionFor(hot bool, released bool, has_selection bool, current_selected int32, row int32) ListBoxRowDecision {
+	var decision ListBoxRowDecision = ListBoxRowDecision{}
+	var value_0 int32 = current_selected
+	decision.Selected = value_0
+	var value_1 bool = hot
+	var value_2 bool = !value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 bool = released
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	var value_6 bool = value_3
+	if !value_6 {
+		var value_7 bool = has_selection
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	if value_6 {
+		var value_9 ListBoxRowDecision = decision
+		return value_9
+	}
+	var value_10 bool = true
+	decision.ConsumeRelease = value_10
+	var value_11 bool = true
+	decision.Select = value_11
+	var value_12 int32 = row
+	decision.Selected = value_12
+	var value_13 int32 = row
+	var value_14 int32 = current_selected
+	var value_15 bool = value_13 != value_14
+	decision.Changed = value_15
+	var value_16 ListBoxRowDecision = decision
+	return value_16
 }
 
 func ListBox_ListBoxLayoutFor(bounds Rectangle, item_count int32, row_height int32, content_height int32, scroll int32, scale float32, item StyleFrame) ListBoxLayout {

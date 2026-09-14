@@ -276,13 +276,25 @@ func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) C
 
 func Checkbox_CheckboxValueApply(checked bool, pressed bool, has_value bool) CheckboxValueResult {
 	var result CheckboxValueResult = CheckboxValueResult{}
-	result.Checked = checked
-	result.Changed = false
-	if pressed && has_value {
-		result.Checked = !checked
-		result.Changed = true
+	var value_0 bool = checked
+	result.Checked = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 bool = pressed
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = has_value
+		value_3 = value_4
 	}
-	return result
+	if value_3 {
+		var value_5 bool = checked
+		var value_6 bool = !value_5
+		result.Checked = value_6
+		var value_7 bool = true
+		result.Changed = value_7
+	}
+	var value_8 CheckboxValueResult = result
+	return value_8
 }
 
 func Checkbox_CheckboxBoxRoleForTone(tone ButtonTone) int32 {

@@ -175,6 +175,42 @@ func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) in
 	return value_4
 }
 
+func NavigationBar_NavigationBarTintAlpha(color_alpha uint8, tint_alpha uint8) uint8 {
+	var value_0 uint8 = color_alpha
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 uint8 = tint_alpha
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 3))
+	var value_5 int32 = 255
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 4))
+	var value_7 uint8 = uint8(number_runtime_bits(uint64(value_6), uint64(0), 8, false, 0))
+	return value_7
+}
+
+func NavigationBar_NavigationBarItemStateFor(active bool, disabled bool, hovered bool) ButtonState {
+	var value_0 bool = disabled
+	if value_0 {
+		var value_1 int32 = int32(ButtonStateDisabled)
+		var value_2 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
+		return value_2
+	}
+	var value_3 bool = active
+	if value_3 {
+		var value_4 int32 = int32(ButtonStateSelected)
+		var value_5 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_4), uint64(0), 32, true, 0)))
+		return value_5
+	}
+	var value_6 bool = hovered
+	if value_6 {
+		var value_7 int32 = int32(ButtonStateHover)
+		var value_8 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_7), uint64(0), 32, true, 0)))
+		return value_8
+	}
+	var value_9 int32 = int32(ButtonStateNormal)
+	var value_10 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_9), uint64(0), 32, true, 0)))
+	return value_10
+}
+
 func NavigationBar_NavigationBarItemInteractionFor(disabled bool, pointer_inside bool, captured bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool, selected bool) NavigationBarItemInteraction {
 	var interaction NavigationBarItemInteraction = NavigationBarItemInteraction{}
 	var value_0 bool = pointer_inside
@@ -229,31 +265,13 @@ func NavigationBar_NavigationBarItemInteractionFor(disabled bool, pointer_inside
 		value_22 = value_23
 	}
 	interaction.Activated = value_22
-	var value_24 int32 = int32(ButtonStateNormal)
-	var value_25 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_24), uint64(0), 32, true, 0)))
-	interaction.State = value_25
-	var value_26 bool = disabled
-	if value_26 {
-		var value_27 int32 = int32(ButtonStateDisabled)
-		var value_28 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0)))
-		interaction.State = value_28
-	} else {
-		var value_29 bool = selected
-		if value_29 {
-			var value_30 int32 = int32(ButtonStateSelected)
-			var value_31 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0)))
-			interaction.State = value_31
-		} else {
-			var value_32 bool = interaction.Hovered
-			if value_32 {
-				var value_33 int32 = int32(ButtonStateHover)
-				var value_34 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_33), uint64(0), 32, true, 0)))
-				interaction.State = value_34
-			}
-		}
-	}
-	var value_35 NavigationBarItemInteraction = interaction
-	return value_35
+	var value_24 bool = selected
+	var value_25 bool = disabled
+	var value_26 bool = interaction.Hovered
+	var value_27 ButtonState = ButtonState(NavigationBar_NavigationBarItemStateFor(value_24, value_25, value_26))
+	interaction.State = value_27
+	var value_28 NavigationBarItemInteraction = interaction
+	return value_28
 }
 
 func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_count int32, option_count int32, slot_limit int32) NavigationBarConfigCounts {

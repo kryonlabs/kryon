@@ -139,6 +139,57 @@ func Radio_RadioMarkText(checked bool) string {
 	return value_2
 }
 
+func Radio_RadioStateLayerAlpha(hovered bool, down bool, press_amount float32) int32 {
+	var value_0 bool = down
+	if value_0 {
+		var value_1 int32 = 31
+		return value_1
+	}
+	var value_2 bool = hovered
+	var value_3 bool = !value_2
+	if value_3 {
+		var value_4 int32 = 0
+		return value_4
+	}
+	var value_5 float32 = press_amount
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 float32 = 0.0
+		press_amount = value_8
+	}
+	var value_9 float32 = press_amount
+	var value_10 float32 = 1.0
+	var value_11 bool = value_9 > value_10
+	if value_11 {
+		var value_12 float32 = 1.0
+		press_amount = value_12
+	}
+	var value_13 float32 = 20.0
+	var value_14 float32 = 11.0
+	var value_15 float32 = press_amount
+	var value_16 float32 = value_14 * value_15
+	var value_17 float32 = value_13 + value_16
+	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
+	return value_18
+}
+
+func Radio_RadioActivationFor(id int32, activated bool, disabled bool) int32 {
+	var value_0 bool = activated
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = disabled
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	if value_1 {
+		var value_4 int32 = id
+		return value_4
+	}
+	var value_5 int32 = 0
+	return value_5
+}
+
 func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var paint RadioPaint = RadioPaint{}
 	var value_0 float32 = spec.Scale
@@ -331,11 +382,4 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	}
 	var value_124 RadioPaint = paint
 	return value_124
-}
-
-func Radio_RadioActivationFor(id int32, activated bool, disabled bool) int32 {
-	if activated && !disabled {
-		return id
-	}
-	return 0
 }

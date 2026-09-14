@@ -141,6 +141,15 @@ func Rows_RowsRequestedMetric(requested int32, fields uint32, field uint32, valu
 	return value_10
 }
 
+func Rows_RowsMutedAlpha(alpha uint8) uint8 {
+	var value_0 uint8 = alpha
+	var value_1 float32 = float32(value_0)
+	var value_2 float32 = 0.72
+	var value_3 float32 = value_1 * value_2
+	var value_4 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 8, false)), uint64(0), 8, false, 0))
+	return value_4
+}
+
 func Rows_InfoRowsTextRole() int32 {
 	var value_0 int32 = 0
 	return value_0

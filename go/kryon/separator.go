@@ -124,55 +124,62 @@ func Separator_SeparatorLabelPaintFor(bounds Rectangle, label_width float32, has
 	var value_27 float32 = bounds.X
 	paint.Text.X = value_27
 	var value_28 float32 = bounds.Y
-	paint.Text.Y = value_28
-	var value_29 float32 = label_width
-	paint.Text.Width = value_29
-	var value_30 float32 = bounds.Height
-	paint.Text.Height = value_30
-	var value_31 uint32 = frame.Value.Foreground
-	paint.TextColor = value_31
-	var value_32 uint32 = frame.Value.Background
-	paint.LineColor = value_32
-	var value_33 bool = has_label
-	paint.ShowText = value_33
-	var value_34 bool = has_label
-	if value_34 {
-		var value_35 float32 = bounds.X
-		var value_36 float32 = label_width
-		var value_37 float32 = value_35 + value_36
-		var value_38 float32 = gap
-		var value_39 float32 = value_37 + value_38
-		line_x = value_39
+	var value_29 float32 = bounds.Height
+	var value_30 int32 = font
+	var value_31 float32 = float32(value_30)
+	var value_32 float32 = value_29 - value_31
+	var value_33 float32 = 0.5
+	var value_34 float32 = value_32 * value_33
+	var value_35 float32 = value_28 + value_34
+	paint.Text.Y = value_35
+	var value_36 float32 = label_width
+	paint.Text.Width = value_36
+	var value_37 float32 = bounds.Height
+	paint.Text.Height = value_37
+	var value_38 uint32 = frame.Value.Foreground
+	paint.TextColor = value_38
+	var value_39 uint32 = frame.Value.Background
+	paint.LineColor = value_39
+	var value_40 bool = has_label
+	paint.ShowText = value_40
+	var value_41 bool = has_label
+	if value_41 {
+		var value_42 float32 = bounds.X
+		var value_43 float32 = label_width
+		var value_44 float32 = value_42 + value_43
+		var value_45 float32 = gap
+		var value_46 float32 = value_44 + value_45
+		line_x = value_46
 	}
-	var value_40 float32 = line_x
-	paint.Line.X = value_40
-	var value_41 float32 = bounds.Y
-	var value_42 float32 = bounds.Height
-	var value_43 float32 = 0.5
-	var value_44 float32 = value_42 * value_43
-	var value_45 float32 = value_41 + value_44
-	paint.Line.Y = value_45
-	var value_46 float32 = end_x
 	var value_47 float32 = line_x
-	var value_48 float32 = value_46 - value_47
-	paint.Line.Width = value_48
-	var value_49 float32 = 0.0
-	paint.Line.Height = value_49
-	var value_50 float32 = line_x
-	var value_51 float32 = end_x
-	var value_52 bool = value_50 < value_51
-	paint.ShowLine = value_52
-	var value_53 float32 = paint.Line.Width
-	var value_54 float32 = 0.0
-	var value_55 bool = value_53 < value_54
-	if value_55 {
-		var value_56 float32 = 0.0
-		paint.Line.Width = value_56
-		var value_57 bool = false
-		paint.ShowLine = value_57
+	paint.Line.X = value_47
+	var value_48 float32 = bounds.Y
+	var value_49 float32 = bounds.Height
+	var value_50 float32 = 0.5
+	var value_51 float32 = value_49 * value_50
+	var value_52 float32 = value_48 + value_51
+	paint.Line.Y = value_52
+	var value_53 float32 = end_x
+	var value_54 float32 = line_x
+	var value_55 float32 = value_53 - value_54
+	paint.Line.Width = value_55
+	var value_56 float32 = 0.0
+	paint.Line.Height = value_56
+	var value_57 float32 = line_x
+	var value_58 float32 = end_x
+	var value_59 bool = value_57 < value_58
+	paint.ShowLine = value_59
+	var value_60 float32 = paint.Line.Width
+	var value_61 float32 = 0.0
+	var value_62 bool = value_60 < value_61
+	if value_62 {
+		var value_63 float32 = 0.0
+		paint.Line.Width = value_63
+		var value_64 bool = false
+		paint.ShowLine = value_64
 	}
-	var value_58 SeparatorLabelPaint = paint
-	return value_58
+	var value_65 SeparatorLabelPaint = paint
+	return value_65
 }
 
 func Separator_BulletPaintFor(bounds Rectangle, frame StyleFrame) BulletPaint {

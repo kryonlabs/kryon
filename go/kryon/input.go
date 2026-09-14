@@ -17,6 +17,13 @@ type InputStep struct {
 	Changed bool
 }
 
+type InputPointerInteraction struct {
+	Active         bool
+	Hovered        bool
+	DisabledMarker bool
+	Activated      bool
+}
+
 type InputCellLayout struct {
 	Cell           Rectangle
 	Field          Rectangle
@@ -68,6 +75,198 @@ func Input_InputPointerDragThresholdFor(scale float32) int32 {
 	var value_1 float32 = scale
 	var value_2 int32 = Input_InputScaledMetric(value_0, value_1)
 	return value_2
+}
+
+func Input_InputPointerDragShouldStart(dx int32, dy int32, threshold int32) bool {
+	var value_0 int32 = threshold
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		threshold = value_3
+	}
+	var value_4 int32 = dx
+	var value_5 int32 = threshold
+	var value_6 bool = value_4 > value_5
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 int32 = dx
+		var value_9 int32 = threshold
+		var value_10 int32 = int32(number_runtime_bits(uint64(0), uint64(value_9), 32, true, 2))
+		var value_11 bool = value_8 < value_10
+		value_7 = value_11
+	}
+	var value_12 bool = value_7
+	if !value_12 {
+		var value_13 int32 = dy
+		var value_14 int32 = threshold
+		var value_15 bool = value_13 > value_14
+		value_12 = value_15
+	}
+	var value_16 bool = value_12
+	if !value_16 {
+		var value_17 int32 = dy
+		var value_18 int32 = threshold
+		var value_19 int32 = int32(number_runtime_bits(uint64(0), uint64(value_18), 32, true, 2))
+		var value_20 bool = value_17 < value_19
+		value_16 = value_20
+	}
+	return value_16
+}
+
+func Input_InputPointerDragIsHorizontal(dx int32, dy int32) bool {
+	var value_0 int32 = dx
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = dx
+		var value_4 int32 = int32(number_runtime_bits(uint64(0), uint64(value_3), 32, true, 2))
+		dx = value_4
+	}
+	var value_5 int32 = dy
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = dy
+		var value_9 int32 = int32(number_runtime_bits(uint64(0), uint64(value_8), 32, true, 2))
+		dy = value_9
+	}
+	var value_10 int32 = dx
+	var value_11 int32 = dy
+	var value_12 bool = value_10 >= value_11
+	return value_12
+}
+
+func Input_InputPointerInteractionFor(inside bool, captured bool, disabled bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool) InputPointerInteraction {
+	var interaction InputPointerInteraction = InputPointerInteraction{}
+	var value_0 bool = inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = disabled
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	interaction.Active = value_4
+	var value_7 bool = interaction.Active
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = hover_effects
+		value_8 = value_9
+	}
+	interaction.Hovered = value_8
+	var value_10 bool = inside
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = captured
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	var value_14 bool = value_11
+	if value_14 {
+		var value_15 bool = disabled
+		value_14 = value_15
+	}
+	interaction.DisabledMarker = value_14
+	var value_16 bool = interaction.Active
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = released
+		value_17 = value_18
+	}
+	var value_19 bool = value_17
+	if value_19 {
+		var value_20 bool = release_consumed
+		var value_21 bool = !value_20
+		value_19 = value_21
+	}
+	var value_22 bool = value_19
+	if value_22 {
+		var value_23 bool = press_started_inside
+		value_22 = value_23
+	}
+	interaction.Activated = value_22
+	var value_24 InputPointerInteraction = interaction
+	return value_24
+}
+
+func Input_InputTempEditActivationFor(pressed bool, control bool, same_kind bool, same_widget bool, same_component bool, elapsed_seconds float32, dx float32, dy float32, slop int32) bool {
+	var value_0 bool = pressed
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 bool = control
+	if value_3 {
+		var value_4 bool = true
+		return value_4
+	}
+	var value_5 int32 = slop
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = 0
+		slop = value_8
+	}
+	var value_9 float32 = dx
+	var value_10 int32 = slop
+	var value_11 int32 = int32(number_runtime_bits(uint64(0), uint64(value_10), 32, true, 2))
+	var value_12 float32 = float32(value_11)
+	var value_13 bool = value_9 < value_12
+	var value_14 bool = value_13
+	if !value_14 {
+		var value_15 float32 = dx
+		var value_16 int32 = slop
+		var value_17 float32 = float32(value_16)
+		var value_18 bool = value_15 > value_17
+		value_14 = value_18
+	}
+	if value_14 {
+		var value_19 bool = false
+		return value_19
+	}
+	var value_20 float32 = dy
+	var value_21 int32 = slop
+	var value_22 int32 = int32(number_runtime_bits(uint64(0), uint64(value_21), 32, true, 2))
+	var value_23 float32 = float32(value_22)
+	var value_24 bool = value_20 < value_23
+	var value_25 bool = value_24
+	if !value_25 {
+		var value_26 float32 = dy
+		var value_27 int32 = slop
+		var value_28 float32 = float32(value_27)
+		var value_29 bool = value_26 > value_28
+		value_25 = value_29
+	}
+	if value_25 {
+		var value_30 bool = false
+		return value_30
+	}
+	var value_31 bool = same_kind
+	var value_32 bool = value_31
+	if value_32 {
+		var value_33 bool = same_widget
+		value_32 = value_33
+	}
+	var value_34 bool = value_32
+	if value_34 {
+		var value_35 bool = same_component
+		value_34 = value_35
+	}
+	var value_36 bool = value_34
+	if value_36 {
+		var value_37 float32 = elapsed_seconds
+		var value_38 float32 = 0.30
+		var value_39 bool = value_37 <= value_38
+		value_36 = value_39
+	}
+	return value_36
 }
 
 func Input_InputCellLayoutFor(bounds Rectangle, count int32, index int32, requested_button_width int32, has_step bool) InputCellLayout {

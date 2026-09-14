@@ -39,6 +39,39 @@ type TableViewSelectionClearDecision struct {
 	Changed bool
 }
 
+type TableViewSortDecision struct {
+	SelectedRow    int32
+	SelectedColumn int32
+	SortColumn     int32
+	SortDirection  int32
+	Changed        bool
+}
+
+type TableViewHeaderPointerDecision struct {
+	Sort bool
+}
+
+type TableViewRowPointerDecision struct {
+	MarkClickable  bool
+	Click          bool
+	Context        bool
+	ConsumeRelease bool
+}
+
+type TableViewRowClickDecision struct {
+	SelectedRow     int32
+	SelectedColumn  int32
+	ActivatedRow    int32
+	ActivatedColumn int32
+	Changed         bool
+}
+
+type TableViewRowContextDecision struct {
+	Row     int32
+	Column  int32
+	Changed bool
+}
+
 type TableViewClipboardDecision struct {
 	CopySelection bool
 	Paste         bool
@@ -995,6 +1028,122 @@ func TableView_TableViewSelectionClearFor(selected_row int32, selected_column in
 	return value_12
 }
 
+func TableView_TableViewHeaderPointerDecisionFor(disabled bool, header_hot bool, released bool, has_sort_column bool) TableViewHeaderPointerDecision {
+	var decision TableViewHeaderPointerDecision = TableViewHeaderPointerDecision{}
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = header_hot
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = released
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = has_sort_column
+		value_6 = value_7
+	}
+	decision.Sort = value_6
+	var value_8 TableViewHeaderPointerDecision = decision
+	return value_8
+}
+
+func TableView_TableViewSortDecisionFor(column int32, previous_sort_column int32, previous_sort_direction int32) TableViewSortDecision {
+	var decision TableViewSortDecision = TableViewSortDecision{}
+	var value_0 int32 = -1
+	decision.SelectedRow = value_0
+	var value_1 int32 = column
+	decision.SelectedColumn = value_1
+	var value_2 int32 = column
+	decision.SortColumn = value_2
+	var value_3 int32 = previous_sort_direction
+	decision.SortDirection = value_3
+	var value_4 int32 = column
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = -1
+		decision.SelectedColumn = value_7
+		var value_8 int32 = previous_sort_column
+		decision.SortColumn = value_8
+		var value_9 TableViewSortDecision = decision
+		return value_9
+	}
+	var value_10 int32 = previous_sort_column
+	var value_11 int32 = column
+	var value_12 bool = value_10 != value_11
+	var value_13 bool = value_12
+	if !value_13 {
+		var value_14 int32 = previous_sort_direction
+		var value_15 int32 = 0
+		var value_16 bool = value_14 == value_15
+		value_13 = value_16
+	}
+	if value_13 {
+		var value_17 int32 = 1
+		decision.SortDirection = value_17
+	} else {
+		var value_18 int32 = previous_sort_direction
+		var value_19 int32 = 0
+		var value_20 bool = value_18 > value_19
+		if value_20 {
+			var value_21 int32 = -1
+			decision.SortDirection = value_21
+		} else {
+			var value_22 int32 = 0
+			decision.SortDirection = value_22
+		}
+	}
+	var value_23 bool = true
+	decision.Changed = value_23
+	var value_24 TableViewSortDecision = decision
+	return value_24
+}
+
+func TableView_TableViewRowPointerDecisionFor(disabled bool, hot bool, left_released bool, right_released bool, has_selection bool, has_context bool) TableViewRowPointerDecision {
+	var decision TableViewRowPointerDecision = TableViewRowPointerDecision{}
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = hot
+		value_2 = value_3
+	}
+	decision.MarkClickable = value_2
+	var value_4 bool = decision.MarkClickable
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = left_released
+		value_5 = value_6
+	}
+	var value_7 bool = value_5
+	if value_7 {
+		var value_8 bool = has_selection
+		value_7 = value_8
+	}
+	decision.Click = value_7
+	var value_9 bool = decision.MarkClickable
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 bool = right_released
+		value_10 = value_11
+	}
+	var value_12 bool = value_10
+	if value_12 {
+		var value_13 bool = has_context
+		value_12 = value_13
+	}
+	decision.Context = value_12
+	var value_14 bool = decision.Click
+	decision.ConsumeRelease = value_14
+	var value_15 TableViewRowPointerDecision = decision
+	return value_15
+}
+
 func TableView_TableViewClipboardDecisionFor(modifier_down bool, copy_pressed bool, cut_pressed bool, paste_pressed bool, has_paste_target bool) TableViewClipboardDecision {
 	var decision TableViewClipboardDecision = TableViewClipboardDecision{}
 	var value_0 bool = modifier_down
@@ -1019,6 +1168,81 @@ func TableView_TableViewClipboardDecisionFor(modifier_down bool, copy_pressed bo
 	decision.Paste = value_7
 	var value_9 TableViewClipboardDecision = decision
 	return value_9
+}
+
+func TableView_TableViewActivationShouldRun(clicked_column int32, same_table bool, last_row int32, row int32, last_column int32, elapsed_seconds float32) bool {
+	var value_0 int32 = clicked_column
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 bool = false
+		return value_3
+	}
+	var value_4 bool = same_table
+	var value_5 bool = !value_4
+	if value_5 {
+		var value_6 bool = false
+		return value_6
+	}
+	var value_7 int32 = last_row
+	var value_8 int32 = row
+	var value_9 bool = value_7 != value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 int32 = last_column
+		var value_12 int32 = clicked_column
+		var value_13 bool = value_11 != value_12
+		value_10 = value_13
+	}
+	if value_10 {
+		var value_14 bool = false
+		return value_14
+	}
+	var value_15 float32 = elapsed_seconds
+	var value_16 float32 = 0.45
+	var value_17 bool = value_15 <= value_16
+	return value_17
+}
+
+func TableView_TableViewRowClickDecisionFor(row int32, clicked_column int32, same_table bool, last_row int32, last_column int32, elapsed_seconds float32) TableViewRowClickDecision {
+	var decision TableViewRowClickDecision = TableViewRowClickDecision{}
+	var value_0 int32 = row
+	decision.SelectedRow = value_0
+	var value_1 int32 = clicked_column
+	decision.SelectedColumn = value_1
+	var value_2 int32 = -1
+	decision.ActivatedRow = value_2
+	var value_3 int32 = -1
+	decision.ActivatedColumn = value_3
+	var value_4 int32 = clicked_column
+	var value_5 bool = same_table
+	var value_6 int32 = last_row
+	var value_7 int32 = row
+	var value_8 int32 = last_column
+	var value_9 float32 = elapsed_seconds
+	var value_10 bool = TableView_TableViewActivationShouldRun(value_4, value_5, value_6, value_7, value_8, value_9)
+	if value_10 {
+		var value_11 int32 = row
+		decision.ActivatedRow = value_11
+		var value_12 int32 = clicked_column
+		decision.ActivatedColumn = value_12
+	}
+	var value_13 bool = true
+	decision.Changed = value_13
+	var value_14 TableViewRowClickDecision = decision
+	return value_14
+}
+
+func TableView_TableViewRowContextDecisionFor(row int32, clicked_column int32) TableViewRowContextDecision {
+	var decision TableViewRowContextDecision = TableViewRowContextDecision{}
+	var value_0 int32 = row
+	decision.Row = value_0
+	var value_1 int32 = clicked_column
+	decision.Column = value_1
+	var value_2 bool = true
+	decision.Changed = value_2
+	var value_3 TableViewRowContextDecision = decision
+	return value_3
 }
 
 func TableView_TableViewSelectionScrollOffset(row int32, frozen_rows int32, row_height int32, view_height int32, scroll_offset int32, max_scroll int32) int32 {

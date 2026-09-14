@@ -43,6 +43,22 @@ type ProfilePickerCell struct {
 	IconBounds Rectangle
 }
 
+type ProfilePointerAction struct {
+	MarkClickable  bool
+	ConsumeRelease bool
+	Activate       bool
+}
+
+type ProfilePickerCellDecision struct {
+	MarkClickable    bool
+	ConsumeRelease   bool
+	Select           bool
+	Changed          bool
+	SelectedIndex    int32
+	SelectedIconType int32
+	Close            bool
+}
+
 func ProfileHeader_ProfileScale(scale float32) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -121,6 +137,22 @@ func ProfileHeader_ProfileHeaderFriendsTextY(count_y int32, scale float32) int32
 	var value_3 int32 = ProfileHeader_ProfilePx(value_1, value_2)
 	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
 	return value_4
+}
+
+func ProfileHeader_ProfileHeaderMutedAlpha(alpha uint8) uint8 {
+	var value_0 uint8 = alpha
+	var value_1 float32 = float32(value_0)
+	var value_2 float32 = 0.72
+	var value_3 float32 = value_1 * value_2
+	var value_4 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 8, false)), uint64(0), 8, false, 0))
+	return value_4
+}
+
+func ProfileHeader_ProfilePickerSelectedStrokeWidth(scale float32) int32 {
+	var value_0 float32 = 2.0
+	var value_1 float32 = scale
+	var value_2 int32 = ProfileHeader_ProfilePx(value_0, value_1)
+	return value_2
 }
 
 func ProfileHeader_ProfileHeaderLayoutFor(x int32, y int32, width int32, requested_height int32, requested_padding_x int32, username_width int32, username_height int32, scale float32) ProfileHeaderLayout {
@@ -647,4 +679,55 @@ func ProfileHeader_ProfilePickerCellFor(index int32, content_x int32, content_y 
 	cell.IconBounds = value_39
 	var value_60 ProfilePickerCell = cell
 	return value_60
+}
+
+func ProfileHeader_ProfilePointerActionFor(active bool, activated bool) ProfilePointerAction {
+	var action ProfilePointerAction = ProfilePointerAction{}
+	var value_0 bool = active
+	action.MarkClickable = value_0
+	var value_1 bool = active
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = activated
+		value_2 = value_3
+	}
+	action.Activate = value_2
+	var value_4 bool = action.Activate
+	action.ConsumeRelease = value_4
+	var value_5 ProfilePointerAction = action
+	return value_5
+}
+
+func ProfileHeader_ProfilePickerCellDecisionFor(active bool, activated bool, index int32, icon_type int32, selected_icon_type int32) ProfilePickerCellDecision {
+	var decision ProfilePickerCellDecision = ProfilePickerCellDecision{}
+	var value_0 int32 = -1
+	decision.SelectedIndex = value_0
+	var value_1 int32 = selected_icon_type
+	decision.SelectedIconType = value_1
+	var value_2 bool = active
+	decision.MarkClickable = value_2
+	var value_3 bool = active
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = activated
+		value_4 = value_5
+	}
+	if value_4 {
+		var value_6 bool = true
+		decision.ConsumeRelease = value_6
+		var value_7 bool = true
+		decision.Select = value_7
+		var value_8 int32 = icon_type
+		var value_9 int32 = selected_icon_type
+		var value_10 bool = value_8 != value_9
+		decision.Changed = value_10
+		var value_11 int32 = index
+		decision.SelectedIndex = value_11
+		var value_12 int32 = icon_type
+		decision.SelectedIconType = value_12
+		var value_13 bool = true
+		decision.Close = value_13
+	}
+	var value_14 ProfilePickerCellDecision = decision
+	return value_14
 }

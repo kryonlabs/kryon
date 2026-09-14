@@ -19,6 +19,23 @@ type TabBarScroll struct {
 	EqualTabs bool
 }
 
+type TabBarReorderDragDecision struct {
+	StartDrag    bool
+	Dragging     bool
+	CaptureInput bool
+}
+
+type TabBarPressCleanupDecision struct {
+	ClearPress        bool
+	ClearPointerOwner bool
+}
+
+type TabBarKeyboardInput struct {
+	Direction      int32
+	FromIndex      int32
+	CloseRequested bool
+}
+
 type TabBarPaint struct {
 	Bar                  StyleFrame
 	Tab                  StyleFrame
@@ -707,6 +724,103 @@ func TabBar_TabBarWrappedIndex(from int32, direction int32, step int32, count in
 	return value_24
 }
 
+func TabBar_TabBarKeyboardInputFor(selected int32, count int32, left_pressed bool, right_pressed bool, up_pressed bool, down_pressed bool, home_pressed bool, end_pressed bool, delete_pressed bool, backspace_pressed bool) TabBarKeyboardInput {
+	var input TabBarKeyboardInput = TabBarKeyboardInput{}
+	var value_0 int32 = selected
+	var value_1 int32 = count
+	var value_2 int32 = TabBar_TabBarSelectedIndexFor(value_0, value_1)
+	selected = value_2
+	var value_3 int32 = selected
+	input.FromIndex = value_3
+	var value_4 int32 = selected
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 TabBarKeyboardInput = input
+		return value_7
+	}
+	var value_8 bool = left_pressed
+	var value_9 bool = value_8
+	if !value_9 {
+		var value_10 bool = up_pressed
+		value_9 = value_10
+	}
+	if value_9 {
+		var value_11 int32 = -1
+		input.Direction = value_11
+	} else {
+		var value_12 bool = right_pressed
+		var value_13 bool = value_12
+		if !value_13 {
+			var value_14 bool = down_pressed
+			value_13 = value_14
+		}
+		if value_13 {
+			var value_15 int32 = 1
+			input.Direction = value_15
+		} else {
+			var value_16 bool = home_pressed
+			if value_16 {
+				var value_17 int32 = 1
+				input.Direction = value_17
+				var value_18 int32 = -1
+				input.FromIndex = value_18
+			} else {
+				var value_19 bool = end_pressed
+				if value_19 {
+					var value_20 int32 = -1
+					input.Direction = value_20
+					var value_21 int32 = 0
+					input.FromIndex = value_21
+				}
+			}
+		}
+	}
+	var value_22 bool = delete_pressed
+	var value_23 bool = value_22
+	if !value_23 {
+		var value_24 bool = backspace_pressed
+		value_23 = value_24
+	}
+	input.CloseRequested = value_23
+	var value_25 TabBarKeyboardInput = input
+	return value_25
+}
+
+func TabBar_TabBarDoubleClickShouldRun(same_bar bool, last_index int32, index int32, last_time float32, now float32) bool {
+	var value_0 bool = same_bar
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 int32 = last_index
+	var value_4 int32 = index
+	var value_5 bool = value_3 != value_4
+	if value_5 {
+		var value_6 bool = false
+		return value_6
+	}
+	var value_7 float32 = last_time
+	var value_8 float32 = 0.0
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 bool = false
+		return value_10
+	}
+	var value_11 float32 = now
+	var value_12 float32 = last_time
+	var value_13 float32 = value_11 - value_12
+	var value_14 float32 = 0.45
+	var value_15 bool = value_13 > value_14
+	if value_15 {
+		var value_16 bool = false
+		return value_16
+	}
+	var value_17 bool = true
+	return value_17
+}
+
 func TabBar_TabBarScrollFor(bounds_width float32, total_width int32, scroll int32) TabBarScroll {
 	var result TabBarScroll = TabBarScroll{}
 	var value_0 int32 = total_width
@@ -861,6 +975,121 @@ func TabBar_TabBarDragMarkerBounds(tab_x int32, tab_width int32, bar_y int32, ba
 	}
 	var value_32 Rectangle = marker
 	return value_32
+}
+
+func TabBar_TabBarReorderDragDecisionFor(disabled bool, reorder_enabled bool, owns_press bool, press_index int32, count int32, pointer_down bool, drag_active bool, dx int32, dy int32, threshold int32) TabBarReorderDragDecision {
+	var decision TabBarReorderDragDecision = TabBarReorderDragDecision{}
+	var value_0 bool = disabled
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = reorder_enabled
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if !value_4 {
+		var value_5 bool = owns_press
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	var value_7 bool = value_4
+	if !value_7 {
+		var value_8 int32 = press_index
+		var value_9 int32 = 0
+		var value_10 bool = value_8 < value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 int32 = press_index
+		var value_13 int32 = count
+		var value_14 bool = value_12 >= value_13
+		value_11 = value_14
+	}
+	var value_15 bool = value_11
+	if !value_15 {
+		var value_16 bool = pointer_down
+		var value_17 bool = !value_16
+		value_15 = value_17
+	}
+	if value_15 {
+		var value_18 TabBarReorderDragDecision = decision
+		return value_18
+	}
+	var value_19 int32 = dx
+	var abs_dx int32 = value_19
+	var value_20 int32 = dy
+	var abs_dy int32 = value_20
+	var value_21 int32 = abs_dx
+	var value_22 int32 = 0
+	var value_23 bool = value_21 < value_22
+	if value_23 {
+		var value_24 int32 = abs_dx
+		var value_25 int32 = int32(number_runtime_bits(uint64(0), uint64(value_24), 32, true, 2))
+		abs_dx = value_25
+	}
+	var value_26 int32 = abs_dy
+	var value_27 int32 = 0
+	var value_28 bool = value_26 < value_27
+	if value_28 {
+		var value_29 int32 = abs_dy
+		var value_30 int32 = int32(number_runtime_bits(uint64(0), uint64(value_29), 32, true, 2))
+		abs_dy = value_30
+	}
+	var value_31 bool = drag_active
+	var value_32 bool = !value_31
+	var value_33 bool = value_32
+	if value_33 {
+		var value_34 int32 = abs_dx
+		var value_35 int32 = threshold
+		var value_36 bool = value_34 >= value_35
+		value_33 = value_36
+	}
+	var value_37 bool = value_33
+	if value_37 {
+		var value_38 int32 = abs_dx
+		var value_39 int32 = abs_dy
+		var value_40 bool = value_38 >= value_39
+		value_37 = value_40
+	}
+	decision.StartDrag = value_37
+	var value_41 bool = drag_active
+	var value_42 bool = value_41
+	if !value_42 {
+		var value_43 bool = decision.StartDrag
+		value_42 = value_43
+	}
+	decision.Dragging = value_42
+	var value_44 bool = decision.Dragging
+	decision.CaptureInput = value_44
+	var value_45 TabBarReorderDragDecision = decision
+	return value_45
+}
+
+func TabBar_TabBarPressCleanupDecisionFor(released bool, pointer_down bool, owns_press bool, pointer_owner_is_reorder bool) TabBarPressCleanupDecision {
+	var decision TabBarPressCleanupDecision = TabBarPressCleanupDecision{}
+	var value_0 bool = owns_press
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = released
+		var value_3 bool = value_2
+		if !value_3 {
+			var value_4 bool = pointer_down
+			var value_5 bool = !value_4
+			value_3 = value_5
+		}
+		value_1 = value_3
+	}
+	decision.ClearPress = value_1
+	var value_6 bool = decision.ClearPress
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = pointer_owner_is_reorder
+		value_7 = value_8
+	}
+	decision.ClearPointerOwner = value_7
+	var value_9 TabBarPressCleanupDecision = decision
+	return value_9
 }
 
 func TabBar_TabBarEqualTabBounds(bounds Rectangle, count int32, index int32) Rectangle {

@@ -28,6 +28,22 @@ type DropdownTriggerContent struct {
 	IndicatorCenterY int32
 }
 
+type DropdownTriggerInput struct {
+	Enter bool
+	Space bool
+	Down  bool
+}
+
+type DropdownMenuInput struct {
+	Navigating bool
+	Up         bool
+	Down       bool
+	Home       bool
+	End        bool
+	Commit     bool
+	Escape     bool
+}
+
 type DropdownIndicator struct {
 	X1 int32
 	Y1 int32
@@ -521,6 +537,73 @@ func Dropdown_Trigger(open bool, disabled bool, count int32, focused bool, keybo
 	}
 	var value_22 bool = open
 	return value_22
+}
+
+func Dropdown_DropdownTriggerInputFor(enter_pressed bool, keypad_enter_pressed bool, space_pressed bool, down_pressed bool) DropdownTriggerInput {
+	var input DropdownTriggerInput = DropdownTriggerInput{}
+	var value_0 bool = enter_pressed
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = keypad_enter_pressed
+		value_1 = value_2
+	}
+	input.Enter = value_1
+	var value_3 bool = space_pressed
+	input.Space = value_3
+	var value_4 bool = down_pressed
+	input.Down = value_4
+	var value_5 DropdownTriggerInput = input
+	return value_5
+}
+
+func Dropdown_DropdownMenuInputFor(keyboard_available bool, opening bool, up_pressed bool, down_pressed bool, home_pressed bool, end_pressed bool, enter_pressed bool, keypad_enter_pressed bool, escape_pressed bool) DropdownMenuInput {
+	var input DropdownMenuInput = DropdownMenuInput{}
+	var value_0 bool = keyboard_available
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 DropdownMenuInput = input
+		return value_2
+	}
+	var value_3 bool = escape_pressed
+	input.Escape = value_3
+	var value_4 bool = opening
+	var value_5 bool = !value_4
+	if value_5 {
+		var value_6 bool = up_pressed
+		input.Up = value_6
+		var value_7 bool = down_pressed
+		input.Down = value_7
+		var value_8 bool = home_pressed
+		input.Home = value_8
+		var value_9 bool = end_pressed
+		input.End = value_9
+		var value_10 bool = input.Up
+		var value_11 bool = value_10
+		if !value_11 {
+			var value_12 bool = input.Down
+			value_11 = value_12
+		}
+		var value_13 bool = value_11
+		if !value_13 {
+			var value_14 bool = input.Home
+			value_13 = value_14
+		}
+		var value_15 bool = value_13
+		if !value_15 {
+			var value_16 bool = input.End
+			value_15 = value_16
+		}
+		input.Navigating = value_15
+		var value_17 bool = enter_pressed
+		var value_18 bool = value_17
+		if !value_18 {
+			var value_19 bool = keypad_enter_pressed
+			value_18 = value_19
+		}
+		input.Commit = value_18
+	}
+	var value_20 DropdownMenuInput = input
+	return value_20
 }
 
 func Dropdown_Dismiss(open bool, opening bool, count int32, height float32, escape bool, lost_focus bool, outside bool) bool {
@@ -1693,4 +1776,42 @@ func Dropdown_PopupDragGesture(gesture PopupGesture, offset int32, down bool, in
 	}
 	var value_52 PopupGesture = gesture
 	return value_52
+}
+
+func Dropdown_DropdownJustOpenedNext(just_opened bool, pointer_pressed bool) bool {
+	var value_0 bool = just_opened
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = pointer_pressed
+		value_1 = value_2
+	}
+	return value_1
+}
+
+func Dropdown_DropdownScrollbarPressedNext(pressed bool, pointer_down bool, pointer_pressed bool, max_scroll int32, pointer_over_scrollbar bool) bool {
+	var value_0 bool = pointer_down
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 bool = pressed
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 int32 = max_scroll
+		var value_6 int32 = 0
+		var value_7 bool = value_5 > value_6
+		var value_8 bool = value_7
+		if value_8 {
+			var value_9 bool = pointer_pressed
+			value_8 = value_9
+		}
+		var value_10 bool = value_8
+		if value_10 {
+			var value_11 bool = pointer_over_scrollbar
+			value_10 = value_11
+		}
+		value_4 = value_10
+	}
+	return value_4
 }

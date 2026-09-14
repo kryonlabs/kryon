@@ -37,6 +37,13 @@ type ToolbarLayout struct {
 	SidePadding       int32
 }
 
+type ToolbarDividerLine struct {
+	X1 int32
+	Y1 int32
+	X2 int32
+	Y2 int32
+}
+
 type BottomIconRowLayout struct {
 	Y           int32
 	ButtonWidth int32
@@ -211,6 +218,33 @@ func Toolbar_ToolbarActionIdFor(toolbar_id int32, index int32) int32 {
 	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
 	var value_13 int32 = 1
 	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	return value_14
+}
+
+func Toolbar_ToolbarDividerLineFor(x int32, y int32, width int32, height int32) ToolbarDividerLine {
+	var line ToolbarDividerLine = ToolbarDividerLine{}
+	var value_0 int32 = width
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		width = value_3
+	}
+	var value_4 int32 = x
+	line.X1 = value_4
+	var value_5 int32 = x
+	var value_6 int32 = width
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 1))
+	line.X2 = value_7
+	var value_8 int32 = y
+	var value_9 int32 = height
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
+	var value_11 int32 = 1
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
+	line.Y1 = value_12
+	var value_13 int32 = line.Y1
+	line.Y2 = value_13
+	var value_14 ToolbarDividerLine = line
 	return value_14
 }
 
@@ -975,23 +1009,51 @@ func Toolbar_IconSliderPopupLayoutFor(x int32, y int32, icon_size int32, icon_pa
 
 func Toolbar_IconSliderPopupCloseDecisionFor(icon_clicked bool, released bool, pointer_inside_popup bool) IconSliderPopupCloseDecision {
 	var decision IconSliderPopupCloseDecision = IconSliderPopupCloseDecision{}
-	decision.Close = !icon_clicked && released && !pointer_inside_popup
-	return decision
+	var value_0 bool = icon_clicked
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = released
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = pointer_inside_popup
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	decision.Close = value_4
+	var value_7 IconSliderPopupCloseDecision = decision
+	return value_7
 }
 
 func Toolbar_IconSliderPopupOpenFor(open bool, icon_clicked bool, close_requested bool, has_open bool) IconSliderPopupOpenResult {
 	var result IconSliderPopupOpenResult = IconSliderPopupOpenResult{}
-	result.Open = open
-	result.Changed = false
-	if !has_open {
-		return result
+	var value_0 bool = open
+	result.Open = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 bool = has_open
+	var value_3 bool = !value_2
+	if value_3 {
+		var value_4 IconSliderPopupOpenResult = result
+		return value_4
 	}
-	if icon_clicked {
-		result.Open = !open
+	var value_5 bool = icon_clicked
+	if value_5 {
+		var value_6 bool = open
+		var value_7 bool = !value_6
+		result.Open = value_7
 	}
-	if close_requested {
-		result.Open = false
+	var value_8 bool = close_requested
+	if value_8 {
+		var value_9 bool = false
+		result.Open = value_9
 	}
-	result.Changed = result.Open != open
-	return result
+	var value_10 bool = result.Open
+	var value_11 bool = open
+	var value_12 bool = value_10 != value_11
+	result.Changed = value_12
+	var value_13 IconSliderPopupOpenResult = result
+	return value_13
 }

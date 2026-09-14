@@ -114,6 +114,13 @@ func Toast_ToastDuration(seconds float32, metrics ToastMetrics) float32 {
 	return value_4
 }
 
+func Toast_ToastDeadlineFor(now_seconds float32, duration_seconds float32) float32 {
+	var value_0 float32 = now_seconds
+	var value_1 float32 = duration_seconds
+	var value_2 float32 = value_0 + value_1
+	return value_2
+}
+
 func Toast_ToastRequestDecisionFor(has_message bool, seconds float32, metrics ToastMetrics) ToastRequestDecision {
 	var decision ToastRequestDecision = ToastRequestDecision{}
 	var value_0 bool = has_message

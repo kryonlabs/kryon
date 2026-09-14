@@ -80,6 +80,11 @@ func TitleBar_TitleBarActionRole() int32 {
 	return value_0
 }
 
+func TitleBar_TitleBarActionRadius() float32 {
+	var value_0 float32 = 0.50
+	return value_0
+}
+
 func TitleBar_TitleBarMetricsFor(scale float32, bar StyleFrame, title StyleFrame, action StyleFrame) TitleBarMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -157,6 +162,24 @@ func TitleBar_TitleBarMetricsFor(scale float32, bar StyleFrame, title StyleFrame
 	metrics.TitleHorizontalPadding = value_60
 	var value_61 TitleBarMetrics = metrics
 	return value_61
+}
+
+func TitleBar_TitleBarDefaultHeightFor(scale float32, bar StyleFrame) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = bar.Value.Fields
+	var value_5 int32 = int32(StyleIconSize)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = bar.Value.IconSize
+	var value_8 float32 = 32.0
+	var value_9 float32 = scale
+	var value_10 int32 = TitleBar_TitleBarMetric(value_4, value_6, value_7, value_8, value_9)
+	return value_10
 }
 
 func TitleBar_TitleBarStateFor(requested_height int32, fallback_height int32, has_leading bool, has_dropdown bool) TitleBarState {

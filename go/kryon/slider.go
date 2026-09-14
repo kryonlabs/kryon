@@ -53,6 +53,24 @@ type SliderDiscreteStep struct {
 	Changed bool
 }
 
+type SliderPointerDecision struct {
+	Hovered             bool
+	ClearActive         bool
+	StartActive         bool
+	SetPointerOwner     bool
+	CancelActive        bool
+	TakeHorizontalOwner bool
+	UpdateValue         bool
+	FinishActive        bool
+}
+
+type SliderRatioDecision struct {
+	ClearActive  bool
+	StartActive  bool
+	UpdateRatio  bool
+	FinishActive bool
+}
+
 type SliderEditorLayout struct {
 	EditorBounds Rectangle
 	HitBounds    Rectangle
@@ -97,6 +115,16 @@ func Slider_SliderLabelTextPaintFor(bounds Rectangle, inset float32, font_size i
 	paint.TextY = value_8
 	var value_9 SliderTextPaint = paint
 	return value_9
+}
+
+func Slider_SliderEditorCenterX(bounds Rectangle) int32 {
+	var value_0 float32 = bounds.X
+	var value_1 float32 = bounds.Width
+	var value_2 float32 = 0.5
+	var value_3 float32 = value_1 * value_2
+	var value_4 float32 = value_0 + value_3
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	return value_5
 }
 
 func Slider_SliderLabelInsetForStyle(label StyleFrame, scale float32) float32 {
@@ -989,6 +1017,205 @@ func Slider_SliderDiscretePointerValue(pointer float32, origin float32, length f
 	var value_6 float32 = Slider_SliderPointerRatio(value_2, value_3, value_4, value_5)
 	var value_7 int32 = Slider_SliderDiscreteValue(value_0, value_1, value_6)
 	return value_7
+}
+
+func Slider_SliderPointerDecisionFor(active bool, inside bool, captured bool, internal_captured bool, pressed bool, down bool, released bool, vertical bool, pointer_owner_none bool, pointer_owner_matches bool, dragging bool, drag_horizontal bool) SliderPointerDecision {
+	var decision SliderPointerDecision = SliderPointerDecision{}
+	var value_0 bool = inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	decision.Hovered = value_1
+	var value_4 bool = active
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = down
+		var value_7 bool = !value_6
+		value_5 = value_7
+	}
+	var value_8 bool = value_5
+	if value_8 {
+		var value_9 bool = released
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	decision.ClearActive = value_8
+	var value_11 bool = decision.Hovered
+	var value_12 bool = value_11
+	if value_12 {
+		var value_13 bool = pressed
+		value_12 = value_13
+	}
+	decision.StartActive = value_12
+	var value_14 bool = decision.StartActive
+	var value_15 bool = value_14
+	if value_15 {
+		var value_16 bool = vertical
+		value_15 = value_16
+	}
+	decision.SetPointerOwner = value_15
+	var value_17 bool = active
+	var value_18 bool = value_17
+	if !value_18 {
+		var value_19 bool = decision.StartActive
+		value_18 = value_19
+	}
+	var effective_active bool = value_18
+	var value_20 bool = effective_active
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 bool = vertical
+		var value_23 bool = !value_22
+		value_21 = value_23
+	}
+	var value_24 bool = value_21
+	if value_24 {
+		var value_25 bool = pointer_owner_none
+		value_24 = value_25
+	}
+	var value_26 bool = value_24
+	if value_26 {
+		var value_27 bool = dragging
+		value_26 = value_27
+	}
+	if value_26 {
+		var value_28 bool = drag_horizontal
+		if value_28 {
+			var value_29 bool = true
+			decision.TakeHorizontalOwner = value_29
+		} else {
+			var value_30 bool = true
+			decision.CancelActive = value_30
+		}
+	}
+	var value_31 bool = effective_active
+	var value_32 bool = value_31
+	if value_32 {
+		var value_33 bool = internal_captured
+		var value_34 bool = !value_33
+		value_32 = value_34
+	}
+	var can_update bool = value_32
+	var value_35 bool = vertical
+	if value_35 {
+		var value_36 bool = can_update
+		var value_37 bool = value_36
+		if value_37 {
+			var value_38 bool = down
+			var value_39 bool = value_38
+			if !value_39 {
+				var value_40 bool = released
+				value_39 = value_40
+			}
+			value_37 = value_39
+		}
+		decision.UpdateValue = value_37
+	} else {
+		var value_41 bool = pointer_owner_matches
+		var value_42 bool = value_41
+		if !value_42 {
+			var value_43 bool = decision.TakeHorizontalOwner
+			value_42 = value_43
+		}
+		var effective_owner_matches bool = value_42
+		var value_44 bool = can_update
+		var value_45 bool = value_44
+		if value_45 {
+			var value_46 bool = down
+			var value_47 bool = value_46
+			if value_47 {
+				var value_48 bool = effective_owner_matches
+				value_47 = value_48
+			}
+			var value_49 bool = value_47
+			if !value_49 {
+				var value_50 bool = released
+				value_49 = value_50
+			}
+			value_45 = value_49
+		}
+		decision.UpdateValue = value_45
+	}
+	var value_51 bool = effective_active
+	var value_52 bool = value_51
+	if value_52 {
+		var value_53 bool = released
+		value_52 = value_53
+	}
+	decision.FinishActive = value_52
+	var value_54 SliderPointerDecision = decision
+	return value_54
+}
+
+func Slider_SliderRatioDecisionFor(any_active bool, active bool, hot bool, disabled bool, owner_captured bool, pressed bool, down bool, released bool) SliderRatioDecision {
+	var decision SliderRatioDecision = SliderRatioDecision{}
+	var value_0 bool = any_active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = owner_captured
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if !value_3 {
+		var value_4 bool = active
+		var value_5 bool = value_4
+		if value_5 {
+			var value_6 bool = disabled
+			value_5 = value_6
+		}
+		value_3 = value_5
+	}
+	decision.ClearActive = value_3
+	var value_7 bool = hot
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = pressed
+		value_8 = value_9
+	}
+	decision.StartActive = value_8
+	var value_10 bool = active
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = decision.ClearActive
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	var value_14 bool = value_11
+	if !value_14 {
+		var value_15 bool = decision.StartActive
+		value_14 = value_15
+	}
+	var effective_active bool = value_14
+	var value_16 bool = effective_active
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = disabled
+		var value_19 bool = !value_18
+		value_17 = value_19
+	}
+	var value_20 bool = value_17
+	if value_20 {
+		var value_21 bool = pressed
+		var value_22 bool = value_21
+		if !value_22 {
+			var value_23 bool = down
+			value_22 = value_23
+		}
+		value_20 = value_22
+	}
+	decision.UpdateRatio = value_20
+	var value_24 bool = effective_active
+	var value_25 bool = value_24
+	if value_25 {
+		var value_26 bool = released
+		value_25 = value_26
+	}
+	decision.FinishActive = value_25
+	var value_27 SliderRatioDecision = decision
+	return value_27
 }
 
 func Slider_SliderDiscreteKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderDiscreteStep {

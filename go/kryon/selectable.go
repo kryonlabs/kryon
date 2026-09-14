@@ -96,12 +96,24 @@ func Selectable_SelectablePaintFor(spec SelectableSpec) SelectablePaint {
 }
 
 func Selectable_SelectableToggleFor(selected bool, activated bool, has_value bool) SelectableToggleResult {
-	var result SelectableToggleResult
-	result.Selected = selected
-	result.Changed = false
-	if activated && has_value {
-		result.Selected = !selected
-		result.Changed = true
+	var result SelectableToggleResult = SelectableToggleResult{}
+	var value_0 bool = selected
+	result.Selected = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 bool = activated
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = has_value
+		value_3 = value_4
 	}
-	return result
+	if value_3 {
+		var value_5 bool = selected
+		var value_6 bool = !value_5
+		result.Selected = value_6
+		var value_7 bool = true
+		result.Changed = value_7
+	}
+	var value_8 SelectableToggleResult = result
+	return value_8
 }

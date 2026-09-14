@@ -69,12 +69,134 @@ type TextInsertDecision struct {
 	Stop   bool
 }
 
+type TextBufferInsertDecision struct {
+	CanInsert bool
+	TailCount int32
+}
+
+type TextBufferDeleteDecision struct {
+	CanDelete bool
+	TailCount int32
+}
+
+type TextBufferDeleteRangeDecision struct {
+	CanDelete bool
+	Start     int32
+	End       int32
+	Cursor    int32
+	TailCount int32
+}
+
+type TextBufferBracketDecision struct {
+	Valid     bool
+	Pos       int32
+	Open      int32
+	Close     int32
+	Direction int32
+}
+
+type TextContextMenuState struct {
+	CutEnabled       bool
+	CopyEnabled      bool
+	PasteEnabled     bool
+	SelectAllEnabled bool
+}
+
+type TextContextCommandDecision struct {
+	CopySelection     bool
+	CopyAll           bool
+	DeleteSelection   bool
+	ClearAll          bool
+	Paste             bool
+	SelectAll         bool
+	CollapseSelection bool
+}
+
 type TextInputDoubleClickDecision struct {
 	DoubleClick bool
 }
 
+type TextCompositionInputDecision struct {
+	AcceptEvents bool
+	Cancel       bool
+	DrainEvents  bool
+}
+
+type TextCompositionSessionDecision struct {
+	Visible bool
+	Cancel  bool
+}
+
+type TextCompositionPhaseDecision struct {
+	StorePreedit bool
+	Commit       bool
+	Cancel       bool
+}
+
+type TextCompositionApplyDecision struct {
+	TextChanged         bool
+	PresentationChanged bool
+	SelectionChanged    bool
+}
+
+type TextCompositionViewRange struct {
+	ReplaceStart     int32
+	ReplaceEnd       int32
+	Cursor           int32
+	SelectionStart   int32
+	SelectionEnd     int32
+	CompositionStart int32
+	CompositionEnd   int32
+}
+
+type TextCompositionPaintSpan struct {
+	Visible bool
+	Start   int32
+	End     int32
+}
+
+type TextSelectionPaintSpan struct {
+	Visible           bool
+	Start             int32
+	End               int32
+	ContinuesPastLine bool
+}
+
 type TextFieldPanDecision struct {
 	Pan bool
+}
+
+type TextFocusClaimDecision struct {
+	Claim              bool
+	DisplacePrevious   bool
+	CancelPrevious     bool
+	CloseContext       bool
+	ClearPeerSelection bool
+}
+
+type TextFocusReleaseDecision struct {
+	Release          bool
+	CancelSelf       bool
+	ClearOwner       bool
+	ClearFrameOwner  bool
+	ClearActiveFocus bool
+	CloseContext     bool
+	ClearFieldDrag   bool
+	ClearAreaDrag    bool
+}
+
+type TextFocusOwnerDecision struct {
+	Focused        bool
+	AdoptOwner     bool
+	MarkFrameOwner bool
+	ClearTarget    bool
+}
+
+type TextPlatformInputSyncDecision struct {
+	Active           bool
+	CallCallback     bool
+	CallbackActive   bool
+	ClearShowRequest bool
 }
 
 type TextSelectionRange struct {
@@ -87,6 +209,1259 @@ type TextSelectionState struct {
 	Anchor       int32
 	Cursor       int32
 	HasSelection bool
+}
+
+func TextInput_TextFocusClaimDecisionFor(has_target bool, has_previous_owner bool, same_owner bool) TextFocusClaimDecision {
+	var decision TextFocusClaimDecision = TextFocusClaimDecision{}
+	var value_0 bool = has_target
+	decision.Claim = value_0
+	var value_1 bool = has_target
+	var value_2 bool = !value_1
+	if value_2 {
+		var value_3 TextFocusClaimDecision = decision
+		return value_3
+	}
+	var value_4 bool = has_previous_owner
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = same_owner
+		var value_7 bool = !value_6
+		value_5 = value_7
+	}
+	decision.DisplacePrevious = value_5
+	var value_8 bool = same_owner
+	var value_9 bool = !value_8
+	decision.CancelPrevious = value_9
+	var value_10 bool = same_owner
+	var value_11 bool = !value_10
+	decision.CloseContext = value_11
+	var value_12 bool = same_owner
+	var value_13 bool = !value_12
+	decision.ClearPeerSelection = value_13
+	var value_14 TextFocusClaimDecision = decision
+	return value_14
+}
+
+func TextInput_TextFocusOwnerDecisionFor(has_target bool, owns_focus bool, has_frame_owner bool, target_flag bool, has_focus_owner bool) TextFocusOwnerDecision {
+	var decision TextFocusOwnerDecision = TextFocusOwnerDecision{}
+	var value_0 bool = has_target
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 TextFocusOwnerDecision = decision
+		return value_2
+	}
+	var value_3 bool = owns_focus
+	if value_3 {
+		var value_4 bool = true
+		decision.Focused = value_4
+		var value_5 bool = true
+		decision.MarkFrameOwner = value_5
+		var value_6 TextFocusOwnerDecision = decision
+		return value_6
+	}
+	var value_7 bool = has_frame_owner
+	if value_7 {
+		var value_8 bool = true
+		decision.ClearTarget = value_8
+		var value_9 TextFocusOwnerDecision = decision
+		return value_9
+	}
+	var value_10 bool = target_flag
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = has_focus_owner
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	if value_11 {
+		var value_14 bool = true
+		decision.Focused = value_14
+		var value_15 bool = true
+		decision.AdoptOwner = value_15
+		var value_16 bool = true
+		decision.MarkFrameOwner = value_16
+		var value_17 TextFocusOwnerDecision = decision
+		return value_17
+	}
+	var value_18 bool = true
+	decision.ClearTarget = value_18
+	var value_19 TextFocusOwnerDecision = decision
+	return value_19
+}
+
+func TextInput_TextFocusOwnerIsStale(has_owner bool, owner_frame int64, current_frame int64) bool {
+	var value_0 bool = has_owner
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 int64 = owner_frame
+		var value_3 int64 = current_frame
+		var value_4 int64 = 1
+		var value_5 int64 = int64(number_runtime_bits(uint64(value_3), uint64(value_4), 64, true, 2))
+		var value_6 bool = value_2 != value_5
+		value_1 = value_6
+	}
+	var value_7 bool = value_1
+	if value_7 {
+		var value_8 int64 = owner_frame
+		var value_9 int64 = current_frame
+		var value_10 bool = value_8 != value_9
+		value_7 = value_10
+	}
+	return value_7
+}
+
+func TextInput_TextPlatformInputActiveFor(requested bool, has_owner bool, owner_rendered_this_frame bool) bool {
+	var value_0 bool = requested
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = has_owner
+		var value_3 bool = value_2
+		if value_3 {
+			var value_4 bool = owner_rendered_this_frame
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	return value_1
+}
+
+func TextInput_TextPlatformInputSyncDecisionFor(show_requested bool, has_callback bool, platform_active bool, text_input_active bool) TextPlatformInputSyncDecision {
+	var decision TextPlatformInputSyncDecision = TextPlatformInputSyncDecision{}
+	var value_0 bool = true
+	decision.ClearShowRequest = value_0
+	var value_1 bool = show_requested
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = has_callback
+		value_2 = value_3
+	}
+	if value_2 {
+		var value_4 bool = true
+		decision.Active = value_4
+		var value_5 bool = true
+		decision.CallCallback = value_5
+		var value_6 bool = true
+		decision.CallbackActive = value_6
+		var value_7 TextPlatformInputSyncDecision = decision
+		return value_7
+	}
+	var value_8 bool = text_input_active
+	decision.Active = value_8
+	var value_9 bool = platform_active
+	var value_10 bool = text_input_active
+	var value_11 bool = value_9 != value_10
+	if value_11 {
+		var value_12 bool = has_callback
+		decision.CallCallback = value_12
+		var value_13 bool = text_input_active
+		decision.CallbackActive = value_13
+	}
+	var value_14 TextPlatformInputSyncDecision = decision
+	return value_14
+}
+
+func TextInput_TextFocusReleaseDecisionFor(has_target bool, owns_focus bool, owns_frame_focus bool, active_focus_matches bool, owns_field_drag bool, owns_area_drag bool) TextFocusReleaseDecision {
+	var decision TextFocusReleaseDecision = TextFocusReleaseDecision{}
+	var value_0 bool = has_target
+	decision.Release = value_0
+	var value_1 bool = has_target
+	var value_2 bool = !value_1
+	if value_2 {
+		var value_3 TextFocusReleaseDecision = decision
+		return value_3
+	}
+	var value_4 bool = owns_focus
+	decision.CancelSelf = value_4
+	var value_5 bool = owns_focus
+	decision.ClearOwner = value_5
+	var value_6 bool = owns_frame_focus
+	decision.ClearFrameOwner = value_6
+	var value_7 bool = active_focus_matches
+	decision.ClearActiveFocus = value_7
+	var value_8 bool = true
+	decision.CloseContext = value_8
+	var value_9 bool = owns_field_drag
+	decision.ClearFieldDrag = value_9
+	var value_10 bool = owns_area_drag
+	decision.ClearAreaDrag = value_10
+	var value_11 TextFocusReleaseDecision = decision
+	return value_11
+}
+
+func TextInput_TextCompositionInputDecisionFor(focused bool, read_only bool) TextCompositionInputDecision {
+	var decision TextCompositionInputDecision = TextCompositionInputDecision{}
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = read_only
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	decision.AcceptEvents = value_1
+	var value_4 bool = decision.AcceptEvents
+	var value_5 bool = !value_4
+	decision.Cancel = value_5
+	var value_6 bool = focused
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = read_only
+		value_7 = value_8
+	}
+	decision.DrainEvents = value_7
+	var value_9 TextCompositionInputDecision = decision
+	return value_9
+}
+
+func TextInput_TextCompositionCancelDecisionFor(has_owner bool, scoped bool, same_owner bool) TextCompositionSessionDecision {
+	var decision TextCompositionSessionDecision = TextCompositionSessionDecision{}
+	var value_0 bool = has_owner
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = scoped
+		var value_3 bool = !value_2
+		var value_4 bool = value_3
+		if !value_4 {
+			var value_5 bool = same_owner
+			value_4 = value_5
+		}
+		value_1 = value_4
+	}
+	decision.Cancel = value_1
+	var value_6 TextCompositionSessionDecision = decision
+	return value_6
+}
+
+func TextInput_TextCompositionGetDecisionFor(has_owner bool, same_owner bool, has_text bool) TextCompositionSessionDecision {
+	var decision TextCompositionSessionDecision = TextCompositionSessionDecision{}
+	var value_0 bool = has_owner
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = same_owner
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = has_text
+		value_3 = value_4
+	}
+	decision.Visible = value_3
+	var value_5 TextCompositionSessionDecision = decision
+	return value_5
+}
+
+func TextInput_TextCompositionPhaseDecisionFor(phase int32) TextCompositionPhaseDecision {
+	var decision TextCompositionPhaseDecision = TextCompositionPhaseDecision{}
+	var value_0 int32 = phase
+	var value_1 int32 = 1
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = phase
+		var value_5 int32 = 2
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	decision.StorePreedit = value_3
+	var value_7 int32 = phase
+	var value_8 int32 = 3
+	var value_9 bool = value_7 == value_8
+	decision.Commit = value_9
+	var value_10 int32 = phase
+	var value_11 int32 = 4
+	var value_12 bool = value_10 == value_11
+	decision.Cancel = value_12
+	var value_13 TextCompositionPhaseDecision = decision
+	return value_13
+}
+
+func TextInput_TextCompositionApplyDecisionFor(phase int32, text_changed bool) TextCompositionApplyDecision {
+	var value_0 int32 = phase
+	var value_1 TextCompositionPhaseDecision = TextInput_TextCompositionPhaseDecisionFor(value_0)
+	var event TextCompositionPhaseDecision = value_1
+	var decision TextCompositionApplyDecision = TextCompositionApplyDecision{}
+	var value_2 bool = event.StorePreedit
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 bool = event.Cancel
+		value_3 = value_4
+	}
+	if value_3 {
+		var value_5 bool = true
+		decision.PresentationChanged = value_5
+		var value_6 TextCompositionApplyDecision = decision
+		return value_6
+	}
+	var value_7 bool = event.Commit
+	if value_7 {
+		var value_8 bool = text_changed
+		decision.TextChanged = value_8
+		var value_9 bool = true
+		decision.PresentationChanged = value_9
+		var value_10 bool = true
+		decision.SelectionChanged = value_10
+	}
+	var value_11 TextCompositionApplyDecision = decision
+	return value_11
+}
+
+func TextInput_TextCompositionSelectionLength(preedit_len int32, cursor int32, selection_length int32) int32 {
+	var value_0 int32 = preedit_len
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		preedit_len = value_3
+	}
+	var value_4 int32 = cursor
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		cursor = value_7
+	}
+	var value_8 int32 = cursor
+	var value_9 int32 = preedit_len
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = preedit_len
+		cursor = value_11
+	}
+	var value_12 int32 = selection_length
+	var value_13 int32 = 0
+	var value_14 bool = value_12 < value_13
+	if value_14 {
+		var value_15 int32 = 0
+		selection_length = value_15
+	}
+	var value_16 int32 = preedit_len
+	var value_17 int32 = cursor
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 2))
+	var max_length int32 = value_18
+	var value_19 int32 = selection_length
+	var value_20 int32 = max_length
+	var value_21 bool = value_19 > value_20
+	if value_21 {
+		var value_22 int32 = max_length
+		return value_22
+	}
+	var value_23 int32 = selection_length
+	return value_23
+}
+
+func TextInput_TextCompositionViewRangeFor(selection_start int32, selection_end int32, preedit_len int32, preedit_cursor int32, preedit_selection_end int32) TextCompositionViewRange {
+	var view_range TextCompositionViewRange = TextCompositionViewRange{}
+	var value_0 int32 = selection_start
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		selection_start = value_3
+	}
+	var value_4 int32 = selection_end
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		selection_end = value_7
+	}
+	var value_8 int32 = selection_start
+	var value_9 int32 = selection_end
+	var value_10 bool = value_8 <= value_9
+	if value_10 {
+		var value_11 int32 = selection_start
+		view_range.ReplaceStart = value_11
+		var value_12 int32 = selection_end
+		view_range.ReplaceEnd = value_12
+	} else {
+		var value_13 int32 = selection_end
+		view_range.ReplaceStart = value_13
+		var value_14 int32 = selection_start
+		view_range.ReplaceEnd = value_14
+	}
+	var value_15 int32 = preedit_len
+	var value_16 int32 = 0
+	var value_17 bool = value_15 < value_16
+	if value_17 {
+		var value_18 int32 = 0
+		preedit_len = value_18
+	}
+	var value_19 int32 = preedit_cursor
+	var value_20 int32 = 0
+	var value_21 bool = value_19 < value_20
+	if value_21 {
+		var value_22 int32 = 0
+		preedit_cursor = value_22
+	}
+	var value_23 int32 = preedit_cursor
+	var value_24 int32 = preedit_len
+	var value_25 bool = value_23 > value_24
+	if value_25 {
+		var value_26 int32 = preedit_len
+		preedit_cursor = value_26
+	}
+	var value_27 int32 = preedit_selection_end
+	var value_28 int32 = preedit_cursor
+	var value_29 bool = value_27 < value_28
+	if value_29 {
+		var value_30 int32 = preedit_cursor
+		preedit_selection_end = value_30
+	}
+	var value_31 int32 = preedit_selection_end
+	var value_32 int32 = preedit_len
+	var value_33 bool = value_31 > value_32
+	if value_33 {
+		var value_34 int32 = preedit_len
+		preedit_selection_end = value_34
+	}
+	var value_35 int32 = view_range.ReplaceStart
+	var value_36 int32 = preedit_cursor
+	var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 1))
+	view_range.Cursor = value_37
+	var value_38 int32 = view_range.Cursor
+	view_range.SelectionStart = value_38
+	var value_39 int32 = view_range.ReplaceStart
+	var value_40 int32 = preedit_selection_end
+	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
+	view_range.SelectionEnd = value_41
+	var value_42 int32 = view_range.ReplaceStart
+	view_range.CompositionStart = value_42
+	var value_43 int32 = view_range.ReplaceStart
+	var value_44 int32 = preedit_len
+	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 1))
+	view_range.CompositionEnd = value_45
+	var value_46 TextCompositionViewRange = view_range
+	return value_46
+}
+
+func TextInput_TextCompositionPaintSpanForText(composition_start int32, composition_end int32, text_len int32) TextCompositionPaintSpan {
+	var span TextCompositionPaintSpan = TextCompositionPaintSpan{}
+	var value_0 int32 = text_len
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		text_len = value_3
+	}
+	var value_4 int32 = composition_start
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		composition_start = value_7
+	}
+	var value_8 int32 = composition_end
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		composition_end = value_11
+	}
+	var value_12 int32 = composition_start
+	var value_13 int32 = text_len
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 int32 = text_len
+		composition_start = value_15
+	}
+	var value_16 int32 = composition_end
+	var value_17 int32 = text_len
+	var value_18 bool = value_16 > value_17
+	if value_18 {
+		var value_19 int32 = text_len
+		composition_end = value_19
+	}
+	var value_20 int32 = composition_end
+	var value_21 int32 = composition_start
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 TextCompositionPaintSpan = span
+		return value_23
+	}
+	var value_24 bool = true
+	span.Visible = value_24
+	var value_25 int32 = composition_start
+	span.Start = value_25
+	var value_26 int32 = composition_end
+	span.End = value_26
+	var value_27 TextCompositionPaintSpan = span
+	return value_27
+}
+
+func TextInput_TextCompositionPaintSpanForLine(composition_start int32, composition_end int32, line_start int32, line_end int32) TextCompositionPaintSpan {
+	var span TextCompositionPaintSpan = TextCompositionPaintSpan{}
+	var value_0 int32 = composition_end
+	var value_1 int32 = composition_start
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 TextCompositionPaintSpan = span
+		return value_3
+	}
+	var value_4 int32 = line_end
+	var value_5 int32 = line_start
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = line_start
+		line_end = value_7
+	}
+	var value_8 int32 = composition_start
+	span.Start = value_8
+	var value_9 int32 = span.Start
+	var value_10 int32 = line_start
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = line_start
+		span.Start = value_12
+	}
+	var value_13 int32 = composition_end
+	span.End = value_13
+	var value_14 int32 = span.End
+	var value_15 int32 = line_end
+	var value_16 bool = value_14 > value_15
+	if value_16 {
+		var value_17 int32 = line_end
+		span.End = value_17
+	}
+	var value_18 int32 = span.End
+	var value_19 int32 = span.Start
+	var value_20 bool = value_18 <= value_19
+	if value_20 {
+		var value_21 TextCompositionPaintSpan = span
+		return value_21
+	}
+	var value_22 bool = true
+	span.Visible = value_22
+	var value_23 TextCompositionPaintSpan = span
+	return value_23
+}
+
+func TextInput_TextCompositionUnderlineEndX(start_x int32, end_x int32, stroke_width int32) int32 {
+	var value_0 int32 = stroke_width
+	var value_1 int32 = 1
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 1
+		stroke_width = value_3
+	}
+	var value_4 int32 = end_x
+	var value_5 int32 = start_x
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 int32 = start_x
+		var value_8 int32 = stroke_width
+		var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
+		return value_9
+	}
+	var value_10 int32 = end_x
+	return value_10
+}
+
+func TextInput_TextCompositionUnderlineY(text_y int32, line_height int32, stroke_width int32) int32 {
+	var value_0 int32 = stroke_width
+	var value_1 int32 = 1
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 1
+		stroke_width = value_3
+	}
+	var value_4 int32 = text_y
+	var value_5 int32 = line_height
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	var value_7 int32 = stroke_width
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
+	return value_8
+}
+
+func TextInput_TextSelectionPaintSpanForLine(selection_start int32, selection_end int32, line_start int32, line_end int32) TextSelectionPaintSpan {
+	var span TextSelectionPaintSpan = TextSelectionPaintSpan{}
+	var value_0 int32 = selection_end
+	var value_1 int32 = selection_start
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 TextSelectionPaintSpan = span
+		return value_3
+	}
+	var value_4 int32 = line_end
+	var value_5 int32 = line_start
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = line_start
+		line_end = value_7
+	}
+	var value_8 int32 = selection_start
+	span.Start = value_8
+	var value_9 int32 = span.Start
+	var value_10 int32 = line_start
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = line_start
+		span.Start = value_12
+	}
+	var value_13 int32 = selection_end
+	span.End = value_13
+	var value_14 int32 = span.End
+	var value_15 int32 = line_end
+	var value_16 bool = value_14 > value_15
+	if value_16 {
+		var value_17 int32 = line_end
+		span.End = value_17
+	}
+	var value_18 int32 = selection_start
+	var value_19 int32 = line_start
+	var value_20 bool = value_18 <= value_19
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 int32 = selection_end
+		var value_23 int32 = line_end
+		var value_24 bool = value_22 > value_23
+		value_21 = value_24
+	}
+	span.ContinuesPastLine = value_21
+	var value_25 int32 = span.End
+	var value_26 int32 = span.Start
+	var value_27 bool = value_25 < value_26
+	if value_27 {
+		var value_28 TextSelectionPaintSpan = span
+		return value_28
+	}
+	var value_29 int32 = span.End
+	var value_30 int32 = span.Start
+	var value_31 bool = value_29 == value_30
+	var value_32 bool = value_31
+	if value_32 {
+		var value_33 bool = span.ContinuesPastLine
+		var value_34 bool = !value_33
+		value_32 = value_34
+	}
+	if value_32 {
+		var value_35 TextSelectionPaintSpan = span
+		return value_35
+	}
+	var value_36 bool = true
+	span.Visible = value_36
+	var value_37 TextSelectionPaintSpan = span
+	return value_37
+}
+
+func TextInput_TextSelectionPaintSpanForText(selection_start int32, selection_end int32, text_len int32) TextSelectionPaintSpan {
+	var span TextSelectionPaintSpan = TextSelectionPaintSpan{}
+	var value_0 int32 = text_len
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		text_len = value_3
+	}
+	var value_4 int32 = selection_start
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		selection_start = value_7
+	}
+	var value_8 int32 = selection_end
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		selection_end = value_11
+	}
+	var value_12 int32 = selection_start
+	var value_13 int32 = text_len
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 int32 = text_len
+		selection_start = value_15
+	}
+	var value_16 int32 = selection_end
+	var value_17 int32 = text_len
+	var value_18 bool = value_16 > value_17
+	if value_18 {
+		var value_19 int32 = text_len
+		selection_end = value_19
+	}
+	var value_20 int32 = selection_end
+	var value_21 int32 = selection_start
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 TextSelectionPaintSpan = span
+		return value_23
+	}
+	var value_24 bool = true
+	span.Visible = value_24
+	var value_25 int32 = selection_start
+	span.Start = value_25
+	var value_26 int32 = selection_end
+	span.End = value_26
+	var value_27 bool = false
+	span.ContinuesPastLine = value_27
+	var value_28 TextSelectionPaintSpan = span
+	return value_28
+}
+
+func TextInput_TextSelectionOwnerMatches(has_owner bool, same_owner bool, selection_id int32, requested_id int32) bool {
+	var value_0 bool = has_owner
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = same_owner
+		value_1 = value_2
+	}
+	if value_1 {
+		var value_3 bool = true
+		return value_3
+	}
+	var value_4 int32 = requested_id
+	var value_5 int32 = 0
+	var value_6 bool = value_4 > value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 int32 = selection_id
+		var value_9 int32 = requested_id
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	return value_7
+}
+
+func TextInput_TextContextMenuStateFor(has_selection bool, copy_all_when_empty bool, has_text bool, read_only bool, clipboard_has_text bool) TextContextMenuState {
+	var state TextContextMenuState = TextContextMenuState{}
+	var value_0 bool = has_selection
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = copy_all_when_empty
+		var value_3 bool = value_2
+		if value_3 {
+			var value_4 bool = has_text
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	var can_copy_content bool = value_1
+	var value_5 bool = can_copy_content
+	var value_6 bool = value_5
+	if value_6 {
+		var value_7 bool = read_only
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	state.CutEnabled = value_6
+	var value_9 bool = can_copy_content
+	state.CopyEnabled = value_9
+	var value_10 bool = clipboard_has_text
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = read_only
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	state.PasteEnabled = value_11
+	var value_14 bool = has_text
+	state.SelectAllEnabled = value_14
+	var value_15 TextContextMenuState = state
+	return value_15
+}
+
+func TextInput_TextContextCommandCut() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func TextInput_TextContextCommandCopy() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func TextInput_TextContextCommandPaste() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func TextInput_TextContextCommandSelectAll() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func TextInput_TextEditCommandDecisionFor(command int32, has_selection bool, copy_all_when_empty bool, clear_all_when_empty bool, has_text bool, allow_copy bool, allow_delete bool, allow_paste bool) TextContextCommandDecision {
+	var decision TextContextCommandDecision = TextContextCommandDecision{}
+	var value_0 int32 = command
+	var value_1 int32 = TextInput_TextContextCommandCut()
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 bool = has_selection
+		if value_3 {
+			var value_4 bool = allow_copy
+			decision.CopySelection = value_4
+			var value_5 bool = allow_copy
+			var value_6 bool = value_5
+			if value_6 {
+				var value_7 bool = allow_delete
+				value_6 = value_7
+			}
+			decision.DeleteSelection = value_6
+		} else {
+			var value_8 bool = copy_all_when_empty
+			var value_9 bool = value_8
+			if value_9 {
+				var value_10 bool = has_text
+				value_9 = value_10
+			}
+			if value_9 {
+				var value_11 bool = allow_copy
+				decision.CopyAll = value_11
+				var value_12 bool = allow_copy
+				var value_13 bool = value_12
+				if value_13 {
+					var value_14 bool = allow_delete
+					value_13 = value_14
+				}
+				var value_15 bool = value_13
+				if value_15 {
+					var value_16 bool = clear_all_when_empty
+					value_15 = value_16
+				}
+				decision.ClearAll = value_15
+			}
+		}
+		var value_17 bool = decision.CopySelection
+		var value_18 bool = value_17
+		if !value_18 {
+			var value_19 bool = decision.CopyAll
+			value_18 = value_19
+		}
+		var value_20 bool = value_18
+		if !value_20 {
+			var value_21 bool = decision.DeleteSelection
+			value_20 = value_21
+		}
+		var value_22 bool = value_20
+		if !value_22 {
+			var value_23 bool = decision.ClearAll
+			value_22 = value_23
+		}
+		decision.CollapseSelection = value_22
+		var value_24 TextContextCommandDecision = decision
+		return value_24
+	}
+	var value_25 int32 = command
+	var value_26 int32 = TextInput_TextContextCommandCopy()
+	var value_27 bool = value_25 == value_26
+	if value_27 {
+		var value_28 bool = has_selection
+		if value_28 {
+			var value_29 bool = allow_copy
+			decision.CopySelection = value_29
+		} else {
+			var value_30 bool = allow_copy
+			var value_31 bool = value_30
+			if value_31 {
+				var value_32 bool = copy_all_when_empty
+				value_31 = value_32
+			}
+			var value_33 bool = value_31
+			if value_33 {
+				var value_34 bool = has_text
+				value_33 = value_34
+			}
+			if value_33 {
+				var value_35 bool = true
+				decision.CopyAll = value_35
+			}
+		}
+		var value_36 TextContextCommandDecision = decision
+		return value_36
+	}
+	var value_37 int32 = command
+	var value_38 int32 = TextInput_TextContextCommandPaste()
+	var value_39 bool = value_37 == value_38
+	if value_39 {
+		var value_40 bool = allow_paste
+		if value_40 {
+			var value_41 bool = allow_delete
+			var value_42 bool = value_41
+			if value_42 {
+				var value_43 bool = has_selection
+				value_42 = value_43
+			}
+			decision.DeleteSelection = value_42
+			var value_44 bool = true
+			decision.Paste = value_44
+			var value_45 bool = true
+			decision.CollapseSelection = value_45
+		}
+		var value_46 TextContextCommandDecision = decision
+		return value_46
+	}
+	var value_47 int32 = command
+	var value_48 int32 = TextInput_TextContextCommandSelectAll()
+	var value_49 bool = value_47 == value_48
+	if value_49 {
+		var value_50 bool = true
+		decision.SelectAll = value_50
+		var value_51 TextContextCommandDecision = decision
+		return value_51
+	}
+	var value_52 TextContextCommandDecision = decision
+	return value_52
+}
+
+func TextInput_TextContextCommandDecisionFor(command int32, has_selection bool, copy_all_when_empty bool, has_text bool, read_only bool) TextContextCommandDecision {
+	var value_0 int32 = command
+	var value_1 bool = has_selection
+	var value_2 bool = copy_all_when_empty
+	var value_3 bool = copy_all_when_empty
+	var value_4 bool = has_text
+	var value_5 bool = true
+	var value_6 bool = read_only
+	var value_7 bool = !value_6
+	var value_8 bool = read_only
+	var value_9 bool = !value_8
+	var value_10 TextContextCommandDecision = TextInput_TextEditCommandDecisionFor(value_0, value_1, value_2, value_3, value_4, value_5, value_7, value_9)
+	return value_10
+}
+
+func TextInput_TextShortcutShouldClaimSelectionFocus(has_selection bool, focused bool, keyboard_enabled bool, modifier bool, copy_pressed bool, cut_pressed bool, paste_pressed bool) bool {
+	var value_0 bool = has_selection
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = focused
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = keyboard_enabled
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = modifier
+		value_6 = value_7
+	}
+	var value_8 bool = value_6
+	if value_8 {
+		var value_9 bool = copy_pressed
+		var value_10 bool = value_9
+		if !value_10 {
+			var value_11 bool = cut_pressed
+			value_10 = value_11
+		}
+		var value_12 bool = value_10
+		if !value_12 {
+			var value_13 bool = paste_pressed
+			value_12 = value_13
+		}
+		value_8 = value_12
+	}
+	return value_8
+}
+
+func TextInput_TextDeleteShortcutShouldRun(read_only bool, backspace_pressed bool, delete_pressed bool, queued_backspace_count int32) bool {
+	var value_0 bool = read_only
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = backspace_pressed
+		var value_4 bool = value_3
+		if !value_4 {
+			var value_5 bool = delete_pressed
+			value_4 = value_5
+		}
+		var value_6 bool = value_4
+		if !value_6 {
+			var value_7 int32 = queued_backspace_count
+			var value_8 int32 = 0
+			var value_9 bool = value_7 > value_8
+			value_6 = value_9
+		}
+		value_2 = value_6
+	}
+	return value_2
+}
+
+func TextInput_TextSelectionReplacementShouldRun(read_only bool, handled bool, has_selection bool, modifier bool) bool {
+	var value_0 bool = read_only
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = handled
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	var value_5 bool = value_2
+	if value_5 {
+		var value_6 bool = has_selection
+		value_5 = value_6
+	}
+	var value_7 bool = value_5
+	if value_7 {
+		var value_8 bool = modifier
+		var value_9 bool = !value_8
+		value_7 = value_9
+	}
+	return value_7
+}
+
+func TextInput_TextNativeEditShouldRun(read_only bool, handled bool) bool {
+	var value_0 bool = read_only
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = handled
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	return value_2
+}
+
+func TextInput_TextCommitAfterHandledShouldRun(read_only bool, handled bool, enter_requested bool) bool {
+	var value_0 bool = read_only
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = handled
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = enter_requested
+		value_4 = value_5
+	}
+	return value_4
+}
+
+func TextInput_TextNavigationShouldRun(handled bool) bool {
+	var value_0 bool = handled
+	var value_1 bool = !value_0
+	return value_1
+}
+
+func TextInput_TextAreaEnterNewlineShouldRun(read_only bool, enter_requested bool) bool {
+	var value_0 bool = read_only
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = enter_requested
+		value_2 = value_3
+	}
+	return value_2
+}
+
+func TextInput_TextAreaChangedShouldCollapseSelection(changed bool, handled bool) bool {
+	var value_0 bool = changed
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = handled
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	return value_1
+}
+
+func TextInput_TextFieldChangedShouldCollapseSelection(changed bool, left_pressed bool, right_pressed bool, home_pressed bool, end_pressed bool) bool {
+	var value_0 bool = changed
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = left_pressed
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if !value_3 {
+		var value_4 bool = right_pressed
+		value_3 = value_4
+	}
+	var value_5 bool = value_3
+	if !value_5 {
+		var value_6 bool = home_pressed
+		value_5 = value_6
+	}
+	var value_7 bool = value_5
+	if !value_7 {
+		var value_8 bool = end_pressed
+		value_7 = value_8
+	}
+	return value_7
+}
+
+func TextInput_TextKeyboardShouldRun(focused bool, keyboard_enabled bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	return value_1
+}
+
+func TextInput_TextEscapeShouldBlur(focused bool, keyboard_enabled bool, escape_pressed bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = keyboard_enabled
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = escape_pressed
+		value_3 = value_4
+	}
+	return value_3
+}
+
+func TextInput_TextOutsideClickShouldBlur(focused bool, context_active bool, scroll_gesture_pending bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = context_active
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = scroll_gesture_pending
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	return value_4
+}
+
+func TextInput_TextSelectionRangeShouldResolve(focused bool, context_active bool, has_selection bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = context_active
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = has_selection
+		value_3 = value_4
+	}
+	return value_3
+}
+
+func TextInput_TextCompositionDisplayShouldRun(secure bool) bool {
+	var value_0 bool = secure
+	var value_1 bool = !value_0
+	return value_1
+}
+
+func TextInput_TextEditCommitShouldRun(enter_pressed bool, queued_enter_count int32) bool {
+	var value_0 bool = enter_pressed
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 int32 = queued_enter_count
+		var value_3 int32 = 0
+		var value_4 bool = value_2 > value_3
+		value_1 = value_4
+	}
+	return value_1
+}
+
+func TextInput_TextAreaScrollbarShouldShow(has_scroll_storage bool, max_scroll int32) bool {
+	var value_0 bool = has_scroll_storage
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 int32 = max_scroll
+		var value_3 int32 = 0
+		var value_4 bool = value_2 > value_3
+		value_1 = value_4
+	}
+	return value_1
+}
+
+func TextInput_TextAreaWheelShouldScroll(mouse_inside bool, captured bool, modifier bool) bool {
+	var value_0 bool = mouse_inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = modifier
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	return value_4
+}
+
+func TextInput_TextAreaRevealCursorShouldRun(focused bool, changed bool, navigation_pressed bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = changed
+		var value_3 bool = value_2
+		if !value_3 {
+			var value_4 bool = navigation_pressed
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	return value_1
+}
+
+func TextInput_TextAreaRevealScroll(scroll int32, cursor_y int32, cursor_height int32, viewport_height int32) int32 {
+	var value_0 int32 = cursor_y
+	var value_1 int32 = scroll
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = cursor_y
+		return value_3
+	}
+	var value_4 int32 = cursor_y
+	var value_5 int32 = cursor_height
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	var value_7 int32 = scroll
+	var value_8 int32 = viewport_height
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
+	var value_10 bool = value_6 > value_9
+	if value_10 {
+		var value_11 int32 = cursor_y
+		var value_12 int32 = cursor_height
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
+		var value_14 int32 = viewport_height
+		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
+		return value_15
+	}
+	var value_16 int32 = scroll
+	return value_16
+}
+
+func TextInput_TextAreaScrollFor(scroll int32, max_scroll int32) int32 {
+	var value_0 int32 = max_scroll
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		max_scroll = value_3
+	}
+	var value_4 int32 = scroll
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = scroll
+	var value_9 int32 = max_scroll
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = max_scroll
+		return value_11
+	}
+	var value_12 int32 = scroll
+	return value_12
+}
+
+func TextInput_TextFieldRevealCursorShouldRun(focused bool) bool {
+	var value_0 bool = focused
+	return value_0
+}
+
+func TextInput_TextFieldContextShouldRegister(secure bool) bool {
+	var value_0 bool = secure
+	var value_1 bool = !value_0
+	return value_1
 }
 
 func TextInput_TextNavNone() int32 {
@@ -223,6 +1598,80 @@ func TextInput_TextAreaScrollbarWidthFor(scale float32) int32 {
 	return value_2
 }
 
+func TextInput_TextAreaMaxScrollFor(content_height int32, bounds_height float32, padding_y int32) int32 {
+	var value_0 float32 = bounds_height
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var value_2 int32 = padding_y
+	var value_3 int32 = 2
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 3))
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_4), 32, true, 2))
+	var viewport_height int32 = value_5
+	var value_6 int32 = content_height
+	var value_7 int32 = viewport_height
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
+	var max_scroll int32 = value_8
+	var value_9 int32 = max_scroll
+	var value_10 int32 = 0
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = 0
+		return value_12
+	}
+	var value_13 int32 = max_scroll
+	return value_13
+}
+
+func TextInput_TextAreaWheelScrollFor(scroll int32, wheel float32, line_height int32) int32 {
+	var value_0 int32 = scroll
+	var value_1 float32 = wheel
+	var value_2 int32 = line_height
+	var value_3 float32 = float32(value_2)
+	var value_4 float32 = value_1 * value_3
+	var value_5 float32 = 3.0
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_7), 32, true, 2))
+	return value_8
+}
+
+func TextInput_TextAreaDragScrollFor(scroll int32, mouse_y int32, bounds_y float32, bounds_height float32, padding_y int32, line_height int32) int32 {
+	var value_0 int32 = scroll
+	var next int32 = value_0
+	var value_1 int32 = mouse_y
+	var value_2 float32 = bounds_y
+	var value_3 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_2), 32, true)), uint64(0), 32, true, 0))
+	var value_4 int32 = padding_y
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
+	var value_6 bool = value_1 < value_5
+	if value_6 {
+		var value_7 int32 = next
+		var value_8 int32 = line_height
+		next = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 2))
+	}
+	var value_9 int32 = mouse_y
+	var value_10 float32 = bounds_y
+	var value_11 float32 = bounds_height
+	var value_12 float32 = value_10 + value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var value_14 int32 = padding_y
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
+	var value_16 bool = value_9 > value_15
+	if value_16 {
+		var value_17 int32 = next
+		var value_18 int32 = line_height
+		next = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 1))
+	}
+	var value_19 int32 = next
+	var value_20 int32 = 0
+	var value_21 bool = value_19 < value_20
+	if value_21 {
+		var value_22 int32 = 0
+		return value_22
+	}
+	var value_23 int32 = next
+	return value_23
+}
+
 func TextInput_TextAreaGutterMetricsFor(scale float32) TextAreaGutterMetrics {
 	var metrics TextAreaGutterMetrics = TextAreaGutterMetrics{}
 	var value_0 float32 = 10.0
@@ -293,6 +1742,15 @@ func TextInput_TextAreaGutterFirstY(gutter_y float32, scroll_y int32, line_heigh
 	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 5))
 	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 2))
 	return value_14
+}
+
+func TextInput_TextAreaGutterInactiveAlpha(alpha uint8) uint8 {
+	var value_0 uint8 = alpha
+	var value_1 float32 = float32(value_0)
+	var value_2 float32 = 0.62
+	var value_3 float32 = value_1 * value_2
+	var value_4 uint8 = uint8(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 8, false)), uint64(0), 8, false, 0))
+	return value_4
 }
 
 func TextInput_TextFieldRevealMargin(scale float32) int32 {
@@ -633,94 +2091,76 @@ func TextInput_TextAreaPaintFor(bounds Rectangle, font int32, line_gap int32, pa
 		paint.ViewportHeight = value_12
 	}
 	var value_13 int32 = content_height
-	var value_14 int32 = paint.ViewportHeight
-	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
-	paint.MaxScroll = value_15
-	var value_16 int32 = paint.MaxScroll
-	var value_17 int32 = 0
-	var value_18 bool = value_16 < value_17
-	if value_18 {
-		var value_19 int32 = 0
-		paint.MaxScroll = value_19
+	var value_14 float32 = bounds.Height
+	var value_15 int32 = padding_y
+	var value_16 int32 = TextInput_TextAreaMaxScrollFor(value_13, value_14, value_15)
+	paint.MaxScroll = value_16
+	var value_17 int32 = scroll_y
+	var value_18 int32 = paint.MaxScroll
+	var value_19 int32 = TextInput_TextAreaScrollFor(value_17, value_18)
+	paint.ScrollY = value_19
+	var value_20 float32 = bounds.Width
+	var value_21 int32 = padding_x
+	var value_22 bool = wrap
+	var value_23 int32 = min_wrap_width
+	var value_24 int32 = TextInput_TextAreaWrapWidthFor(value_20, value_21, value_22, value_23)
+	paint.WrapWidth = value_24
+	var value_25 float32 = bounds.X
+	var value_26 int32 = padding_x
+	var value_27 float32 = float32(value_26)
+	var value_28 float32 = value_25 + value_27
+	paint.ClipBounds.X = value_28
+	var value_29 float32 = bounds.Y
+	var value_30 int32 = padding_y
+	var value_31 float32 = float32(value_30)
+	var value_32 float32 = value_29 + value_31
+	paint.ClipBounds.Y = value_32
+	var value_33 float32 = bounds.Width
+	var value_34 int32 = padding_x
+	var value_35 int32 = 2
+	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 3))
+	var value_37 float32 = float32(value_36)
+	var value_38 float32 = value_33 - value_37
+	paint.ClipBounds.Width = value_38
+	var value_39 float32 = bounds.Height
+	var value_40 int32 = padding_y
+	var value_41 int32 = 2
+	var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 3))
+	var value_43 float32 = float32(value_42)
+	var value_44 float32 = value_39 - value_43
+	paint.ClipBounds.Height = value_44
+	var value_45 float32 = paint.ClipBounds.Width
+	var value_46 float32 = 0.0
+	var value_47 bool = value_45 < value_46
+	if value_47 {
+		var value_48 float32 = 0.0
+		paint.ClipBounds.Width = value_48
 	}
-	var value_20 int32 = scroll_y
-	paint.ScrollY = value_20
-	var value_21 int32 = paint.ScrollY
-	var value_22 int32 = 0
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 int32 = 0
-		paint.ScrollY = value_24
+	var value_49 float32 = paint.ClipBounds.Height
+	var value_50 float32 = 0.0
+	var value_51 bool = value_49 < value_50
+	if value_51 {
+		var value_52 float32 = 0.0
+		paint.ClipBounds.Height = value_52
 	}
-	var value_25 int32 = paint.ScrollY
-	var value_26 int32 = paint.MaxScroll
-	var value_27 bool = value_25 > value_26
-	if value_27 {
-		var value_28 int32 = paint.MaxScroll
-		paint.ScrollY = value_28
-	}
-	var value_29 float32 = bounds.Width
-	var value_30 int32 = padding_x
-	var value_31 bool = wrap
-	var value_32 int32 = min_wrap_width
-	var value_33 int32 = TextInput_TextAreaWrapWidthFor(value_29, value_30, value_31, value_32)
-	paint.WrapWidth = value_33
-	var value_34 float32 = bounds.X
-	var value_35 int32 = padding_x
-	var value_36 float32 = float32(value_35)
-	var value_37 float32 = value_34 + value_36
-	paint.ClipBounds.X = value_37
-	var value_38 float32 = bounds.Y
-	var value_39 int32 = padding_y
-	var value_40 float32 = float32(value_39)
-	var value_41 float32 = value_38 + value_40
-	paint.ClipBounds.Y = value_41
-	var value_42 float32 = bounds.Width
-	var value_43 int32 = padding_x
-	var value_44 int32 = 2
-	var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 3))
-	var value_46 float32 = float32(value_45)
-	var value_47 float32 = value_42 - value_46
-	paint.ClipBounds.Width = value_47
-	var value_48 float32 = bounds.Height
-	var value_49 int32 = padding_y
-	var value_50 int32 = 2
-	var value_51 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 3))
-	var value_52 float32 = float32(value_51)
-	var value_53 float32 = value_48 - value_52
-	paint.ClipBounds.Height = value_53
-	var value_54 float32 = paint.ClipBounds.Width
-	var value_55 float32 = 0.0
-	var value_56 bool = value_54 < value_55
-	if value_56 {
-		var value_57 float32 = 0.0
-		paint.ClipBounds.Width = value_57
-	}
-	var value_58 float32 = paint.ClipBounds.Height
-	var value_59 float32 = 0.0
-	var value_60 bool = value_58 < value_59
-	if value_60 {
-		var value_61 float32 = 0.0
-		paint.ClipBounds.Height = value_61
-	}
-	var value_62 float32 = bounds.X
-	var value_63 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_62), 32, true)), uint64(0), 32, true, 0))
-	var value_64 int32 = padding_x
-	var value_65 int32 = int32(number_runtime_bits(uint64(value_63), uint64(value_64), 32, true, 1))
-	paint.PlaceholderX = value_65
-	var value_66 float32 = bounds.Y
-	var value_67 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_66), 32, true)), uint64(0), 32, true, 0))
-	var value_68 int32 = padding_y
-	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 1))
-	var value_70 int32 = line_height
-	var value_71 int32 = text_line_height
-	var value_72 int32 = int32(number_runtime_bits(uint64(value_70), uint64(value_71), 32, true, 2))
-	var value_73 int32 = 2
-	var value_74 int32 = int32(number_runtime_bits(uint64(value_72), uint64(value_73), 32, true, 4))
-	var value_75 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_74), 32, true, 1))
-	paint.PlaceholderY = value_75
-	var value_76 TextAreaPaint = paint
-	return value_76
+	var value_53 float32 = bounds.X
+	var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
+	var value_55 int32 = padding_x
+	var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 1))
+	paint.PlaceholderX = value_56
+	var value_57 float32 = bounds.Y
+	var value_58 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_57), 32, true)), uint64(0), 32, true, 0))
+	var value_59 int32 = padding_y
+	var value_60 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_59), 32, true, 1))
+	var value_61 int32 = line_height
+	var value_62 int32 = text_line_height
+	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 2))
+	var value_64 int32 = 2
+	var value_65 int32 = int32(number_runtime_bits(uint64(value_63), uint64(value_64), 32, true, 4))
+	var value_66 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_65), 32, true, 1))
+	paint.PlaceholderY = value_66
+	var value_67 TextAreaPaint = paint
+	return value_67
 }
 
 func TextInput_TextInputBufferLimit(text_size int32, max_codepoints int32) int32 {
@@ -977,6 +2417,80 @@ func TextInput_TextSelectionRangeFor(anchor int32, cursor int32) TextSelectionRa
 	return value_10
 }
 
+func TextInput_TextSelectionRangeForLength(anchor int32, cursor int32, length int32) TextSelectionRange {
+	var value_0 int32 = anchor
+	var value_1 int32 = cursor
+	var value_2 TextSelectionRange = TextInput_TextSelectionRangeFor(value_0, value_1)
+	var out TextSelectionRange = value_2
+	var value_3 int32 = length
+	var value_4 int32 = 0
+	var value_5 bool = value_3 < value_4
+	if value_5 {
+		var value_6 int32 = 0
+		length = value_6
+	}
+	var value_7 int32 = out.Start
+	var value_8 int32 = 0
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 int32 = 0
+		out.Start = value_10
+	}
+	var value_11 int32 = out.End
+	var value_12 int32 = 0
+	var value_13 bool = value_11 < value_12
+	if value_13 {
+		var value_14 int32 = 0
+		out.End = value_14
+	}
+	var value_15 int32 = out.Start
+	var value_16 int32 = length
+	var value_17 bool = value_15 > value_16
+	if value_17 {
+		var value_18 int32 = length
+		out.Start = value_18
+	}
+	var value_19 int32 = out.End
+	var value_20 int32 = length
+	var value_21 bool = value_19 > value_20
+	if value_21 {
+		var value_22 int32 = length
+		out.End = value_22
+	}
+	var value_23 int32 = out.Start
+	var value_24 int32 = out.End
+	var value_25 bool = value_23 != value_24
+	out.HasSelection = value_25
+	var value_26 TextSelectionRange = out
+	return value_26
+}
+
+func TextInput_TextCursorForLength(cursor int32, length int32) int32 {
+	var value_0 int32 = length
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		length = value_3
+	}
+	var value_4 int32 = cursor
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = cursor
+	var value_9 int32 = length
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = length
+		return value_11
+	}
+	var value_12 int32 = cursor
+	return value_12
+}
+
 func TextInput_TextSelectionAfterMove(anchor int32, cursor int32, target int32, extend bool) TextSelectionState {
 	var out TextSelectionState = TextSelectionState{}
 	var value_0 bool = extend
@@ -1038,6 +2552,367 @@ func TextInput_TextSelectionAll(length int32) TextSelectionState {
 	out.HasSelection = value_8
 	var value_9 TextSelectionState = out
 	return value_9
+}
+
+func TextInput_TextBufferLineStartCursor(cursor int32) int32 {
+	var value_0 int32 = cursor
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = cursor
+	return value_4
+}
+
+func TextInput_TextBufferInsertDecisionFor(text_size int32, used int32, at int32, insert_len int32) TextBufferInsertDecision {
+	var decision TextBufferInsertDecision = TextBufferInsertDecision{}
+	var value_0 int32 = text_size
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = used
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = at
+		var value_9 int32 = 0
+		var value_10 bool = value_8 < value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 int32 = at
+		var value_13 int32 = used
+		var value_14 bool = value_12 > value_13
+		value_11 = value_14
+	}
+	var value_15 bool = value_11
+	if !value_15 {
+		var value_16 int32 = insert_len
+		var value_17 int32 = 0
+		var value_18 bool = value_16 <= value_17
+		value_15 = value_18
+	}
+	if value_15 {
+		var value_19 TextBufferInsertDecision = decision
+		return value_19
+	}
+	var value_20 int32 = used
+	var value_21 int32 = insert_len
+	var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
+	var value_23 int32 = text_size
+	var value_24 bool = value_22 >= value_23
+	if value_24 {
+		var value_25 TextBufferInsertDecision = decision
+		return value_25
+	}
+	var value_26 bool = true
+	decision.CanInsert = value_26
+	var value_27 int32 = used
+	var value_28 int32 = at
+	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
+	var value_30 int32 = 1
+	var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
+	decision.TailCount = value_31
+	var value_32 TextBufferInsertDecision = decision
+	return value_32
+}
+
+func TextInput_TextBufferDeleteDecisionFor(used int32, at int32, delete_len int32) TextBufferDeleteDecision {
+	var decision TextBufferDeleteDecision = TextBufferDeleteDecision{}
+	var value_0 int32 = used
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = at
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = delete_len
+		var value_9 int32 = 0
+		var value_10 bool = value_8 <= value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 int32 = at
+		var value_13 int32 = delete_len
+		var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+		var value_15 int32 = used
+		var value_16 bool = value_14 > value_15
+		value_11 = value_16
+	}
+	if value_11 {
+		var value_17 TextBufferDeleteDecision = decision
+		return value_17
+	}
+	var value_18 bool = true
+	decision.CanDelete = value_18
+	var value_19 int32 = used
+	var value_20 int32 = at
+	var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 2))
+	var value_22 int32 = delete_len
+	var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
+	var value_24 int32 = 1
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
+	decision.TailCount = value_25
+	var value_26 TextBufferDeleteDecision = decision
+	return value_26
+}
+
+func TextInput_TextBufferDeleteRangeDecisionFor(used int32, start int32, end int32) TextBufferDeleteRangeDecision {
+	var decision TextBufferDeleteRangeDecision = TextBufferDeleteRangeDecision{}
+	var value_0 int32 = used
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 TextBufferDeleteRangeDecision = decision
+		return value_3
+	}
+	var value_4 int32 = start
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		start = value_7
+	}
+	var value_8 int32 = end
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		end = value_11
+	}
+	var value_12 int32 = start
+	var value_13 int32 = used
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 int32 = used
+		start = value_15
+	}
+	var value_16 int32 = end
+	var value_17 int32 = used
+	var value_18 bool = value_16 > value_17
+	if value_18 {
+		var value_19 int32 = used
+		end = value_19
+	}
+	var value_20 int32 = end
+	var value_21 int32 = start
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 TextBufferDeleteRangeDecision = decision
+		return value_23
+	}
+	var value_24 bool = true
+	decision.CanDelete = value_24
+	var value_25 int32 = start
+	decision.Start = value_25
+	var value_26 int32 = end
+	decision.End = value_26
+	var value_27 int32 = start
+	decision.Cursor = value_27
+	var value_28 int32 = used
+	var value_29 int32 = end
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 2))
+	var value_31 int32 = 1
+	var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 1))
+	decision.TailCount = value_32
+	var value_33 TextBufferDeleteRangeDecision = decision
+	return value_33
+}
+
+func TextInput_TextBufferCursorAfterInsert(cursor int32, at int32, insert_len int32) int32 {
+	var value_0 int32 = cursor
+	var value_1 int32 = at
+	var value_2 bool = value_0 >= value_1
+	if value_2 {
+		var value_3 int32 = cursor
+		var value_4 int32 = insert_len
+		var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 1))
+		return value_5
+	}
+	var value_6 int32 = cursor
+	return value_6
+}
+
+func TextInput_TextBufferCursorAfterDelete(cursor int32, at int32, delete_len int32) int32 {
+	var value_0 int32 = cursor
+	var value_1 int32 = at
+	var value_2 int32 = delete_len
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 1))
+	var value_4 bool = value_0 >= value_3
+	if value_4 {
+		var value_5 int32 = cursor
+		var value_6 int32 = delete_len
+		var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 2))
+		return value_7
+	}
+	var value_8 int32 = cursor
+	var value_9 int32 = at
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = at
+		return value_11
+	}
+	var value_12 int32 = cursor
+	return value_12
+}
+
+func TextInput_TextBufferBracketCursorFor(cursor int32, length int32) int32 {
+	var value_0 int32 = length
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = cursor
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = cursor
+	var value_9 int32 = length
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = length
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		return value_13
+	}
+	var value_14 int32 = cursor
+	return value_14
+}
+
+func TextInput_TextBufferBracketCandidatePos(cursor int32, current_is_bracket bool) int32 {
+	var value_0 int32 = cursor
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = current_is_bracket
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	if value_3 {
+		var value_6 int32 = cursor
+		var value_7 int32 = 1
+		var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
+		return value_8
+	}
+	var value_9 int32 = cursor
+	return value_9
+}
+
+func TextInput_TextBufferBracketDecisionFor(pos int32, bracket_code int32) TextBufferBracketDecision {
+	var decision TextBufferBracketDecision = TextBufferBracketDecision{}
+	var value_0 int32 = pos
+	decision.Pos = value_0
+	var value_1 int32 = bracket_code
+	var value_2 int32 = 40
+	var value_3 bool = value_1 == value_2
+	if value_3 {
+		var value_4 bool = true
+		decision.Valid = value_4
+		var value_5 int32 = 40
+		decision.Open = value_5
+		var value_6 int32 = 41
+		decision.Close = value_6
+		var value_7 int32 = 1
+		decision.Direction = value_7
+		var value_8 TextBufferBracketDecision = decision
+		return value_8
+	}
+	var value_9 int32 = bracket_code
+	var value_10 int32 = 91
+	var value_11 bool = value_9 == value_10
+	if value_11 {
+		var value_12 bool = true
+		decision.Valid = value_12
+		var value_13 int32 = 91
+		decision.Open = value_13
+		var value_14 int32 = 93
+		decision.Close = value_14
+		var value_15 int32 = 1
+		decision.Direction = value_15
+		var value_16 TextBufferBracketDecision = decision
+		return value_16
+	}
+	var value_17 int32 = bracket_code
+	var value_18 int32 = 123
+	var value_19 bool = value_17 == value_18
+	if value_19 {
+		var value_20 bool = true
+		decision.Valid = value_20
+		var value_21 int32 = 123
+		decision.Open = value_21
+		var value_22 int32 = 125
+		decision.Close = value_22
+		var value_23 int32 = 1
+		decision.Direction = value_23
+		var value_24 TextBufferBracketDecision = decision
+		return value_24
+	}
+	var value_25 int32 = bracket_code
+	var value_26 int32 = 41
+	var value_27 bool = value_25 == value_26
+	if value_27 {
+		var value_28 bool = true
+		decision.Valid = value_28
+		var value_29 int32 = 40
+		decision.Open = value_29
+		var value_30 int32 = 41
+		decision.Close = value_30
+		var value_31 int32 = -1
+		decision.Direction = value_31
+		var value_32 TextBufferBracketDecision = decision
+		return value_32
+	}
+	var value_33 int32 = bracket_code
+	var value_34 int32 = 93
+	var value_35 bool = value_33 == value_34
+	if value_35 {
+		var value_36 bool = true
+		decision.Valid = value_36
+		var value_37 int32 = 91
+		decision.Open = value_37
+		var value_38 int32 = 93
+		decision.Close = value_38
+		var value_39 int32 = -1
+		decision.Direction = value_39
+		var value_40 TextBufferBracketDecision = decision
+		return value_40
+	}
+	var value_41 int32 = bracket_code
+	var value_42 int32 = 125
+	var value_43 bool = value_41 == value_42
+	if value_43 {
+		var value_44 bool = true
+		decision.Valid = value_44
+		var value_45 int32 = 123
+		decision.Open = value_45
+		var value_46 int32 = 125
+		decision.Close = value_46
+		var value_47 int32 = -1
+		decision.Direction = value_47
+		var value_48 TextBufferBracketDecision = decision
+		return value_48
+	}
+	var value_49 TextBufferBracketDecision = decision
+	return value_49
 }
 
 func TextInput_TextNavigationDecisionFor(key int32, multiline bool, shift bool, modifier bool, secure bool, has_selection bool) TextNavigationDecision {

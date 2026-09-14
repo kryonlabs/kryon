@@ -292,3 +292,88 @@ func Paragraph_ParagraphLineStride(drawn_line_height int32, line_gap int32) int3
 	var value_7 int32 = stride
 	return value_7
 }
+
+func Paragraph_ParagraphLineIndexFor(mouse_y float32, bounds_y float32, line_stride int32, line_count int32) int32 {
+	var value_0 int32 = line_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = line_stride
+	var value_5 int32 = 1
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 1
+		line_stride = value_7
+	}
+	var value_8 float32 = mouse_y
+	var value_9 float32 = bounds_y
+	var value_10 float32 = value_8 - value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var value_12 int32 = line_stride
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 4))
+	var index int32 = value_13
+	var value_14 int32 = index
+	var value_15 int32 = 0
+	var value_16 bool = value_14 < value_15
+	if value_16 {
+		var value_17 int32 = 0
+		return value_17
+	}
+	var value_18 int32 = index
+	var value_19 int32 = line_count
+	var value_20 bool = value_18 >= value_19
+	if value_20 {
+		var value_21 int32 = line_count
+		var value_22 int32 = 1
+		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 2))
+		return value_23
+	}
+	var value_24 int32 = index
+	return value_24
+}
+
+func Paragraph_ParagraphSelectionLocalOffsetFor(mouse_y float32, bounds_y float32, block_height int32, line_length int32, measured_offset int32) int32 {
+	var value_0 int32 = line_length
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		line_length = value_3
+	}
+	var value_4 float32 = mouse_y
+	var value_5 float32 = bounds_y
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 float32 = mouse_y
+	var value_9 float32 = bounds_y
+	var value_10 int32 = block_height
+	var value_11 float32 = float32(value_10)
+	var value_12 float32 = value_9 + value_11
+	var value_13 bool = value_8 > value_12
+	if value_13 {
+		var value_14 int32 = line_length
+		return value_14
+	}
+	var value_15 int32 = measured_offset
+	var value_16 int32 = 0
+	var value_17 bool = value_15 < value_16
+	if value_17 {
+		var value_18 int32 = 0
+		return value_18
+	}
+	var value_19 int32 = measured_offset
+	var value_20 int32 = line_length
+	var value_21 bool = value_19 > value_20
+	if value_21 {
+		var value_22 int32 = line_length
+		return value_22
+	}
+	var value_23 int32 = measured_offset
+	return value_23
+}

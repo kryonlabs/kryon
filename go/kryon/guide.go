@@ -60,6 +60,12 @@ type GuidePolicy struct {
 	Finished bool
 }
 
+type GuideInput struct {
+	PreviousRequested bool
+	NextRequested     bool
+	CloseRequested    bool
+}
+
 func Guide_GuideClampi(value int32, minimum int32, maximum int32) int32 {
 	var value_0 int32 = value
 	var value_1 int32 = minimum
@@ -370,6 +376,28 @@ func Guide_GuidePolicyFor(step int32, count int32, previous bool, next bool, clo
 	}
 	var value_27 GuidePolicy = policy
 	return value_27
+}
+
+func Guide_GuideInputFor(left_pressed bool, right_pressed bool, enter_pressed bool, back_pressed bool, escape_pressed bool) GuideInput {
+	var input GuideInput = GuideInput{}
+	var value_0 bool = left_pressed
+	input.PreviousRequested = value_0
+	var value_1 bool = right_pressed
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = enter_pressed
+		value_2 = value_3
+	}
+	input.NextRequested = value_2
+	var value_4 bool = back_pressed
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 bool = escape_pressed
+		value_5 = value_6
+	}
+	input.CloseRequested = value_5
+	var value_7 GuideInput = input
+	return value_7
 }
 
 func Guide_GuideTipWidth(view_width int32, max_width int32, metrics GuideMetrics) int32 {

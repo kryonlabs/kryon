@@ -26,6 +26,14 @@ static char instance_receiver[KIR_NAME_MAX];
 static char current_guard[K2GO_NAME_MAX];
 static char state_receiver[KIR_NAME_MAX] = "st";
 
+typedef struct {
+    char kry[K2GO_NAME_MAX];
+    char go[K2GO_NAME_MAX];
+} K2goLocalName;
+
+static K2goLocalName k2go_locals[256];
+static int k2go_local_count;
+
 /* ---------------------------------------------------------------- helpers */
 
 static void
@@ -64,6 +72,61 @@ go_string(FILE *f, const char *s)
             fputc(*p, f);
     }
     fputc('"', f);
+}
+
+static int
+k2go_go_keyword(const char *name)
+{
+    static const char *const words[] = {
+        "break", "default", "func", "interface", "select",
+        "case", "defer", "go", "map", "struct",
+        "chan", "else", "goto", "package", "switch",
+        "const", "fallthrough", "if", "range", "type",
+        "continue", "for", "import", "return", "var", NULL
+    };
+
+    for(int i = 0; words[i] != NULL; i++)
+        if(strcmp(name, words[i]) == 0)
+            return 1;
+    return 0;
+}
+
+static void
+k2go_go_local_ident(const char *name, char *dst, size_t dst_size)
+{
+    if(k2go_go_keyword(name))
+        snprintf(dst, dst_size, "%s_", name);
+    else
+        snprintf(dst, dst_size, "%s", name);
+}
+
+static const char *
+k2go_local_name_for(const char *name)
+{
+    for(int i = k2go_local_count - 1; i >= 0; i--)
+        if(strcmp(k2go_locals[i].kry, name) == 0)
+            return k2go_locals[i].go;
+    return NULL;
+}
+
+static void
+k2go_register_local_name(const char *name)
+{
+    char mapped[K2GO_NAME_MAX];
+
+    if(name == NULL || name[0] == '\0')
+        return;
+    for(int i = 0; i < k2go_local_count; i++)
+        if(strcmp(k2go_locals[i].kry, name) == 0)
+            return;
+    k2go_go_local_ident(name, mapped, sizeof(mapped));
+    if(strcmp(mapped, name) == 0 || k2go_local_count >= 256)
+        return;
+    snprintf(k2go_locals[k2go_local_count].kry,
+             sizeof(k2go_locals[k2go_local_count].kry), "%s", name);
+    snprintf(k2go_locals[k2go_local_count].go,
+             sizeof(k2go_locals[k2go_local_count].go), "%s", mapped);
+    k2go_local_count++;
 }
 
 /* stem of "path/app.kry" -> "app": Go output is flat (one package per
@@ -2344,10 +2407,20 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             }
             /* plain identifier: verbatim */
             if(dn + il + 1 < dst_size) {
+                const char *local = k2go_local_name_for(ident);
+
                 if(addr && dn + 1 < dst_size)
                     dst[dn++] = '&';
-                memcpy(dst + dn, ident, il);
-                dn += il;
+                if(local != NULL) {
+                    size_t ll = strlen(local);
+                    if(dn + ll + 1 < dst_size) {
+                        memcpy(dst + dn, local, ll);
+                        dn += ll;
+                    }
+                } else {
+                    memcpy(dst + dn, ident, il);
+                    dn += il;
+                }
             }
             p = q;
             continue;
@@ -2582,8 +2655,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     char ret[K2GO_NAME_MAX];
     int indent = 1;
     int saved_array_count = k2go_array_count;
+    int saved_local_count = k2go_local_count;
 
     instance_receiver[0] = '\0';
+    k2go_local_count = 0;
     snprintf(current_guard, sizeof(current_guard), "%s", guard);
     if(runtime_output && fn->uses_host) {
         int collision;
@@ -2624,6 +2699,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 memcpy(aname, parts[i], al);
                 aname[al] = '\0';
                 snprintf(atype, sizeof(atype), "%s", colon + 1);
+                k2go_register_local_name(aname);
+                {
+                    char mapped[K2GO_NAME_MAX];
+                    k2go_go_local_ident(aname, mapped, sizeof(mapped));
+                    snprintf(aname, sizeof(aname), "%s", mapped);
+                }
                 if(!go_type(atype, gt, sizeof(gt)))
                     snprintf(gt, sizeof(gt), "/* TODO %s */ any", atype);
                 fprintf(f, "%s%s %s", emitted ? ", " : "", aname, gt);
@@ -2637,7 +2718,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     }
     if(KirEmitBody(f,m,fn,KIR_GO,resolve_body_symbol,(void *)m, instance_receiver,
                    runtime_output ? "number_runtime" : NULL)) {
-        fprintf(f,"}\n\n"); k2go_array_count=saved_array_count; return;
+        fprintf(f,"}\n\n");
+        k2go_array_count=saved_array_count;
+        k2go_local_count=saved_local_count;
+        return;
     }
     k2go_register_arrays_args(fn->args);
     for(int j = 0; j < fn->stmt_count; j++) {
@@ -2827,6 +2911,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     al--;
                 memcpy(aname, rw, al);
                 aname[al] = '\0';
+                k2go_register_local_name(aname);
+                {
+                    char mapped[K2GO_NAME_MAX];
+                    k2go_go_local_ident(aname, mapped, sizeof(mapped));
+                    snprintf(aname, sizeof(aname), "%s", mapped);
+                }
                 assign = strstr(colon, "= ");
                 /* the declared type ends where the initializer begins */
                 snprintf(tbuf, sizeof(tbuf), "%s", colon + 1);
@@ -2939,6 +3029,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     }
     fprintf(f, "}\n\n");
     k2go_array_count = saved_array_count;
+    k2go_local_count = saved_local_count;
 }
 
 static int

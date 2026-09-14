@@ -415,6 +415,16 @@ func TreeView_TreeViewTextPaintFor(marker Rectangle, text Rectangle, text_line_h
 	return value_22
 }
 
+func TreeView_TreeViewMarkerText(expanded bool) string {
+	var value_0 bool = expanded
+	if value_0 {
+		var value_1 string = "v"
+		return value_1
+	}
+	var value_2 string = ">"
+	return value_2
+}
+
 func TreeView_TreeViewRowDecisionFor(hot bool, released bool, selectable bool, has_selection bool, item_id int32) TreeViewRowDecision {
 	var decision TreeViewRowDecision = TreeViewRowDecision{}
 	var value_0 int32 = item_id
