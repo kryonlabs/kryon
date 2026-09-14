@@ -41,6 +41,63 @@ func Focus_FocusMetric(fields uint32, field uint32, value float32, fallback floa
 	return value_14
 }
 
+func Focus_FocusStrokeWidthFor(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
+func Focus_FocusDefaultOutlineBounds(bounds Rectangle, scale float32) Rectangle {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var pad int32 = value_7
+	var out Rectangle = Rectangle{}
+	var value_8 float32 = bounds.X
+	var value_9 int32 = pad
+	var value_10 float32 = float32(value_9)
+	var value_11 float32 = value_8 - value_10
+	out.X = value_11
+	var value_12 float32 = bounds.Y
+	var value_13 int32 = pad
+	var value_14 float32 = float32(value_13)
+	var value_15 float32 = value_12 - value_14
+	out.Y = value_15
+	var value_16 float32 = bounds.Width
+	var value_17 int32 = pad
+	var value_18 int32 = 2
+	var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 3))
+	var value_20 float32 = float32(value_19)
+	var value_21 float32 = value_16 + value_20
+	out.Width = value_21
+	var value_22 float32 = bounds.Height
+	var value_23 int32 = pad
+	var value_24 int32 = 2
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 3))
+	var value_26 float32 = float32(value_25)
+	var value_27 float32 = value_22 + value_26
+	out.Height = value_27
+	var value_28 Rectangle = out
+	return value_28
+}
+
 func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) FocusPaint {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

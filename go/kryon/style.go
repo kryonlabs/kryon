@@ -16,6 +16,11 @@ type InteractionState struct {
 	Focused bool
 }
 
+type StyleShinePaint struct {
+	Bounds  Rectangle
+	Visible bool
+}
+
 type StyleData struct {
 	Fields        uint32
 	Background    uint32
@@ -541,6 +546,120 @@ func Style_CenterChild(declared Rectangle, measured Rectangle, content Rectangle
 	measured.Y = value_29
 	var value_30 Rectangle = measured
 	return value_30
+}
+
+func Style_StyleShinePaintFor(bounds Rectangle, radius float32, shine_alpha int32, scale float32) StyleShinePaint {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var inset int32 = value_7
+	var value_8 float32 = 1.0
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var y_offset int32 = value_11
+	var value_12 float32 = 3.0
+	var value_13 float32 = scale
+	var value_14 float32 = value_12 * value_13
+	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
+	var height int32 = value_15
+	var paint StyleShinePaint = StyleShinePaint{}
+	var value_16 int32 = shine_alpha
+	var value_17 int32 = 0
+	var value_18 bool = value_16 <= value_17
+	var value_19 bool = value_18
+	if !value_19 {
+		var value_20 float32 = radius
+		var value_21 float32 = 0.45
+		var value_22 bool = value_20 >= value_21
+		value_19 = value_22
+	}
+	if value_19 {
+		var value_23 StyleShinePaint = paint
+		return value_23
+	}
+	var value_24 float32 = bounds.Width
+	var value_25 int32 = inset
+	var value_26 int32 = 2
+	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 3))
+	var value_28 float32 = float32(value_27)
+	var value_29 bool = value_24 <= value_28
+	var value_30 bool = value_29
+	if !value_30 {
+		var value_31 float32 = bounds.Height
+		var value_32 int32 = height
+		var value_33 int32 = inset
+		var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 1))
+		var value_35 float32 = float32(value_34)
+		var value_36 bool = value_31 <= value_35
+		value_30 = value_36
+	}
+	if value_30 {
+		var value_37 StyleShinePaint = paint
+		return value_37
+	}
+	var value_38 float32 = bounds.X
+	var value_39 int32 = inset
+	var value_40 float32 = float32(value_39)
+	var value_41 float32 = value_38 + value_40
+	paint.Bounds.X = value_41
+	var value_42 float32 = bounds.Y
+	var value_43 int32 = y_offset
+	var value_44 float32 = float32(value_43)
+	var value_45 float32 = value_42 + value_44
+	paint.Bounds.Y = value_45
+	var value_46 float32 = bounds.Width
+	var value_47 int32 = inset
+	var value_48 int32 = 2
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 3))
+	var value_50 float32 = float32(value_49)
+	var value_51 float32 = value_46 - value_50
+	paint.Bounds.Width = value_51
+	var value_52 int32 = height
+	var value_53 float32 = float32(value_52)
+	paint.Bounds.Height = value_53
+	var value_54 bool = true
+	paint.Visible = value_54
+	var value_55 StyleShinePaint = paint
+	return value_55
+}
+
+func Style_StyleRippleRadius(radius float32, max_radius float32, scale float32) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 8.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var min_radius float32 = value_6
+	var value_7 float32 = radius
+	var value_8 float32 = min_radius
+	var value_9 bool = value_7 < value_8
+	if value_9 {
+		var value_10 float32 = min_radius
+		radius = value_10
+	}
+	var value_11 float32 = radius
+	var value_12 float32 = max_radius
+	var value_13 bool = value_11 > value_12
+	if value_13 {
+		var value_14 float32 = max_radius
+		radius = value_14
+	}
+	var value_15 float32 = radius
+	return value_15
 }
 
 func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleData {

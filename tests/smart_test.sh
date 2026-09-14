@@ -51,6 +51,7 @@ needs_guide=0
 needs_guide_pager=0
 needs_scroll=0
 needs_focus=0
+needs_terminal_pane=0
 needs_surface=0
 needs_style=0
 needs_style_sheet=0
@@ -130,6 +131,13 @@ while IFS= read -r path; do
     case "$path" in
         runtime/focus.kry|src/ui/ui.c|src/ui/ui_tree.c|go/kryon/focus.go|tests/focus_policy_test.c|include/ui_tree.h)
             needs_focus=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/terminal_pane.kry|src/ui/terminal_pane.c|tests/terminal_pane_policy_test.c|include/terminal_pane.h)
+            needs_terminal_pane=1
             interesting=1
             ;;
     esac
@@ -544,6 +552,9 @@ if [ "$needs_scroll" -eq 1 ]; then
 fi
 if [ "$needs_focus" -eq 1 ]; then
     targets="$targets focus-policy-test"
+fi
+if [ "$needs_terminal_pane" -eq 1 ]; then
+    targets="$targets terminal-pane-policy-test"
 fi
 if [ "$needs_link" -eq 1 ]; then
     targets="$targets link-policy-test"

@@ -101,6 +101,31 @@ func Layout_PageSidePaddingFor(view_width int32) int32 {
 	return value_6
 }
 
+func Layout_DesktopWidthThresholdFor(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 500.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 float32 = 0.5
+	var value_8 float32 = value_6 + value_7
+	var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
+	return value_9
+}
+
+func Layout_IsDesktopWidth(view_width int32, scale float32) bool {
+	var value_0 int32 = view_width
+	var value_1 float32 = scale
+	var value_2 int32 = Layout_DesktopWidthThresholdFor(value_1)
+	var value_3 bool = value_0 >= value_2
+	return value_3
+}
+
 func Layout_LayoutMetricsFor(bounds Rectangle, gap int32, padding int32) LayoutMetrics {
 	var metrics LayoutMetrics = LayoutMetrics{}
 	var value_0 int32 = gap

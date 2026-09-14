@@ -6,7 +6,15 @@
 #include "ui_scaling.h"
 #include "ui_style_internal.h"
 
+#include "runtime/terminal_pane.h"
+
 #include <stdio.h>
+
+static float
+terminal_pane_runtime_scale(void)
+{
+    return (float)Scale(1000) / 1000.0f;
+}
 
 static int
 pane_color_visible(Color color)
@@ -103,15 +111,16 @@ TerminalPaneMetrics
 MeasureTerminalPaneContent(Rectangle content, int font_size)
 {
     TerminalPaneMetrics metrics = {0};
+    TerminalPaneMetricsPolicy policy;
     int font;
 
-    font = font_size > 0 ? font_size : Scale(13);
+    policy = TerminalPaneMetricsPolicyFor(terminal_pane_runtime_scale());
+    font = TerminalPaneFontSizeFor(font_size, policy);
     metrics.cell_width = TextWidth("M", font);
     if(metrics.cell_width < 6)
         metrics.cell_width = font * 6 / 10;
-    metrics.line_height = TextLineHeight(font);
-    if(metrics.line_height < font + 2)
-        metrics.line_height = font + Scale(2);
+    metrics.line_height = TerminalPaneLineHeightFor(TextLineHeight(font),
+                                                    font, policy);
     metrics.content = content;
     if(metrics.content.width < 0)
         metrics.content.width = 0;
@@ -119,34 +128,21 @@ MeasureTerminalPaneContent(Rectangle content, int font_size)
         metrics.content.height = 0;
     metrics.cols = metrics.cell_width > 0 ? (int)(metrics.content.width / metrics.cell_width) : 0;
     metrics.rows = metrics.line_height > 0 ? (int)(metrics.content.height / metrics.line_height) : 0;
-    if(metrics.cols < 8)
-        metrics.cols = 8;
-    if(metrics.rows < 4)
-        metrics.rows = 4;
-    if(metrics.cols > TERMINAL_MAX_COLS)
-        metrics.cols = TERMINAL_MAX_COLS;
-    if(metrics.rows > TERMINAL_MAX_ROWS)
-        metrics.rows = TERMINAL_MAX_ROWS;
+    metrics.cols = TerminalPaneClampCols(metrics.cols, TERMINAL_MAX_COLS,
+                                         policy);
+    metrics.rows = TerminalPaneClampRows(metrics.rows, TERMINAL_MAX_ROWS,
+                                         policy);
     return metrics;
 }
 
 Rectangle
 TerminalPaneContentBounds(Rectangle bounds, int top_inset, int padding)
 {
-    int top = top_inset > 0 ? top_inset : 0;
-    int pad = padding >= 0 ? padding : Scale(6);
-    Rectangle content = {
-        bounds.x + (float)pad,
-        bounds.y + (float)(top + pad),
-        bounds.width - (float)(pad * 2),
-        bounds.height - (float)(top + pad * 2)
-    };
-
-    if(content.width < 0)
-        content.width = 0;
-    if(content.height < 0)
-        content.height = 0;
-    return content;
+    TerminalPaneMetricsPolicy policy =
+        TerminalPaneMetricsPolicyFor(terminal_pane_runtime_scale());
+    return TerminalPaneContentBoundsFor(bounds, top_inset,
+                                        TerminalPanePaddingFor(padding,
+                                                               policy));
 }
 
 TerminalPaneMetrics
@@ -172,6 +168,7 @@ Rectangle
 MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
 {
     char label[64];
+    TerminalPaneScrollIndicatorMetrics metrics;
     int font;
     int label_w;
     Rectangle badge = {0};
@@ -180,18 +177,12 @@ MeasureTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
        FormatTerminalPaneScrollIndicatorLabel(label, (int)sizeof(label),
                                               indicator.scroll_offset) <= 0)
         return badge;
-    font = indicator.font_size > 0 ? indicator.font_size : Scale(13);
+    metrics = TerminalPaneScrollIndicatorMetricsFor(
+        terminal_pane_runtime_scale());
+    font = indicator.font_size > 0 ? indicator.font_size : metrics.font_size;
     label_w = TextWidth(label, font);
-    badge.x = indicator.viewport.x + indicator.viewport.width -
-              (float)label_w - (float)Scale(16);
-    badge.y = indicator.viewport.y + (float)Scale(6);
-    badge.width = (float)label_w + (float)Scale(10);
-    badge.height = (float)Scale(22);
-    if(badge.x < indicator.viewport.x)
-        badge.x = indicator.viewport.x;
-    if(badge.width > indicator.viewport.width)
-        badge.width = indicator.viewport.width;
-    return badge;
+    return TerminalPaneScrollIndicatorBoundsFor(indicator.viewport, label_w,
+                                                metrics);
 }
 
 Rectangle
@@ -200,6 +191,7 @@ DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
     TerminalPaneColors colors;
     Rectangle badge;
     char label[64];
+    TerminalPaneScrollIndicatorMetrics metrics;
     int font;
 
     badge = MeasureTerminalPaneScrollIndicator(indicator);
@@ -208,12 +200,14 @@ DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
                                               indicator.scroll_offset) <= 0)
         return badge;
     colors = ResolveTerminalPaneThemeColors(indicator.colors);
-    font = indicator.font_size > 0 ? indicator.font_size : Scale(13);
+    metrics = TerminalPaneScrollIndicatorMetricsFor(
+        terminal_pane_runtime_scale());
+    font = indicator.font_size > 0 ? indicator.font_size : metrics.font_size;
     DrawRectangleRec(badge, colors.scroll_indicator);
     DrawRectangleLines((int)badge.x, (int)badge.y, (int)badge.width,
                        (int)badge.height, colors.border);
-    RenderText(label, (int)badge.x + Scale(5),
-               (int)badge.y + Scale(4), font,
+    RenderText(label, (int)badge.x + metrics.text_x,
+               (int)badge.y + metrics.text_y, font,
                colors.scroll_indicator_text);
     return badge;
 }
@@ -285,6 +279,7 @@ DrawTerminalPane(TerminalPane pane)
     int font;
     int row;
     int cursor_on;
+    TerminalPaneMetricsPolicy policy;
 
     metrics = MeasureTerminalPane(pane.bounds, pane.font_size, pane.padding);
     result.focused = pane.focused;
@@ -296,7 +291,8 @@ DrawTerminalPane(TerminalPane pane)
     text = pane_color(pane.colors.text, theme.text);
     cursor = pane_color(pane.colors.cursor, theme.cursor);
     border = pane_color(pane.colors.border, theme.border);
-    font = pane.font_size > 0 ? pane.font_size : Scale(13);
+    policy = TerminalPaneMetricsPolicyFor(terminal_pane_runtime_scale());
+    font = TerminalPaneFontSizeFor(pane.font_size, policy);
 
     DrawRectangleRec(pane.bounds, background);
     DrawRectangleLinesEx(pane.bounds, 1.0f, border);

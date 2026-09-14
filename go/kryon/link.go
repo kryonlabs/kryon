@@ -46,6 +46,26 @@ func Link_LinkBoundsFor(bounds Rectangle, text_width int32, text_height int32, f
 	return value_16
 }
 
+func Link_LinkUnderlineYFor(bounds Rectangle, scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = bounds.Y
+	var value_5 float32 = bounds.Height
+	var value_6 float32 = value_4 + value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var value_8 float32 = 2.0
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_11), 32, true, 2))
+	return value_12
+}
+
 func Link_ResolveLinkAppearance(frame StyleFrame, hovered bool, disabled bool) LinkAppearance {
 	var value_0 int32 = LinkVisualStateLinkStateNormal
 	var state int32 = value_0

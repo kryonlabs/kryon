@@ -2615,7 +2615,9 @@ func (r *runtime) Progress(props ProgressProps) {
 	labelStyle := unpackStyle(labelFrame.Value)
 	font, fontID := styleTextFace(labelStyle, Text14)
 	labelW := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
-	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 1,
+	labelLineHeight := float32(font)
+	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value,
+		labelW, labelLineHeight, 1,
 		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 			false, false, props.ClassName, StyleSheet_StyleKindProgress(), 4),
 		simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,
@@ -2630,7 +2632,7 @@ func (r *runtime) Progress(props ProgressProps) {
 		if paint.Layout.LabelOnFill {
 			textColor = unpackRGBA(paint.FilledLabelColor)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.Layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.Layout.LabelX, Y: paint.Layout.LabelY, Width: labelW, Height: labelLineHeight}, Text: props.Label, Color: textColor, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID})
 	}
 }
 

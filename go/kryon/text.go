@@ -124,6 +124,109 @@ func Text_TextDoubleClickSlopFor(scale float32) int32 {
 	return value_7
 }
 
+func Text_TextControlBaselineSample() string {
+	var value_0 string = "Hg"
+	return value_0
+}
+
+func Text_TextControlClipGuardFor(scale float32) int32 {
+	var value_0 int32 = 1
+	var pad int32 = value_0
+	var value_1 float32 = scale
+	var value_2 float32 = 0.0
+	var value_3 bool = value_1 <= value_2
+	if value_3 {
+		var value_4 float32 = 1.0
+		scale = value_4
+	}
+	var value_5 float32 = 1.0
+	var value_6 float32 = scale
+	var value_7 float32 = value_5 * value_6
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+	pad = value_8
+	var value_9 int32 = pad
+	var value_10 int32 = 1
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = 1
+		pad = value_12
+	}
+	var value_13 int32 = pad
+	return value_13
+}
+
+func Text_TextControlClipBounds(bounds Rectangle, scale float32) Rectangle {
+	var value_0 float32 = scale
+	var value_1 int32 = Text_TextControlClipGuardFor(value_0)
+	var pad int32 = value_1
+	var value_2 Rectangle = bounds
+	var clip Rectangle = value_2
+	var value_3 float32 = clip.Y
+	var value_4 int32 = pad
+	var value_5 float32 = float32(value_4)
+	clip.Y = value_3 - value_5
+	var value_6 float32 = clip.Height
+	var value_7 int32 = pad
+	var value_8 int32 = 2
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 3))
+	var value_10 float32 = float32(value_9)
+	clip.Height = value_6 + value_10
+	var value_11 Rectangle = clip
+	return value_11
+}
+
+func Text_TextSelectionLineEndPaddingFor(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 6.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
+func Text_TextSelectionMinWidthFor(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 4.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
+func Text_TextSelectionHighlightEndX(start_x int32, end_x int32, continues_past_line bool, scale float32) int32 {
+	var value_0 bool = continues_past_line
+	if value_0 {
+		var value_1 int32 = end_x
+		var value_2 float32 = scale
+		var value_3 int32 = Text_TextSelectionLineEndPaddingFor(value_2)
+		end_x = int32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, true, 1))
+	}
+	var value_4 int32 = end_x
+	var value_5 int32 = start_x
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 int32 = start_x
+		var value_8 float32 = scale
+		var value_9 int32 = Text_TextSelectionMinWidthFor(value_8)
+		var value_10 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, true, 1))
+		return value_10
+	}
+	var value_11 int32 = end_x
+	return value_11
+}
+
 func Text_TextAlignmentOffset(available float32, measured float32, alignment int32) float32 {
 	var value_0 int32 = alignment
 	var value_1 int32 = 1

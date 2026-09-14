@@ -63,6 +63,13 @@ func Input_InputDoubleClickSlopFor(scale float32) int32 {
 	return value_2
 }
 
+func Input_InputPointerDragThresholdFor(scale float32) int32 {
+	var value_0 float32 = 5.0
+	var value_1 float32 = scale
+	var value_2 int32 = Input_InputScaledMetric(value_0, value_1)
+	return value_2
+}
+
 func Input_InputCellLayoutFor(bounds Rectangle, count int32, index int32, requested_button_width int32, has_step bool) InputCellLayout {
 	var layout InputCellLayout = InputCellLayout{}
 	var value_0 int32 = count

@@ -49,6 +49,11 @@ type TabBarContentLayout struct {
 	CloseBounds Rectangle
 }
 
+type TabBarCloseLabelPaint struct {
+	X int32
+	Y int32
+}
+
 func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, scale float32) TabBarPaint {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -551,6 +556,32 @@ func TabBar_TabBarContentLayoutFor(tab_bounds Rectangle, label_width int32, has_
 	layout.TextBounds.Height = value_137
 	var value_138 TabBarContentLayout = layout
 	return value_138
+}
+
+func TabBar_TabBarCloseLabelPaintFor(close_bounds Rectangle, label_width int32, label_line_height int32) TabBarCloseLabelPaint {
+	var paint TabBarCloseLabelPaint = TabBarCloseLabelPaint{}
+	var value_0 float32 = close_bounds.X
+	var value_1 float32 = close_bounds.Width
+	var value_2 int32 = label_width
+	var value_3 float32 = float32(value_2)
+	var value_4 float32 = value_1 - value_3
+	var value_5 float32 = 0.5
+	var value_6 float32 = value_4 * value_5
+	var value_7 float32 = value_0 + value_6
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+	paint.X = value_8
+	var value_9 float32 = close_bounds.Y
+	var value_10 float32 = close_bounds.Height
+	var value_11 int32 = label_line_height
+	var value_12 float32 = float32(value_11)
+	var value_13 float32 = value_10 - value_12
+	var value_14 float32 = 0.5
+	var value_15 float32 = value_13 * value_14
+	var value_16 float32 = value_9 + value_15
+	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
+	paint.Y = value_17
+	var value_18 TabBarCloseLabelPaint = paint
+	return value_18
 }
 
 func TabBar_TabBarTotalWidth(tab_width_sum int32, count int32, gap int32) int32 {

@@ -125,6 +125,7 @@ surface review:
 | `runtime/swipe_props.kry` | Swipe support state, data, and result records | `.kry support` |
 | `runtime/tab_bar.kry` | TabBar sizing, scroll, keyboard index, and reorder marker policy | `.kry canonical` |
 | `runtime/tab_bar_props.kry` | TabBar props | `.kry canonical` |
+| `runtime/terminal_pane.kry` | TerminalPane font, content, grid clamp, and scroll indicator metrics policy | `.kry support` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, navigation, selection state, and edit-intent policy | `.kry canonical` |
@@ -164,6 +165,7 @@ text measurement, painting, storage, or platform services.
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/reservation/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout/text-placement policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
+| Terminal | `TerminalPane` font fallback, content bounds, grid clamp, and scroll indicator metrics policy | terminal emulator state, PTY/session IO, ANSI parsing, text measurement, clipboard/selection, input sampling, and drawing remain native terminal host support |
 | Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
 
 The remaining migration target is the native support around text editing and
@@ -583,6 +585,16 @@ No web runtime widget entries are accepted as public compatibility names.
 | `TitleBar` | `.kry canonical` | Layout and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | `.kry canonical` | Navigation runtime, not a visual widget. Routes, state, props, and result live in `runtime/router_props.kry`. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
+
+## Terminal Support
+
+Terminal support is reusable runtime infrastructure, not a general UI widget
+family. Keep app-specific terminal product UX outside Kryon; keep reusable pane
+metrics and protocol support here.
+
+| Public name | Current decision | Notes |
+|---|---|---|
+| `TerminalPane` | `.kry support + native host` | Font fallback, line-height floor, content padding/bounds, grid clamps, and scroll-indicator geometry live in `runtime/terminal_pane.kry`; terminal state, PTY/session IO, ANSI parsing, clipboard/selection, text measurement, input sampling, and drawing remain native support. |
 
 ## Overlays And Feedback
 

@@ -44,6 +44,11 @@ type InfoIndicatorMetrics struct {
 	Diameter int32
 }
 
+type ButtonInfoBounds struct {
+	Bounds   Rectangle
+	Diameter int32
+}
+
 type ButtonFallbackPolicy struct {
 	Radius                  float32
 	DisabledBackgroundAlpha uint8
@@ -488,6 +493,55 @@ func Button_InfoIndicatorMetricsFor(requested_diameter int32, scale float32, fac
 	}
 	var value_24 InfoIndicatorMetrics = metrics
 	return value_24
+}
+
+func Button_ButtonInfoBoundsFor(declared Rectangle, scale float32, face StyleFrame) ButtonInfoBounds {
+	var result ButtonInfoBounds = ButtonInfoBounds{}
+	var value_0 float32 = declared.Width
+	var value_1 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_0), 32, true)), uint64(0), 32, true, 0))
+	var requested int32 = value_1
+	var value_2 float32 = declared.Height
+	var value_3 float32 = 0.0
+	var value_4 bool = value_2 > value_3
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 float32 = declared.Height
+		var value_7 float32 = declared.Width
+		var value_8 bool = value_6 < value_7
+		value_5 = value_8
+	}
+	if value_5 {
+		var value_9 float32 = declared.Height
+		var value_10 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_9), 32, true)), uint64(0), 32, true, 0))
+		requested = value_10
+	}
+	var value_11 int32 = requested
+	var value_12 float32 = scale
+	var value_13 StyleFrame = face
+	var value_14 InfoIndicatorMetrics = Button_InfoIndicatorMetricsFor(value_11, value_12, value_13)
+	var metrics InfoIndicatorMetrics = value_14
+	var value_15 Rectangle = declared
+	result.Bounds = value_15
+	var value_16 int32 = metrics.Diameter
+	result.Diameter = value_16
+	var value_17 float32 = result.Bounds.Width
+	var value_18 float32 = 0.0
+	var value_19 bool = value_17 <= value_18
+	if value_19 {
+		var value_20 int32 = result.Diameter
+		var value_21 float32 = float32(value_20)
+		result.Bounds.Width = value_21
+	}
+	var value_22 float32 = result.Bounds.Height
+	var value_23 float32 = 0.0
+	var value_24 bool = value_22 <= value_23
+	if value_24 {
+		var value_25 int32 = result.Diameter
+		var value_26 float32 = float32(value_25)
+		result.Bounds.Height = value_26
+	}
+	var value_27 ButtonInfoBounds = result
+	return value_27
 }
 
 func Button_ButtonFallbackPolicyFor(hovered bool, pressed bool, disabled bool, cues bool, termi bool) ButtonFallbackPolicy {

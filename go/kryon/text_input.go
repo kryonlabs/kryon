@@ -208,6 +208,13 @@ func TextInput_TextAreaMinWrapWidth(scale float32) int32 {
 	return value_2
 }
 
+func TextInput_TextAreaScrollbarWidthFor(scale float32) int32 {
+	var value_0 float32 = 12.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
 func TextInput_TextAreaGutterMetricsFor(scale float32) TextAreaGutterMetrics {
 	var metrics TextAreaGutterMetrics = TextAreaGutterMetrics{}
 	var value_0 float32 = 10.0

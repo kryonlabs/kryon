@@ -1,0 +1,114 @@
+#module "terminal_pane"
+#import "control_props"
+
+TerminalPaneMetricsPolicy :: struct {
+    font_size: i32
+    line_gap: i32
+    padding: i32
+    min_cols: i32
+    min_rows: i32
+}
+
+TerminalPaneScrollIndicatorMetrics :: struct {
+    font_size: i32
+    right_offset: i32
+    top_offset: i32
+    width_pad: i32
+    height: i32
+    text_x: i32
+    text_y: i32
+}
+
+TerminalPaneScale :: (scale: float) -> float {
+    if scale <= 0.0 { return 1.0 }
+    return scale
+}
+
+TerminalPanePx :: (value: float, scale: float) -> i32 {
+    return (i32)(value * TerminalPaneScale(scale))
+}
+
+TerminalPaneMetricsPolicyFor :: (scale: float) -> TerminalPaneMetricsPolicy #export {
+    policy: TerminalPaneMetricsPolicy
+    policy.font_size = TerminalPanePx(13.0, scale)
+    policy.line_gap = TerminalPanePx(2.0, scale)
+    policy.padding = TerminalPanePx(6.0, scale)
+    policy.min_cols = 8
+    policy.min_rows = 4
+    return policy
+}
+
+TerminalPaneFontSizeFor :: (requested_font_size: i32,
+    policy: TerminalPaneMetricsPolicy) -> i32 #export {
+    if requested_font_size > 0 { return requested_font_size }
+    return policy.font_size
+}
+
+TerminalPaneLineHeightFor :: (measured_line_height: i32, font_size: i32,
+    policy: TerminalPaneMetricsPolicy) -> i32 #export {
+    min_height: i32 = font_size + policy.line_gap
+    if measured_line_height < min_height { return min_height }
+    return measured_line_height
+}
+
+TerminalPanePaddingFor :: (requested_padding: i32,
+    policy: TerminalPaneMetricsPolicy) -> i32 #export {
+    if requested_padding >= 0 { return requested_padding }
+    return policy.padding
+}
+
+TerminalPaneContentBoundsFor :: (bounds: Rectangle, top_inset: i32,
+    padding: i32) -> Rectangle #export {
+    if top_inset < 0 { top_inset = 0 }
+    if padding < 0 { padding = 0 }
+    content: Rectangle
+    content.x = bounds.x + (float)padding
+    content.y = bounds.y + (float)(top_inset + padding)
+    content.width = bounds.width - (float)(padding * 2)
+    content.height = bounds.height - (float)(top_inset + padding * 2)
+    if content.width < 0.0 { content.width = 0.0 }
+    if content.height < 0.0 { content.height = 0.0 }
+    return content
+}
+
+TerminalPaneClampCols :: (cols: i32, max_cols: i32,
+    policy: TerminalPaneMetricsPolicy) -> i32 #export {
+    if cols < policy.min_cols { cols = policy.min_cols }
+    if max_cols > 0 && cols > max_cols { cols = max_cols }
+    return cols
+}
+
+TerminalPaneClampRows :: (rows: i32, max_rows: i32,
+    policy: TerminalPaneMetricsPolicy) -> i32 #export {
+    if rows < policy.min_rows { rows = policy.min_rows }
+    if max_rows > 0 && rows > max_rows { rows = max_rows }
+    return rows
+}
+
+TerminalPaneScrollIndicatorMetricsFor :: (scale: float) -> TerminalPaneScrollIndicatorMetrics #export {
+    metrics: TerminalPaneScrollIndicatorMetrics
+    metrics.font_size = TerminalPanePx(13.0, scale)
+    metrics.right_offset = TerminalPanePx(16.0, scale)
+    metrics.top_offset = TerminalPanePx(6.0, scale)
+    metrics.width_pad = TerminalPanePx(10.0, scale)
+    metrics.height = TerminalPanePx(22.0, scale)
+    metrics.text_x = TerminalPanePx(5.0, scale)
+    metrics.text_y = TerminalPanePx(4.0, scale)
+    return metrics
+}
+
+TerminalPaneScrollIndicatorBoundsFor :: (viewport: Rectangle,
+    label_width: i32, metrics: TerminalPaneScrollIndicatorMetrics) -> Rectangle #export {
+    badge: Rectangle
+    if viewport.width <= 0.0 || viewport.height <= 0.0 || label_width <= 0 {
+        return badge
+    }
+    badge.x = viewport.x + viewport.width - (float)label_width -
+        (float)metrics.right_offset
+    badge.y = viewport.y + (float)metrics.top_offset
+    badge.width = (float)(label_width + metrics.width_pad)
+    badge.height = (float)metrics.height
+    if badge.x < viewport.x { badge.x = viewport.x }
+    if badge.width > viewport.width { badge.width = viewport.width }
+    return badge
+}
