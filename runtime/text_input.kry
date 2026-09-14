@@ -436,6 +436,22 @@ TextSelectionPaintSpanForLine :: (selection_start: i32,
     return span
 }
 
+TextSelectionPaintSpanForText :: (selection_start: i32,
+    selection_end: i32, text_len: i32) -> TextSelectionPaintSpan #export {
+    span: TextSelectionPaintSpan
+    if text_len < 0 { text_len = 0 }
+    if selection_start < 0 { selection_start = 0 }
+    if selection_end < 0 { selection_end = 0 }
+    if selection_start > text_len { selection_start = text_len }
+    if selection_end > text_len { selection_end = text_len }
+    if selection_end <= selection_start { return span }
+    span.visible = true
+    span.start = selection_start
+    span.end = selection_end
+    span.continues_past_line = false
+    return span
+}
+
 TextSelectionRange :: struct {
     start: i32
     end: i32

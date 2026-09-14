@@ -2142,31 +2142,34 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         char prefix[1024];
         char selected_text[1024];
         int len = (int)strlen(value);
+        TextSelectionPaintSpan span;
         int prefix_len;
         int selected_len;
         int sel_x;
         int sel_w;
 
-        selection_start = ui_clampi(selection_start, 0, len);
-        selection_end = ui_clampi(selection_end, 0, len);
-        prefix_len = selection_start;
-        selected_len = selection_end - selection_start;
-        if(prefix_len >= (int)sizeof(prefix))
-            prefix_len = (int)sizeof(prefix) - 1;
-        if(selected_len >= (int)sizeof(selected_text))
-            selected_len = (int)sizeof(selected_text) - 1;
-        memcpy(prefix, value, (size_t)prefix_len);
-        prefix[prefix_len] = '\0';
-        memcpy(selected_text, value + selection_start, (size_t)selected_len);
-        selected_text[selected_len] = '\0';
-        sel_x = text_x + TextWidth(prefix, font);
-        sel_w = TextWidth(selected_text, font);
-        if(sel_w < stroke_width)
-            sel_w = stroke_width;
-        DrawRectangle(sel_x, text_y, sel_w,
-                      TextLineHeight(font),
-                      ui_default_style() ? ui_alpha(c_circle, 82) :
-                                            (Color){78, 132, 196, 135});
+        span = TextSelectionPaintSpanForText(selection_start, selection_end,
+                                             len);
+        if(span.visible) {
+            prefix_len = span.start;
+            selected_len = span.end - span.start;
+            if(prefix_len >= (int)sizeof(prefix))
+                prefix_len = (int)sizeof(prefix) - 1;
+            if(selected_len >= (int)sizeof(selected_text))
+                selected_len = (int)sizeof(selected_text) - 1;
+            memcpy(prefix, value, (size_t)prefix_len);
+            prefix[prefix_len] = '\0';
+            memcpy(selected_text, value + span.start, (size_t)selected_len);
+            selected_text[selected_len] = '\0';
+            sel_x = text_x + TextWidth(prefix, font);
+            sel_w = TextWidth(selected_text, font);
+            if(sel_w < stroke_width)
+                sel_w = stroke_width;
+            DrawRectangle(sel_x, text_y, sel_w,
+                          TextLineHeight(font),
+                          ui_default_style() ? ui_alpha(c_circle, 82) :
+                                                (Color){78, 132, 196, 135});
+        }
     }
     RenderText(value, text_x, text_y, font, text_color);
 

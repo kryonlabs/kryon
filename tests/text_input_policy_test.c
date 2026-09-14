@@ -357,6 +357,15 @@ main(void)
     assert(selection_span.continues_past_line);
     selection_span = TextSelectionPaintSpanForLine(2, 4, 5, 8);
     assert(!selection_span.visible);
+    selection_span = TextSelectionPaintSpanForText(-2, 99, 12);
+    assert(selection_span.visible);
+    assert(selection_span.start == 0);
+    assert(selection_span.end == 12);
+    assert(!selection_span.continues_past_line);
+    selection_span = TextSelectionPaintSpanForText(20, 22, 12);
+    assert(!selection_span.visible);
+    selection_span = TextSelectionPaintSpanForText(5, 5, 12);
+    assert(!selection_span.visible);
     assert(fabsf(TextInputDoubleClickMaxSeconds() - 0.45f) < 0.001f);
     double_click = TextInputDoubleClickDecisionFor(true, true, 0.30f,
                                                    4, -4, 6);
