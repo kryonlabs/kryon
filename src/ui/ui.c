@@ -1950,7 +1950,7 @@ ui_text_input_metrics_for_style(TextInputStyle style, int style_kind,
 static int
 ui_text_input_style_kind(const char *kind)
 {
-    if(kind != NULL && strcmp(kind, "text_area") == 0)
+    if(kind != NULL && strcmp(kind, "TextArea") == 0)
         return StyleKindTextArea();
     return StyleKindTextField();
 }
@@ -2101,7 +2101,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         SetFocusTextInputActive(1);
 
     (void)ui_text_input_surface(bounds, style, focused, text_input_active,
-                                focus_id, "text_input", requested_style,
+                                focus_id, "TextField", requested_style,
                                 class_name);
 
     ui_begin_world_clip(paint.clip_bounds);
@@ -2345,9 +2345,9 @@ ui_text_input_control_render(TextInputProps input)
     Widget widget;
     int focused = input.focused;
 
-    widget = BeginWidget("text_input",
+    widget = BeginWidget("TextField",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "text_input",
+                                                 "TextField",
                                                  input.focus_id, NULL),
                            input.bounds,
                            WidgetFlagMovable |
@@ -2404,9 +2404,9 @@ RenderLink(LinkProps link)
     text_w = TextWidth(text, font);
     bounds = LinkBoundsFor(bounds, text_w, TextHeight(text, font), font);
 
-    widget = BeginWidget("link",
+    widget = BeginWidget("Link",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "link", link.focus_id, text),
+                                                 "Link", link.focus_id, text),
                            bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
@@ -3383,7 +3383,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
             *area.scroll_y = scroll_y;
     }
     (void)ui_text_input_surface(area.bounds, style, focused,
-                                !area.read_only, area.focus_id, "text_area",
+                                !area.read_only, area.focus_id, "TextArea",
                                 requested_style, area.class_name);
     ui_begin_world_clip(paint.clip_bounds);
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
@@ -3732,9 +3732,9 @@ ui_text_area_render(TextAreaProps area)
     area_edit.cursor_position = area.cursor_position;
     area_edit.max_codepoints = area.max_codepoints;
 
-    widget = BeginWidget("text_area",
+    widget = BeginWidget("TextArea",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "text_area", area.focus_id,
+                                                 "TextArea", area.focus_id,
                                                  area.placeholder),
                            area.bounds,
                            WidgetFlagMovable |
@@ -4385,9 +4385,9 @@ ui_text_field_render_filtered(TextFieldProps field,
         }
     }
 
-    widget = BeginWidget("text_field",
+    widget = BeginWidget("TextField",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "text_field",
+                                                 "TextField",
                                                  field.focus_id, NULL),
                            field.bounds,
                            WidgetFlagMovable |

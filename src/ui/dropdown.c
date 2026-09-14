@@ -384,8 +384,8 @@ ui_dropdown(DropdownProps props)
         state->pending_changed = 0;
     }
 
-    snprintf(editor_id, sizeof(editor_id), "dropdown:%d", id);
-    widget = BeginWidget("dropdown", editor_id, btn_bounds,
+    snprintf(editor_id, sizeof(editor_id), "Dropdown:%d", id);
+    widget = BeginWidget("Dropdown", editor_id, btn_bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
     btn_bounds = widget.bounds;

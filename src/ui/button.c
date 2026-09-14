@@ -281,10 +281,10 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {
-        widget = BeginWidget("button",
+        widget = BeginWidget("Button",
                                ui_inspect_control_id(editor_id,
                                                      sizeof(editor_id),
-                                                     "button",
+                                                     "Button",
                                                      button.props.id,
                                                      button.props.label),
                                button.props.bounds,

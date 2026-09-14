@@ -747,6 +747,19 @@ if [ -n "$public_widget_registration_matches" ]; then
     exit 1
 fi
 
+inspect_widget_variant_matches="$(
+    rg -n 'BeginWidget\("(button|slider|vertical_slider|vertical_slider_marks|toggle|checkbox|dropdown|modal|link|text|text_input|text_area|text_field|navigation_bar)"' \
+        src/ui tests/sfs_test.c \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$inspect_widget_variant_matches" ]; then
+    echo "Inspect widget registrations must use canonical public widget names:"
+    echo "$inspect_widget_variant_matches"
+    exit 1
+fi
+
 split_text_widget_matches="$(
     # These are forbidden widget functions. A palette's TextDisabled field is
     # a color property, not a second Text implementation.

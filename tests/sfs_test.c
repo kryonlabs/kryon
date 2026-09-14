@@ -165,7 +165,7 @@ test_widgets(void)
     KrySfsList("/", entries, 16);
     BeginInterfaceFrame(800, 600, 1.0f);
     BeginInspectFrame(NULL);
-    widget = BeginWidget("button", "sfs-test:login", (Rectangle){100, 50,
+    widget = BeginWidget("Button", "sfs-test:login", (Rectangle){100, 50,
                                                                     80, 24},
                            0);
     EndWidget(&widget);
@@ -200,7 +200,7 @@ test_kryt_helpers(void)
     KrySfsIsDir("/");
     BeginInterfaceFrame(800, 600, 1.0f);
     BeginInspectFrame(NULL);
-    widget = BeginWidget("button", "sfs-test:save", (Rectangle){0, 0, 40,
+    widget = BeginWidget("Button", "sfs-test:save", (Rectangle){0, 0, 40,
                                                                    20},
                            0);
     EndWidget(&widget);

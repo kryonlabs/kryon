@@ -226,9 +226,9 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     Rectangle hit = layout.hit_bounds;
     float t;
 
-    widget = BeginWidget("slider",
+    widget = BeginWidget("Slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "slider", id, label),
+                                                 "Slider", id, label),
                            editor_bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
@@ -350,9 +350,9 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     int changed = 0;
     Rectangle hit = layout.hit_bounds;
 
-    widget = BeginWidget("vertical_slider",
+    widget = BeginWidget("Slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "vertical_slider", id, NULL),
+                                                 "Slider", id, NULL),
                            editor_bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
@@ -460,9 +460,9 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     int changed = 0;
     Rectangle hit = layout.hit_bounds;
 
-    widget = BeginWidget("vertical_slider_marks",
+    widget = BeginWidget("Slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "vertical_slider_marks", id,
+                                                 "Slider", id,
                                                  NULL),
                            editor_bounds,
                            WidgetFlagMovable |
@@ -588,9 +588,9 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         h = min_h;
 
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    widget = BeginWidget("toggle",
+    widget = BeginWidget("Toggle",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "toggle", 0, off_text),
+                                                 "Toggle", 0, off_text),
                            editor_bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);
@@ -780,9 +780,9 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
     int pressed;
     int can_draw = IsWindowReady();
 
-    widget = BeginWidget("checkbox",
+    widget = BeginWidget("Checkbox",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "checkbox", 0, label),
+                                                 "Checkbox", 0, label),
                            bounds,
                            WidgetFlagMovable |
                            WidgetFlagResizable);

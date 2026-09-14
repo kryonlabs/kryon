@@ -699,6 +699,7 @@ Recent retained-tree public C cleanup:
 | `GetFontSize`, `GetSmallFontSize`, `GetTitleFontSize`, `FitFontSize` | Internal native/KSS typography helpers; public code uses explicit text tokens or style props. |
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | Public code uses `Drag(DragProps)` and `Slider(SliderProps)` with value kind/props; scalar/whole helper splits are internal runtime policy only. |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WidgetFlagMovable`/`WidgetFlagResizable`/`WidgetFlagReadOnly` | Internal inspect registration; public code uses canonical widget declarations. |
+| lowercase/variant inspect widget labels such as `button`, `vertical_slider`, `text_area` | Canonical inspect labels such as `Button`, `Slider`, `TextArea`; variants belong in props/state, not separate inspect names. |
 | retained-tree `NODE_*` state flags | Generated `TreeNodeFlag*` support names in `runtime/widget_kind.kry`; not public widget concepts. |
 | `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
 | app-facing `Texture`, `DrawTexture`, `DrawTexturePro`, `DrawTextureRec` fixes | `Image(ImageProps)`; if `ImageProps` cannot express the app case, add the reusable Kryon image primitive first. |
