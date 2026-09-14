@@ -53,6 +53,11 @@ TextWrapPolicy :: (width: float, requested: i32) -> i32 #export {
     return requested
 }
 
+TextDoubleClickSlopFor :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(6.0 * scale)
+}
+
 TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> float #export {
     if alignment == 1 {
         return (available - measured) * 0.5

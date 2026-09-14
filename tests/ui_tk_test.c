@@ -1487,6 +1487,8 @@ test_input_value_policy(void)
               InputDefaultStepButtonWidth(1.0f), 24);
     check_int("input scaled step button width",
               InputDefaultStepButtonWidth(2.0f), 48);
+    check_int("input double click slop",
+              InputDoubleClickSlopFor(2.0f), 12);
 
     layout = InputCellLayoutFor((Rectangle){10, 20, 120, 30}, 1, 0,
                                 InputDefaultStepButtonWidth(1.0f), 1);

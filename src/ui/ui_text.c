@@ -7,6 +7,7 @@
 #include "ui_scaling.h"
 #include "ui_style_internal.h"
 #include "theme.h"
+#include "runtime/text.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -1662,7 +1663,8 @@ RenderSelectableTextBlock(SelectableTextBlock block)
             double now = GetTime();
             float dx = mouse.x - g_ui_text_block_last_click_position.x;
             float dy = mouse.y - g_ui_text_block_last_click_position.y;
-            int slop = Scale(6);
+            float scale = (float)Scale(1000) / 1000.0f;
+            int slop = TextDoubleClickSlopFor(scale);
             int double_click = g_ui_text_block_last_click_id == block.id &&
                 g_ui_text_block_last_click_line == i &&
                 g_ui_text_block_last_click_time >= 0.0 &&

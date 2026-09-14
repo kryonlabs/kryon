@@ -2189,7 +2189,8 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
                   ui_hot(bounds);
     Vector2 mouse = ui_mouse_world();
     double now = GetTime();
-    int slop = Scale(6);
+    float scale = (float)Scale(1000) / 1000.0f;
+    int slop = InputDoubleClickSlopFor(scale);
     float dx = mouse.x - toolkit->numeric_click.position.x;
     float dy = mouse.y - toolkit->numeric_click.position.y;
     int double_click = pressed && toolkit->numeric_click.valid &&

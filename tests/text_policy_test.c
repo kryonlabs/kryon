@@ -31,6 +31,8 @@ int main(void)
     assert(TextExtent(-1, 0) == 0);
     assert(TextWrapPolicy(0, 0) == 1 && TextWrapPolicy(-1, 0) == 1);
     assert(TextWrapPolicy(100, 0) == 0 && TextWrapPolicy(100, 1) == 1);
+    assert(TextDoubleClickSlopFor(2.0f) == 12);
+    assert(TextDoubleClickSlopFor(0.0f) == 6);
     assert(TextAlignmentOffset(100, 40, 0) == 0);
     assert(TextAlignmentOffset(100, 40, 1) == 30);
     assert(TextAlignmentOffset(100, 40, 2) == 60);
