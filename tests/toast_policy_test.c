@@ -19,6 +19,7 @@ main(void)
     StyleFrame frame = {0};
     ToastMetrics metrics = ToastMetricsFor(2.0f, frame);
     ToastLayout layout;
+    ToastTruncation truncation;
 
     assert(metrics.pad_x == 28);
     assert(metrics.pad_y == 20);
@@ -28,6 +29,21 @@ main(void)
     assert(fabsf(ToastDuration(2.5f, metrics) - 2.5f) < 0.001f);
     assert(ToastMaxWidth(640, metrics) == 568);
     assert(ToastContentWidth(640, metrics) == 512);
+    truncation = ToastTruncationFor(12, true);
+    assert(truncation.prefix_len == 12);
+    assert(!truncation.ellipsis);
+    truncation = ToastTruncationFor(12, false);
+    assert(truncation.prefix_len == 9);
+    assert(truncation.ellipsis);
+    truncation = ToastTruncationNext(truncation, false);
+    assert(truncation.prefix_len == 8);
+    assert(truncation.ellipsis);
+    truncation = ToastTruncationNext(truncation, true);
+    assert(truncation.prefix_len == 8);
+    assert(truncation.ellipsis);
+    truncation = ToastTruncationFor(3, false);
+    assert(truncation.prefix_len == 3);
+    assert(!truncation.ellipsis);
 
     frame.value.padding_x = 20.0f;
     frame.value.padding_y = 12.0f;

@@ -16,6 +16,11 @@ ToastLayout :: struct {
     content_width: i32
 }
 
+ToastTruncation :: struct {
+    prefix_len: i32
+    ellipsis: bool
+}
+
 ToastMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -38,6 +43,29 @@ ToastMetricsFor :: (scale: float, frame: StyleFrame) -> ToastMetrics #export {
 ToastDuration :: (seconds: float, metrics: ToastMetrics) -> float #export {
     if seconds <= 0.0 { return metrics.default_seconds }
     return seconds
+}
+
+ToastTruncationFor :: (text_len: i32, fits: bool) -> ToastTruncation #export {
+    truncation: ToastTruncation
+    if text_len < 0 { text_len = 0 }
+    truncation.prefix_len = text_len
+    if fits || text_len <= 3 {
+        return truncation
+    }
+    truncation.prefix_len = text_len - 3
+    truncation.ellipsis = true
+    return truncation
+}
+
+ToastTruncationNext :: (truncation: ToastTruncation,
+    fits: bool) -> ToastTruncation #export {
+    if fits || !truncation.ellipsis {
+        return truncation
+    }
+    if truncation.prefix_len > 0 {
+        truncation.prefix_len = truncation.prefix_len - 1
+    }
+    return truncation
 }
 
 ToastMaxWidth :: (view_width: i32, metrics: ToastMetrics) -> i32 #export {

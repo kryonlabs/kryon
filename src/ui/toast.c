@@ -22,6 +22,23 @@ ClearToast(void)
     toast_until = 0.0;
 }
 
+static void
+format_toast_display(char *out, size_t out_size, const char *message,
+                     ToastTruncation truncation)
+{
+    if(out_size == 0)
+        return;
+    if(message == NULL)
+        message = "";
+    if(!truncation.ellipsis) {
+        snprintf(out, out_size, "%s", message);
+        return;
+    }
+    if(truncation.prefix_len < 0)
+        truncation.prefix_len = 0;
+    snprintf(out, out_size, "%.*s...", truncation.prefix_len, message);
+}
+
 void
 Toast(ToastProps props)
 {
@@ -48,6 +65,7 @@ RenderToast(void)
     int line_h;
     int content_w;
     char display[TOAST_MESSAGE_SIZE];
+    ToastTruncation truncation;
 
     if(toast_message[0] == '\0')
         return;
@@ -85,16 +103,16 @@ RenderToast(void)
     font = ResolveFont(0, StyleFontValue(text.fields, text.font_size), font);
 
     font_token = PushTextFont(text.typeface);
-    snprintf(display, sizeof(display), "%s", toast_message);
     content_w = ToastContentWidth(ui_view_width, metrics);
-    while(display[0] != '\0' && TextWidth(display, font) > content_w) {
-        size_t len = strlen(display);
-        if(len <= 3)
-            break;
-        snprintf(display + len - 3, 4, "...");
-        if(TextWidth(display, font) <= content_w)
-            break;
-        display[len - 4] = '\0';
+    snprintf(display, sizeof(display), "%s", toast_message);
+    truncation = ToastTruncationFor((int)strlen(toast_message),
+                                    TextWidth(display, font) <= content_w);
+    format_toast_display(display, sizeof(display), toast_message, truncation);
+    while(truncation.ellipsis && truncation.prefix_len > 0 &&
+          TextWidth(display, font) > content_w) {
+        truncation = ToastTruncationNext(truncation, 0);
+        format_toast_display(display, sizeof(display), toast_message,
+                             truncation);
     }
 
     text_w = TextWidth(display, font);
