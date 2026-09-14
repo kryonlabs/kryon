@@ -89,9 +89,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
     sizes: [3] ControlSize = {ControlSizeSmall, ControlSizeMedium, ControlSizeLarge}
     column_x: [8] int = {81, 166, 250, 334, 419, 503, 587, 671}
     size_caption_y: [3] int = {518, 561, 617}
-    size_fonts: [3] int = {15, 18, 18}
-    size_label_x: [3] int = {-1, 0, 0}
-    size_label_y: [3] float = {0, 0, 0}
     state_y: [6] int = {161, 206, 254, 305, 359, 409}
     label_y: [6] int = {169, 215, 265, 316, 370, 419}
     state_heights: [6] int = {34, 36, 36, 38, 38, 40}
@@ -125,10 +122,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             state_y[2] = 253
             label_y[4] = 371
             size_caption_y[1] = 562
-            size_fonts[1] = 19
-            size_fonts[2] = 19
-            size_label_x[1] = -1
-            size_label_x[2] = -1
             icon_label_x[0] = 33
             icon_label_x[1] = 111
             icon_label_x[2] = 206
@@ -137,9 +130,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             icon_label_x[7] = 670
         } else {
             state_heights[1] = 38
-            # The large face starts higher; retain the label's existing
-            # pixel baseline while aligning the upper edge.
-            size_label_y[2] = 1
         }
         focused_bounds: [8] Rectangle = {
             {origin + 80, 305, 74, 38}, {origin + 166, 305, 72, 38},
@@ -199,18 +189,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             focused_bounds[6] = (Rectangle){origin + 587, 305, 73, 39}
             focused_bounds[7] = (Rectangle){origin + 671, 305, 73, 38}
         }
-        grid_label_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
-            .font_size=17, .content_offset=(Vector2){0, 1}}
-        grid_hover_style: Style = (Style){}
-        full_run_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
-            .font_size=19, .content_offset=(Vector2){-3, -1}}
-        full_delete_style: Style = (Style){.fields=StyleFontSize | StyleContentOffset,
-            .font_size=20, .content_offset=(Vector2){-8, -1}}
-        if current_theme.mode == THEME_MODE_DARK {
-            full_run_style.font_size = 18
-            full_run_style.content_offset.x = -13
-            full_delete_style.content_offset.x = -15
-        }
         theme_heading: TextProps = (TextProps){.bounds={origin + 27, 83, 350, 26},
             .text="LIGHT THEME", .wrap=TextWrapNone}
         sizes_heading: TextProps = (TextProps){.bounds={origin + 26, 475, 200, 28},
@@ -226,10 +204,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
         panel_top: Color = {250, 252, 254, 255}
         panel_bottom: Color = {249, 252, 254, 255}
         if current_theme.mode == THEME_MODE_DARK {
-            grid_label_style.font_size = 19
-            grid_label_style.content_offset = (Vector2){0, 0}
-            grid_hover_style.fields = StyleContentOffset
-            grid_hover_style.content_offset = (Vector2){0, -1}
             theme_heading.text = "DARK THEME"
             theme_heading.bounds = (Rectangle){origin + 27, 81, 350, 26}
             sizes_heading.bounds = (Rectangle){origin + 25, 477, 200, 28}
@@ -311,10 +285,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                 if row == 3 {
                     bounds = focused_bounds[column]
                 }
-                hover_style := grid_hover_style
-                if emphases[column] == ButtonEmphasisGhost || emphases[column] == ButtonEmphasisLink {
-                    hover_style.fields = 0
-                }
                 Button state_sample: {
                     bounds = bounds
                     label = "Run"
@@ -322,7 +292,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                     tone = tones[column]
                     emphasis = emphases[column]
                     state = states[row]
-                    style = (ControlStyle){.normal=grid_label_style, .hover=hover_style}
                 }
             }
         }
@@ -346,9 +315,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                     tone = tones[column]
                     emphasis = emphases[column]
                     size = sizes[row]
-                    style = (ControlStyle){.normal=(Style){
-                        .fields=StyleFontSize | StyleContentOffset, .font_size=(float)size_fonts[row],
-                        .content_offset=(Vector2){size_label_x[row], size_label_y[row]}}}
                 }
             }
         }
@@ -476,7 +442,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             full_width = true
             pill = true
             tone = ButtonToneAccent
-            style = (ControlStyle){.normal=full_run_style}
         }
         Button full_delete: {
             bounds = {origin + 24, 945, 720, 38}
@@ -486,7 +451,6 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             full_width = true
             tone = ButtonToneNeutral
             emphasis = ButtonEmphasisSoft
-            style = (ControlStyle){.normal=full_delete_style}
         }
         Text((TextProps){.bounds={origin + 27, 1003, 714, 20},
             .text=footer_label, .align=footer_align, .wrap=TextWrapNone})

@@ -67,8 +67,8 @@ NativeBlocks :: () #ui {
         type = "image/svg+xml"
     }
     Table cols: {
-        ColGroup metrics: {
-            Col quarter: {
+        TableColumnGroup metrics: {
+            TableColumn quarter: {
                 span = 1
             }
         }
@@ -873,9 +873,9 @@ try {
     assert(compiledEmbed.getAttribute("type") === "image/svg+xml",
       "compiled Embed type attribute missing");
     assert(compiledCol?.tagName === "COL",
-      "compiled Col native tag missing");
+      "compiled TableColumn native tag missing");
     assert(compiledCol.getAttribute("span") === "1",
-      "compiled Col span attribute missing");
+      "compiled TableColumn span attribute missing");
     assert(kryon.webDOMRelations(compiledTarget, "NativeBlocks/chart/caption")
       .captionOwner.ref === "NativeBlocks/chart",
       "compiled caption relation missing");

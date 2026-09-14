@@ -672,3 +672,12 @@ scanline rectangles. It does not skip declaration, reconciliation, or whole-fram
 composition. `BeginTree` still requests paint because the host may clear its
 framebuffer each frame; removing that invalidation would erase unchanged UI.
 Retained subtree composition is a separate architectural change.
+
+### Declarative web scope teardown
+
+Generated web nodes retain parent-path metadata for their declarative scope.
+Native paint-scope end markers are consumed during JavaScript lowering; they
+are not emitted as recorded statements or exported runtime wrappers. Disabled
+content additionally uses a runtime input stack and keeps its paired teardown.
+Nested input/restoration behavior still requires backend parity tests beyond
+checking the generated names.

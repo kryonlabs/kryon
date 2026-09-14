@@ -2483,9 +2483,15 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 fprintf(f, ");\n");
                 break;
             }
-            if(strncmp(raw, "BeginTree", 9) == 0 ||
-               strncmp(raw, "CanvasEndScope", 9) == 0 ||
-               strncmp(raw, "EndTree", 7) == 0)
+            /* Web nodes carry their parent path. Native paint-scope teardown
+             * has no operation in that declarative tree and must not escape
+             * as a recorded statement or public runtime helper. Disabled
+             * scopes above do maintain an input stack and need their end. */
+            if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
+               (strcmp(name, "BeginTree") == 0 || strcmp(name, "CanvasEndScope") == 0 ||
+                strcmp(name, "ScrollEndScope") == 0 ||
+                strcmp(name, "TableCellEndScope") == 0 ||
+                strcmp(name, "PopupEndScope") == 0 || strcmp(name, "EndTree") == 0))
                 break;
             int known_call = split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
                 (module_fn_index(m, name, strlen(name)) >= 0 || extern_index(name, strlen(name)) >= 0 ||

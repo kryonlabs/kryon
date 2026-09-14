@@ -12,6 +12,12 @@ cppflags=${4:-${CPPFLAGS:-}}
 cflags=${5:-${CFLAGS:-}}
 link_flags=${6:-}
 
+# This target promises three-backend parity, so a missing backend is a failure.
+command -v node >/dev/null 2>&1 || {
+    echo "generated runtime parity requires node" >&2
+    exit 1
+}
+
 work=${TMPDIR:-/tmp}/kryon-generated-runtime-parity.$$
 if [ "${KEEP_GENERATED_RUNTIME_PARITY_WORK:-0}" = 1 ]; then
     echo "keeping generated runtime parity work dir: $work" >&2
@@ -337,7 +343,17 @@ func requireFrameOps(label string, requirements map[kryon.FrameOpKind]int) {
 	}
 }
 
-func requireRenderedFrame(label string, minChangedPixels int) {
+func requireRenderedFrame(label string, minChangedPixels int, draw func()) {
+	// Rendering needs an explicit appearance pack. Unstyled controls no longer
+	// invent chrome; keep interaction checks independent of pack geometry.
+	if !kryon.RegisterBuiltInStylePacks() || !kryon.SetActiveStylePack("material") {
+		panic("render parity: material style pack unavailable")
+	}
+	draw()
+	defer func() {
+		kryon.ClearStylePacks()
+		draw()
+	}()
 	img := host.Render()
 	bounds := img.Bounds()
 	if bounds.Dx() != 640 || bounds.Dy() != 480 {
@@ -849,7 +865,7 @@ func main() {
 		kryon.FrameOpTextArea:  1,
 		kryon.FrameOpButton:    2,
 	})
-	requireRenderedFrame("form", 2500)
+	requireRenderedFrame("form", 2500, drawForm)
 	driver.SetFocus(101)
 	drawForm()
 	driver.QueueKey(kryon.KeyLeft)
@@ -887,7 +903,7 @@ func main() {
 		kryon.FrameOpTextField: 1,
 		kryon.FrameOpTextArea:  1,
 	})
-	requireRenderedFrame("fields", 1200)
+	requireRenderedFrame("fields", 1200, drawFields)
 	driver.QueueTap(30, 30)
 	drawFields()
 	driver.QueueKey(kryon.KeyLeft)
@@ -917,7 +933,7 @@ func main() {
 		kryon.FrameOpText:   1,
 		kryon.FrameOpButton: 3,
 	})
-	requireRenderedFrame("buttons", 1000)
+	requireRenderedFrame("buttons", 1000, drawButtons)
 	driver.QueueTap(30, 130)
 	drawButtons()
 	driver.QueueTap(130, 130)
@@ -998,7 +1014,7 @@ func main() {
 		kryon.FrameOpText:   10,
 		kryon.FrameOpButton: 1,
 	})
-	requireRenderedFrame("controls", 50)
+	requireRenderedFrame("controls", 50, drawControls)
 	driver.QueueTap(146, 48)
 	drawControls()
 	driver.QueueTap(30, 92)
@@ -1201,7 +1217,7 @@ func main() {
 		kryon.FrameOpRect: 2,
 		kryon.FrameOpText: 1,
 	})
-	requireRenderedFrame("progress", 700)
+	requireRenderedFrame("progress", 700, drawProgress)
 
 	drawTableView()
 	requireFrameOps("table_view", map[kryon.FrameOpKind]int{
@@ -1209,7 +1225,7 @@ func main() {
 		kryon.FrameOpText:  9,
 		kryon.FrameOpRect:  1,
 	})
-	requireRenderedFrame("table_view", 50)
+	requireRenderedFrame("table_view", 50, drawTableView)
 	driver.QueueTap(116, 62)
 	drawTableView()
 	driver.QueueTap(116, 62)
@@ -2710,4 +2726,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/menus.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composition.kry","tests/parity/composed_popup.kry"]}'
