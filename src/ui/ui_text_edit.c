@@ -335,6 +335,7 @@ ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                      int max_codepoints)
 {
     TextInsertDecision decision;
+    TextBufferInsertDecision buffer_decision;
     int len;
     int codepoint_count;
 
@@ -348,8 +349,12 @@ ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                                      max_codepoints, 0);
     if(!decision.accept)
         return 0;
+    buffer_decision = TextBufferInsertDecisionFor((int)text_size, len,
+                                                  *cursor, 1);
+    if(!buffer_decision.can_insert)
+        return 0;
     memmove(text + *cursor + 1, text + *cursor,
-            (size_t)(len - *cursor + 1));
+            (size_t)buffer_decision.tail_count);
     text[*cursor] = ch;
     (*cursor)++;
     return 1;
@@ -360,6 +365,7 @@ ui_text_insert_newline(char *text, size_t text_size, int *cursor,
                        int max_codepoints)
 {
     TextInsertDecision decision;
+    TextBufferInsertDecision buffer_decision;
     int len;
     int codepoint_count;
 
@@ -373,8 +379,12 @@ ui_text_insert_newline(char *text, size_t text_size, int *cursor,
                                      max_codepoints, 1);
     if(!decision.accept)
         return 0;
+    buffer_decision = TextBufferInsertDecisionFor((int)text_size, len,
+                                                  *cursor, 1);
+    if(!buffer_decision.can_insert)
+        return 0;
     memmove(text + *cursor + 1, text + *cursor,
-            (size_t)(len - *cursor + 1));
+            (size_t)buffer_decision.tail_count);
     text[*cursor] = '\n';
     (*cursor)++;
     return 1;
@@ -385,6 +395,7 @@ ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoin
                          int max_codepoints)
 {
     TextInsertDecision decision;
+    TextBufferInsertDecision buffer_decision;
     char encoded[5];
     int encoded_len;
     int len;
@@ -402,8 +413,13 @@ ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoin
                                      max_codepoints, 0);
     if(!decision.accept)
         return 0;
+    buffer_decision = TextBufferInsertDecisionFor((int)text_size, len,
+                                                  *cursor, encoded_len);
+    if(!buffer_decision.can_insert)
+        return 0;
 
-    memmove(text + *cursor + encoded_len, text + *cursor, (size_t)(len - *cursor + 1));
+    memmove(text + *cursor + encoded_len, text + *cursor,
+            (size_t)buffer_decision.tail_count);
     memcpy(text + *cursor, encoded, (size_t)encoded_len);
     *cursor += encoded_len;
     return 1;
@@ -415,6 +431,7 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
                     TextInputFilter filter, void *filter_user_data,
                     int max_codepoints)
 {
+    TextBufferInsertDecision buffer_decision;
     char *insert;
     int len;
     int out_len = 0;
@@ -491,8 +508,14 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
         return 0;
     }
 
+    buffer_decision = TextBufferInsertDecisionFor((int)text_size, len,
+                                                  *cursor, out_len);
+    if(!buffer_decision.can_insert) {
+        free(insert);
+        return 0;
+    }
     memmove(text + *cursor + out_len, text + *cursor,
-            (size_t)(len - *cursor + 1));
+            (size_t)buffer_decision.tail_count);
     memcpy(text + *cursor, insert, (size_t)out_len);
     *cursor += out_len;
     free(insert);
