@@ -13,6 +13,7 @@
 #include "runtime/text_input.h"
 #include "runtime/input.h"
 #include "runtime/grid.h"
+#include "runtime/image.h"
 #include "ui_image_internal.h"
 #include "ui_clip_internal.h"
 #include "ui_blend_internal.h"
@@ -2354,6 +2355,7 @@ RenderImage(ImageProps image)
     ui_tree_add(0, WidgetKindImage, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);
     if(texture.id == 0) {
+        const char *missing_label = "Missing image";
         Style image_style = ui_unpack_style(ui_control_style_frame_kind(
             (ButtonProps){.tone = ButtonToneNeutral,
                           .emphasis = ButtonEmphasisSoft,
@@ -2369,12 +2371,15 @@ RenderImage(ImageProps image)
         int label_font = ResolveFont(
             0, StyleFontValue(label_style.fields, label_style.font_size),
             GetSmallFontSize());
+        ImagePlaceholderLayout placeholder = ImagePlaceholderLayoutFor(
+            image.bounds, TextWidth(missing_label, label_font),
+            TextLineHeight(label_font));
         fallback = image_style.background;
         DrawRectangleRec(image.bounds, fallback);
         DrawRectangleLinesEx(image.bounds, image_style.border_width,
                              image_style.border);
-        RenderText("Missing image", (int)image.bounds.x + Scale(8),
-                   (int)image.bounds.y + Scale(8), label_font,
+        RenderText(missing_label, placeholder.label_x, placeholder.label_y,
+                   label_font,
                    Fade(label_style.foreground, label_style.opacity));
         return;
     }

@@ -664,7 +664,7 @@ stays prefix-free.
 | `WidgetKindRow` | `Row` | `.kry canonical`; placement policy is `.kry-backed` |
 | `WidgetKindStack` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |
 | `WidgetKindGrid` | `Grid` | `.kry canonical`; metrics and cursor placement policy are `.kry-backed` |
-| `WidgetKindImage` | `Image` | `.kry canonical` |
+| `WidgetKindImage` | `Image` | `.kry canonical`; fit and missing-placeholder layout policy are `.kry-backed` |
 | `WidgetKindCustom` | `Custom` | Internal support escape hatch |
 | `WidgetKindDrag` | `Drag` | `.kry canonical` |
 | `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WidgetKindCustom` with a private runtime flag. |
