@@ -52,6 +52,17 @@ SliderDiscreteStep :: struct {
     changed: bool
 }
 
+SliderPointerDecision :: struct {
+    hovered: bool
+    clear_active: bool
+    start_active: bool
+    set_pointer_owner: bool
+    cancel_active: bool
+    take_horizontal_owner: bool
+    update_value: bool
+    finish_active: bool
+}
+
 SliderEditorLayout :: struct {
     editor_bounds: Rectangle
     hit_bounds: Rectangle
@@ -362,6 +373,39 @@ SliderDiscretePointerValue :: (pointer: float, origin: float, length: float,
     minimum: i32, maximum: i32, inverted: bool) -> i32 #export {
     return SliderDiscreteValue(minimum, maximum,
         SliderPointerRatio(pointer, origin, length, inverted))
+}
+
+SliderPointerDecisionFor :: (active: bool, inside: bool, captured: bool,
+    internal_captured: bool, pressed: bool, down: bool, released: bool,
+    vertical: bool, pointer_owner_none: bool, pointer_owner_matches: bool,
+    dragging: bool, drag_horizontal: bool) -> SliderPointerDecision #export {
+    decision: SliderPointerDecision
+    decision.hovered = inside && !captured
+    decision.clear_active = active && !down && !released
+    decision.start_active = decision.hovered && pressed
+    decision.set_pointer_owner = decision.start_active && vertical
+
+    effective_active: bool = active || decision.start_active
+
+    if effective_active && !vertical && pointer_owner_none && dragging {
+        if drag_horizontal {
+            decision.take_horizontal_owner = true
+        } else {
+            decision.cancel_active = true
+        }
+    }
+
+    can_update: bool = effective_active && !internal_captured
+    if vertical {
+        decision.update_value = can_update && (down || released)
+    } else {
+        effective_owner_matches: bool = pointer_owner_matches ||
+            decision.take_horizontal_owner
+        decision.update_value = can_update &&
+            ((down && effective_owner_matches) || released)
+    }
+    decision.finish_active = effective_active && released
+    return decision
 }
 
 SliderDiscreteKeyboardValue :: (value: i32, minimum: i32, maximum: i32,

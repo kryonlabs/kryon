@@ -86,6 +86,7 @@ main(void)
     StyleFrame thumb = test_style_frame(0x334455ff, 0xaabbccff,
                                         0x667788ff);
     SliderPaint slider_paint;
+    SliderPointerDecision slider_pointer;
     TogglePaint toggle_paint;
 
     checkbox.box.value.border_width = 0.0f;
@@ -301,6 +302,32 @@ main(void)
     if(SliderTrackRole() != 4 || SliderFillRole() != 5 ||
        SliderLabelRole() != 6) {
         fprintf(stderr, "slider role policy changed\n");
+        return 1;
+    }
+    slider_pointer = SliderPointerDecisionFor(0, 1, 0, 0, 1, 1, 0, 1,
+                                             1, 0, 0, 0);
+    if(!slider_pointer.hovered || !slider_pointer.start_active ||
+       !slider_pointer.set_pointer_owner || !slider_pointer.update_value) {
+        fprintf(stderr, "vertical slider press policy changed\n");
+        return 1;
+    }
+    slider_pointer = SliderPointerDecisionFor(1, 1, 0, 0, 0, 1, 0, 0,
+                                             1, 0, 1, 1);
+    if(!slider_pointer.take_horizontal_owner || slider_pointer.cancel_active ||
+       !slider_pointer.update_value) {
+        fprintf(stderr, "horizontal slider owner policy changed\n");
+        return 1;
+    }
+    slider_pointer = SliderPointerDecisionFor(1, 1, 0, 0, 0, 1, 0, 0,
+                                             1, 0, 1, 0);
+    if(slider_pointer.take_horizontal_owner || !slider_pointer.cancel_active) {
+        fprintf(stderr, "horizontal slider axis cancel policy changed\n");
+        return 1;
+    }
+    slider_pointer = SliderPointerDecisionFor(1, 1, 0, 0, 0, 0, 1, 0,
+                                             0, 0, 0, 0);
+    if(!slider_pointer.update_value || !slider_pointer.finish_active) {
+        fprintf(stderr, "slider release policy changed\n");
         return 1;
     }
     if(CheckboxBoxRoleForTone(ButtonToneNeutral) != 9 ||

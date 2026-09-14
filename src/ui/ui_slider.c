@@ -229,6 +229,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     int can_draw = IsWindowReady();
     char value_text[48];
     Rectangle hit = layout.hit_bounds;
+    SliderPointerDecision pointer_decision;
     float t;
 
     widget = BeginWidget("Slider",
@@ -248,9 +249,18 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    pointer_decision = SliderPointerDecisionFor(
+        g_ui_slider_active_id == id,
+        CheckCollisionPointRec(mouse_world, hit) != 0,
+        InputCapturesClick(mouse_world) != 0,
+        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER,
+        g_ui_pointer_dragging != 0, ui_pointer_drag_is_horizontal() != 0);
+    if(pointer_decision.clear_active)
         g_ui_slider_active_id = 0;
 
     if(value_text_override != NULL)
@@ -275,40 +285,30 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
+    if(pointer_decision.hovered) {
         MarkClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        if(pointer_decision.start_active)
             g_ui_slider_active_id = id;
     }
 
-    if(g_ui_slider_active_id == id && g_ui_pointer_owner == POINTER_OWNER_NONE &&
-       g_ui_pointer_dragging) {
-        if(ui_pointer_drag_is_horizontal())
-            g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER;
-        else
-            g_ui_slider_active_id = 0;
-    }
+    if(pointer_decision.take_horizontal_owner)
+        g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER;
+    if(pointer_decision.cancel_active)
+        g_ui_slider_active_id = 0;
 
-    if(g_ui_slider_active_id == id &&
-       ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-         g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER) ||
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
+    if(pointer_decision.update_value) {
         int old_value = *value;
         *value = SliderDiscretePointerValue((float)mx, (float)x, (float)w,
                                             min, max, false);
         changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
     }
+    if(pointer_decision.finish_active)
+        g_ui_slider_active_id = 0;
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
     if(can_draw) {
         int active = g_ui_slider_active_id == id;
-        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !InputCapturesClick(mouse_world);
+        int hovered = pointer_decision.hovered;
         ButtonState state = active ? ButtonStatePressed :
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
@@ -355,6 +355,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     int my = (int)mouse_world.y;
     int changed = 0;
     Rectangle hit = layout.hit_bounds;
+    SliderPointerDecision pointer_decision;
 
     widget = BeginWidget("Slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -373,37 +374,42 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    pointer_decision = SliderPointerDecisionFor(
+        g_ui_slider_active_id == id,
+        CheckCollisionPointRec(mouse_world, hit) != 0,
+        InputCapturesClick(mouse_world) != 0,
+        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, true,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER,
+        g_ui_pointer_dragging != 0, ui_pointer_drag_is_horizontal() != 0);
+    if(pointer_decision.clear_active)
         g_ui_slider_active_id = 0;
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
+    if(pointer_decision.hovered) {
         MarkClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(pointer_decision.start_active) {
             g_ui_slider_active_id = id;
-            g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
+            if(pointer_decision.set_pointer_owner)
+                g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
         }
     }
 
-    if(g_ui_slider_active_id == id &&
-       (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
+    if(pointer_decision.update_value) {
         int old_value = *value;
         *value = SliderDiscretePointerValue((float)my, (float)y, (float)h,
                                             min, max, true);
         changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
     }
+    if(pointer_decision.finish_active)
+        g_ui_slider_active_id = 0;
 
     {
         float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
         int active = active_visual || g_ui_slider_active_id == id;
-        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !InputCapturesClick(mouse_world);
+        int hovered = pointer_decision.hovered;
         ButtonState state = active ? ButtonStatePressed :
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
@@ -465,6 +471,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     int my = (int)mouse_world.y;
     int changed = 0;
     Rectangle hit = layout.hit_bounds;
+    SliderPointerDecision pointer_decision;
 
     widget = BeginWidget("Slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -484,40 +491,45 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
 
-    if(g_ui_slider_active_id == id &&
-       !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    pointer_decision = SliderPointerDecisionFor(
+        g_ui_slider_active_id == id,
+        CheckCollisionPointRec(mouse_world, hit) != 0,
+        InputCapturesClick(mouse_world) != 0,
+        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, true,
+        g_ui_pointer_owner == POINTER_OWNER_NONE,
+        g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER,
+        g_ui_pointer_dragging != 0, ui_pointer_drag_is_horizontal() != 0);
+    if(pointer_decision.clear_active)
         g_ui_slider_active_id = 0;
 
     if(callback != NULL)
         callback(callback_user_data, x, y, h, min, max, *value);
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
+    if(pointer_decision.hovered) {
         MarkClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(pointer_decision.start_active) {
             g_ui_slider_active_id = id;
-            g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
+            if(pointer_decision.set_pointer_owner)
+                g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
         }
     }
 
-    if(g_ui_slider_active_id == id &&
-       (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       !ui_input_captures_click_internal(mouse_world, 0)) {
+    if(pointer_decision.update_value) {
         int old_value = *value;
         *value = SliderDiscretePointerValue((float)my, (float)y, (float)h,
                                             min, max, true);
         changed = (*value != old_value);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            g_ui_slider_active_id = 0;
-    } else if(g_ui_slider_active_id == id && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        g_ui_slider_active_id = 0;
     }
+    if(pointer_decision.finish_active)
+        g_ui_slider_active_id = 0;
 
     {
         float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
         int active = g_ui_slider_active_id == id;
-        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !InputCapturesClick(mouse_world);
+        int hovered = pointer_decision.hovered;
         ButtonState state = active ? ButtonStatePressed :
                             (hovered ? ButtonStateHover : ButtonStateNormal);
 
