@@ -39,6 +39,16 @@ ScrollBarDragDecision :: struct {
     scroll_offset: i32
 }
 
+ScrollContentDragDecision :: struct {
+    start_drag: bool
+    active: bool
+    dragging: bool
+    gesture_pending: bool
+    claim_scroll_owner: bool
+    capture_input: bool
+    scroll_offset: i32
+}
+
 ScrollClipGeometry :: struct {
     screen_bounds: Rectangle
     clipped_world_bounds: Rectangle
@@ -271,6 +281,41 @@ ScrollBarDragFor :: (mouse_down: bool, input_captured: bool,
     }
     if owns_drag {
         decision.cancel_drag = true
+    }
+    return decision
+}
+
+ScrollContentDragFor :: (max_scroll: i32, mouse_pressed: bool,
+    mouse_down: bool, inside: bool, input_captured: bool,
+    on_scrollbar: bool, pointer_owner_none: bool, pointer_owner_scroll: bool,
+    blocked_by_other_drag: bool, active: bool, dragging: bool,
+    current_scroll: i32, start_scroll: i32, delta_y: i32,
+    drag_threshold: i32) -> ScrollContentDragDecision #export {
+    decision: ScrollContentDragDecision
+    decision.scroll_offset = ScrollClamp(current_scroll, max_scroll)
+    if blocked_by_other_drag {
+        return decision
+    }
+    if max_scroll > 0 && pointer_owner_none && mouse_pressed && inside &&
+        !input_captured && !on_scrollbar {
+        decision.start_drag = true
+        decision.active = true
+        decision.gesture_pending = true
+        return decision
+    }
+    if active && mouse_down && (pointer_owner_none || pointer_owner_scroll) {
+        decision.active = true
+        if dragging || delta_y > drag_threshold || delta_y < -drag_threshold {
+            decision.dragging = true
+            decision.claim_scroll_owner = true
+            decision.capture_input = true
+            decision.scroll_offset = ScrollDragDeltaOffsetFor(
+                start_scroll, delta_y, max_scroll)
+        }
+        return decision
+    }
+    if active && dragging {
+        decision.capture_input = true
     }
     return decision
 }

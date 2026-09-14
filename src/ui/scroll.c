@@ -199,6 +199,9 @@ BeginScrollContainer(ScrollArea area)
     int scrollbar_x = area.scrollbar_x > 0
                           ? area.scrollbar_x
                           : (int)(area.bounds.x + area.bounds.width) - scrollbar_w;
+    int blocked_by_other_drag;
+    int content_delta_y;
+    ScrollContentDragDecision content_drag;
     Rectangle scrollbar_bounds = {
         (float)scrollbar_x,
         area.bounds.y,
@@ -219,8 +222,8 @@ BeginScrollContainer(ScrollArea area)
         if(view.max_scroll > 0 && inside && !captured) {
             float wheel = GetMouseWheelMove();
             if(wheel != 0.0f) {
-                *area.scroll_offset -= (int)(wheel * (float)wheel_step);
-                *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
+                *area.scroll_offset = ScrollWheelOffsetFor(
+                    *area.scroll_offset, wheel, view.max_scroll, wheel_step);
             }
         }
 
@@ -230,39 +233,33 @@ BeginScrollContainer(ScrollArea area)
            ui_pointer_drag_is_horizontal())
             g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER;
 
-        if(g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
-           g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER) {
-            content_drag_active = 0;
-            content_dragging = 0;
-        }
-
-        if(view.max_scroll > 0 &&
-           g_ui_pointer_owner == POINTER_OWNER_NONE &&
-           IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside && !captured &&
-           !on_scrollbar) {
+        blocked_by_other_drag =
+            g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
+            g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER;
+        content_delta_y = (int)mouse_world.y - content_drag_start_y;
+        content_drag = ScrollContentDragFor(
+            view.max_scroll, IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0, inside != 0,
+            captured != 0, on_scrollbar != 0,
+            g_ui_pointer_owner == POINTER_OWNER_NONE,
+            g_ui_pointer_owner == POINTER_OWNER_SCROLL,
+            blocked_by_other_drag != 0, content_drag_active != 0,
+            content_dragging != 0, *area.scroll_offset,
+            content_drag_start_scroll, content_delta_y, drag_threshold);
+        if(content_drag.gesture_pending)
             g_ui_scroll_gesture_pending = 1;
-            content_drag_active = 1;
-            content_dragging = 0;
+        if(content_drag.start_drag) {
             content_drag_start_y = (int)mouse_world.y;
             content_drag_start_scroll = *area.scroll_offset;
         }
-        if(content_drag_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-           (g_ui_pointer_owner == POINTER_OWNER_NONE ||
-            g_ui_pointer_owner == POINTER_OWNER_SCROLL)) {
-            int dy = (int)mouse_world.y - content_drag_start_y;
-            if(content_dragging || dy > drag_threshold || dy < -drag_threshold) {
-                g_ui_pointer_owner = POINTER_OWNER_SCROLL;
-                content_dragging = 1;
-                *area.scroll_offset = ScrollDragDeltaOffsetFor(
-                    content_drag_start_scroll, dy, view.max_scroll);
-                PushInputCapture(capture, 0);
-            }
-        } else if(content_drag_active) {
-            if(content_dragging)
-                PushInputCapture(capture, 0);
-            content_drag_active = 0;
-            content_dragging = 0;
-        }
+        content_drag_active = content_drag.active;
+        content_dragging = content_drag.dragging;
+        if(content_drag.claim_scroll_owner)
+            g_ui_pointer_owner = POINTER_OWNER_SCROLL;
+        if(content_drag.dragging)
+            *area.scroll_offset = content_drag.scroll_offset;
+        if(content_drag.capture_input)
+            PushInputCapture(capture, 0);
         view.content_y = y - *area.scroll_offset;
     } else {
         view.content_y = y;

@@ -11,6 +11,7 @@ main(void)
     ScrollPolicyView view;
     ScrollBarPaint paint;
     ScrollBarDragDecision drag;
+    ScrollContentDragDecision content_drag;
     Rectangle content;
     ScrollClipGeometry clip;
     Rectangle rect;
@@ -147,6 +148,36 @@ main(void)
     assert(!drag.start_drag);
     assert(!drag.continue_drag);
     assert(!drag.cancel_drag);
+    content_drag = ScrollContentDragFor(160, 1, 1, 1, 0, 0, 1, 0, 0,
+                                        0, 0, 40, 40, 0, 5);
+    assert(content_drag.start_drag);
+    assert(content_drag.active);
+    assert(content_drag.gesture_pending);
+    assert(!content_drag.dragging);
+    assert(content_drag.scroll_offset == 40);
+    content_drag = ScrollContentDragFor(160, 0, 1, 1, 0, 0, 1, 0, 0,
+                                        1, 0, 40, 40, 3, 5);
+    assert(content_drag.active);
+    assert(!content_drag.dragging);
+    assert(!content_drag.claim_scroll_owner);
+    assert(!content_drag.capture_input);
+    content_drag = ScrollContentDragFor(160, 0, 1, 1, 0, 0, 1, 0, 0,
+                                        1, 0, 40, 40, 8, 5);
+    assert(content_drag.active);
+    assert(content_drag.dragging);
+    assert(content_drag.claim_scroll_owner);
+    assert(content_drag.capture_input);
+    assert(content_drag.scroll_offset == 32);
+    content_drag = ScrollContentDragFor(160, 0, 0, 1, 0, 0, 0, 1, 0,
+                                        1, 1, 32, 40, 8, 5);
+    assert(!content_drag.active);
+    assert(!content_drag.dragging);
+    assert(content_drag.capture_input);
+    content_drag = ScrollContentDragFor(160, 1, 1, 1, 0, 0, 1, 0, 1,
+                                        1, 1, 32, 40, 8, 5);
+    assert(!content_drag.active);
+    assert(!content_drag.dragging);
+    assert(!content_drag.start_drag);
     assert(ScrollRectVisibleOffsetFor(0, 20, 100, 140, 20, 8, 160) == 48);
     assert(ScrollRectVisibleOffsetFor(80, 20, 100, 0, 20, 8, 160) == 52);
     assert(ScrollRectVisibleOffsetFor(0, 20, 100, 140, 20, -8, 160) == 40);
