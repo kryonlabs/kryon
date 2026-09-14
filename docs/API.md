@@ -744,14 +744,6 @@ Text message: {
 }
 ```
 
-#### Vertical Centering
-
-```c
-int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
-```
-
----
-
 ### Text Layout
 
 Layout text with embedded icons and line breaks.

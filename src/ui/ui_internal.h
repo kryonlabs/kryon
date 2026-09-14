@@ -376,6 +376,7 @@ int ui_text_word_left(const char *text, int cursor);
 int ui_text_word_right(const char *text, int cursor);
 int ui_text_navigation_key(int multiline);
 int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
+int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
 int ControlTextBaselineY(const char *text, int box_y, int box_h, int font);
 int PushTextSelectable(int selectable);
 void PopTextSelectable(int token);

@@ -59,6 +59,20 @@ if [ -n "$icon_size_matches" ]; then
     exit 1
 fi
 
+text_baseline_matches="$(
+    rg -n '\bTextBaselineY\b' \
+        include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity go web \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$text_baseline_matches" ]; then
+    echo "TextBaselineY is internal font plumbing; public code should use Text/MeasureText policy:"
+    echo "$text_baseline_matches"
+    exit 1
+fi
+
 multi_select_public_matches="$(
     rg -n '\bMultiSelectList\s*\(|\bMultiSelectListProps\b|include/ui_tree\.h function MultiSelectList|^\| `MultiSelectList`' \
         include docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/PUBLIC_API_SNAPSHOT.txt docs/RUNTIME_PARITY.md examples tests/parity tests/k2go_syntax_test.sh cmd/kir/kir_parse.c cmd/k2go/k2go_lower.c go/kryon/api.go go/kryon/runtime.go web/kryon-runtime.js web/kryon-runtime.d.ts \

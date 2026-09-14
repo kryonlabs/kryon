@@ -50,6 +50,5 @@ int TextHeight(const char *text, int font_size);
 int TextLineHeight(int font_size);
 Font GetTextFontForCodepoint(int codepoint, int font_size);
 float GetTextFontScale(Font font, int font_size);
-int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
 
 #endif

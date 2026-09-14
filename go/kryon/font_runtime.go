@@ -213,8 +213,8 @@ func fontTextBaseline(text string, boxY, boxHeight int, fontSize int32, fontID u
 	bounds, _ := xfont.BoundString(face, text)
 	inkTop := bounds.Min.Y.Floor()
 	inkHeight := bounds.Max.Y.Ceil() - inkTop
-	// Match TextBaselineY: round the complete offset, including the glyph's
-	// atlas-relative top. Integer division loses the half-pixel tie.
+	// Match native baseline placement: round the complete offset, including
+	// the glyph's atlas-relative top. Integer division loses the half-pixel tie.
 	return boxY + int(float64(boxHeight-inkHeight)*0.5-float64(inkTop+fontAscent(face))+0.5)
 }
 
