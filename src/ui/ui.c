@@ -301,9 +301,9 @@ ui_clear_text_area_selection(void)
 static int
 ui_text_selection_matches(TextSelection selection, int id, int *owner)
 {
-    if(owner != NULL && selection.owner == owner)
-        return 1;
-    return id > 0 && selection.id == id;
+    return TextSelectionOwnerMatches(owner != NULL,
+                                     selection.owner == owner,
+                                     selection.id, id);
 }
 
 static void

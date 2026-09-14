@@ -841,10 +841,10 @@ and host plumbing behind the canonical names.
    accept/cancel/drain gating, composition session visibility/cancel policy,
    composition phase classification, apply-result flag policy, preedit
    selection-length policy, composition view range/offset policy, and
-   composition paint span/underline policy, and selection paint span policy in
-   `.kry`; remaining native work is buffer mutation, IME/composition,
-   selection ownership/painting, and the final decision about how much of that
-   can become reusable `.kry` policy.
+   composition paint span/underline policy, selection paint span policy, and
+   selection owner match policy in `.kry`; remaining native work is buffer
+   mutation, IME/composition, selection ownership/painting, and the final
+   decision about how much of that can become reusable `.kry` policy.
 4. Finish rich text migration:
   `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment
   policy, retained selectable text block height/line advance, and generated `ParagraphSpec` data, but parsing, line-break ownership,

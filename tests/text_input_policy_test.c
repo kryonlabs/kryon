@@ -285,6 +285,11 @@ main(void)
     assert(selection.start == 5);
     assert(selection.end == 5);
     assert(!selection.has_selection);
+    assert(TextSelectionOwnerMatches(true, true, 0, 0));
+    assert(!TextSelectionOwnerMatches(true, false, 0, 0));
+    assert(TextSelectionOwnerMatches(false, false, 9, 9));
+    assert(!TextSelectionOwnerMatches(false, false, 9, 0));
+    assert(!TextSelectionOwnerMatches(false, false, 9, 8));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

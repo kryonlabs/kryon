@@ -284,6 +284,14 @@ TextSelectionState :: struct {
     has_selection: bool
 }
 
+TextSelectionOwnerMatches :: (has_owner: bool, same_owner: bool,
+    selection_id: i32, requested_id: i32) -> bool #export {
+    if has_owner && same_owner {
+        return true
+    }
+    return requested_id > 0 && selection_id == requested_id
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }
