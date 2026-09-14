@@ -514,6 +514,17 @@ MenuAcceleratorX :: (row: Rectangle, text_width: i32,
     return (i32)(row.x + row.width) - text_width - metrics.panel_padding
 }
 
+MenuAcceleratorShouldFire :: (keyboard_enabled: bool, ctrl_required: bool,
+    ctrl_down: bool, shift_required: bool, shift_down: bool,
+    alt_required: bool, alt_down: bool,
+    key_pressed: bool) -> bool #export {
+    if !keyboard_enabled { return false }
+    if ctrl_required && !ctrl_down { return false }
+    if shift_required && !shift_down { return false }
+    if alt_required && !alt_down { return false }
+    return key_pressed
+}
+
 MenuSubmenuIndicatorX :: (row: Rectangle,
     metrics: MenuMetrics) -> i32 #export {
     return (i32)(row.x + row.width) - metrics.submenu_indicator_inset

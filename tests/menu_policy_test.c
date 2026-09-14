@@ -342,5 +342,21 @@ main(void)
     context_open = MenuContextOpenFor(false, true, true, false);
     assert(!context_open.open);
     assert(!context_open.changed);
+    assert(MenuAcceleratorShouldFire(true, false, false, false, false,
+        false, false, true));
+    assert(!MenuAcceleratorShouldFire(false, false, false, false, false,
+        false, false, true));
+    assert(!MenuAcceleratorShouldFire(true, false, false, false, false,
+        false, false, false));
+    assert(MenuAcceleratorShouldFire(true, true, true, true, true,
+        true, true, true));
+    assert(!MenuAcceleratorShouldFire(true, true, false, false, false,
+        false, false, true));
+    assert(!MenuAcceleratorShouldFire(true, false, false, true, false,
+        false, false, true));
+    assert(!MenuAcceleratorShouldFire(true, false, false, false, false,
+        true, false, true));
+    assert(MenuAcceleratorShouldFire(true, false, true, false, false,
+        false, false, true));
     return 0;
 }

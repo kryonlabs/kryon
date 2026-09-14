@@ -4582,18 +4582,17 @@ RenderCollapsible(CollapsibleProps section)
 int
 AcceleratorPressed(Accelerator accelerator)
 {
-    if(!IsKeyboardInputEnabled())
+    if(!MenuAcceleratorShouldFire(
+           IsKeyboardInputEnabled() != 0,
+           accelerator.ctrl != 0,
+           (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) != 0,
+           accelerator.shift != 0,
+           (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0,
+           accelerator.alt != 0,
+           (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) != 0,
+           IsKeyPressed(accelerator.key) != 0))
         return 0;
-    if(accelerator.ctrl &&
-       !(IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)))
-        return 0;
-    if(accelerator.shift &&
-       !(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)))
-        return 0;
-    if(accelerator.alt &&
-       !(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))
-        return 0;
-    return IsKeyPressed(accelerator.key) ? accelerator.id : 0;
+    return accelerator.id;
 }
 
 int

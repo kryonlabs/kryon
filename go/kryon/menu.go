@@ -1251,6 +1251,50 @@ func Menu_MenuAcceleratorX(row Rectangle, text_width int32, metrics MenuMetrics)
 	return value_7
 }
 
+func Menu_MenuAcceleratorShouldFire(keyboard_enabled bool, ctrl_required bool, ctrl_down bool, shift_required bool, shift_down bool, alt_required bool, alt_down bool, key_pressed bool) bool {
+	var value_0 bool = keyboard_enabled
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 bool = ctrl_required
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = ctrl_down
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	if value_4 {
+		var value_7 bool = false
+		return value_7
+	}
+	var value_8 bool = shift_required
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 bool = shift_down
+		var value_11 bool = !value_10
+		value_9 = value_11
+	}
+	if value_9 {
+		var value_12 bool = false
+		return value_12
+	}
+	var value_13 bool = alt_required
+	var value_14 bool = value_13
+	if value_14 {
+		var value_15 bool = alt_down
+		var value_16 bool = !value_15
+		value_14 = value_16
+	}
+	if value_14 {
+		var value_17 bool = false
+		return value_17
+	}
+	var value_18 bool = key_pressed
+	return value_18
+}
+
 func Menu_MenuSubmenuIndicatorX(row Rectangle, metrics MenuMetrics) int32 {
 	var value_0 float32 = row.X
 	var value_1 float32 = row.Width
