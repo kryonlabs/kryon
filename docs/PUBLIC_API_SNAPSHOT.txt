@@ -1545,6 +1545,7 @@ include/ui_icon_types.h enum ICON_WORKBOOK_FILL_COLOR
 include/ui_icon_types.h enum ICON_WORKBOOK_TEXT_COLOR
 include/ui_icon_types.h enum ICON_WRENCH
 include/ui_icon_types.h enum ICON_X
+include/ui_icons.h enum ICON_SHEET_CORE
 include/ui_icons.h enum ICON_SHEET_COUNT
 include/ui_icons.h enum ICON_SHEET_LANGUAGE
 include/ui_icons.h enum ICON_SHEET_LOGOS
@@ -1552,7 +1553,6 @@ include/ui_icons.h enum ICON_SHEET_PAYMENTS
 include/ui_icons.h enum ICON_SHEET_PFP
 include/ui_icons.h enum ICON_SHEET_PLATFORMS
 include/ui_icons.h enum ICON_SHEET_TILES
-include/ui_icons.h enum ICON_SHEET_UI
 include/ui_icons.h function GetIconAsset
 include/ui_icons.h function GetIconAssetByName
 include/ui_image.h macro KRY_IMAGE_CACHE_MAX
@@ -1592,6 +1592,9 @@ include/ui_nav.h function GetPaneDropZone
 include/ui_nav.h function GetTabBarHeight
 include/ui_nav.h function TabBarHeight
 include/ui_navigation_bar_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_node2d_props.generated.h function Node2DPropsDefault
+include/ui_node2d_props.generated.h function ScenePropsDefault
+include/ui_node2d_props.generated.h function SceneTimeScaleFor
 include/ui_node2d_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_node_registry.h function NodeTypeAt
 include/ui_node_registry.h function NodeTypeBase
@@ -1677,6 +1680,7 @@ include/ui_slider_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_spinbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_picker_props.generated.h function StylePickerOptionCountFor
 include/ui_style_picker_props.generated.h function StylePickerSelectedIndexFor
+include/ui_style_picker_props.generated.h function StylePickerStateFor
 include/ui_style_picker_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks

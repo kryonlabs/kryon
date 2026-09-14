@@ -46,7 +46,7 @@ if [ -n "$removed_widget_matches" ]; then
 fi
 
 icon_size_matches="$(
-    rg -n '\bICON_SIZE_(TINY|SMALL|MEDIUM|LARGE)\b' \
+    rg -n '\bICON_SIZE_(TINY|SMALL|MEDIUM|LARGE)\b|\bICON_SHEET_UI\b' \
         include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt examples tests/parity go web \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -54,7 +54,7 @@ icon_size_matches="$(
 )"
 
 if [ -n "$icon_size_matches" ]; then
-    echo "Public icon sizing belongs to icon_size props/theme metrics, not ICON_SIZE_* enum tokens:"
+    echo "Public icon API must use clean names such as icon_size props and ICON_SHEET_CORE, not stale UI-prefixed names:"
     echo "$icon_size_matches"
     exit 1
 fi

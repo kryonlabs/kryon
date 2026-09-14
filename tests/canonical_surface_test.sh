@@ -60,7 +60,7 @@ check_absent "swipe/pager legacy names" \
     $surface_paths
 
 check_absent "icon legacy names" \
-    '\bUIIconType\b|\bUI_ICON_TYPE_|\bUIIconSheet\b|\bUI_ICON_SHEET_|\bGetUIIconAsset\b|\bLoadUIIconTexture\b|\bLoadAllUIIconTextures\b|\bUnloadAllUIIconTextures\b|\bUIIconSize\b|\bUI_ICON_SIZE_' \
+    '\bUIIconType\b|\bUI_ICON_TYPE_|\bUIIconSheet\b|\bUI_ICON_SHEET_|\bICON_SHEET_UI\b|\bGetUIIconAsset\b|\bLoadUIIconTexture\b|\bLoadAllUIIconTextures\b|\bUnloadAllUIIconTextures\b|\bUIIconSize\b|\bUI_ICON_SIZE_' \
     $surface_paths
 
 check_absent "inspect legacy names" \

@@ -9,7 +9,7 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SHEETS = (
-    ("ui", "ICON_SHEET_UI", "ui_icon_atlas_png"),
+    ("ui", "ICON_SHEET_CORE", "ui_icon_atlas_png"),
     ("pfp", "ICON_SHEET_PFP", "ui_pfp_atlas_png"),
     ("platforms", "ICON_SHEET_PLATFORMS", "ui_platforms_atlas_png"),
     ("payments", "ICON_SHEET_PAYMENTS", "ui_payments_atlas_png"),

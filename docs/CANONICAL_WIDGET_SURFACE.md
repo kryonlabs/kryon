@@ -736,6 +736,7 @@ Recent retained-tree public C cleanup:
 | `SetUI*`, `GetUI*`, `IsUI*`, `ClearUI*`, `PushUI*`, `PopUI*` focus/input helpers | `Set*`, `Get*`, `Is*`, `Clear*`, `Push*`, `Pop*` focus/input helpers |
 | `UIFont*`, `UI_FONT_*`, `EnsureUIDefaultFont`, `RegisterUISmallFont` | `TextFont*`, `TEXT_FONT_*`, `EnsureDefaultFont`, `RegisterSmallTextFont` |
 | `UIClipboard*`, `UI_CLIPBOARD_*`, `UIPrimarySelection*` | `Clipboard*`, `CLIPBOARD_*`, `PrimarySelection*` |
+| `ICON_SHEET_UI` | `ICON_SHEET_CORE` |
 | old profile image helpers | `ProfileImage*`, `SyncProfileIcon`, `SYNC_PROFILE_ICON_*` |
 | `SetUIViewSize`, `GetUIViewWidth`, `GetUIViewHeight` | `SetViewSize`, `GetViewWidth`, `GetViewHeight` |
 | `GetUICenteredColumn`, `GetUIPageSidePadding` | `GetCenteredColumn`, `GetPageSidePadding` |

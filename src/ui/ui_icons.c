@@ -33,7 +33,7 @@ icon_sheet_png(IconSheet sheet, const unsigned char **png,
         return 0;
 
     switch(sheet) {
-    case ICON_SHEET_UI:
+    case ICON_SHEET_CORE:
         *png = ui_icon_atlas_png;
         *png_size = ui_icon_atlas_png_size;
         return 1;
@@ -133,7 +133,7 @@ draw_icon_asset(const IconAsset *asset, Rectangle bounds, Color tint)
     atlas = LoadIconSheet(asset->sheet);
     if(atlas.id == 0)
         return;
-    if(asset->sheet != ICON_SHEET_UI)
+    if(asset->sheet != ICON_SHEET_CORE)
         tint = (Color){255, 255, 255, tint.a};
     DrawTexturePro(atlas, asset->source, bounds, (Vector2){0}, 0.0f, tint);
 }

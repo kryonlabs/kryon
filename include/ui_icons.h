@@ -5,7 +5,7 @@
 #include "ui_icon_types.h"
 
 typedef enum IconSheet {
-    ICON_SHEET_UI,
+    ICON_SHEET_CORE,
     ICON_SHEET_PFP,
     ICON_SHEET_PLATFORMS,
     ICON_SHEET_PAYMENTS,
