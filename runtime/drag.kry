@@ -16,6 +16,14 @@ DragTextPaint :: struct {
     text_y: float
 }
 
+DragTextInsetFor :: (scale: float) -> float #export {
+    return scale * 6.0
+}
+
+DragLabelGapFor :: (scale: float) -> float #export {
+    return scale * 2.0
+}
+
 DragCellTextPaintFor :: (bounds: Rectangle, inset: float,
     text_line_height: float) -> DragTextPaint #export {
     paint: DragTextPaint

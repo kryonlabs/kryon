@@ -2441,7 +2441,8 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled,
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     int font = ResolveFont(0, StyleFontValue(style.fields, style.font_size),
                            GetSmallFontSize());
-    DragTextPaint paint = DragCellTextPaintFor(bounds, (float)Scale(6),
+    float scale = (float)Scale(1000) / 1000.0f;
+    DragTextPaint paint = DragCellTextPaintFor(bounds, DragTextInsetFor(scale),
                                                (float)TextLineHeight(font));
 
     ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, disabled, focused);
@@ -2462,8 +2463,11 @@ ui_paint_drag_label(Rectangle bounds, const char *label, int class_name)
         int font = ResolveFont(0, StyleFontValue(style.fields,
                                                  style.font_size),
                                GetSmallFontSize());
-        DragTextPaint paint = DragLabelTextPaintFor(bounds, (float)Scale(6),
-                                                    font, (float)Scale(2));
+        float scale = (float)Scale(1000) / 1000.0f;
+        DragTextPaint paint = DragLabelTextPaintFor(bounds,
+                                                    DragTextInsetFor(scale),
+                                                    font,
+                                                    DragLabelGapFor(scale));
         RenderText(label, (int)paint.text_x, (int)paint.text_y,
                    font, Fade(style.foreground, style.opacity));
     }

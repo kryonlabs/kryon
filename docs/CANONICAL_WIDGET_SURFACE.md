@@ -741,8 +741,9 @@ and host plumbing behind the canonical names.
   `runtime/table_view.kry`; `Input` numeric kind default format, integer
   rounding, and step dispatch now route through `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
-  that runtime policy. Continue by reducing raw native constants in shared
-  immediate-mode helpers.
+  that runtime policy; `Drag` text inset and label-gap metrics now route
+  through `runtime/drag.kry`. Continue by reducing raw native constants in
+  shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

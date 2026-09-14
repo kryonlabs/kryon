@@ -17,6 +17,20 @@ type DragTextPaint struct {
 	TextY float32
 }
 
+func Drag_DragTextInsetFor(scale float32) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 6.0
+	var value_2 float32 = value_0 * value_1
+	return value_2
+}
+
+func Drag_DragLabelGapFor(scale float32) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 2.0
+	var value_2 float32 = value_0 * value_1
+	return value_2
+}
+
 func Drag_DragCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) DragTextPaint {
 	var paint DragTextPaint = DragTextPaint{}
 	var value_0 float32 = bounds.X

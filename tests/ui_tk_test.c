@@ -1415,10 +1415,13 @@ test_drag_value_policy(void)
     check_int("drag cell width", (int)cell.width, 40);
     cell = DragCellBoundsFor((Rectangle){10, 20, 120, 30}, 3, 9);
     check_int("drag clamped cell x", (int)cell.x, 90);
+    check_int("drag text inset", (int)DragTextInsetFor(2.0f), 12);
+    check_int("drag label gap", (int)DragLabelGapFor(2.0f), 4);
     cell_paint = DragCellTextPaintFor((Rectangle){10, 20, 80, 30},
-                                      6.0f, 14.0f);
+                                      DragTextInsetFor(1.0f), 14.0f);
     label_paint = DragLabelTextPaintFor((Rectangle){10, 20, 80, 30},
-                                        6.0f, 16, 2.0f);
+                                        DragTextInsetFor(1.0f), 16,
+                                        DragLabelGapFor(1.0f));
     check_int("drag cell text x", (int)cell_paint.text_x, 16);
     check_int("drag cell text y", (int)cell_paint.text_y, 28);
     check_int("drag label text x", (int)label_paint.text_x, 16);
