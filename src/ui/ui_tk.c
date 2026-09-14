@@ -3938,6 +3938,11 @@ RenderTableView(TableViewProps table)
         Rectangle all_headers = {table.bounds.x,table.bounds.y,table.bounds.width,(float)header_h};
         int header_hot = !table.disabled && ui_contains(all_headers,header_mouse) &&
             ui_contains(head,local_mouse) && !InputCapturesClick(header_mouse);
+        TableViewHeaderPointerDecision header_pointer =
+            TableViewHeaderPointerDecisionFor(
+                table.disabled != 0, header_hot != 0,
+                IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                table.sort_column != NULL);
         if(paint) {
             int selected_header = (table.selected_column != NULL &&
                                    *table.selected_column == c) ||
@@ -3995,8 +4000,7 @@ RenderTableView(TableViewProps table)
                 EndClip();
             }
         }
-        if(!table.disabled && ui_contains(all_headers,header_mouse) && ui_contains(head,local_mouse) &&
-           !InputCapturesClick(header_mouse) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.sort_column != NULL) {
+        if(header_pointer.sort) {
             TableViewSortDecision sort_decision = TableViewSortDecisionFor(
                 c, *table.sort_column,
                 table.sort_direction != NULL ? *table.sort_direction : 0);
@@ -4032,6 +4036,13 @@ RenderTableView(TableViewProps table)
         Rectangle viewport = TableViewViewport(table.bounds, layout,
                                                scrolling != 0);
         int hot = !table.disabled && !table.custom_cells && ui_contains(viewport, ui_mouse_world()) && ui_hot(row);
+        TableViewRowPointerDecision row_pointer =
+            TableViewRowPointerDecisionFor(
+                table.disabled != 0, hot != 0,
+                IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) != 0,
+                table.selected_row != NULL,
+                table.right_clicked_row != NULL || table.right_clicked_column != NULL);
         if(paint && (r % 2) == 1) {
             StyleFrame row_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
                 table.disabled ? ButtonStateDisabled : ButtonStateNormal,
@@ -4049,7 +4060,7 @@ RenderTableView(TableViewProps table)
             ui_tk_draw_style_frame(row, table.bounds, row_frame, hot, 0,
                                    table.disabled, 0);
         }
-        if(hot)
+        if(row_pointer.mark_clickable)
             MarkClickable();
         for(int slot = 0; slot < table.column_count; slot++) {
             int c = ui_table_display_column(table, slot);
@@ -4080,12 +4091,13 @@ RenderTableView(TableViewProps table)
                 EndClip();
             }
         }
-        if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.selected_row != NULL) {
+        if(row_pointer.click) {
             int clicked_col = -1;
             double now = GetTime();
             Vector2 mouse = ui_mouse_world();
             TableViewRowClickDecision row_decision;
-            ConsumeRelease();
+            if(row_pointer.consume_release)
+                ConsumeRelease();
             for(int slot = 0; slot < table.column_count; slot++) {
                 int c = ui_table_display_column(table, slot);
                 if(c < 0)
@@ -4116,7 +4128,7 @@ RenderTableView(TableViewProps table)
             toolkit->last_table_click_time = now;
             changed = row_decision.changed;
         }
-        if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        if(row_pointer.context) {
             int clicked_col = -1;
             Vector2 mouse = ui_mouse_world();
             TableViewRowContextDecision context_decision;

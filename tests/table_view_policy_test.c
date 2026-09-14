@@ -30,6 +30,8 @@ main(void)
     TableViewScrollLayout scroll;
     TableViewClipboardDecision clipboard;
     TableViewResizeClearDecision resize_clear;
+    TableViewHeaderPointerDecision header_pointer;
+    TableViewRowPointerDecision row_pointer;
     TableViewRowClickDecision row_click;
     TableViewRowContextDecision row_context;
     TableViewSortDecision sort_decision;
@@ -113,6 +115,37 @@ main(void)
     assert(!clear_decision.changed);
     assert(clear_decision.row == -1);
     assert(clear_decision.column == -1);
+    header_pointer = TableViewHeaderPointerDecisionFor(
+        false, true, true, true);
+    assert(header_pointer.sort);
+    header_pointer = TableViewHeaderPointerDecisionFor(
+        true, true, true, true);
+    assert(!header_pointer.sort);
+    header_pointer = TableViewHeaderPointerDecisionFor(
+        false, true, true, false);
+    assert(!header_pointer.sort);
+    row_pointer = TableViewRowPointerDecisionFor(
+        false, true, true, false, true, true);
+    assert(row_pointer.mark_clickable);
+    assert(row_pointer.click);
+    assert(!row_pointer.context);
+    assert(row_pointer.consume_release);
+    row_pointer = TableViewRowPointerDecisionFor(
+        false, true, false, true, true, true);
+    assert(row_pointer.mark_clickable);
+    assert(!row_pointer.click);
+    assert(row_pointer.context);
+    assert(!row_pointer.consume_release);
+    row_pointer = TableViewRowPointerDecisionFor(
+        false, true, true, true, false, false);
+    assert(row_pointer.mark_clickable);
+    assert(!row_pointer.click);
+    assert(!row_pointer.context);
+    row_pointer = TableViewRowPointerDecisionFor(
+        true, true, true, true, true, true);
+    assert(!row_pointer.mark_clickable);
+    assert(!row_pointer.click);
+    assert(!row_pointer.context);
     sort_decision = TableViewSortDecisionFor(2, -1, 0);
     assert(sort_decision.changed);
     assert(sort_decision.selected_row == -1);

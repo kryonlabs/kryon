@@ -46,6 +46,17 @@ TableViewSortDecision :: struct {
     changed: bool
 }
 
+TableViewHeaderPointerDecision :: struct {
+    sort: bool
+}
+
+TableViewRowPointerDecision :: struct {
+    mark_clickable: bool
+    click: bool
+    context: bool
+    consume_release: bool
+}
+
 TableViewRowClickDecision :: struct {
     selected_row: i32
     selected_column: i32
@@ -399,6 +410,13 @@ TableViewSelectionClearFor :: (selected_row: i32,
     return decision
 }
 
+TableViewHeaderPointerDecisionFor :: (disabled: bool, header_hot: bool,
+    released: bool, has_sort_column: bool) -> TableViewHeaderPointerDecision #export {
+    decision: TableViewHeaderPointerDecision
+    decision.sort = !disabled && header_hot && released && has_sort_column
+    return decision
+}
+
 TableViewSortDecisionFor :: (column: i32, previous_sort_column: i32,
     previous_sort_direction: i32) -> TableViewSortDecision #export {
     decision: TableViewSortDecision
@@ -419,6 +437,17 @@ TableViewSortDecisionFor :: (column: i32, previous_sort_column: i32,
         decision.sort_direction = 0
     }
     decision.changed = true
+    return decision
+}
+
+TableViewRowPointerDecisionFor :: (disabled: bool, hot: bool,
+    left_released: bool, right_released: bool, has_selection: bool,
+    has_context: bool) -> TableViewRowPointerDecision #export {
+    decision: TableViewRowPointerDecision
+    decision.mark_clickable = !disabled && hot
+    decision.click = decision.mark_clickable && left_released && has_selection
+    decision.context = decision.mark_clickable && right_released && has_context
+    decision.consume_release = decision.click
     return decision
 }
 
