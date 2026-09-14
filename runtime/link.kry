@@ -1,4 +1,5 @@
 #module "link"
+#import "control_props"
 #import "style"
 
 LinkVisualState :: enum {
@@ -10,6 +11,13 @@ LinkVisualState :: enum {
 LinkAppearance :: struct {
     color: u32
     underline: bool
+}
+
+LinkInteraction :: struct {
+    active: bool
+    hovered: bool
+    disabled_marker: bool
+    state: ButtonState
 }
 
 LinkBoundsFor :: (bounds: Rectangle, text_width: i32,
@@ -30,6 +38,26 @@ LinkBoundsFor :: (bounds: Rectangle, text_width: i32,
 LinkUnderlineYFor :: (bounds: Rectangle, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(bounds.y + bounds.height) - (i32)(2.0 * scale)
+}
+
+LinkInteractionFor :: (disabled: bool, captured: bool, mouse_inside: bool,
+    hover_effects: bool) -> LinkInteraction #export {
+    interaction: LinkInteraction
+    interaction.active = !disabled && !captured && mouse_inside
+    interaction.hovered = interaction.active && hover_effects
+    interaction.disabled_marker = disabled && !captured && mouse_inside
+    interaction.state = (ButtonState)ButtonStateNormal
+    if interaction.hovered {
+        interaction.state = (ButtonState)ButtonStateHover
+    }
+    if disabled {
+        interaction.state = (ButtonState)ButtonStateDisabled
+    }
+    return interaction
+}
+
+LinkActivated :: (disabled: bool, clicked: bool, focus_activate: bool) -> bool #export {
+    return !disabled && (clicked || focus_activate)
 }
 
 ResolveLinkAppearance :: (frame: StyleFrame, hovered: bool,

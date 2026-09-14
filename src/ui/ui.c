@@ -2393,11 +2393,9 @@ RenderLink(LinkProps link)
     int text_w;
     int mouse_inside;
     int captured;
-    int active;
-    int hovered;
+    LinkInteraction interaction;
     int focused;
     int clicked = 0;
-    ButtonState state = ButtonStateNormal;
     ButtonProps style_props = {0};
     StyleFrame style_frame;
     LinkAppearance appearance;
@@ -2427,26 +2425,24 @@ RenderLink(LinkProps link)
 
     mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     captured = InputCapturesClick(mouse_world);
-    active = !link.disabled && !captured && mouse_inside;
-    hovered = active && HoverEffectsEnabled();
+    interaction = LinkInteractionFor(link.disabled != 0, captured != 0,
+                                     mouse_inside != 0,
+                                     HoverEffectsEnabled() != 0);
     focused = !link.disabled && link.focus_id > 0 &&
               RegisterFocus(link.focus_id, bounds);
 
-    if(link.disabled)
-        state = ButtonStateDisabled;
-    else if(hovered)
-        state = ButtonStateHover;
-    style_frame = ui_control_style_frame_kind(style_props, state, 0, 0.0f,
-                                              0.0f, 0.0f, StyleKindLink());
-    appearance = ResolveLinkAppearance(style_frame, hovered != 0,
+    style_frame = ui_control_style_frame_kind(style_props, interaction.state,
+                                              0, 0.0f, 0.0f, 0.0f,
+                                              StyleKindLink());
+    appearance = ResolveLinkAppearance(style_frame, interaction.hovered,
                                        link.disabled != 0);
     color = Fade(GetColor(appearance.color), style_frame.value.opacity);
 
-    if(active) {
+    if(interaction.active) {
         MarkClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             clicked = 1;
-    } else if(link.disabled && !captured && mouse_inside) {
+    } else if(interaction.disabled_marker) {
         MarkDisabled();
     }
 
@@ -2466,7 +2462,8 @@ RenderLink(LinkProps link)
     }
     if(clicked)
         ConsumeRelease();
-    if(!link.disabled && (clicked || IsFocusActivatePressed(link.focus_id))) {
+    if(LinkActivated(link.disabled != 0, clicked != 0,
+                     IsFocusActivatePressed(link.focus_id) != 0)) {
         ui_open_url(link.link);
         EndWidget(&widget);
         return 1;

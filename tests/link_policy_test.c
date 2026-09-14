@@ -28,6 +28,7 @@ main(void)
     StyleFrame hover = {0};
     StyleFrame disabled = {0};
     LinkAppearance paint;
+    LinkInteraction interaction;
     Rectangle bounds;
 
     normal.value.foreground = 0x0044ccffu;
@@ -42,6 +43,30 @@ main(void)
     check_bool("link underline y",
                LinkUnderlineYFor((Rectangle){10, 20, 72, 18}, 2.0f) == 34,
                1);
+
+    interaction = LinkInteractionFor(false, false, true, true);
+    check_bool("link active", interaction.active, 1);
+    check_bool("link hovered", interaction.hovered, 1);
+    check_bool("link normal not disabled marker", interaction.disabled_marker,
+               0);
+    check_bool("link hover state", interaction.state == ButtonStateHover, 1);
+
+    interaction = LinkInteractionFor(false, true, true, true);
+    check_bool("captured link inactive", interaction.active, 0);
+    check_bool("captured link no hover", interaction.hovered, 0);
+    check_bool("captured link normal state",
+               interaction.state == ButtonStateNormal, 1);
+
+    interaction = LinkInteractionFor(true, false, true, true);
+    check_bool("disabled link inactive", interaction.active, 0);
+    check_bool("disabled link marker", interaction.disabled_marker, 1);
+    check_bool("disabled link state",
+               interaction.state == ButtonStateDisabled, 1);
+
+    check_bool("clicked link activates", LinkActivated(false, true, false), 1);
+    check_bool("focus link activates", LinkActivated(false, false, true), 1);
+    check_bool("disabled link suppresses activation",
+               LinkActivated(true, true, true), 0);
 
     paint = ResolveLinkAppearance(normal, false, false);
     check_u32("normal link color", paint.color, normal.value.foreground);
