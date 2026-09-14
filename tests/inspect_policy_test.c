@@ -23,6 +23,12 @@ main(void)
                78, 48, 12, 12);
     check_rect(InspectResizeHandleBounds((Rectangle){10, 20, 80, 40}, 0),
                78, 48, 12, 12);
+    assert(InspectResizeHitHandleSize(1.0f) == 12);
+    assert(InspectResizeHitHandleSize(2.0f) == 24);
+    assert(InspectResizeHitHandleSize(0.0f) == 12);
+    assert(InspectResizePaintHandleSize(1.0f) == 10);
+    assert(InspectResizePaintHandleSize(2.0f) == 20);
+    assert(InspectResizePaintHandleSize(0.0f) == 10);
 
     edit = InspectEditForDelta((Rectangle){10, 20, 80, 40},
                                (Rectangle){100, 120, 160, 80},

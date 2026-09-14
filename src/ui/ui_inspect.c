@@ -610,7 +610,9 @@ EndWidget(Widget *widget)
 static int
 ui_inspect_point_in_resize_handle(Rectangle bounds, Vector2 point)
 {
-    Rectangle rect = InspectResizeHandleBounds(bounds, Scale(12));
+    float scale = (float)Scale(1000) / 1000.0f;
+    Rectangle rect =
+        InspectResizeHandleBounds(bounds, InspectResizeHitHandleSize(scale));
     return CheckCollisionPointRec(point, rect);
 }
 
@@ -759,7 +761,8 @@ RenderInspectOverlay(void)
                              color);
         if(i == g_ui_inspect.selected &&
            (widget->flags & WidgetFlagResizable) != 0) {
-            int s = Scale(10);
+            float scale = (float)Scale(1000) / 1000.0f;
+            int s = InspectResizePaintHandleSize(scale);
             Rectangle handle_bounds =
                 InspectResizeHandleBounds(screen_bounds, s);
 

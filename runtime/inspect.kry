@@ -22,6 +22,16 @@ InspectResizeHandleBounds :: (bounds: Rectangle, handle_size: i32) -> Rectangle 
         (float)handle_size}
 }
 
+InspectResizeHitHandleSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(12.0 * scale)
+}
+
+InspectResizePaintHandleSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(10.0 * scale)
+}
+
 InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
     dx: float, dy: float, zoom: float, resizing: bool,
     min_size: float) -> InspectEdit #export {
