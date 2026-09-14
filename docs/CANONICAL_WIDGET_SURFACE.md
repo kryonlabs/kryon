@@ -703,7 +703,8 @@ behind the canonical names.
    widgets already have `.kry` policy, but raw widget constants still remain in
    native files. The latest focused audits moved context-popup activation,
    popup input records, and Escape-close policy into `runtime/popup_policy.kry` and label text-field row layout into
-  `runtime/rows.kry`; InfoRows background/text/separator geometry and
+  `runtime/rows.kry`; SegmentedControl row-advance/wrap policy now routes through
+  `runtime/segmented_control.kry`; InfoRows background/text/separator geometry and
   button-row wrap height/advance now also
   route through `runtime/rows.kry`; dropdown panel/option/scrollbar role
   policy, selected-option appearance, trigger/menu keyboard intent, and menu transient pointer state now route through `runtime/dropdown.kry`;

@@ -700,15 +700,13 @@ GetSegmentedControlHeight(SegmentedControlProps control)
 
     for(int i = 0; i < control.option_count; i++) {
         int item_w = segmented_item_width(control, &control.options[i], font);
-        int next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
+        SegmentedRowAdvance advance = SegmentedRowAdvanceFor(
+            control.wrap != 0, row_w, 0, item_w, (int)control.bounds.width,
+            metrics);
 
-        if(SegmentedShouldWrap(control.wrap != 0, row_w, next_w,
-                               (int)control.bounds.width)) {
+        if(advance.wrap_before)
             rows++;
-            row_w = item_w;
-        } else {
-            row_w = next_w;
-        }
+        row_w = advance.row_width;
     }
 
     return SegmentedHeightForRows(rows, metrics.row_height, metrics.gap);
@@ -742,18 +740,18 @@ SegmentedControl(SegmentedControlProps control)
     for(int i = 0; i <= control.option_count; i++) {
         int end_row = i == control.option_count;
         int item_w = 0;
-        int next_w;
+        SegmentedRowAdvance advance = {0};
 
-        if(!end_row)
+        if(!end_row) {
             item_w = segmented_item_width(control, &control.options[i], font);
-        next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
-
-        if(!end_row &&
-           !SegmentedShouldWrap(control.wrap != 0, row_w, next_w,
-                                (int)control.bounds.width)) {
-            row_w = next_w;
-            row_count++;
-            continue;
+            advance = SegmentedRowAdvanceFor(
+                control.wrap != 0, row_w, row_count, item_w,
+                (int)control.bounds.width, metrics);
+            if(!advance.wrap_before) {
+                row_w = advance.row_width;
+                row_count = advance.row_count;
+                continue;
+            }
         }
 
         if(row_count > 0) {
@@ -800,9 +798,14 @@ SegmentedControl(SegmentedControlProps control)
             y += metrics.row_height + metrics.gap;
         }
 
-        row_start = i;
-        row_w = item_w;
-        row_count = end_row ? 0 : 1;
+        if(end_row) {
+            row_w = 0;
+            row_count = 0;
+        } else {
+            row_start = i;
+            row_w = advance.row_width;
+            row_count = advance.row_count;
+        }
     }
 
     return result;

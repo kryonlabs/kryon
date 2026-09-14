@@ -20,6 +20,12 @@ type SegmentedRow struct {
 	Y           int32
 }
 
+type SegmentedRowAdvance struct {
+	RowWidth   int32
+	RowCount   int32
+	WrapBefore bool
+}
+
 func SegmentedControl_SegmentedMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -251,6 +257,20 @@ func SegmentedControl_SegmentedShouldWrap(wrap bool, row_width int32, next_width
 		value_5 = value_8
 	}
 	return value_5
+}
+
+func SegmentedControl_SegmentedRowAdvanceFor(wrap bool, row_width int32, row_count int32, item_width int32, available_width int32, metrics SegmentedMetrics) SegmentedRowAdvance {
+	var advance SegmentedRowAdvance
+	next_width := SegmentedControl_SegmentedNextRowWidth(row_width, item_width, metrics.Gap)
+	advance.WrapBefore = SegmentedControl_SegmentedShouldWrap(wrap, row_width, next_width, available_width)
+	if advance.WrapBefore {
+		advance.RowWidth = item_width
+		advance.RowCount = 1
+	} else {
+		advance.RowWidth = next_width
+		advance.RowCount = row_count + 1
+	}
+	return advance
 }
 
 func SegmentedControl_SegmentedHeightForRows(rows int32, row_height int32, gap int32) int32 {

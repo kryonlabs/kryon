@@ -19,6 +19,12 @@ SegmentedRow :: struct {
     y: i32
 }
 
+SegmentedRowAdvance :: struct {
+    row_width: i32
+    row_count: i32
+    wrap_before: bool
+}
+
 SegmentedMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -90,6 +96,22 @@ SegmentedNextRowWidth :: (row_width: i32, item_width: i32, gap: i32) -> i32 #exp
 SegmentedShouldWrap :: (wrap: bool, row_width: i32, next_width: i32,
     available_width: i32) -> bool #export {
     return wrap && row_width > 0 && next_width > available_width
+}
+
+SegmentedRowAdvanceFor :: (wrap: bool, row_width: i32, row_count: i32,
+    item_width: i32, available_width: i32, metrics: SegmentedMetrics) -> SegmentedRowAdvance #export {
+    advance: SegmentedRowAdvance
+    next_width: i32 = SegmentedNextRowWidth(row_width, item_width, metrics.gap)
+    advance.wrap_before = SegmentedShouldWrap(wrap, row_width, next_width,
+        available_width)
+    if advance.wrap_before {
+        advance.row_width = item_width
+        advance.row_count = 1
+    } else {
+        advance.row_width = next_width
+        advance.row_count = row_count + 1
+    }
+    return advance
 }
 
 SegmentedHeightForRows :: (rows: i32, row_height: i32, gap: i32) -> i32 #export {

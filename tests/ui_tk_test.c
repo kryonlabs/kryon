@@ -1214,6 +1214,7 @@ test_segmented_control_policy(void)
     int second;
     int next;
     SegmentedRow row;
+    SegmentedRowAdvance advance;
     SegmentedMetrics zero_gap;
 
     control.value.fields |= StyleGap | StyleIconSize | StyleContentOffset;
@@ -1238,6 +1239,14 @@ test_segmented_control_policy(void)
     check_int("segmented should wrap",
               SegmentedShouldWrap(1, next, next + metrics.gap + second,
                                   240), 1);
+    advance = SegmentedRowAdvanceFor(1, next, 2, second, 240, metrics);
+    check_int("segmented advance wraps", advance.wrap_before ? 1 : 0, 1);
+    check_int("segmented advance wrapped width", advance.row_width, 120);
+    check_int("segmented advance wrapped count", advance.row_count, 1);
+    advance = SegmentedRowAdvanceFor(1, first, 1, second, 240, metrics);
+    check_int("segmented advance stays", advance.wrap_before ? 1 : 0, 0);
+    check_int("segmented advance kept width", advance.row_width, 198);
+    check_int("segmented advance kept count", advance.row_count, 2);
     check_int("segmented height", SegmentedHeightForRows(2, 30, 6), 66);
     check_int("segmented focus disabled id", SegmentedFocusIdFor(0, 1), 0);
     check_int("segmented focus negative index", SegmentedFocusIdFor(7, -1), 0);
