@@ -4,8 +4,6 @@
 #include "runtime/toast.h"
 
 #define TOAST_MESSAGE_SIZE 256
-#define TOAST_DEFAULT_SECONDS 3.0
-
 static char toast_message[TOAST_MESSAGE_SIZE];
 static int toast_class_name;
 static double toast_until;
@@ -111,8 +109,7 @@ RenderToast(void)
                      ui_style_fill(surface), surface.material);
     RenderText(display,
                (int)layout.text_bounds.x,
-               ControlTextY(display, (int)layout.bounds.y,
-                                 (int)layout.bounds.height, font),
+               (int)layout.text_bounds.y,
                font, Fade(text.foreground, text.opacity));
     PopTextFont(font_token);
 }

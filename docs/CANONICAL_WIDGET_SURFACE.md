@@ -136,7 +136,7 @@ surface review:
 | `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar, bottom icon row, and icon slider popup metrics/geometry policy | `.kry canonical` |
 | `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
-| `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
+| `runtime/toast.kry` | Toast duration, layout, and text-placement policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | `.kry support` |
 | `runtime/transition_props.kry` | Transition phase enum names | `.kry support` |
@@ -163,7 +163,7 @@ text measurement, painting, storage, or platform services.
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/drag/ensure-visible policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership/clipping and reorder pointer ownership/gesture lifecycle remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/reservation/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
-| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
+| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout/text-placement policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
 
 The remaining migration target is the native support around text editing and
@@ -590,7 +590,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. Mode/input policy is in `.kry`; host handles pointer sampling, paint layers, clipping, and child content. |
 | `Modal` | `.kry canonical` | Layout, frame geometry, and action sizing policy are in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
-| `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
+| `Toast` | `.kry canonical` | Public toast feedback surface. Duration, layout, and text-placement policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Partly `.kry-backed` | Focus ring geometry is in `.kry`; focus state, registration, and drawing remain host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
