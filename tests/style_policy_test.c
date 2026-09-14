@@ -74,6 +74,8 @@ int main(void)
     assert(StyleStateLayerAlpha(false, false, true) == 20);
     assert(StyleStateLayerAlpha(false, true, true) == 31);
     assert(StyleStateLayerAlpha(true, false, false) == 31);
+    assert(StyleDisabledAlpha() == 96);
+    assert(StyleDefaultFocusOutlineAlpha() == 220);
     assert(StyleLegacyBoxRadius(-1.0f) == 0.12f);
     assert(StyleLegacyBoxRadius(0.0f) == 0.0f);
     assert(StyleLegacyBoxRadius(0.5f) == 0.5f);

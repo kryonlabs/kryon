@@ -533,8 +533,8 @@ ui_default_scheme(void)
                        : (Color){0xBA, 0x1A, 0x1A, 0xFF};
     scheme.on_error = ui_default_on_color(scheme.error);
     scheme.disabled_container = ui_default_tone(c_bg, 14, 14);
-    scheme.disabled_container.a = 96;
-    disabled.a = 96;
+    scheme.disabled_container.a = StyleDisabledAlpha();
+    disabled.a = StyleDisabledAlpha();
     scheme.disabled_content = disabled;
 
     cache = scheme;
@@ -593,7 +593,7 @@ ui_default_focus(Rectangle bounds)
     Rectangle focus_bounds;
     float radius;
 
-    outline.a = 220;
+    outline.a = StyleDefaultFocusOutlineAlpha();
     focus_bounds = FocusDefaultOutlineBounds(
         bounds, (float)Scale(1000) / 1000.0f);
     radius = ui_radius_px(focus_bounds, GetThemeMetrics().control_radius + 2.0f);

@@ -226,6 +226,14 @@ StyleStateLayerAlpha :: (pressed: bool, focused: bool, hovered: bool) -> i32 #ex
     return 0
 }
 
+StyleDisabledAlpha :: () -> u8 #export {
+    return (u8)96
+}
+
+StyleDefaultFocusOutlineAlpha :: () -> u8 #export {
+    return (u8)220
+}
+
 StyleLegacyBoxRadius :: (requested: float) -> float #export {
     if requested >= 0.0 { return requested }
     return 0.12
