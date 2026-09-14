@@ -3775,16 +3775,16 @@ RenderTableView(TableViewProps table)
                                               text_style.font_size),
                             header_font);
 
-    if(toolkit->resize_column >= 0 &&
-       ui_popup_input_owner_captures(toolkit->resize_owner)) {
-        toolkit->resize_table_id = 0;
-        toolkit->resize_column = -1;
-    }
-
-    if(toolkit->resize_column >= 0 &&
-       (ContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       (ContentDisabled() || toolkit->resize_table_id != table.id || table.disabled || !table.resizable ||
-        table.column_widths == NULL)) {
+    TableViewResizeClearDecision resize_clear = TableViewResizeClearFor(
+        toolkit->resize_column >= 0,
+        ui_popup_input_owner_captures(toolkit->resize_owner) != 0,
+        ContentDisabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        toolkit->resize_table_id == table.id,
+        table.disabled != 0,
+        table.resizable != 0,
+        table.column_widths != NULL);
+    if(resize_clear.clear) {
         toolkit->resize_table_id = 0;
         toolkit->resize_column = -1;
     }

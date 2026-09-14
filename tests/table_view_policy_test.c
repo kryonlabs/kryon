@@ -29,6 +29,7 @@ main(void)
     TableViewLayout layout;
     TableViewScrollLayout scroll;
     TableViewClipboardDecision clipboard;
+    TableViewResizeClearDecision resize_clear;
     Rectangle row;
 
     assert(metrics.default_row_height == 56);
@@ -49,6 +50,30 @@ main(void)
     assert(TableViewResizeColumnWidthFor(120, 50, 90, 64) == 160);
     assert(TableViewResizeColumnWidthFor(120, 50, 10, 64) == 80);
     assert(TableViewResizeColumnWidthFor(120, 50, -20, 64) == 64);
+    resize_clear = TableViewResizeClearFor(false, true, true, true, false,
+                                           true, false, false);
+    assert(!resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, true, false, false, true,
+                                           false, true, true);
+    assert(resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, false, true, true,
+                                           false, true, true);
+    assert(!resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, false, true, false,
+                                           false, true, true);
+    assert(resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, true, false, true,
+                                           false, true, true);
+    assert(resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, false, true, true,
+                                           true, true, true);
+    assert(resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, false, true, true,
+                                           false, false, true);
+    assert(resize_clear.clear);
+    resize_clear = TableViewResizeClearFor(true, false, false, true, true,
+                                           false, true, false);
+    assert(resize_clear.clear);
     assert(TableViewSelectedRowFor(-1, 4) == 0);
     assert(TableViewSelectedRowFor(9, 4) == 3);
     assert(TableViewSelectedRowFor(2, 4) == 2);

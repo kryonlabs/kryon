@@ -43,6 +43,10 @@ TableViewClipboardDecision :: struct {
     paste: bool
 }
 
+TableViewResizeClearDecision :: struct {
+    clear: bool
+}
+
 TableViewMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -256,6 +260,26 @@ TableViewResizeColumnWidthFor :: (start_width: i32, start_x: i32,
         return minimum_width
     }
     return width
+}
+
+TableViewResizeClearFor :: (active: bool, owner_captured: bool,
+    content_disabled: bool, released: bool, same_table: bool,
+    table_disabled: bool, resizable: bool,
+    has_column_widths: bool) -> TableViewResizeClearDecision #export {
+    decision: TableViewResizeClearDecision
+    if !active {
+        return decision
+    }
+    if owner_captured {
+        decision.clear = true
+        return decision
+    }
+    if (content_disabled || released) &&
+       (content_disabled || !same_table || table_disabled || !resizable ||
+        !has_column_widths) {
+        decision.clear = true
+    }
+    return decision
 }
 
 TableViewSelectedRowFor :: (selected_row: i32, row_count: i32) -> i32 #export {
