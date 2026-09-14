@@ -48,6 +48,25 @@ Tests that construct `StyleControlFacts` directly are valid and stay.
 - `src/ui/ui_page.c:67` - `page_text_style` (opacity, font size fallback)
 - `src/ui/ui.c:5029` - `paragraph_text_color` (opacity)
 
+## Pack Coverage Audit For The Generic Control Path (2026-09-14)
+
+Kinds flowing through the generic control path (`simpleStyleFrameWithClassRole`, `resolveMinimal*` in Go; `ui_resolve_minimal_control_*` in C): Toggle, Modal, TableView, Collapsible, Slider, Menu, Toolbar, TitleBar, Separator, Progress, ToggleThumb, TabClose, Tab, MenuItem, TreeViewItem, TreeView, TabBar, Spinbox, SpinboxValue, Selectable, SegmentedControl, Segment, Plot, PlotMark, MenuSeparator, ListBox, ListBoxItem, ListBoxMulti, ListBoxMultiItem, Link, Image, Fieldset, Drag, DragValue, ColorPicker, ColorPickerSwatch, Canvas, Button, Radio, Checkbox, Dropdown.
+
+Findings across all four packs:
+
+- `opacity` and `material` are declared for nearly all kinds - exceptions: `Separator` (material/opacity gaps in tk/vanilla/lightfield), `ColorPicker` (opacity+material missing everywhere), `Dropdown` (opacity missing everywhere).
+- `font-size` is missing for nearly every kind except Button and TextField/TextArea - the hidden base's `font_size = 16` is load-bearing.
+- `icon-size` is missing for nearly every kind except Button - the hidden base's `icon_size = 20` is load-bearing.
+
+Worklist before the generic base can be zero-based:
+
+1. Complete `font-size`/`icon-size` declarations for every text/icon-bearing kind listed above in all four packs (use the `font.*`/`icon.*` tokens already defined per pack).
+2. Close the `Separator`/`ColorPicker`/`Dropdown` opacity+material gaps.
+3. Subpart kinds with no text or icons (ToggleThumb, TabClose, Segment, SpinboxValue, MenuSeparator) need no font/icon fields; their metrics fallbacks are structural.
+4. Only then flip `ui_minimal_control_style_data()`/`minimalControlStyleData()` to zero base in one commit, with the full test matrix green.
+
+The Go runtime auto-activates Material when the style registry is empty (`go/kryon/style_pack.go` `EnsureBuiltInStylePacks`), so runtime tests exercise pack-styled rendering, not no-style rendering.
+
 ## Continuation Queue
 
 Next commits, in order:
@@ -56,7 +75,7 @@ Next commits, in order:
 2. [done 2026-09-14] NavigationBar facts helper (C `navigation_bar.c` + Go retained path, zero base).
 3. [done 2026-09-14] PanedView handle facts helper (`tab_bar.c`, Go retained path, zero base).
 4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
-5. Button/generic control facts path: facts construction done 2026-09-14 (`ButtonRoleFactsFor` in `runtime/button.kry`; C `button.c` and Go `resolveMinimalControlRoleState` use it; `button-policy-test` gate added). Remaining: remove the `minimalControlStyleData` hidden base after auditing pack coverage for every kind on the generic path.
+5. Button/generic control facts path: facts construction done 2026-09-14 (`ButtonRoleFactsFor` in `runtime/button.kry`; C `button.c` and Go `resolveMinimalControlRoleState` use it; `button-policy-test` gate added). Remaining: complete the pack coverage worklist above, then zero-base `minimalControlStyleData`/`ui_minimal_control_style_data()`.
 6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
 7. No-style tests, then the five scanners as Makefile gates.
 
