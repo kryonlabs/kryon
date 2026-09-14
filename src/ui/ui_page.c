@@ -49,6 +49,8 @@ page_bounds_or_view(Rectangle bounds)
 static StyleData
 page_box_style(int style_kind, int class_name)
 {
+    /* Explicit structural zeros: pages lay out flush unless a rule declares
+       spacing. Allowed by the metrics contract, not decorative chrome. */
     StyleData base = {
         .fields = (uint32_t)(StyleGap | StylePaddingX | StylePaddingY),
         .gap = 0.0f,
@@ -64,9 +66,9 @@ page_box_style(int style_kind, int class_name)
 static Style
 page_text_style(int style_kind, int class_name, int fallback_font)
 {
+    /* Structural font fallback for measurement; a rule font-size wins. */
     StyleData base = {
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize),
-        .opacity = 1.0f,
+        .fields = (uint32_t)(StyleFontSize),
         .font_size = (float)fallback_font
     };
     StyleFacts facts = StyleDefaultFacts(style_kind);
@@ -234,7 +236,9 @@ Heading(HeadingProps props)
     int font = (int)text_style.font_size;
     if(font <= 0)
         font = Text24;
-    Color color = Fade(text_style.foreground, text_style.opacity);
+    Color color = Fade(text_style.foreground,
+                       StyleOpacityValue(text_style.fields,
+                                         text_style.opacity));
 
     if(level < 1)
         level = 1;

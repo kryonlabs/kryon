@@ -239,11 +239,8 @@ ui_style_apply_effects_fill(FillStates fill)
 Style
 ui_app_style(void)
 {
-    StyleData base = {
-        .fields = (uint32_t)(StyleOpacity),
-        .opacity = 1.0f
-    };
-    StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindApp()),
+    StyleData value = ResolveActiveStyle((StyleData){0},
+                                         StyleDefaultFacts(StyleKindApp()),
                                          ButtonStateNormal);
     return ui_style_apply_effects(ui_unpack_style(value));
 }
@@ -251,15 +248,8 @@ ui_app_style(void)
 Style
 ui_surface_style(void)
 {
-    StyleData base = {
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
-                             StyleMaterial),
-        .opacity = 1.0f,
-        .font_size = 16.0f,
-        .icon_size = 20.0f,
-        .material = MaterialFlat
-    };
-    StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindSurface()),
+    StyleData value = ResolveActiveStyle((StyleData){0},
+                                         StyleDefaultFacts(StyleKindSurface()),
                                          ButtonStateNormal);
     return ui_style_apply_effects(ui_unpack_style(value));
 }

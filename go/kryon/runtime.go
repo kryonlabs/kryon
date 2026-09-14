@@ -1146,7 +1146,7 @@ func (r *runtime) AppBackground() {
 	r.Background(Primitive_PrimitiveAppBackgroundColor(style.Background, r.GetThemeBackground()))
 }
 func (r *runtime) appStyle() Style {
-	return unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+	return unpackStyle(ResolveActiveStyle(StyleData{},
 		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindApp()),
 		int32(ButtonStateNormal)))
 }
@@ -4458,20 +4458,20 @@ func (r *runtime) Image(props ImageProps) {
 			Fill:  styleFill(style),
 		}))
 	}
-	tintStyle := unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+	tintStyle := unpackStyle(ResolveActiveStyle(StyleData{},
 		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindImage()),
 		int32(ButtonStateNormal)))
 	if props.ClassName != 0 {
 		facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindImage())
 		facts.ClassName = props.ClassName
-		tintStyle = unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+		tintStyle = unpackStyle(ResolveActiveStyle(StyleData{},
 			facts, int32(ButtonStateNormal)))
 	}
 	tint := White
 	if tintStyle.Fields&uint32(StyleForeground) != 0 {
 		tint = tintStyle.Foreground
 	}
-	if tintStyle.Opacity < 1 {
+	if tintStyle.Fields&uint32(StyleOpacity) != 0 && tintStyle.Opacity < 1 {
 		tint = unpackRGBA(Surface_Opacity(packRGBA(tint), tintStyle.Opacity))
 	}
 	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: tint}
@@ -4485,7 +4485,7 @@ func (r *runtime) Image(props ImageProps) {
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindParagraphText())
 	facts.ClassName = spec.ClassName
-	style := unpackStyle(ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleOpacity), Opacity: 1}),
+	style := unpackStyle(ResolveActiveStyle(StyleData{},
 		facts,
 		int32(ButtonStateNormal)))
 	textStyle := defaultTextStyle(Text16)
@@ -4498,7 +4498,7 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	if style.Fields&StyleForeground != 0 {
 		color = style.Foreground
 	}
-	if style.Opacity < 1 {
+	if style.Fields&uint32(StyleOpacity) != 0 && style.Opacity < 1 {
 		color = unpackRGBA(Surface_Opacity(packRGBA(color), style.Opacity))
 	}
 	textY := int32(0)

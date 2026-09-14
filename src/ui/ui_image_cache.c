@@ -35,11 +35,11 @@ image_widget_style(int class_name)
 static Style
 image_widget_tint_style(int class_name)
 {
-    StyleData base = {.fields = StyleOpacity, .opacity = 1.0f};
     StyleFacts facts = StyleDefaultFacts(StyleKindImage());
 
     facts.class_name = class_name;
-    return ui_unpack_style(ResolveActiveStyle(base, facts, ButtonStateNormal));
+    return ui_unpack_style(ResolveActiveStyle((StyleData){0}, facts,
+                                              ButtonStateNormal));
 }
 
 static Color
@@ -48,7 +48,7 @@ image_widget_tint(int class_name)
     Style style = image_widget_tint_style(class_name);
     Color tint = (style.fields & StyleForeground) ? style.foreground : WHITE;
 
-    if(style.opacity < 1.0f)
+    if((style.fields & StyleOpacity) && style.opacity < 1.0f)
         tint = Fade(tint, style.opacity);
     return tint;
 }

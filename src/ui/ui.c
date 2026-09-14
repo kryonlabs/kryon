@@ -4950,20 +4950,17 @@ ParagraphLayout(ParagraphSpec paragraph)
 static Color
 paragraph_text_color(ParagraphSpec paragraph)
 {
-    StyleData base = {
-        .fields = StyleOpacity,
-        .opacity = 1.0f
-    };
     StyleFacts facts = StyleDefaultFacts(StyleKindParagraphText());
     Style style;
 
     facts.class_name = paragraph.class_name;
     facts.state = ButtonStateNormal;
-    style = ui_unpack_style(ResolveActiveStyle(base, facts,
+    style = ui_unpack_style(ResolveActiveStyle((StyleData){0}, facts,
                                                ButtonStateNormal));
     if((style.fields & StyleForeground) == 0)
         style.foreground = ui_default_text_color();
-    return Fade(style.foreground, style.opacity);
+    return Fade(style.foreground,
+                StyleOpacityValue(style.fields, style.opacity));
 }
 
 int

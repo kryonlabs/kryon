@@ -39,12 +39,10 @@ Tests that construct `StyleControlFacts` directly are valid and stay.
 
 ## Remaining Nonzero Visual Bases (Phase 4 Queue)
 
-- `src/ui/ui_style.c:242` - `ui_app_style` (opacity)
-- `src/ui/ui_style.c:254` - `ui_surface_style` (opacity, font size, icon size, material)
-- `src/ui/ui_image_cache.c:38` - `image_widget_tint_style` (opacity)
-- `src/ui/ui_page.c:52` - `page_box_style` (gap/padding; structural, classify before moving)
-- `src/ui/ui_page.c:67` - `page_text_style` (opacity, font size fallback)
-- `src/ui/ui.c:5029` - `paragraph_text_color` (opacity)
+None. Final state 2026-09-14:
+
+- `ui_app_style` / `ui_surface_style` / image tint / paragraph color: zero base; opacity consumption is field-gated or composed through `StyleOpacityValue` (C and Go).
+- `page_box_style` keeps explicit structural zeros and `page_text_style` keeps its structural font fallback - both documented in-code as metrics-contract allowances, not chrome.
 
 ## Pack Coverage Audit For The Generic Control Path (2026-09-14)
 
