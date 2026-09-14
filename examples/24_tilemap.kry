@@ -1,6 +1,7 @@
 #module "example_tilemap"
 #import "kryon.h"
 #import "kryon_example_font.h"
+#style <material> as material
 
 app "Kryon Tilemap" {
     size 640 420

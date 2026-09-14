@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <material> as material
 
 app "Kryon Geometry" {
     size 800 600

@@ -1,6 +1,7 @@
 #module "example_animation"
 #import "kryon.h"
 #import "kryon_example_font.h"
+#style <material> as material
 
 app "Kryon Animation" {
     size 640 420

@@ -1,6 +1,7 @@
 #module "example_physics"
 #import "kryon.h"
 #import "kryon_example_font.h"
+#style <material> as material
 
 app "Kryon Physics" {
     size 640 420
