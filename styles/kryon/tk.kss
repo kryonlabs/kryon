@@ -1542,6 +1542,11 @@ Button:pressed {
   background-end: button;
 }
 
+Button:selected {
+  border: accent;
+  border-width: 2;
+}
+
 Button:focus {
   border: accent;
 }

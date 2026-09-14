@@ -316,6 +316,16 @@ main(void)
         for(size_t k = 0; k < sizeof(role_kinds) / sizeof(role_kinds[0]); k++)
             assert_pack_covers_role(pack_ids[p], role_kinds[k]);
 
+    for(size_t p = 0; p < sizeof(pack_ids) / sizeof(pack_ids[0]); p++) {
+        StyleFacts selected = StyleControlFacts(StyleKindButton(), 0, 0,
+            ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+            ButtonStateSelected);
+        assert(SetActiveStylePack(pack_ids[p]));
+        resolved = ResolveActiveStyle(base, selected, ButtonStateSelected);
+        assert(resolved.border_width == 2.0f);
+        assert(resolved.border == resolved.focus);
+    }
+
     assert(SetActiveStylePack("material"));
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0xd5bbffffu);

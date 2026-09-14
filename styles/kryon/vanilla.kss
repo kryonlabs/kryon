@@ -1550,6 +1550,11 @@ Button:pressed {
   background-end: panel;
 }
 
+Button:selected {
+  border: focus;
+  border-width: 2;
+}
+
 Button:focus {
   border: focus;
 }
