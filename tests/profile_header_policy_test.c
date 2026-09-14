@@ -46,6 +46,8 @@ main(void)
     assert(ProfileHeaderSubtitleY(58, 1.0f) == 80);
     assert(ProfileHeaderFriendsTextX(10, 1.0f) == 22);
     assert(ProfileHeaderFriendsTextY(108, 1.0f) == 116);
+    assert(ProfilePickerSelectedStrokeWidth(1.0f) == 2);
+    assert(ProfilePickerSelectedStrokeWidth(2.0f) == 4);
     action = ProfilePointerActionFor(true, false);
     assert(action.mark_clickable);
     assert(!action.activate);

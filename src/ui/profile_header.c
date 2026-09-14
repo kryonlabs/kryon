@@ -335,11 +335,11 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
                                          : ICON_NONE;
     Vector2 mouse;
+    float runtime_scale = (float)GetScale();
     int i;
 
     layout = ProfilePickerLayoutFor(ui_view_width, ui_view_height,
-                                    modal.max_width, count,
-                                    (float)GetScale());
+                                    modal.max_width, count, runtime_scale);
 
     frame = RenderModalFrame(layout.width, layout.height,
                              modal.title != NULL ? modal.title : "Profile image",
@@ -393,7 +393,9 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
         ui_draw_avatar_tile(cell.bounds,
                             cell_style.background, cell_style.border);
         if(active)
-            DrawRectangleLinesEx(cell.bounds, Scale(2), cell_style.border);
+            DrawRectangleLinesEx(cell.bounds,
+                                 ProfilePickerSelectedStrokeWidth(runtime_scale),
+                                 cell_style.border);
         if(modal.icons != NULL && type > ICON_NONE &&
            type < ICON_COUNT)
             icon = modal.icons[type];

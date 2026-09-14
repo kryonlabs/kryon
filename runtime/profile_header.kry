@@ -89,6 +89,10 @@ ProfileHeaderFriendsTextY :: (count_y: i32, scale: float) -> i32 #export {
     return count_y + ProfilePx(8.0, scale)
 }
 
+ProfilePickerSelectedStrokeWidth :: (scale: float) -> i32 #export {
+    return ProfilePx(2.0, scale)
+}
+
 ProfileHeaderLayoutFor :: (x: i32, y: i32, width: i32,
     requested_height: i32, requested_padding_x: i32, username_width: i32,
     username_height: i32, scale: float) -> ProfileHeaderLayout #export {
