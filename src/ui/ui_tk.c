@@ -1182,8 +1182,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         int selected;
         if(state->navigation.path[depth] < 0 ||
            state->navigation.path[depth] >= item_count ||
-           items[state->navigation.path[depth]].kind == MenuSeparator ||
-           items[state->navigation.path[depth]].disabled)
+           !MenuItemSelectable((int)items[state->navigation.path[depth]].kind,
+                               items[state->navigation.path[depth]].disabled))
             state->navigation.path[depth] = menu_first_item(items,item_count);
         selected = state->navigation.path[depth];
         if(!state->navigation.key_handled &&
@@ -1417,7 +1417,7 @@ copy_menu_items(MenuItem *arena, int *used, const MenuItem *items,
         MenuItem *copy = &arena[start+i];
         int child_count = 0;
         int child_start;
-        if(copy->kind != MenuSubmenu || copy->submenu == NULL ||
+        if(!MenuItemShowsSubmenu((int)copy->kind) || copy->submenu == NULL ||
            copy->submenu_count <= 0) {
             copy->submenu = NULL;
             copy->submenu_count = 0;
