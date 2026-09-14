@@ -848,9 +848,12 @@ RenderListBoxMulti(ListBoxProps list)
         }
         if(hot)
             disabled ? MarkDisabled() : MarkClickable();
-        if(hot && !disabled &&
-           IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        ListBoxMultiRowDecision row_decision =
+            ListBoxMultiRowDecisionFor(hot != 0, disabled != 0,
+                IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+        if(row_decision.consume_release)
             ConsumeRelease();
+        if(row_decision.activate) {
             if(list.id > 0) {
                 SetFocus(list.id);
                 focused = 1;

@@ -1015,6 +1015,8 @@ test_multi_select_policy(void)
         down_input);
     ListBoxMultiNavResult space = ListBoxMultiNavigate(3, 2, 0, 0,
         space_input);
+    ListBoxMultiRowDecision row_decision =
+        ListBoxMultiRowDecisionFor(1, 0, 1);
 
     item.value.fields = StyleIconSize | StyleContentOffset;
     item.value.icon_size = 34.0f;
@@ -1033,6 +1035,15 @@ test_multi_select_policy(void)
     check_float("multi row y", row.y, 76.0f);
     check_float("multi row height", row.height, 28.0f);
     check_int("multi focused fallback", ListBoxMultiFocusedRow(-1, 2, 3), 2);
+    check_int("multi row activates", row_decision.activate ? 1 : 0, 1);
+    check_int("multi row consumes",
+              row_decision.consume_release ? 1 : 0, 1);
+    row_decision = ListBoxMultiRowDecisionFor(1, 1, 1);
+    check_int("multi disabled row inactive",
+              row_decision.activate ? 1 : 0, 0);
+    row_decision = ListBoxMultiRowDecisionFor(1, 0, 0);
+    check_int("multi unreleased row inactive",
+              row_decision.activate ? 1 : 0, 0);
 
     check_int("multi nav down clicked", down.clicked, 1);
     check_int("multi nav down anchor", down.anchor, 1);

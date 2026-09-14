@@ -21,6 +21,11 @@ ListBoxMultiInput :: struct {
     enter: bool
 }
 
+ListBoxMultiRowDecision :: struct {
+    activate: bool
+    consume_release: bool
+}
+
 ListBoxMultiMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -75,6 +80,16 @@ ListBoxMultiInputFor :: (home: bool, end: bool, up: bool, down: bool,
     input.space = space
     input.enter = enter
     return input
+}
+
+ListBoxMultiRowDecisionFor :: (hot: bool, disabled: bool,
+    released: bool) -> ListBoxMultiRowDecision #export {
+    decision: ListBoxMultiRowDecision
+    if hot && !disabled && released {
+        decision.activate = true
+        decision.consume_release = true
+    }
+    return decision
 }
 
 ListBoxMultiNavigate :: (item_count: i32, cursor: i32, control: bool,

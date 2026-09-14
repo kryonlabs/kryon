@@ -22,6 +22,11 @@ type ListBoxMultiInput struct {
 	Enter bool
 }
 
+type ListBoxMultiRowDecision struct {
+	Activate       bool
+	ConsumeRelease bool
+}
+
 func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -201,6 +206,30 @@ func ListBoxMulti_ListBoxMultiInputFor(home bool, end bool, up bool, down bool, 
 	input.Enter = value_5
 	var value_6 ListBoxMultiInput = input
 	return value_6
+}
+
+func ListBoxMulti_ListBoxMultiRowDecisionFor(hot bool, disabled bool, released bool) ListBoxMultiRowDecision {
+	var decision ListBoxMultiRowDecision = ListBoxMultiRowDecision{}
+	var value_0 bool = hot
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = disabled
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = released
+		value_4 = value_5
+	}
+	if value_4 {
+		var value_6 bool = true
+		decision.Activate = value_6
+		var value_7 bool = true
+		decision.ConsumeRelease = value_7
+	}
+	var value_8 ListBoxMultiRowDecision = decision
+	return value_8
 }
 
 func ListBoxMulti_ListBoxMultiNavigate(item_count int32, cursor int32, control bool, shift bool, input ListBoxMultiInput) ListBoxMultiNavResult {
