@@ -1,6 +1,7 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
 #include "runtime/collapsible.h"
+#include "runtime/drag.h"
 #include "runtime/dropdown.h"
 #include "runtime/fieldset.h"
 #include "runtime/focus.h"
@@ -85,8 +86,10 @@ main(void)
     ProgressPaint progress_paint;
     StyleFrame thumb = test_style_frame(0x334455ff, 0xaabbccff,
                                         0x667788ff);
+    DragPointerDecision drag_pointer;
     SliderPaint slider_paint;
     SliderPointerDecision slider_pointer;
+    SliderRatioDecision slider_ratio;
     TogglePaint toggle_paint;
 
     checkbox.box.value.border_width = 0.0f;
@@ -304,6 +307,22 @@ main(void)
         fprintf(stderr, "slider role policy changed\n");
         return 1;
     }
+    drag_pointer = DragPointerDecisionFor(0, 0, 1, 0, 0, 1, 1, 0);
+    if(!drag_pointer.start_active || !drag_pointer.update_delta ||
+       drag_pointer.clear_active || drag_pointer.finish_active) {
+        fprintf(stderr, "drag pointer start policy changed\n");
+        return 1;
+    }
+    drag_pointer = DragPointerDecisionFor(1, 0, 0, 0, 1, 0, 1, 0);
+    if(!drag_pointer.clear_active || drag_pointer.update_delta) {
+        fprintf(stderr, "drag pointer capture clear policy changed\n");
+        return 1;
+    }
+    drag_pointer = DragPointerDecisionFor(1, 1, 0, 0, 0, 0, 0, 1);
+    if(!drag_pointer.finish_active) {
+        fprintf(stderr, "drag pointer release policy changed\n");
+        return 1;
+    }
     slider_pointer = SliderPointerDecisionFor(0, 1, 0, 0, 1, 1, 0, 1,
                                              1, 0, 0, 0);
     if(!slider_pointer.hovered || !slider_pointer.start_active ||
@@ -328,6 +347,22 @@ main(void)
                                              0, 0, 0, 0);
     if(!slider_pointer.update_value || !slider_pointer.finish_active) {
         fprintf(stderr, "slider release policy changed\n");
+        return 1;
+    }
+    slider_ratio = SliderRatioDecisionFor(0, 0, 1, 0, 0, 1, 1, 0);
+    if(!slider_ratio.start_active || !slider_ratio.update_ratio ||
+       slider_ratio.clear_active || slider_ratio.finish_active) {
+        fprintf(stderr, "slider ratio start policy changed\n");
+        return 1;
+    }
+    slider_ratio = SliderRatioDecisionFor(1, 0, 0, 0, 1, 0, 1, 0);
+    if(!slider_ratio.clear_active || slider_ratio.update_ratio) {
+        fprintf(stderr, "slider ratio capture clear policy changed\n");
+        return 1;
+    }
+    slider_ratio = SliderRatioDecisionFor(1, 1, 0, 0, 0, 0, 0, 1);
+    if(!slider_ratio.finish_active) {
+        fprintf(stderr, "slider ratio release policy changed\n");
         return 1;
     }
     if(CheckboxBoxRoleForTone(ButtonToneNeutral) != 9 ||

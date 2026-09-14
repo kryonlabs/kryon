@@ -804,9 +804,11 @@ and host plumbing behind the canonical names.
   `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
   that runtime policy; `Spinbox` child focus IDs now route through
-  `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, and component
-  drag tokens now route through `runtime/drag.kry`; `Slider` component tokens,
-  focus IDs, and old immediate pointer lifecycle now route through
+  `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, component
+  drag tokens, and retained pointer lifecycle now route through
+  `runtime/drag.kry`; `Slider` component tokens,
+  focus IDs, old immediate pointer lifecycle, and retained ratio pointer
+  lifecycle now route through
   `runtime/slider.kry`; toolbar action focus IDs now route through
   `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
   `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy

@@ -63,6 +63,13 @@ SliderPointerDecision :: struct {
     finish_active: bool
 }
 
+SliderRatioDecision :: struct {
+    clear_active: bool
+    start_active: bool
+    update_ratio: bool
+    finish_active: bool
+}
+
 SliderEditorLayout :: struct {
     editor_bounds: Rectangle
     hit_bounds: Rectangle
@@ -404,6 +411,20 @@ SliderPointerDecisionFor :: (active: bool, inside: bool, captured: bool,
         decision.update_value = can_update &&
             ((down && effective_owner_matches) || released)
     }
+    decision.finish_active = effective_active && released
+    return decision
+}
+
+SliderRatioDecisionFor :: (any_active: bool, active: bool, hot: bool, disabled: bool,
+    owner_captured: bool, pressed: bool, down: bool,
+    released: bool) -> SliderRatioDecision #export {
+    decision: SliderRatioDecision
+    decision.clear_active = (any_active && owner_captured) ||
+        (active && disabled)
+    decision.start_active = hot && pressed
+    effective_active: bool = (active && !decision.clear_active) ||
+        decision.start_active
+    decision.update_ratio = effective_active && !disabled && (pressed || down)
     decision.finish_active = effective_active && released
     return decision
 }

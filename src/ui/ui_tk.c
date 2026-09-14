@@ -2322,26 +2322,33 @@ ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
     Vector2 mouse = ui_mouse_world();
     disabled = disabled || ContentDisabled();
     int hot = !disabled && ui_hot(bounds);
+    DragPointerDecision decision;
 
     *delta = 0.0f;
-    if(toolkit->drag_active && ui_popup_input_owner_captures(toolkit->drag_owner))
-        toolkit->drag_active = 0;
-    if(disabled && toolkit->drag_active == token)
+    decision = DragPointerDecisionFor(
+        toolkit->drag_active != 0, toolkit->drag_active == token,
+        hot, disabled != 0,
+        toolkit->drag_active != 0 &&
+            ui_popup_input_owner_captures(toolkit->drag_owner),
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+    if(decision.clear_active)
         toolkit->drag_active = 0;
     if(hot)
         MarkClickable();
-    if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    if(decision.start_active) {
         toolkit->drag_active = token;
         toolkit->drag_last_x = mouse.x;
         toolkit->drag_owner = ui_popup_input_owner();
         if(focus_id > 0)
             SetFocus(focus_id);
     }
-    if(!disabled && toolkit->drag_active == token && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    if(decision.update_delta) {
         *delta = mouse.x - toolkit->drag_last_x;
         toolkit->drag_last_x = mouse.x;
     }
-    if(toolkit->drag_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    if(decision.finish_active)
         toolkit->drag_active = 0;
     return *delta != 0.0f;
 }
@@ -2563,31 +2570,35 @@ ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
     disabled = disabled || ContentDisabled();
     int hot = !disabled && ui_hot(bounds);
     int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    SliderRatioDecision decision;
 
-    if(toolkit->slider_active &&
-       ui_popup_input_owner_captures(toolkit->slider_owner))
-        toolkit->slider_active = 0;
-    if(disabled && toolkit->slider_active == token)
+    decision = SliderRatioDecisionFor(
+        toolkit->slider_active != 0, toolkit->slider_active == token,
+        hot, disabled != 0,
+        toolkit->slider_active != 0 &&
+            ui_popup_input_owner_captures(toolkit->slider_owner),
+        pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+    if(decision.clear_active)
         toolkit->slider_active = 0;
     if(hot)
         MarkClickable();
-    if(pressed) {
+    if(decision.start_active) {
         toolkit->slider_active = token;
         toolkit->slider_owner = ui_popup_input_owner();
         if(focus_id > 0)
             SetFocus(focus_id);
     }
-    if(!disabled && toolkit->slider_active == token &&
-       (pressed || IsMouseButtonDown(MOUSE_BUTTON_LEFT))) {
+    if(decision.update_ratio) {
         float span = vertical ? bounds.height : bounds.width;
         float position = vertical ? bounds.y + bounds.height - mouse.y
                                   : mouse.x - bounds.x;
-        *ratio = span > 0.0f ? position / span : 0.0f;
-        if(*ratio < 0.0f) *ratio = 0.0f;
-        if(*ratio > 1.0f) *ratio = 1.0f;
+        *ratio = SliderPointerRatio(position, 0.0f, span, false);
+        if(decision.finish_active)
+            toolkit->slider_active = 0;
         return 1;
     }
-    if(toolkit->slider_active == token && IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    if(decision.finish_active)
         toolkit->slider_active = 0;
     return 0;
 }

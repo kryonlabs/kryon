@@ -11,6 +11,13 @@ DragDiscreteStep :: struct {
     changed: bool
 }
 
+DragPointerDecision :: struct {
+    clear_active: bool
+    start_active: bool
+    update_delta: bool
+    finish_active: bool
+}
+
 DragTextPaint :: struct {
     text_x: float
     text_y: float
@@ -57,6 +64,20 @@ DragCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #e
     cell.width = bounds.width / (float)count
     cell.height = bounds.height
     return cell
+}
+
+DragPointerDecisionFor :: (any_active: bool, active: bool, hot: bool, disabled: bool,
+    owner_captured: bool, pressed: bool, down: bool,
+    released: bool) -> DragPointerDecision #export {
+    decision: DragPointerDecision
+    decision.clear_active = (any_active && owner_captured) ||
+        (active && disabled)
+    decision.start_active = hot && pressed
+    effective_active: bool = (active && !decision.clear_active) ||
+        decision.start_active
+    decision.update_delta = effective_active && !disabled && down
+    decision.finish_active = effective_active && released
+    return decision
 }
 
 DragEffectiveSpeed :: (speed: float) -> float #export {
