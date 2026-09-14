@@ -44,20 +44,32 @@ main(void)
                LinkUnderlineYFor((Rectangle){10, 20, 72, 18}, 2.0f) == 34,
                1);
 
-    interaction = LinkInteractionFor(false, false, true, true);
+    interaction = LinkInteractionFor(false, false, true, true, true, false,
+                                     true);
     check_bool("link active", interaction.active, 1);
     check_bool("link hovered", interaction.hovered, 1);
     check_bool("link normal not disabled marker", interaction.disabled_marker,
                0);
+    check_bool("link activated", interaction.activated, 1);
+    check_bool("link consumes release", interaction.consume_release, 1);
     check_bool("link hover state", interaction.state == ButtonStateHover, 1);
 
-    interaction = LinkInteractionFor(false, true, true, true);
+    interaction = LinkInteractionFor(false, true, true, true, true, false,
+                                     true);
     check_bool("captured link inactive", interaction.active, 0);
     check_bool("captured link no hover", interaction.hovered, 0);
+    check_bool("captured link not activated", interaction.activated, 0);
     check_bool("captured link normal state",
                interaction.state == ButtonStateNormal, 1);
 
-    interaction = LinkInteractionFor(true, false, true, true);
+    interaction = LinkInteractionFor(false, false, true, true, true, true,
+                                     true);
+    check_bool("consumed release suppresses link", interaction.activated, 0);
+    check_bool("consumed release not consumed again",
+               interaction.consume_release, 0);
+
+    interaction = LinkInteractionFor(true, false, true, true, true, false,
+                                     true);
     check_bool("disabled link inactive", interaction.active, 0);
     check_bool("disabled link marker", interaction.disabled_marker, 1);
     check_bool("disabled link state",

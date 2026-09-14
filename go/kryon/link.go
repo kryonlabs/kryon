@@ -20,6 +20,8 @@ type LinkInteraction struct {
 	Active         bool
 	Hovered        bool
 	DisabledMarker bool
+	Activated      bool
+	ConsumeRelease bool
 	State          ButtonState
 }
 
@@ -74,7 +76,7 @@ func Link_LinkUnderlineYFor(bounds Rectangle, scale float32) int32 {
 	return value_12
 }
 
-func Link_LinkInteractionFor(disabled bool, captured bool, mouse_inside bool, hover_effects bool) LinkInteraction {
+func Link_LinkInteractionFor(disabled bool, captured bool, mouse_inside bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool) LinkInteraction {
 	var interaction LinkInteraction = LinkInteraction{}
 	var value_0 bool = disabled
 	var value_1 bool = !value_0
@@ -110,23 +112,43 @@ func Link_LinkInteractionFor(disabled bool, captured bool, mouse_inside bool, ho
 		value_14 = value_15
 	}
 	interaction.DisabledMarker = value_14
-	var value_16 int32 = int32(ButtonStateNormal)
-	var value_17 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0)))
-	interaction.State = value_17
-	var value_18 bool = interaction.Hovered
-	if value_18 {
-		var value_19 int32 = int32(ButtonStateHover)
-		var value_20 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_19), uint64(0), 32, true, 0)))
-		interaction.State = value_20
+	var value_16 bool = interaction.Active
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = released
+		value_17 = value_18
 	}
-	var value_21 bool = disabled
-	if value_21 {
-		var value_22 int32 = int32(ButtonStateDisabled)
-		var value_23 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_22), uint64(0), 32, true, 0)))
-		interaction.State = value_23
+	var value_19 bool = value_17
+	if value_19 {
+		var value_20 bool = release_consumed
+		var value_21 bool = !value_20
+		value_19 = value_21
 	}
-	var value_24 LinkInteraction = interaction
-	return value_24
+	var value_22 bool = value_19
+	if value_22 {
+		var value_23 bool = press_started_inside
+		value_22 = value_23
+	}
+	interaction.Activated = value_22
+	var value_24 bool = interaction.Activated
+	interaction.ConsumeRelease = value_24
+	var value_25 int32 = int32(ButtonStateNormal)
+	var value_26 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_25), uint64(0), 32, true, 0)))
+	interaction.State = value_26
+	var value_27 bool = interaction.Hovered
+	if value_27 {
+		var value_28 int32 = int32(ButtonStateHover)
+		var value_29 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_28), uint64(0), 32, true, 0)))
+		interaction.State = value_29
+	}
+	var value_30 bool = disabled
+	if value_30 {
+		var value_31 int32 = int32(ButtonStateDisabled)
+		var value_32 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_31), uint64(0), 32, true, 0)))
+		interaction.State = value_32
+	}
+	var value_33 LinkInteraction = interaction
+	return value_33
 }
 
 func Link_LinkActivated(disabled bool, clicked bool, focus_activate bool) bool {

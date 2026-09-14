@@ -2448,7 +2448,10 @@ RenderLink(LinkProps link)
     captured = InputCapturesClick(mouse_world);
     interaction = LinkInteractionFor(link.disabled != 0, captured != 0,
                                      mouse_inside != 0,
-                                     HoverEffectsEnabled() != 0);
+                                     HoverEffectsEnabled() != 0,
+                                     IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+                                     ReleaseConsumed() != 0,
+                                     press_started_inside(bounds) != 0);
     focused = !link.disabled && link.focus_id > 0 &&
               RegisterFocus(link.focus_id, bounds);
 
@@ -2461,8 +2464,7 @@ RenderLink(LinkProps link)
 
     if(interaction.active) {
         MarkClickable();
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            clicked = 1;
+        clicked = interaction.activated;
     } else if(interaction.disabled_marker) {
         MarkDisabled();
     }
@@ -2481,7 +2483,7 @@ RenderLink(LinkProps link)
         SetFocusTextInputActive(0);
         RenderFocus(bounds);
     }
-    if(clicked)
+    if(interaction.consume_release)
         ConsumeRelease();
     if(LinkActivated(link.disabled != 0, clicked != 0,
                      IsFocusActivatePressed(link.focus_id) != 0)) {

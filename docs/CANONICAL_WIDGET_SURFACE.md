@@ -74,7 +74,7 @@ surface review:
 | `runtime/focus.kry` | Focus ring, activation, and debug overlay geometry policy | `.kry support` |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
 | `runtime/layout_props.kry` | Column/Row/Flow layout props | `.kry canonical` |
-| `runtime/link.kry` | Link bounds, interaction, activation, state, and color policy | `.kry canonical` |
+| `runtime/link.kry` | Link bounds, interaction, activation/release-consumption, state, and color policy | `.kry canonical` |
 | `runtime/link_props.kry` | Link props | `.kry canonical` |
 | `runtime/list_box.kry` | ListBox layout/navigation and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
@@ -197,7 +197,7 @@ has a single place to land.
 | `Image` | `Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; placeholder typography uses resolved KSS font sizes directly; cache/loading/drawing remain host support. |
 | `Card` | `Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
 | `Button` | `Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition; retained and immediate typography defaults plus fallback/terminal paint policy are `.kry`/KSS-owned. |
-| `Link` | `Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Bounds, interaction, activation, state, and color policy are `.kry`; URL dispatch remains host support. |
+| `Link` | `Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Bounds, interaction, activation/release-consumption, state, and color policy are `.kry`; URL dispatch remains host support. |
 | `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
 | `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, open/dismiss/commit-close state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, indicator geometry, and rich option data are generated from `.kry`. |
 | `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
@@ -487,7 +487,7 @@ should use canonical `.kry` names and blocks.
 |---|---|---|
 | `Card` | `.kry canonical` | Already has `.kry` module. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, emphasis, and fallback/terminal paint behavior live in `ButtonProps`/`.kry` policy or small `.kry` composition, not separate public widget names. |
-| `Link` | `.kry canonical` | Canonical public name for URL/link activation; bounds, interaction, activation, color/hover/disabled policy are in `.kry`, typography uses resolved KSS font sizes directly, and URL dispatch remains host support. |
+| `Link` | `.kry canonical` | Canonical public name for URL/link activation; bounds, interaction, activation/release-consumption, color/hover/disabled policy are in `.kry`, typography uses resolved KSS font sizes directly, and URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Option/index normalization, open/dismiss/commit-close state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, and indicator policy are in `.kry`; trigger and option typography use resolved KSS font sizes directly. |
