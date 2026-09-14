@@ -803,6 +803,10 @@ TextAreaGutterFirstY :: (gutter_y: float, scroll_y: i32, line_height: i32,
     return (i32)gutter_y + metrics.top_inset - (scroll_y % line_height)
 }
 
+TextAreaGutterInactiveAlpha :: (alpha: u8) -> u8 #export {
+    return (u8)((float)alpha * 0.62)
+}
+
 TextFieldRevealMargin :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(8.0, scale)
 }

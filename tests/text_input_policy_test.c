@@ -96,6 +96,8 @@ main(void)
     assert(TextAreaGutterRowsFor(80.0f, 20, gutter_metrics) == 7);
     assert(TextAreaGutterRowsFor(80.0f, 0, gutter_metrics) == 0);
     assert(TextAreaGutterFirstY(10.0f, 23, 20, gutter_metrics) == 27);
+    assert(TextAreaGutterInactiveAlpha(255) == 158);
+    assert(TextAreaGutterInactiveAlpha(128) == 79);
     assert(TextAreaMaxScrollFor(200, 80.0f, 6) == 132);
     assert(TextAreaMaxScrollFor(40, 80.0f, 6) == 0);
     assert(TextAreaWheelScrollFor(50, 1.0f, 20) == -10);

@@ -3709,7 +3709,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
                           line_h, style.border);
         snprintf(label, sizeof(label), "%d", line_no);
         Color inactive = ui_default_text_color();
-        inactive.a = (unsigned char)(inactive.a * 0.62f);
+        inactive.a = TextAreaGutterInactiveAlpha(inactive.a);
         RenderText(label, (int)gutter.x + gutter_metrics.label_x_inset, y,
                    gutter_metrics.label_font,
                    line_no == active ? style.text : inactive);
