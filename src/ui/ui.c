@@ -4942,7 +4942,9 @@ ParagraphLayout(ParagraphSpec paragraph)
     ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
                                                        GetFontSize(),
                                                        paragraph.line_gap,
-                                                       Scale(4),
+                                                       ParagraphDefaultLineGap(
+                                                           (float)Scale(1000) /
+                                                           1000.0f),
                                                        paragraph.icon_size,
                                                        paragraph.width,
                                                        paragraph.width,
@@ -4994,7 +4996,9 @@ ui_draw_paragraph_color(ParagraphSpec paragraph, int x, int *y, int align,
     ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
                                                        GetFontSize(),
                                                        paragraph.line_gap,
-                                                       Scale(4),
+                                                       ParagraphDefaultLineGap(
+                                                           (float)Scale(1000) /
+                                                           1000.0f),
                                                        paragraph.icon_size,
                                                        paragraph.width,
                                                        paragraph.width,
