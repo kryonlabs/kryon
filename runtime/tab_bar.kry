@@ -18,6 +18,17 @@ TabBarScroll :: struct {
     equal_tabs: bool
 }
 
+TabBarReorderDragDecision :: struct {
+    start_drag: bool
+    dragging: bool
+    capture_input: bool
+}
+
+TabBarPressCleanupDecision :: struct {
+    clear_press: bool
+    clear_pointer_owner: bool
+}
+
 TabBarPaint :: struct {
     bar: StyleFrame
     tab: StyleFrame
@@ -318,6 +329,34 @@ TabBarDragMarkerBounds :: (tab_x: i32, tab_width: i32, bar_y: i32,
         marker.height = 0.0
     }
     return marker
+}
+
+TabBarReorderDragDecisionFor :: (disabled: bool, reorder_enabled: bool,
+    owns_press: bool, press_index: i32, count: i32, pointer_down: bool,
+    drag_active: bool, dx: i32, dy: i32,
+    threshold: i32) -> TabBarReorderDragDecision #export {
+    decision: TabBarReorderDragDecision
+    if disabled || !reorder_enabled || !owns_press ||
+       press_index < 0 || press_index >= count || !pointer_down {
+        return decision
+    }
+    abs_dx: i32 = dx
+    abs_dy: i32 = dy
+    if abs_dx < 0 { abs_dx = -abs_dx }
+    if abs_dy < 0 { abs_dy = -abs_dy }
+    decision.start_drag = !drag_active && abs_dx >= threshold &&
+        abs_dx >= abs_dy
+    decision.dragging = drag_active || decision.start_drag
+    decision.capture_input = decision.dragging
+    return decision
+}
+
+TabBarPressCleanupDecisionFor :: (released: bool, pointer_down: bool,
+    owns_press: bool, pointer_owner_is_reorder: bool) -> TabBarPressCleanupDecision #export {
+    decision: TabBarPressCleanupDecision
+    decision.clear_press = owns_press && (released || !pointer_down)
+    decision.clear_pointer_owner = decision.clear_press && pointer_owner_is_reorder
+    return decision
 }
 
 TabBarEqualTabBounds :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {

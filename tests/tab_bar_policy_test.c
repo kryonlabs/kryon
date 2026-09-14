@@ -42,6 +42,8 @@ main(void)
     TabBarPaint paint;
     TabBarContentLayout content;
     TabBarCloseLabelPaint close_label;
+    TabBarPressCleanupDecision cleanup;
+    TabBarReorderDragDecision reorder_drag;
     int label_width;
     int close_width;
     int icon_width;
@@ -96,6 +98,27 @@ main(void)
     assert(!TabBarDoubleClickShouldRun(1, 1, 2, 10.0f, 10.30f));
     assert(!TabBarDoubleClickShouldRun(1, 2, 2, -1.0f, 10.30f));
     assert(!TabBarDoubleClickShouldRun(1, 2, 2, 10.0f, 10.50f));
+    reorder_drag = TabBarReorderDragDecisionFor(
+        0, 1, 1, 1, 3, 1, 0, 8, 2, 6);
+    assert(reorder_drag.start_drag);
+    assert(reorder_drag.dragging);
+    assert(reorder_drag.capture_input);
+    reorder_drag = TabBarReorderDragDecisionFor(
+        0, 1, 1, 1, 3, 1, 0, 4, 8, 6);
+    assert(!reorder_drag.start_drag);
+    assert(!reorder_drag.dragging);
+    reorder_drag = TabBarReorderDragDecisionFor(
+        0, 1, 1, 1, 3, 1, 1, 0, 9, 6);
+    assert(!reorder_drag.start_drag);
+    assert(reorder_drag.dragging);
+    cleanup = TabBarPressCleanupDecisionFor(0, 1, 1, 1);
+    assert(!cleanup.clear_press);
+    cleanup = TabBarPressCleanupDecisionFor(1, 1, 1, 1);
+    assert(cleanup.clear_press);
+    assert(cleanup.clear_pointer_owner);
+    cleanup = TabBarPressCleanupDecisionFor(0, 0, 1, 0);
+    assert(cleanup.clear_press);
+    assert(!cleanup.clear_pointer_owner);
     assert(scroll.equal_tabs == 1);
     assert(scroll.scroll == 0);
     check_rect(TabBarEqualTabBounds(bounds, 3, 2), 170, 20, 80, 32);

@@ -457,26 +457,30 @@ RenderTabBar(TabBarProps bar)
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         int dx = (int)(mouse_world.x - tab_bar_store->press_position.x);
         int dy = (int)(mouse_world.y - tab_bar_store->press_position.y);
-        int abs_dx = dx < 0 ? -dx : dx;
-        int abs_dy = dy < 0 ? -dy : dy;
         TabBarPaint drag_paint = TabBarPaintFor(bar_frame, metric_tab_frame,
                                                 metric_close_frame,
                                                 (float)Scale(1000) / 1000.0f);
         int threshold = drag_paint.reorder_drag_threshold;
+        TabBarReorderDragDecision drag_decision =
+            TabBarReorderDragDecisionFor(
+                disabled != 0, reorder_enabled != 0, owns_press != 0,
+                tab_bar_store->press_index, bar.count,
+                IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+                tab_bar_store->reorder_drag_active != 0, dx, dy, threshold);
 
-        if(!tab_bar_store->reorder_drag_active &&
-           abs_dx >= threshold && abs_dx >= abs_dy) {
+        if(drag_decision.start_drag) {
             tab_bar_store->reorder_drag_active = 1;
             g_ui_pointer_owner = POINTER_OWNER_REORDER;
         }
-        if(tab_bar_store->reorder_drag_active) {
+        if(drag_decision.dragging) {
             drag_target = ui_tab_bar_reorder_target(
                 bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
                 icon_tab_w, tab_gap,
                 *scroll_offset, equal_tabs, (int)mouse_world.x, font);
-            PushInputCapture((Rectangle){0.0f, 0.0f,
-                                           (float)ui_view_width,
-                                           (float)ui_view_height}, 0);
+            if(drag_decision.capture_input)
+                PushInputCapture((Rectangle){0.0f, 0.0f,
+                                               (float)ui_view_width,
+                                               (float)ui_view_height}, 0);
         }
     }
 
@@ -695,13 +699,17 @@ RenderTabBar(TabBarProps bar)
         clicked_tab = -1;
         ConsumeRelease();
     }
-    if((released || !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) && owns_press) {
+    TabBarPressCleanupDecision cleanup_decision =
+        TabBarPressCleanupDecisionFor(
+            released != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+            owns_press != 0, g_ui_pointer_owner == POINTER_OWNER_REORDER);
+    if(cleanup_decision.clear_press) {
         tab_bar_store->press_index = -1;
         tab_bar_store->press_bar_id = 0;
         tab_bar_store->press_bar_bounds =
             (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
         tab_bar_store->reorder_drag_active = 0;
-        if(g_ui_pointer_owner == POINTER_OWNER_REORDER)
+        if(cleanup_decision.clear_pointer_owner)
             g_ui_pointer_owner = POINTER_OWNER_NONE;
     }
 
