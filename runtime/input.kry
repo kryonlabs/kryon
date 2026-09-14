@@ -16,6 +16,13 @@ InputStep :: struct {
     changed: bool
 }
 
+InputPointerInteraction :: struct {
+    active: bool
+    hovered: bool
+    disabled_marker: bool
+    activated: bool
+}
+
 InputCellLayout :: struct {
     cell: Rectangle
     field: Rectangle
@@ -53,6 +60,18 @@ InputPointerDragIsHorizontal :: (dx: i32, dy: i32) -> bool #export {
     if dx < 0 { dx = -dx }
     if dy < 0 { dy = -dy }
     return dx >= dy
+}
+
+InputPointerInteractionFor :: (inside: bool, captured: bool, disabled: bool,
+    hover_effects: bool, released: bool, release_consumed: bool,
+    press_started_inside: bool) -> InputPointerInteraction #export {
+    interaction: InputPointerInteraction
+    interaction.active = inside && !captured && !disabled
+    interaction.hovered = interaction.active && hover_effects
+    interaction.disabled_marker = inside && !captured && disabled
+    interaction.activated = interaction.active && released &&
+        !release_consumed && press_started_inside
+    return interaction
 }
 
 InputTempEditActivationFor :: (pressed: bool, control: bool,

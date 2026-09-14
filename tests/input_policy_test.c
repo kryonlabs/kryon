@@ -18,6 +18,7 @@ main(void)
     InputCellLayout layout;
     InputContinuousStep continuous;
     InputDiscreteStep discrete;
+    InputPointerInteraction pointer;
     InputStep precise;
 
     assert(InputDefaultStepButtonWidth(1.0f) == 24);
@@ -30,6 +31,31 @@ main(void)
     assert(InputPointerDragIsHorizontal(7, -6));
     assert(InputPointerDragIsHorizontal(-6, 6));
     assert(!InputPointerDragIsHorizontal(5, -6));
+    pointer = InputPointerInteractionFor(true, false, false, true, true,
+                                         false, true);
+    assert(pointer.active);
+    assert(pointer.hovered);
+    assert(!pointer.disabled_marker);
+    assert(pointer.activated);
+    pointer = InputPointerInteractionFor(true, false, true, true, true,
+                                         false, true);
+    assert(!pointer.active);
+    assert(!pointer.hovered);
+    assert(pointer.disabled_marker);
+    assert(!pointer.activated);
+    pointer = InputPointerInteractionFor(true, true, false, true, true,
+                                         false, true);
+    assert(!pointer.active);
+    assert(!pointer.disabled_marker);
+    assert(!pointer.activated);
+    pointer = InputPointerInteractionFor(true, false, false, true, true,
+                                         true, true);
+    assert(pointer.active);
+    assert(!pointer.activated);
+    pointer = InputPointerInteractionFor(true, false, false, true, true,
+                                         false, false);
+    assert(pointer.active);
+    assert(!pointer.activated);
 
     assert(InputTempEditActivationFor(1, 1, 0, 0, 0, 99.0f,
                                       99.0f, 99.0f, 6));

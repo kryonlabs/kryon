@@ -462,7 +462,11 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
     int enabled = !disabled && !ContentDisabled();
     int inside = ui_contains(bounds, mouse);
     int captured = InputCapturesClick(mouse);
-    int hot = enabled && inside && !captured;
+    InputPointerInteraction interaction = InputPointerInteractionFor(
+        inside != 0, captured != 0, !enabled,
+        HoverEffectsEnabled() != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        ReleaseConsumed() != 0, press_started_inside(bounds) != 0);
+    int hot = interaction.active;
     int active = 0;
 
     *focused = 0;
@@ -471,9 +475,9 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
                    !ui_popup_input_focus_captures(id);
     if(hot)
         MarkClickable();
-    else if(inside && !captured && !enabled)
+    else if(interaction.disabled_marker)
         MarkDisabled();
-    if(mouse_release_activates_rect(bounds, mouse, hot)) {
+    if(interaction.activated) {
         ConsumeRelease();
         if(id > 0)
             SetFocus(id);

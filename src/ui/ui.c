@@ -917,15 +917,18 @@ HandleClick(Rectangle bounds, int disabled, int *hover)
     Vector2 mouse_world = ui_mouse_world();
     int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
     int captured = InputCapturesClick(mouse_world);
-    int active = mouse_inside && !captured && !disabled;
+    InputPointerInteraction interaction = InputPointerInteractionFor(
+        mouse_inside != 0, captured != 0, disabled != 0,
+        HoverEffectsEnabled() != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        g_ui_release_consumed != 0, press_started_inside(bounds) != 0);
 
     if(hover != NULL)
-        *hover = active && HoverEffectsEnabled();
-    if(disabled && mouse_inside && !captured)
+        *hover = interaction.hovered;
+    if(interaction.disabled_marker)
         MarkDisabled();
-    if(active)
+    if(interaction.active)
         MarkClickable();
-    if(mouse_release_activates_rect(bounds, mouse_world, active)) {
+    if(interaction.activated) {
         ConsumeRelease();
         return 1;
     }
@@ -955,18 +958,19 @@ HandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
     float dy = mouse_world.y - center.y;
     int mouse_inside = dx * dx + dy * dy <= radius * radius;
     int captured = InputCapturesClick(mouse_world);
-    int active = mouse_inside && !captured && !disabled;
+    InputPointerInteraction interaction = InputPointerInteractionFor(
+        mouse_inside != 0, captured != 0, disabled != 0,
+        HoverEffectsEnabled() != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        g_ui_release_consumed != 0,
+        press_started_inside_circle(center, radius) != 0);
 
     if(hover != NULL)
-        *hover = active && HoverEffectsEnabled();
-    if(disabled && mouse_inside && !captured)
+        *hover = interaction.hovered;
+    if(interaction.disabled_marker)
         MarkDisabled();
-    if(active)
+    if(interaction.active)
         MarkClickable();
-    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !g_ui_release_consumed &&
-       !InputCapturesClick(mouse_world) &&
-       press_started_inside_circle(center, radius)) {
+    if(interaction.activated) {
         ConsumeRelease();
         return 1;
     }
