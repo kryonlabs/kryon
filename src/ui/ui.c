@@ -1541,8 +1541,9 @@ BeginFocusScope(void)
                              (int64_t)g_ui_text_focus_frame))
         g_ui_text_focus_owner = NULL;
     g_ui_text_focus_owner_this_frame = NULL;
-    if(IsKeyPressed(KEY_TAB))
-        g_ui_focus_tab_dir = (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) ? -1 : 1;
+    g_ui_focus_tab_dir = FocusTabDirectionFor(
+        IsKeyPressed(KEY_TAB) != 0,
+        (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0);
 }
 
 void

@@ -104,6 +104,22 @@ func Focus_FocusActivationFor(active bool, keyboard_enabled bool, content_disabl
 	return value_9
 }
 
+func Focus_FocusTabDirectionFor(tab_pressed bool, shift_down bool) int32 {
+	var value_0 bool = tab_pressed
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 int32 = 0
+		return value_2
+	}
+	var value_3 bool = shift_down
+	if value_3 {
+		var value_4 int32 = -1
+		return value_4
+	}
+	var value_5 int32 = 1
+	return value_5
+}
+
 func Focus_FocusDefaultOutlineBounds(bounds Rectangle, scale float32) Rectangle {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

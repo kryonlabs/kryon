@@ -60,5 +60,10 @@ main(void)
     debug = FocusDebugOverlayPaintFor((Rectangle){10, 20, 30, 40}, -3, false);
     assert(fabsf(debug.label_position.y - 20) < 0.001f);
     assert(!debug.label_visible);
+
+    assert(FocusTabDirectionFor(false, false) == 0);
+    assert(FocusTabDirectionFor(false, true) == 0);
+    assert(FocusTabDirectionFor(true, false) == 1);
+    assert(FocusTabDirectionFor(true, true) == -1);
     return 0;
 }

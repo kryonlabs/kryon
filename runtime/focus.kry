@@ -41,6 +41,12 @@ FocusActivationFor :: (active: bool, keyboard_enabled: bool,
         (enter_pressed || (!text_input_active && space_pressed))
 }
 
+FocusTabDirectionFor :: (tab_pressed: bool, shift_down: bool) -> i32 #export {
+    if !tab_pressed { return 0 }
+    if shift_down { return -1 }
+    return 1
+}
+
 FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
     if scale <= 0.0 { scale = 1.0 }
     pad: i32 = (i32)(2.0 * scale)
