@@ -90,6 +90,8 @@ Popup[role=Panel] {
 }
 
 Canvas {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -115,6 +117,8 @@ Card {
 }
 
 Image {
+  font-size: font.md;
+  icon-size: icon;
   background: card;
   background-end: card-end;
   foreground: text;
@@ -255,6 +259,7 @@ NavigationBarItem:disabled {
 }
 
 TabBar {
+  font-size: font.md;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -270,6 +275,7 @@ TabBar {
 }
 
 Tab {
+  font-size: font.md;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -324,6 +330,7 @@ TabClose:hover {
 }
 
 SegmentedControl {
+  font-size: font.md;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -380,6 +387,8 @@ Segment:disabled {
 }
 
 Menu {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -421,6 +430,7 @@ Menu[role=Context] {
 }
 
 MenuItem {
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -471,6 +481,8 @@ MenuSeparator {
 }
 
 Spinbox {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -497,6 +509,7 @@ SpinboxValue {
 }
 
 Drag {
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -510,6 +523,7 @@ Drag {
 }
 
 DragValue {
+  icon-size: icon;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -532,6 +546,9 @@ DragValue:disabled {
 }
 
 ColorPicker {
+  font-size: font.md;
+  opacity: 1;
+  material: app;
   gap: 4;
   icon-size: 36;
   padding-y: 2;
@@ -553,6 +570,8 @@ ColorPickerSwatch {
 }
 
 ListBox {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -603,6 +622,8 @@ ListBoxItem:disabled {
 }
 
 TreeView {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -654,6 +675,8 @@ TreeViewItem:disabled {
 }
 
 ListBoxMulti {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -761,6 +784,7 @@ Reorder[role=Placeholder] {
 }
 
 Selectable {
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -798,6 +822,7 @@ Selectable:disabled {
 }
 
 Fieldset {
+  icon-size: icon;
   background: canvas;
   foreground: muted;
   border: border-soft;
@@ -864,6 +889,8 @@ Toast[role=Label] {
 }
 
 Collapsible {
+  font-size: font.md;
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -957,6 +984,8 @@ Collapsible[role=Close]:disabled {
 }
 
 TitleBar {
+  font-size: font.md;
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -1014,6 +1043,8 @@ TitleBar[role=Action]:pressed {
 }
 
 Toolbar {
+  font-size: font.md;
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -1082,6 +1113,8 @@ Toolbar[role=BottomAction] {
 }
 
 Modal {
+  font-size: font.md;
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -1317,6 +1350,8 @@ Guide[role=Close]:hover {
 }
 
 TableView {
+  font-size: font.md;
+  icon-size: icon;
   background: transparent;
   foreground: text;
   border: transparent;
@@ -1406,6 +1441,7 @@ TableView[role=Divider] {
 }
 
 Plot {
+  icon-size: icon;
   background: card;
   background-end: card-end;
   foreground: muted;
@@ -1455,6 +1491,7 @@ ParagraphText {
 }
 
 Link {
+  icon-size: icon;
   foreground: accent;
   font-size: font;
   opacity: 1;
@@ -1471,6 +1508,8 @@ Link:disabled {
 }
 
 Separator {
+  opacity: 1;
+  material: app;
   background: border;
   foreground: muted;
   gap: gap;
@@ -1497,6 +1536,8 @@ Separator[role=Bullet] {
 }
 
 Progress {
+  font-size: font.md;
+  icon-size: icon;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -1596,6 +1637,8 @@ Button[tone=Accent]:loading {
 }
 
 Dropdown {
+  icon-size: icon;
+  opacity: 1;
   background: surface;
   background-end: dropdown-end;
   foreground: text;
@@ -1681,6 +1724,8 @@ Dropdown[role=Option]:selected {
 }
 
 Slider {
+  font-size: font.md;
+  icon-size: icon;
   background: button-pressed;
   background-end: button-pressed-end;
   foreground: text;
@@ -1792,6 +1837,8 @@ ScrollThumb:pressed {
 }
 
 Toggle {
+  font-size: font.md;
+  icon-size: icon;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -1871,6 +1918,7 @@ ToggleThumb:disabled {
 }
 
 Checkbox {
+  font-size: font.md;
   background: surface;
   background-end: surface-end;
   foreground: text;
@@ -1949,6 +1997,8 @@ Checkbox[role=Label]:disabled {
 }
 
 Radio {
+  font-size: font.md;
+  icon-size: icon;
   background: surface;
   background-end: surface-end;
   foreground: text;

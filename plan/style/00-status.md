@@ -60,10 +60,10 @@ Findings across all four packs:
 
 Worklist before the generic base can be zero-based:
 
-1. Complete `font-size`/`icon-size` declarations for every text/icon-bearing kind listed above in all four packs (use the `font.*`/`icon.*` tokens already defined per pack).
-2. Close the `Separator`/`ColorPicker`/`Dropdown` opacity+material gaps.
-3. Subpart kinds with no text or icons (ToggleThumb, TabClose, Segment, SpinboxValue, MenuSeparator) need no font/icon fields; their metrics fallbacks are structural.
-4. Only then flip `ui_minimal_control_style_data()`/`minimalControlStyleData()` to zero base in one commit, with the full test matrix green.
+1. [done 2026-09-14] Complete `font-size`/`icon-size` declarations for every text/icon-bearing kind listed above in all four packs (29-30 base rules per pack updated, using each pack's own `font`/`icon` tokens).
+2. [done 2026-09-14] Close the `Separator`/`ColorPicker`/`Dropdown` opacity+material gaps.
+3. Subpart kinds with no text or icons (ToggleThumb, TabClose, Segment, SpinboxValue, MenuSeparator, PlotMark, ColorPickerSwatch, Separator) intentionally carry no font/icon fields; their metrics fallbacks are structural.
+4. [unblocked] Flip `ui_minimal_control_style_data()`/`minimalControlStyleData()` to zero base in one commit, with the full test matrix green.
 
 The Go runtime auto-activates Material when the style registry is empty (`go/kryon/style_pack.go` `EnsureBuiltInStylePacks`), so runtime tests exercise pack-styled rendering, not no-style rendering.
 
@@ -75,7 +75,7 @@ Next commits, in order:
 2. [done 2026-09-14] NavigationBar facts helper (C `navigation_bar.c` + Go retained path, zero base).
 3. [done 2026-09-14] PanedView handle facts helper (`tab_bar.c`, Go retained path, zero base).
 4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
-5. Button/generic control facts path: facts construction done 2026-09-14 (`ButtonRoleFactsFor` in `runtime/button.kry`; C `button.c` and Go `resolveMinimalControlRoleState` use it; `button-policy-test` gate added). Remaining: complete the pack coverage worklist above, then zero-base `minimalControlStyleData`/`ui_minimal_control_style_data()`.
+5. Button/generic control facts path: facts construction done 2026-09-14 (`ButtonRoleFactsFor` in `runtime/button.kry`; C `button.c` and Go `resolveMinimalControlRoleState` use it; `button-policy-test` gate added). Pack coverage completed 2026-09-14 for every generic-path kind. Remaining: the zero-base flip itself (`minimalControlStyleData`/`ui_minimal_control_style_data()`).
 6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
 7. No-style tests, then the five scanners as Makefile gates.
 
