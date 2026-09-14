@@ -166,6 +166,11 @@ main(void)
         fprintf(stderr, "navigation bar role policy changed\n");
         return 1;
     }
+    if(RadioRingRole() != 11 || RadioMarkRole() != 10 ||
+       RadioLabelRole() != 6) {
+        fprintf(stderr, "radio role policy changed\n");
+        return 1;
+    }
 
     check_float("checkbox keeps zero border width",
                 checkbox_paint.border_width, 0.0f);

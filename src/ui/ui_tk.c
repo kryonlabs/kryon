@@ -1836,7 +1836,8 @@ RenderRadio(RadioProps radio)
                                                      initial_state,
                                                      radio.disabled,
                                                      radio.checked,
-                                                     radio.class_name, 6);
+                                                     radio.class_name,
+                                                     RadioLabelRole());
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
         label_frame).value);
     int font = ResolveFont(0, StyleFontValue(label_style.fields,
@@ -1852,11 +1853,11 @@ RenderRadio(RadioProps radio)
         .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
                                          initial_state,
                                          radio.disabled, radio.checked,
-                                         radio.class_name, 11),
+                                         radio.class_name, RadioRingRole()),
         .selected = ui_tk_radio_style_frame(ButtonToneAccent,
                                             initial_state,
                                             radio.disabled, radio.checked,
-                                            radio.class_name, 10)
+                                            radio.class_name, RadioMarkRole())
     });
     paint.label_color = ColorToInt(label_style.foreground);
     int hot;
@@ -1933,20 +1934,21 @@ RenderRadio(RadioProps radio)
                                                  down, focused,
                                                  radio.disabled),
                                              radio.disabled, radio.checked,
-                                             radio.class_name, 11),
+                                             radio.class_name, RadioRingRole()),
             .selected = ui_tk_radio_style_frame(ButtonToneAccent,
                                                 ui_tk_checkbox_button_state(hot,
                                                     down, focused,
                                                     radio.disabled),
                                                 radio.disabled, radio.checked,
-                                                radio.class_name, 10)
+                                                radio.class_name, RadioMarkRole())
         });
         label_frame = ui_tk_radio_style_frame(ButtonToneNeutral,
                                               ui_tk_checkbox_button_state(hot, down,
                                                                          focused,
                                                                          radio.disabled),
                                               radio.disabled, radio.checked,
-                                              radio.class_name, 6);
+                                              radio.class_name,
+                                              RadioLabelRole());
         label_style = ui_unpack_style(ui_style_apply_effects_frame(
             label_frame).value);
         font = ResolveFont(0, StyleFontValue(label_style.fields,

@@ -42,6 +42,18 @@ RadioMetric :: (fields: u32, field: u32, value: float,
     return (i32)(value * scale)
 }
 
+RadioRingRole :: () -> i32 #export {
+    return 11
+}
+
+RadioMarkRole :: () -> i32 #export {
+    return 10
+}
+
+RadioLabelRole :: () -> i32 #export {
+    return 6
+}
+
 RadioSizeForStyle :: (ring: StyleFrame, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return RadioMetric(ring.value.fields, (u32)StyleIconSize,

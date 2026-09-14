@@ -5624,7 +5624,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	input := r.ReadActivation(props.Bounds, props.ID, !props.Disabled)
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, props.Disabled)
-	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, props.ClassName, 10)
+	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, props.ClassName, Radio_RadioMarkRole())
 	paint := Radio_RadioPaintFor(RadioSpec{
 		Bounds:   props.Bounds,
 		Checked:  props.Checked,
@@ -5636,10 +5636,10 @@ func (r *runtime) Radio(props RadioProps) int32 {
 			return 0
 		}(),
 		Scale:    1,
-		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, 11),
+		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, Radio_RadioRingRole()),
 		Selected: selectedFrame,
 	})
-	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, 6)
+	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, Radio_RadioLabelRole())
 	paint.LabelColor = label.Value.Foreground
 	markStyle := unpackStyle(selectedFrame.Value)
 	labelStyle := unpackStyle(label.Value)

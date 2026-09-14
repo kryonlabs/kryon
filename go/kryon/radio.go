@@ -76,6 +76,21 @@ func Radio_RadioMetric(fields uint32, field uint32, value float32, fallback floa
 	return value_19
 }
 
+func Radio_RadioRingRole() int32 {
+	var value_0 int32 = 11
+	return value_0
+}
+
+func Radio_RadioMarkRole() int32 {
+	var value_0 int32 = 10
+	return value_0
+}
+
+func Radio_RadioLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Radio_RadioSizeForStyle(ring StyleFrame, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
