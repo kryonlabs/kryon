@@ -324,6 +324,9 @@ main(void)
         resolved = ResolveActiveStyle(base, selected, ButtonStateSelected);
         assert(resolved.border_width == 2.0f);
         assert(resolved.border == resolved.focus);
+        resolved = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindDropdown()),
+                                      ButtonStateNormal);
+        assert(resolved.offset_x >= resolved.icon_size / 2.0f);
     }
 
     assert(SetActiveStylePack("material"));

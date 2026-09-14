@@ -1601,6 +1601,7 @@ Dropdown {
   offset-y: 16;
   font-size: font;
   material: default;
+  offset-x: 24;
 }
 
 Dropdown:hover {

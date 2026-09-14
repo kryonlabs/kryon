@@ -104,3 +104,9 @@ The root cross-module Go command was replaced with the real module test target.
 
 The policy migration work listed above remains open. These interaction fixes
 are not evidence that every legacy path or every platform has been verified.
+
+Native SDL applications must compile the shared input frontend with
+`KRYON_BACKEND_RAYLIB=1`; the native build template now supplies it. Verify the
+actual downstream executable with quick taps, not only the core test binary.
+Run `make sdl-pointer-test` for the SDL edge regression. Dropdown pack metrics
+also keep their disclosure arrows inside the trigger bounds.

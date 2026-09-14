@@ -1768,3 +1768,7 @@ dropdown-reference-test: dropdown-capture
 $(BUILD_DIR)/tests/sdl_pointer_edges_test: tests/sdl_pointer_edges_test.c $(LIB) $(KRYON_BACKEND_LIBS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: sdl-pointer-test
+sdl-pointer-test: $(BUILD_DIR)/tests/sdl_pointer_edges_test
+	xvfb-run -a $<
