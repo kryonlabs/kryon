@@ -5143,9 +5143,9 @@ func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []M
 	result := MenuResult{OpenIndex: -1}
 	state := r.menuNav(id)
 	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 1)
+		false, false, className, StyleSheet_StyleKindMenu(), Menu_MenuBarRole())
 	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 2)
+		false, false, className, StyleSheet_StyleKindMenu(), Menu_MenuPopupRole())
 	menuItemBaseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
 	metrics := Menu_MenuMetricsFor(1, panelFrame, menuItemBaseFrame, barFrame)
@@ -5312,9 +5312,9 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 
 func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
 	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 2)
+		false, false, className, StyleSheet_StyleKindMenu(), Menu_MenuPopupRole())
 	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, className, StyleSheet_StyleKindMenu(), 1)
+		false, false, className, StyleSheet_StyleKindMenu(), Menu_MenuBarRole())
 	baseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
 	baseStyle := unpackStyle(baseFrame.Value)

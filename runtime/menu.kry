@@ -44,6 +44,18 @@ MenuOutsideCloseDecision :: struct {
     open_index: i32
 }
 
+MenuBarRole :: () -> i32 #export {
+    return 1
+}
+
+MenuPopupRole :: () -> i32 #export {
+    return 2
+}
+
+MenuContextRole :: () -> i32 #export {
+    return 3
+}
+
 MenuHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }

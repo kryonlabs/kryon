@@ -4,6 +4,7 @@
 #include "runtime/fieldset.h"
 #include "runtime/focus.h"
 #include "runtime/image.h"
+#include "runtime/menu.h"
 #include "runtime/paned_view.h"
 #include "runtime/plot.h"
 #include "runtime/progress.h"
@@ -138,6 +139,11 @@ main(void)
        CollapsibleHeaderRoleFor(0) != 13 ||
        CollapsibleHeaderRoleFor(1) != 14) {
         fprintf(stderr, "collapsible role policy changed\n");
+        return 1;
+    }
+    if(MenuBarRole() != 1 || MenuPopupRole() != 2 ||
+       MenuContextRole() != 3) {
+        fprintf(stderr, "menu role policy changed\n");
         return 1;
     }
 

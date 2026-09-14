@@ -45,6 +45,21 @@ type MenuOutsideCloseDecision struct {
 	OpenIndex      int32
 }
 
+func Menu_MenuBarRole() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func Menu_MenuPopupRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func Menu_MenuContextRole() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
 func Menu_MenuHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field

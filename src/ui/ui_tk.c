@@ -511,7 +511,7 @@ ui_draw_menu_panel(Rectangle bounds, int class_name)
 {
     StyleFrame frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 2);
+        StyleKindMenu(), MenuPopupRole());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     ui_default_elevation(bounds, style.radius, 2);
     ui_tk_draw_style_frame(bounds, (Rectangle){0}, frame, 0, 0, 0, 0);
@@ -1168,10 +1168,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         ui_style_apply_effects_frame(base_item_frame).value);
     StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 2);
+        StyleKindMenu(), MenuPopupRole());
     StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 1);
+        StyleKindMenu(), MenuBarRole());
     int font = ResolveFont(0, StyleFontValue(base_item_style.fields,
                                              base_item_style.font_size),
                            GetFontSize());
@@ -1387,10 +1387,10 @@ menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count,
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 2);
+        StyleKindMenu(), MenuPopupRole());
     StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 1);
+        StyleKindMenu(), MenuBarRole());
     int font = ResolveFont(0, StyleFontValue(style.fields, style.font_size),
                            GetFontSize());
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
@@ -1482,10 +1482,10 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         ui_style_apply_effects_frame(base_item_frame).value);
     StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 1);
+        StyleKindMenu(), MenuBarRole());
     StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
-        StyleKindMenu(), 2);
+        StyleKindMenu(), MenuPopupRole());
     int font = ResolveFont(0, StyleFontValue(base_item_style.fields,
                                              base_item_style.font_size),
                            GetFontSize());
