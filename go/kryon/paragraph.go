@@ -89,6 +89,21 @@ func Paragraph_ParagraphCanLayout(width int32) bool {
 	return value_2
 }
 
+func Paragraph_ParagraphDefaultLineGap(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 4.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
 func Paragraph_ParagraphLayoutPolicyFor(space_text_width int32, letter_spacing int32, requested_line_gap int32, default_line_gap int32, scale float32) ParagraphLayoutPolicy {
 	var policy ParagraphLayoutPolicy = ParagraphLayoutPolicy{}
 	var value_0 int32 = space_text_width

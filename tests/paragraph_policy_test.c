@@ -29,6 +29,9 @@ main(void)
     assert(metrics.width == 0);
     assert(metrics.height == 17);
     assert(!ParagraphCanLayout(metrics.width));
+    assert(ParagraphDefaultLineGap(1.0f) == 4);
+    assert(ParagraphDefaultLineGap(2.0f) == 8);
+    assert(ParagraphDefaultLineGap(0.0f) == 4);
 
     policy = ParagraphLayoutPolicyFor(7, 1, 0, 4, 2.0f);
     assert(policy.space_width == 9);

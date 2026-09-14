@@ -115,7 +115,8 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
 
     ParagraphLayoutPolicy policy = ParagraphLayoutPolicyFor(
         TextWidth(" ", font_size), ui_get_text_letter_spacing(),
-        line_height, Scale(4), (float)Scale(1000) / 1000.0f);
+        line_height, ParagraphDefaultLineGap((float)Scale(1000) / 1000.0f),
+        (float)Scale(1000) / 1000.0f);
     layout->line_count = 0;
     layout->line_breaks[0] = 0;
     int current_line_width = 0;
@@ -273,7 +274,9 @@ DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
     int current_y = *y;
     ParagraphLayoutPolicy policy = ParagraphLayoutPolicyFor(
         TextWidth(" ", font_size), ui_get_text_letter_spacing(),
-        layout->line_height, Scale(4), (float)Scale(1000) / 1000.0f);
+        layout->line_height,
+        ParagraphDefaultLineGap((float)Scale(1000) / 1000.0f),
+        (float)Scale(1000) / 1000.0f);
     int drawn_line_height = TextLineHeight(font_size);
     int line_count = layout->line_count > 0 ? layout->line_count : 1;
 
