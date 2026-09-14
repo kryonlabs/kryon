@@ -202,6 +202,12 @@ ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {
     return rows * metrics.button_height + (rows - 1) * metrics.button_gap
 }
 
+ModalActionNextY :: (y: i32, button_height: i32, gap: i32) -> i32 #export {
+    if button_height < 0 { button_height = 0 }
+    if gap < 0 { gap = 0 }
+    return y + button_height + gap
+}
+
 ModalFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     if style_font > 0 { return style_font }
     return default_font

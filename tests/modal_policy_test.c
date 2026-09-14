@@ -127,6 +127,8 @@ main(void)
     assert(placement.start_x == 10);
     assert(ModalButtonsHeight(0, metrics) == 0);
     assert(ModalButtonsHeight(3, metrics) == 296);
+    assert(ModalActionNextY(20, 88, 16) == 124);
+    assert(ModalActionNextY(20, -88, -16) == 20);
     assert(ModalFontFor(14, 0) == 14);
     assert(ModalFontFor(14, 18) == 18);
     assert(ModalFontFor(14, 0) == 14);

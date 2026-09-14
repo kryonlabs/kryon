@@ -156,9 +156,12 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
         int end_row = i == count;
         int action_w = !end_row ?
             ui_modal_action_width(actions[i].label, font, metrics) : 0;
-        int next_w = row_w > 0 ? row_w + gap + action_w : action_w;
+        int next_rows = !end_row ?
+            ModalActionRowsStep(row_w, 1, action_w, content_w, gap) : 0;
+        int next_w = !end_row ?
+            ModalActionRowWidthStep(row_w, action_w, content_w, gap) : 0;
 
-        if(!end_row && (row_w == 0 || next_w <= content_w)) {
+        if(!end_row && next_rows == 1) {
             row_w = next_w;
             row_count++;
             continue;
@@ -183,7 +186,7 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
                     result = action_index + 1;
                 draw_x += equal_w + gap;
             }
-            y += button_h + gap;
+            y = ModalActionNextY(y, button_h, gap);
         }
 
         row_start = i;
