@@ -1784,9 +1784,13 @@ IsFocusActive(int id)
 int
 IsFocusActivatePressed(int id)
 {
-    return IsFocusActive(id) && IsKeyboardInputEnabled() &&
-           !ContentDisabled() && !ui_popup_input_focus_captures(id) &&
-           (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
+    return FocusActivationFor(IsFocusActive(id) != 0,
+                              IsKeyboardInputEnabled() != 0,
+                              ContentDisabled() != 0,
+                              ui_popup_input_focus_captures(id) != 0,
+                              IsKeyPressed(KEY_ENTER) != 0,
+                              IsKeyPressed(KEY_SPACE) != 0,
+                              g_ui_focus_text_input_active != 0);
 }
 
 void

@@ -25,6 +25,14 @@ main(void)
     assert(paint.stroke_width == 4);
     assert(FocusStrokeWidthFor(0.0f) == 2);
     assert(FocusStrokeWidthFor(2.0f) == 4);
+    assert(FocusActivationFor(true, true, false, false, true, false, false));
+    assert(FocusActivationFor(true, true, false, false, false, true, false));
+    assert(!FocusActivationFor(false, true, false, false, true, true, false));
+    assert(!FocusActivationFor(true, false, false, false, true, true, false));
+    assert(!FocusActivationFor(true, true, true, false, true, true, false));
+    assert(!FocusActivationFor(true, true, false, true, true, true, false));
+    assert(!FocusActivationFor(true, true, false, false, false, true, true));
+    assert(!FocusActivationFor(true, true, false, false, false, false, false));
     check_rect(FocusDefaultOutlineBounds((Rectangle){10, 20, 30, 40}, 1.0f),
                8, 18, 34, 44);
     check_rect(FocusDefaultOutlineBounds((Rectangle){10, 20, 30, 40}, 2.0f),

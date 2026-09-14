@@ -34,6 +34,13 @@ FocusStrokeWidthFor :: (scale: float) -> i32 #export {
     return (i32)(2.0 * scale)
 }
 
+FocusActivationFor :: (active: bool, keyboard_enabled: bool,
+    content_disabled: bool, captured: bool, enter_pressed: bool,
+    space_pressed: bool, text_input_active: bool) -> bool #export {
+    return active && keyboard_enabled && !content_disabled && !captured &&
+        (enter_pressed || (!text_input_active && space_pressed))
+}
+
 FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
     if scale <= 0.0 { scale = 1.0 }
     pad: i32 = (i32)(2.0 * scale)
