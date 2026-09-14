@@ -16,6 +16,11 @@ PopupContextActivation :: struct {
     origin: Vector2
 }
 
+PopupEscapeDecision :: struct {
+    close: bool
+    end_input: bool
+}
+
 PopupPanelRole :: () -> i32 #export {
     return 2
 }
@@ -118,4 +123,14 @@ PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
         return 180
     }
     return 0
+}
+
+PopupEscapeFor :: (captures_input: bool, escape_pressed: bool,
+    keyboard_captured: bool) -> PopupEscapeDecision #export {
+    decision: PopupEscapeDecision
+    if captures_input && escape_pressed && !keyboard_captured {
+        decision.close = true
+        decision.end_input = true
+    }
+    return decision
 }

@@ -32,14 +32,18 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
 {
     PopupInput *context = capture_input ?
         (layers ? ui_paint_layers_input(layers) : ui_popup_input_bound()) : NULL;
+    PopupEscapeDecision escape_decision;
     if(context && !input.context)
         input = ui_popup_input_begin(context,id,input_bounds);
-    if(capture_input && IsKeyPressed(KEY_ESCAPE) &&
-       !ui_popup_input_keyboard_captures()) {
+    escape_decision = PopupEscapeFor(capture_input != 0,
+                                     IsKeyPressed(KEY_ESCAPE) != 0,
+                                     ui_popup_input_keyboard_captures() != 0);
+    if(escape_decision.close) {
         *open = false;
         if(context) {
             ui_popup_input_close(context,id);
-            ui_popup_input_end(input);
+            if(escape_decision.end_input)
+                ui_popup_input_end(input);
         }
         return 0;
     }
