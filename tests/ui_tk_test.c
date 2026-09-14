@@ -1469,6 +1469,7 @@ test_drag_value_policy(void)
     DragDiscreteStep int_step;
     DragTextPaint cell_paint;
     DragTextPaint label_paint;
+    DragKeyboardInput keyboard_input;
     Rectangle cell;
 
     check_float("drag default speed", DragEffectiveSpeed(0.0f), 1.0f);
@@ -1483,19 +1484,23 @@ test_drag_value_policy(void)
     check_int("drag int rounded negative",
               DragDiscreteRoundedDelta(-1.6f, 0), -2);
 
+    keyboard_input = DragKeyboardInputFor(1, 0, 0, 0, 0);
     float_step = DragKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
-                                        1, 0, 0, 0, 0);
+                                   keyboard_input);
     check_int("drag float keyboard changed", float_step.changed ? 1 : 0, 1);
     check_float("drag float keyboard value", float_step.value, 2.25f);
+    keyboard_input = DragKeyboardInputFor(1, 0, 0, 0, 1);
     float_step = DragKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
-                                        1, 0, 0, 0, 1);
+                                   keyboard_input);
     check_float("drag float keyboard fast", float_step.value, 4.5f);
     float_step = DragDeltaValue(2.0f, 5.0f, 0.5f, 0.0f, 4.0f);
     check_float("drag float delta clamps", float_step.value, 4.0f);
 
-    int_step = DragDiscreteKeyboardValue(3, 0.25f, 0, 10, 1, 0, 0, 0, 0);
+    keyboard_input = DragKeyboardInputFor(1, 0, 0, 0, 0);
+    int_step = DragDiscreteKeyboardValue(3, 0.25f, 0, 10, keyboard_input);
     check_int("drag int keyboard minimum step", int_step.value, 4);
-    int_step = DragDiscreteKeyboardValue(3, 2.0f, 0, 10, 1, 0, 0, 0, 1);
+    keyboard_input = DragKeyboardInputFor(1, 0, 0, 0, 1);
+    int_step = DragDiscreteKeyboardValue(3, 2.0f, 0, 10, keyboard_input);
     check_int("drag int keyboard fast", int_step.value, 10);
     int_step = DragDiscreteDeltaValue(3, 0.4f, 1.0f, 0, 10);
     check_int("drag int small delta unchanged", int_step.changed ? 1 : 0, 0);

@@ -2739,10 +2739,11 @@ func (r *runtime) dragFloatKeyboard(focusID int32, speed, minimum, maximum, valu
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(false, event.key)
-			step := Drag_DragKeyboardValue(next, speed, minimum, maximum,
-				direction, event.key == KeyHome, event.key == KeyEnd,
+			input := Drag_DragKeyboardInputFor(direction,
+				event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			step := Drag_DragKeyboardValue(next, speed, minimum, maximum, input)
 			if step.Changed {
 				next, handled = step.Value, true
 			}
@@ -2765,10 +2766,11 @@ func (r *runtime) dragIntKeyboard(focusID int32, speed float32, minimum, maximum
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(false, event.key)
-			step := Drag_DragDiscreteKeyboardValue(next, speed, minimum, maximum,
-				direction, event.key == KeyHome, event.key == KeyEnd,
+			input := Drag_DragKeyboardInputFor(direction,
+				event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			step := Drag_DragDiscreteKeyboardValue(next, speed, minimum, maximum, input)
 			if step.Changed {
 				next, handled = step.Value, true
 			}

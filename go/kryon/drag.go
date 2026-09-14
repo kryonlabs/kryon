@@ -12,6 +12,21 @@ type DragDiscreteStep struct {
 	Changed bool
 }
 
+type DragKeyboardInput struct {
+	Direction int32
+	Home      bool
+	End       bool
+	Alt       bool
+	Shift     bool
+}
+
+type DragPointerDecision struct {
+	ClearActive  bool
+	StartActive  bool
+	UpdateDelta  bool
+	FinishActive bool
+}
+
 type DragTextPaint struct {
 	TextX float32
 	TextY float32
@@ -139,6 +154,69 @@ func Drag_DragCellBoundsFor(bounds Rectangle, count int32, index int32) Rectangl
 	return value_29
 }
 
+func Drag_DragPointerDecisionFor(any_active bool, active bool, hot bool, disabled bool, owner_captured bool, pressed bool, down bool, released bool) DragPointerDecision {
+	var decision DragPointerDecision = DragPointerDecision{}
+	var value_0 bool = any_active
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = owner_captured
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if !value_3 {
+		var value_4 bool = active
+		var value_5 bool = value_4
+		if value_5 {
+			var value_6 bool = disabled
+			value_5 = value_6
+		}
+		value_3 = value_5
+	}
+	decision.ClearActive = value_3
+	var value_7 bool = hot
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = pressed
+		value_8 = value_9
+	}
+	decision.StartActive = value_8
+	var value_10 bool = active
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = decision.ClearActive
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	var value_14 bool = value_11
+	if !value_14 {
+		var value_15 bool = decision.StartActive
+		value_14 = value_15
+	}
+	var effective_active bool = value_14
+	var value_16 bool = effective_active
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = disabled
+		var value_19 bool = !value_18
+		value_17 = value_19
+	}
+	var value_20 bool = value_17
+	if value_20 {
+		var value_21 bool = down
+		value_20 = value_21
+	}
+	decision.UpdateDelta = value_20
+	var value_22 bool = effective_active
+	var value_23 bool = value_22
+	if value_23 {
+		var value_24 bool = released
+		value_23 = value_24
+	}
+	decision.FinishActive = value_23
+	var value_25 DragPointerDecision = decision
+	return value_25
+}
+
 func Drag_DragEffectiveSpeed(speed float32) float32 {
 	var value_0 float32 = speed
 	var value_1 float32 = 0.0
@@ -239,7 +317,23 @@ func Drag_DragDiscreteRoundedDelta(scaled float32, force_minimum_step bool) int3
 	return value_20
 }
 
-func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) DragStep {
+func Drag_DragKeyboardInputFor(direction int32, home bool, end bool, alt bool, shift bool) DragKeyboardInput {
+	var input DragKeyboardInput = DragKeyboardInput{}
+	var value_0 int32 = direction
+	input.Direction = value_0
+	var value_1 bool = home
+	input.Home = value_1
+	var value_2 bool = end
+	input.End = value_2
+	var value_3 bool = alt
+	input.Alt = value_3
+	var value_4 bool = shift
+	input.Shift = value_4
+	var value_5 DragKeyboardInput = input
+	return value_5
+}
+
+func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maximum float32, input DragKeyboardInput) DragStep {
 	var result DragStep = DragStep{}
 	var value_0 float32 = value
 	result.Value = value_0
@@ -247,7 +341,7 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 	result.Changed = value_1
 	var value_2 float32 = value
 	var next float32 = value_2
-	var value_3 bool = home
+	var value_3 bool = input.Home
 	var value_4 bool = value_3
 	if value_4 {
 		var value_5 float32 = minimum
@@ -259,7 +353,7 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 		var value_8 float32 = minimum
 		next = value_8
 	} else {
-		var value_9 bool = end
+		var value_9 bool = input.End
 		var value_10 bool = value_9
 		if value_10 {
 			var value_11 float32 = minimum
@@ -271,21 +365,21 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 			var value_14 float32 = maximum
 			next = value_14
 		} else {
-			var value_15 int32 = direction
+			var value_15 int32 = input.Direction
 			var value_16 int32 = 0
 			var value_17 bool = value_15 != value_16
 			if value_17 {
 				var value_18 float32 = speed
 				var value_19 float32 = Drag_DragEffectiveSpeed(value_18)
 				var step float32 = value_19
-				var value_20 bool = alt
+				var value_20 bool = input.Alt
 				if value_20 {
 					var value_21 float32 = step
 					var value_22 float32 = 0.1
 					var value_23 float32 = value_21 * value_22
 					step = value_23
 				}
-				var value_24 bool = shift
+				var value_24 bool = input.Shift
 				if value_24 {
 					var value_25 float32 = step
 					var value_26 float32 = 10.0
@@ -293,7 +387,7 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 					step = value_27
 				}
 				var value_28 float32 = next
-				var value_29 int32 = direction
+				var value_29 int32 = input.Direction
 				var value_30 float32 = float32(value_29)
 				var value_31 float32 = step
 				var value_32 float32 = value_30 * value_31
@@ -315,7 +409,7 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 	return value_41
 }
 
-func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) DragDiscreteStep {
+func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, maximum int32, input DragKeyboardInput) DragDiscreteStep {
 	var result DragDiscreteStep = DragDiscreteStep{}
 	var value_0 int32 = value
 	result.Value = value_0
@@ -323,7 +417,7 @@ func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, m
 	result.Changed = value_1
 	var value_2 int32 = value
 	var next int32 = value_2
-	var value_3 bool = home
+	var value_3 bool = input.Home
 	var value_4 bool = value_3
 	if value_4 {
 		var value_5 int32 = minimum
@@ -335,7 +429,7 @@ func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, m
 		var value_8 int32 = minimum
 		next = value_8
 	} else {
-		var value_9 bool = end
+		var value_9 bool = input.End
 		var value_10 bool = value_9
 		if value_10 {
 			var value_11 int32 = minimum
@@ -347,21 +441,21 @@ func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, m
 			var value_14 int32 = maximum
 			next = value_14
 		} else {
-			var value_15 int32 = direction
+			var value_15 int32 = input.Direction
 			var value_16 int32 = 0
 			var value_17 bool = value_15 != value_16
 			if value_17 {
 				var value_18 float32 = speed
 				var value_19 float32 = Drag_DragEffectiveSpeed(value_18)
 				var scaled float32 = value_19
-				var value_20 bool = alt
+				var value_20 bool = input.Alt
 				if value_20 {
 					var value_21 float32 = scaled
 					var value_22 float32 = 0.1
 					var value_23 float32 = value_21 * value_22
 					scaled = value_23
 				}
-				var value_24 bool = shift
+				var value_24 bool = input.Shift
 				if value_24 {
 					var value_25 float32 = scaled
 					var value_26 float32 = 10.0
@@ -369,7 +463,7 @@ func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, m
 					scaled = value_27
 				}
 				var value_28 int32 = next
-				var value_29 int32 = direction
+				var value_29 int32 = input.Direction
 				var value_30 float32 = scaled
 				var value_31 bool = true
 				var value_32 int32 = Drag_DragDiscreteRoundedDelta(value_30, value_31)

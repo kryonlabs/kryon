@@ -55,7 +55,7 @@ surface review:
 | `runtime/dropdown_props.kry` | Dropdown rich item data and props | `.kry canonical` |
 | `runtime/drag_drop.kry` | DragDrop source/target lifecycle decision policy | `.kry canonical` |
 | `runtime/drag_drop_props.kry` | DragDrop props and role enum | `.kry canonical` |
-| `runtime/drag.kry` | Drag component layout, text paint geometry, and value/keyboard policy | `.kry canonical` |
+| `runtime/drag.kry` | Drag component layout, text paint geometry, typed keyboard input, and value/keyboard policy | `.kry canonical` |
 | `runtime/drag_props.kry` | Drag props | `.kry canonical` |
 | `runtime/grid.kry` | Grid composition | `.kry canonical` |
 | `runtime/grid_props.kry` | Grid props | `.kry canonical` |
@@ -492,7 +492,7 @@ should use canonical `.kry` names and blocks.
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Option/index normalization, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, and indicator policy are in `.kry`; trigger and option typography use resolved KSS font sizes directly. |
 | `Slider` | `.kry canonical` | Public props live in `runtime/slider_props.kry`; value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry live in `SliderProps`/`.kry`; generated Go uses `kr.Slider`. |
-| `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
+| `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, typed keyboard input, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, step policy, and temp-edit activation live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
@@ -727,7 +727,7 @@ behind the canonical names.
   `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
   that runtime policy; `Spinbox` child focus IDs now route through
-  `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, component
+  `runtime/spinbox.kry`; `Drag` typed keyboard input, text inset, label-gap metrics, component
   drag tokens, and retained pointer lifecycle now route through
   `runtime/drag.kry`; `Slider` component tokens,
   focus IDs, editor center placement, old immediate pointer lifecycle, and

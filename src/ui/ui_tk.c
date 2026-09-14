@@ -2373,10 +2373,11 @@ ui_update_drag_continuous_keyboard(int focus_id, float speed, float minimum,
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(0);
-    step = DragKeyboardValue(*value, speed, minimum, maximum, direction,
-        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
-        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
-        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    DragKeyboardInput keyboard_input = DragKeyboardInputFor(
+        direction, IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) != 0,
+        (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0);
+    step = DragKeyboardValue(*value, speed, minimum, maximum, keyboard_input);
     if(!step.changed) return 0;
     *value = step.value;
     return 1;
@@ -2393,10 +2394,12 @@ ui_update_drag_discrete_keyboard(int focus_id, float speed, int minimum,
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(0);
-    step = DragDiscreteKeyboardValue(*value, speed, minimum, maximum, direction,
-        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
-        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
-        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    DragKeyboardInput keyboard_input = DragKeyboardInputFor(
+        direction, IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) != 0,
+        (IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) != 0);
+    step = DragDiscreteKeyboardValue(*value, speed, minimum, maximum,
+        keyboard_input);
     if(!step.changed) return 0;
     *value = step.value;
     return 1;
