@@ -64,6 +64,7 @@ int main(void)
     assert(TextLineHeightFor(13, 16, 0.0f) == 13);
     assert(TextSelectionLineEndPaddingFor(2.0f) == 12);
     assert(TextSelectionMinWidthFor(2.0f) == 8);
+    assert(TextSelectionDefaultAlpha() == 88);
     assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);
     assert(TextSelectionHighlightEndX(10, 10, false, 1.0f) == 14);
     assert(TextSelectionHighlightEndX(10, 2, true, 1.0f) == 14);

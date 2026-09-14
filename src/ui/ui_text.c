@@ -1229,7 +1229,7 @@ ui_text_default_selection_color(Color text_color)
                                               StyleKindLink());
     Color color = link.foreground.a != 0 ? link.foreground : text_color;
 
-    color.a = 88;
+    color.a = TextSelectionDefaultAlpha();
     return color;
 }
 

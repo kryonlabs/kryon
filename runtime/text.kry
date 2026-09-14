@@ -142,6 +142,10 @@ TextSelectionMinWidthFor :: (scale: float) -> i32 #export {
     return (i32)(4.0 * scale)
 }
 
+TextSelectionDefaultAlpha :: () -> u8 #export {
+    return (u8)88
+}
+
 TextSelectionHighlightEndX :: (start_x: i32, end_x: i32,
     continues_past_line: bool, scale: float) -> i32 #export {
     if continues_past_line {
