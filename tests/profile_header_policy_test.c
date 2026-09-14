@@ -18,6 +18,8 @@ main(void)
     ProfileHeaderLayout header;
     ProfilePickerLayout picker;
     ProfilePickerCell cell;
+    ProfilePointerAction action;
+    ProfilePickerCellDecision cell_decision;
 
     header = ProfileHeaderLayoutFor(10, 20, 260, 0, 0, 88, 24, 1.0f);
     assert(header.height == 138);
@@ -44,6 +46,34 @@ main(void)
     assert(ProfileHeaderSubtitleY(58, 1.0f) == 80);
     assert(ProfileHeaderFriendsTextX(10, 1.0f) == 22);
     assert(ProfileHeaderFriendsTextY(108, 1.0f) == 116);
+    action = ProfilePointerActionFor(true, false);
+    assert(action.mark_clickable);
+    assert(!action.activate);
+    assert(!action.consume_release);
+    action = ProfilePointerActionFor(true, true);
+    assert(action.mark_clickable);
+    assert(action.activate);
+    assert(action.consume_release);
+    action = ProfilePointerActionFor(false, true);
+    assert(!action.mark_clickable);
+    assert(!action.activate);
+    assert(!action.consume_release);
+    cell_decision = ProfilePickerCellDecisionFor(true, true, 4, 8, 3);
+    assert(cell_decision.mark_clickable);
+    assert(cell_decision.consume_release);
+    assert(cell_decision.select);
+    assert(cell_decision.changed);
+    assert(cell_decision.selected_index == 4);
+    assert(cell_decision.selected_icon_type == 8);
+    assert(cell_decision.close);
+    cell_decision = ProfilePickerCellDecisionFor(true, true, 4, 8, 8);
+    assert(!cell_decision.changed);
+    assert(cell_decision.selected_icon_type == 8);
+    cell_decision = ProfilePickerCellDecisionFor(true, false, 4, 8, 3);
+    assert(cell_decision.mark_clickable);
+    assert(!cell_decision.select);
+    assert(cell_decision.selected_index == -1);
+    assert(cell_decision.selected_icon_type == 3);
 
     header = ProfileHeaderLayoutFor(0, 0, 120, 90, 12, 300, 30, 2.0f);
     assert(header.height == 90);

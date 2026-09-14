@@ -42,6 +42,22 @@ ProfilePickerCell :: struct {
     icon_bounds: Rectangle
 }
 
+ProfilePointerAction :: struct {
+    mark_clickable: bool
+    consume_release: bool
+    activate: bool
+}
+
+ProfilePickerCellDecision :: struct {
+    mark_clickable: bool
+    consume_release: bool
+    select: bool
+    changed: bool
+    selected_index: i32
+    selected_icon_type: i32
+    close: bool
+}
+
 ProfileScale :: (scale: float) -> float {
     if scale <= 0.0 { return 1.0 }
     return scale
@@ -190,4 +206,29 @@ ProfilePickerCellFor :: (index: i32, content_x: i32, content_y: i32,
         (float)(picker.cell - picker.icon_inset * 2),
         (float)(picker.cell - picker.icon_inset * 2)}
     return cell
+}
+
+ProfilePointerActionFor :: (active: bool, activated: bool) -> ProfilePointerAction #export {
+    action: ProfilePointerAction
+    action.mark_clickable = active
+    action.activate = active && activated
+    action.consume_release = action.activate
+    return action
+}
+
+ProfilePickerCellDecisionFor :: (active: bool, activated: bool,
+    index: i32, icon_type: i32, selected_icon_type: i32) -> ProfilePickerCellDecision #export {
+    decision: ProfilePickerCellDecision
+    decision.selected_index = -1
+    decision.selected_icon_type = selected_icon_type
+    decision.mark_clickable = active
+    if active && activated {
+        decision.consume_release = true
+        decision.select = true
+        decision.changed = icon_type != selected_icon_type
+        decision.selected_index = index
+        decision.selected_icon_type = icon_type
+        decision.close = true
+    }
+    return decision
 }

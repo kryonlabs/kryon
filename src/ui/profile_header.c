@@ -251,12 +251,14 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                      surface_style.material);
     InputPointerInteraction profile_interaction =
         ui_profile_pointer_interaction(layout.profile_bounds, mouse, released);
-    if(profile_interaction.active) {
+    ProfilePointerAction profile_action = ProfilePointerActionFor(
+        profile_interaction.active != 0, profile_interaction.activated != 0);
+    if(profile_action.mark_clickable)
         MarkClickable();
-        if(profile_interaction.activated) {
+    if(profile_action.activate) {
+        if(profile_action.consume_release)
             ConsumeRelease();
-            result.pfp_clicked = 1;
-        }
+        result.pfp_clicked = 1;
     }
     ui_draw_avatar_tile(layout.avatar_tile_bounds,
                         surface_style.background, surface_style.border);
@@ -275,12 +277,14 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
 
     InputPointerInteraction username_interaction =
         ui_profile_pointer_interaction(layout.username_bounds, mouse, released);
-    if(username_interaction.active) {
+    ProfilePointerAction username_action = ProfilePointerActionFor(
+        username_interaction.active != 0, username_interaction.activated != 0);
+    if(username_action.mark_clickable)
         MarkClickable();
-        if(username_interaction.activated) {
+    if(username_action.activate) {
+        if(username_action.consume_release)
             ConsumeRelease();
-            result.username_clicked = 1;
-        }
+        result.username_clicked = 1;
     }
     DrawFittedTextInRect(username, layout.username_bounds, name_font,
                            Text8, text_style.foreground);
@@ -291,7 +295,9 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
 
     InputPointerInteraction friends_interaction =
         ui_profile_pointer_interaction(layout.friends_bounds, mouse, released);
-    if(friends_interaction.active) {
+    ProfilePointerAction friends_action = ProfilePointerActionFor(
+        friends_interaction.active != 0, friends_interaction.activated != 0);
+    if(friends_action.mark_clickable) {
         ui_draw_material(layout.friends_bounds, layout.header_bounds,
                          hover_style.background, hover_style.border,
                          hover_style.border, hover_style.radius,
@@ -299,10 +305,11 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                          hover_style.focus, 0.0f, hover_style.opacity,
                          ui_style_fill(hover_style), hover_style.material);
         MarkClickable();
-        if(friends_interaction.activated) {
+    }
+    if(friends_action.activate) {
+        if(friends_action.consume_release)
             ConsumeRelease();
-            result.friends_clicked = 1;
-        }
+        result.friends_clicked = 1;
     }
     if(friends_text[0] != '\0')
         RenderText(friends_text, ProfileHeaderFriendsTextX(header.x, scale),
@@ -367,6 +374,10 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                            IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
         int hovered = cell_interaction.active;
         int active = type == selected;
+        ProfilePickerCellDecision cell_decision =
+            ProfilePickerCellDecisionFor(
+                cell_interaction.active != 0,
+                cell_interaction.activated != 0, i, (int)type, (int)selected);
         ButtonState state = active ? ButtonStateSelected
                           : hovered ? ButtonStateHover
                           : ButtonStateNormal;
@@ -399,16 +410,19 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                  (int)cell.icon_bounds.width,
                                  text_style.foreground);
 
-        if(hovered) {
+        if(cell_decision.mark_clickable) {
             MarkClickable();
-            if(cell_interaction.activated) {
-                ConsumeRelease();
+            if(cell_decision.select) {
+                if(cell_decision.consume_release)
+                    ConsumeRelease();
                 if(modal.selected_icon_type != NULL)
-                    *modal.selected_icon_type = type;
-                result.changed = type != selected;
-                result.selected_index = i;
-                result.selected_icon_type = type;
-                result.closed = 1;
+                    *modal.selected_icon_type =
+                        (IconType)cell_decision.selected_icon_type;
+                result.changed = cell_decision.changed;
+                result.selected_index = cell_decision.selected_index;
+                result.selected_icon_type =
+                    (IconType)cell_decision.selected_icon_type;
+                result.closed = cell_decision.close;
             }
         }
     }
