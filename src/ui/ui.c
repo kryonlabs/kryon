@@ -1070,12 +1070,14 @@ ui_text_copy_range(const char *text, int start, int end)
     char *copy;
     int len;
     int text_len;
+    TextSelectionRange range;
 
     if(text == NULL)
         return 0;
     text_len = (int)strlen(text);
-    start = ui_clampi(start, 0, text_len);
-    end = ui_clampi(end, 0, text_len);
+    range = TextSelectionRangeForLength(start, end, text_len);
+    start = range.start;
+    end = range.end;
     if(end <= start)
         return 0;
     len = end - start;
@@ -1253,8 +1255,12 @@ ui_text_apply_context_command(int command, TextEdit edit,
        edit.cursor_position == NULL || selection == NULL)
         return 0;
     len = (int)strlen(edit.text);
-    selection_start = ui_clampi(selection_start, 0, len);
-    selection_end = ui_clampi(selection_end, 0, len);
+    {
+        TextSelectionRange range = TextSelectionRangeForLength(
+            selection_start, selection_end, len);
+        selection_start = range.start;
+        selection_end = range.end;
+    }
     has_selection = selection_end > selection_start;
     decision = TextContextCommandDecisionFor(
         ui_text_context_command_kind(command), has_selection,
@@ -2521,9 +2527,14 @@ RenderLink(LinkProps link)
 int
 ui_text_line_start(const char *text, int cursor)
 {
+    int len;
     int i;
 
-    if(text == NULL || cursor <= 0)
+    if(text == NULL)
+        return 0;
+    len = (int)strlen(text);
+    cursor = TextCursorForLength(cursor, len);
+    if(cursor <= 0)
         return 0;
     for(i = cursor - 1; i >= 0; i--) {
         if(text[i] == '\n')
