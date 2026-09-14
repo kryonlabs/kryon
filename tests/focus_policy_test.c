@@ -25,6 +25,10 @@ main(void)
     assert(paint.stroke_width == 4);
     assert(FocusStrokeWidthFor(0.0f) == 2);
     assert(FocusStrokeWidthFor(2.0f) == 4);
+    check_rect(FocusDefaultOutlineBounds((Rectangle){10, 20, 30, 40}, 1.0f),
+               8, 18, 34, 44);
+    check_rect(FocusDefaultOutlineBounds((Rectangle){10, 20, 30, 40}, 2.0f),
+               6, 16, 38, 48);
 
     frame.value.fields = StylePaddingX | StyleBorderWidth;
     paint = FocusPaintFor((Rectangle){10, 20, 30, 40}, 2.0f, frame);

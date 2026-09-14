@@ -26,6 +26,17 @@ FocusStrokeWidthFor :: (scale: float) -> i32 #export {
     return (i32)(2.0 * scale)
 }
 
+FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
+    if scale <= 0.0 { scale = 1.0 }
+    pad: i32 = (i32)(2.0 * scale)
+    out: Rectangle
+    out.x = bounds.x - (float)pad
+    out.y = bounds.y - (float)pad
+    out.width = bounds.width + (float)(pad * 2)
+    out.height = bounds.height + (float)(pad * 2)
+    return out
+}
+
 FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
     pad: i32 = FocusMetric(frame.value.fields, (u32)StylePaddingX,

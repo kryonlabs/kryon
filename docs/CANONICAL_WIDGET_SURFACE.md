@@ -762,8 +762,9 @@ and host plumbing behind the canonical names.
   route through `runtime/text.kry`; slider/toggle focus stroke width now routes
   through `runtime/focus.kry`; icon button size and padding policy now routes
   through `runtime/icon.kry`; desktop layout breakpoint policy now routes
-  through `runtime/layout.kry`. Continue by reducing raw native constants in
-  shared immediate-mode helpers.
+  through `runtime/layout.kry`; default focus outline bounds now route through
+  `runtime/focus.kry`. Continue by reducing raw native constants in shared
+  immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

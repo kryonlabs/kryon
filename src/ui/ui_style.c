@@ -2,6 +2,7 @@
 #include "ui_style_internal.h"
 #include "ui_paint_internal.h"
 #include "theme.h"
+#include "runtime/focus.h"
 #include "runtime/theme.h"
 #include "runtime/style.h"
 #include <math.h>
@@ -597,10 +598,8 @@ ui_default_focus(Rectangle bounds)
     float radius;
 
     outline.a = 220;
-    focus_bounds = (Rectangle){bounds.x - Scale(2),
-                               bounds.y - Scale(2),
-                               bounds.width + Scale(4),
-                               bounds.height + Scale(4)};
+    focus_bounds = FocusDefaultOutlineBounds(
+        bounds, (float)Scale(1000) / 1000.0f);
     radius = ui_radius_px(focus_bounds, GetThemeMetrics().control_radius + 2.0f);
     DrawRectangleRoundedLines(focus_bounds, radius, 12, outline);
 }
