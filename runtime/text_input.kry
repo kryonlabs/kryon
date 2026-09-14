@@ -68,6 +68,10 @@ TextInsertDecision :: struct {
     stop: bool
 }
 
+TextInputDoubleClickDecision :: struct {
+    double_click: bool
+}
+
 TextSelectionRange :: struct {
     start: i32
     end: i32
@@ -189,6 +193,23 @@ TextFieldRevealMargin :: (scale: float) -> i32 #export {
 
 TextInputDoubleClickSlopFor :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(6.0, scale)
+}
+
+TextInputDoubleClickMaxSeconds :: () -> float #export {
+    return 0.45
+}
+
+TextInputDoubleClickDecisionFor :: (same_owner: bool, same_id: bool,
+    elapsed_seconds: float, dx: i32, dy: i32,
+    slop: i32) -> TextInputDoubleClickDecision #export {
+    decision: TextInputDoubleClickDecision
+    if slop < 0 { slop = 0 }
+    if dx < 0 { dx = -dx }
+    if dy < 0 { dy = -dy }
+    decision.double_click = same_owner && same_id &&
+        elapsed_seconds <= TextInputDoubleClickMaxSeconds() &&
+        dx <= slop && dy <= slop
+    return decision
 }
 
 TextFieldPanDragThresholdFor :: (scale: float) -> i32 #export {

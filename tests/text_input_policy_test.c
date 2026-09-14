@@ -43,6 +43,7 @@ main(void)
     TextFieldPaint field_paint;
     TextAreaPaint area_paint;
     TextAreaGutterMetrics gutter_metrics;
+    TextInputDoubleClickDecision double_click;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -107,6 +108,22 @@ main(void)
     assert(TextInputStrokeWidth(1.0f) == 2);
     assert(TextInputStrokeWidth(0.25f) == 1);
     assert(TextInputDoubleClickSlopFor(2.0f) == 12);
+    assert(fabsf(TextInputDoubleClickMaxSeconds() - 0.45f) < 0.001f);
+    double_click = TextInputDoubleClickDecisionFor(true, true, 0.30f,
+                                                   4, -4, 6);
+    assert(double_click.double_click);
+    double_click = TextInputDoubleClickDecisionFor(false, true, 0.30f,
+                                                   4, 4, 6);
+    assert(!double_click.double_click);
+    double_click = TextInputDoubleClickDecisionFor(true, false, 0.30f,
+                                                   4, 4, 6);
+    assert(!double_click.double_click);
+    double_click = TextInputDoubleClickDecisionFor(true, true, 0.60f,
+                                                   4, 4, 6);
+    assert(!double_click.double_click);
+    double_click = TextInputDoubleClickDecisionFor(true, true, 0.30f,
+                                                   7, 4, 6);
+    assert(!double_click.double_click);
     assert(TextFieldPanDragThresholdFor(2.0f) == 10);
     assert(TextAreaScrollbarWidthFor(2.0f) == 24);
     assert(TextFieldCursorHeightFor(18, 40.0f, 20,

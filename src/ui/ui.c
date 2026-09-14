@@ -4483,11 +4483,12 @@ ui_text_field_render_filtered(TextFieldProps field,
             int click_dy = (int)mouse_world.y - g_ui_text_field_last_click_y;
             float scale = (float)Scale(1000) / 1000.0f;
             int double_click_slop = TextInputDoubleClickSlopFor(scale);
-            int double_click = g_ui_text_field_last_click_owner == field.focused &&
-                g_ui_text_field_last_click_id == field.focus_id &&
-                now - g_ui_text_field_last_click_time <= 0.45 &&
-                abs(click_dx) <= double_click_slop &&
-                abs(click_dy) <= double_click_slop;
+            TextInputDoubleClickDecision click_decision =
+                TextInputDoubleClickDecisionFor(
+                    g_ui_text_field_last_click_owner == field.focused,
+                    g_ui_text_field_last_click_id == field.focus_id,
+                    (float)(now - g_ui_text_field_last_click_time),
+                    click_dx, click_dy, double_click_slop);
             focused = 1;
             ClaimTextFieldFocus(field.focused);
             g_ui_text_input_show_requested = 1;
@@ -4499,7 +4500,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                 g_ui_text_field_pan_start_scroll = *scroll_x_ptr;
                 g_ui_text_field_panning = 0;
             }
-            if(double_click) {
+            if(click_decision.double_click) {
                 int len = (int)strlen(field.text);
                 *field.cursor_position = len;
                 ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
