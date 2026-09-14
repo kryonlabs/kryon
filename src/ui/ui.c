@@ -1656,16 +1656,20 @@ RegisterFocus(int id, Rectangle bounds)
 static void
 ClaimTextFocus(int *focused)
 {
-    if(focused == NULL)
+    TextFocusClaimDecision decision = TextFocusClaimDecisionFor(
+        focused != NULL, g_ui_text_focus_owner != NULL,
+        g_ui_text_focus_owner == focused);
+
+    if(!decision.claim)
         return;
     /* Displace any previous owner first by clearing its flag, so its caret
      * disappears immediately this frame even though it has not re-run yet. */
-    if(g_ui_text_focus_owner != NULL && g_ui_text_focus_owner != focused)
+    if(decision.displace_previous)
         *g_ui_text_focus_owner = 0;
-    if(g_ui_text_focus_owner != focused) {
+    if(decision.cancel_previous)
         ui_text_composition_cancel(g_ui_text_focus_owner);
+    if(decision.close_context)
         ui_text_context_close();
-    }
     g_ui_text_focus_owner = focused;
     g_ui_text_focus_owner_this_frame = focused;
     g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
@@ -1676,9 +1680,11 @@ static void
 ClaimTextFieldFocus(int *focused)
 {
     int *previous = g_ui_text_focus_owner;
+    TextFocusClaimDecision decision = TextFocusClaimDecisionFor(
+        focused != NULL, previous != NULL, previous == focused);
 
     ClaimTextFocus(focused);
-    if(g_ui_text_focus_owner == focused && previous != focused)
+    if(g_ui_text_focus_owner == focused && decision.clear_peer_selection)
         ui_clear_text_area_selection();
 }
 
@@ -1686,9 +1692,11 @@ static void
 ClaimTextAreaFocus(int *focused)
 {
     int *previous = g_ui_text_focus_owner;
+    TextFocusClaimDecision decision = TextFocusClaimDecisionFor(
+        focused != NULL, previous != NULL, previous == focused);
 
     ClaimTextFocus(focused);
-    if(g_ui_text_focus_owner == focused && previous != focused)
+    if(g_ui_text_focus_owner == focused && decision.clear_peer_selection)
         ui_clear_text_field_selection();
 }
 

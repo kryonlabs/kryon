@@ -54,6 +54,7 @@ main(void)
     TextContextMenuState context_menu;
     TextContextCommandDecision context_command;
     TextFieldPanDecision pan_decision;
+    TextFocusClaimDecision focus_claim;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -126,6 +127,28 @@ main(void)
     assert(TextInputStrokeWidth(1.0f) == 2);
     assert(TextInputStrokeWidth(0.25f) == 1);
     assert(TextInputDoubleClickSlopFor(2.0f) == 12);
+    focus_claim = TextFocusClaimDecisionFor(false, false, false);
+    assert(!focus_claim.claim);
+    assert(!focus_claim.displace_previous);
+    assert(!focus_claim.clear_peer_selection);
+    focus_claim = TextFocusClaimDecisionFor(true, false, false);
+    assert(focus_claim.claim);
+    assert(!focus_claim.displace_previous);
+    assert(focus_claim.cancel_previous);
+    assert(focus_claim.close_context);
+    assert(focus_claim.clear_peer_selection);
+    focus_claim = TextFocusClaimDecisionFor(true, true, true);
+    assert(focus_claim.claim);
+    assert(!focus_claim.displace_previous);
+    assert(!focus_claim.cancel_previous);
+    assert(!focus_claim.close_context);
+    assert(!focus_claim.clear_peer_selection);
+    focus_claim = TextFocusClaimDecisionFor(true, true, false);
+    assert(focus_claim.claim);
+    assert(focus_claim.displace_previous);
+    assert(focus_claim.cancel_previous);
+    assert(focus_claim.close_context);
+    assert(focus_claim.clear_peer_selection);
     composition_input = TextCompositionInputDecisionFor(true, false);
     assert(composition_input.accept_events);
     assert(!composition_input.cancel);

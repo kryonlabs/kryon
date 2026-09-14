@@ -139,6 +139,28 @@ TextFieldPanDecision :: struct {
     pan: bool
 }
 
+TextFocusClaimDecision :: struct {
+    claim: bool
+    displace_previous: bool
+    cancel_previous: bool
+    close_context: bool
+    clear_peer_selection: bool
+}
+
+TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
+    same_owner: bool) -> TextFocusClaimDecision #export {
+    decision: TextFocusClaimDecision
+    decision.claim = has_target
+    if !has_target {
+        return decision
+    }
+    decision.displace_previous = has_previous_owner && !same_owner
+    decision.cancel_previous = !same_owner
+    decision.close_context = !same_owner
+    decision.clear_peer_selection = !same_owner
+    return decision
+}
+
 TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompositionInputDecision #export {
     decision: TextCompositionInputDecision
     decision.accept_events = focused && !read_only
