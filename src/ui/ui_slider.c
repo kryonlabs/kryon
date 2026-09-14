@@ -91,14 +91,16 @@ static StyleFrame
 ui_slider_style_frame(ButtonTone tone, ButtonState state, int disabled)
 {
     return ui_slider_style_frame_role_kind(tone, state, disabled,
-                                           StyleKindSlider(), 4);
+                                           StyleKindSlider(),
+                                           SliderTrackRole());
 }
 
 static StyleFrame
 ui_slider_fill_style_frame(ButtonTone tone, ButtonState state, int disabled)
 {
     return ui_slider_style_frame_role_kind(tone, state, disabled,
-                                           StyleKindSlider(), 5);
+                                           StyleKindSlider(),
+                                           SliderFillRole());
 }
 
 static StyleFrame
@@ -169,7 +171,7 @@ ui_checkbox_style_frame(ButtonTone tone, ButtonState state, int disabled,
     props.selected = selected;
     return ui_control_style_frame_role_kind(
         props, state, 0, 0.0f, 0.0f, 0.0f, StyleKindCheckbox(),
-        tone == ButtonToneAccent ? 10 : 9);
+        CheckboxBoxRoleForTone(tone));
 }
 
 static StyleFrame
@@ -182,7 +184,8 @@ ui_checkbox_label_style_frame(ButtonState state, int disabled, int selected)
     props.disabled = disabled;
     props.selected = selected;
     return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
-                                            0.0f, StyleKindCheckbox(), 6);
+                                            0.0f, StyleKindCheckbox(),
+                                            CheckboxLabelRole());
 }
 
 static ButtonState
@@ -255,7 +258,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     if(can_draw) {
         StyleFrame label_frame = ui_slider_style_frame_role_kind(
-            ButtonToneNeutral, ButtonStateNormal, 0, StyleKindSlider(), 6);
+            ButtonToneNeutral, ButtonStateNormal, 0, StyleKindSlider(),
+            SliderLabelRole());
         Style label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
         label_font = ResolveFont(0, StyleFontValue(label_style.fields,
@@ -554,18 +558,20 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
     int enabled = value != NULL && !ContentDisabled();
     StyleFrame label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral,
-        ButtonStateNormal, !enabled, class_name, 6);
+        ButtonStateNormal, !enabled, class_name, ToggleLabelRole());
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
     int checked_for_metrics = value != NULL && *value;
     ButtonTone metric_track_tone = checked_for_metrics && !has_labels
         ? ButtonToneAccent
         : ButtonToneNeutral;
-    int metric_track_role = checked_for_metrics && !has_labels ? 5 : 4;
+    int metric_track_role = ToggleTrackRoleFor(checked_for_metrics,
+                                               has_labels);
     StyleFrame metric_track_frame = ui_toggle_style_frame_role_class(
         metric_track_tone, ButtonStateNormal, !enabled, class_name,
         metric_track_role);
     StyleFrame metric_active_frame = ui_toggle_style_frame_role_class(
-        ButtonToneAccent, ButtonStateNormal, !enabled, class_name, 5);
+        ButtonToneAccent, ButtonStateNormal, !enabled, class_name,
+        ToggleFillRole());
     StyleFrame metric_thumb_frame = ui_toggle_thumb_style_frame_class(
         metric_track_tone, ButtonStateNormal, !enabled, checked_for_metrics,
         class_name);
@@ -643,7 +649,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         ButtonTone track_tone = checked && !has_labels
             ? ButtonToneAccent
             : ButtonToneNeutral;
-        int track_role = checked && !has_labels ? 5 : 4;
+        int track_role = ToggleTrackRoleFor(checked, has_labels);
 
         spec = (ToggleSpec){
             .bounds = editor_bounds,
@@ -661,16 +667,19 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
                                                 !enabled, class_name,
                                                 track_role),
             .active = ui_toggle_style_frame_role_class(ButtonToneAccent, state,
-                                                 !enabled, class_name, 5),
+                                                 !enabled, class_name,
+                                                 ToggleFillRole()),
             .label = ui_toggle_style_frame_role_class(ButtonToneNeutral, state,
-                                                 !enabled, class_name, 6),
+                                                 !enabled, class_name,
+                                                 ToggleLabelRole()),
             .thumb = ui_toggle_thumb_style_frame_class(track_tone, state,
                                                  !enabled, checked,
                                                  class_name)
         };
         paint = TogglePaintFor(spec);
         label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral, state,
-                                                 !enabled, class_name, 6);
+                                                 !enabled, class_name,
+                                                 ToggleLabelRole());
         label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
         if(paint.has_labels) {
             unsigned int label_color = Opacity(ColorToInt(label_style.foreground),

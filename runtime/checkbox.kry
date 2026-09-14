@@ -134,6 +134,17 @@ CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFla
     return result
 }
 
+CheckboxBoxRoleForTone :: (tone: ButtonTone) -> i32 #export {
+    if tone == (ButtonTone)ButtonToneAccent {
+        return 10
+    }
+    return 9
+}
+
+CheckboxLabelRole :: () -> i32 #export {
+    return 6
+}
+
 CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     paint: CheckboxPaint
     scale: float = spec.scale

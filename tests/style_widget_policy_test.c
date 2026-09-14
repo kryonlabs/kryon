@@ -231,6 +231,17 @@ main(void)
         fprintf(stderr, "slider thumb edge did not come from thumb style\n");
         return 1;
     }
+    if(SliderTrackRole() != 4 || SliderFillRole() != 5 ||
+       SliderLabelRole() != 6) {
+        fprintf(stderr, "slider role policy changed\n");
+        return 1;
+    }
+    if(CheckboxBoxRoleForTone(ButtonToneNeutral) != 9 ||
+       CheckboxBoxRoleForTone(ButtonToneAccent) != 10 ||
+       CheckboxLabelRole() != 6) {
+        fprintf(stderr, "checkbox role policy changed\n");
+        return 1;
+    }
     frame.value.padding_x = 72.0f;
     frame.value.padding_y = 10.0f;
     frame.value.icon_size = 12.0f;
@@ -323,6 +334,13 @@ main(void)
     }
     if(toggle_paint.thumb_edge_color != thumb.value.border) {
         fprintf(stderr, "toggle thumb edge did not come from thumb style\n");
+        return 1;
+    }
+    if(ToggleTrackRoleFor(0, 0) != 4 ||
+       ToggleTrackRoleFor(1, 1) != 4 ||
+       ToggleTrackRoleFor(1, 0) != 5 ||
+       ToggleFillRole() != 5 || ToggleLabelRole() != 6) {
+        fprintf(stderr, "toggle role policy changed\n");
         return 1;
     }
 

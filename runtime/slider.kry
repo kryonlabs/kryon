@@ -89,6 +89,18 @@ SliderLabelGapForStyle :: (label: StyleFrame, scale: float) -> float #export {
         label.value.gap, 2.0, scale, true)
 }
 
+SliderTrackRole :: () -> i32 #export {
+    return 4
+}
+
+SliderFillRole :: () -> i32 #export {
+    return 5
+}
+
+SliderLabelRole :: () -> i32 #export {
+    return 6
+}
+
 SliderCenteredHitBounds :: (x: i32, y: i32, width: i32, height: i32,
     min_width: i32, min_height: i32) -> Rectangle #export {
     hit: Rectangle

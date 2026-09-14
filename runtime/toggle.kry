@@ -112,6 +112,21 @@ ToggleThumbGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #
         thumb.value.offset_y, 5.0, scale, true)
 }
 
+ToggleTrackRoleFor :: (checked: bool, has_labels: bool) -> i32 #export {
+    if checked && !has_labels {
+        return 5
+    }
+    return 4
+}
+
+ToggleFillRole :: () -> i32 #export {
+    return 5
+}
+
+ToggleLabelRole :: () -> i32 #export {
+    return 6
+}
+
 ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
     on_width: i32, scale: float, track: StyleFrame,
     active: StyleFrame, label: StyleFrame) -> i32 #export {
