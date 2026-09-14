@@ -900,6 +900,8 @@ test_list_box_layout_policy(void)
     ListBoxNavigation end = ListBoxNavigate(2, 10, 2, 0, 24,
                                             bounds.height, layout.max_scroll,
                                             1.0f, item);
+    ListBoxRowDecision row_decision =
+        ListBoxRowDecisionFor(1, 1, 1, 2, 4);
 
     check_int("list row height", layout.row_height, 24);
     check_int("list content height", layout.content_height, 240);
@@ -938,6 +940,16 @@ test_list_box_layout_policy(void)
     check_int("list down changed", down.changed, 1);
     check_int("list end selected", end.selected, 9);
     check_int("list end scroll", end.scroll, 145);
+    check_int("list row select", row_decision.select ? 1 : 0, 1);
+    check_int("list row consume release",
+              row_decision.consume_release ? 1 : 0, 1);
+    check_int("list row selected", row_decision.selected, 4);
+    check_int("list row changed", row_decision.changed ? 1 : 0, 1);
+    row_decision = ListBoxRowDecisionFor(1, 1, 0, 2, 4);
+    check_int("list row without selection",
+              row_decision.select ? 1 : 0, 0);
+    row_decision = ListBoxRowDecisionFor(1, 1, 1, 4, 4);
+    check_int("list row unchanged", row_decision.changed ? 1 : 0, 0);
 }
 
 static void

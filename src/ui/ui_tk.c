@@ -3273,11 +3273,17 @@ RenderListBox(ListBoxProps list)
                        item_paint.text_x, item_paint.text_y, item_font,
                        Fade(item_style.foreground, item_style.opacity));
         }
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
+        ListBoxRowDecision row_decision = ListBoxRowDecisionFor(
+            hot != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            list.selected_index != NULL, selected, index);
+        if(row_decision.consume_release)
             ConsumeRelease();
-            *list.selected_index = index;
-            changed = 1;
+        if(row_decision.select && list.selected_index != NULL) {
+            *list.selected_index = row_decision.selected;
+            selected = row_decision.selected;
         }
+        if(row_decision.changed)
+            changed = 1;
     }
     if(paint)
         EndClip();

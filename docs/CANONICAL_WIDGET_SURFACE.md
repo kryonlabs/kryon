@@ -788,7 +788,8 @@ and host plumbing behind the canonical names.
   menu selectable-item, submenu activation,
   wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
-  through `runtime/menu.kry`; centered-column and page side-padding policy now route
+  through `runtime/menu.kry`; ListBox row selection policy now routes through
+  `runtime/list_box.kry`; centered-column and page side-padding policy now route
   through `runtime/layout.kry`; reorder lifecycle gates now route through
   `runtime/reorder.kry`; swipe drag/release lifecycle effects now route through
   `runtime/swipe.kry`; drag/drop source/target lifecycle decisions now route

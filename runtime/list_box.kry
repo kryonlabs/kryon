@@ -19,6 +19,13 @@ ListBoxNavigation :: struct {
     changed: bool
 }
 
+ListBoxRowDecision :: struct {
+    select: bool
+    consume_release: bool
+    selected: i32
+    changed: bool
+}
+
 ListBoxItemPaint :: struct {
     text_x: i32
     text_y: i32
@@ -143,6 +150,20 @@ ListBoxNavigate :: (selected: i32, item_count: i32, key: i32,
     nav.scroll = ListBoxRevealScroll(next, nav.scroll, row_height,
         viewport_height, max_scroll, scale, item)
     return nav
+}
+
+ListBoxRowDecisionFor :: (hot: bool, released: bool, has_selection: bool,
+    current_selected: i32, row: i32) -> ListBoxRowDecision #export {
+    decision: ListBoxRowDecision
+    decision.selected = current_selected
+    if !hot || !released || !has_selection {
+        return decision
+    }
+    decision.consume_release = true
+    decision.select = true
+    decision.selected = row
+    decision.changed = row != current_selected
+    return decision
 }
 
 ListBoxLayoutFor :: (bounds: Rectangle, item_count: i32, row_height: i32,
