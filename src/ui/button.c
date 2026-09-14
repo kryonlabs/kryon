@@ -30,10 +30,9 @@ ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
                                       int style_kind, int role,
                                       ControlStyle override)
 {
-    StyleFacts facts = StyleControlRoleFacts(
-        style_kind != 0 ? style_kind : StyleKindButton(), button.id,
-        button.class_name,
-        role, (int)button.tone, (int)button.emphasis, (int)button.size, state);
+    StyleFacts facts = ButtonRoleFactsFor(style_kind, button.id,
+        button.class_name, role, (int)button.tone, (int)button.emphasis,
+        (int)button.size, state);
     StyleData value = ResolveActiveStyle(ui_minimal_control_style_data(),
                                          facts, state);
     return ResolveValues(value, ui_pack_style_states(override), state);

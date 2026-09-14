@@ -32,9 +32,8 @@ Update this file whenever a phase advances. Files 01-09 describe the target desi
 ## Remaining Direct Facts Construction (Phase 3 Queue)
 
 - `src/ui/tab_bar.c:778` - PanedView handle frame
-- `src/ui/button.c:33` - generic control facts path (decide: shared `.kry` helper or widget-local)
-- `go/kryon/runtime.go:1747` - `resolveMinimalControlRoleState` generic helper
-- `go/kryon/runtime.go` - ~100 generic sites via `simpleStyleFrameWithClassRole`/`resolveMinimal*` + `minimalControlStyleData` base (the big Phase 3/4 combined step)
+- `go/kryon/runtime.go` - ~100 generic sites via `simpleStyleFrameWithClassRole`/`resolveMinimal*` + `minimalControlStyleData` base (the big Phase 3/4 combined step; facts construction itself now routes through `ButtonRoleFactsFor` in `runtime/button.kry`, the remaining work is the hidden base removal)
+- `src/ui/button.c:37` / `go/kryon/runtime.go` - `ui_minimal_control_style_data()` / `minimalControlStyleData()` hidden base (opacity 1, font 16, icon 20, MaterialFlat) still applied on every generic control resolve; packs already declare these fields for `Button`, coverage audit needed for every other kind flowing through the generic path before zero-basing
 
 Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`); NavigationBar (C `navigation_bar.c` and the Go retained path now use generated facts helpers with zero base, replacing `simpleStyleFrameWithClassRole` and its hidden `minimalControlStyleData` base); PanedView handle (C `tab_bar.c` and both Go retained sites, zero base); TextInput field defaults (C `ui.c` text-input sites resolve from zero base via `TextInputFactsFor`; the former hidden `opacity: 1` base moved into `TextField`/`TextArea` rules in all four packs).
 
@@ -57,7 +56,7 @@ Next commits, in order:
 2. [done 2026-09-14] NavigationBar facts helper (C `navigation_bar.c` + Go retained path, zero base).
 3. [done 2026-09-14] PanedView handle facts helper (`tab_bar.c`, Go retained path, zero base).
 4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
-5. Button/generic control facts path (`button.c` + `resolveMinimalControlRoleState` + ~100 Go generic sites) - the remaining Phase 3/4 combined step.
+5. Button/generic control facts path: facts construction done 2026-09-14 (`ButtonRoleFactsFor` in `runtime/button.kry`; C `button.c` and Go `resolveMinimalControlRoleState` use it; `button-policy-test` gate added). Remaining: remove the `minimalControlStyleData` hidden base after auditing pack coverage for every kind on the generic path.
 6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
 7. No-style tests, then the five scanners as Makefile gates.
 

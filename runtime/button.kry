@@ -1,5 +1,6 @@
 #module "button"
 #import "style"
+#import "style_sheet"
 #import "surface"
 #import "control_props"
 #import "button_props"
@@ -54,6 +55,16 @@ ReadButtonInput :: (bounds: Rectangle, id: i32, state: i32, disabled: bool,
     flags: StateFlags = ResolveFlags(state, disabled, loading, selected)
     sample: Activation = ReadActivation(bounds, id, CanActivate(flags.disabled, flags.loading))
     return ResolveButtonInput(state, disabled, loading, selected, sample)
+}
+
+# Style facts for the generic control path. A zero style_kind falls back to the
+# Button kind so generic control callers keep one policy source.
+ButtonRoleFactsFor :: (style_kind: i32, name: i32, class_name: i32, role: i32,
+    tone: i32, emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
+    kind: i32 = style_kind
+    if kind == 0 { kind = StyleKindButton() }
+    return StyleControlRoleFacts(kind, name, class_name, role, tone, emphasis,
+        size, state)
 }
 
 # The declaration owns the retained shape; hosts only allocate it by identity.

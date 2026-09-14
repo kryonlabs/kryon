@@ -2,6 +2,7 @@
 package kryon
 
 // #import style
+// #import style_sheet
 // #import surface
 // #import control_props
 // #import button_props
@@ -237,6 +238,28 @@ func (instance_host_0 *runtime) Button_ReadButtonInput(bounds Rectangle, id int3
 	var value_15 Activation = sample
 	var value_16 ButtonInput = Button_ResolveButtonInput(value_11, value_12, value_13, value_14, value_15)
 	return value_16
+}
+
+func Button_ButtonRoleFactsFor(style_kind int32, name int32, class_name int32, role int32, tone int32, emphasis int32, size int32, state int32) StyleFacts {
+	var value_0 int32 = style_kind
+	var kind int32 = value_0
+	var value_1 int32 = kind
+	var value_2 int32 = 0
+	var value_3 bool = value_1 == value_2
+	if value_3 {
+		var value_4 int32 = StyleSheet_StyleKindButton()
+		kind = value_4
+	}
+	var value_5 int32 = kind
+	var value_6 int32 = name
+	var value_7 int32 = class_name
+	var value_8 int32 = role
+	var value_9 int32 = tone
+	var value_10 int32 = emphasis
+	var value_11 int32 = size
+	var value_12 int32 = state
+	var value_13 StyleFacts = StyleSheet_StyleControlRoleFacts(value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12)
+	return value_13
 }
 
 func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, state int32, input ButtonInput, enabled bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
