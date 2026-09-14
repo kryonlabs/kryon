@@ -322,6 +322,13 @@ TableViewMinimumColumnWidth :: (requested_min_width: i32, scale: float,
     return metrics.default_min_column_width
 }
 
+TableViewHeaderAngleFor :: (requested_angle: float) -> float #export {
+    if requested_angle != requested_angle { return 0.0 }
+    if requested_angle < -89.0 { return -89.0 }
+    if requested_angle > 89.0 { return 89.0 }
+    return requested_angle
+}
+
 TableViewResizeColumnWidthFor :: (start_width: i32, start_x: i32,
     pointer_x: i32, minimum_width: i32) -> i32 #export {
     width: i32 = start_width + pointer_x - start_x

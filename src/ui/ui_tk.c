@@ -3524,9 +3524,8 @@ ui_table_separator_at_x(TableViewProps table, int x, int tolerance,
 static float
 ui_table_header_shift(TableViewProps table, float y)
 {
-    float angle = table.header_angle;
-    if(!isfinite(angle) || angle == 0) return 0;
-    angle = fmaxf(-89,fminf(89,angle));
+    float angle = TableViewHeaderAngleFor(table.header_angle);
+    if(angle == 0) return 0;
     float height = Scale(table.header_height > 30 ? table.header_height : 30);
     return -(height-(y-table.bounds.y))/tanf(angle*3.14159265358979323846f/180);
 }
@@ -4006,7 +4005,7 @@ RenderTableView(TableViewProps table)
                                        header_hot, 0, table.disabled, 0);
             }
             const char *label = table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "";
-            float angle = isfinite(table.header_angle) ? fmaxf(-89, fminf(89,table.header_angle)) : 0;
+            float angle = TableViewHeaderAngleFor(table.header_angle);
             if(angle != 0) {
                 /* Scissor one raster row at a time to clip glyphs to the slanted
                    cell without a backend-specific stencil or offscreen target. */

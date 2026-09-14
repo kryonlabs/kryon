@@ -709,6 +709,34 @@ func TableView_TableViewMinimumColumnWidth(requested_min_width int32, scale floa
 	return value_16
 }
 
+func TableView_TableViewHeaderAngleFor(requested_angle float32) float32 {
+	var value_0 float32 = requested_angle
+	var value_1 float32 = requested_angle
+	var value_2 bool = value_0 != value_1
+	if value_2 {
+		var value_3 float32 = 0.0
+		return value_3
+	}
+	var value_4 float32 = requested_angle
+	var value_5 float32 = 89.0
+	var value_6 float32 = -value_5
+	var value_7 bool = value_4 < value_6
+	if value_7 {
+		var value_8 float32 = 89.0
+		var value_9 float32 = -value_8
+		return value_9
+	}
+	var value_10 float32 = requested_angle
+	var value_11 float32 = 89.0
+	var value_12 bool = value_10 > value_11
+	if value_12 {
+		var value_13 float32 = 89.0
+		return value_13
+	}
+	var value_14 float32 = requested_angle
+	return value_14
+}
+
 func TableView_TableViewResizeColumnWidthFor(start_width int32, start_x int32, pointer_x int32, minimum_width int32) int32 {
 	var value_0 int32 = start_width
 	var value_1 int32 = pointer_x
