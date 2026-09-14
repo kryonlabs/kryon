@@ -367,6 +367,9 @@ SELECTABLE_POLICY_TEST = $(BUILD_DIR)/selectable-policy-test
 FIELDSET_POLICY_TEST = $(BUILD_DIR)/fieldset-policy-test
 CARD_POLICY_TEST = $(BUILD_DIR)/card-policy-test
 SEGMENTED_CONTROL_POLICY_TEST = $(BUILD_DIR)/segmented-control-policy-test
+CANVAS_GRID_POLICY_TEST = $(BUILD_DIR)/canvas-grid-policy-test
+PLOT_POLICY_TEST = $(BUILD_DIR)/plot-policy-test
+COLOR_PICKER_POLICY_TEST = $(BUILD_DIR)/color-picker-policy-test
 NAVIGATION_BAR_POLICY_TEST = $(BUILD_DIR)/navigation-bar-policy-test
 BUTTON_POLICY_TEST = $(BUILD_DIR)/button-policy-test
 PRIMITIVE_POLICY_TEST = $(BUILD_DIR)/primitive-policy-test
@@ -394,7 +397,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -768,6 +771,18 @@ card-policy-test: $(GENERATED_SRC_DIR)/runtime/card.c $(GENERATED_SRC_DIR)/runti
 segmented-control-policy-test: $(GENERATED_SRC_DIR)/runtime/segmented_control.c $(GENERATED_SRC_DIR)/runtime/segmented_control.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/segmented_control_policy_test.c $(GENERATED_SRC_DIR)/runtime/segmented_control.c -lm -o $(SEGMENTED_CONTROL_POLICY_TEST)
 	$(SEGMENTED_CONTROL_POLICY_TEST)
+
+canvas-grid-policy-test: $(GENERATED_SRC_DIR)/runtime/canvas_grid.c $(GENERATED_SRC_DIR)/runtime/canvas_grid.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/canvas_grid_policy_test.c $(GENERATED_SRC_DIR)/runtime/canvas_grid.c -lm -o $(CANVAS_GRID_POLICY_TEST)
+	$(CANVAS_GRID_POLICY_TEST)
+
+plot-policy-test: $(GENERATED_SRC_DIR)/runtime/plot.c $(GENERATED_SRC_DIR)/runtime/plot.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/plot_policy_test.c $(GENERATED_SRC_DIR)/runtime/plot.c -lm -o $(PLOT_POLICY_TEST)
+	$(PLOT_POLICY_TEST)
+
+color-picker-policy-test: $(GENERATED_SRC_DIR)/runtime/color_picker.c $(GENERATED_SRC_DIR)/runtime/color_picker.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/color_picker_policy_test.c $(GENERATED_SRC_DIR)/runtime/color_picker.c -lm -o $(COLOR_PICKER_POLICY_TEST)
+	$(COLOR_PICKER_POLICY_TEST)
 
 navigation-bar-policy-test: $(GENERATED_SRC_DIR)/runtime/navigation_bar.c $(GENERATED_SRC_DIR)/runtime/navigation_bar.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/navigation_bar_policy_test.c $(GENERATED_SRC_DIR)/runtime/navigation_bar.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $(NAVIGATION_BAR_POLICY_TEST)
