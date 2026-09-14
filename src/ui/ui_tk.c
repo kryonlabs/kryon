@@ -1910,7 +1910,8 @@ RenderRadio(RadioProps radio)
     if(radio.disabled)
         MarkDisabled();
     if(!IsWindowReady())
-        return activated ? radio.id : 0;
+        return RadioActivationFor(radio.id, activated != 0,
+                                  radio.disabled != 0);
     if(ui_default_style()) {
         RadioAnimState *anim;
         Rectangle state_bounds = {
@@ -2026,10 +2027,7 @@ RenderRadio(RadioProps radio)
     }
     if(focused && IsWindowReady())
         RenderFocus(paint.hit_bounds);
-    if(activated) {
-        return radio.id;
-    }
-    return 0;
+    return RadioActivationFor(radio.id, activated != 0, radio.disabled != 0);
 }
 
 void

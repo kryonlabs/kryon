@@ -839,6 +839,9 @@ test_radio_paint_policy(void)
     check_int("radio hover state layer", RadioStateLayerAlpha(true, false, 0.0f), 20);
     check_int("radio press state layer", RadioStateLayerAlpha(true, false, 1.0f), 31);
     check_int("radio down state layer", RadioStateLayerAlpha(false, true, 0.0f), 31);
+    check_int("radio activation id", RadioActivationFor(37, 1, 0), 37);
+    check_int("radio disabled activation", RadioActivationFor(37, 1, 1), 0);
+    check_int("radio idle activation", RadioActivationFor(37, 0, 0), 0);
     frame.value.fields |= StyleGap | StylePaddingX;
     frame.value.gap = 0.0f;
     frame.value.padding_x = 40.0f;

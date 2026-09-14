@@ -332,3 +332,10 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var value_124 RadioPaint = paint
 	return value_124
 }
+
+func Radio_RadioActivationFor(id int32, activated bool, disabled bool) int32 {
+	if activated && !disabled {
+		return id
+	}
+	return 0
+}

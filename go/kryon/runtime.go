@@ -5648,10 +5648,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	labelColor := unpackRGBA(paint.LabelColor)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, FontID: markFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
-	if input.Activated {
-		return props.ID
-	}
-	return 0
+	return Radio_RadioActivationFor(props.ID, input.Activated, props.Disabled)
 }
 
 func radioStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, className int32, role int32) StyleFrame {

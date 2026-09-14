@@ -101,7 +101,7 @@ surface review:
 | `runtime/profile_header.kry` | Profile header geometry/text placement plus profile image picker geometry and selection/click policy | `.kry support` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
-| `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
+| `runtime/radio.kry` | Radio paint/layout and activation policy | `.kry canonical` |
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
 | `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, target-index, lifecycle gates, and result normalization policy | `.kry support` |
 | `runtime/reorder_props.kry` | Reorder support state, data, and result records | `.kry support` |
@@ -203,7 +203,7 @@ has a single place to land.
 | `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
 | `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host samples input and draws; paint/layout and value policy are `.kry`. |
 | `Checkbox` | `Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint, row/text layout, and flag policy are `.kry`; box, mark, and label roles are KSS-owned. |
-| `Radio` | `Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, and marker text policy are `.kry`; host keeps group input. |
+| `Radio` | `Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, marker text, and activation policy are `.kry`; host keeps group state ownership. |
 | `Progress` | `Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
 | `Spinbox` | `Input` | Number | `runtime/spinbox.kry` | `.kry-backed` | Layout/step policy is `.kry`; host keeps text/button input. |
 | `ColorPicker` | `Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
@@ -497,7 +497,7 @@ should use canonical `.kry` names and blocks.
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout and value policy are in `.kry`, label typography is KSS-owned, host samples input and draws. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, row/text layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
-| `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
+| `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, marker text, and activation policy are in `.kry`; host handles focus/input sampling, group state ownership, and drawing. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout and toggle policy are in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Public props live in `runtime/progress_props.kry`; prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Public props live in `runtime/color_picker_props.kry`; channel layout, swatch paint geometry, and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |

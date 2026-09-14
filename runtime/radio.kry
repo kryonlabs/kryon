@@ -79,6 +79,13 @@ RadioStateLayerAlpha :: (hovered: bool, down: bool, press_amount: float) -> i32 
     return (i32)(20.0 + 11.0 * press_amount)
 }
 
+RadioActivationFor :: (id: i32, activated: bool, disabled: bool) -> i32 #export {
+    if activated && !disabled {
+        return id
+    }
+    return 0
+}
+
 RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     paint: RadioPaint
     scale: float = spec.scale
