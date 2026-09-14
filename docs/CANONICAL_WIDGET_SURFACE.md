@@ -463,33 +463,32 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Flow` | `.kry canonical` | Page flow block. |
 | `Grid` | `.kry canonical` | Grid layout block. |
 
-## Native Public Compatibility Exports
+## Native No-Compatibility Audit
 
-No lowered widget block scopes are exported by `include/ui_tree.h`. Parser
-lowering and native tests use internal declarations for these host scopes until
-the canonical `.kry` block surface owns the remaining generated backends.
+No lowered widget block scopes are public compatibility exports from
+`include/ui_tree.h`. Parser lowering and native tests use internal declarations
+for these host scopes until the canonical `.kry` block surface owns the
+remaining generated backends.
 
-| Export | Replacement concept | Removal note |
+| Forbidden export | Canonical concept | Audit note |
 |---|---|---|
 
-## Go Public Compatibility Exports
+## Go No-Compatibility Audit
 
-No lowered widget block scopes are exported as package-level functions by
-`go/kryon/api.go`. Generated Go routes lowered lexical scopes through its
+No lowered widget block scopes are public package-level compatibility exports
+from `go/kryon/api.go`. Generated Go routes lowered lexical scopes through its
 private runtime value; public Go code uses canonical calls such as `kr.Button`,
 `kr.Slider`, `kr.Menu`, and `.kry` blocks for `Scroll`, `Popup`, `Disabled`,
 `TableCell`, and `Canvas`.
 
-| Export | Replacement concept | Removal note |
+| Forbidden export | Canonical concept | Audit note |
 |---|---|---|
 
-## Web Runtime Compatibility Entries
+## Web No-Compatibility Audit
 
-These names are still recognized or exported by `web/kryon-runtime.js`, but
-they are lowered host support rather than clean widget concepts. Generated web
-code should prefer canonical `.kry` names and blocks.
-
-No web runtime widget entries are accepted as public compatibility names.
+No web runtime widget entries are accepted as compatibility names.
+Lowered host support must remain private to generated code; generated web code
+should use canonical `.kry` names and blocks.
 
 ## Core Drawing And Text
 

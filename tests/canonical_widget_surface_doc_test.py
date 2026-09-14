@@ -20,6 +20,7 @@ RUNTIME = ROOT / "runtime"
 WIDGET_KIND = RUNTIME / "widget_kind.kry"
 
 NATIVE_COMPAT_EXPORTS = set()
+NATIVE_NO_COMPAT_SECTION = "Native No-Compatibility Audit"
 
 NATIVE_SCOPE_EXPORT_ALLOWLIST = {
     "BeginTree",
@@ -30,8 +31,10 @@ NATIVE_SCOPE_EXPORT_ALLOWLIST = {
 ROLE_COMPAT_EXPORTS = set()
 
 GO_COMPAT_EXPORTS = set()
+GO_NO_COMPAT_SECTION = "Go No-Compatibility Audit"
 
 WEB_COMPAT_ENTRIES = set()
+WEB_NO_COMPAT_SECTION = "Web No-Compatibility Audit"
 
 REGISTRY_PUBLIC_FORBIDDEN_STATES = {
     "Internal support",
@@ -315,12 +318,12 @@ def retained_widget_kinds() -> list[str]:
 def compat_rows() -> dict[str, list[str]]:
     text = DOC.read_text(encoding="utf-8")
     match = re.search(
-        r"^## Native Public Compatibility Exports\n(?P<body>.*?)(?=^## )",
+        rf"^## {re.escape(NATIVE_NO_COMPAT_SECTION)}\n(?P<body>.*?)(?=^## )",
         text,
         flags=re.M | re.S,
     )
     if not match:
-        raise AssertionError("missing ## Native Public Compatibility Exports section")
+        raise AssertionError(f"missing ## {NATIVE_NO_COMPAT_SECTION} section")
 
     rows: dict[str, list[str]] = {}
     for line in match.group("body").splitlines():
@@ -336,12 +339,12 @@ def compat_rows() -> dict[str, list[str]]:
 def go_compat_rows() -> dict[str, list[str]]:
     text = DOC.read_text(encoding="utf-8")
     match = re.search(
-        r"^## Go Public Compatibility Exports\n(?P<body>.*?)(?=^## )",
+        rf"^## {re.escape(GO_NO_COMPAT_SECTION)}\n(?P<body>.*?)(?=^## )",
         text,
         flags=re.M | re.S,
     )
     if not match:
-        raise AssertionError("missing ## Go Public Compatibility Exports section")
+        raise AssertionError(f"missing ## {GO_NO_COMPAT_SECTION} section")
 
     rows: dict[str, list[str]] = {}
     for line in match.group("body").splitlines():
@@ -357,12 +360,12 @@ def go_compat_rows() -> dict[str, list[str]]:
 def web_compat_rows() -> dict[str, list[str]]:
     text = DOC.read_text(encoding="utf-8")
     match = re.search(
-        r"^## Web Runtime Compatibility Entries\n(?P<body>.*?)(?=^## )",
+        rf"^## {re.escape(WEB_NO_COMPAT_SECTION)}\n(?P<body>.*?)(?=^## )",
         text,
         flags=re.M | re.S,
     )
     if not match:
-        raise AssertionError("missing ## Web Runtime Compatibility Entries section")
+        raise AssertionError(f"missing ## {WEB_NO_COMPAT_SECTION} section")
 
     rows: dict[str, list[str]] = {}
     for line in match.group("body").splitlines():
@@ -497,40 +500,40 @@ def main() -> int:
         errors.append(f"retained node kind row is not in runtime/widget_kind.kry: {kind}")
     if compat_expected != NATIVE_COMPAT_EXPORTS:
         for name in sorted(compat_expected - NATIVE_COMPAT_EXPORTS):
-            errors.append(f"unreviewed native compatibility export in ui_tree.h: {name}")
+            errors.append(f"forbidden native compatibility export in ui_tree.h: {name}")
         for name in sorted(NATIVE_COMPAT_EXPORTS - compat_expected):
-            errors.append(f"stale native compatibility export no longer in ui_tree.h: {name}")
+            errors.append(f"stale native no-compat audit row no longer in ui_tree.h: {name}")
     for name in sorted(NATIVE_COMPAT_EXPORTS):
         if name not in compat_doc_rows:
             errors.append(f"missing native compatibility export row: {name}")
         if name not in ui_tree_functions:
             errors.append(f"native compatibility export no longer exists in ui_tree.h: {name}")
     for name in sorted(set(compat_doc_rows) - NATIVE_COMPAT_EXPORTS):
-        errors.append(f"native compatibility export row is not tracked by the test: {name}")
+        errors.append(f"native no-compat audit row is not tracked by the test: {name}")
     if go_compat_expected != GO_COMPAT_EXPORTS:
         for name in sorted(go_compat_expected - GO_COMPAT_EXPORTS):
-            errors.append(f"unreviewed Go compatibility export in api.go: {name}")
+            errors.append(f"forbidden Go compatibility export in api.go: {name}")
         for name in sorted(GO_COMPAT_EXPORTS - go_compat_expected):
-            errors.append(f"stale Go compatibility export no longer in api.go: {name}")
+            errors.append(f"stale Go no-compat audit row no longer in api.go: {name}")
     for name in sorted(GO_COMPAT_EXPORTS):
         if name not in go_compat_doc_rows:
             errors.append(f"missing Go compatibility export row: {name}")
         if name not in go_api_functions:
             errors.append(f"Go compatibility export no longer exists in api.go: {name}")
     for name in sorted(set(go_compat_doc_rows) - GO_COMPAT_EXPORTS):
-        errors.append(f"Go compatibility export row is not tracked by the test: {name}")
+        errors.append(f"Go no-compat audit row is not tracked by the test: {name}")
     if web_compat_expected != WEB_COMPAT_ENTRIES:
         for name in sorted(web_compat_expected - WEB_COMPAT_ENTRIES):
-            errors.append(f"unreviewed web compatibility entry in kryon-runtime.js: {name}")
+            errors.append(f"forbidden web compatibility entry in kryon-runtime.js: {name}")
         for name in sorted(WEB_COMPAT_ENTRIES - web_compat_expected):
-            errors.append(f"stale web compatibility entry no longer in kryon-runtime.js: {name}")
+            errors.append(f"stale web no-compat audit row no longer in kryon-runtime.js: {name}")
     for name in sorted(WEB_COMPAT_ENTRIES):
         if name not in web_compat_doc_rows:
             errors.append(f"missing web compatibility entry row: {name}")
         if name not in web_runtime_public_names:
             errors.append(f"web compatibility entry no longer exists in kryon-runtime.js: {name}")
     for name in sorted(set(web_compat_doc_rows) - WEB_COMPAT_ENTRIES):
-        errors.append(f"web compatibility entry row is not tracked by the test: {name}")
+        errors.append(f"web no-compat audit row is not tracked by the test: {name}")
     if feature_count != len(parser_expected):
         errors.append(
             "feature matrix parser widget count is "
