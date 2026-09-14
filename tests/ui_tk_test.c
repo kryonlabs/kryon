@@ -402,6 +402,9 @@ test_color_picker_policy(void)
                 ColorPickerSwatchLabelInset(1.0f, (StyleFrame){0}), 6.0f);
     check_int("color picker clamp low", ColorPickerChannelByte(-1.0f), 0);
     check_int("color picker clamp high", ColorPickerChannelByte(2.0f), 255);
+    check_int("color picker channel disabled id", ColorPickerChannelIdFor(0, 1), 0);
+    check_int("color picker channel negative index", ColorPickerChannelIdFor(7, -1), 0);
+    check_int("color picker channel id", ColorPickerChannelIdFor(7, 2), 59);
     check_color("color picker rgba", rgba, (Color){0, 128, 255, 64});
     check_color("color picker rgb alpha", rgb, (Color){255, 0, 128, 255});
 

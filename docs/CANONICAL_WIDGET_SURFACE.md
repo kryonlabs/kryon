@@ -799,7 +799,8 @@ and host plumbing behind the canonical names.
   that runtime policy; `Spinbox` child focus IDs now route through
   `runtime/spinbox.kry`; `Drag` text inset and label-gap metrics now route
   through `runtime/drag.kry`; toolbar action focus IDs now route through
-  `runtime/toolbar.kry`; immediate list/tree/table row wheel-step policy
+  `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
+  `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy
   now routes through `runtime/scroll.kry`; numeric temp-edit and selectable
   text double-click slop metrics, including retained text widget click slop,
   now route through `runtime/input.kry` and `runtime/text.kry`;

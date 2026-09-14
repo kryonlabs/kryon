@@ -2272,7 +2272,7 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 	changed := false
 	for i := 0; i < channels; i++ {
 		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1, pickerFrame)
-		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, ClassName: props.ClassName, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
+		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: ColorPicker_ColorPickerChannelIdFor(props.ID, int32(i)), ClassName: props.ClassName, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
 	}
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {

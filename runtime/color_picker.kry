@@ -40,6 +40,13 @@ ColorPickerMetric :: (fields: u32, field: u32, value: float,
     return value * scale
 }
 
+ColorPickerChannelIdFor :: (picker_id: i32, index: i32) -> i32 #export {
+    if picker_id <= 0 || index < 0 {
+        return 0
+    }
+    return picker_id * 8 + index + 1
+}
+
 ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
     channels: i32, scale: float, metrics: StyleFrame) -> Rectangle #export {
     row: Rectangle

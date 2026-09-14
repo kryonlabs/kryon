@@ -1077,7 +1077,7 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
                                                  scale, picker_frame);
         SliderContinuousProps channel = {
             row,
-            picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
+            ColorPickerChannelIdFor(picker.id, i), labels[i], &picker.values[i], 1,
             0.0f, 1.0f, InputDefaultFormat(NumericFloat),
             picker.disabled, picker.class_name
         };
