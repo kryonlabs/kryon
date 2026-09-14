@@ -4080,7 +4080,8 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 			changed = *selected != highlight
 			*selected = highlight
 		}
-		open = false
+		openDecision := Dropdown_DropdownOpenAfterCommit(open, true)
+		open = openDecision.Open
 	}
 	if !open {
 		r.closeDropdown(id)
@@ -4194,7 +4195,11 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 				*selected = next
 				changed = true
 			}
-			r.closeDropdown(id)
+			openDecision := Dropdown_DropdownOpenAfterCommit(open, true)
+			open = openDecision.Open
+			if openDecision.Closed {
+				r.closeDropdown(id)
+			}
 			selectedRow = true
 		}
 		paint.TextColor = unpackRGBA(Surface_Opacity(packRGBA(paint.TextColor), paint.Opacity))

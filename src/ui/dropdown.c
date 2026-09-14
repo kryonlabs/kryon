@@ -612,10 +612,14 @@ dropdown_paint_menu(int id)
         state->highlight_index < option_count && !options[state->highlight_index].disabled;
     if(CanCommit(highlighted_enabled, opening, keyboard_available,
         menu_input.commit, false, false, false, false)) {
+        DropdownOpenDecision open_decision =
+            DropdownOpenAfterCommit(state->open, true);
         state->pending_index = state->highlight_index;
         state->pending_changed = state->selected_index != state->highlight_index;
         state->selected_index = state->highlight_index;
-        close_dropdown_state(state);
+        state->open = open_decision.open;
+        if(open_decision.closed)
+            close_dropdown_state(state);
         return state->pending_changed;
     }
 
@@ -700,12 +704,16 @@ dropdown_paint_menu(int id)
                 option_interaction.activated,
                 state->scrollbar_pressed, state->gesture.dragging,
                 state->scroll_offset == state->gesture.origin_offset)) {
+                DropdownOpenDecision open_decision =
+                    DropdownOpenAfterCommit(state->open, true);
                 ClearTextInputFocus();
                 ConsumeRelease();
                 state->pending_changed = state->selected_index != i;
                 state->selected_index = i;
                 state->pending_index = i;
-                close_dropdown_state(state);
+                state->open = open_decision.open;
+                if(open_decision.closed)
+                    close_dropdown_state(state);
                 state->scroll_offset = 0;
                 changed = state->pending_changed;
                 if(clip_started)

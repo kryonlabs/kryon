@@ -258,6 +258,18 @@ DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: i32,
     return decision
 }
 
+DropdownOpenAfterCommit :: (open: bool, committed: bool) -> DropdownOpenDecision #export {
+    decision: DropdownOpenDecision
+    decision.open = open
+    if committed {
+        decision.open = false
+    }
+    decision.changed = decision.open != open
+    decision.opened = decision.changed && decision.open
+    decision.closed = decision.changed && !decision.open
+    return decision
+}
+
 Navigation :: struct {
     index: i32
     previous: i32

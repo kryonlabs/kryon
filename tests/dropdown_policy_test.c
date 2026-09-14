@@ -167,6 +167,12 @@ test_existing_policy(void)
                                             false, false, true);
     assert(!open_decision.open && open_decision.changed &&
            open_decision.closed);
+    open_decision = DropdownOpenAfterCommit(true, true);
+    assert(!open_decision.open && open_decision.changed &&
+           !open_decision.opened && open_decision.closed);
+    open_decision = DropdownOpenAfterCommit(true, false);
+    assert(open_decision.open && !open_decision.changed &&
+           !open_decision.opened && !open_decision.closed);
     menu_input = DropdownMenuInputFor(true, false, true, false, false, false,
                                       false, false, true);
     assert(menu_input.navigating && menu_input.up && !menu_input.commit &&

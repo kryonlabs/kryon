@@ -712,6 +712,38 @@ func Dropdown_DropdownOpenDecisionFor(open bool, disabled bool, count int32, foc
 	return value_35
 }
 
+func Dropdown_DropdownOpenAfterCommit(open bool, committed bool) DropdownOpenDecision {
+	var decision DropdownOpenDecision = DropdownOpenDecision{}
+	var value_0 bool = open
+	decision.Open = value_0
+	var value_1 bool = committed
+	if value_1 {
+		var value_2 bool = false
+		decision.Open = value_2
+	}
+	var value_3 bool = decision.Open
+	var value_4 bool = open
+	var value_5 bool = value_3 != value_4
+	decision.Changed = value_5
+	var value_6 bool = decision.Changed
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = decision.Open
+		value_7 = value_8
+	}
+	decision.Opened = value_7
+	var value_9 bool = decision.Changed
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 bool = decision.Open
+		var value_12 bool = !value_11
+		value_10 = value_12
+	}
+	decision.Closed = value_10
+	var value_13 DropdownOpenDecision = decision
+	return value_13
+}
+
 func Dropdown_StartNavigation(current int32, count int32, up bool, down bool, home bool, end bool) Navigation {
 	var value_0 int32 = current
 	var value_1 int32 = count

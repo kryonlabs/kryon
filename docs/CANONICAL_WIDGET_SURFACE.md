@@ -51,7 +51,7 @@ surface review:
 | `runtime/color_picker_props.kry` | ColorPicker props | `.kry canonical` |
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
 | `runtime/drawing_props.kry` | Shared drawing props and paragraph spec data | `.kry canonical` |
-| `runtime/dropdown.kry` | Dropdown composition, option/index normalization, open/dismiss state, popup, row, scrollbar, keyboard intent, navigation, and indicator geometry policy | `.kry canonical` |
+| `runtime/dropdown.kry` | Dropdown composition, option/index normalization, open/dismiss/commit-close state, popup, row, scrollbar, keyboard intent, navigation, and indicator geometry policy | `.kry canonical` |
 | `runtime/dropdown_props.kry` | Dropdown rich item data and props | `.kry canonical` |
 | `runtime/drag_drop.kry` | DragDrop source/target lifecycle decision policy | `.kry canonical` |
 | `runtime/drag_drop_props.kry` | DragDrop props and role enum | `.kry canonical` |
@@ -199,7 +199,7 @@ has a single place to land.
 | `Button` | `Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition; retained and immediate typography defaults plus fallback/terminal paint policy are `.kry`/KSS-owned. |
 | `Link` | `Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Bounds, interaction, activation, state, and color policy are `.kry`; URL dispatch remains host support. |
 | `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
-| `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, open/dismiss state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, indicator geometry, and rich option data are generated from `.kry`. |
+| `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, open/dismiss/commit-close state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, indicator geometry, and rich option data are generated from `.kry`. |
 | `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
 | `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host samples input and draws; paint/layout and value policy are `.kry`. |
 | `Checkbox` | `Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint, row/text layout, and value/flag toggle policy are `.kry`; box, mark, and label roles are KSS-owned. |
@@ -490,7 +490,7 @@ should use canonical `.kry` names and blocks.
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; bounds, interaction, activation, color/hover/disabled policy are in `.kry`, typography uses resolved KSS font sizes directly, and URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, selection state, double-click/pan/focus decisions, platform text-input sync, text-buffer mutation/range/bracket policy, and edit intent policy are in `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership/painting, and rendering remain native host support. |
-| `Dropdown` | `.kry canonical` | Option/index normalization, open/dismiss state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, and indicator policy are in `.kry`; trigger and option typography use resolved KSS font sizes directly. |
+| `Dropdown` | `.kry canonical` | Option/index normalization, open/dismiss/commit-close state, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, and indicator policy are in `.kry`; trigger and option typography use resolved KSS font sizes directly. |
 | `Slider` | `.kry canonical` | Public props live in `runtime/slider_props.kry`; value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry live in `SliderProps`/`.kry`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, typed keyboard input, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, step policy, and temp-edit activation live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
@@ -707,7 +707,7 @@ behind the canonical names.
   `runtime/segmented_control.kry`; InfoRows background/text/separator geometry and
   button-row wrap height/advance now also
   route through `runtime/rows.kry`; dropdown panel/option/scrollbar role
-  policy, selected-option appearance, trigger/menu keyboard intent, open/dismiss state, and menu transient pointer state now route through `runtime/dropdown.kry`;
+  policy, selected-option appearance, trigger/menu keyboard intent, open/dismiss/commit-close state, and menu transient pointer state now route through `runtime/dropdown.kry`;
   menu selectable-item, submenu activation, pointer item effects,
   row and bar keyboard input decisions, wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
