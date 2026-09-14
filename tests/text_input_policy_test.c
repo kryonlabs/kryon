@@ -52,15 +52,24 @@ main(void)
     assert(zero_metrics.padding_y == 0);
     assert(zero_metrics.line_gap == 0);
     assert(zero_metrics.line_height == 16);
+    assert(TextInputDefaultPaddingX(1.0f) == 10);
+    assert(TextInputDefaultPaddingY(1.0f) == 8);
+    assert(TextInputDefaultPaddingX(2.0f) == 20);
+    assert(TextInputDefaultPaddingY(2.0f) == 16);
     assert(TextInputContentWidth(40.0f, 8) == 24);
     assert(TextInputContentWidth(10.0f, 8) == 0);
     assert(TextAreaPageRows(72.0f, metrics.font, metrics.line_gap,
                             metrics.padding_y) == 2);
-    assert(TextAreaWrapWidthFor(100.0f, 8, 1, 24) == 84);
-    assert(TextAreaWrapWidthFor(30.0f, 8, 1, 24) == 0);
-    assert(TextAreaWrapWidthFor(100.0f, 8, 0, 24) == 0);
+    assert(TextAreaMinWrapWidth(1.0f) == 24);
+    assert(TextAreaWrapWidthFor(100.0f, 8, 1,
+                                TextAreaMinWrapWidth(1.0f)) == 84);
+    assert(TextAreaWrapWidthFor(30.0f, 8, 1,
+                                TextAreaMinWrapWidth(1.0f)) == 0);
+    assert(TextAreaWrapWidthFor(100.0f, 8, 0,
+                                TextAreaMinWrapWidth(1.0f)) == 0);
     area_paint = TextAreaPaintFor((Rectangle){10, 20, 100, 80},
-                                  16, 4, 8, 6, 1, 200, 500, 18, 24);
+                                  16, 4, 8, 6, 1, 200, 500, 18,
+                                  TextAreaMinWrapWidth(1.0f));
     check_rect(area_paint.clip_bounds, 18, 26, 84, 68);
     assert(area_paint.wrap_width == 84);
     assert(area_paint.viewport_height == 68);
@@ -77,13 +86,30 @@ main(void)
     assert(scroll.max_scroll == 96);
     assert(scroll.clip_width == 84);
     assert(scroll.text_origin_x == -68);
-    assert(TextFieldRevealScroll(50, 100, 80, 4, 8) == 0);
-    assert(TextFieldRevealScroll(0, 100, 80, 120, 8) == 48);
-    assert(TextFieldCursorHeightFor(18, 40.0f, 20, 8, 8) == 20);
-    assert(TextFieldCursorHeightFor(30, 24.0f, 20, 8, 8) == 16);
-    assert(TextFieldCursorHeightFor(2, 4.0f, 2, 8, 8) == 8);
+    assert(TextFieldRevealMargin(1.0f) == 8);
+    assert(TextFieldRevealScroll(50, 100, 80, 4,
+                                 TextFieldRevealMargin(1.0f)) == 0);
+    assert(TextFieldRevealScroll(0, 100, 80, 120,
+                                 TextFieldRevealMargin(1.0f)) == 48);
+    assert(TextFieldMinCursorHeight(1.0f) == 8);
+    assert(TextFieldCursorVerticalPadding(1.0f) == 8);
+    assert(TextFieldClipGuard(1.0f) == 1);
+    assert(TextInputStrokeWidth(1.0f) == 2);
+    assert(TextInputStrokeWidth(0.25f) == 1);
+    assert(TextFieldCursorHeightFor(18, 40.0f, 20,
+                                    TextFieldMinCursorHeight(1.0f),
+                                    TextFieldCursorVerticalPadding(1.0f)) == 20);
+    assert(TextFieldCursorHeightFor(30, 24.0f, 20,
+                                    TextFieldMinCursorHeight(1.0f),
+                                    TextFieldCursorVerticalPadding(1.0f)) == 16);
+    assert(TextFieldCursorHeightFor(2, 4.0f, 2,
+                                    TextFieldMinCursorHeight(1.0f),
+                                    TextFieldCursorVerticalPadding(1.0f)) == 8);
     field_paint = TextFieldPaintFor((Rectangle){20, 30, 100, 40},
-                                    8, 12, 18, 20, 8, 8, 1);
+                                    8, 12, 18, 20,
+                                    TextFieldMinCursorHeight(1.0f),
+                                    TextFieldCursorVerticalPadding(1.0f),
+                                    TextFieldClipGuard(1.0f));
     check_rect(field_paint.clip_bounds, 28, 29, 84, 42);
     assert(field_paint.text_x == 16);
     assert(field_paint.cursor_y == 40);

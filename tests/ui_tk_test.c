@@ -1096,6 +1096,24 @@ test_text_input_policy(void)
     check_int("text input explicit zero padding x", zero_metrics.padding_x, 0);
     check_int("text input explicit zero padding y", zero_metrics.padding_y, 0);
     check_int("text input explicit zero line gap", zero_metrics.line_gap, 0);
+    check_int("text input default padding x",
+              TextInputDefaultPaddingX(1.0f), 10);
+    check_int("text input default padding y",
+              TextInputDefaultPaddingY(1.0f), 8);
+    check_int("text area min wrap width",
+              TextAreaMinWrapWidth(1.0f), 24);
+    check_int("text field reveal margin",
+              TextFieldRevealMargin(1.0f), 8);
+    check_int("text field min cursor height",
+              TextFieldMinCursorHeight(1.0f), 8);
+    check_int("text field cursor vertical padding",
+              TextFieldCursorVerticalPadding(1.0f), 8);
+    check_int("text field clip guard",
+              TextFieldClipGuard(1.0f), 1);
+    check_int("text input stroke width",
+              TextInputStrokeWidth(1.0f), 2);
+    check_int("text input scaled stroke floor",
+              TextInputStrokeWidth(0.25f), 1);
     check_int("text input content width",
               TextInputContentWidth(100.0f, metrics.padding_x), 80);
     check_int("text area page rows",
@@ -1105,9 +1123,11 @@ test_text_input_policy(void)
     check_int("text field scroll clamp", scroll.scroll, 100);
     check_int("text field origin", scroll.text_origin_x, -70);
     check_int("text field reveal left",
-              TextFieldRevealScroll(50, 100, 80, 4, 8), 0);
+              TextFieldRevealScroll(50, 100, 80, 4,
+                                    TextFieldRevealMargin(1.0f)), 0);
     check_int("text field reveal right",
-              TextFieldRevealScroll(0, 100, 80, 120, 8), 48);
+              TextFieldRevealScroll(0, 100, 80, 120,
+                                    TextFieldRevealMargin(1.0f)), 48);
 }
 
 static void

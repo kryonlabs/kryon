@@ -128,6 +128,49 @@ TextInputMetric :: (fields: u32, field: u32, value: i32,
     return value
 }
 
+TextInputScaledMetric :: (value: float, scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    metric: i32 = (i32)(value * scale)
+    if metric < 0 { return 0 }
+    return metric
+}
+
+TextInputDefaultPaddingX :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(10.0, scale)
+}
+
+TextInputDefaultPaddingY :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(8.0, scale)
+}
+
+TextAreaMinWrapWidth :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(24.0, scale)
+}
+
+TextFieldRevealMargin :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(8.0, scale)
+}
+
+TextFieldMinCursorHeight :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(8.0, scale)
+}
+
+TextFieldCursorVerticalPadding :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(8.0, scale)
+}
+
+TextFieldClipGuard :: (scale: float) -> i32 #export {
+    clip_guard: i32 = TextInputScaledMetric(1.0, scale)
+    if clip_guard < 1 { return 1 }
+    return clip_guard
+}
+
+TextInputStrokeWidth :: (scale: float) -> i32 #export {
+    width: i32 = TextInputScaledMetric(2.0, scale)
+    if width < 1 { return 1 }
+    return width
+}
+
 TextInputMetricsFor :: (fields: u32, font: i32, padding_x: i32, padding_y: i32,
     line_gap: i32, default_font: i32, default_padding_x: i32,
     default_padding_y: i32, default_line_gap: i32) -> TextInputMetrics #export {

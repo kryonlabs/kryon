@@ -155,6 +155,104 @@ func TextInput_TextInputMetric(fields uint32, field uint32, value int32, fallbac
 	return value_11
 }
 
+func TextInput_TextInputScaledMetric(value float32, scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = value
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	var metric int32 = value_7
+	var value_8 int32 = metric
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 int32 = metric
+	return value_12
+}
+
+func TextInput_TextInputDefaultPaddingX(scale float32) int32 {
+	var value_0 float32 = 10.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextInputDefaultPaddingY(scale float32) int32 {
+	var value_0 float32 = 8.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextAreaMinWrapWidth(scale float32) int32 {
+	var value_0 float32 = 24.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextFieldRevealMargin(scale float32) int32 {
+	var value_0 float32 = 8.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextFieldMinCursorHeight(scale float32) int32 {
+	var value_0 float32 = 8.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextFieldCursorVerticalPadding(scale float32) int32 {
+	var value_0 float32 = 8.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextFieldClipGuard(scale float32) int32 {
+	var value_0 float32 = 1.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	var clip_guard int32 = value_2
+	var value_3 int32 = clip_guard
+	var value_4 int32 = 1
+	var value_5 bool = value_3 < value_4
+	if value_5 {
+		var value_6 int32 = 1
+		return value_6
+	}
+	var value_7 int32 = clip_guard
+	return value_7
+}
+
+func TextInput_TextInputStrokeWidth(scale float32) int32 {
+	var value_0 float32 = 2.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	var width int32 = value_2
+	var value_3 int32 = width
+	var value_4 int32 = 1
+	var value_5 bool = value_3 < value_4
+	if value_5 {
+		var value_6 int32 = 1
+		return value_6
+	}
+	var value_7 int32 = width
+	return value_7
+}
+
 func TextInput_TextInputMetricsFor(fields uint32, font int32, padding_x int32, padding_y int32, line_gap int32, default_font int32, default_padding_x int32, default_padding_y int32, default_line_gap int32) TextInputMetrics {
 	var metrics TextInputMetrics = TextInputMetrics{}
 	var value_0 int32 = font

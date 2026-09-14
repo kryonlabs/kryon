@@ -1941,10 +1941,13 @@ TextInputMetrics
 ui_text_input_metrics_for_style(TextInputStyle style, int style_kind,
                                 int class_name, int default_line_gap)
 {
+    float scale = (float)Scale(1000) / 1000.0f;
+
     return TextInputMetricsFor(
         style.fields, 0, style.padding_x, style.padding_y, style.line_gap,
         ui_text_input_default_font(style_kind, class_name),
-        Scale(10), Scale(8), default_line_gap);
+        TextInputDefaultPaddingX(scale), TextInputDefaultPaddingY(scale),
+        default_line_gap);
 }
 
 static int
@@ -2086,10 +2089,14 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     TextInputMetrics metrics = ui_text_input_metrics_for_style(
         style, StyleKindTextField(), class_name, 0);
     int padding_x = metrics.padding_x;
-    int clip_guard = 1;
+    float scale = (float)Scale(1000) / 1000.0f;
+    int stroke_width = TextInputStrokeWidth(scale);
+    int clip_guard = TextFieldClipGuard(scale);
     TextFieldPaint paint = TextFieldPaintFor(bounds, padding_x, scroll_x, font,
-                                             TextLineHeight(font), Scale(8),
-                                             Scale(8), clip_guard);
+                                             TextLineHeight(font),
+                                             TextFieldMinCursorHeight(scale),
+                                             TextFieldCursorVerticalPadding(scale),
+                                             clip_guard);
     int text_x = paint.text_x;
     int text_y = ControlTextY(value, y, h, font);
     int cursor_h = paint.cursor_height;
@@ -2128,8 +2135,8 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         selected_text[selected_len] = '\0';
         sel_x = text_x + TextWidth(prefix, font);
         sel_w = TextWidth(selected_text, font);
-        if(sel_w < Scale(2))
-            sel_w = Scale(2);
+        if(sel_w < stroke_width)
+            sel_w = stroke_width;
         DrawRectangle(sel_x, text_y, sel_w,
                       TextLineHeight(font),
                       ui_default_style() ? ui_alpha(c_circle, 82) :
@@ -2155,11 +2162,11 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         composition_x = text_x +
             ui_text_width_before_cursor(value, font, composition_start);
         composition_w = TextWidth(composition, font);
-        if(composition_w < Scale(2))
-            composition_w = Scale(2);
+        if(composition_w < stroke_width)
+            composition_w = stroke_width;
         DrawRectangle(composition_x,
-                      text_y + TextLineHeight(font) - Scale(2),
-                      composition_w, Scale(2), cursor_color);
+                      text_y + TextLineHeight(font) - stroke_width,
+                      composition_w, stroke_width, cursor_color);
     }
 
     if(focused && cursor_visible) {
@@ -2173,7 +2180,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         before_cursor[copy_len] = '\0';
 
         int cursor_x = text_x + TextWidth(before_cursor, font);
-        DrawRectangle(cursor_x, cursor_y, Scale(2), cursor_h,
+        DrawRectangle(cursor_x, cursor_y, stroke_width, cursor_h,
                       ui_default_style() ? c_circle : cursor_color);
     }
     EndClip();
@@ -3128,6 +3135,7 @@ ui_draw_text_area_composition(const char *text, int line_start, int line_end,
                               int x, int y, int font, Color color,
                               int composition_start, int composition_end)
 {
+    int stroke_width = TextInputStrokeWidth((float)Scale(1000) / 1000.0f);
     int start;
     int end;
     int start_x;
@@ -3142,9 +3150,9 @@ ui_draw_text_area_composition(const char *text, int line_start, int line_end,
     start_x = x + ui_text_column_x(text, line_start, start, font);
     end_x = x + ui_text_column_x(text, line_start, end, font);
     if(end_x <= start_x)
-        end_x = start_x + Scale(2);
-    DrawRectangle(start_x, y + TextLineHeight(font) - Scale(2),
-                  end_x - start_x, Scale(2), color);
+        end_x = start_x + stroke_width;
+    DrawRectangle(start_x, y + TextLineHeight(font) - stroke_width,
+                  end_x - start_x, stroke_width, color);
 }
 
 static void
@@ -3201,6 +3209,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     int draw_y = text_y;
     int clip_top = (int)bounds.y + padding_y;
     int clip_bottom = (int)(bounds.y + bounds.height) - padding_y;
+    int stroke_width = TextInputStrokeWidth((float)Scale(1000) / 1000.0f);
 
     if(text == NULL)
         text = "";
@@ -3246,7 +3255,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                        ui_caret_blink_visible()) {
                         int cursor_x = text_x + ui_text_column_x(
                             text, chunk_start, cursor, line_font);
-                        DrawRectangle(cursor_x, draw_y, Scale(2),
+                        DrawRectangle(cursor_x, draw_y, stroke_width,
                                       TextLineHeight(line_font),
                                       style.cursor);
                     }
@@ -3276,12 +3285,10 @@ ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
     int line_gap = metrics.line_gap;
     int padding_x = metrics.padding_x;
     int padding_y = metrics.padding_y;
-    int wrap_width = area.wrap
-        ? (int)area.bounds.width - padding_x * 2 : 0;
+    int wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
+        area.wrap != 0, TextAreaMinWrapWidth((float)Scale(1000) / 1000.0f));
     int scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
-    if(wrap_width < Scale(24))
-        wrap_width = 0;
     return ui_text_area_cursor_from_point(
         area.text, font, line_gap, wrap_width,
         (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
@@ -3317,9 +3324,8 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
         padding_x = metrics.padding_x;
         padding_y = metrics.padding_y;
     }
-    wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < Scale(24))
-        wrap_width = 0;
+    wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
+        area.wrap != 0, TextAreaMinWrapWidth((float)Scale(1000) / 1000.0f));
     viewport_h = (int)area.bounds.height - padding_y * 2;
     if(viewport_h <= 0)
         return;
@@ -3368,15 +3374,16 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     }
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
     {
+        int min_wrap_width = TextAreaMinWrapWidth((float)Scale(1000) / 1000.0f);
         wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
-                                          area.wrap != 0, Scale(24));
+                                          area.wrap != 0, min_wrap_width);
         int content_h = ui_text_area_content_height(
             area.text, font, line_gap, wrap_width,
             area.content_version, 0);
         paint = TextAreaPaintFor(area.bounds, font, line_gap, padding_x,
                                  padding_y, area.wrap != 0, content_h,
                                  scroll_y, TextLineHeight(font),
-                                 Scale(24));
+                                 min_wrap_width);
         scroll_y = paint.scroll_y;
         wrap_width = paint.wrap_width;
         if(area.scroll_y != NULL)
@@ -3750,9 +3757,8 @@ ui_text_area_render(TextAreaProps area)
         padding_y = metrics.padding_y;
     }
     line_h = TextLineHeight(font) + line_gap;
-    wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
-    if(wrap_width < Scale(24))
-        wrap_width = 0;
+    wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
+        area.wrap != 0, TextAreaMinWrapWidth((float)Scale(1000) / 1000.0f));
     first_line_y = ControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
     focused = *area.focused != 0;
@@ -4397,11 +4403,8 @@ ui_text_field_render_filtered(TextFieldProps field,
     layout_style = ui_resolve_text_input_style((TextInputStyle){0},
                                                StyleKindTextField(),
                                                field.class_name);
-    metrics = TextInputMetricsFor(layout_style.fields, 0, layout_style.padding_x,
-                                  layout_style.padding_y, 0,
-                                  ui_text_input_default_font(StyleKindTextField(),
-                                                             field.class_name),
-                                  Scale(10), Scale(8), 0);
+    metrics = ui_text_input_metrics_for_style(layout_style, StyleKindTextField(),
+                                              field.class_name, 0);
     font = metrics.font;
     padding_x = metrics.padding_x;
     focused = *field.focused != 0;
@@ -4862,7 +4865,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     if(focused) {
         int cursor_text_x = ui_text_width_before_cursor(
             display_text, font, paint_cursor);
-        int margin = Scale(8);
+        int margin = TextFieldRevealMargin((float)Scale(1000) / 1000.0f);
 
         *scroll_x_ptr = TextFieldRevealScroll(*scroll_x_ptr, max_scroll_x,
                                               clip_w, cursor_text_x, margin);
