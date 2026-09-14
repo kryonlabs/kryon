@@ -850,7 +850,7 @@ and host plumbing behind the canonical names.
    focus-claim policy, delete/replacement/native-edit/commit gate policy,
    navigation/enter/collapse gate policy, keyboard/escape/selection-range/
    composition-display gate policy, older `EditText` shortcut/commit gate
-   policy, and text reveal/scroll/context-registration gate policy in `.kry`;
+   policy, retained-tree text-input double-click policy, and text reveal/scroll/context-registration gate policy in `.kry`;
    raw string storage/memmove/scanning still native; remaining native work is
    IME/composition, selection
    ownership/painting, and the final decision about how much of that can become
