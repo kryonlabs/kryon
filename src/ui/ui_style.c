@@ -578,15 +578,11 @@ ui_default_state_layer(Rectangle bounds, Color on_color,
 {
     Color layer = on_color;
     float radius = ui_radius_px(bounds, GetThemeMetrics().control_radius);
+    int alpha = StyleStateLayerAlpha(pressed != 0, focused != 0, hovered != 0);
 
-    if(pressed)
-        layer.a = 31;
-    else if(focused)
-        layer.a = 31;
-    else if(hovered)
-        layer.a = 20;
-    else
+    if(alpha <= 0)
         return;
+    layer.a = (unsigned char)alpha;
     DrawRectangleRounded(bounds, radius, 12, layer);
 }
 

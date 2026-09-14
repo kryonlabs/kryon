@@ -204,6 +204,13 @@ StyleShinePaintFor :: (bounds: Rectangle, radius: float,
     return paint
 }
 
+StyleStateLayerAlpha :: (pressed: bool, focused: bool, hovered: bool) -> i32 #export {
+    if pressed { return 31 }
+    if focused { return 31 }
+    if hovered { return 20 }
+    return 0
+}
+
 # Ripple animation timing is native, but radius policy belongs to style.
 StyleRippleFallbackOrigin :: (bounds: Rectangle) -> Vector2 #export {
     origin: Vector2
