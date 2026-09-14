@@ -32,6 +32,7 @@ main(void)
     ModalFrameLayout frame_layout;
     ModalActionPlacement placement;
     ModalDismissal dismissal;
+    ModalPromptInput prompt_input;
     ModalResultDecision result_decision;
 
     panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
@@ -155,6 +156,12 @@ main(void)
     assert(result_decision.result == 3);
     result_decision = ModalPromptResultFor(0, false, true, true, 2);
     assert(result_decision.result == 0);
+    prompt_input = ModalPromptInputFor(true, false);
+    result_decision = ModalPromptResultDecisionFor(0, true, prompt_input, 2);
+    assert(result_decision.result == 2);
+    prompt_input = ModalPromptInputFor(false, true);
+    result_decision = ModalPromptResultDecisionFor(0, true, prompt_input, 2);
+    assert(result_decision.result == 1);
     dismissal = ModalOutsideDismissalFor(true, false, false);
     assert(dismissal.dismissed);
     assert(dismissal.release_consumed);

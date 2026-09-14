@@ -69,6 +69,11 @@ ModalResultDecision :: struct {
     result: i32
 }
 
+ModalPromptInput :: struct {
+    commit: bool
+    escape: bool
+}
+
 ModalPanelRole :: () -> i32 #export {
     return 2
 }
@@ -261,6 +266,13 @@ ModalPromptCommitResult :: (action_count: i32) -> i32 #export {
     return 1
 }
 
+ModalPromptInputFor :: (commit_pressed: bool, escape_pressed: bool) -> ModalPromptInput #export {
+    input: ModalPromptInput
+    input.commit = commit_pressed
+    input.escape = escape_pressed
+    return input
+}
+
 ModalPromptResultFor :: (current_result: i32, has_prompt: bool,
     commit_pressed: bool, escape_pressed: bool,
     action_count: i32) -> ModalResultDecision #export {
@@ -277,6 +289,12 @@ ModalPromptResultFor :: (current_result: i32, has_prompt: bool,
         decision.result = 1
     }
     return decision
+}
+
+ModalPromptResultDecisionFor :: (current_result: i32, has_prompt: bool,
+    input: ModalPromptInput, action_count: i32) -> ModalResultDecision #export {
+    return ModalPromptResultFor(current_result, has_prompt, input.commit,
+        input.escape, action_count)
 }
 
 ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,

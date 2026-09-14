@@ -366,9 +366,10 @@ RenderActionModal(ModalProps modal)
                                        msg_x, btn_y, msg_w, btn_h, btn_gap,
                                        btn_font, modal.class_name,
                                        mouse_world, metrics);
-    ModalResultDecision result_decision = ModalPromptResultFor(
-        result, has_prompt != 0, commit_pressed != 0,
-        IsKeyPressed(KEY_ESCAPE) != 0, modal.action_count);
+    ModalPromptInput prompt_input = ModalPromptInputFor(
+        commit_pressed != 0, IsKeyPressed(KEY_ESCAPE) != 0);
+    ModalResultDecision result_decision = ModalPromptResultDecisionFor(
+        result, has_prompt != 0, prompt_input, modal.action_count);
     result = result_decision.result;
 
     return result;
