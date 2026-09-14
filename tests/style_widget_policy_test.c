@@ -111,6 +111,12 @@ main(void)
         .thumb = thumb
     });
 
+    if(SeparatorLineRole() != 7 || SeparatorLabelRole() != 6 ||
+       SeparatorBulletRole() != 8) {
+        fprintf(stderr, "separator role policy changed\n");
+        return 1;
+    }
+
     check_float("checkbox keeps zero border width",
                 checkbox_paint.border_width, 0.0f);
     check_float("swatch keeps zero border width",

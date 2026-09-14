@@ -25,6 +25,21 @@ type BulletPaint struct {
 	Color  uint32
 }
 
+func Separator_SeparatorLineRole() int32 {
+	var value_0 int32 = 7
+	return value_0
+}
+
+func Separator_SeparatorLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
+func Separator_SeparatorBulletRole() int32 {
+	var value_0 int32 = 8
+	return value_0
+}
+
 func Separator_SeparatorLineFor(bounds Rectangle, vertical bool, frame StyleFrame) SeparatorLine {
 	var paint SeparatorLine = SeparatorLine{}
 	var value_0 uint32 = frame.Value.Background

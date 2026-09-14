@@ -591,7 +591,8 @@ ui_render_separator_line(Rectangle bounds, int vertical, int class_name)
     if(!IsWindowReady())
         return;
     frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, class_name, StyleKindSeparator(), 7);
+        ButtonStateNormal, 0, 0, class_name, StyleKindSeparator(),
+        SeparatorLineRole());
     paint = SeparatorLineFor(bounds, vertical != 0, frame);
     if(vertical)
         DrawLine((int)paint.line.x, (int)paint.line.y,
@@ -610,7 +611,8 @@ RenderSeparator(SeparatorProps separator)
     const char *label = separator.label != NULL ? separator.label : "";
     StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        separator.disabled, 0, separator.class_name, StyleKindSeparator(), 6);
+        separator.disabled, 0, separator.class_name, StyleKindSeparator(),
+        SeparatorLabelRole());
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     int font = ResolveFont(0, StyleFontValue(label_style.fields,
                                              label_style.font_size),
@@ -619,7 +621,8 @@ RenderSeparator(SeparatorProps separator)
     int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame line_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        separator.disabled, 0, separator.class_name, StyleKindSeparator(), 7);
+        separator.disabled, 0, separator.class_name, StyleKindSeparator(),
+        SeparatorLineRole());
     SeparatorLabelPaint paint = SeparatorLabelPaintFor(
         separator.bounds, (float)text_width, label[0] != '\0', font,
         (float)Scale(1000) / 1000.0f, frame);
@@ -865,7 +868,8 @@ RenderBullet(Rectangle bounds)
 {
     BulletPaint paint;
     StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindSeparator(), 8);
+        ButtonStateNormal, 0, 0, StyleKindSeparator(),
+        SeparatorBulletRole());
     if(!IsWindowReady())
         return;
     paint = BulletPaintFor(bounds, frame);

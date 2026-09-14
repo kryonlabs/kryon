@@ -24,6 +24,18 @@ BulletPaint :: struct {
     color: u32
 }
 
+SeparatorLineRole :: () -> i32 #export {
+    return 7
+}
+
+SeparatorLabelRole :: () -> i32 #export {
+    return 6
+}
+
+SeparatorBulletRole :: () -> i32 #export {
+    return 8
+}
+
 SeparatorLineFor :: (bounds: Rectangle, vertical: bool, frame: StyleFrame) -> SeparatorLine #export {
     paint: SeparatorLine
     paint.color = frame.value.background

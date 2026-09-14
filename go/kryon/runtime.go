@@ -1969,7 +1969,7 @@ func checkboxButtonState(hovered, pressed, focused, disabled bool) ButtonState {
 func (r *runtime) Bullet(bounds Rectangle) {
 	bounds = r.layoutRect(bounds)
 	frame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindSeparator(), 8)
+		StyleSheet_StyleKindSeparator(), Separator_SeparatorBulletRole())
 	paint := Separator_BulletPaintFor(bounds, frame)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.Color)})
 }
@@ -1981,10 +1981,10 @@ func (r *runtime) Separator(props SeparatorProps) {
 		state = ButtonStateDisabled
 	}
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
-		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 6)
+		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), Separator_SeparatorLabelRole())
 	if props.Label == "" {
 		lineFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
-			props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 7)
+			props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), Separator_SeparatorLineRole())
 		paint := Separator_SeparatorLineFor(props.Bounds, props.Vertical, lineFrame)
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.Color)})
 		return
@@ -1997,7 +1997,7 @@ func (r *runtime) Separator(props SeparatorProps) {
 	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
 	lineFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
-		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 7)
+		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), Separator_SeparatorLineRole())
 	paint.LineColor = lineFrame.Value.Background
 	if paint.ShowText {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, Disabled: props.Disabled})
