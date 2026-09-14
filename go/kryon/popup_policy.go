@@ -27,6 +27,11 @@ type PopupEscapeDecision struct {
 	EndInput bool
 }
 
+type PopupDismissDecision struct {
+	Close          bool
+	ConsumeRelease bool
+}
+
 type PopupKeyboardInput struct {
 	Escape bool
 }
@@ -220,6 +225,23 @@ func PopupPolicy_PopupOpenAfterDisabled(decision PopupDecision, open bool, disab
 	return value_5
 }
 
+func PopupPolicy_PopupTooltipVisible(decision PopupDecision, disabled bool, pointer_inside_trigger bool) bool {
+	var value_0 bool = decision.Tooltip
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 bool = disabled
+	var value_4 bool = !value_3
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = pointer_inside_trigger
+		value_5 = value_6
+	}
+	return value_5
+}
+
 func PopupPolicy_PopupOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) PopupOpenResult {
 	var result PopupOpenResult = PopupOpenResult{}
 	var value_0 bool = open
@@ -346,6 +368,41 @@ func PopupPolicy_PopupContextActivationFor(decision PopupDecision, trigger Recta
 	activation.Open = value_32
 	var value_33 PopupContextActivation = activation
 	return value_33
+}
+
+func PopupPolicy_PopupDismissDecisionFor(decision PopupDecision, left_released bool, release_consumed bool, pointer_inside_popup bool) PopupDismissDecision {
+	var dismiss PopupDismissDecision = PopupDismissDecision{}
+	var value_0 bool = decision.Tooltip
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = decision.Modal
+		value_1 = value_2
+	}
+	if value_1 {
+		var value_3 PopupDismissDecision = dismiss
+		return value_3
+	}
+	var value_4 bool = left_released
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = release_consumed
+		var value_7 bool = !value_6
+		value_5 = value_7
+	}
+	var value_8 bool = value_5
+	if value_8 {
+		var value_9 bool = pointer_inside_popup
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	if value_8 {
+		var value_11 bool = true
+		dismiss.Close = value_11
+		var value_12 bool = true
+		dismiss.ConsumeRelease = value_12
+	}
+	var value_13 PopupDismissDecision = dismiss
+	return value_13
 }
 
 func PopupPolicy_PopupBackdropAlpha(decision PopupDecision) int32 {

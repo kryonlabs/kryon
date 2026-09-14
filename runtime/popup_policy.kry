@@ -26,6 +26,11 @@ PopupEscapeDecision :: struct {
     end_input: bool
 }
 
+PopupDismissDecision :: struct {
+    close: bool
+    consume_release: bool
+}
+
 PopupKeyboardInput :: struct {
     escape: bool
 }
@@ -87,6 +92,14 @@ PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
     return open
 }
 
+PopupTooltipVisible :: (decision: PopupDecision, disabled: bool,
+    pointer_inside_trigger: bool) -> bool #export {
+    if !decision.tooltip {
+        return false
+    }
+    return !disabled && pointer_inside_trigger
+}
+
 PopupOpenFor :: (open: bool, open_requested: bool, close_requested: bool,
     has_open: bool) -> PopupOpenResult #export {
     result: PopupOpenResult
@@ -142,6 +155,19 @@ PopupContextActivationFor :: (decision: PopupDecision, trigger: Rectangle,
     }
     activation.open = true
     return activation
+}
+
+PopupDismissDecisionFor :: (decision: PopupDecision, left_released: bool,
+    release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision #export {
+    dismiss: PopupDismissDecision
+    if decision.tooltip || decision.modal {
+        return dismiss
+    }
+    if left_released && !release_consumed && !pointer_inside_popup {
+        dismiss.close = true
+        dismiss.consume_release = true
+    }
+    return dismiss
 }
 
 PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {

@@ -127,6 +127,7 @@ int PopupScope(PopupProps popup)
 {
     PopupDecision decision = PopupDecisionFor(popup.flags, popup.disabled != 0);
     Vector2 mouse = ui_mouse_world();
+    PopupDismissDecision dismiss;
     if(!decision.valid) abort();
     if(!PopupCanBegin(decision, popup.id, popup.bounds, popup.trigger,
                       popup.open != NULL))
@@ -146,8 +147,10 @@ int PopupScope(PopupProps popup)
         if(popup.open) *popup.open = open_result.open;
     }
     if(decision.tooltip) {
-        if(popup.disabled ||
-           !CheckCollisionPointRec(mouse,popup.trigger)) return 0;
+        if(!PopupTooltipVisible(decision, popup.disabled != 0,
+                                CheckCollisionPointRec(mouse,
+                                    popup.trigger) != 0))
+            return 0;
     } else {
         *popup.open = PopupOpenAfterDisabled(decision, *popup.open,
                                              popup.disabled != 0);
@@ -156,10 +159,13 @@ int PopupScope(PopupProps popup)
             return 0;
         }
     }
-    if(!decision.tooltip && !decision.modal &&
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ReleaseConsumed() &&
-       !CheckCollisionPointRec(mouse,popup.bounds)) {
-        ConsumeRelease();
+    dismiss = PopupDismissDecisionFor(
+        decision, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        ReleaseConsumed() != 0,
+        CheckCollisionPointRec(mouse,popup.bounds) != 0);
+    if(dismiss.close) {
+        if(dismiss.consume_release)
+            ConsumeRelease();
         PopupOpenResult open_result =
             PopupOpenFor(*popup.open, false, true, true);
         *popup.open = open_result.open;

@@ -27,6 +27,7 @@ main(void)
     PopupDecision invalid = PopupDecisionFor(1 | 2, false);
     PopupKeyboardInput popup_input;
     PopupEscapeDecision escape;
+    PopupDismissDecision dismiss;
     Rectangle bounds = {10, 20, 30, 40};
     Rectangle trigger = {1, 2, 3, 4};
     Rectangle input;
@@ -50,6 +51,10 @@ main(void)
     assert(PopupOpenAfterDisabled(plain, true, false));
     assert(!PopupOpenAfterDisabled(plain, true, true));
     assert(PopupOpenAfterDisabled(tooltip, true, true));
+    assert(PopupTooltipVisible(tooltip, false, true));
+    assert(!PopupTooltipVisible(tooltip, true, true));
+    assert(!PopupTooltipVisible(tooltip, false, false));
+    assert(!PopupTooltipVisible(plain, false, true));
 
     input = PopupInputBounds(modal, bounds, 200, 100);
     assert(input.x == 0.0f && input.y == 0.0f);
@@ -71,6 +76,18 @@ main(void)
                                            (Vector2){2, 3}, true, false,
                                            true);
     assert(!activation.open);
+
+    dismiss = PopupDismissDecisionFor(plain, true, false, false);
+    assert(dismiss.close);
+    assert(dismiss.consume_release);
+    dismiss = PopupDismissDecisionFor(plain, true, false, true);
+    assert(!dismiss.close);
+    dismiss = PopupDismissDecisionFor(plain, true, true, false);
+    assert(!dismiss.close);
+    dismiss = PopupDismissDecisionFor(tooltip, true, false, false);
+    assert(!dismiss.close);
+    dismiss = PopupDismissDecisionFor(modal, true, false, false);
+    assert(!dismiss.close);
 
     assert(PopupBackdropAlpha(modal) == 180);
     assert(PopupBackdropAlpha(plain) == 0);
