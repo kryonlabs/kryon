@@ -3974,23 +3974,44 @@ ui_text_area_render(TextAreaProps area)
     }
     if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
-            TextSelectionState all = TextSelectionAll((int)strlen(area.text));
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+                    selection_end > selection_start, 0, 0,
+                    area.text[0] != '\0', 1, !area.read_only,
+                    !area.read_only);
+            if(decision.select_all) {
+                TextSelectionState all = TextSelectionAll((int)strlen(area.text));
 
-            ui_text_selection_set(&g_ui_text_area_selection, drag_id,
-                                  area.focused, all.anchor, all.cursor, 0);
-            *area.cursor_position = all.cursor;
-            selection_start = all.anchor;
-            selection_end = all.cursor;
+                ui_text_selection_set(&g_ui_text_area_selection, drag_id,
+                                      area.focused, all.anchor, all.cursor, 0);
+                *area.cursor_position = all.cursor;
+                selection_start = all.anchor;
+                selection_end = all.cursor;
+            }
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && copy_pressed &&
-           selection_end > selection_start) {
-            ui_text_copy_range(area.text, selection_start, selection_end);
-            selection_key_handled = 1;
+        if(ui_mod_key_down() && copy_pressed) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCopy(),
+                    selection_end > selection_start, 0, 0,
+                    area.text[0] != '\0', 1, !area.read_only,
+                    !area.read_only);
+            if(decision.copy_selection)
+                ui_text_copy_range(area.text, selection_start, selection_end);
+            selection_key_handled |= decision.copy_selection;
         }
-        if(!area.read_only && ui_mod_key_down() && cut_pressed &&
-           selection_end > selection_start) {
-            if(ui_text_copy_range(area.text, selection_start, selection_end) &&
+        if(ui_mod_key_down() && cut_pressed) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCut(),
+                    selection_end > selection_start, 0, 0,
+                    area.text[0] != '\0', !area.read_only, !area.read_only,
+                    !area.read_only);
+            int copied_selection = 0;
+            if(decision.copy_selection)
+                copied_selection = ui_text_copy_range(area.text,
+                                                      selection_start,
+                                                      selection_end);
+            if(decision.delete_selection && copied_selection &&
                ui_text_delete_range(area.text, area.text_size,
                                     area.cursor_position, selection_start,
                                     selection_end)) {
@@ -3999,28 +4020,30 @@ ui_text_area_render(TextAreaProps area)
                                                 *area.cursor_position, 0);
                 changed = 1;
             }
-            selection_key_handled = 1;
+            selection_key_handled |= decision.copy_selection ||
+                                     decision.delete_selection ||
+                                     decision.collapse_selection;
         }
-        if(!area.read_only && ui_mod_key_down() && paste_pressed &&
-           selection_end > selection_start) {
-            ui_text_delete_range(area.text, area.text_size,
-                                 area.cursor_position, selection_start,
-                                 selection_end);
-            if(ui_text_paste_clipboard(area_edit, 1)) {
+        if(ui_mod_key_down() && paste_pressed) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandPaste(),
+                    selection_end > selection_start, 0, 0,
+                    area.text[0] != '\0', 1, !area.read_only,
+                    !area.read_only);
+            if(decision.delete_selection)
+                ui_text_delete_range(area.text, area.text_size,
+                                     area.cursor_position, selection_start,
+                                     selection_end);
+            if(decision.paste && ui_text_paste_clipboard(area_edit, 1))
                 changed = 1;
-            }
-            ui_text_selection_set_collapsed(&g_ui_text_area_selection,
-                                            drag_id, area.focused,
-                                            *area.cursor_position, 0);
-            selection_key_handled = 1;
-        } else if(!area.read_only && ui_mod_key_down() && paste_pressed) {
-            if(ui_text_paste_clipboard(area_edit, 1)) {
+            if(decision.collapse_selection) {
                 ui_text_selection_set_collapsed(&g_ui_text_area_selection,
                                                 drag_id, area.focused,
                                                 *area.cursor_position, 0);
-                changed = 1;
             }
-            selection_key_handled = 1;
+            selection_key_handled |= decision.delete_selection ||
+                                     decision.paste ||
+                                     decision.collapse_selection;
         }
         if(!area.read_only &&
            (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
@@ -4641,38 +4664,58 @@ ui_text_field_render_filtered(TextFieldProps field,
 
     if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
-            TextSelectionState all = TextSelectionAll((int)strlen(field.text));
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandSelectAll(),
+                    selection_end > selection_start, 0, 0,
+                    field.text[0] != '\0', !field.secure,
+                    !field.read_only, !field.read_only);
+            if(decision.select_all) {
+                TextSelectionState all = TextSelectionAll((int)strlen(field.text));
 
-            ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
-                                  field.focused, all.anchor, all.cursor, 0);
-            *field.cursor_position = all.cursor;
-            selection_start = all.anchor;
-            selection_end = all.cursor;
+                ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
+                                      field.focused, all.anchor, all.cursor, 0);
+                *field.cursor_position = all.cursor;
+                selection_start = all.anchor;
+                selection_end = all.cursor;
+            }
             selection_handled = 1;
         }
-        if(!field.secure && ui_mod_key_down() && IsKeyPressed(KEY_C)) {
-            if(selection_end > selection_start)
+        if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCopy(),
+                    selection_end > selection_start, 1, 0,
+                    1, !field.secure,
+                    !field.read_only, !field.read_only);
+            if(decision.copy_selection)
                 ui_text_copy_range(field.text, selection_start, selection_end);
-            else
+            if(decision.copy_all)
                 SetClipboardTextValue(field.text);
-            selection_handled = 1;
+            selection_handled |= decision.copy_selection || decision.copy_all;
         }
-        if(!field.read_only && !field.secure &&
-           ui_mod_key_down() && IsKeyPressed(KEY_X)) {
-            if(selection_end > selection_start) {
-                if(ui_text_copy_range(field.text, selection_start,
-                                      selection_end) &&
-                   ui_text_delete_range(field.text, field.text_size,
-                                        field.cursor_position,
-                                        selection_start, selection_end))
-                    changed = 1;
-            } else {
+        if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandCut(),
+                    selection_end > selection_start, 1, 1,
+                    1, !field.secure,
+                    !field.read_only && !field.secure, !field.read_only);
+            int copied_selection = 0;
+            if(decision.copy_selection)
+                copied_selection = ui_text_copy_range(field.text,
+                                                      selection_start,
+                                                      selection_end);
+            if(decision.copy_all)
                 SetClipboardTextValue(field.text);
+            if(decision.delete_selection && copied_selection &&
+               ui_text_delete_range(field.text, field.text_size,
+                                    field.cursor_position,
+                                    selection_start, selection_end))
+                changed = 1;
+            if(decision.clear_all) {
                 field.text[0] = '\0';
                 *field.cursor_position = 0;
                 changed = 1;
             }
-            {
+            if(decision.collapse_selection) {
                 TextSelectionState collapsed = ui_text_selection_collapsed(
                     *field.cursor_position);
                 ui_text_selection_set_collapsed(&g_ui_text_field_selection,
@@ -4681,16 +4724,25 @@ ui_text_field_render_filtered(TextFieldProps field,
                 selection_start = collapsed.anchor;
                 selection_end = collapsed.cursor;
             }
-            selection_handled = 1;
+            selection_handled |= decision.copy_selection ||
+                                 decision.copy_all ||
+                                 decision.delete_selection ||
+                                 decision.clear_all ||
+                                 decision.collapse_selection;
         }
-        if(!field.read_only && ui_mod_key_down() && IsKeyPressed(KEY_V)) {
-            if(selection_end > selection_start)
+        if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
+            TextContextCommandDecision decision =
+                TextEditCommandDecisionFor(TextContextCommandPaste(),
+                    selection_end > selection_start, 0, 0,
+                    field.text[0] != '\0', 1, !field.read_only,
+                    !field.read_only);
+            if(decision.delete_selection)
                 ui_text_delete_range(field.text, field.text_size,
                                      field.cursor_position, selection_start,
                                      selection_end);
-            if(ui_text_paste_clipboard(field_edit, 0))
+            if(decision.paste && ui_text_paste_clipboard(field_edit, 0))
                 changed = 1;
-            {
+            if(decision.collapse_selection) {
                 TextSelectionState collapsed = ui_text_selection_collapsed(
                     *field.cursor_position);
                 ui_text_selection_set_collapsed(&g_ui_text_field_selection,
@@ -4699,7 +4751,9 @@ ui_text_field_render_filtered(TextFieldProps field,
                 selection_start = collapsed.anchor;
                 selection_end = collapsed.cursor;
             }
-            selection_handled = 1;
+            selection_handled |= decision.delete_selection ||
+                                 decision.paste ||
+                                 decision.collapse_selection;
         }
         if(!field.read_only &&
            (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||

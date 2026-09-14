@@ -350,6 +350,32 @@ main(void)
     context_command = TextContextCommandDecisionFor(
         TextContextCommandSelectAll(), false, false, false, false);
     assert(context_command.select_all);
+    context_command = TextEditCommandDecisionFor(
+        TextContextCommandCut(), true, false, false, true,
+        false, false, false);
+    assert(!context_command.copy_selection);
+    assert(!context_command.delete_selection);
+    assert(!context_command.collapse_selection);
+    context_command = TextEditCommandDecisionFor(
+        TextContextCommandCut(), false, true, true, true,
+        true, true, false);
+    assert(context_command.copy_all);
+    assert(context_command.clear_all);
+    assert(context_command.collapse_selection);
+    context_command = TextEditCommandDecisionFor(
+        TextContextCommandCopy(), false, true, false, true,
+        false, false, false);
+    assert(!context_command.copy_all);
+    context_command = TextEditCommandDecisionFor(
+        TextContextCommandCopy(), false, true, false, true,
+        true, false, false);
+    assert(context_command.copy_all);
+    context_command = TextEditCommandDecisionFor(
+        TextContextCommandPaste(), true, false, false, true,
+        true, false, true);
+    assert(!context_command.delete_selection);
+    assert(context_command.paste);
+    assert(context_command.collapse_selection);
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

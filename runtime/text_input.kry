@@ -338,32 +338,34 @@ TextContextCommandSelectAll :: () -> i32 #export {
     return 4
 }
 
-TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
-    copy_all_when_empty: bool, has_text: bool,
-    read_only: bool) -> TextContextCommandDecision #export {
+TextEditCommandDecisionFor :: (command: i32, has_selection: bool,
+    copy_all_when_empty: bool, clear_all_when_empty: bool, has_text: bool,
+    allow_copy: bool, allow_delete: bool,
+    allow_paste: bool) -> TextContextCommandDecision #export {
     decision: TextContextCommandDecision
     if command == TextContextCommandCut() {
         if has_selection {
-            decision.copy_selection = true
-            decision.delete_selection = !read_only
-        } else if !read_only && copy_all_when_empty && has_text {
-            decision.copy_all = true
-            decision.clear_all = true
+            decision.copy_selection = allow_copy
+            decision.delete_selection = allow_copy && allow_delete
+        } else if copy_all_when_empty && has_text {
+            decision.copy_all = allow_copy
+            decision.clear_all = allow_copy && allow_delete && clear_all_when_empty
         }
-        decision.collapse_selection = true
+        decision.collapse_selection = decision.copy_selection || decision.copy_all ||
+            decision.delete_selection || decision.clear_all
         return decision
     }
     if command == TextContextCommandCopy() {
         if has_selection {
-            decision.copy_selection = true
-        } else if copy_all_when_empty && has_text {
+            decision.copy_selection = allow_copy
+        } else if allow_copy && copy_all_when_empty && has_text {
             decision.copy_all = true
         }
         return decision
     }
     if command == TextContextCommandPaste() {
-        if !read_only {
-            decision.delete_selection = has_selection
+        if allow_paste {
+            decision.delete_selection = allow_delete && has_selection
             decision.paste = true
             decision.collapse_selection = true
         }
@@ -374,6 +376,14 @@ TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
         return decision
     }
     return decision
+}
+
+TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
+    copy_all_when_empty: bool, has_text: bool,
+    read_only: bool) -> TextContextCommandDecision #export {
+    return TextEditCommandDecisionFor(command, has_selection,
+        copy_all_when_empty, copy_all_when_empty, has_text,
+        true, !read_only, !read_only)
 }
 
 TextNavNone :: () -> i32 #export {
