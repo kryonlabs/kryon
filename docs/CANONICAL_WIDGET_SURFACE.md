@@ -84,7 +84,7 @@ surface review:
 | `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar default-height variant and composition policy | `.kry canonical` |
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
-| `runtime/node2d_props.kry` | Game2D node props and enums | `.kry canonical` |
+| `runtime/node2d_props.kry` | Game2D scene/node declaration props, defaults, node props, and enums | `.kry canonical` |
 | `runtime/node_registry_props.kry` | Public node registry flags | `.kry support` |
 | `runtime/scene_tree_props.kry` | Game2D scene node kind and flag values | `.kry support` |
 | `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
@@ -168,7 +168,7 @@ text measurement, painting, storage, or platform services.
 | Navigation | `NavigationBar` default-height variant, paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/reservation/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout/text-placement policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy, profile header/profile image picker geometry support, inspector edit/resize geometry policy | theme picker, inspector state/input, and profile image rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Terminal | `TerminalPane` font fallback, content bounds, grid clamp, and scroll indicator metrics policy | terminal emulator state, PTY/session IO, ANSI parsing, text measurement, clipboard/selection, input sampling, and drawing remain native terminal host support |
-| Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
+| Game2D | `Scene`, `Node2D`, `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums/defaults; `NodeKind*` and `NodeFlag*` support values | Scene ownership, lifecycle, physics/audio handles, rendering, and runtime node mutation remain native Game2D support. |
 
 The remaining migration target is the native support around text editing and
 content wrappers: `TextField` and `TextArea` own defaults/metrics/wrap/caret
@@ -222,8 +222,8 @@ has a single place to land.
 | `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
 | `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, message line-gap, and action sizing policy are `.kry`; host keeps modal input layer, text editing, and drawing. |
-| `Scene` | `Game2D/Core` | Scene root | missing | Game2D native scene | Separate Game2D surface; introduce `.kry` scene declarations later. |
-| `Node2D` | `Game2D/Core` | Transform | missing | Game2D native scene | Separate Game2D surface. |
+| `Scene` | `Game2D/Core` | Scene root | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public declaration props/defaults and kind values are `.kry`; scene ownership, lifecycle, physics world, and rendering remain native Game2D support. |
+| `Node2D` | `Game2D/Core` | Transform | `runtime/node2d_props.kry`, `runtime/scene_tree_props.kry` | `.kry props, native scene` | Public transform declaration props/defaults and kind values are `.kry`; runtime tree mutation and world transform propagation remain native. |
 | `Camera2D` | `Game2D/Core` | Camera | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; scene lifecycle and camera activation remain native Game2D support. |
 | `Sprite2D` | `Game2D/Rendering` | Image | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; asset loading and drawing remain native Game2D support. |
 | `AnimatedSprite2D` | `Game2D/Rendering` | Animation | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; frame advance and drawing remain native Game2D support. |
@@ -614,16 +614,16 @@ metrics and protocol support here.
 ## Game2D Nodes
 
 Game2D has its own node family. These are canonical for the Game2D domain and
-stay separate from general UI widgets. Concrete node props/enums live in
-`runtime/node2d_props.kry`; scene kind/flag values live in
+stay separate from general UI widgets. Scene/Node2D declaration props/defaults
+and concrete node props/enums live in `runtime/node2d_props.kry`; scene kind/flag values live in
 `runtime/scene_tree_props.kry`; scene graph ownership and host resources remain
 native Game2D support. Public code uses generated `NodeKind*` and `NodeFlag*`
 names, not the old `NODE_*`/`NODE_FLAG_*` C constants.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `Scene` / `NodeKindRoot` | Game2D native scene | Root game scene; add `.kry` declaration support later. |
-| `Node2D` / `NodeKindNode2D` | Game2D native scene | Base 2D node; add `.kry` declaration support later. |
+| `Scene` / `NodeKindRoot` | `.kry props, native scene` | Root game scene; declaration defaults live in `runtime/node2d_props.kry`; lifecycle remains native. |
+| `Node2D` / `NodeKindNode2D` | `.kry props, native scene` | Base 2D transform node; declaration defaults live in `runtime/node2d_props.kry`; world transform propagation remains native. |
 | `Camera2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; lifecycle remains native. |
 | `Sprite2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; asset loading and drawing remain native. |
 | `AnimatedSprite2D` | `.kry props, native scene` | Props live in `runtime/node2d_props.kry`; frame playback remains native. |
@@ -818,10 +818,10 @@ and host plumbing behind the canonical names.
    services should stay native only when they are true host services and not
    widget policy.
 8. Decide the Game2D boundary:
-   Game2D props/enums are generated from `runtime/node2d_props.kry`, but
-   `Scene`/`Node2D` declarations, scene lifecycle, physics/audio handles,
-   asset playback, and rendering remain native scene support. Either keep this
-   as an explicit non-widget domain or add `.kry` scene declaration support.
+   Game2D declaration props/enums are generated from
+   `runtime/node2d_props.kry`, but scene lifecycle, physics/audio handles,
+   asset playback, and rendering remain native scene support. Keep this as an
+   explicit non-widget domain unless `.kry` starts owning scene lifecycle.
 9. Keep lowered host scopes out of public `.kry` documentation:
    immediate-mode `Begin*`/`End*` wrappers are native support, not widget names.
    Tutorial image helpers remain internal and route through canonical `Image`

@@ -39,6 +39,18 @@ typedef enum AudioKind {
     AudioMusic = 1,
 } AudioKind;
 
+typedef struct SceneProps {
+    float time_scale;
+    int32_t physics_enabled;
+    Vector2 gravity;
+} SceneProps;
+
+typedef struct Node2DProps {
+    Vector2 position;
+    float rotation;
+    Vector2 scale;
+} Node2DProps;
+
 typedef struct Camera2DProps {
     float zoom;
     float rotation;
@@ -124,5 +136,8 @@ typedef struct AudioSourceProps {
     int32_t loaded;
     void* handle;
 } AudioSourceProps;
+SceneProps ScenePropsDefault(void);
+float SceneTimeScaleFor(float time_scale);
+Node2DProps Node2DPropsDefault(void);
 
 #endif /* K_RUNTIME_NODE2D_PROPS_H */

@@ -68,9 +68,32 @@ main(void)
     NodeId child_a;
     NodeId child_b;
     Node *n;
+    SceneProps scene_props;
+    Node2DProps node_props;
 
     SceneRegisterBuiltins();
     SceneInit(&scene);
+
+    scene_props = ScenePropsDefault();
+    node_props = Node2DPropsDefault();
+    check_float("SceneProps default time scale", scene_props.time_scale, 1.0f, 0.001f);
+    check_int("SceneProps default physics disabled", scene_props.physics_enabled, 0);
+    check_float("SceneProps default gravity x", scene_props.gravity.x, 0.0f, 0.001f);
+    check_float("SceneProps default gravity y", scene_props.gravity.y, 9.8f, 0.001f);
+    check_float("SceneTimeScaleFor preserves positive", SceneTimeScaleFor(0.5f),
+                0.5f, 0.001f);
+    check_float("SceneTimeScaleFor defaults nonpositive", SceneTimeScaleFor(0.0f),
+                1.0f, 0.001f);
+    check_float("Node2DProps default position x", node_props.position.x, 0.0f,
+                0.001f);
+    check_float("Node2DProps default position y", node_props.position.y, 0.0f,
+                0.001f);
+    check_float("Node2DProps default rotation", node_props.rotation, 0.0f,
+                0.001f);
+    check_float("Node2DProps default scale x", node_props.scale.x, 1.0f,
+                0.001f);
+    check_float("Node2DProps default scale y", node_props.scale.y, 1.0f,
+                0.001f);
 
     check_int("scene root exists", scene.root, 0);
     check_int("scene starts with one node (the root)", scene.count, 1);
