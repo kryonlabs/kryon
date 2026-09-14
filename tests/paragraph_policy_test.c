@@ -62,5 +62,11 @@ main(void)
     assert(ParagraphNextLineY(20, 18, 4, false) == 38);
     assert(ParagraphLineStride(18, 4) == 22);
     assert(ParagraphLineStride(0, -8) == 1);
+    assert(ParagraphLineIndexFor(15.0f, 10.0f, 20, 3) == 0);
+    assert(ParagraphLineIndexFor(55.0f, 10.0f, 20, 3) == 2);
+    assert(ParagraphLineIndexFor(90.0f, 10.0f, 20, 3) == 2);
+    assert(ParagraphLineIndexFor(0.0f, 10.0f, 20, 3) == 0);
+    assert(ParagraphLineIndexFor(10.0f, 10.0f, 0, 3) == 0);
+    assert(ParagraphLineIndexFor(10.0f, 10.0f, 20, 0) == -1);
     return 0;
 }

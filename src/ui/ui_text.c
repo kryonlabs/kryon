@@ -1690,11 +1690,12 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     if(g_ui_text_block_selection.id == block.id &&
        g_ui_text_block_selection.dragging) {
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int line_index = (int)(mouse.y - block.bounds.y) / line_stride;
+            int line_index;
             char *line;
             int local;
 
-            line_index = ui_clampi(line_index, 0, count - 1);
+            line_index = ParagraphLineIndexFor(mouse.y, block.bounds.y,
+                                               line_stride, count);
             line = ui_text_slice(block.text, lines[line_index].start,
                                  lines[line_index].end);
             local = mouse.y < block.bounds.y ? 0 :

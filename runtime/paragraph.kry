@@ -105,3 +105,21 @@ ParagraphLineStride :: (drawn_line_height: i32, line_gap: i32) -> i32 #export {
     if stride < 1 { return 1 }
     return stride
 }
+
+ParagraphLineIndexFor :: (mouse_y: float, bounds_y: float,
+    line_stride: i32, line_count: i32) -> i32 #export {
+    if line_count <= 0 {
+        return -1
+    }
+    if line_stride < 1 {
+        line_stride = 1
+    }
+    index: i32 = (i32)(mouse_y - bounds_y) / line_stride
+    if index < 0 {
+        return 0
+    }
+    if index >= line_count {
+        return line_count - 1
+    }
+    return index
+}
