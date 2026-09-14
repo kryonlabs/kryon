@@ -42,6 +42,8 @@ main(void)
     assert(metrics.leading_icon_size == 40);
     assert(metrics.leading_padding == 20);
     assert(metrics.dropdown_default_height == 64);
+    assert(TitleBarDefaultHeightFor(2.0f, bar) == 64);
+    assert(TitleBarDefaultHeightFor(0.0f, (StyleFrame){0}) == 32);
     assert(TitleBarMetricsFor(0.0f, (StyleFrame){0}, (StyleFrame){0},
                               (StyleFrame){0}).side_margin == 12);
     assert(!TitleBarReservedHasLeading(metrics.side_margin, metrics));

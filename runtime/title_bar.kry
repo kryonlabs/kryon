@@ -81,6 +81,12 @@ TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
     return metrics
 }
 
+TitleBarDefaultHeightFor :: (scale: float, bar: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return TitleBarMetric(bar.value.fields, (u32)StyleIconSize,
+        bar.value.icon_size, 32.0, scale)
+}
+
 TitleBarStateFor :: (requested_height: i32, fallback_height: i32,
     has_leading: bool, has_dropdown: bool) -> TitleBarState #export {
     state: TitleBarState

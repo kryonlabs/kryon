@@ -111,7 +111,12 @@ RenderTitleBarCenteredTitle(const char *title, int height,
 int
 ui_title_bar_height(void)
 {
-    return ui_tab_bar_height();
+    StyleFrame bar = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarBarRole());
+    return TitleBarDefaultHeightFor((float)GetScale(), bar);
 }
 
 int
