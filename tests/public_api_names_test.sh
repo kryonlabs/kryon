@@ -733,7 +733,7 @@ if [ -n "$public_text_helper_matches" ]; then
 fi
 
 public_widget_registration_matches="$(
-    rg -n '\b(BeginWidget|EndWidget|WidgetSetBounds|WidgetSetAction|WIDGET_MOVABLE|WIDGET_RESIZABLE|WIDGET_READONLY|WIDGET_TEMPORARY_ID)\b|include/ui_widget\.h' \
+    rg -n '\b(BeginWidget|EndWidget|WidgetSetBounds|WidgetSetAction|WidgetFlagMovable|WidgetFlagResizable|WidgetFlagReadOnly|WidgetFlagTemporaryId)\b|include/ui_widget\.h' \
         include \
         docs/PUBLIC_API_SNAPSHOT.txt \
         docs/API.md \

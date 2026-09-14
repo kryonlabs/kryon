@@ -35,3 +35,12 @@ const (
 	WidgetKindCard          = 28
 	WidgetKindCount         = 29
 )
+
+type WidgetFlag int32
+
+const (
+	WidgetFlagMovable     = 1
+	WidgetFlagResizable   = 2
+	WidgetFlagReadOnly    = 4
+	WidgetFlagTemporaryId = 8
+)

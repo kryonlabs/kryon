@@ -32,3 +32,10 @@ WidgetKind :: enum {
     WidgetKindCard = 28
     WidgetKindCount = 29
 }
+
+WidgetFlag :: enum {
+    WidgetFlagMovable = 1
+    WidgetFlagResizable = 2
+    WidgetFlagReadOnly = 4
+    WidgetFlagTemporaryId = 8
+}

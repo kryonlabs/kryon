@@ -513,12 +513,12 @@ ui_inspect_register_widget(const char *id, const char *kind,
         widget->source_line = g_ui_inspect.source_line_stack[source];
     }
     if(!ui_inspect_persistent_id(id))
-        widget->flags |= WIDGET_TEMPORARY_ID;
+        widget->flags |= WidgetFlagTemporaryId;
     widget->order = g_ui_inspect.widget_count;
 
     override = ui_inspect_find_override(id);
     if(override == NULL && ui_inspect_persistent_id(id) &&
-       (flags & (WIDGET_MOVABLE | WIDGET_RESIZABLE)) != 0) {
+       (flags & (WidgetFlagMovable | WidgetFlagResizable)) != 0) {
         override = ui_inspect_get_override(id);
         if(override != NULL)
             override->bounds = *bounds;
@@ -541,7 +541,7 @@ ui_inspect_set_widget_action(int index, const char *action)
 }
 
 Widget
-BeginWidget(const char *kind, const char *id, Rectangle bounds, int flags)
+BeginWidget(const char *kind, const char *id, Rectangle bounds, WidgetFlag flags)
 {
     Widget widget = {0};
     int index;
@@ -558,7 +558,7 @@ BeginWidget(const char *kind, const char *id, Rectangle bounds, int flags)
     widget.bounds = bounds;
     widget.flags = flags;
     widget.index = -1;
-    if((flags & (WIDGET_MOVABLE | WIDGET_RESIZABLE)) != 0)
+    if((flags & (WidgetFlagMovable | WidgetFlagResizable)) != 0)
         ui_widget_apply_bounds(widget.id, &widget.bounds);
     index = ui_inspect_register_widget(widget.id, widget.kind,
                                       &widget.bounds, flags);
@@ -684,8 +684,8 @@ ui_inspect_update_interaction(void)
         ui_inspect_select_at(screen_mouse);
         if(g_ui_inspect.selected >= 0) {
             selected = &g_ui_inspect.widgets[g_ui_inspect.selected];
-            can_move = (selected->flags & WIDGET_MOVABLE) != 0;
-            can_resize = (selected->flags & WIDGET_RESIZABLE) != 0;
+            can_move = (selected->flags & WidgetFlagMovable) != 0;
+            can_resize = (selected->flags & WidgetFlagResizable) != 0;
             g_ui_inspect.drag_start = screen_mouse;
             g_ui_inspect.edit_start = selected->bounds;
             g_ui_inspect.resizing = can_resize &&
@@ -776,7 +776,7 @@ RenderInspectOverlay(void)
         DrawRectangleLinesEx(screen_bounds, i == g_ui_inspect.selected ? 2 : 1,
                              color);
         if(i == g_ui_inspect.selected &&
-           (widget->flags & WIDGET_RESIZABLE) != 0) {
+           (widget->flags & WidgetFlagResizable) != 0) {
             int s = Scale(10);
 
             DrawRectangle((int)(screen_bounds.x + screen_bounds.width - s),

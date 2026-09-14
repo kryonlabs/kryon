@@ -399,8 +399,8 @@ RenderModalFrame(int width, int height, const char *title,
     {
         Rectangle bounds = layout.panel;
         widget = BeginWidget("modal", editor_id, bounds,
-                               WIDGET_MOVABLE |
-                               WIDGET_RESIZABLE);
+                               WidgetFlagMovable |
+                               WidgetFlagResizable);
         layout = ModalFrameLayoutFor(widget.bounds, metrics);
         WidgetSetBounds(&widget, layout.panel);
     }

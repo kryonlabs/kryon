@@ -143,7 +143,7 @@ RenderNavigationBar(NavigationBarProps nav)
     result.height = paint.height;
     bounds = paint.bounds;
     widget = BeginWidget("navigation_bar", "tmp:navigation-bar", bounds,
-                           WIDGET_READONLY);
+                           WidgetFlagReadOnly);
     WidgetSetAction(&widget, "RenderNavigationBar");
 
     bar_frame = ui_style_apply_effects_frame(paint.bar);

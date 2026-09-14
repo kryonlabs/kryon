@@ -1398,7 +1398,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         Widget widget;
 
         snprintf(inspect_id, sizeof(inspect_id), "tmp:text:%d", inspect_hash);
-        widget = BeginWidget("text", inspect_id, bounds, WIDGET_READONLY);
+        widget = BeginWidget("text", inspect_id, bounds, WidgetFlagReadOnly);
         WidgetSetAction(&widget, text);
         EndWidget(&widget);
     }

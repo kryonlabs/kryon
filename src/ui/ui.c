@@ -2350,8 +2350,8 @@ ui_text_input_control_render(TextInputProps input)
                                                  "text_input",
                                                  input.focus_id, NULL),
                            input.bounds,
-                           WIDGET_MOVABLE |
-                           WIDGET_RESIZABLE);
+                           WidgetFlagMovable |
+                           WidgetFlagResizable);
     input.bounds = widget.bounds;
 
     if(input.focus_id > 0 && RegisterFocus(input.focus_id, input.bounds)) {
@@ -2408,8 +2408,8 @@ RenderLink(LinkProps link)
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "link", link.focus_id, text),
                            bounds,
-                           WIDGET_MOVABLE |
-                           WIDGET_RESIZABLE);
+                           WidgetFlagMovable |
+                           WidgetFlagResizable);
     bounds = widget.bounds;
 
     mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
@@ -3737,8 +3737,8 @@ ui_text_area_render(TextAreaProps area)
                                                  "text_area", area.focus_id,
                                                  area.placeholder),
                            area.bounds,
-                           WIDGET_MOVABLE |
-                           WIDGET_RESIZABLE);
+                           WidgetFlagMovable |
+                           WidgetFlagResizable);
     area.bounds = widget.bounds;
 
     {
@@ -4390,8 +4390,8 @@ ui_text_field_render_filtered(TextFieldProps field,
                                                  "text_field",
                                                  field.focus_id, NULL),
                            field.bounds,
-                           WIDGET_MOVABLE |
-                           WIDGET_RESIZABLE);
+                           WidgetFlagMovable |
+                           WidgetFlagResizable);
     field.bounds = widget.bounds;
 
     layout_style = ui_resolve_text_input_style((TextInputStyle){0},

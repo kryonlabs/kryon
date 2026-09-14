@@ -386,8 +386,8 @@ ui_dropdown(DropdownProps props)
 
     snprintf(editor_id, sizeof(editor_id), "dropdown:%d", id);
     widget = BeginWidget("dropdown", editor_id, btn_bounds,
-                           WIDGET_MOVABLE |
-                           WIDGET_RESIZABLE);
+                           WidgetFlagMovable |
+                           WidgetFlagResizable);
     btn_bounds = widget.bounds;
     x = (int)btn_bounds.x;
     y = (int)btn_bounds.y;

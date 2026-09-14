@@ -288,8 +288,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                                                      button.props.id,
                                                      button.props.label),
                                button.props.bounds,
-                               WIDGET_MOVABLE |
-                               WIDGET_RESIZABLE);
+                               WidgetFlagMovable |
+                               WidgetFlagResizable);
         button.props.bounds = widget.bounds;
         WidgetSetAction(&widget, button.props.label);
     }
