@@ -2085,7 +2085,7 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
     }
 
     ui_draw_box_background(bounds,
-                           style.radius >= 0.0f ? style.radius : 0.12f,
+                           StyleLegacyBoxRadius(style.radius),
                            style.background,
                            focused ? style.focus_border : style.border);
     return bounds;
@@ -4281,7 +4281,7 @@ ui_text_area_render(TextAreaProps area)
         return changed;
     }
     border = focused ? style.focus_border : style.border;
-    radius = style.radius >= 0.0f ? style.radius : 0.12f;
+    radius = StyleLegacyBoxRadius(style.radius);
     ui_draw_box_background(area.bounds, radius, style.background, border);
 
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,

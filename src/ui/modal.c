@@ -35,7 +35,7 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon,
     props.hover_background = hovered.background;
     props.icon_color = normal.foreground;
     props.border = normal.border;
-    props.radius = 0.12f;
+    props.radius = StyleLegacyBoxRadius(-1.0f);
     if(hover != NULL)
         *hover = 0;
     return RenderIconAction(props);

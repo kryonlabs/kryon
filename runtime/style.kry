@@ -226,6 +226,11 @@ StyleStateLayerAlpha :: (pressed: bool, focused: bool, hovered: bool) -> i32 #ex
     return 0
 }
 
+StyleLegacyBoxRadius :: (requested: float) -> float #export {
+    if requested >= 0.0 { return requested }
+    return 0.12
+}
+
 StyleElevationPaintFor :: (level: i32) -> StyleElevationPaint #export {
     paint: StyleElevationPaint
     if level <= 0 { return paint }
