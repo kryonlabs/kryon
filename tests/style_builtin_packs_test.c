@@ -150,6 +150,7 @@ main(void)
         {"ParagraphText", StyleKindParagraphText()},
         {"Page", StyleKindPage()},
         {"Section", StyleKindSection()},
+        {"Reorder", StyleKindReorder()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},

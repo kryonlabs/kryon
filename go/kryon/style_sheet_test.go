@@ -505,6 +505,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"ParagraphText", StyleSheet_StyleKindParagraphText()},
 		{"Page", StyleSheet_StyleKindPage()},
 		{"Section", StyleSheet_StyleKindSection()},
+		{"Reorder", StyleSheet_StyleKindReorder()},
 	}
 	stateKinds := []struct {
 		name  string
