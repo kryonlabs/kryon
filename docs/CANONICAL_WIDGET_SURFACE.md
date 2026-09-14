@@ -754,7 +754,8 @@ and host plumbing behind the canonical names.
   placement now routes through `runtime/tab_bar.kry`; retained wrapped text
   painting now uses `runtime/paragraph.kry` default line-gap policy; retained
   `DragRange` label placement now routes through `runtime/drag.kry`; generic
-  pointer drag threshold policy now routes through `runtime/input.kry`. Continue by
+  pointer drag threshold policy now routes through `runtime/input.kry`;
+  `TextArea` scrollbar width now routes through `runtime/text_input.kry`. Continue by
   reducing raw native constants in shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,

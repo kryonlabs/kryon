@@ -4195,7 +4195,9 @@ ui_text_area_render(TextAreaProps area)
     max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
     if(max_scroll < 0)
         max_scroll = 0;
-    scrollbar_w = area.scroll_y != NULL && max_scroll > 0 ? Scale(12) : 0;
+    scrollbar_w = area.scroll_y != NULL && max_scroll > 0
+        ? TextAreaScrollbarWidthFor((float)Scale(1000) / 1000.0f)
+        : 0;
     if(mouse_inside && !captured && !ui_mod_key_down())
         scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
     reveal_cursor = focused &&

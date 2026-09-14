@@ -155,6 +155,10 @@ TextAreaMinWrapWidth :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(24.0, scale)
 }
 
+TextAreaScrollbarWidthFor :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(12.0, scale)
+}
+
 TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
     metrics: TextAreaGutterMetrics
     metrics.top_inset = TextInputScaledMetric(10.0, scale)

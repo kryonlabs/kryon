@@ -1107,6 +1107,8 @@ test_text_input_policy(void)
               TextInputDefaultPaddingY(1.0f), 8);
     check_int("text area min wrap width",
               TextAreaMinWrapWidth(1.0f), 24);
+    check_int("text area scrollbar width",
+              TextAreaScrollbarWidthFor(2.0f), 24);
     check_int("text area gutter top inset",
               gutter_metrics.top_inset, 10);
     check_int("text area gutter rows",
