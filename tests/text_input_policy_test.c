@@ -55,6 +55,7 @@ main(void)
     TextContextCommandDecision context_command;
     TextFieldPanDecision pan_decision;
     TextFocusClaimDecision focus_claim;
+    TextFocusReleaseDecision focus_release;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -149,6 +150,36 @@ main(void)
     assert(focus_claim.cancel_previous);
     assert(focus_claim.close_context);
     assert(focus_claim.clear_peer_selection);
+    focus_release = TextFocusReleaseDecisionFor(false, true, true, true,
+                                                true, true);
+    assert(!focus_release.release);
+    assert(!focus_release.cancel_self);
+    assert(!focus_release.clear_field_drag);
+    focus_release = TextFocusReleaseDecisionFor(true, false, false, false,
+                                                false, false);
+    assert(focus_release.release);
+    assert(!focus_release.cancel_self);
+    assert(!focus_release.clear_owner);
+    assert(!focus_release.clear_frame_owner);
+    assert(!focus_release.clear_active_focus);
+    assert(focus_release.close_context);
+    assert(!focus_release.clear_field_drag);
+    assert(!focus_release.clear_area_drag);
+    focus_release = TextFocusReleaseDecisionFor(true, true, true, true,
+                                                true, false);
+    assert(focus_release.release);
+    assert(focus_release.cancel_self);
+    assert(focus_release.clear_owner);
+    assert(focus_release.clear_frame_owner);
+    assert(focus_release.clear_active_focus);
+    assert(focus_release.close_context);
+    assert(focus_release.clear_field_drag);
+    assert(!focus_release.clear_area_drag);
+    focus_release = TextFocusReleaseDecisionFor(true, false, false, false,
+                                                false, true);
+    assert(focus_release.release);
+    assert(focus_release.clear_area_drag);
+    assert(!focus_release.clear_field_drag);
     composition_input = TextCompositionInputDecisionFor(true, false);
     assert(composition_input.accept_events);
     assert(!composition_input.cancel);

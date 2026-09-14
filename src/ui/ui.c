@@ -1703,24 +1703,32 @@ ClaimTextAreaFocus(int *focused)
 static void
 ReleaseTextFocus(int *focused, int focus_id)
 {
-    if(focused == NULL)
+    TextFocusReleaseDecision decision = TextFocusReleaseDecisionFor(
+        focused != NULL, g_ui_text_focus_owner == focused,
+        g_ui_text_focus_owner_this_frame == focused,
+        focus_id > 0 && g_ui_focus_active_id == focus_id,
+        g_ui_text_field_drag_owner == focused,
+        g_ui_text_area_drag_owner == focused);
+
+    if(!decision.release)
         return;
-    if(g_ui_text_focus_owner == focused) {
+    if(decision.cancel_self)
         ui_text_composition_cancel(focused);
+    if(decision.clear_owner)
         g_ui_text_focus_owner = NULL;
-    }
-    if(g_ui_text_focus_owner_this_frame == focused)
+    if(decision.clear_frame_owner)
         g_ui_text_focus_owner_this_frame = NULL;
-    if(focus_id > 0 && g_ui_focus_active_id == focus_id)
+    if(decision.clear_active_focus)
         g_ui_focus_active_id = 0;
     *focused = 0;
-    ui_text_context_close();
-    if(g_ui_text_field_drag_owner == focused) {
+    if(decision.close_context)
+        ui_text_context_close();
+    if(decision.clear_field_drag) {
         g_ui_text_field_drag_id = 0;
         g_ui_text_field_drag_owner = NULL;
         g_ui_text_field_selection.dragging = 0;
     }
-    if(g_ui_text_area_drag_owner == focused) {
+    if(decision.clear_area_drag) {
         g_ui_text_area_drag_id = 0;
         g_ui_text_area_drag_owner = NULL;
         g_ui_text_area_selection.dragging = 0;
