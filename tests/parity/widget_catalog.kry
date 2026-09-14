@@ -77,7 +77,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={Scale(24), y + Scale(18), 0, 0}, .text="two", .wrap=TextWrapNone})
         Text((TextProps){.bounds={Scale(24), y + Scale(36), 0, 0}, .text="three", .wrap=TextWrapNone})
         y += Scale(54)
-        Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = Scale(16), .width = Scale(180), .font = Text16, .line_gap = Scale(4), .align = TextAlignCenter}, Scale(24), &y)
+        Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = Scale(16), .width = Scale(180), .line_gap = Scale(4), .align = TextAlignCenter}, Scale(24), &y)
         Text((TextProps){.bounds={Scale(24), y + Scale(18), 0, 0}, .text="Selectable", .wrap=TextWrapNone, .selectable=1})
         Toast((ToastProps){.message = "Catalog toast"})
 

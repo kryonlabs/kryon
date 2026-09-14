@@ -731,8 +731,7 @@ Native `.kry` can use the same properties without a compound literal:
 Text message: {
     bounds = {24, 24, 240, 64}
     text = "This wraps and clips inside its bounds."
-    font = Text16
-    color = GetThemeText()
+    class_name = Class("message")
 }
 ```
 

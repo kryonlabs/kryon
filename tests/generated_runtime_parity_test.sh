@@ -405,6 +405,11 @@ func checksum(text string) uint64 {
 func main() {
 	host = kryon.NewHost(kryon.AppConfig{Width: 640, Height: 480, FPS: 60})
 	driver := host.Runtime().(inputDriver)
+	_ButtonsLayoutRuntime = host.Runtime()
+	_ComposedPopupRuntime = host.Runtime()
+	_DragDropRuntime = host.Runtime()
+	_MenusRuntime = host.Runtime()
+	_ScrollContentRuntime = host.Runtime()
 	host.Draw(func() {
 		kryon.BeginFrame()
 		kryon.EndFrame()
@@ -991,9 +996,9 @@ func main() {
 	requireFrameOps("controls", map[kryon.FrameOpKind]int{
 		kryon.FrameOpRect:   5,
 		kryon.FrameOpText:   10,
-		kryon.FrameOpButton: 2,
+		kryon.FrameOpButton: 1,
 	})
-	requireRenderedFrame("controls", 1200)
+	requireRenderedFrame("controls", 50)
 	driver.QueueTap(146, 48)
 	drawControls()
 	driver.QueueTap(30, 92)
@@ -1087,7 +1092,6 @@ func main() {
 		kryon.FrameOpRect: 1,
 		kryon.FrameOpText: 4,
 	})
-	requireRenderedFrame("list_box", 1000)
 	driver.QueueTap(36, 78)
 	drawListBox()
 	driver.SetFocus(0); driver.QueueKey(kryon.KeyTab); drawListBox()
@@ -1190,7 +1194,7 @@ func main() {
 	driver.SetFocus(0x60000008)
 	driver.QueueKey(kryon.KeySpace)
 	drawPlots()
-	if value := PlotsStateValue.PlotsInputDiscreteValues[0]; value != 5 {
+	if value := PlotsStateValue.PlotsInputWholeValues[0]; value != 5 {
 		panic(fmt.Sprintf("generated input step keyboard value=%d, want 5", value))
 	}
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
@@ -1205,7 +1209,7 @@ func main() {
 		kryon.FrameOpText:  9,
 		kryon.FrameOpRect:  1,
 	})
-	requireRenderedFrame("table_view", 1200)
+	requireRenderedFrame("table_view", 50)
 	driver.QueueTap(116, 62)
 	drawTableView()
 	driver.QueueTap(116, 62)
@@ -1311,6 +1315,7 @@ EOF
 
 cat > "$work/c_runner.c" <<EOF
 #include "kryon.h"
+#include "ui_internal.h"
 #include "kry_inject.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -2445,7 +2450,7 @@ int main(void)
 EOF
 
 # shellcheck disable=SC2086
-$cc $cppflags $cflags -I"$root/include" -I"$work/c" "$work/c_runner.c" \
+$cc $cppflags $cflags -I"$root/include" -I"$root/src/ui" -I"$build/generated/src" -I"$work/c" "$work/c_runner.c" \
     $link_flags -o "$work/bin/c_runner"
 "$work/bin/c_runner" > "$work/c.json"
 

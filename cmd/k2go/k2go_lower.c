@@ -1535,6 +1535,13 @@ boolean_expression(const KirModule *module, const char *source)
                    !strcmp(expr->op, "<") || !strcmp(expr->op, ">") ||
                    !strcmp(expr->op, "<=") || !strcmp(expr->op, ">=") ||
                    !strcmp(expr->op, "&&") || !strcmp(expr->op, "||")));
+        if(!result && expr->kind == KIR_EXPR_IDENT) {
+            int field = state_field_index(module, expr->name,
+                                          strlen(expr->name));
+            result = field >= 0 &&
+                     !strcmp(KirScalarType(module->state_fields[field].type),
+                             "bool");
+        }
     }
     free(parsed.exprs);
     return result;

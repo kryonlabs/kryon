@@ -162,7 +162,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y + Scale(132), 0, 0}, .text=display_lines[0], .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(150), 0, 0}, .text=display_lines[1], .wrap=TextWrapNone})
         paragraph_y: int = y + Scale(176)
-        Paragraph((ParagraphSpec){.text = "A short paragraph with an icon.", .icon_type = 1, .icon_size = Scale(16), .width = Scale(300), .font = Text16, .line_gap = Scale(4)}, x, &paragraph_y)
+        Paragraph((ParagraphSpec){.text = "A short paragraph with an icon.", .icon_type = 1, .icon_size = Scale(16), .width = Scale(300), .line_gap = Scale(4)}, x, &paragraph_y)
         Box((Rectangle){right, y + Scale(38), Scale(120), Scale(54)}, GetThemeSurface(), GetThemeButton())
         Line(right, y + Scale(110), right + Scale(120), y + Scale(110), GetThemeLink())
         Bevel(right, y + Scale(132), Scale(120), Scale(34), GetThemeSurface(), GetThemeButton())

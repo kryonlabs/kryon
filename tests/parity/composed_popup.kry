@@ -77,7 +77,7 @@ composed_context_frame :: () #ui {
             context_frames += 1
             if Button((ButtonProps){.bounds={100,70,100,26},.label="Context action",.id=27051}) {
                 context_action += 1
-                context_open = 0
+                context_open = false
             }
         }
     }
@@ -156,7 +156,7 @@ composed_popup_content_frame :: () #ui {
                 TextField((TextFieldProps){.bounds = {0,0,50,26}, .text = popup_content_text, .text_size = sizeof(popup_content_text), .cursor_position = &popup_content_cursor, .focus_id = 27002})
             }
             if popup_content_close {
-                popup_content_open = 0
+                popup_content_open = false
             }
         }
     }
@@ -177,7 +177,7 @@ composed_popup_tools_frame :: () #ui {
                 Checkbox((CheckboxProps){.bounds = {240,64,Scale(34),Scale(34)}, .id = 27022, .value = &popup_content_checked})
             }
             if popup_close {
-                popup_open = 0
+                popup_open = false
             }
         }
         if Button((ButtonProps){.bounds = {170,160,130,28}, .label = "Background", .id = 27023}) {

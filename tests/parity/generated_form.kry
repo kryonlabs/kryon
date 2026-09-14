@@ -28,8 +28,6 @@ form_frame :: () #ui {
             Text heading: {
                 bounds = {0,0,320,24}
                 text = "Account"
-                font = Text16
-                color = GetThemeText()
                 wrap = TextWrapNone
             }
             TextField((TextFieldProps){.bounds = {0,0,320,32}, .text = first, .text_size = sizeof(first), .cursor_position = &first_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 101})
