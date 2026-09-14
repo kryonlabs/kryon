@@ -458,6 +458,10 @@ main(void)
     assert(TextAreaRevealScroll(30, 10, 12, 80) == 10);
     assert(TextAreaRevealScroll(30, 90, 20, 60) == 50);
     assert(TextAreaRevealScroll(30, 40, 12, 80) == 30);
+    assert(TextOutsideClickShouldBlur(true, false, false));
+    assert(!TextOutsideClickShouldBlur(false, false, false));
+    assert(!TextOutsideClickShouldBlur(true, true, false));
+    assert(!TextOutsideClickShouldBlur(true, false, true));
     assert(TextFieldRevealCursorShouldRun(true));
     assert(!TextFieldRevealCursorShouldRun(false));
     assert(TextFieldContextShouldRegister(false));

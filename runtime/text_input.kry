@@ -441,6 +441,11 @@ TextEscapeShouldBlur :: (focused: bool, keyboard_enabled: bool,
     return focused && keyboard_enabled && escape_pressed
 }
 
+TextOutsideClickShouldBlur :: (focused: bool, context_active: bool,
+    scroll_gesture_pending: bool) -> bool #export {
+    return focused && !context_active && !scroll_gesture_pending
+}
+
 TextSelectionRangeShouldResolve :: (focused: bool, context_active: bool,
     has_selection: bool) -> bool #export {
     return (focused || context_active) && has_selection

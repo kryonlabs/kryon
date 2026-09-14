@@ -3900,7 +3900,8 @@ ui_text_area_render(TextAreaProps area)
             g_ui_text_area_last_click_x = (int)mouse_world.x;
             g_ui_text_area_last_click_y = (int)mouse_world.y;
             g_ui_text_area_last_click_time = now;
-        } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
+        } else if(TextOutsideClickShouldBlur(focused, context_active,
+                                             g_ui_scroll_gesture_pending)) {
             focused = 0;
             ReleaseTextFocus(area.focused, area.focus_id);
         }
@@ -4571,7 +4572,8 @@ ui_text_field_render_filtered(TextFieldProps field,
             g_ui_text_field_last_click_x = (int)mouse_world.x;
             g_ui_text_field_last_click_y = (int)mouse_world.y;
             g_ui_text_field_last_click_time = now;
-        } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
+        } else if(TextOutsideClickShouldBlur(focused, context_active,
+                                             g_ui_scroll_gesture_pending)) {
             focused = 0;
             ReleaseTextFocus(field.focused, field.focus_id);
         }
