@@ -1332,9 +1332,8 @@ TextHeight(const char *text, int font_size)
         i += codepoint_byte_count;
     }
 
-    if(!seen_glyph)
-        return (int)((float)TextFontBaseSize(font) * scale + 0.5f);
-    return (int)(max_bottom - min_top + 0.5f);
+    return TextHeightFor((int)((float)TextFontBaseSize(font) * scale + 0.5f),
+                         seen_glyph != 0, min_top, max_bottom);
 }
 
 int

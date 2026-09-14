@@ -110,6 +110,14 @@ TextBaselineYFor :: (box_y: i32, box_h: i32, fallback_height: i32,
     return box_y + (i32)(((float)box_h - glyph_height) * 0.5 - min_top + 0.5)
 }
 
+TextHeightFor :: (fallback_height: i32, has_glyphs: bool,
+    min_top: float, max_bottom: float) -> i32 #export {
+    if !has_glyphs {
+        return fallback_height
+    }
+    return (i32)(max_bottom - min_top + 0.5)
+}
+
 TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(6.0 * scale)
