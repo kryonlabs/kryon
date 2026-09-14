@@ -971,7 +971,8 @@ RenderCheckbox(CheckboxProps checkbox)
                                                         focused, disabled);
         CheckboxPaint paint;
         StyleFrame label_frame = ui_tk_checkbox_style_frame(
-            ButtonToneNeutral, state, disabled, checked, checkbox.class_name, 6);
+            ButtonToneNeutral, state, disabled, checked, checkbox.class_name,
+            CheckboxLabelRole());
 
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = checkbox.bounds,
@@ -983,10 +984,14 @@ RenderCheckbox(CheckboxProps checkbox)
             .scale = runtime_scale,
             .box = ui_tk_checkbox_style_frame(ButtonToneNeutral, state,
                                               disabled, checked,
-                                              checkbox.class_name, 9),
+                                              checkbox.class_name,
+                                              CheckboxBoxRoleForTone(
+                                                  ButtonToneNeutral)),
             .active = ui_tk_checkbox_style_frame(ButtonToneAccent, state,
                                                  disabled, checked,
-                                                 checkbox.class_name, 10),
+                                                 checkbox.class_name,
+                                                 CheckboxBoxRoleForTone(
+                                                     ButtonToneAccent)),
             .label = label_frame
         });
         Style label_style = ui_unpack_style(ui_style_apply_effects_frame(

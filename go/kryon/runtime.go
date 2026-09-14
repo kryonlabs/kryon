@@ -1903,9 +1903,9 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		}
 	}
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, disabled)
-	box := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, 9)
-	active := checkboxStyleFrame(ButtonToneAccent, state, disabled, checked, props.ClassName, 10)
-	label := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, 6)
+	box := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, Checkbox_CheckboxBoxRoleForTone(ButtonToneNeutral))
+	active := checkboxStyleFrame(ButtonToneAccent, state, disabled, checked, props.ClassName, Checkbox_CheckboxBoxRoleForTone(ButtonToneAccent))
+	label := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, Checkbox_CheckboxLabelRole())
 	paint := Checkbox_CheckboxPaintFor(CheckboxSpec{
 		Bounds:  props.Bounds,
 		Checked: checked,
