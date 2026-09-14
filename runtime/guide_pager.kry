@@ -26,6 +26,13 @@ GuidePagerPolicy :: struct {
     finished: bool
 }
 
+GuidePagerInput :: struct {
+    previous_requested: bool
+    next_requested: bool
+    close_requested: bool
+    keyboard_finish: bool
+}
+
 GuidePagerHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -133,4 +140,15 @@ GuidePagerPolicyFor :: (page: i32, page_count: i32, previous: bool, next: bool,
         policy.finished = true
     }
     return policy
+}
+
+GuidePagerInputFor :: (left_pressed: bool, right_pressed: bool,
+    enter_pressed: bool, back_pressed: bool, escape_pressed: bool,
+    swipe_active: bool) -> GuidePagerInput #export {
+    input: GuidePagerInput
+    input.previous_requested = left_pressed
+    input.next_requested = right_pressed || enter_pressed
+    input.close_requested = back_pressed || escape_pressed
+    input.keyboard_finish = input.next_requested && !swipe_active
+    return input
 }

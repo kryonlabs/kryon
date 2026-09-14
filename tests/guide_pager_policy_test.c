@@ -20,6 +20,7 @@ main(void)
     GuidePagerMetrics metrics;
     GuidePagerLayout layout;
     GuidePagerPolicy policy;
+    GuidePagerInput input;
 
     bar.value.fields = StylePaddingX | StyleGap | StyleIconSize |
                        StyleContentOffset;
@@ -77,5 +78,21 @@ main(void)
 
     policy = GuidePagerPolicyFor(2, 3, false, false, false, true, false);
     assert(policy.page == 2 && policy.finished);
+
+    input = GuidePagerInputFor(true, false, false, false, false, false);
+    assert(input.previous_requested && !input.next_requested &&
+           !input.close_requested && !input.keyboard_finish);
+    input = GuidePagerInputFor(false, true, false, false, false, false);
+    assert(!input.previous_requested && input.next_requested &&
+           !input.close_requested && input.keyboard_finish);
+    input = GuidePagerInputFor(false, false, true, false, false, true);
+    assert(!input.previous_requested && input.next_requested &&
+           !input.close_requested && !input.keyboard_finish);
+    input = GuidePagerInputFor(false, false, false, true, false, false);
+    assert(!input.previous_requested && !input.next_requested &&
+           input.close_requested && !input.keyboard_finish);
+    input = GuidePagerInputFor(false, false, false, false, true, false);
+    assert(!input.previous_requested && !input.next_requested &&
+           input.close_requested && !input.keyboard_finish);
     return 0;
 }

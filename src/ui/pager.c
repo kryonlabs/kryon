@@ -54,6 +54,7 @@ GuidePager(GuidePagerProps pager)
     int close_requested = 0;
     int finish_requested = 0;
     int keyboard_finish = 0;
+    GuidePagerInput keyboard_input;
 
     result.page = page;
     if(pager.swipe != NULL && page_count > 1) {
@@ -68,15 +69,19 @@ GuidePager(GuidePagerProps pager)
         next = result.swipe.direction == SwipeLeft;
     }
 
-    if(IsKeyPressed(KEY_LEFT))
+    keyboard_input = GuidePagerInputFor(IsKeyPressed(KEY_LEFT) != 0,
+                                        IsKeyPressed(KEY_RIGHT) != 0,
+                                        IsKeyPressed(KEY_ENTER) != 0,
+                                        IsKeyPressed(KEY_BACK) != 0,
+                                        IsKeyPressed(KEY_ESCAPE) != 0,
+                                        result.swipe.direction != SwipeNone);
+    if(keyboard_input.previous_requested)
         previous = 1;
-    if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER)) {
+    if(keyboard_input.next_requested)
         next = 1;
-        keyboard_finish = result.swipe.direction == SwipeNone;
-    }
-    if(IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE)) {
+    if(keyboard_input.close_requested)
         close_requested = 1;
-    }
+    keyboard_finish = keyboard_input.keyboard_finish;
 
     layout = GuidePagerLayoutFor(pager.footer_bounds, metrics);
     if(!layout.valid)
