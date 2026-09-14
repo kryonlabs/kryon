@@ -580,6 +580,7 @@ RenderTabBar(TabBarProps bar)
             DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
 
         if(can_draw && tab->closeable && close_size > 0) {
+            TabBarCloseLabelPaint close_label;
             if(close_hovered) {
                 close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
                     ButtonStateHover, is_disabled, 0, bar.class_name);
@@ -591,10 +592,11 @@ RenderTabBar(TabBarProps bar)
                     ui_tab_roundness(close_rect, close_frame.value.radius),
                     6, GetColor(close_frame.value.background));
             }
+            close_label = TabBarCloseLabelPaintFor(close_rect,
+                TextWidth("x", font), TextLineHeight(font));
             RenderText("x",
-                         (int)(close_rect.x + (close_rect.width -
-                                               (float)TextWidth("x", font)) * 0.5f),
-                         TextBaselineY("x", (int)close_rect.y, (int)close_rect.height, font),
+                         close_label.x,
+                         close_label.y,
                          font, Fade(GetColor(paint.close_color),
                                     close_style.opacity));
         }

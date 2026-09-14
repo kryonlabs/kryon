@@ -41,6 +41,7 @@ main(void)
     TabBarMetrics metrics;
     TabBarPaint paint;
     TabBarContentLayout content;
+    TabBarCloseLabelPaint close_label;
     int label_width;
     int close_width;
     int icon_width;
@@ -107,6 +108,9 @@ main(void)
     check_rect(content.icon_bounds, 34, 24, 44, 44);
     check_rect(content.text_bounds, 83, 35, 16, 22);
     check_rect(content.close_bounds, 108, 34, 24, 24);
+    close_label = TabBarCloseLabelPaintFor(content.close_bounds, 8, 12);
+    assert(close_label.x == 116);
+    assert(close_label.y == 40);
     content = TabBarContentLayoutFor((Rectangle){20, 30, 120, 32},
                                      0, 0, 1, 0, paint);
     check_rect(content.icon_bounds, 58, 24, 44, 44);

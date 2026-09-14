@@ -48,6 +48,11 @@ TabBarContentLayout :: struct {
     close_bounds: Rectangle
 }
 
+TabBarCloseLabelPaint :: struct {
+    x: i32
+    y: i32
+}
+
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     close: StyleFrame, scale: float) -> TabBarPaint #export {
     if scale <= 0.0 { scale = 1.0 }
@@ -201,6 +206,14 @@ TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: i32,
         (closeable ? close_size + close_gap : 0))
     layout.text_bounds.height = (float)content_h
     return layout
+}
+
+TabBarCloseLabelPaintFor :: (close_bounds: Rectangle, label_width: i32,
+    label_line_height: i32) -> TabBarCloseLabelPaint #export {
+    paint: TabBarCloseLabelPaint
+    paint.x = (i32)(close_bounds.x + (close_bounds.width - (float)label_width) * 0.5)
+    paint.y = (i32)(close_bounds.y + (close_bounds.height - (float)label_line_height) * 0.5)
+    return paint
 }
 
 TabBarTotalWidth :: (tab_width_sum: i32, count: i32, gap: i32) -> i32 #export {
