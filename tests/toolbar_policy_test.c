@@ -22,6 +22,10 @@ test_toolbar_action_bounds(void)
     assert(ToolbarActionRole() == 17);
     assert(ToolbarBottomBarRole() == 28);
     assert(ToolbarBottomActionRole() == 29);
+    assert(ToolbarActionIdFor(0, 1) == 0);
+    assert(ToolbarActionIdFor(7, -1) == 0);
+    assert(ToolbarActionIdFor(7, 0) == 701);
+    assert(ToolbarActionIdFor(7, 1) == 702);
     assert(first.x == 140.0f);
     assert(first.y == -12.0f);
     assert(second.x == 224.0f);

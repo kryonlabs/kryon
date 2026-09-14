@@ -5095,10 +5095,10 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 			IconType:    action.IconType,
 			IconSize:    layout.ActionIconSize,
 			IconPadding: layout.ActionIconPadding,
-			FocusID:     props.ID*100 + int32(i) + 1,
+			FocusID:     Toolbar_ToolbarActionIdFor(props.ID, int32(i)),
 			Disabled:    action.Disabled,
 			StyleKind:   StyleSheet_StyleKindToolbar(),
-			Role:        17,
+			Role:        Toolbar_ToolbarActionRole(),
 			ClassName:   props.ClassName,
 		}) {
 			result.ClickedAction = int32(i)
