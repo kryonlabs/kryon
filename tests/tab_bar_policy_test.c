@@ -44,6 +44,7 @@ main(void)
     TabBarCloseLabelPaint close_label;
     TabBarPressCleanupDecision cleanup;
     TabBarReorderDragDecision reorder_drag;
+    TabBarKeyboardInput keyboard;
     int label_width;
     int close_width;
     int icon_width;
@@ -93,6 +94,32 @@ main(void)
     assert(TabBarWrappedIndex(2, 1, 1, 3) == 0);
     assert(TabBarWrappedIndex(1, 0, 2, 3) == 0);
     assert(TabBarWrappedIndex(1, 1, 2, 0) == -1);
+    keyboard = TabBarKeyboardInputFor(1, 3, true, false, false, false,
+                                      false, false, false, false);
+    assert(keyboard.direction == -1 && keyboard.from_index == 1 &&
+           !keyboard.close_requested);
+    keyboard = TabBarKeyboardInputFor(1, 3, false, true, false, false,
+                                      false, false, false, false);
+    assert(keyboard.direction == 1 && keyboard.from_index == 1 &&
+           !keyboard.close_requested);
+    keyboard = TabBarKeyboardInputFor(1, 3, false, false, true, false,
+                                      false, false, false, false);
+    assert(keyboard.direction == -1 && keyboard.from_index == 1);
+    keyboard = TabBarKeyboardInputFor(1, 3, false, false, false, true,
+                                      false, false, false, false);
+    assert(keyboard.direction == 1 && keyboard.from_index == 1);
+    keyboard = TabBarKeyboardInputFor(2, 3, false, false, false, false,
+                                      true, false, false, false);
+    assert(keyboard.direction == 1 && keyboard.from_index == -1);
+    keyboard = TabBarKeyboardInputFor(0, 3, false, false, false, false,
+                                      false, true, false, false);
+    assert(keyboard.direction == -1 && keyboard.from_index == 0);
+    keyboard = TabBarKeyboardInputFor(0, 3, false, false, false, false,
+                                      false, false, true, false);
+    assert(keyboard.direction == 0 && keyboard.close_requested);
+    keyboard = TabBarKeyboardInputFor(0, 3, false, false, false, false,
+                                      false, false, false, true);
+    assert(keyboard.direction == 0 && keyboard.close_requested);
     assert(TabBarDoubleClickShouldRun(1, 2, 2, 10.0f, 10.30f));
     assert(!TabBarDoubleClickShouldRun(0, 2, 2, 10.0f, 10.30f));
     assert(!TabBarDoubleClickShouldRun(1, 1, 2, 10.0f, 10.30f));

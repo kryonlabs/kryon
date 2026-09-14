@@ -268,16 +268,17 @@ ui_tab_bar_keyboard_input(TabBarProps bar)
 
     SetFocusTextInputActive(0);
     selected = TabBarSelectedIndexFor(bar.selected_index, bar.count);
-    if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_UP))
-        return ui_tab_bar_next_enabled(bar, selected, -1);
-    if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_DOWN))
-        return ui_tab_bar_next_enabled(bar, selected, 1);
-    if(IsKeyPressed(KEY_HOME))
-        return ui_tab_bar_next_enabled(bar, -1, 1);
-    if(IsKeyPressed(KEY_END))
-        return ui_tab_bar_next_enabled(bar, 0, -1);
-    if((IsKeyPressed(KEY_DELETE) || IsKeyPressed(KEY_BACKSPACE)) &&
-       bar.tabs[selected].closeable && bar.closed_index != NULL)
+    TabBarKeyboardInput input = TabBarKeyboardInputFor(
+        selected, bar.count, IsKeyPressed(KEY_LEFT) != 0,
+        IsKeyPressed(KEY_RIGHT) != 0, IsKeyPressed(KEY_UP) != 0,
+        IsKeyPressed(KEY_DOWN) != 0, IsKeyPressed(KEY_HOME) != 0,
+        IsKeyPressed(KEY_END) != 0, IsKeyPressed(KEY_DELETE) != 0,
+        IsKeyPressed(KEY_BACKSPACE) != 0);
+    if(input.direction != 0)
+        return ui_tab_bar_next_enabled(bar, input.from_index,
+                                       input.direction);
+    if(input.close_requested && bar.tabs[selected].closeable &&
+       bar.closed_index != NULL)
         *bar.closed_index = selected;
     return -1;
 }

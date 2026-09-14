@@ -29,6 +29,12 @@ TabBarPressCleanupDecision :: struct {
     clear_pointer_owner: bool
 }
 
+TabBarKeyboardInput :: struct {
+    direction: i32
+    from_index: i32
+    close_requested: bool
+}
+
 TabBarPaint :: struct {
     bar: StyleFrame
     tab: StyleFrame
@@ -259,6 +265,31 @@ TabBarWrappedIndex :: (from: i32, direction: i32, step: i32,
     index: i32 = (from + direction * step) % count
     if index < 0 { index += count }
     return index
+}
+
+TabBarKeyboardInputFor :: (selected: i32, count: i32, left_pressed: bool,
+    right_pressed: bool, up_pressed: bool, down_pressed: bool,
+    home_pressed: bool, end_pressed: bool, delete_pressed: bool,
+    backspace_pressed: bool) -> TabBarKeyboardInput #export {
+    input: TabBarKeyboardInput
+    selected = TabBarSelectedIndexFor(selected, count)
+    input.from_index = selected
+    if selected < 0 {
+        return input
+    }
+    if left_pressed || up_pressed {
+        input.direction = -1
+    } else if right_pressed || down_pressed {
+        input.direction = 1
+    } else if home_pressed {
+        input.direction = 1
+        input.from_index = -1
+    } else if end_pressed {
+        input.direction = -1
+        input.from_index = 0
+    }
+    input.close_requested = delete_pressed || backspace_pressed
+    return input
 }
 
 TabBarDoubleClickShouldRun :: (same_bar: bool, last_index: i32,
