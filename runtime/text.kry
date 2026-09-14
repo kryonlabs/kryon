@@ -101,6 +101,10 @@ TextCenteredY :: (bounds: Rectangle, line_height: i32) -> i32 #export {
     return (i32)bounds.y + ((i32)bounds.height - line_height) / 2
 }
 
+TextCenteredX :: (bounds: Rectangle, text_width: i32) -> i32 #export {
+    return (i32)(bounds.x + (bounds.width - (float)text_width) * 0.5)
+}
+
 TextBaselineYFor :: (box_y: i32, box_h: i32, fallback_height: i32,
     has_glyphs: bool, min_top: float, max_bottom: float) -> i32 #export {
     if !has_glyphs {

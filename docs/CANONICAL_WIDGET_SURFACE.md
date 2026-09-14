@@ -828,8 +828,9 @@ and host plumbing behind the canonical names.
   `Link` underline placement now routes through `runtime/link.kry`; text
   selection highlight padding and minimum width now route through
   `runtime/text.kry`; shared control-text baseline sample and clip guard now
-  route through `runtime/text.kry`; text baseline vertical placement and
-  measured-height/line-height fallback policy now route through `runtime/text.kry`;
+  route through `runtime/text.kry`; text baseline vertical placement,
+  centered text placement, and measured-height/line-height fallback policy now
+  route through `runtime/text.kry`;
   shared centered row text placement now routes
   through `runtime/text.kry`; slider/toggle focus stroke width now routes
   through `runtime/focus.kry`; icon button size and padding policy now routes

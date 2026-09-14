@@ -1398,7 +1398,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
     const char *value = text != NULL ? text : "";
     float scale = (float)Scale(1000) / 1000.0f;
     int text_w = TextWidth(value, font_size);
-    int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
+    int x = TextCenteredX(rect, text_w);
     int y = ControlTextBaselineY(value, (int)rect.y, (int)rect.height,
                                  font_size);
 

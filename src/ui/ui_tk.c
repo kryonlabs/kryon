@@ -30,6 +30,7 @@
 #include "runtime/spinbox.h"
 #include "runtime/style.h"
 #include "runtime/table_view.h"
+#include "runtime/tab_bar.h"
 #include "runtime/text.h"
 #include "runtime/tree_view.h"
 #include <limits.h>
@@ -4532,12 +4533,15 @@ RenderCollapsible(CollapsibleProps section)
                    (int)header.x + metrics.text_offset,
                    ui_row_text_y(header, font), font, text);
         EndClip();
-        if(section.visible != NULL)
+        if(section.visible != NULL) {
+            TabBarCloseLabelPaint close_label =
+                TabBarCloseLabelPaintFor(close_bounds,
+                    TextWidth("x", close_font), TextLineHeight(close_font));
             RenderText("x",
-                       (int)(close_bounds.x +
-                             (close_bounds.width - TextWidth("x", close_font)) * 0.5f),
-                       ui_row_text_y(close_bounds, close_font), close_font,
-                       close_text);
+                       close_label.x,
+                       close_label.y,
+                       close_font, close_text);
+        }
         if(focused) RenderFocus(header);
     }
     return changed;
