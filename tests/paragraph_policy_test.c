@@ -7,6 +7,8 @@ main(void)
 {
     ParagraphMetrics metrics = ParagraphResolveMetrics(
         0, 16, 0, 4, 0, 0, 240, 0, 30);
+    ParagraphLayoutPolicy policy;
+
     assert(metrics.font == 16);
     assert(metrics.line_gap == 4);
     assert(metrics.icon_size == 16);
@@ -27,5 +29,23 @@ main(void)
     assert(metrics.width == 0);
     assert(metrics.height == 17);
     assert(!ParagraphCanLayout(metrics.width));
+
+    policy = ParagraphLayoutPolicyFor(7, 1, 0, 4, 2.0f);
+    assert(policy.space_width == 9);
+    assert(policy.icon_spacing == 8);
+    assert(policy.line_gap == 4);
+
+    policy = ParagraphLayoutPolicyFor(5, -4, 6, 4, 1.0f);
+    assert(policy.space_width == 0);
+    assert(policy.icon_spacing == 4);
+    assert(policy.line_gap == 6);
+    assert(ParagraphLayoutTotalHeight(3, 18, 4) == 62);
+    assert(ParagraphLayoutTotalHeight(0, 18, 4) == 0);
+    assert(ParagraphLineXFor(10, 100, 60, TextAlignStart) == 10);
+    assert(ParagraphLineXFor(10, 100, 60, TextAlignCenter) == 30);
+    assert(ParagraphLineXFor(10, 100, 60, TextAlignEnd) == 50);
+    assert(ParagraphLineXFor(10, 50, 60, TextAlignEnd) == 10);
+    assert(ParagraphNextLineY(20, 18, 4, true) == 42);
+    assert(ParagraphNextLineY(20, 18, 4, false) == 38);
     return 0;
 }

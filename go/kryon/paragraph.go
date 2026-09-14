@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import text_props
 type ParagraphMetrics struct {
 	Font     int32
 	LineGap  int32
@@ -9,6 +10,12 @@ type ParagraphMetrics struct {
 	Width    int32
 	Height   int32
 	NextY    int32
+}
+
+type ParagraphLayoutPolicy struct {
+	SpaceWidth  int32
+	IconSpacing int32
+	LineGap     int32
 }
 
 func Paragraph_ParagraphResolveMetrics(requested_font int32, default_font int32, requested_line_gap int32, default_line_gap int32, requested_icon_size int32, requested_width int32, fallback_width int32, measured_height int32, current_y int32) ParagraphMetrics {
@@ -80,4 +87,125 @@ func Paragraph_ParagraphCanLayout(width int32) bool {
 	var value_1 int32 = 0
 	var value_2 bool = value_0 > value_1
 	return value_2
+}
+
+func Paragraph_ParagraphLayoutPolicyFor(space_text_width int32, letter_spacing int32, requested_line_gap int32, default_line_gap int32, scale float32) ParagraphLayoutPolicy {
+	var policy ParagraphLayoutPolicy = ParagraphLayoutPolicy{}
+	var value_0 int32 = space_text_width
+	var value_1 int32 = 2
+	var value_2 int32 = letter_spacing
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
+	policy.SpaceWidth = value_4
+	var value_5 int32 = policy.SpaceWidth
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = 0
+		policy.SpaceWidth = value_8
+	}
+	var value_9 float32 = 4.0
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 * value_10
+	var value_12 float32 = 0.5
+	var value_13 float32 = value_11 + value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	policy.IconSpacing = value_14
+	var value_15 int32 = requested_line_gap
+	policy.LineGap = value_15
+	var value_16 int32 = policy.LineGap
+	var value_17 int32 = 0
+	var value_18 bool = value_16 <= value_17
+	if value_18 {
+		var value_19 int32 = default_line_gap
+		policy.LineGap = value_19
+	}
+	var value_20 ParagraphLayoutPolicy = policy
+	return value_20
+}
+
+func Paragraph_ParagraphLayoutTotalHeight(line_count int32, drawn_line_height int32, line_gap int32) int32 {
+	var value_0 int32 = line_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = line_count
+	var value_5 int32 = drawn_line_height
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
+	var height int32 = value_6
+	var value_7 int32 = line_count
+	var value_8 int32 = 1
+	var value_9 bool = value_7 > value_8
+	if value_9 {
+		var value_10 int32 = height
+		var value_11 int32 = line_count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		var value_14 int32 = line_gap
+		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 3))
+		height = int32(number_runtime_bits(uint64(value_10), uint64(value_15), 32, true, 1))
+	}
+	var value_16 int32 = height
+	var value_17 int32 = 0
+	var value_18 bool = value_16 < value_17
+	if value_18 {
+		var value_19 int32 = 0
+		return value_19
+	}
+	var value_20 int32 = height
+	return value_20
+}
+
+func Paragraph_ParagraphLineXFor(x int32, width int32, line_width int32, align int32) int32 {
+	var value_0 int32 = width
+	var value_1 int32 = line_width
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
+	var spare int32 = value_2
+	var value_3 int32 = spare
+	var value_4 int32 = 0
+	var value_5 bool = value_3 <= value_4
+	if value_5 {
+		var value_6 int32 = x
+		return value_6
+	}
+	var value_7 int32 = align
+	var value_8 int32 = int32(TextAlignCenter)
+	var value_9 bool = value_7 == value_8
+	if value_9 {
+		var value_10 int32 = x
+		var value_11 int32 = spare
+		var value_12 int32 = 2
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 4))
+		var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 1))
+		return value_14
+	}
+	var value_15 int32 = align
+	var value_16 int32 = int32(TextAlignEnd)
+	var value_17 bool = value_15 == value_16
+	if value_17 {
+		var value_18 int32 = x
+		var value_19 int32 = spare
+		var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 1))
+		return value_20
+	}
+	var value_21 int32 = x
+	return value_21
+}
+
+func Paragraph_ParagraphNextLineY(current_y int32, drawn_line_height int32, line_gap int32, has_next_line bool) int32 {
+	var value_0 int32 = current_y
+	var value_1 int32 = drawn_line_height
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
+	var next int32 = value_2
+	var value_3 bool = has_next_line
+	if value_3 {
+		var value_4 int32 = next
+		var value_5 int32 = line_gap
+		next = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	}
+	var value_6 int32 = next
+	return value_6
 }

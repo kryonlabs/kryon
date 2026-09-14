@@ -3,6 +3,7 @@
 #include "ui_icons.h"
 #include "ui_scaling.h"
 #include "ui_internal.h"
+#include "runtime/paragraph.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -112,8 +113,9 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
             layout->elements[i].text_width = TextWidth(layout->elements[i].text, font_size);
     }
 
-    int space_width = TextWidth(" ", font_size) + 2 * ui_get_text_letter_spacing();
-    int icon_spacing = Scale(4);
+    ParagraphLayoutPolicy policy = ParagraphLayoutPolicyFor(
+        TextWidth(" ", font_size), ui_get_text_letter_spacing(),
+        line_height, Scale(4), (float)Scale(1000) / 1000.0f);
     layout->line_count = 0;
     layout->line_breaks[0] = 0;
     int current_line_width = 0;
@@ -131,10 +133,10 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
         int spacing = 0;
         if(layout->elements[i].type == TEXT_ELEMENT_TEXT) {
             element_width = layout->elements[i].text_width;
-            spacing = (current_line_width > 0) ? space_width : 0;
+            spacing = (current_line_width > 0) ? policy.space_width : 0;
         } else {
             element_width = layout->elements[i].icon_size;
-            spacing = (current_line_width > 0) ? icon_spacing : 0;
+            spacing = (current_line_width > 0) ? policy.icon_spacing : 0;
         }
 
         if(current_line_width + spacing + element_width <= max_width) {
@@ -151,12 +153,10 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
     layout->line_count++;
     {
         int drawn_line_height = TextLineHeight(font_size);
-        layout->total_height = layout->line_count > 0
-                                   ? layout->line_count * drawn_line_height +
-                                     (layout->line_count - 1) * line_height
-                                   : 0;
+        layout->total_height = ParagraphLayoutTotalHeight(
+            layout->line_count, drawn_line_height, policy.line_gap);
     }
-    layout->line_height = line_height;  /* Store for later use in draw */
+    layout->line_height = policy.line_gap;  /* Store for later use in draw */
 }
 
 static int
@@ -271,9 +271,9 @@ DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
         return;
 
     int current_y = *y;
-    int space_width = TextWidth(" ", font_size) + 2 * ui_get_text_letter_spacing();
-    int icon_spacing = Scale(4);
-    int line_spacing = (layout->line_height > 0) ? layout->line_height : Scale(4);
+    ParagraphLayoutPolicy policy = ParagraphLayoutPolicyFor(
+        TextWidth(" ", font_size), ui_get_text_letter_spacing(),
+        layout->line_height, Scale(4), (float)Scale(1000) / 1000.0f);
     int drawn_line_height = TextLineHeight(font_size);
     int line_count = layout->line_count > 0 ? layout->line_count : 1;
 
@@ -292,24 +292,19 @@ DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
         if(end > layout->element_count)
             end = layout->element_count;
 
-        if(width > 0 && layout->line_widths != NULL) {
-            int spare = width - layout->line_widths[line];
-            if(spare > 0 && align == TextAlignCenter)
-                line_x += spare / 2;
-            else if(spare > 0 && align == TextAlignEnd)
-                line_x += spare;
-        }
+        if(width > 0 && layout->line_widths != NULL)
+            line_x = ParagraphLineXFor(x, width, layout->line_widths[line],
+                                       (TextAlign)align);
 
         if(ui_text_layout_line_text_len(layout, start, end) >= 0)
             ui_text_layout_draw_text_line(layout, start, end, line_x, current_y,
                                           font_size, color);
         else
             ui_text_layout_draw_mixed_line(layout, start, end, line_x, current_y,
-                                           font_size, color, space_width,
-                                           icon_spacing);
-        current_y += drawn_line_height;
-        if(line + 1 < line_count)
-            current_y += line_spacing;
+                                           font_size, color, policy.space_width,
+                                           policy.icon_spacing);
+        current_y = ParagraphNextLineY(current_y, drawn_line_height,
+                                       policy.line_gap, line + 1 < line_count);
     }
 
     *y = current_y;

@@ -1,5 +1,6 @@
 #module "paragraph"
 #import "drawing_props"
+#import "text_props"
 
 ParagraphMetrics :: struct {
     font: i32
@@ -8,6 +9,12 @@ ParagraphMetrics :: struct {
     width: i32
     height: i32
     next_y: i32
+}
+
+ParagraphLayoutPolicy :: struct {
+    space_width: i32
+    icon_spacing: i32
+    line_gap: i32
 }
 
 ParagraphResolveMetrics :: (requested_font: i32, default_font: i32,
@@ -32,4 +39,38 @@ ParagraphResolveMetrics :: (requested_font: i32, default_font: i32,
 
 ParagraphCanLayout :: (width: i32) -> bool #export {
     return width > 0
+}
+
+ParagraphLayoutPolicyFor :: (space_text_width: i32, letter_spacing: i32, requested_line_gap: i32, default_line_gap: i32, scale: float) -> ParagraphLayoutPolicy #export {
+    policy: ParagraphLayoutPolicy
+    policy.space_width = space_text_width + 2 * letter_spacing
+    if policy.space_width < 0 { policy.space_width = 0 }
+    policy.icon_spacing = (i32)(4.0 * scale + 0.5)
+    policy.line_gap = requested_line_gap
+    if policy.line_gap <= 0 { policy.line_gap = default_line_gap }
+    return policy
+}
+
+ParagraphLayoutTotalHeight :: (line_count: i32, drawn_line_height: i32,
+    line_gap: i32) -> i32 #export {
+    if line_count <= 0 { return 0 }
+    height: i32 = line_count * drawn_line_height
+    if line_count > 1 { height += (line_count - 1) * line_gap }
+    if height < 0 { return 0 }
+    return height
+}
+
+ParagraphLineXFor :: (x: i32, width: i32, line_width: i32, align: i32) -> i32 #export {
+    spare: i32 = width - line_width
+    if spare <= 0 { return x }
+    if align == TextAlignCenter { return x + spare / 2 }
+    if align == TextAlignEnd { return x + spare }
+    return x
+}
+
+ParagraphNextLineY :: (current_y: i32, drawn_line_height: i32,
+    line_gap: i32, has_next_line: bool) -> i32 #export {
+    next: i32 = current_y + drawn_line_height
+    if has_next_line { next += line_gap }
+    return next
 }
