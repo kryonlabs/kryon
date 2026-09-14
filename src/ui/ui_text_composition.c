@@ -66,8 +66,9 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
     }
 
     while(PollTextComposition(&event)) {
-        if(event.phase == KRY_TEXT_COMPOSITION_START ||
-           event.phase == KRY_TEXT_COMPOSITION_UPDATE) {
+        TextCompositionPhaseDecision phase =
+            TextCompositionPhaseDecisionFor((int)event.phase);
+        if(phase.store_preedit) {
             text_composition.owner = owner;
             strncpy(text_composition.text, event.text,
                     sizeof(text_composition.text) - 1);
@@ -75,7 +76,7 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
             text_composition.cursor = event.cursor;
             text_composition.selection_length = event.selection_length;
             result.presentation_changed = 1;
-        } else if(event.phase == KRY_TEXT_COMPOSITION_COMMIT) {
+        } else if(phase.commit) {
             TextSelectionRange range = TextSelectionRangeFor(
                 *anchor, *edit.cursor_position);
             TextSelectionState collapsed;
@@ -96,7 +97,7 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
             ui_text_composition_cancel(NULL);
             result.presentation_changed = 1;
             result.selection_changed = 1;
-        } else if(event.phase == KRY_TEXT_COMPOSITION_CANCEL) {
+        } else if(phase.cancel) {
             ui_text_composition_cancel(NULL);
             result.presentation_changed = 1;
         }

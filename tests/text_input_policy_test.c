@@ -46,6 +46,7 @@ main(void)
     TextInputDoubleClickDecision double_click;
     TextCompositionInputDecision composition_input;
     TextCompositionSessionDecision composition_session;
+    TextCompositionPhaseDecision composition_phase;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -137,6 +138,21 @@ main(void)
     assert(!composition_session.visible);
     composition_session = TextCompositionGetDecisionFor(true, false, true);
     assert(!composition_session.visible);
+    composition_phase = TextCompositionPhaseDecisionFor(1);
+    assert(composition_phase.store_preedit);
+    assert(!composition_phase.commit);
+    assert(!composition_phase.cancel);
+    composition_phase = TextCompositionPhaseDecisionFor(2);
+    assert(composition_phase.store_preedit);
+    composition_phase = TextCompositionPhaseDecisionFor(3);
+    assert(!composition_phase.store_preedit);
+    assert(composition_phase.commit);
+    composition_phase = TextCompositionPhaseDecisionFor(4);
+    assert(composition_phase.cancel);
+    composition_phase = TextCompositionPhaseDecisionFor(99);
+    assert(!composition_phase.store_preedit);
+    assert(!composition_phase.commit);
+    assert(!composition_phase.cancel);
     assert(TextCompositionSelectionLength(6, 2, 3) == 3);
     assert(TextCompositionSelectionLength(6, 2, 99) == 4);
     assert(TextCompositionSelectionLength(6, 9, 2) == 0);

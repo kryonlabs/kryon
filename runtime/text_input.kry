@@ -83,6 +83,12 @@ TextCompositionSessionDecision :: struct {
     cancel: bool
 }
 
+TextCompositionPhaseDecision :: struct {
+    store_preedit: bool
+    commit: bool
+    cancel: bool
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
 }
@@ -106,6 +112,14 @@ TextCompositionGetDecisionFor :: (has_owner: bool, same_owner: bool,
     has_text: bool) -> TextCompositionSessionDecision #export {
     decision: TextCompositionSessionDecision
     decision.visible = has_owner && same_owner && has_text
+    return decision
+}
+
+TextCompositionPhaseDecisionFor :: (phase: i32) -> TextCompositionPhaseDecision #export {
+    decision: TextCompositionPhaseDecision
+    decision.store_preedit = phase == 1 || phase == 2
+    decision.commit = phase == 3
+    decision.cancel = phase == 4
     return decision
 }
 
