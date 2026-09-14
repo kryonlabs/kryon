@@ -52,6 +52,26 @@ MenuItemPointerDecision :: struct {
     close_open: bool
 }
 
+MenuKeyboardInput :: struct {
+    up: bool
+    down: bool
+    home: bool
+    end: bool
+    left: bool
+    right: bool
+    enter: bool
+    space: bool
+}
+
+MenuKeyboardDecision :: struct {
+    key_handled: bool
+    move_delta: i32
+    first: bool
+    last: bool
+    close_parent: bool
+    open_or_activate: bool
+}
+
 MenuOutsideCloseDecision :: struct {
     close_open: bool
     clear_submenu: bool
@@ -120,6 +140,56 @@ MenuItemCanOpenSubmenu :: (kind: i32, disabled: bool, has_submenu: bool,
 MenuItemKeyboardActivates :: (kind: i32, disabled: bool,
     opens_submenu: bool) -> bool #export {
     return kind != MenuKindSeparator() && !disabled && !opens_submenu
+}
+
+MenuKeyboardInputFor :: (up: bool, down: bool, home: bool, end: bool,
+    left: bool, right: bool, enter: bool, space: bool) -> MenuKeyboardInput #export {
+    input: MenuKeyboardInput
+    input.up = up
+    input.down = down
+    input.home = home
+    input.end = end
+    input.left = left
+    input.right = right
+    input.enter = enter
+    input.space = space
+    return input
+}
+
+MenuKeyboardDecisionFor :: (input: MenuKeyboardInput, depth: i32,
+    selected: i32) -> MenuKeyboardDecision #export {
+    decision: MenuKeyboardDecision
+    if selected < 0 { return decision }
+    if input.up {
+        decision.key_handled = true
+        decision.move_delta = -1
+        return decision
+    }
+    if input.down {
+        decision.key_handled = true
+        decision.move_delta = 1
+        return decision
+    }
+    if input.home {
+        decision.key_handled = true
+        decision.first = true
+        return decision
+    }
+    if input.end {
+        decision.key_handled = true
+        decision.last = true
+        return decision
+    }
+    if input.left && depth > 0 {
+        decision.key_handled = true
+        decision.close_parent = true
+        return decision
+    }
+    if input.right || input.enter || input.space {
+        decision.key_handled = true
+        decision.open_or_activate = true
+    }
+    return decision
 }
 
 MenuItemPointerActivates :: (kind: i32, disabled: bool) -> bool #export {

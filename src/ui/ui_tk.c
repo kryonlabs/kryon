@@ -1213,26 +1213,30 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         selected = state->navigation.path[depth];
         if(!state->navigation.key_handled &&
            state->navigation.depth == depth && selected >= 0) {
-            if(IsKeyPressed(KEY_UP)) {
+            MenuKeyboardInput keyboard_input = MenuKeyboardInputFor(
+                IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+                IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+                IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+                (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) != 0,
+                IsKeyPressed(KEY_SPACE) != 0);
+            MenuKeyboardDecision keyboard_decision =
+                MenuKeyboardDecisionFor(keyboard_input, depth, selected);
+            if(keyboard_decision.move_delta != 0) {
                 state->navigation.path[depth] =
-                    menu_item_at(items,item_count,selected,-1);
+                    menu_item_at(items,item_count,selected,
+                                 keyboard_decision.move_delta);
                 state->navigation.key_handled = 1;
-            } else if(IsKeyPressed(KEY_DOWN)) {
-                state->navigation.path[depth] =
-                    menu_item_at(items,item_count,selected,1);
-                state->navigation.key_handled = 1;
-            } else if(IsKeyPressed(KEY_HOME)) {
+            } else if(keyboard_decision.first) {
                 state->navigation.path[depth] = menu_first_item(items,item_count);
                 state->navigation.key_handled = 1;
-            } else if(IsKeyPressed(KEY_END)) {
+            } else if(keyboard_decision.last) {
                 state->navigation.path[depth] = menu_last_item(items,item_count);
                 state->navigation.key_handled = 1;
-            } else if(IsKeyPressed(KEY_LEFT) && depth > 0) {
+            } else if(keyboard_decision.close_parent) {
                 state->navigation.depth = depth-1;
                 state->navigation.path[depth] = -1;
                 state->navigation.key_handled = 1;
-            } else if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER) ||
-                      IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
+            } else if(keyboard_decision.open_or_activate) {
                 const MenuItem *selected_item =
                     &items[state->navigation.path[depth]];
                 int opens_submenu = MenuItemCanOpenSubmenu(
