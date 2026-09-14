@@ -576,7 +576,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable navigation, and bar open/index policy are in `.kry`. |
 | `TabBar` | `.kry canonical` | Sizing, scroll, keyboard index, and reorder marker policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
-| `Router` | Native support | Navigation runtime, not a visual widget. |
+| `Router` | `.kry canonical` | Navigation runtime, not a visual widget. Routes, state, props, and result live in `runtime/router_props.kry`. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
 
 ## Overlays And Feedback
@@ -586,7 +586,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. Mode/input policy is in `.kry`; host handles pointer sampling, paint layers, clipping, and child content. |
 | `Modal` | `.kry canonical` | Layout, frame geometry, and action sizing policy are in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
-| `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
+| `Focus` | Partly `.kry-backed` | Focus ring geometry is in `.kry`; focus state, registration, and drawing remain host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
