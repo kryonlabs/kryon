@@ -652,23 +652,24 @@ RenderDragDrop(DragDropProps drag_drop)
     int valid;
 
     if(drag_drop.role == DragDropRoleSource) {
-        if(DragDropShouldClearSource(toolkit->drag_drop.active,
-           toolkit->drag_drop.source_id, drag_drop.id,
-           IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-           IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
+        DragDropSourceDecision decision;
+        hot = ui_hot(drag_drop.bounds);
+        decision = DragDropSourceDecisionFor(
+            toolkit->drag_drop.active, toolkit->drag_drop.source_id,
+            drag_drop.id, drag_drop.disabled, ContentDisabled(),
+            drag_drop.type != NULL && drag_drop.type[0] != '\0',
+            drag_drop.data_size, DRAG_DROP_DATA_MAX, drag_drop.data != NULL,
+            hot != 0, IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
+            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+        if(decision.clear_source)
             toolkit->drag_drop = (DragDropState){0};
-        valid = DragDropSourceValid(drag_drop.disabled, ContentDisabled(),
-                                    drag_drop.type != NULL &&
-                                    drag_drop.type[0] != '\0',
-                                    drag_drop.data_size, DRAG_DROP_DATA_MAX,
-                                    drag_drop.data != NULL);
+        valid = decision.valid;
         if(!valid)
             return 0;
-        hot = ui_hot(drag_drop.bounds);
         if(hot)
             MarkClickable();
-        if(DragDropSourceStarts(valid, hot,
-           IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+        if(decision.start_source) {
             toolkit->drag_drop = (DragDropState){0};
             toolkit->drag_drop.active = 1;
             toolkit->drag_drop.source_id = drag_drop.id;
@@ -679,10 +680,7 @@ RenderDragDrop(DragDropProps drag_drop)
                 memcpy(toolkit->drag_drop.data, drag_drop.data,
                        (size_t)drag_drop.data_size);
         }
-        return DragDropSourceReturnsActive(toolkit->drag_drop.active,
-            toolkit->drag_drop.source_id, drag_drop.id,
-            IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-            IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
+        return decision.returns_active;
     }
 
     hot = CheckCollisionPointRec(mouse, drag_drop.bounds) &&
@@ -704,18 +702,27 @@ RenderDragDrop(DragDropProps drag_drop)
         ui_tk_draw_style_frame(drag_drop.bounds, (Rectangle){0}, frame, hot, 0,
                                disabled, 0);
     }
-    if(!DragDropTargetAccepts(drag_drop.disabled, ContentDisabled(), matches,
-       hot, IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
-        return 0;
-    if(drag_drop.output != NULL && drag_drop.output_size > 0) {
-        int copied = DragDropCopySize(toolkit->drag_drop.data_size,
-                                      drag_drop.output_size);
-        memcpy(drag_drop.output, toolkit->drag_drop.data, (size_t)copied);
-        if(drag_drop.accepted_size != NULL)
-            *drag_drop.accepted_size = copied;
+    {
+        DragDropTargetDecision decision = DragDropTargetDecisionFor(
+            drag_drop.disabled, ContentDisabled(), toolkit->drag_drop.active,
+            drag_drop.type != NULL && drag_drop.type[0] != '\0',
+            drag_drop.type != NULL &&
+                strcmp(toolkit->drag_drop.type, drag_drop.type) == 0,
+            hot != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            toolkit->drag_drop.data_size, drag_drop.output_size);
+        if(!decision.accepted)
+            return 0;
+        if(drag_drop.output != NULL && drag_drop.output_size > 0) {
+            memcpy(drag_drop.output, toolkit->drag_drop.data,
+                   (size_t)decision.copy_size);
+            if(drag_drop.accepted_size != NULL)
+                *drag_drop.accepted_size = decision.copy_size;
+        }
+        if(decision.clear_source)
+            toolkit->drag_drop = (DragDropState){0};
+        if(decision.consume_release)
+            ConsumeRelease();
     }
-    toolkit->drag_drop = (DragDropState){0};
-    ConsumeRelease();
     return 1;
 }
 
