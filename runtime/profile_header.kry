@@ -1,0 +1,171 @@
+#module "profile_header"
+#import "drawing_props"
+
+ProfileHeaderLayout :: struct {
+    height: i32
+    top_pad: i32
+    avatar_radius: i32
+    avatar_size: i32
+    padding_x: i32
+    avatar_center_x: i32
+    avatar_center_y: i32
+    name_x: i32
+    name_y: i32
+    count_y: i32
+    max_name_width: i32
+    profile_bounds: Rectangle
+    avatar_tile_bounds: Rectangle
+    icon_bounds: Rectangle
+    username_bounds: Rectangle
+    friends_bounds: Rectangle
+    header_bounds: Rectangle
+}
+
+ProfilePickerLayout :: struct {
+    width: i32
+    gap: i32
+    content_width: i32
+    columns: i32
+    cell: i32
+    rows: i32
+    grid_width: i32
+    content_height: i32
+    height: i32
+    max_height: i32
+    icon_inset: i32
+}
+
+ProfilePickerCell :: struct {
+    row: i32
+    column: i32
+    bounds: Rectangle
+    icon_bounds: Rectangle
+}
+
+ProfileScale :: (scale: float) -> float {
+    if scale <= 0.0 { return 1.0 }
+    return scale
+}
+
+ProfilePx :: (value: float, scale: float) -> i32 {
+    return (i32)(value * ProfileScale(scale))
+}
+
+ProfileHeaderLayoutFor :: (x: i32, y: i32, width: i32,
+    requested_height: i32, requested_padding_x: i32, username_width: i32,
+    username_height: i32, scale: float) -> ProfileHeaderLayout #export {
+    layout: ProfileHeaderLayout
+    layout.height = requested_height
+    if layout.height <= 0 { layout.height = ProfilePx(138.0, scale) }
+    layout.top_pad = ProfilePx(24.0, scale)
+    layout.avatar_radius = ProfilePx(28.0, scale)
+    layout.avatar_size = layout.avatar_radius * 2
+    layout.padding_x = requested_padding_x
+    if layout.padding_x <= 0 { layout.padding_x = ProfilePx(16.0, scale) }
+    layout.avatar_center_x = x + layout.padding_x + layout.avatar_radius
+    layout.avatar_center_y = y + layout.top_pad + layout.avatar_radius
+    layout.name_x = layout.avatar_center_x + layout.avatar_radius +
+        ProfilePx(14.0, scale)
+    layout.name_y = layout.avatar_center_y - ProfilePx(14.0, scale)
+    layout.count_y = layout.avatar_center_y + layout.avatar_radius +
+        ProfilePx(8.0, scale)
+    layout.max_name_width = width - (layout.name_x - x) -
+        ProfilePx(12.0, scale)
+    if layout.max_name_width < ProfilePx(48.0, scale) {
+        layout.max_name_width = ProfilePx(48.0, scale)
+    }
+    if username_width > layout.max_name_width {
+        username_width = layout.max_name_width
+    }
+    layout.profile_bounds = (Rectangle){
+        (float)(layout.avatar_center_x - layout.avatar_radius -
+            ProfilePx(4.0, scale)),
+        (float)(layout.avatar_center_y - layout.avatar_radius -
+            ProfilePx(4.0, scale)),
+        (float)(layout.avatar_size + ProfilePx(8.0, scale)),
+        (float)(layout.avatar_size + ProfilePx(8.0, scale))}
+    layout.avatar_tile_bounds = (Rectangle){
+        (float)(layout.avatar_center_x - layout.avatar_radius -
+            ProfilePx(3.0, scale)),
+        (float)(layout.avatar_center_y - layout.avatar_radius -
+            ProfilePx(3.0, scale)),
+        (float)(layout.avatar_size + ProfilePx(6.0, scale)),
+        (float)(layout.avatar_size + ProfilePx(6.0, scale))}
+    layout.icon_bounds = (Rectangle){
+        (float)(layout.avatar_center_x - layout.avatar_radius +
+            ProfilePx(3.0, scale)),
+        (float)(layout.avatar_center_y - layout.avatar_radius +
+            ProfilePx(3.0, scale)),
+        (float)(layout.avatar_size - ProfilePx(6.0, scale)),
+        (float)(layout.avatar_size - ProfilePx(6.0, scale))}
+    layout.username_bounds = (Rectangle){
+        (float)layout.name_x,
+        (float)(layout.name_y - ProfilePx(4.0, scale)),
+        (float)username_width,
+        (float)username_height}
+    layout.friends_bounds = (Rectangle){
+        (float)x, (float)layout.count_y, (float)width,
+        (float)ProfilePx(36.0, scale)}
+    layout.header_bounds = (Rectangle){
+        (float)x, (float)y, (float)width, (float)layout.height}
+    return layout
+}
+
+ProfilePickerLayoutFor :: (view_width: i32, view_height: i32,
+    requested_max_width: i32, icon_count: i32, scale: float) -> ProfilePickerLayout #export {
+    layout: ProfilePickerLayout
+    layout.width = requested_max_width
+    if layout.width > 0 { layout.width = ProfilePx((float)layout.width, scale) }
+    if layout.width <= 0 { layout.width = ProfilePx(520.0, scale) }
+    if layout.width > view_width - ProfilePx(24.0, scale) {
+        layout.width = view_width - ProfilePx(24.0, scale)
+    }
+    if layout.width < ProfilePx(240.0, scale) {
+        layout.width = ProfilePx(240.0, scale)
+    }
+    layout.gap = ProfilePx(8.0, scale)
+    layout.content_width = layout.width - ProfilePx(36.0, scale)
+    layout.columns = (layout.content_width + layout.gap) /
+        (ProfilePx(64.0, scale) + layout.gap)
+    if layout.columns < 3 { layout.columns = 3 }
+    if layout.columns > icon_count { layout.columns = icon_count }
+    if layout.columns < 1 { layout.columns = 1 }
+    layout.cell = (layout.content_width - (layout.columns - 1) *
+        layout.gap) / layout.columns
+    if layout.cell > ProfilePx(64.0, scale) { layout.cell = ProfilePx(64.0, scale) }
+    if layout.cell < ProfilePx(52.0, scale) { layout.cell = ProfilePx(52.0, scale) }
+    layout.grid_width = layout.columns * layout.cell +
+        (layout.columns - 1) * layout.gap
+    if layout.columns > 0 {
+        layout.rows = (icon_count + layout.columns - 1) / layout.columns
+    }
+    if layout.rows > 0 {
+        layout.content_height = layout.rows * layout.cell +
+            (layout.rows - 1) * layout.gap
+    }
+    layout.height = ProfilePx(74.0, scale) + layout.content_height +
+        ProfilePx(18.0, scale)
+    layout.max_height = view_height - ProfilePx(24.0, scale)
+    if layout.height > layout.max_height { layout.height = layout.max_height }
+    layout.icon_inset = ProfilePx(6.0, scale)
+    return layout
+}
+
+ProfilePickerCellFor :: (index: i32, content_x: i32, content_y: i32,
+    content_width: i32, picker: ProfilePickerLayout) -> ProfilePickerCell #export {
+    cell: ProfilePickerCell
+    if picker.columns <= 0 { return cell }
+    cell.row = index / picker.columns
+    cell.column = index % picker.columns
+    x: i32 = content_x + (content_width - picker.grid_width) / 2 +
+        cell.column * (picker.cell + picker.gap)
+    y: i32 = content_y + cell.row * (picker.cell + picker.gap)
+    cell.bounds = (Rectangle){
+        (float)x, (float)y, (float)picker.cell, (float)picker.cell}
+    cell.icon_bounds = (Rectangle){
+        (float)(x + picker.icon_inset),
+        (float)(y + picker.icon_inset),
+        (float)(picker.cell - picker.icon_inset * 2),
+        (float)(picker.cell - picker.icon_inset * 2)}
+    return cell
+}

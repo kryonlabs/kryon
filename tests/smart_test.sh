@@ -52,6 +52,7 @@ needs_guide_pager=0
 needs_scroll=0
 needs_focus=0
 needs_terminal_pane=0
+needs_profile_header=0
 needs_surface=0
 needs_style=0
 needs_style_sheet=0
@@ -138,6 +139,13 @@ while IFS= read -r path; do
     case "$path" in
         runtime/terminal_pane.kry|src/ui/terminal_pane.c|tests/terminal_pane_policy_test.c|include/terminal_pane.h)
             needs_terminal_pane=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/profile_header.kry|src/ui/profile_header.c|tests/profile_header_policy_test.c|src/ui/ui_internal.h|include/ui_profile.h)
+            needs_profile_header=1
             interesting=1
             ;;
     esac
@@ -555,6 +563,9 @@ if [ "$needs_focus" -eq 1 ]; then
 fi
 if [ "$needs_terminal_pane" -eq 1 ]; then
     targets="$targets terminal-pane-policy-test"
+fi
+if [ "$needs_profile_header" -eq 1 ]; then
+    targets="$targets profile-header-policy-test"
 fi
 if [ "$needs_link" -eq 1 ]; then
     targets="$targets link-policy-test"

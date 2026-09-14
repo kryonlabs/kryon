@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/profile_header.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -204,19 +205,8 @@ SidebarAccountHeaderResult
 RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
 {
     SidebarAccountHeaderResult result = {0};
-    int height = header.height > 0 ? header.height : Scale(138);
-    int top_pad = Scale(24);
-    int avatar_r = Scale(28);
-    int avatar_size = avatar_r * 2;
-    int padding_x = header.content_padding_x > 0 ? header.content_padding_x
-                                                     : Scale(16);
-    int avatar_x = header.x + padding_x + avatar_r;
-    int avatar_y = header.y + top_pad + avatar_r;
-    int name_x = avatar_x + avatar_r + Scale(14);
-    int name_y = avatar_y - Scale(14);
     int name_font = GetFontSize();
     int small_font = GetSmallFontSize();
-    int count_y = avatar_y + avatar_r + Scale(8);
     int click_enabled = header.current_frame == 0 ||
                         header.current_frame != header.block_click_frame;
     const char *username = header.username != NULL ? header.username : "";
@@ -225,42 +215,21 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
         header.friends_text != NULL ? header.friends_text : "";
     int username_w = TextWidth(username, name_font) + Scale(8);
     int username_h = TextHeight(username, name_font) + Scale(8);
-    int max_name_w = header.width - (name_x - header.x) - Scale(12);
+    ProfileHeaderLayout layout;
     Texture2D pfp_icon = header.pfp_icon;
-    Rectangle pfp_bounds;
-    Rectangle username_bounds;
-    Rectangle friends_bounds;
-    Rectangle header_bounds;
     Vector2 mouse = ui_mouse_world();
     int released = click_enabled && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
-    if(max_name_w < Scale(48))
-        max_name_w = Scale(48);
-    if(username_w > max_name_w)
-        username_w = max_name_w;
+    layout = ProfileHeaderLayoutFor(header.x, header.y, header.width,
+                                    header.height, header.content_padding_x,
+                                    username_w, username_h,
+                                    (float)GetScale());
     if(pfp_icon.id == 0 && header.icons != NULL &&
        header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT)
         pfp_icon = header.icons[header.pfp_icon_type];
 
-    pfp_bounds.x = (float)(avatar_x - avatar_r - Scale(4));
-    pfp_bounds.y = (float)(avatar_y - avatar_r - Scale(4));
-    pfp_bounds.width = (float)(avatar_size + Scale(8));
-    pfp_bounds.height = (float)(avatar_size + Scale(8));
-    username_bounds.x = (float)name_x;
-    username_bounds.y = (float)(name_y - Scale(4));
-    username_bounds.width = (float)username_w;
-    username_bounds.height = (float)username_h;
-    friends_bounds.x = (float)header.x;
-    friends_bounds.y = (float)count_y;
-    friends_bounds.width = (float)header.width;
-    friends_bounds.height = (float)Scale(36);
-    result.height = height;
-
-    header_bounds.x = (float)header.x;
-    header_bounds.y = (float)header.y;
-    header_bounds.width = (float)header.width;
-    header_bounds.height = (float)height;
+    result.height = layout.height;
     Style surface_style = ui_surface_style();
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
@@ -268,44 +237,39 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     Style hover_style = ui_resolve_button_style_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft},
-        ButtonStateHover, StyleKindSelectable());
+                                                    ButtonStateHover, StyleKindSelectable());
     Color muted_text = text_style.foreground;
     muted_text.a = (unsigned char)(muted_text.a * 0.72f);
-    ui_draw_material(header_bounds, (Rectangle){0}, surface_style.background,
+    ui_draw_material(layout.header_bounds, (Rectangle){0}, surface_style.background,
                      surface_style.border, surface_style.border,
                      surface_style.radius, surface_style.border_width,
                      0.0f, 0.0f, 0, surface_style.focus, 0.0f,
                      surface_style.opacity, ui_style_fill(surface_style),
                      surface_style.material);
-    if(CheckCollisionPointRec(mouse, pfp_bounds) && !InputCapturesClick(mouse)) {
+    if(CheckCollisionPointRec(mouse, layout.profile_bounds) &&
+       !InputCapturesClick(mouse)) {
         MarkClickable();
         if(released) {
             ConsumeRelease();
             result.pfp_clicked = 1;
         }
     }
-    ui_draw_avatar_tile((Rectangle){(float)(avatar_x - avatar_r - Scale(3)),
-                                    (float)(avatar_y - avatar_r - Scale(3)),
-                                    (float)(avatar_size + Scale(6)),
-                                    (float)(avatar_size + Scale(6))},
+    ui_draw_avatar_tile(layout.avatar_tile_bounds,
                         surface_style.background, surface_style.border);
     if(header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT) {
-        Rectangle icon_bounds;
-
-        icon_bounds.x = (float)(avatar_x - avatar_r + Scale(3));
-        icon_bounds.y = (float)(avatar_y - avatar_r + Scale(3));
-        icon_bounds.width = (float)(avatar_size - Scale(6));
-        icon_bounds.height = (float)(avatar_size - Scale(6));
-        DrawProfileImageIcon(header.pfp_icon_type, icon_bounds,
+        DrawProfileImageIcon(header.pfp_icon_type, layout.icon_bounds,
                                ui_profile_images_dark_mode());
     } else if(pfp_icon.id != 0)
-        ui_draw_pfp_texture_in_circle(pfp_icon, avatar_x, avatar_y, avatar_r);
+        ui_draw_pfp_texture_in_circle(pfp_icon, layout.avatar_center_x,
+                                      layout.avatar_center_y,
+                                      layout.avatar_radius);
     else
-        ui_draw_pfp_fallback(avatar_x - avatar_r, avatar_y - avatar_r,
-                             avatar_size, text_style.foreground);
+        ui_draw_pfp_fallback(layout.avatar_center_x - layout.avatar_radius,
+                             layout.avatar_center_y - layout.avatar_radius,
+                             layout.avatar_size, text_style.foreground);
 
-    if(CheckCollisionPointRec(mouse, username_bounds) &&
+    if(CheckCollisionPointRec(mouse, layout.username_bounds) &&
        !InputCapturesClick(mouse)) {
         MarkClickable();
         if(released) {
@@ -313,15 +277,15 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
             result.username_clicked = 1;
         }
     }
-    DrawFittedTextInRect(username, username_bounds, name_font,
+    DrawFittedTextInRect(username, layout.username_bounds, name_font,
                            Text8, text_style.foreground);
     if(subtitle[0] != '\0')
-        RenderText(subtitle, name_x, name_y + Scale(22), small_font,
-                   muted_text);
+        RenderText(subtitle, layout.name_x,
+                   layout.name_y + Scale(22), small_font, muted_text);
 
-    if(CheckCollisionPointRec(mouse, friends_bounds) &&
+    if(CheckCollisionPointRec(mouse, layout.friends_bounds) &&
        !InputCapturesClick(mouse)) {
-        ui_draw_material(friends_bounds, header_bounds,
+        ui_draw_material(layout.friends_bounds, layout.header_bounds,
                          hover_style.background, hover_style.border,
                          hover_style.border, hover_style.radius,
                          hover_style.border_width, 1.0f, 0.0f, 0,
@@ -335,7 +299,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     }
     if(friends_text[0] != '\0')
         RenderText(friends_text, header.x + Scale(12),
-                   count_y + Scale(8), small_font, text_style.foreground);
+                   layout.count_y + Scale(8), small_font,
+                   text_style.foreground);
 
     return result;
 }
@@ -346,17 +311,7 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
     ProfileImagePickerResult result = {0};
     static int default_scroll_offset = 0;
     int count = GetProfileImageIconCount();
-    int width = modal.max_width > 0 ? Scale(modal.max_width) : Scale(520);
-    int gap = Scale(8);
-    int columns;
-    int content_w;
-    int cell;
-    int rows;
-    int grid_w;
-    int content_h;
-    int height;
-    int max_height;
-    int icon_inset;
+    ProfilePickerLayout layout;
     int *scroll_offset = modal.scroll_offset != NULL ? modal.scroll_offset
                                                      : &default_scroll_offset;
     ScrollArea scroll_area;
@@ -368,33 +323,11 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
     Vector2 mouse;
     int i;
 
-    if(width > ui_view_width - Scale(24))
-        width = ui_view_width - Scale(24);
-    if(width < Scale(240))
-        width = Scale(240);
+    layout = ProfilePickerLayoutFor(ui_view_width, ui_view_height,
+                                    modal.max_width, count,
+                                    (float)GetScale());
 
-    content_w = width - Scale(36);
-    columns = (content_w + gap) / (Scale(64) + gap);
-    if(columns < 3)
-        columns = 3;
-    if(columns > count)
-        columns = count;
-    if(columns < 1)
-        columns = 1;
-    cell = (content_w - (columns - 1) * gap) / columns;
-    if(cell > Scale(64))
-        cell = Scale(64);
-    if(cell < Scale(52))
-        cell = Scale(52);
-    grid_w = columns * cell + (columns - 1) * gap;
-    rows = columns > 0 ? (count + columns - 1) / columns : 0;
-    content_h = rows > 0 ? rows * cell + (rows - 1) * gap : 0;
-    height = Scale(74) + content_h + Scale(18);
-    max_height = ui_view_height - Scale(24);
-    if(height > max_height)
-        height = max_height;
-
-    frame = RenderModalFrame(width, height,
+    frame = RenderModalFrame(layout.width, layout.height,
                              modal.title != NULL ? modal.title : "Profile image",
                              kryon_zero_texture2d, modal.close_icon);
     if(frame.right_clicked) {
@@ -407,25 +340,22 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
     scroll_area.bounds.y = (float)frame.content_y;
     scroll_area.bounds.width = (float)frame.content_w;
     scroll_area.bounds.height = (float)frame.content_h;
-    scroll_area.content_height = content_h;
+    scroll_area.content_height = layout.content_height;
     scroll_area.content_x = frame.content_x;
     scroll_area.content_width = frame.content_w;
     scroll_area.scroll_offset = scroll_offset;
-    scroll_area.wheel_step = cell + gap;
+    scroll_area.wheel_step = layout.cell + layout.gap;
     scroll_view = BeginScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
-    icon_inset = Scale(6);
     for(i = 0; i < count; i++) {
-        int row = i / columns;
-        int col = i % columns;
-        int x = scroll_view.content_x + (scroll_view.content_w - grid_w) / 2 +
-                col * (cell + gap);
-        int y = scroll_view.content_y + row * (cell + gap);
+        ProfilePickerCell cell =
+            ProfilePickerCellFor(i, scroll_view.content_x,
+                                 scroll_view.content_y,
+                                 scroll_view.content_w, layout);
         IconType type = GetProfileImageIconType(i);
         Texture2D icon = {0};
-        Rectangle bounds = {(float)x, (float)y, (float)cell, (float)cell};
-        int hovered = CheckCollisionPointRec(mouse, bounds) &&
+        int hovered = CheckCollisionPointRec(mouse, cell.bounds) &&
                       !InputCapturesClick(mouse);
         int active = type == selected;
         ButtonState state = active ? ButtonStateSelected
@@ -440,28 +370,25 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                                         ButtonStateNormal,
                                                         StyleKindText());
 
-        ui_draw_avatar_tile(bounds,
+        ui_draw_avatar_tile(cell.bounds,
                             cell_style.background, cell_style.border);
         if(active)
-            DrawRectangleLinesEx(bounds, Scale(2), cell_style.border);
+            DrawRectangleLinesEx(cell.bounds, Scale(2), cell_style.border);
         if(modal.icons != NULL && type > ICON_NONE &&
            type < ICON_COUNT)
             icon = modal.icons[type];
         if(type > ICON_NONE && type < ICON_COUNT) {
-            Rectangle icon_bounds;
-
-            icon_bounds.x = (float)(x + icon_inset);
-            icon_bounds.y = (float)(y + icon_inset);
-            icon_bounds.width = (float)(cell - icon_inset * 2);
-            icon_bounds.height = (float)(cell - icon_inset * 2);
-            DrawProfileImageIcon(type, icon_bounds,
+            DrawProfileImageIcon(type, cell.icon_bounds,
                                    ui_profile_images_dark_mode());
         } else if(icon.id != 0)
-            ui_draw_pfp_texture(icon, x + icon_inset, y + icon_inset,
-                                cell - icon_inset * 2);
+            ui_draw_pfp_texture(icon, (int)cell.icon_bounds.x,
+                                (int)cell.icon_bounds.y,
+                                (int)cell.icon_bounds.width);
         else
-            ui_draw_pfp_fallback(x + icon_inset, y + icon_inset,
-                                 cell - icon_inset * 2, text_style.foreground);
+            ui_draw_pfp_fallback((int)cell.icon_bounds.x,
+                                 (int)cell.icon_bounds.y,
+                                 (int)cell.icon_bounds.width,
+                                 text_style.foreground);
 
         if(hovered) {
             MarkClickable();
