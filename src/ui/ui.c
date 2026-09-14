@@ -1294,6 +1294,7 @@ ui_text_draw_context_overlay(void)
                    g_ui_text_context_text[0] != '\0';
     int has_selection = g_ui_text_context_selection_end >
                         g_ui_text_context_selection_start;
+    TextContextMenuState menu_state;
     int command;
     MenuProps menu;
     TextEdit edit;
@@ -1310,24 +1311,26 @@ ui_text_draw_context_overlay(void)
         return 0;
     }
 
+    menu_state = TextContextMenuStateFor(
+        has_selection,
+        g_ui_text_context_copy_all_when_empty != 0,
+        has_text != 0,
+        g_ui_text_context_read_only != 0,
+        ui_clipboard_has_text() != 0);
     items[0] = (MenuItem){MenuCommand, "Cut", "Ctrl+X",
                             TEXT_CONTEXT_CUT,
-                            !(has_selection ||
-                              (g_ui_text_context_copy_all_when_empty && has_text)) ||
-                            g_ui_text_context_read_only,
+                            !menu_state.cut_enabled,
                             0, NULL, 0};
     items[1] = (MenuItem){MenuCommand, "Copy", "Ctrl+C",
                             TEXT_CONTEXT_COPY,
-                            !(has_selection ||
-                              (g_ui_text_context_copy_all_when_empty && has_text)),
+                            !menu_state.copy_enabled,
                             0, NULL, 0};
     items[2] = (MenuItem){MenuCommand, "Paste", "Ctrl+V",
                             TEXT_CONTEXT_PASTE,
-                            !ui_clipboard_has_text() ||
-                            g_ui_text_context_read_only, 0, NULL, 0};
+                            !menu_state.paste_enabled, 0, NULL, 0};
     items[3] = (MenuItem){MenuCommand, "Select All", "Ctrl+A",
                             TEXT_CONTEXT_SELECT_ALL,
-                            !has_text, 0, NULL, 0};
+                            !menu_state.select_all_enabled, 0, NULL, 0};
 
     memset(&menu, 0, sizeof(menu));
     menu.id = 8500 + g_ui_text_context_kind;

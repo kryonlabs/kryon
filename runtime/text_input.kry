@@ -68,6 +68,13 @@ TextInsertDecision :: struct {
     stop: bool
 }
 
+TextContextMenuState :: struct {
+    cut_enabled: bool
+    copy_enabled: bool
+    paste_enabled: bool
+    select_all_enabled: bool
+}
+
 TextInputDoubleClickDecision :: struct {
     double_click: bool
 }
@@ -290,6 +297,19 @@ TextSelectionOwnerMatches :: (has_owner: bool, same_owner: bool,
         return true
     }
     return requested_id > 0 && selection_id == requested_id
+}
+
+TextContextMenuStateFor :: (has_selection: bool,
+    copy_all_when_empty: bool, has_text: bool, read_only: bool,
+    clipboard_has_text: bool) -> TextContextMenuState #export {
+    state: TextContextMenuState
+    can_copy_content: bool = has_selection ||
+        (copy_all_when_empty && has_text)
+    state.cut_enabled = can_copy_content && !read_only
+    state.copy_enabled = can_copy_content
+    state.paste_enabled = clipboard_has_text && !read_only
+    state.select_all_enabled = has_text
+    return state
 }
 
 TextNavNone :: () -> i32 #export {

@@ -51,6 +51,7 @@ main(void)
     TextCompositionViewRange composition_range;
     TextCompositionPaintSpan composition_span;
     TextSelectionPaintSpan selection_span;
+    TextContextMenuState context_menu;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -290,6 +291,26 @@ main(void)
     assert(TextSelectionOwnerMatches(false, false, 9, 9));
     assert(!TextSelectionOwnerMatches(false, false, 9, 0));
     assert(!TextSelectionOwnerMatches(false, false, 9, 8));
+    context_menu = TextContextMenuStateFor(true, false, true, false, true);
+    assert(context_menu.cut_enabled);
+    assert(context_menu.copy_enabled);
+    assert(context_menu.paste_enabled);
+    assert(context_menu.select_all_enabled);
+    context_menu = TextContextMenuStateFor(false, true, true, false, false);
+    assert(context_menu.cut_enabled);
+    assert(context_menu.copy_enabled);
+    assert(!context_menu.paste_enabled);
+    assert(context_menu.select_all_enabled);
+    context_menu = TextContextMenuStateFor(true, false, true, true, true);
+    assert(!context_menu.cut_enabled);
+    assert(context_menu.copy_enabled);
+    assert(!context_menu.paste_enabled);
+    assert(context_menu.select_all_enabled);
+    context_menu = TextContextMenuStateFor(false, false, false, false, true);
+    assert(!context_menu.cut_enabled);
+    assert(!context_menu.copy_enabled);
+    assert(context_menu.paste_enabled);
+    assert(!context_menu.select_all_enabled);
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);
