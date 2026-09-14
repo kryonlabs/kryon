@@ -1692,7 +1692,7 @@ Button.panel { background: button; foreground: ink; border: rule; radius: radius
 				op.FontSize != 20 || op.Opacity != 0.7 {
 				t.Fatalf("spinbox value class op = %+v", op)
 			}
-		case op.Kind == FrameOpButton && op.ID == 602*10+1:
+		case op.Kind == FrameOpButton && op.ID == Spinbox_SpinboxDecrementIdFor(602):
 			sawSpinButton = true
 			style := unpackStyle(op.Button.Appearance.Value)
 			if style.Background != (Color{R: 0x36, G: 0x4a, B: 0x63, A: 0xff}) ||
