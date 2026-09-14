@@ -11,6 +11,7 @@
 #include "runtime/surface.h"
 #include "runtime/text.h"
 #include "runtime/text_input.h"
+#include "runtime/input.h"
 #include "runtime/grid.h"
 #include "ui_image_internal.h"
 #include "ui_clip_internal.h"
@@ -1779,7 +1780,7 @@ DrawTree(void)
             drag.label = node->owned_text;
             drag.format = node->owned_text != NULL
                 ? node->owned_text + node->data.drag.format_offset : NULL;
-            if(drag.kind == NumericInt) {
+            if(InputKindIsInt(drag.kind)) {
                 ui_paint_drag_discrete((DragDiscreteProps){
                     drag.bounds, drag.id, drag.class_name, drag.label,
                     drag.int_values,
@@ -1806,7 +1807,7 @@ DrawTree(void)
                     slider.bounds, slider.id, slider.label, slider.float_value,
                     (float)slider.min, (float)slider.max, slider.format,
                     slider.disabled, slider.class_name});
-            } else if(slider.kind == NumericInt) {
+            } else if(InputKindIsInt(slider.kind)) {
                 ui_paint_slider_discrete((SliderDiscreteProps){
                     slider.bounds, slider.id, slider.label, slider.int_values,
                     slider.value_count, (int)slider.min, (int)slider.max,
@@ -2871,7 +2872,8 @@ ui_tree_drag_continuous(DragContinuousProps drag)
             .speed = drag.speed, .min = drag.min, .max = drag.max,
             .format = NULL, .disabled = drag.disabled};
         node->owned_text = ui_tree_numeric_text(drag.label,
-            drag.format != NULL ? drag.format : "%.3f",
+            drag.format != NULL ? drag.format :
+                InputDefaultFormat(NumericFloat),
             &node->data.drag.format_offset);
     }
     int changed = ui_update_drag_continuous(drag);
@@ -2895,7 +2897,7 @@ ui_tree_drag_discrete(DragDiscreteProps drag)
             .speed = drag.speed, .min = drag.min, .max = drag.max,
             .format = NULL, .disabled = drag.disabled};
         node->owned_text = ui_tree_numeric_text(drag.label,
-            drag.format != NULL ? drag.format : "%d",
+            drag.format != NULL ? drag.format : InputDefaultFormat(NumericInt),
             &node->data.drag.format_offset);
     }
     int changed = ui_update_drag_discrete(drag);
@@ -2981,7 +2983,7 @@ Drag(DragProps drag)
     int count = drag.value_count;
 
     if(drag.mode == DragRange) {
-        if(drag.kind == NumericInt) {
+        if(InputKindIsInt(drag.kind)) {
             return ui_tree_drag_discrete_range((DragDiscreteRangeProps){
                 drag.bounds, drag.id, drag.class_name, drag.label,
                 drag.int_min, drag.int_max,
@@ -2995,7 +2997,7 @@ Drag(DragProps drag)
             drag.format_max, drag.disabled});
     }
     if(count <= 0) count = 1;
-    if(drag.kind == NumericInt) {
+    if(InputKindIsInt(drag.kind)) {
         return ui_tree_drag_discrete((DragDiscreteProps){
             drag.bounds, drag.id, drag.class_name, drag.label,
             drag.int_values, count,
@@ -3040,7 +3042,8 @@ ui_tree_scalar_slider(SliderContinuousProps slider, int vertical)
             .disabled = slider.disabled, .vertical = vertical,
             .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format : "%.3f",
+            slider.format != NULL ? slider.format :
+                InputDefaultFormat(NumericFloat),
             &node->data.slider.format_offset);
     }
     int changed = ui_update_slider_continuous(slider,vertical);
@@ -3065,7 +3068,7 @@ ui_tree_whole_slider(SliderDiscreteProps slider, int vertical)
             .disabled = slider.disabled, .vertical = vertical,
             .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format : "%d",
+            slider.format != NULL ? slider.format : InputDefaultFormat(NumericInt),
             &node->data.slider.format_offset);
     }
     int changed = ui_update_slider_discrete(slider,vertical);
@@ -3114,7 +3117,8 @@ ui_tree_slider_angle(SliderAngleProps slider)
             .disabled = slider.disabled, .angle = 1,
             .class_name = slider.class_name};
         node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format : "%.3f",
+            slider.format != NULL ? slider.format :
+                InputDefaultFormat(NumericFloat),
             &node->data.slider.format_offset);
     }
     int changed = ui_update_slider_angle(slider);
@@ -3137,7 +3141,7 @@ Slider(SliderProps slider)
             (float)slider.min, (float)slider.max, slider.format,
             slider.disabled, slider.class_name});
     }
-    if(slider.kind == NumericInt) {
+    if(InputKindIsInt(slider.kind)) {
         SliderDiscreteProps props = {slider.bounds, slider.id, slider.label,
                                 slider.int_values, count, (int)slider.min,
                                 (int)slider.max, slider.format,
@@ -3197,13 +3201,13 @@ Input(InputProps input)
     int count = input.value_count;
 
     if(count <= 0) count = 1;
-    if(input.kind == NumericInt) {
+    if(InputKindIsInt(input.kind)) {
         return ui_tree_input_whole((InputDiscreteProps){
             input.bounds, input.id, input.label, input.int_values, count,
             (int)input.step, (int)input.step_fast, input.format,
             input.disabled});
     }
-    if(input.kind == NumericDouble) {
+    if(InputKindIsDouble(input.kind)) {
         return ui_tree_input_precise((InputPreciseProps){
             input.bounds, input.id, input.label, input.double_values, count,
             input.step, input.step_fast, input.format, input.disabled});
