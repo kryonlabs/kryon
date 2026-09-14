@@ -9,7 +9,9 @@
 #include "runtime/color_picker.h"
 #include "runtime/dropdown.h"
 #include "runtime/drag.h"
+#include "runtime/focus.h"
 #include "runtime/input.h"
+#include "runtime/menu.h"
 #include "runtime/fieldset.h"
 #include "runtime/list_box_multi.h"
 #include "runtime/popup_policy.h"
@@ -21,6 +23,7 @@
 #include "runtime/slider.h"
 #include "runtime/spinbox.h"
 #include "runtime/tab_bar.h"
+#include "runtime/table_view.h"
 #include "runtime/text_input.h"
 #include "runtime/toolbar.h"
 #include "runtime/toggle.h"
@@ -1007,6 +1010,88 @@ test_list_box_layout_policy(void)
               row_decision.select ? 1 : 0, 0);
     row_decision = ListBoxRowDecisionFor(1, 1, 1, 4, 4);
     check_int("list row unchanged", row_decision.changed ? 1 : 0, 0);
+}
+
+static void
+test_keyboard_intent_policy(void)
+{
+    check_int("list key none", ListBoxKeyFor(0, 0, 0, 0), 0);
+    check_int("list key home", ListBoxKeyFor(1, 0, 0, 0), 1);
+    check_int("list key end", ListBoxKeyFor(0, 1, 0, 0), 2);
+    check_int("list key up", ListBoxKeyFor(0, 0, 1, 0), 3);
+    check_int("list key down", ListBoxKeyFor(0, 0, 0, 1), 4);
+    check_int("list key home priority", ListBoxKeyFor(1, 1, 1, 1), 1);
+
+    check_int("slider vertical up",
+              SliderKeyboardDirectionFor(1, 1, 0, 0, 0), 1);
+    check_int("slider vertical down",
+              SliderKeyboardDirectionFor(1, 0, 1, 0, 0), -1);
+    check_int("slider vertical ignores horizontal",
+              SliderKeyboardDirectionFor(1, 0, 0, 1, 1), 0);
+    check_int("slider horizontal right",
+              SliderKeyboardDirectionFor(0, 0, 0, 1, 0), 1);
+    check_int("slider horizontal left",
+              SliderKeyboardDirectionFor(0, 0, 0, 0, 1), -1);
+    check_int("slider none", SliderKeyboardDirectionFor(0, 0, 0, 0, 0), 0);
+    check_int("slider keyboard runs",
+              SliderKeyboardShouldRun(1, 1, 0) ? 1 : 0, 1);
+    check_int("slider keyboard inactive focus",
+              SliderKeyboardShouldRun(0, 1, 0) ? 1 : 0, 0);
+    check_int("slider keyboard disabled",
+              SliderKeyboardShouldRun(1, 0, 0) ? 1 : 0, 0);
+    check_int("slider keyboard popup captured",
+              SliderKeyboardShouldRun(1, 1, 1) ? 1 : 0, 0);
+
+    check_int("drag right", DragKeyboardDirectionFor(1, 0), 1);
+    check_int("drag left", DragKeyboardDirectionFor(0, 1), -1);
+    check_int("drag none", DragKeyboardDirectionFor(0, 0), 0);
+    check_int("drag keyboard runs",
+              DragKeyboardShouldRun(1, 1, 0) ? 1 : 0, 1);
+    check_int("drag keyboard popup captured",
+              DragKeyboardShouldRun(1, 1, 1) ? 1 : 0, 0);
+
+    check_int("focus tab forward", FocusTabDirectionFor(1, 0), 1);
+    check_int("focus tab backward", FocusTabDirectionFor(1, 1), -1);
+    check_int("focus tab none", FocusTabDirectionFor(0, 0), 0);
+    check_int("focus tab shift alone", FocusTabDirectionFor(0, 1), 0);
+
+    check_int("menu accelerator fires",
+              MenuAcceleratorShouldFire(1, 0, 0, 0, 0, 0, 0, 1) ? 1 : 0, 1);
+    check_int("menu accelerator keyboard disabled",
+              MenuAcceleratorShouldFire(0, 0, 0, 0, 0, 0, 0, 1) ? 1 : 0, 0);
+    check_int("menu accelerator missing ctrl",
+              MenuAcceleratorShouldFire(1, 1, 0, 0, 0, 0, 0, 1) ? 1 : 0, 0);
+    check_int("menu accelerator missing shift",
+              MenuAcceleratorShouldFire(1, 0, 0, 1, 0, 0, 0, 1) ? 1 : 0, 0);
+    check_int("menu accelerator missing alt",
+              MenuAcceleratorShouldFire(1, 0, 0, 0, 0, 1, 0, 1) ? 1 : 0, 0);
+    check_int("menu accelerator no key",
+              MenuAcceleratorShouldFire(1, 0, 0, 0, 0, 0, 0, 0) ? 1 : 0, 0);
+    check_int("menu accelerator all modifiers",
+              MenuAcceleratorShouldFire(1, 1, 1, 1, 1, 1, 1, 1) ? 1 : 0, 1);
+
+    TableViewKeyboardIntent table =
+        TableViewKeyboardIntentFor(1, 0, 0, 0, 0, 0, 0, 0, 0);
+    check_int("table up row", table.move_row, -1);
+    table = TableViewKeyboardIntentFor(0, 1, 0, 0, 0, 0, 0, 0, 0);
+    check_int("table down row", table.move_row, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 1, 0, 0, 0, 0, 0, 0);
+    check_int("table left column", table.move_column, -1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 1, 0, 0, 0, 0, 0);
+    check_int("table right column", table.move_column, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 0, 1, 1, 0, 0, 0);
+    check_int("table tab", table.tab ? 1 : 0, 1);
+    check_int("table tab backwards", table.tab_backwards ? 1 : 0, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 0, 0, 0, 1, 0, 0);
+    check_int("table enter", table.activate ? 1 : 0, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 0, 0, 0, 0, 1, 0);
+    check_int("table f2", table.activate ? 1 : 0, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 0, 0, 0, 0, 0, 1);
+    check_int("table escape", table.clear_selection ? 1 : 0, 1);
+    table = TableViewKeyboardIntentFor(0, 0, 0, 0, 0, 0, 0, 0, 0);
+    check_int("table idle row", table.move_row, 0);
+    check_int("table idle column", table.move_column, 0);
+    check_int("table idle activate", table.activate ? 1 : 0, 0);
 }
 
 static void
@@ -5680,6 +5765,7 @@ main(void)
     test_toggle_paint_policy();
     test_dropdown_popup_policy();
     test_list_box_layout_policy();
+    test_keyboard_intent_policy();
     test_multi_select_policy();
     test_tab_bar_policy();
     test_popup_policy();
