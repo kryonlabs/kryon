@@ -728,17 +728,13 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     DrawRectangleRounded(bounds, radius, 12, background);
     if(border.a != 0)
         DrawRectangleRoundedLines(bounds, radius, 12, border);
-    if(tokens.shine_alpha > 0 && radius < 0.45f) {
+    StyleShinePaint shine_paint =
+        StyleShinePaintFor(bounds, radius, tokens.shine_alpha,
+                           (float)Scale(1000) / 1000.0f);
+    if(shine_paint.visible) {
         Color shine = WHITE;
         shine.a = tokens.shine_alpha;
-        int inset = Scale(2);
-        int shine_h = Scale(3);
-        if(bounds.width > (float)(inset * 2) && bounds.height > (float)(shine_h + inset))
-            DrawRectangleRounded((Rectangle){bounds.x + (float)inset,
-                                             bounds.y + Scale(1),
-                                             bounds.width - (float)(inset * 2),
-                                             (float)shine_h},
-                                 radius, 8, shine);
+        DrawRectangleRounded(shine_paint.bounds, radius, 8, shine);
     }
 }
 

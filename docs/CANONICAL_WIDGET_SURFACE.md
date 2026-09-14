@@ -763,7 +763,8 @@ and host plumbing behind the canonical names.
   through `runtime/focus.kry`; icon button size and padding policy now routes
   through `runtime/icon.kry`; desktop layout breakpoint policy now routes
   through `runtime/layout.kry`; default focus outline bounds now route through
-  `runtime/focus.kry`. Continue by reducing raw native constants in shared
+  `runtime/focus.kry`; default control shine bounds now route through
+  `runtime/style.kry`. Continue by reducing raw native constants in shared
   immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,

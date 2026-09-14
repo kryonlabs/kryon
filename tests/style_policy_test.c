@@ -62,6 +62,14 @@ int main(void)
     assert(content.x == 30 && content.y == 40 && content.width == 0 && content.height == 0);
     content = ContentBounds(20, 10, -1, -2);
     assert(content.x == 0 && content.y == 0 && content.width == 20 && content.height == 10);
+    StyleShinePaint shine =
+        StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.25f, 32, 2.0f);
+    assert(shine.visible);
+    assert(shine.bounds.x == 14 && shine.bounds.y == 22);
+    assert(shine.bounds.width == 32 && shine.bounds.height == 6);
+    assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.5f, 32, 1.0f).visible);
+    assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.25f, 0, 1.0f).visible);
+    assert(!StyleShinePaintFor((Rectangle){10, 20, 3, 3}, 0.25f, 32, 1.0f).visible);
     StyleData base = {.fields = 8191, .background = 0x102030ff,
         .radius = 8, .opacity = 1, .offset_x = 3, .offset_y = -2};
     StyleData transparent = {.fields = 1 | 16 | 64 | 4096};

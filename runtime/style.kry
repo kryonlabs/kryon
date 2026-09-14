@@ -46,6 +46,11 @@ InteractionState :: struct {
     focused: bool
 }
 
+StyleShinePaint :: struct {
+    bounds: Rectangle
+    visible: bool
+}
+
 # Activation is an action result, not a visual-state override. Explicit
 # previews keep their resolved state even when a user activates the control.
 ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
@@ -176,6 +181,27 @@ CenterChild :: (declared: Rectangle, measured: Rectangle, content: Rectangle) ->
     measured.x = content.x + (content.width - measured.width) * 0.5
     measured.y = content.y + (content.height - measured.height) * 0.5
     return measured
+}
+
+# Default control highlight paint is style policy; hosts only draw the result.
+StyleShinePaintFor :: (bounds: Rectangle, radius: float,
+    shine_alpha: i32, scale: float) -> StyleShinePaint #export {
+    if scale <= 0.0 { scale = 1.0 }
+    inset: i32 = (i32)(2.0 * scale)
+    y_offset: i32 = (i32)(1.0 * scale)
+    height: i32 = (i32)(3.0 * scale)
+    paint: StyleShinePaint
+    if shine_alpha <= 0 || radius >= 0.45 { return paint }
+    if bounds.width <= (float)(inset * 2) ||
+       bounds.height <= (float)(height + inset) {
+        return paint
+    }
+    paint.bounds.x = bounds.x + (float)inset
+    paint.bounds.y = bounds.y + (float)y_offset
+    paint.bounds.width = bounds.width - (float)(inset * 2)
+    paint.bounds.height = (float)height
+    paint.visible = true
+    return paint
 }
 
 StyleData :: struct {
