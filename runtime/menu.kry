@@ -61,6 +61,7 @@ MenuKeyboardInput :: struct {
     right: bool
     enter: bool
     space: bool
+    escape: bool
 }
 
 MenuKeyboardDecision :: struct {
@@ -70,6 +71,16 @@ MenuKeyboardDecision :: struct {
     last: bool
     close_parent: bool
     open_or_activate: bool
+}
+
+MenuBarKeyboardDecision :: struct {
+    move_top_delta: i32
+    first_top: bool
+    last_top: bool
+    open_top: bool
+    close_open: bool
+    move_open_delta: i32
+    move_open_if_no_submenu_delta: i32
 }
 
 MenuOutsideCloseDecision :: struct {
@@ -143,7 +154,8 @@ MenuItemKeyboardActivates :: (kind: i32, disabled: bool,
 }
 
 MenuKeyboardInputFor :: (up: bool, down: bool, home: bool, end: bool,
-    left: bool, right: bool, enter: bool, space: bool) -> MenuKeyboardInput #export {
+    left: bool, right: bool, enter: bool, space: bool,
+    escape: bool) -> MenuKeyboardInput #export {
     input: MenuKeyboardInput
     input.up = up
     input.down = down
@@ -153,6 +165,7 @@ MenuKeyboardInputFor :: (up: bool, down: bool, home: bool, end: bool,
     input.right = right
     input.enter = enter
     input.space = space
+    input.escape = escape
     return input
 }
 
@@ -188,6 +201,45 @@ MenuKeyboardDecisionFor :: (input: MenuKeyboardInput, depth: i32,
     if input.right || input.enter || input.space {
         decision.key_handled = true
         decision.open_or_activate = true
+    }
+    return decision
+}
+
+MenuBarKeyboardDecisionFor :: (input: MenuKeyboardInput, open: bool,
+    depth: i32) -> MenuBarKeyboardDecision #export {
+    decision: MenuBarKeyboardDecision
+    if !open {
+        if input.left {
+            decision.move_top_delta = -1
+            return decision
+        }
+        if input.right {
+            decision.move_top_delta = 1
+            return decision
+        }
+        if input.home {
+            decision.first_top = true
+            return decision
+        }
+        if input.end {
+            decision.last_top = true
+            return decision
+        }
+        if input.enter || input.space || input.down {
+            decision.open_top = true
+        }
+        return decision
+    }
+    if input.escape {
+        decision.close_open = true
+        return decision
+    }
+    if depth == 0 && input.left {
+        decision.move_open_delta = -1
+        return decision
+    }
+    if depth == 0 && input.right {
+        decision.move_open_if_no_submenu_delta = 1
     }
     return decision
 }

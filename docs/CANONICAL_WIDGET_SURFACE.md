@@ -708,7 +708,7 @@ behind the canonical names.
   route through `runtime/rows.kry`; dropdown panel/option/scrollbar role
   policy, selected-option appearance, trigger/menu keyboard intent, and menu transient pointer state now route through `runtime/dropdown.kry`;
   menu selectable-item, submenu activation, pointer item effects,
-  keyboard input decisions, wraparound navigation, and bar open/index policy now route through
+  row and bar keyboard input decisions, wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; group pointer open/close decisions also now route
   through `runtime/menu.kry`; ListBox row selection policy now routes through
   `runtime/list_box.kry`; centered-column and page side-padding policy now route

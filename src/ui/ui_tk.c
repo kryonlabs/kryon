@@ -1218,7 +1218,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
                 IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
                 (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) != 0,
-                IsKeyPressed(KEY_SPACE) != 0);
+                IsKeyPressed(KEY_SPACE) != 0, 0);
             MenuKeyboardDecision keyboard_decision =
                 MenuKeyboardDecisionFor(keyboard_input, depth, selected);
             if(keyboard_decision.move_delta != 0) {
@@ -1549,17 +1549,23 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         state->open_id = MenuBarOpenIdFor(id, *open_index, menu_count);
     if(focused && menu_count > 0) {
         int current = MenuBarOpenIndexFor(id, state->open_id, menu_count);
+        MenuKeyboardInput keyboard_input = MenuKeyboardInputFor(
+            0, IsKeyPressed(KEY_DOWN) != 0,
+            IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+            IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) != 0,
+            IsKeyPressed(KEY_SPACE) != 0, IsKeyPressed(KEY_ESCAPE) != 0);
+        MenuBarKeyboardDecision keyboard_decision =
+            MenuBarKeyboardDecisionFor(keyboard_input, current >= 0,
+                                       state->navigation.depth);
         if(current < 0) {
-            if(IsKeyPressed(KEY_LEFT))
+            if(keyboard_decision.move_top_delta != 0)
                 state->navigation.top =
-                    MenuBarMoveTopIndex(state->navigation.top, menu_count, -1);
-            else if(IsKeyPressed(KEY_RIGHT))
-                state->navigation.top =
-                    MenuBarMoveTopIndex(state->navigation.top, menu_count, 1);
-            else if(IsKeyPressed(KEY_HOME)) state->navigation.top = 0;
-            else if(IsKeyPressed(KEY_END)) state->navigation.top = menu_count-1;
-            else if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
-                    IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_DOWN)) {
+                    MenuBarMoveTopIndex(state->navigation.top, menu_count,
+                                        keyboard_decision.move_top_delta);
+            else if(keyboard_decision.first_top) state->navigation.top = 0;
+            else if(keyboard_decision.last_top) state->navigation.top = menu_count-1;
+            else if(keyboard_decision.open_top) {
                 current = state->navigation.top;
                 state->open_id = MenuBarOpenIdFor(id, current, menu_count);
                 menu_navigation_reset(id,menus[current].items,
@@ -1567,19 +1573,20 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
                 state->navigation.top = current;
                 state->navigation.key_handled = 1;
             }
-        } else if(IsKeyPressed(KEY_ESCAPE)) {
+        } else if(keyboard_decision.close_open) {
             state->open_id = 0;
             state->submenu_id = 0;
             state->navigation.depth = 0;
             state->navigation.path[0] = -1;
-        } else if(state->navigation.depth == 0 && IsKeyPressed(KEY_LEFT)) {
-            current = MenuBarMoveTopIndex(current, menu_count, -1);
+        } else if(keyboard_decision.move_open_delta != 0) {
+            current = MenuBarMoveTopIndex(current, menu_count,
+                                          keyboard_decision.move_open_delta);
             state->open_id = MenuBarOpenIdFor(id, current, menu_count);
             menu_navigation_reset(id,menus[current].items,
                                    menus[current].item_count);
             state->navigation.top = current;
             state->navigation.key_handled = 1;
-        } else if(state->navigation.depth == 0 && IsKeyPressed(KEY_RIGHT)) {
+        } else if(keyboard_decision.move_open_if_no_submenu_delta != 0) {
             int selected = state->navigation.path[0];
             int opens_submenu = selected >= 0 &&
                 selected < menus[current].item_count &&
@@ -1590,7 +1597,9 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
                     menus[current].items[selected].submenu_count,
                     state->navigation.depth, TK_MENU_DEPTH_MAX);
             if(!opens_submenu) {
-                current = MenuBarMoveTopIndex(current, menu_count, 1);
+                current = MenuBarMoveTopIndex(
+                    current, menu_count,
+                    keyboard_decision.move_open_if_no_submenu_delta);
                 state->open_id = MenuBarOpenIdFor(id, current, menu_count);
                 menu_navigation_reset(id,menus[current].items,
                                        menus[current].item_count);

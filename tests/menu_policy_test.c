@@ -27,6 +27,7 @@ main(void)
     MenuLine line;
     MenuKeyboardInput keyboard_input;
     MenuKeyboardDecision keyboard_decision;
+    MenuBarKeyboardDecision bar_keyboard_decision;
     int width;
 
     assert(metrics.row_height == 60);
@@ -155,30 +156,64 @@ main(void)
     assert(!MenuItemKeyboardActivates(3, 0, 0));
     assert(!MenuItemKeyboardActivates(0, 1, 0));
     keyboard_input = MenuKeyboardInputFor(true, true, false, false,
-                                          false, false, false, false);
+                                          false, false, false, false, false);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, 2);
     assert(keyboard_decision.key_handled);
     assert(keyboard_decision.move_delta == -1);
     keyboard_input = MenuKeyboardInputFor(false, false, true, false,
-                                          false, false, false, false);
+                                          false, false, false, false, false);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, 2);
     assert(keyboard_decision.first);
     keyboard_input = MenuKeyboardInputFor(false, false, false, true,
-                                          false, false, false, false);
+                                          false, false, false, false, false);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, 2);
     assert(keyboard_decision.last);
     keyboard_input = MenuKeyboardInputFor(false, false, false, false,
-                                          true, false, false, false);
+                                          true, false, false, false, false);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 1, 2);
     assert(keyboard_decision.close_parent);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, 2);
     assert(!keyboard_decision.key_handled);
     keyboard_input = MenuKeyboardInputFor(false, false, false, false,
-                                          false, true, false, false);
+                                          false, true, false, false, false);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, 2);
     assert(keyboard_decision.open_or_activate);
     keyboard_decision = MenuKeyboardDecisionFor(keyboard_input, 0, -1);
     assert(!keyboard_decision.key_handled);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, false,
+                                          true, false, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, false, 0);
+    assert(bar_keyboard_decision.move_top_delta == -1);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, false,
+                                          false, true, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, false, 0);
+    assert(bar_keyboard_decision.move_top_delta == 1);
+    keyboard_input = MenuKeyboardInputFor(false, false, true, false,
+                                          false, false, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, false, 0);
+    assert(bar_keyboard_decision.first_top);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, true,
+                                          false, false, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, false, 0);
+    assert(bar_keyboard_decision.last_top);
+    keyboard_input = MenuKeyboardInputFor(false, true, false, false,
+                                          false, false, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, false, 0);
+    assert(bar_keyboard_decision.open_top);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, false,
+                                          false, false, false, false, true);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, true, 0);
+    assert(bar_keyboard_decision.close_open);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, false,
+                                          true, false, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, true, 0);
+    assert(bar_keyboard_decision.move_open_delta == -1);
+    keyboard_input = MenuKeyboardInputFor(false, false, false, false,
+                                          false, true, false, false, false);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, true, 0);
+    assert(bar_keyboard_decision.move_open_if_no_submenu_delta == 1);
+    bar_keyboard_decision = MenuBarKeyboardDecisionFor(keyboard_input, true, 1);
+    assert(bar_keyboard_decision.move_open_if_no_submenu_delta == 0);
     assert(MenuItemPointerActivates(0, 0));
     assert(!MenuItemPointerActivates(4, 0));
     assert(!MenuItemPointerActivates(3, 0));
