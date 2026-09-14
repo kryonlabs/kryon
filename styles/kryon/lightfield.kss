@@ -2014,6 +2014,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -2028,6 +2029,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: button;
   background-end: button-end;
   foreground: text;

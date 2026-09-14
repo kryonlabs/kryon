@@ -1968,6 +1968,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: #11151d;
   foreground: #f5f2ff;
   border: #3a4250;
@@ -1981,6 +1982,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: #11151d;
   foreground: #f5f2ff;
   border: #3a4250;
@@ -3936,6 +3938,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: card;
   foreground: text;
   border: border;
@@ -3949,6 +3952,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: card;
   foreground: text;
   border: border;
@@ -5936,6 +5940,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: surface;
   foreground: text;
   border: border;
@@ -5949,6 +5954,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: surface;
   foreground: text;
   border: border;
@@ -7979,6 +7985,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: button;
   background-end: button-end;
   foreground: text;
@@ -7993,6 +8000,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: button;
   background-end: button-end;
   foreground: text;

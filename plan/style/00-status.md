@@ -34,9 +34,9 @@ Update this file whenever a phase advances. Files 01-09 describe the target desi
 - `src/ui/tab_bar.c:778` - PanedView handle frame
 - `src/ui/button.c:33` - generic control facts path (decide: shared `.kry` helper or widget-local)
 - `go/kryon/runtime.go:1747` - `resolveMinimalControlRoleState` generic helper
-- `src/ui/ui.c:1897,1916` - generic `StyleControlFacts` sites (part of the button/generic path decision)
+- `go/kryon/runtime.go` - ~100 generic sites via `simpleStyleFrameWithClassRole`/`resolveMinimal*` + `minimalControlStyleData` base (the big Phase 3/4 combined step)
 
-Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`); NavigationBar (C `navigation_bar.c` and the Go retained path now use generated facts helpers with zero base, replacing `simpleStyleFrameWithClassRole` and its hidden `minimalControlStyleData` base); PanedView handle (C `tab_bar.c` and both Go retained sites, zero base).
+Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`); NavigationBar (C `navigation_bar.c` and the Go retained path now use generated facts helpers with zero base, replacing `simpleStyleFrameWithClassRole` and its hidden `minimalControlStyleData` base); PanedView handle (C `tab_bar.c` and both Go retained sites, zero base); TextInput field defaults (C `ui.c` text-input sites resolve from zero base via `TextInputFactsFor`; the former hidden `opacity: 1` base moved into `TextField`/`TextArea` rules in all four packs).
 
 Tests that construct `StyleControlFacts` directly are valid and stay.
 
@@ -56,9 +56,10 @@ Next commits, in order:
 1. [done 2026-09-14] TableView facts helper in `runtime/table_view.kry` (C `ui_tk.c` sites + Go `runtime.go` in one commit).
 2. [done 2026-09-14] NavigationBar facts helper (C `navigation_bar.c` + Go retained path, zero base).
 3. [done 2026-09-14] PanedView handle facts helper (`tab_bar.c`, Go retained path, zero base).
-4. Button generic facts path decision (`button.c` + `resolveMinimalControlRoleState`).
-5. Phase 4 visual bases, one widget per commit, moving needed values into the built-in packs.
-6. No-style tests, then the five scanners as Makefile gates.
+4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
+5. Button/generic control facts path (`button.c` + `resolveMinimalControlRoleState` + ~100 Go generic sites) - the remaining Phase 3/4 combined step.
+6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
+7. No-style tests, then the five scanners as Makefile gates.
 
 ## Parallel Agent Coordination
 

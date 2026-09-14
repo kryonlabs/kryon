@@ -1971,6 +1971,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: surface;
   foreground: text;
   border: border;
@@ -1984,6 +1985,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: surface;
   foreground: text;
   border: border;

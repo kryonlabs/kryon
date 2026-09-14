@@ -1939,6 +1939,7 @@ Radio[role=Label]:disabled {
 }
 
 TextField {
+  opacity: 1;
   background: card;
   foreground: text;
   border: border;
@@ -1952,6 +1953,7 @@ TextField {
 }
 
 TextArea {
+  opacity: 1;
   background: card;
   foreground: text;
   border: border;

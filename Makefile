@@ -783,8 +783,8 @@ scroll-policy-test: $(GENERATED_SRC_DIR)/runtime/scroll.c $(GENERATED_SRC_DIR)/r
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/scroll_policy_test.c $(GENERATED_SRC_DIR)/runtime/scroll.c -lm -o $(SCROLL_POLICY_TEST)
 	$(SCROLL_POLICY_TEST)
 
-text-input-policy-test: $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_input_policy_test.c $(GENERATED_SRC_DIR)/runtime/text_input.c -lm -o $(TEXT_INPUT_POLICY_TEST)
+text-input-policy-test: $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_input_policy_test.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $(TEXT_INPUT_POLICY_TEST)
 	$(TEXT_INPUT_POLICY_TEST)
 
 focus-policy-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h

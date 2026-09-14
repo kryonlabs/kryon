@@ -1,6 +1,7 @@
 #module "text_input"
 #import "control_props"
 #import "drawing_props"
+#import "style_sheet"
 
 TextInputMetrics :: struct {
     font: i32
@@ -16,6 +17,11 @@ TextInputResolvedStyle :: struct {
     padding_y: i32
     line_gap: i32
     radius: float
+}
+
+TextInputFactsFor :: (style_kind: i32, class_name: i32) -> StyleFacts #export {
+    return StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
+        ButtonEmphasisSoft, ControlSizeMedium, ButtonStateNormal)
 }
 
 TextFieldScroll :: struct {

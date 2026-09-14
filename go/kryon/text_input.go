@@ -3,6 +3,7 @@ package kryon
 
 // #import control_props
 // #import drawing_props
+// #import style_sheet
 type TextInputMetrics struct {
 	Font       int32
 	PaddingX   int32
@@ -217,6 +218,18 @@ type TextSelectionState struct {
 	Anchor       int32
 	Cursor       int32
 	HasSelection bool
+}
+
+func TextInput_TextInputFactsFor(style_kind int32, class_name int32) StyleFacts {
+	var value_0 int32 = style_kind
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = int32(ButtonToneNeutral)
+	var value_4 int32 = int32(ButtonEmphasisSoft)
+	var value_5 int32 = int32(ControlSizeMedium)
+	var value_6 int32 = int32(ButtonStateNormal)
+	var value_7 StyleFacts = StyleSheet_StyleControlFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func TextInput_TextFocusClaimDecisionFor(has_target bool, has_previous_owner bool, same_owner bool) TextFocusClaimDecision {
