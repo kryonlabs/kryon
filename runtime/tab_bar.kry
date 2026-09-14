@@ -233,6 +233,13 @@ TabBarSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
     return selected
 }
 
+TabBarClampedIndexFor :: (index: i32, count: i32) -> i32 #export {
+    if count <= 0 { return -1 }
+    if index < 0 { return 0 }
+    if index >= count { return count - 1 }
+    return index
+}
+
 TabBarWrappedIndex :: (from: i32, direction: i32, step: i32,
     count: i32) -> i32 #export {
     if count <= 0 { return -1 }

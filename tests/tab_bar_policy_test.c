@@ -83,6 +83,10 @@ main(void)
     assert(TabBarSelectedIndexFor(9, 3) == 0);
     assert(TabBarSelectedIndexFor(2, 3) == 2);
     assert(TabBarSelectedIndexFor(0, 0) == -1);
+    assert(TabBarClampedIndexFor(-1, 3) == 0);
+    assert(TabBarClampedIndexFor(9, 3) == 2);
+    assert(TabBarClampedIndexFor(1, 3) == 1);
+    assert(TabBarClampedIndexFor(0, 0) == -1);
     assert(TabBarWrappedIndex(0, -1, 1, 3) == 2);
     assert(TabBarWrappedIndex(2, 1, 1, 3) == 0);
     assert(TabBarWrappedIndex(1, 0, 2, 3) == 0);

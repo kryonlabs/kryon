@@ -338,7 +338,7 @@ ui_tab_bar_reorder_target(TabBarProps bar, int active_index, int min_tab_w,
         if(pointer_x > center_x)
             target++;
     }
-    return ui_clampi(target, 0, bar.count - 1);
+    return TabBarClampedIndexFor(target, bar.count);
 }
 
 int
