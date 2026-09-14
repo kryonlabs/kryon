@@ -41,7 +41,10 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
         capture_input != 0, keyboard_input,
         ui_popup_input_keyboard_captures() != 0);
     if(escape_decision.close) {
-        *open = false;
+        PopupOpenResult open_result =
+            PopupOpenFor(open != NULL ? *open : false, false, true,
+                         open != NULL);
+        if(open) *open = open_result.open;
         if(context) {
             ui_popup_input_close(context,id);
             if(escape_decision.end_input)
@@ -93,7 +96,10 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
 
 static void close_popup_scope(ComposedPopupScope *scope)
 {
-    *scope->open = false;
+    PopupOpenResult open_result =
+        PopupOpenFor(scope->open ? *scope->open : false, false, true,
+                     scope->open != NULL);
+    if(scope->open) *scope->open = open_result.open;
     if(scope->layers) ui_paint_layers_hide(scope->layers,scope->id);
     else if(scope->has_input)
         ui_popup_input_close(scope->input.context,scope->id);
@@ -133,8 +139,12 @@ int PopupScope(PopupProps popup)
                                   popup.disabled != 0,
                                   InputCapturesClick(mouse),
                                   IsMouseButtonReleased(MOUSE_BUTTON_RIGHT));
-    if(context.open)
-        *popup.open = true;
+    if(context.open) {
+        PopupOpenResult open_result =
+            PopupOpenFor(popup.open ? *popup.open : false, context.open,
+                         false, popup.open != NULL);
+        if(popup.open) *popup.open = open_result.open;
+    }
     if(decision.tooltip) {
         if(popup.disabled ||
            !CheckCollisionPointRec(mouse,popup.trigger)) return 0;
@@ -150,7 +160,9 @@ int PopupScope(PopupProps popup)
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ReleaseConsumed() &&
        !CheckCollisionPointRec(mouse,popup.bounds)) {
         ConsumeRelease();
-        *popup.open = false;
+        PopupOpenResult open_result =
+            PopupOpenFor(*popup.open, false, true, true);
+        *popup.open = open_result.open;
         if(input_context) ui_popup_input_close(input_context,popup.id);
         return 0;
     }

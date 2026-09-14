@@ -16,6 +16,11 @@ PopupContextActivation :: struct {
     origin: Vector2
 }
 
+PopupOpenResult :: struct {
+    open: bool
+    changed: bool
+}
+
 PopupEscapeDecision :: struct {
     close: bool
     end_input: bool
@@ -80,6 +85,23 @@ PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
         return false
     }
     return open
+}
+
+PopupOpenFor :: (open: bool, open_requested: bool, close_requested: bool,
+    has_open: bool) -> PopupOpenResult #export {
+    result: PopupOpenResult
+    result.open = open
+    if !has_open {
+        return result
+    }
+    if open_requested {
+        result.open = true
+    }
+    if close_requested {
+        result.open = false
+    }
+    result.changed = result.open != open
+    return result
 }
 
 PopupInputBounds :: (decision: PopupDecision, bounds: Rectangle,

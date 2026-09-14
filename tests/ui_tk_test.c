@@ -1143,6 +1143,10 @@ test_popup_policy(void)
     PopupContextActivation context_blocked =
         PopupContextActivationFor(context, trigger, (Vector2){20, 18},
                                   0, 1, 1);
+    PopupOpenResult popup_opened = PopupOpenFor(0, 1, 0, 1);
+    PopupOpenResult popup_closed = PopupOpenFor(1, 0, 1, 1);
+    PopupOpenResult popup_noop = PopupOpenFor(1, 0, 0, 1);
+    PopupOpenResult popup_missing = PopupOpenFor(0, 1, 1, 0);
 
     check_int("popup panel role", PopupPanelRole(), 2);
     check_int("popup plain valid", plain.valid, 1);
@@ -1170,6 +1174,12 @@ test_popup_policy(void)
     check_int("popup context activation", context_open.open, 1);
     check_int("popup context activation x", (int)context_open.origin.x, 20);
     check_int("popup context captured blocks", context_blocked.open, 0);
+    check_int("popup open requested", popup_opened.open, 1);
+    check_int("popup open changed", popup_opened.changed, 1);
+    check_int("popup close requested", popup_closed.open, 0);
+    check_int("popup close changed", popup_closed.changed, 1);
+    check_int("popup open noop unchanged", popup_noop.changed, 0);
+    check_int("popup missing open unchanged", popup_missing.changed, 0);
 }
 
 static void

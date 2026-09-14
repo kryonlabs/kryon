@@ -17,6 +17,20 @@ type PopupContextActivation struct {
 	Origin Vector2
 }
 
+type PopupOpenResult struct {
+	Open    bool
+	Changed bool
+}
+
+type PopupEscapeDecision struct {
+	Close    bool
+	EndInput bool
+}
+
+type PopupKeyboardInput struct {
+	Escape bool
+}
+
 func PopupPolicy_PopupPanelRole() int32 {
 	var value_0 int32 = 2
 	return value_0
@@ -206,6 +220,34 @@ func PopupPolicy_PopupOpenAfterDisabled(decision PopupDecision, open bool, disab
 	return value_5
 }
 
+func PopupPolicy_PopupOpenFor(open bool, open_requested bool, close_requested bool, has_open bool) PopupOpenResult {
+	var result PopupOpenResult = PopupOpenResult{}
+	var value_0 bool = open
+	result.Open = value_0
+	var value_1 bool = has_open
+	var value_2 bool = !value_1
+	if value_2 {
+		var value_3 PopupOpenResult = result
+		return value_3
+	}
+	var value_4 bool = open_requested
+	if value_4 {
+		var value_5 bool = true
+		result.Open = value_5
+	}
+	var value_6 bool = close_requested
+	if value_6 {
+		var value_7 bool = false
+		result.Open = value_7
+	}
+	var value_8 bool = result.Open
+	var value_9 bool = open
+	var value_10 bool = value_8 != value_9
+	result.Changed = value_10
+	var value_11 PopupOpenResult = result
+	return value_11
+}
+
 func PopupPolicy_PopupInputBounds(decision PopupDecision, bounds Rectangle, view_width float32, view_height float32) Rectangle {
 	var value_0 Rectangle = bounds
 	var input Rectangle = value_0
@@ -314,4 +356,44 @@ func PopupPolicy_PopupBackdropAlpha(decision PopupDecision) int32 {
 	}
 	var value_2 int32 = 0
 	return value_2
+}
+
+func PopupPolicy_PopupEscapeFor(captures_input bool, escape_pressed bool, keyboard_captured bool) PopupEscapeDecision {
+	var decision PopupEscapeDecision = PopupEscapeDecision{}
+	var value_0 bool = captures_input
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = escape_pressed
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if value_3 {
+		var value_4 bool = keyboard_captured
+		var value_5 bool = !value_4
+		value_3 = value_5
+	}
+	if value_3 {
+		var value_6 bool = true
+		decision.Close = value_6
+		var value_7 bool = true
+		decision.EndInput = value_7
+	}
+	var value_8 PopupEscapeDecision = decision
+	return value_8
+}
+
+func PopupPolicy_PopupKeyboardInputFor(escape_pressed bool) PopupKeyboardInput {
+	var input PopupKeyboardInput = PopupKeyboardInput{}
+	var value_0 bool = escape_pressed
+	input.Escape = value_0
+	var value_1 PopupKeyboardInput = input
+	return value_1
+}
+
+func PopupPolicy_PopupEscapeDecisionFor(captures_input bool, input PopupKeyboardInput, keyboard_captured bool) PopupEscapeDecision {
+	var value_0 bool = captures_input
+	var value_1 bool = input.Escape
+	var value_2 bool = keyboard_captured
+	var value_3 PopupEscapeDecision = PopupPolicy_PopupEscapeFor(value_0, value_1, value_2)
+	return value_3
 }

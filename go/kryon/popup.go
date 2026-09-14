@@ -18,7 +18,8 @@ func (r *runtime) PopupScope(p PopupProps) bool {
 	}
 	if decision.Context && !p.Disabled && r.mouseReleased[MouseButtonRight] {
 		if r.pointerCanReach(p.Trigger) {
-			*p.Open = true
+			openResult := PopupPolicy_PopupOpenFor(*p.Open, true, false, p.Open != nil)
+			*p.Open = openResult.Open
 			r.mouseReleased[MouseButtonRight] = false
 		}
 	}
@@ -51,7 +52,8 @@ func (r *runtime) PopupScope(p PopupProps) bool {
 			}
 			if !r.taps[i].consumed && !pointInRect(r.taps[i].x, r.taps[i].y, p.Bounds) {
 				r.taps[i].consumed = true
-				*p.Open = false
+				openResult := PopupPolicy_PopupOpenFor(*p.Open, false, true, true)
+				*p.Open = openResult.Open
 				r.closePopupInput(p.ID)
 				delete(r.openPopups, p.ID)
 				return false
@@ -63,7 +65,8 @@ func (r *runtime) PopupScope(p PopupProps) bool {
 		inputBounds := PopupPolicy_PopupInputBounds(decision, p.Bounds, float32(r.GetScreenWidth()), float32(r.GetScreenHeight()))
 		input = r.beginPopupInput(p.ID, inputBounds)
 		if r.keyDown[KeyEscape] && !r.popupKeyboardCaptures() {
-			*p.Open = false
+			openResult := PopupPolicy_PopupOpenFor(*p.Open, false, true, true)
+			*p.Open = openResult.Open
 			r.closePopupInput(p.ID)
 			r.endPopupInput(input)
 			delete(r.openPopups, p.ID)
@@ -89,7 +92,8 @@ func (r *runtime) popupCloseScope() {
 		panic("popupCloseScope without PopupScope")
 	}
 	s := &r.popupScopes[len(r.popupScopes)-1]
-	*s.open = false
+	openResult := PopupPolicy_PopupOpenFor(*s.open, false, true, true)
+	*s.open = openResult.Open
 	if s.capturesInput {
 		r.closePopupInput(s.id)
 		delete(r.openPopups, s.id)
