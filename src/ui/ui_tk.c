@@ -691,9 +691,11 @@ RenderDragDrop(DragDropProps drag_drop)
         return decision.returns_active;
     }
 
-    hot = CheckCollisionPointRec(mouse, drag_drop.bounds) &&
-              !disabled && !InspectInputCapturesClick(mouse) &&
-              !ui_input_captures_click_internal(mouse, 0);
+    hot = DragDropTargetHot(
+        drag_drop.disabled != 0, ContentDisabled() != 0,
+        CheckCollisionPointRec(mouse, drag_drop.bounds) &&
+            !InspectInputCapturesClick(mouse) &&
+            !ui_input_captures_click_internal(mouse, 0));
     matches = DragDropTargetMatches(toolkit->drag_drop.active,
                   drag_drop.type != NULL && drag_drop.type[0] != '\0',
                   drag_drop.type != NULL &&
