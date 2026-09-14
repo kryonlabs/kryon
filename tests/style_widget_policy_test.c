@@ -1,5 +1,6 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
+#include "runtime/collapsible.h"
 #include "runtime/fieldset.h"
 #include "runtime/focus.h"
 #include "runtime/image.h"
@@ -129,6 +130,14 @@ main(void)
        ImageLabelRole() != 6 || FocusBoxRole() != 9 ||
        FocusLabelRole() != 6) {
         fprintf(stderr, "small widget role policy changed\n");
+        return 1;
+    }
+    if(CollapsibleHeaderRole() != 13 ||
+       CollapsibleTreeHeaderRole() != 14 ||
+       CollapsibleCloseRole() != 15 ||
+       CollapsibleHeaderRoleFor(0) != 13 ||
+       CollapsibleHeaderRoleFor(1) != 14) {
+        fprintf(stderr, "collapsible role policy changed\n");
         return 1;
     }
 

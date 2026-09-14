@@ -5885,19 +5885,16 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	} else if p.Selected {
 		defaultState = ButtonStateSelected
 	}
-	headerRole := int32(13)
-	if p.Tree {
-		headerRole = 14
-	}
+	headerRole := Collapsible_CollapsibleHeaderRoleFor(p.Tree)
 	defaultHeaderFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
 		defaultState, p.Disabled || r.contentDisabled(), p.Selected,
 		p.ClassName, StyleSheet_StyleKindCollapsible(), headerRole)
 	treeHeaderFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
 		defaultState, p.Disabled || r.contentDisabled(), p.Selected,
-		p.ClassName, StyleSheet_StyleKindCollapsible(), 14)
+		p.ClassName, StyleSheet_StyleKindCollapsible(), Collapsible_CollapsibleTreeHeaderRole())
 	closeDefaultFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
 		ButtonStateNormal, p.Disabled || r.contentDisabled(), false,
-		p.ClassName, StyleSheet_StyleKindCollapsible(), 15)
+		p.ClassName, StyleSheet_StyleKindCollapsible(), Collapsible_CollapsibleCloseRole())
 	metrics := Collapsible_CollapsibleMetricsFor(1, defaultHeaderFrame,
 		treeHeaderFrame, closeDefaultFrame)
 	layoutBounds := p.Bounds
@@ -6011,7 +6008,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 			closeState = ButtonStatePressed
 		}
 		closeStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, closeState, !enabled,
-			false, p.ClassName, StyleSheet_StyleKindCollapsible(), 15).Value)
+			false, p.ClassName, StyleSheet_StyleKindCollapsible(), Collapsible_CollapsibleCloseRole()).Value)
 		closeFont, closeFontID := styleTextFace(closeStyle, Text16)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: closeFont, FontID: closeFontID, Pressed: closed, Disabled: !enabled})
 	}

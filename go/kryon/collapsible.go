@@ -27,6 +27,31 @@ type CollapsibleLayout struct {
 	HasClose    bool
 }
 
+func Collapsible_CollapsibleHeaderRole() int32 {
+	var value_0 int32 = 13
+	return value_0
+}
+
+func Collapsible_CollapsibleTreeHeaderRole() int32 {
+	var value_0 int32 = 14
+	return value_0
+}
+
+func Collapsible_CollapsibleCloseRole() int32 {
+	var value_0 int32 = 15
+	return value_0
+}
+
+func Collapsible_CollapsibleHeaderRoleFor(tree bool) int32 {
+	var value_0 bool = tree
+	if value_0 {
+		var value_1 int32 = Collapsible_CollapsibleTreeHeaderRole()
+		return value_1
+	}
+	var value_2 int32 = Collapsible_CollapsibleHeaderRole()
+	return value_2
+}
+
 func Collapsible_CollapsibleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field

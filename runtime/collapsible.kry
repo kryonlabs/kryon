@@ -24,6 +24,23 @@ CollapsibleLayout :: struct {
     has_close: bool
 }
 
+CollapsibleHeaderRole :: () -> i32 #export {
+    return 13
+}
+
+CollapsibleTreeHeaderRole :: () -> i32 #export {
+    return 14
+}
+
+CollapsibleCloseRole :: () -> i32 #export {
+    return 15
+}
+
+CollapsibleHeaderRoleFor :: (tree: bool) -> i32 #export {
+    if tree { return CollapsibleTreeHeaderRole() }
+    return CollapsibleHeaderRole()
+}
+
 CollapsibleMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> float {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }

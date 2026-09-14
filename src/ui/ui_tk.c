@@ -4357,7 +4357,8 @@ RenderCollapsible(CollapsibleProps section)
                               : ButtonStateNormal;
     StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, default_state, !enabled, section.selected,
-        section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
+        section.class_name, StyleKindCollapsible(),
+        CollapsibleHeaderRoleFor(section.tree != 0));
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int font = ResolveFont(0, StyleFontValue(default_item_style.fields,
@@ -4365,10 +4366,11 @@ RenderCollapsible(CollapsibleProps section)
                            GetFontSize());
     StyleFrame tree_item_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, default_state, !enabled, section.selected,
-        section.class_name, StyleKindCollapsible(), 14);
+        section.class_name, StyleKindCollapsible(),
+        CollapsibleTreeHeaderRole());
     StyleFrame close_default_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, !enabled, 0,
-        section.class_name, StyleKindCollapsible(), 15);
+        section.class_name, StyleKindCollapsible(), CollapsibleCloseRole());
     int changed = 0;
     CollapsibleMetrics metrics = CollapsibleMetricsFor((float)GetScale(),
         default_item_frame, tree_item_frame, close_default_frame);
@@ -4430,14 +4432,16 @@ RenderCollapsible(CollapsibleProps section)
                           : ButtonStateNormal;
         StyleFrame item_frame = ui_tk_simple_style_frame_class_role(
             ButtonToneNeutral, state, !enabled, section.selected,
-            section.class_name, StyleKindCollapsible(), section.tree ? 14 : 13);
+            section.class_name, StyleKindCollapsible(),
+            CollapsibleHeaderRoleFor(section.tree != 0));
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         font = ResolveFont(0, StyleFontValue(item_style.fields,
                                              item_style.font_size), font);
         StyleFrame link_frame = ui_tk_simple_style_frame_class_role(
             ButtonToneNeutral, close_hover ? ButtonStateHover : ButtonStateNormal,
-            !enabled, 0, section.class_name, StyleKindCollapsible(), 15);
+            !enabled, 0, section.class_name, StyleKindCollapsible(),
+            CollapsibleCloseRole());
         Style link_style = ui_unpack_style(
             ui_style_apply_effects_frame(link_frame).value);
         int close_font = ResolveFont(0, StyleFontValue(link_style.fields,
