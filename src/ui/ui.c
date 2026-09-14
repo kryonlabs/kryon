@@ -3923,7 +3923,8 @@ ui_text_area_render(TextAreaProps area)
 
     *area.focused = focused;
     SetFocusTextInputActive(focused && !area.read_only);
-    if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
+    if(TextEscapeShouldBlur(focused, IsKeyboardInputEnabled(),
+       IsKeyPressed(KEY_ESCAPE))) {
         focused = 0;
         ReleaseTextFocus(area.focused, area.focus_id);
         *area.focused = 0;
@@ -3945,7 +3946,8 @@ ui_text_area_render(TextAreaProps area)
         ClaimTextAreaFocus(area.focused);
         *area.focused = 1;
     }
-    if((focused || context_active) && has_selection) {
+    if(TextSelectionRangeShouldResolve(focused, context_active,
+       has_selection)) {
         TextSelectionRange range = TextSelectionRangeFor(
             g_ui_text_area_selection.anchor, g_ui_text_area_selection.cursor);
         selection_start = range.start;
@@ -3972,7 +3974,7 @@ ui_text_area_render(TextAreaProps area)
             selection_end = collapsed.cursor;
         }
     }
-    if(focused && IsKeyboardInputEnabled()) {
+    if(TextKeyboardShouldRun(focused, IsKeyboardInputEnabled())) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandSelectAll(),
@@ -4631,15 +4633,16 @@ ui_text_field_render_filtered(TextFieldProps field,
 
     *field.focused = focused;
     SetFocusTextInputActive(focused && !field.read_only);
-    if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
+    if(TextEscapeShouldBlur(focused, IsKeyboardInputEnabled(),
+       IsKeyPressed(KEY_ESCAPE))) {
         focused = 0;
         ReleaseTextFocus(field.focused, field.focus_id);
         *field.focused = 0;
         SetFocusTextInputActive(0);
     }
-    if((focused || context_active) &&
+    if(TextSelectionRangeShouldResolve(focused, context_active,
        ui_text_selection_matches(g_ui_text_field_selection,
-                                 field.focus_id, field.focused))
+                                 field.focus_id, field.focused)))
         ui_selection_range(g_ui_text_field_selection, field.text,
                            &selection_start, &selection_end);
 
@@ -4663,7 +4666,7 @@ ui_text_field_render_filtered(TextFieldProps field,
         }
     }
 
-    if(focused && IsKeyboardInputEnabled()) {
+    if(TextKeyboardShouldRun(focused, IsKeyboardInputEnabled())) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandSelectAll(),
@@ -4913,7 +4916,7 @@ ui_text_field_render_filtered(TextFieldProps field,
 
     display_text = field.text;
     paint_cursor = *field.cursor_position;
-    if(!field.secure) {
+    if(TextCompositionDisplayShouldRun(field.secure)) {
         const char *preedit = NULL;
         int preedit_cursor = 0;
         int preedit_selection_length = 0;

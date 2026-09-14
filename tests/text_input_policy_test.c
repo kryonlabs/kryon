@@ -420,6 +420,19 @@ main(void)
         true, false));
     assert(!TextFieldChangedShouldCollapseSelection(false, false, false,
         false, false));
+    assert(TextKeyboardShouldRun(true, true));
+    assert(!TextKeyboardShouldRun(false, true));
+    assert(!TextKeyboardShouldRun(true, false));
+    assert(TextEscapeShouldBlur(true, true, true));
+    assert(!TextEscapeShouldBlur(false, true, true));
+    assert(!TextEscapeShouldBlur(true, false, true));
+    assert(!TextEscapeShouldBlur(true, true, false));
+    assert(TextSelectionRangeShouldResolve(true, false, true));
+    assert(TextSelectionRangeShouldResolve(false, true, true));
+    assert(!TextSelectionRangeShouldResolve(false, false, true));
+    assert(!TextSelectionRangeShouldResolve(true, true, false));
+    assert(TextCompositionDisplayShouldRun(false));
+    assert(!TextCompositionDisplayShouldRun(true));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

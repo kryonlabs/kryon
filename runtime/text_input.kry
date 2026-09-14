@@ -432,6 +432,24 @@ TextFieldChangedShouldCollapseSelection :: (changed: bool, left_pressed: bool,
     return changed || left_pressed || right_pressed || home_pressed || end_pressed
 }
 
+TextKeyboardShouldRun :: (focused: bool, keyboard_enabled: bool) -> bool #export {
+    return focused && keyboard_enabled
+}
+
+TextEscapeShouldBlur :: (focused: bool, keyboard_enabled: bool,
+    escape_pressed: bool) -> bool #export {
+    return focused && keyboard_enabled && escape_pressed
+}
+
+TextSelectionRangeShouldResolve :: (focused: bool, context_active: bool,
+    has_selection: bool) -> bool #export {
+    return (focused || context_active) && has_selection
+}
+
+TextCompositionDisplayShouldRun :: (secure: bool) -> bool #export {
+    return !secure
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }
