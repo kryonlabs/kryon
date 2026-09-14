@@ -442,10 +442,12 @@ ui_dropdown(DropdownProps props)
         MarkClickable();
 
     int pointer_activate = trigger_interaction.activated;
+    DropdownTriggerInput trigger_input = DropdownTriggerInputFor(
+        IsKeyPressed(KEY_ENTER) != 0, IsKeyPressed(KEY_KP_ENTER) != 0,
+        IsKeyPressed(KEY_SPACE) != 0, IsKeyPressed(KEY_DOWN) != 0);
     int next_open = Trigger(state->open, ContentDisabled(), option_count, focused,
         !ui_popup_input_keyboard_captures(), pointer_activate,
-        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER),
-        IsKeyPressed(KEY_SPACE), IsKeyPressed(KEY_DOWN));
+        trigger_input.enter, trigger_input.space, trigger_input.down);
     if(next_open != state->open) {
         ClearTextInputFocus();
         if(pointer_activate)
@@ -583,13 +585,15 @@ dropdown_paint_menu(int id)
 
     if(!state->open) return 0;
     int opening = state->opened_frame == g_ui_frame_serial;
-    int navigating = !opening && keyboard_available &&
-        (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
-         IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END));
-    if(navigating || state->just_opened) {
+    DropdownMenuInput menu_input = DropdownMenuInputFor(
+        keyboard_available != 0, opening != 0,
+        IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+        IsKeyPressed(KEY_HOME) != 0, IsKeyPressed(KEY_END) != 0,
+        IsKeyPressed(KEY_ENTER) != 0, IsKeyPressed(KEY_KP_ENTER) != 0,
+        IsKeyPressed(KEY_ESCAPE) != 0);
+    if(menu_input.navigating || state->just_opened) {
         Navigation nav = StartNavigation(state->highlight_index, option_count,
-            navigating && IsKeyPressed(KEY_UP), navigating && IsKeyPressed(KEY_DOWN),
-            navigating && IsKeyPressed(KEY_HOME), navigating && IsKeyPressed(KEY_END));
+            menu_input.up, menu_input.down, menu_input.home, menu_input.end);
         while(nav.searching)
             nav = ScanNavigation(nav, !options[nav.index].disabled);
         state->highlight_index = nav.result;
@@ -599,7 +603,7 @@ dropdown_paint_menu(int id)
     int highlighted_enabled = state->highlight_index >= 0 &&
         state->highlight_index < option_count && !options[state->highlight_index].disabled;
     if(CanCommit(highlighted_enabled, opening, keyboard_available,
-        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER), false, false, false, false)) {
+        menu_input.commit, false, false, false, false)) {
         state->pending_index = state->highlight_index;
         state->pending_changed = state->selected_index != state->highlight_index;
         state->selected_index = state->highlight_index;
@@ -753,7 +757,10 @@ ui_dropdown_overlays(void)
      * dropdown can never trap the pointer state. */
     int focused = IsWindowFocused();
     int lost_focus = dropdown_store->previous_focused && !focused;
-    int escape_pressed = IsKeyPressed(KEY_ESCAPE);
+    DropdownMenuInput input = DropdownMenuInputFor(
+        true, false, false, false, false, false, false, false,
+        IsKeyPressed(KEY_ESCAPE) != 0);
+    int escape_pressed = input.escape;
 
     dropdown_store->previous_focused = focused;
     if(lost_focus || escape_pressed) {

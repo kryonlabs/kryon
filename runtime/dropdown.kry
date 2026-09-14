@@ -50,6 +50,22 @@ DropdownTriggerContent :: struct {
     indicator_center_y: i32
 }
 
+DropdownTriggerInput :: struct {
+    enter: bool
+    space: bool
+    down: bool
+}
+
+DropdownMenuInput :: struct {
+    navigating: bool
+    up: bool
+    down: bool
+    home: bool
+    end: bool
+    commit: bool
+    escape: bool
+}
+
 # Both native hosts consume Button's resolved content metrics. Geometry does
 # not silently select another size: the standard dropdown uses medium tokens.
 Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
@@ -181,6 +197,35 @@ Trigger :: (open: bool, disabled: bool, count: i32, focused: bool,
         return true
     }
     return open
+}
+
+DropdownTriggerInputFor :: (enter_pressed: bool, keypad_enter_pressed: bool,
+    space_pressed: bool, down_pressed: bool) -> DropdownTriggerInput #export {
+    input: DropdownTriggerInput
+    input.enter = enter_pressed || keypad_enter_pressed
+    input.space = space_pressed
+    input.down = down_pressed
+    return input
+}
+
+DropdownMenuInputFor :: (keyboard_available: bool, opening: bool,
+    up_pressed: bool, down_pressed: bool, home_pressed: bool,
+    end_pressed: bool, enter_pressed: bool, keypad_enter_pressed: bool,
+    escape_pressed: bool) -> DropdownMenuInput #export {
+    input: DropdownMenuInput
+    if !keyboard_available {
+        return input
+    }
+    input.escape = escape_pressed
+    if !opening {
+        input.up = up_pressed
+        input.down = down_pressed
+        input.home = home_pressed
+        input.end = end_pressed
+        input.navigating = input.up || input.down || input.home || input.end
+        input.commit = enter_pressed || keypad_enter_pressed
+    }
+    return input
 }
 
 Dismiss :: (open: bool, opening: bool, count: i32, height: float,

@@ -131,6 +131,8 @@ test_existing_policy(void)
                               .icon = 16.0f, .font = 14.0f};
     DropdownMenuMetrics metrics = {.separator_inset = 16};
     DropdownOptionContent option_content;
+    DropdownTriggerInput trigger_input;
+    DropdownMenuInput menu_input;
 
     assert(ClampIndex(-2, 3) == 0);
     assert(ClampIndex(5, 3) == 2);
@@ -140,6 +142,29 @@ test_existing_policy(void)
     assert(DropdownCurrentIndexFor(-2, 3) == 0);
     assert(DropdownCurrentIndexFor(5, 3) == 2);
     assert(DropdownCurrentIndexFor(0, 0) == 0);
+    trigger_input = DropdownTriggerInputFor(true, false, false, false);
+    assert(trigger_input.enter && !trigger_input.space && !trigger_input.down);
+    trigger_input = DropdownTriggerInputFor(false, true, true, true);
+    assert(trigger_input.enter && trigger_input.space && trigger_input.down);
+    menu_input = DropdownMenuInputFor(true, false, true, false, false, false,
+                                      false, false, true);
+    assert(menu_input.navigating && menu_input.up && !menu_input.commit &&
+           menu_input.escape);
+    menu_input = DropdownMenuInputFor(true, false, false, true, false, false,
+                                      true, false, false);
+    assert(menu_input.navigating && menu_input.down && menu_input.commit);
+    menu_input = DropdownMenuInputFor(true, false, false, false, true, false,
+                                      false, false, false);
+    assert(menu_input.navigating && menu_input.home);
+    menu_input = DropdownMenuInputFor(true, false, false, false, false, true,
+                                      false, true, false);
+    assert(menu_input.navigating && menu_input.end && menu_input.commit);
+    menu_input = DropdownMenuInputFor(false, false, true, true, true, true,
+                                      true, true, true);
+    assert(!menu_input.navigating && !menu_input.commit && !menu_input.escape);
+    menu_input = DropdownMenuInputFor(true, true, true, true, true, true,
+                                      true, true, true);
+    assert(!menu_input.navigating && !menu_input.commit && menu_input.escape);
     assert(ContentHeight(3, 20.0f, 8.0f) == 68);
     assert(WheelOffset(20, 1.0f, 10.0f, 100) == 10);
     assert(DropdownJustOpenedNext(true, true));
