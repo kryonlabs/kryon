@@ -44,6 +44,7 @@ main(void)
     TextAreaPaint area_paint;
     TextAreaGutterMetrics gutter_metrics;
     TextInputDoubleClickDecision double_click;
+    TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -125,6 +126,16 @@ main(void)
                                                    7, 4, 6);
     assert(!double_click.double_click);
     assert(TextFieldPanDragThresholdFor(2.0f) == 10);
+    pan_decision = TextFieldPanDecisionFor(false, 11, 6, 10);
+    assert(pan_decision.pan);
+    pan_decision = TextFieldPanDecisionFor(false, -11, 6, 10);
+    assert(pan_decision.pan);
+    pan_decision = TextFieldPanDecisionFor(false, 10, 1, 10);
+    assert(!pan_decision.pan);
+    pan_decision = TextFieldPanDecisionFor(false, 12, 20, 10);
+    assert(!pan_decision.pan);
+    pan_decision = TextFieldPanDecisionFor(true, 0, 20, 10);
+    assert(pan_decision.pan);
     assert(TextAreaScrollbarWidthFor(2.0f) == 24);
     assert(TextFieldCursorHeightFor(18, 40.0f, 20,
                                     TextFieldMinCursorHeight(1.0f),

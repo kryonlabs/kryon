@@ -4535,10 +4535,10 @@ ui_text_field_render_filtered(TextFieldProps field,
         int dy = (int)mouse_world.y - g_ui_text_field_pan_start_y;
         float scale = (float)Scale(1000) / 1000.0f;
         int drag_threshold = TextFieldPanDragThresholdFor(scale);
+        TextFieldPanDecision pan_decision = TextFieldPanDecisionFor(
+            g_ui_text_field_panning != 0, dx, dy, drag_threshold);
 
-        if(g_ui_text_field_panning ||
-           ((dx > drag_threshold || dx < -drag_threshold) &&
-            abs(dx) >= abs(dy))) {
+        if(pan_decision.pan) {
             Rectangle capture = {
                 0.0f,
                 0.0f,

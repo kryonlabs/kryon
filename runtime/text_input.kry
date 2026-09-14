@@ -72,6 +72,10 @@ TextInputDoubleClickDecision :: struct {
     double_click: bool
 }
 
+TextFieldPanDecision :: struct {
+    pan: bool
+}
+
 TextSelectionRange :: struct {
     start: i32
     end: i32
@@ -214,6 +218,19 @@ TextInputDoubleClickDecisionFor :: (same_owner: bool, same_id: bool,
 
 TextFieldPanDragThresholdFor :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(5.0, scale)
+}
+
+TextFieldPanDecisionFor :: (already_panning: bool, dx: i32, dy: i32,
+    threshold: i32) -> TextFieldPanDecision #export {
+    decision: TextFieldPanDecision
+    if threshold < 0 { threshold = 0 }
+    abs_dx: i32 = dx
+    abs_dy: i32 = dy
+    if abs_dx < 0 { abs_dx = -abs_dx }
+    if abs_dy < 0 { abs_dy = -abs_dy }
+    decision.pan = already_panning ||
+        (abs_dx > threshold && abs_dx >= abs_dy)
+    return decision
 }
 
 TextFieldMinCursorHeight :: (scale: float) -> i32 #export {
