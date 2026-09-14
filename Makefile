@@ -339,6 +339,7 @@ KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
 LINK_POLICY_TEST = $(BUILD_DIR)/link-policy-test
 TERMINAL_PANE_POLICY_TEST = $(BUILD_DIR)/terminal-pane-policy-test
 PROFILE_HEADER_POLICY_TEST = $(BUILD_DIR)/profile-header-policy-test
+INSPECT_POLICY_TEST = $(BUILD_DIR)/inspect-policy-test
 COLLAPSIBLE_POLICY_TEST = $(BUILD_DIR)/collapsible-policy-test
 PANED_VIEW_POLICY_TEST = $(BUILD_DIR)/paned-view-policy-test
 TITLE_BAR_POLICY_TEST = $(BUILD_DIR)/title-bar-policy-test
@@ -378,7 +379,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test icon-policy-test transition-fade-policy-test modal-policy-test menu-policy-test tree-view-policy-test table-view-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test icon-policy-test transition-fade-policy-test modal-policy-test menu-policy-test tree-view-policy-test table-view-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -769,6 +770,10 @@ profile-header-policy-test: $(GENERATED_SRC_DIR)/runtime/profile_header.c $(GENE
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/profile_header_policy_test.c $(GENERATED_SRC_DIR)/runtime/profile_header.c -lm -o $(PROFILE_HEADER_POLICY_TEST)
 	$(PROFILE_HEADER_POLICY_TEST)
 
+inspect-policy-test: $(GENERATED_SRC_DIR)/runtime/inspect.c $(GENERATED_SRC_DIR)/runtime/inspect.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/inspect_policy_test.c $(GENERATED_SRC_DIR)/runtime/inspect.c -lm -o $(INSPECT_POLICY_TEST)
+	$(INSPECT_POLICY_TEST)
+
 link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/link.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/link_policy_test.c $(GENERATED_SRC_DIR)/runtime/link.c -lm -o $(LINK_POLICY_TEST)
 	$(LINK_POLICY_TEST)
@@ -987,6 +992,7 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
 $(BUILD_DIR)/ui/popup.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
 $(BUILD_DIR)/ui/profile_header.o: $(GENERATED_SRC_DIR)/runtime/profile_header.h
+$(BUILD_DIR)/ui/ui_inspect.o: $(GENERATED_SRC_DIR)/runtime/inspect.h
 $(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
 $(BUILD_DIR)/ui/ui_titlebar.o: $(GENERATED_SRC_DIR)/runtime/title_bar.h

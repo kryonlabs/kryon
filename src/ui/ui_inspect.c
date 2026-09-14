@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_inspect.h"
+#include "runtime/inspect.h"
 
 #define INSPECT_MAX_WIDGETS 512
 #define INSPECT_MAX_OVERRIDES 512
@@ -609,13 +610,7 @@ EndWidget(Widget *widget)
 static int
 ui_inspect_point_in_resize_handle(Rectangle bounds, Vector2 point)
 {
-    int handle = Scale(12);
-    Rectangle rect = {
-        bounds.x + bounds.width - (float)handle,
-        bounds.y + bounds.height - (float)handle,
-        (float)handle,
-        (float)handle
-    };
+    Rectangle rect = InspectResizeHandleBounds(bounds, Scale(12));
     return CheckCollisionPointRec(point, rect);
 }
 
@@ -634,11 +629,7 @@ ui_inspect_select_at(Vector2 mouse)
 static Rectangle
 ui_inspect_clamp_bounds(Rectangle bounds)
 {
-    if(bounds.width < 4.0f)
-        bounds.width = 4.0f;
-    if(bounds.height < 4.0f)
-        bounds.height = 4.0f;
-    return bounds;
+    return InspectClampBounds(bounds, 4.0f);
 }
 
 static void
@@ -700,25 +691,17 @@ ui_inspect_update_interaction(void)
         float dx;
         float dy;
         float zoom;
+        InspectEdit edit;
 
         selected = &g_ui_inspect.widgets[g_ui_inspect.selected];
         dx = screen_mouse.x - g_ui_inspect.drag_start.x;
         dy = screen_mouse.y - g_ui_inspect.drag_start.y;
         zoom = selected->screen_zoom > 0.0f ? selected->screen_zoom : 1.0f;
-        bounds = g_ui_inspect.edit_start;
-        screen_bounds = selected->screen_bounds;
-        if(g_ui_inspect.dragging) {
-            bounds.x += dx / zoom;
-            bounds.y += dy / zoom;
-            screen_bounds.x += dx;
-            screen_bounds.y += dy;
-        } else if(g_ui_inspect.resizing) {
-            bounds.width += dx / zoom;
-            bounds.height += dy / zoom;
-            screen_bounds.width += dx;
-            screen_bounds.height += dy;
-        }
-        bounds = ui_inspect_clamp_bounds(bounds);
+        edit = InspectEditForDelta(g_ui_inspect.edit_start,
+                                   selected->screen_bounds, dx, dy, zoom,
+                                   g_ui_inspect.resizing != 0, 4.0f);
+        bounds = edit.bounds;
+        screen_bounds = edit.screen_bounds;
         ui_inspect_commit_selected(bounds);
         selected->screen_bounds = screen_bounds;
     }
@@ -729,9 +712,8 @@ ui_inspect_update_interaction(void)
     }
     if(g_ui_inspect.selected >= 0 &&
        g_ui_inspect.selected < g_ui_inspect.widget_count) {
-        float step = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)
-                         ? 8.0f
-                         : 1.0f;
+        float step = InspectKeyboardStep(IsKeyDown(KEY_LEFT_SHIFT) ||
+                                         IsKeyDown(KEY_RIGHT_SHIFT));
 
         selected = &g_ui_inspect.widgets[g_ui_inspect.selected];
         bounds = selected->bounds;
@@ -778,10 +760,12 @@ RenderInspectOverlay(void)
         if(i == g_ui_inspect.selected &&
            (widget->flags & WidgetFlagResizable) != 0) {
             int s = Scale(10);
+            Rectangle handle_bounds =
+                InspectResizeHandleBounds(screen_bounds, s);
 
-            DrawRectangle((int)(screen_bounds.x + screen_bounds.width - s),
-                          (int)(screen_bounds.y + screen_bounds.height - s),
-                          s, s, handle);
+            DrawRectangle((int)handle_bounds.x, (int)handle_bounds.y,
+                          (int)handle_bounds.width,
+                          (int)handle_bounds.height, handle);
         }
     }
 }

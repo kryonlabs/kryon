@@ -1,0 +1,50 @@
+#module "inspect"
+#import "drawing_props"
+
+InspectEdit :: struct {
+    bounds: Rectangle
+    screen_bounds: Rectangle
+}
+
+InspectClampBounds :: (bounds: Rectangle, min_size: float) -> Rectangle #export {
+    if min_size <= 0.0 { min_size = 4.0 }
+    if bounds.width < min_size { bounds.width = min_size }
+    if bounds.height < min_size { bounds.height = min_size }
+    return bounds
+}
+
+InspectResizeHandleBounds :: (bounds: Rectangle, handle_size: i32) -> Rectangle #export {
+    if handle_size <= 0 { handle_size = 12 }
+    return (Rectangle){
+        bounds.x + bounds.width - (float)handle_size,
+        bounds.y + bounds.height - (float)handle_size,
+        (float)handle_size,
+        (float)handle_size}
+}
+
+InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
+    dx: float, dy: float, zoom: float, resizing: bool,
+    min_size: float) -> InspectEdit #export {
+    edit: InspectEdit
+    if zoom <= 0.0 { zoom = 1.0 }
+    edit.bounds = start
+    edit.screen_bounds = screen_start
+    if resizing {
+        edit.bounds.width += dx / zoom
+        edit.bounds.height += dy / zoom
+        edit.screen_bounds.width += dx
+        edit.screen_bounds.height += dy
+    } else {
+        edit.bounds.x += dx / zoom
+        edit.bounds.y += dy / zoom
+        edit.screen_bounds.x += dx
+        edit.screen_bounds.y += dy
+    }
+    edit.bounds = InspectClampBounds(edit.bounds, min_size)
+    return edit
+}
+
+InspectKeyboardStep :: (shift: bool) -> float #export {
+    if shift { return 8.0 }
+    return 1.0
+}
