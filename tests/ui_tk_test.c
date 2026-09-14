@@ -1293,6 +1293,15 @@ test_slider_value_policy(void)
                 SliderPointerRatio(-5.0f, 10.0f, 100.0f, 0), 0.0f);
     check_float("slider inverted pointer ratio",
                 SliderPointerRatio(35.0f, 10.0f, 100.0f, 1), 0.75f);
+    check_int("slider component invalid token",
+              SliderComponentTokenFor(0, 1), 0);
+    check_int("slider component token",
+              SliderComponentTokenFor(7, 16), 129);
+    check_int("slider float focus first", SliderFocusIdFor(7, 0, false), 7);
+    check_int("slider float focus later",
+              SliderFocusIdFor(7, 16, false), 0x40000081);
+    check_int("slider int focus later",
+              SliderFocusIdFor(7, 16, true), 0x50000081);
     check_int("slider pointer int value",
               SliderDiscretePointerValue(94.0f, 10.0f, 100.0f, 0, 10, 0), 8);
     check_int("slider inverted pointer int value",
@@ -1425,6 +1434,8 @@ test_drag_value_policy(void)
     check_int("drag int clamp", DragDiscreteClamp(-2, 0, 10), 0);
     check_int("drag int rounded positive",
               DragDiscreteRoundedDelta(0.49f, 0), 0);
+    check_int("drag component invalid token", DragComponentTokenFor(0, 1), 0);
+    check_int("drag component token", DragComponentTokenFor(7, 16), 129);
     check_int("drag int forced positive",
               DragDiscreteRoundedDelta(0.49f, 1), 1);
     check_int("drag int rounded negative",

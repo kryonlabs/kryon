@@ -797,8 +797,9 @@ and host plumbing behind the canonical names.
   rounding, and step dispatch now route through `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
   that runtime policy; `Spinbox` child focus IDs now route through
-  `runtime/spinbox.kry`; `Drag` text inset and label-gap metrics now route
-  through `runtime/drag.kry`; toolbar action focus IDs now route through
+  `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, and component
+  drag tokens now route through `runtime/drag.kry`; `Slider` component tokens
+  and focus IDs now route through `runtime/slider.kry`; toolbar action focus IDs now route through
   `runtime/toolbar.kry`; `ColorPicker` channel focus IDs now route through
   `runtime/color_picker.kry`; immediate list/tree/table row wheel-step policy
   now routes through `runtime/scroll.kry`; numeric temp-edit and selectable

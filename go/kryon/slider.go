@@ -123,6 +123,65 @@ func Slider_SliderLabelGapForStyle(label StyleFrame, scale float32) float32 {
 	return value_7
 }
 
+func Slider_SliderComponentTokenFor(control_id int32, component int32) int32 {
+	var value_0 int32 = control_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = component
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = control_id
+	var value_9 int32 = 16
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
+	var value_11 int32 = component
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	var value_13 int32 = 1
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	return value_14
+}
+
+func Slider_SliderFocusIdFor(control_id int32, component int32, integer bool) int32 {
+	var value_0 int32 = control_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = component
+	var value_5 int32 = 0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 int32 = control_id
+		return value_7
+	}
+	var value_8 int32 = 1073741824
+	var prefix int32 = value_8
+	var value_9 bool = integer
+	if value_9 {
+		var value_10 int32 = 1342177280
+		prefix = value_10
+	}
+	var value_11 int32 = prefix
+	var value_12 int32 = control_id
+	var value_13 int32 = component
+	var value_14 int32 = Slider_SliderComponentTokenFor(value_12, value_13)
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_14), 32, true, 10))
+	var token int32 = value_15
+	var value_16 int32 = token
+	var value_17 int32 = 2147483647
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 8))
+	return value_18
+}
+
 func Slider_SliderTrackRole() int32 {
 	var value_0 int32 = 4
 	return value_0

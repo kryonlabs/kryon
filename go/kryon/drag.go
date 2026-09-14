@@ -31,6 +31,31 @@ func Drag_DragLabelGapFor(scale float32) float32 {
 	return value_2
 }
 
+func Drag_DragComponentTokenFor(control_id int32, component int32) int32 {
+	var value_0 int32 = control_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = component
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = control_id
+	var value_9 int32 = 16
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 3))
+	var value_11 int32 = component
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	var value_13 int32 = 1
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	return value_14
+}
+
 func Drag_DragCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) DragTextPaint {
 	var paint DragTextPaint = DragTextPaint{}
 	var value_0 float32 = bounds.X

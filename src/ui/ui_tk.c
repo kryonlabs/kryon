@@ -2177,16 +2177,7 @@ RenderPlotHistogram(PlotProps plot)
 int
 ui_numeric_focus_id(int id, int component, int integer)
 {
-    unsigned int token;
-
-    if(id <= 0)
-        return 0;
-    if(component == 0)
-        return id;
-    token = (integer ? 0x50000000u : 0x40000000u) ^
-            ((unsigned int)id << 4) ^ (unsigned int)(component + 1);
-    token &= (unsigned int)INT_MAX;
-    return token != 0 ? (int)token : id;
+    return SliderFocusIdFor(id, component, integer != 0);
 }
 
 static int ui_slider_keyboard_direction(int vertical);
@@ -2405,8 +2396,7 @@ ui_update_drag_continuous(DragContinuousProps drag)
         if(enabled && ui_update_drag_continuous_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
-        if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
-                               (unsigned int)(i + 1)), focus_id, cell,
+        if(ui_drag_delta(DragComponentTokenFor(drag.id, i), focus_id, cell,
                          drag.disabled, &delta)) {
             DragStep step = DragDeltaValue(drag.values[i], delta,
                                                      speed, drag.min,
@@ -2444,8 +2434,7 @@ ui_update_drag_discrete(DragDiscreteProps drag)
         if(enabled && ui_update_drag_discrete_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
-        if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
-                               (unsigned int)(i + 1)), focus_id, cell,
+        if(ui_drag_delta(DragComponentTokenFor(drag.id, i), focus_id, cell,
                          drag.disabled, &delta)) {
             DragDiscreteStep step = DragDiscreteDeltaValue(drag.values[i], delta,
                                                  speed, drag.min, drag.max);
@@ -2743,9 +2732,8 @@ ui_update_slider_continuous(SliderContinuousProps slider, int vertical)
                                      slider.max);
             changed = 1;
         }
-        if(slider.max > slider.min && ui_slider_ratio((int)(0x40000000u ^
-                                           ((unsigned int)slider.id << 4) ^
-                                           (unsigned int)(i + 1)),
+        if(slider.max > slider.min && ui_slider_ratio(
+                                           SliderFocusIdFor(slider.id, i, false),
                                            focus_id, cell, slider.disabled,
                                            vertical, &ratio)) {
             float value = SliderValue(slider.min, slider.max, ratio);
@@ -2786,9 +2774,8 @@ ui_update_slider_discrete(SliderDiscreteProps slider, int vertical)
                                    slider.max);
             changed = 1;
         }
-        if(slider.max > slider.min && ui_slider_ratio((int)(0x50000000u ^
-                                        ((unsigned int)slider.id << 4) ^
-                                        (unsigned int)(i + 1)),
+        if(slider.max > slider.min && ui_slider_ratio(
+                                        SliderFocusIdFor(slider.id, i, true),
                                         focus_id, cell, slider.disabled,
                                         vertical, &ratio)) {
             int value = SliderDiscreteValue(slider.min, slider.max, ratio);

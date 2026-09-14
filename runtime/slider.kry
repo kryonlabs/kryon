@@ -89,6 +89,28 @@ SliderLabelGapForStyle :: (label: StyleFrame, scale: float) -> float #export {
         label.value.gap, 2.0, scale, true)
 }
 
+SliderComponentTokenFor :: (control_id: i32, component: i32) -> i32 #export {
+    if control_id <= 0 || component < 0 {
+        return 0
+    }
+    return control_id * 16 + component + 1
+}
+
+SliderFocusIdFor :: (control_id: i32, component: i32, integer: bool) -> i32 #export {
+    if control_id <= 0 {
+        return 0
+    }
+    if component <= 0 {
+        return control_id
+    }
+    prefix: i32 = 0x40000000
+    if integer {
+        prefix = 0x50000000
+    }
+    token: i32 = prefix ^ SliderComponentTokenFor(control_id, component)
+    return token & 0x7fffffff
+}
+
 SliderTrackRole :: () -> i32 #export {
     return 4
 }

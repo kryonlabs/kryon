@@ -2811,7 +2811,7 @@ func (r *runtime) dragFloat(props dragFloatProps) bool {
 				changed = true
 			}
 		}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
+		if delta, dragged := r.dragDelta(Drag_DragComponentTokenFor(props.ID, int32(i)), focusID, cell, props.Disabled); dragged {
 			step := Drag_DragDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
 			changed = changed || step.Changed
 			props.Values[i] = step.Value
@@ -2858,7 +2858,7 @@ func (r *runtime) dragInt(props dragIntProps) bool {
 				changed = true
 			}
 		}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
+		if delta, dragged := r.dragDelta(Drag_DragComponentTokenFor(props.ID, int32(i)), focusID, cell, props.Disabled); dragged {
 			step := Drag_DragDiscreteDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
 			changed = changed || step.Changed
 			props.Values[i] = step.Value
@@ -2901,7 +2901,7 @@ func (r *runtime) dragFloatRange(props dragFloatRangeProps) bool {
 				changed = true
 			}
 		}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
+		if delta, dragged := r.dragDelta(Drag_DragComponentTokenFor(props.ID, int32(i)), focusID, cell, props.Disabled); dragged {
 			step := Drag_DragDeltaValue(*values[i], delta, speed, low, high)
 			changed = changed || step.Changed
 			*values[i] = step.Value
@@ -2950,7 +2950,7 @@ func (r *runtime) dragIntRange(props dragIntRangeProps) bool {
 				changed = true
 			}
 		}
-		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
+		if delta, dragged := r.dragDelta(Drag_DragComponentTokenFor(props.ID, int32(i)), focusID, cell, props.Disabled); dragged {
 			step := Drag_DragDiscreteDeltaValue(*values[i], delta, speed, low, high)
 			changed = changed || step.Changed
 			*values[i] = step.Value
@@ -3044,7 +3044,7 @@ func (r *runtime) Drag(props DragProps) bool {
 }
 
 func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, className, id, component int32) {
-	pressed := r.drag.active && r.drag.token == id*16+component+1
+	pressed := r.drag.active && r.drag.token == Drag_DragComponentTokenFor(id, component)
 	state := ButtonStateNormal
 	if disabled {
 		state = ButtonStateDisabled
@@ -3206,17 +3206,7 @@ func (r *runtime) sliderRatio(token, focusID int32, bounds Rectangle, disabled, 
 }
 
 func sliderFocusID(id, component int32, integer bool) int32 {
-	if id <= 0 {
-		return 0
-	}
-	if component == 0 {
-		return id
-	}
-	prefix := int32(0x40000000)
-	if integer {
-		prefix = 0x50000000
-	}
-	return (prefix ^ (id*16 + component + 1)) & 0x7fffffff
+	return Slider_SliderFocusIdFor(id, component, integer)
 }
 
 func (r *runtime) sliderKeyboardDirection(vertical bool, key int32) int32 {
@@ -3371,7 +3361,7 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 				changed = true
 			}
 		}
-		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
+		if next, active := r.sliderRatio(Slider_SliderFocusIdFor(props.ID, int32(i), false), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
 			value := Slider_SliderValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]
@@ -3420,7 +3410,7 @@ func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 				changed = true
 			}
 		}
-		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
+		if next, active := r.sliderRatio(Slider_SliderFocusIdFor(props.ID, int32(i), true), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
 			value := Slider_SliderDiscreteValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]

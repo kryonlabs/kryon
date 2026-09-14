@@ -24,6 +24,13 @@ DragLabelGapFor :: (scale: float) -> float #export {
     return scale * 2.0
 }
 
+DragComponentTokenFor :: (control_id: i32, component: i32) -> i32 #export {
+    if control_id <= 0 || component < 0 {
+        return 0
+    }
+    return control_id * 16 + component + 1
+}
+
 DragCellTextPaintFor :: (bounds: Rectangle, inset: float,
     text_line_height: float) -> DragTextPaint #export {
     paint: DragTextPaint
