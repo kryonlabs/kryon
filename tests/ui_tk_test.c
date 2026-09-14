@@ -1127,6 +1127,8 @@ test_text_input_policy(void)
               TextInputDoubleClickSlopFor(2.0f), 12);
     check_int("text field pan drag threshold",
               TextFieldPanDragThresholdFor(2.0f), 10);
+    check_int("input pointer drag threshold",
+              InputPointerDragThresholdFor(2.0f), 10);
     check_int("text input content width",
               TextInputContentWidth(100.0f, metrics.padding_x), 80);
     check_int("text area page rows",

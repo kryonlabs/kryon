@@ -11,6 +11,7 @@
 #include "runtime/bevel.h"
 #include "runtime/button.h"
 #include "runtime/focus.h"
+#include "runtime/input.h"
 #include "runtime/link.h"
 #include "runtime/paragraph.h"
 #include "runtime/scroll.h"
@@ -690,7 +691,8 @@ ui_update_pointer_gesture(void)
     Vector2 mouse = GetMousePosition();
     int mx = (int)mouse.x;
     int my = (int)mouse.y;
-    int drag_threshold = Scale(5);
+    int drag_threshold = InputPointerDragThresholdFor(
+        (float)Scale(1000) / 1000.0f);
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         g_ui_pointer_down = 1;

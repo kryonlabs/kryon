@@ -39,6 +39,10 @@ InputDoubleClickSlopFor :: (scale: float) -> i32 #export {
     return InputScaledMetric(6.0, scale)
 }
 
+InputPointerDragThresholdFor :: (scale: float) -> i32 #export {
+    return InputScaledMetric(5.0, scale)
+}
+
 InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
     requested_button_width: i32, has_step: bool) -> InputCellLayout #export {
     layout: InputCellLayout
