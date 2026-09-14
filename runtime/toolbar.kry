@@ -302,6 +302,11 @@ IconSliderPopupCloseDecision :: struct {
     close: bool
 }
 
+IconSliderPopupOpenResult :: struct {
+    open: bool
+    changed: bool
+}
+
 IconSliderPopupLayoutFor :: (x: i32, y: i32, icon_size: i32,
     icon_padding: i32, popup_width: i32, popup_height: i32,
     scale: float) -> IconSliderPopupLayout #export {
@@ -338,4 +343,22 @@ IconSliderPopupCloseDecisionFor :: (icon_clicked: bool, released: bool,
     decision: IconSliderPopupCloseDecision
     decision.close = !icon_clicked && released && !pointer_inside_popup
     return decision
+}
+
+IconSliderPopupOpenFor :: (open: bool, icon_clicked: bool,
+    close_requested: bool, has_open: bool) -> IconSliderPopupOpenResult #export {
+    result: IconSliderPopupOpenResult
+    result.open = open
+    result.changed = false
+    if !has_open {
+        return result
+    }
+    if icon_clicked {
+        result.open = !open
+    }
+    if close_requested {
+        result.open = false
+    }
+    result.changed = result.open != open
+    return result
 }

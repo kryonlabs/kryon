@@ -22,6 +22,7 @@
 #include "runtime/spinbox.h"
 #include "runtime/tab_bar.h"
 #include "runtime/text_input.h"
+#include "runtime/toolbar.h"
 #include "runtime/toggle.h"
 #include "theme.h"
 #include "ui_inspect.h"
@@ -1169,6 +1170,36 @@ test_popup_policy(void)
     check_int("popup context activation", context_open.open, 1);
     check_int("popup context activation x", (int)context_open.origin.x, 20);
     check_int("popup context captured blocks", context_blocked.open, 0);
+}
+
+static void
+test_toolbar_icon_popup_policy(void)
+{
+    IconSliderPopupOpenResult opened =
+        IconSliderPopupOpenFor(false, true, false, true);
+    IconSliderPopupOpenResult closed =
+        IconSliderPopupOpenFor(true, true, false, true);
+    IconSliderPopupOpenResult dismissed =
+        IconSliderPopupOpenFor(true, false, true, true);
+    IconSliderPopupOpenResult missing =
+        IconSliderPopupOpenFor(false, true, true, false);
+    IconSliderPopupCloseDecision close =
+        IconSliderPopupCloseDecisionFor(false, true, false);
+    IconSliderPopupCloseDecision stay_icon =
+        IconSliderPopupCloseDecisionFor(true, true, false);
+    IconSliderPopupCloseDecision stay_inside =
+        IconSliderPopupCloseDecisionFor(false, true, true);
+
+    check_int("icon popup opens", opened.open, 1);
+    check_int("icon popup open changed", opened.changed, 1);
+    check_int("icon popup closes from icon", closed.open, 0);
+    check_int("icon popup close changed", closed.changed, 1);
+    check_int("icon popup dismisses", dismissed.open, 0);
+    check_int("icon popup dismiss changed", dismissed.changed, 1);
+    check_int("icon popup missing unchanged", missing.changed, 0);
+    check_int("icon popup close outside", close.close, 1);
+    check_int("icon popup icon click blocks close", stay_icon.close, 0);
+    check_int("icon popup inside blocks close", stay_inside.close, 0);
 }
 
 static void
@@ -5624,6 +5655,7 @@ main(void)
     test_multi_select_policy();
     test_tab_bar_policy();
     test_popup_policy();
+    test_toolbar_icon_popup_policy();
     test_text_input_policy();
     test_segmented_control_policy();
     test_spinbox_policy();

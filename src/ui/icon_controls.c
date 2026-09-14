@@ -51,8 +51,10 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
         .style_resolved = 1
     });
     if(icon_clicked) {
-        *popup.open = !was_open;
-        if(was_open)
+        IconSliderPopupOpenResult open_result = IconSliderPopupOpenFor(
+            was_open != 0, true, false, true);
+        *popup.open = open_result.open;
+        if(!open_result.open)
             return 0;
     }
 
@@ -67,7 +69,9 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
             IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
             CheckCollisionPointRec(mouse, layout.popup_bounds) != 0);
     if(close_decision.close) {
-        *popup.open = 0;
+        IconSliderPopupOpenResult open_result = IconSliderPopupOpenFor(
+            *popup.open != 0, false, true, true);
+        *popup.open = open_result.open;
         return 0;
     }
 

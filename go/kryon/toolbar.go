@@ -56,6 +56,15 @@ type IconSliderPopupLayout struct {
 	IconSize     int32
 }
 
+type IconSliderPopupCloseDecision struct {
+	Close bool
+}
+
+type IconSliderPopupOpenResult struct {
+	Open    bool
+	Changed bool
+}
+
 func Toolbar_ToolbarMetric(fields uint32, field uint32, value int32, fallback float32, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -962,4 +971,27 @@ func Toolbar_IconSliderPopupLayoutFor(x int32, y int32, icon_size int32, icon_pa
 	layout.IconSize = value_88
 	var value_89 IconSliderPopupLayout = layout
 	return value_89
+}
+
+func Toolbar_IconSliderPopupCloseDecisionFor(icon_clicked bool, released bool, pointer_inside_popup bool) IconSliderPopupCloseDecision {
+	var decision IconSliderPopupCloseDecision = IconSliderPopupCloseDecision{}
+	decision.Close = !icon_clicked && released && !pointer_inside_popup
+	return decision
+}
+
+func Toolbar_IconSliderPopupOpenFor(open bool, icon_clicked bool, close_requested bool, has_open bool) IconSliderPopupOpenResult {
+	var result IconSliderPopupOpenResult = IconSliderPopupOpenResult{}
+	result.Open = open
+	result.Changed = false
+	if !has_open {
+		return result
+	}
+	if icon_clicked {
+		result.Open = !open
+	}
+	if close_requested {
+		result.Open = false
+	}
+	result.Changed = result.Open != open
+	return result
 }
