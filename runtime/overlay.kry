@@ -1,0 +1,27 @@
+#module "overlay"
+#import "drawing_props"
+
+DismissibleOverlayPolicy :: struct {
+    closed: bool
+    outside_released: bool
+    release_consumed: bool
+}
+
+OverlayViewExtent :: (requested: i32, fallback: i32) -> i32 #export {
+    if requested > 0 { return requested }
+    if fallback > 0 { return fallback }
+    return 0
+}
+
+DismissibleOverlayPolicyFor :: (released: bool, release_consumed: bool,
+    dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy #export {
+    policy: DismissibleOverlayPolicy
+    if released && !release_consumed && !dismiss_disabled && !pointer_inside {
+        policy.closed = true
+        policy.outside_released = true
+        policy.release_consumed = true
+        return policy
+    }
+    policy.release_consumed = release_consumed
+    return policy
+}

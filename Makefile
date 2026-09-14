@@ -361,6 +361,7 @@ LAYOUT_POLICY_TEST = $(BUILD_DIR)/layout-policy-test
 GROUP_POLICY_TEST = $(BUILD_DIR)/group-policy-test
 GRID_POLICY_TEST = $(BUILD_DIR)/grid-policy-test
 TOAST_POLICY_TEST = $(BUILD_DIR)/toast-policy-test
+OVERLAY_POLICY_TEST = $(BUILD_DIR)/overlay-policy-test
 CANVAS_POLICY_TEST = $(BUILD_DIR)/canvas-policy-test
 DROPDOWN_POLICY_TEST = $(BUILD_DIR)/dropdown-policy-test
 DRAG_DROP_POLICY_TEST = $(BUILD_DIR)/drag-drop-policy-test
@@ -721,6 +722,10 @@ grid-policy-test: $(GENERATED_SRC_DIR)/runtime/grid.c $(GENERATED_SRC_DIR)/runti
 toast-policy-test: $(GENERATED_SRC_DIR)/runtime/toast.c $(GENERATED_SRC_DIR)/runtime/toast.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/toast_policy_test.c $(GENERATED_SRC_DIR)/runtime/toast.c -lm -o $(TOAST_POLICY_TEST)
 	$(TOAST_POLICY_TEST)
+
+overlay-policy-test: $(GENERATED_SRC_DIR)/runtime/overlay.c $(GENERATED_SRC_DIR)/runtime/overlay.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/overlay_policy_test.c $(GENERATED_SRC_DIR)/runtime/overlay.c -lm -o $(OVERLAY_POLICY_TEST)
+	$(OVERLAY_POLICY_TEST)
 
 canvas-policy-test: $(GENERATED_SRC_DIR)/runtime/canvas.c $(GENERATED_SRC_DIR)/runtime/canvas.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/canvas_policy_test.c $(GENERATED_SRC_DIR)/runtime/canvas.c -lm -o $(CANVAS_POLICY_TEST)
