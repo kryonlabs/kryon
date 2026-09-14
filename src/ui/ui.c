@@ -867,18 +867,6 @@ ConsumeRelease(void)
 }
 
 int
-PointerReleaseConsumed(void)
-{
-    return ReleaseConsumed();
-}
-
-void
-ConsumePointerRelease(void)
-{
-    ConsumeRelease();
-}
-
-int
 press_started_inside(Rectangle bounds)
 {
     if(g_ui_pointer_start_x == INT_MIN && g_ui_pointer_start_y == INT_MIN)
@@ -1889,14 +1877,8 @@ int
 ui_text_input_default_font(int style_kind, int class_name)
 {
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
-        ResolveActiveStyle(
-            ui_pack_style_states((ControlStyle){.normal = {
-                .fields = StyleOpacity,
-                .opacity = 1.0f
-            }}).normal,
-            StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
-                              ButtonEmphasisSoft, ControlSizeMedium,
-                              ButtonStateNormal),
+        ResolveActiveStyle((StyleData){0},
+            TextInputFactsFor(style_kind, class_name),
             ButtonStateNormal)));
     return ResolveFont(0, StyleFontValue(resolved.fields,
                                          resolved.font_size), GetFontSize());
@@ -1908,14 +1890,8 @@ ui_resolve_text_input_appearance(TextInputAppearance style, int style_kind,
 {
     float scale = (float)Scale(1000) / 1000.0f;
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
-        ResolveActiveStyle(
-            ui_pack_style_states((ControlStyle){.normal = {
-                .fields = StyleOpacity,
-                .opacity = 1.0f
-            }}).normal,
-            StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
-                              ButtonEmphasisSoft, ControlSizeMedium,
-                              ButtonStateNormal),
+        ResolveActiveStyle((StyleData){0},
+            TextInputFactsFor(style_kind, class_name),
             ButtonStateNormal)));
     TextInputResolvedStyle policy = TextInputResolvedStyleFor(
         style.fields, style.padding_x, style.padding_y, style.line_gap,

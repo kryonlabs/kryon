@@ -294,8 +294,6 @@ const char *ui_inspect_control_id(char *buf, size_t buf_size,
                                   const char *label);
 int ReleaseConsumed(void);
 void ConsumeRelease(void);
-int PointerReleaseConsumed(void);
-void ConsumePointerRelease(void);
 int PointerReleaseAvailable(Vector2 point);
 int PointerReleaseOutside(Rectangle bounds);
 int press_started_inside(Rectangle bounds);

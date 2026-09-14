@@ -81,8 +81,6 @@ int HandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int InputCapturesClick(Vector2 point);
 int ReleaseConsumed(void);
 void ConsumeRelease(void);
-int PointerReleaseConsumed(void);
-void ConsumePointerRelease(void);
 int PointerReleaseAvailable(Vector2 point);
 int PointerReleaseOutside(Rectangle bounds);
 int HoverEffectsEnabled(void);
