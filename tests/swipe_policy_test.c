@@ -73,7 +73,9 @@ static void
 test_drag_state(void)
 {
     SwipeDragState state;
+    SwipeDragLifecycle lifecycle;
     SwipeReleaseState release;
+    SwipeReleaseLifecycle release_lifecycle;
 
     state = SwipeDragStateFor((Vector2){7.0f, 0.0f}, SwipeAll, 1.25f,
                               8.0f, 48.0f, false);
@@ -101,6 +103,26 @@ test_drag_state(void)
     assert(!state.cancelled);
     assert(fabsf(state.progress - 1.0f) < 0.001f);
 
+    lifecycle = SwipeDragLifecycleFor(false, false, false, false);
+    assert(lifecycle.cancel_active);
+    assert(!lifecycle.claim_pointer_owner);
+    assert(!lifecycle.capture_input);
+
+    lifecycle = SwipeDragLifecycleFor(true, true, false, false);
+    assert(lifecycle.cancel_active);
+
+    lifecycle = SwipeDragLifecycleFor(true, false, false, true);
+    assert(!lifecycle.cancel_active);
+    assert(lifecycle.claim_pointer_owner);
+    assert(lifecycle.capture_input);
+    assert(lifecycle.dragging);
+
+    lifecycle = SwipeDragLifecycleFor(true, false, true, true);
+    assert(!lifecycle.cancel_active);
+    assert(!lifecycle.claim_pointer_owner);
+    assert(lifecycle.capture_input);
+    assert(lifecycle.dragging);
+
     release = SwipeReleaseStateFor((Vector2){-64.0f, 0.0f}, SwipeHorizontal,
                                    1.25f, 48.0f, 0.2, 0.5f, true);
     assert(release.committed);
@@ -118,6 +140,13 @@ test_drag_state(void)
     assert(!release.committed);
     assert(release.direction == SwipeNone);
     assert(fabsf(release.progress - 0.5f) < 0.001f);
+
+    release_lifecycle = SwipeReleaseLifecycleFor(true);
+    assert(release_lifecycle.consume_release);
+    assert(release_lifecycle.capture_input);
+    release_lifecycle = SwipeReleaseLifecycleFor(false);
+    assert(!release_lifecycle.consume_release);
+    assert(!release_lifecycle.capture_input);
 }
 
 int

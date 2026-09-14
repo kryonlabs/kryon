@@ -51,33 +51,29 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         SwipeDragState drag;
-
-        if(g_ui_pointer_owner != POINTER_OWNER_NONE &&
-           g_ui_pointer_owner != POINTER_OWNER_SWIPE) {
-            gesture->active = 0;
-            gesture->cancelled = 1;
-            result.active = 0;
-            result.cancelled = 1;
-            return result;
-        }
+        SwipeDragLifecycle lifecycle;
 
         drag = SwipeDragStateFor(delta, directions, axis_bias,
                                  decision_distance, min_distance,
                                  gesture->dragging != 0);
-        if(drag.cancelled) {
+        lifecycle = SwipeDragLifecycleFor(
+            g_ui_pointer_owner == POINTER_OWNER_NONE ||
+                g_ui_pointer_owner == POINTER_OWNER_SWIPE,
+            drag.cancelled, gesture->dragging != 0, drag.dragging);
+        if(lifecycle.cancel_active) {
             gesture->active = 0;
             gesture->cancelled = 1;
             result.active = 0;
             result.cancelled = 1;
             return result;
         }
-        if(!gesture->dragging && drag.dragging) {
+        if(lifecycle.claim_pointer_owner) {
             gesture->dragging = 1;
             g_ui_pointer_owner = POINTER_OWNER_SWIPE;
         }
 
-        result.dragging = gesture->dragging;
-        if(gesture->dragging) {
+        result.dragging = lifecycle.dragging;
+        if(lifecycle.capture_input) {
             result.progress = drag.progress;
             PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
@@ -92,9 +88,12 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
                                  now - gesture->started_at,
                                  spec.max_duration,
                                  gesture->dragging != 0);
+        SwipeReleaseLifecycle lifecycle =
+            SwipeReleaseLifecycleFor(gesture->dragging != 0);
 
-        if(gesture->dragging) {
+        if(lifecycle.consume_release)
             ConsumeRelease();
+        if(lifecycle.capture_input) {
             PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
