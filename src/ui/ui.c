@@ -3938,9 +3938,9 @@ ui_text_area_render(TextAreaProps area)
                        g_ui_text_input_enter_count > 0);
     has_selection = ui_text_selection_matches(g_ui_text_area_selection, drag_id,
                                               area.focused);
-    if(has_selection && !focused && IsKeyboardInputEnabled() &&
-       ui_mod_key_down() &&
-       (copy_pressed || cut_pressed || paste_pressed)) {
+    if(TextShortcutShouldClaimSelectionFocus(has_selection, focused,
+       IsKeyboardInputEnabled(), ui_mod_key_down(), copy_pressed, cut_pressed,
+       paste_pressed)) {
         focused = 1;
         ClaimTextAreaFocus(area.focused);
         *area.focused = 1;

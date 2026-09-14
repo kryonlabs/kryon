@@ -376,6 +376,18 @@ main(void)
     assert(!context_command.delete_selection);
     assert(context_command.paste);
     assert(context_command.collapse_selection);
+    assert(TextShortcutShouldClaimSelectionFocus(true, false, true, true,
+        true, false, false));
+    assert(TextShortcutShouldClaimSelectionFocus(true, false, true, true,
+        false, true, false));
+    assert(!TextShortcutShouldClaimSelectionFocus(true, true, true, true,
+        true, false, false));
+    assert(!TextShortcutShouldClaimSelectionFocus(false, false, true, true,
+        true, false, false));
+    assert(!TextShortcutShouldClaimSelectionFocus(true, false, false, true,
+        true, false, false));
+    assert(!TextShortcutShouldClaimSelectionFocus(true, false, true, false,
+        true, false, false));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

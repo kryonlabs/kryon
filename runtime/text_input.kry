@@ -386,6 +386,13 @@ TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
         true, !read_only, !read_only)
 }
 
+TextShortcutShouldClaimSelectionFocus :: (has_selection: bool, focused: bool,
+    keyboard_enabled: bool, modifier: bool, copy_pressed: bool,
+    cut_pressed: bool, paste_pressed: bool) -> bool #export {
+    return has_selection && !focused && keyboard_enabled && modifier &&
+        (copy_pressed || cut_pressed || paste_pressed)
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }
