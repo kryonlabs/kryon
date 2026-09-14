@@ -19,6 +19,8 @@ main(void)
     StyleFrame header = {0};
     StyleFrame tree_header = {0};
     StyleFrame close = {0};
+    CollapsibleCloseDecision close_decision;
+    CollapsibleKeyboardDecision keyboard_decision;
     header.value.fields = StyleFontSize | StylePaddingX | StylePaddingY |
                           StyleIconSize;
     header.value.font_size = 14.0f;
@@ -62,6 +64,72 @@ main(void)
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerClosed), ">") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerOpen), "v") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerLeaf), "•") == 0);
+    CollapsiblePointerDecision pointer_decision =
+        CollapsiblePointerDecisionFor(true, false, true, true, false, true);
+    assert(pointer_decision.mark_clickable);
+    assert(pointer_decision.focus);
+    assert(pointer_decision.toggle_open);
+    assert(pointer_decision.consume_release);
+    assert(pointer_decision.changed);
+    pointer_decision = CollapsiblePointerDecisionFor(
+        true, false, true, false, false, true);
+    assert(pointer_decision.mark_clickable);
+    assert(!pointer_decision.focus);
+    assert(!pointer_decision.toggle_open);
+    assert(!pointer_decision.consume_release);
+    pointer_decision = CollapsiblePointerDecisionFor(
+        true, false, true, true, true, true);
+    assert(pointer_decision.focus);
+    assert(!pointer_decision.toggle_open);
+    assert(pointer_decision.consume_release);
+    assert(!pointer_decision.changed);
+    pointer_decision = CollapsiblePointerDecisionFor(
+        true, true, true, true, false, true);
+    assert(!pointer_decision.focus);
+    assert(!pointer_decision.toggle_open);
+    assert(!pointer_decision.consume_release);
+    close_decision = CollapsibleCloseDecisionFor(true, true, true);
+    assert(close_decision.hide);
+    assert(close_decision.changed);
+    close_decision = CollapsibleCloseDecisionFor(false, true, true);
+    assert(!close_decision.hide);
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, false, false, true, CollapsibleKeyDown(), false, false,
+        true, false);
+    assert(keyboard_decision.move_focus);
+    assert(keyboard_decision.focus_key == CollapsibleKeyDown());
+    assert(keyboard_decision.handled);
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, false, false, true, CollapsibleKeyRight(), false, false,
+        true, false);
+    assert(!keyboard_decision.move_focus);
+    assert(keyboard_decision.set_open);
+    assert(keyboard_decision.open);
+    assert(keyboard_decision.handled);
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, false, false, true, CollapsibleKeyLeft(), true, false,
+        true, false);
+    assert(!keyboard_decision.move_focus);
+    assert(keyboard_decision.set_open);
+    assert(!keyboard_decision.open);
+    assert(keyboard_decision.handled);
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, false, false, true, CollapsibleKeyLeft(), false, false,
+        true, false);
+    assert(keyboard_decision.move_focus);
+    assert(keyboard_decision.focus_key == CollapsibleKeyLeft());
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, false, false, false, CollapsibleKeyNone(), false, false,
+        true, true);
+    assert(!keyboard_decision.move_focus);
+    assert(keyboard_decision.toggle_open);
+    assert(keyboard_decision.handled);
+    keyboard_decision = CollapsibleKeyboardDecisionFor(
+        true, true, false, false, CollapsibleKeyRight(), false, false,
+        true, true);
+    assert(!keyboard_decision.set_open);
+    assert(!keyboard_decision.toggle_open);
+    assert(!keyboard_decision.handled);
     header.value.fields = 0;
     header.value.font_size = 0.0f;
     header.value.padding_x = 0.0f;

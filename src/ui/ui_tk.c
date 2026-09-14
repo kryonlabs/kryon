@@ -4406,6 +4406,10 @@ RenderCollapsible(CollapsibleProps section)
     Rectangle close_bounds;
     int close_hover = 0;
     int closed = 0;
+    int close_clicked = 0;
+    CollapsibleCloseDecision close_decision;
+    CollapsiblePointerDecision pointer_decision;
+    CollapsibleKeyboardDecision keyboard_decision;
     if(section.visible != NULL && !*section.visible) return 0;
     layout = CollapsibleLayoutFor(section.bounds, section.tree != 0,
                                   section.depth, section.visible != NULL,
@@ -4416,39 +4420,65 @@ RenderCollapsible(CollapsibleProps section)
     ui_tree_header_register(section, enabled);
     int focused = enabled && section.id > 0 && RegisterFocus(section.id, header);
     if(focused) SetFocusTextInputActive(0);
-    if(section.visible != NULL &&
-       HandleClick(close_bounds, !enabled, &close_hover)) {
+    if(section.visible != NULL)
+        close_clicked = HandleClick(close_bounds, !enabled, &close_hover);
+    close_decision = CollapsibleCloseDecisionFor(
+        enabled != 0, section.visible != NULL, close_clicked != 0);
+    if(close_decision.hide && section.visible != NULL) {
         *section.visible = false;
-        changed = closed = 1;
+        closed = 1;
+        changed |= close_decision.changed;
     }
-    if(enabled && !closed && ui_hot(body)) {
+    pointer_decision = CollapsiblePointerDecisionFor(
+        enabled != 0, closed != 0, ui_hot(body) != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        section.leaf != 0, section.open != NULL);
+    if(pointer_decision.mark_clickable)
         MarkClickable();
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            ConsumeRelease();
-            if(section.id > 0) SetFocus(section.id);
-            if(!section.leaf && section.open != NULL) {
-                *section.open = !*section.open;
-                changed = 1;
-            }
-        }
+    if(pointer_decision.consume_release)
+        ConsumeRelease();
+    if(pointer_decision.focus && section.id > 0)
+        SetFocus(section.id);
+    if(pointer_decision.toggle_open && section.open != NULL) {
+        *section.open = !*section.open;
+        changed |= pointer_decision.changed;
     }
-    if(focused && !ui_popup_input_focus_captures(section.id) &&
-       toolkit->tree_key_frame != g_ui_frame_serial) {
-        int key = IsKeyPressed(KEY_DOWN) ? KEY_DOWN : IsKeyPressed(KEY_UP) ? KEY_UP :
-                  IsKeyPressed(KEY_RIGHT) ? KEY_RIGHT : IsKeyPressed(KEY_LEFT) ? KEY_LEFT : 0;
+    {
+        int key = CollapsibleKeyNone();
         int open = section.open != NULL && *section.open;
-        if(section.tree && (key == KEY_DOWN || key == KEY_UP ||
-           (key == KEY_RIGHT && open && !section.leaf) || (key == KEY_LEFT && (!open || section.leaf)))) {
-            SetFocus(ui_tree_header_target(section.id,key));
-            toolkit->tree_key_frame = g_ui_frame_serial;
-        } else if(!section.leaf && section.open != NULL) {
-            if(key == KEY_RIGHT) *section.open = true;
-            if(key == KEY_LEFT) *section.open = false;
-            if(IsFocusActivatePressed(section.id)) *section.open = !*section.open;
-            changed |= open != *section.open;
-            if(key != 0 || IsFocusActivatePressed(section.id))
-                toolkit->tree_key_frame = g_ui_frame_serial;
+        if(IsKeyPressed(KEY_DOWN))
+            key = CollapsibleKeyDown();
+        else if(IsKeyPressed(KEY_UP))
+            key = CollapsibleKeyUp();
+        else if(IsKeyPressed(KEY_RIGHT))
+            key = CollapsibleKeyRight();
+        else if(IsKeyPressed(KEY_LEFT))
+            key = CollapsibleKeyLeft();
+        keyboard_decision = CollapsibleKeyboardDecisionFor(
+            focused != 0, ui_popup_input_focus_captures(section.id) != 0,
+            toolkit->tree_key_frame == g_ui_frame_serial,
+            section.tree != 0, key, open != 0, section.leaf != 0,
+            section.open != NULL, IsFocusActivatePressed(section.id) != 0);
+        if(keyboard_decision.move_focus) {
+            int focus_key = keyboard_decision.focus_key == CollapsibleKeyDown()
+                ? KEY_DOWN
+                : keyboard_decision.focus_key == CollapsibleKeyUp()
+                ? KEY_UP
+                : keyboard_decision.focus_key == CollapsibleKeyRight()
+                ? KEY_RIGHT
+                : keyboard_decision.focus_key == CollapsibleKeyLeft()
+                ? KEY_LEFT : 0;
+            SetFocus(ui_tree_header_target(section.id, focus_key));
+        } else if(section.open != NULL) {
+            int previous_open = *section.open;
+            if(keyboard_decision.set_open)
+                *section.open = keyboard_decision.open;
+            if(keyboard_decision.toggle_open)
+                *section.open = !*section.open;
+            changed |= previous_open != *section.open;
         }
+        if(keyboard_decision.handled)
+            toolkit->tree_key_frame = g_ui_frame_serial;
     }
     focused = enabled && section.id > 0 && IsFocusActive(section.id);
     if(IsWindowReady()) {

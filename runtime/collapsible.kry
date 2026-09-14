@@ -24,6 +24,48 @@ CollapsibleLayout :: struct {
     has_close: bool
 }
 
+CollapsiblePointerDecision :: struct {
+    mark_clickable: bool
+    focus: bool
+    toggle_open: bool
+    consume_release: bool
+    changed: bool
+}
+
+CollapsibleCloseDecision :: struct {
+    hide: bool
+    changed: bool
+}
+
+CollapsibleKeyboardDecision :: struct {
+    move_focus: bool
+    focus_key: i32
+    set_open: bool
+    open: bool
+    toggle_open: bool
+    handled: bool
+}
+
+CollapsibleKeyNone :: () -> i32 #export {
+    return 0
+}
+
+CollapsibleKeyLeft :: () -> i32 #export {
+    return 1
+}
+
+CollapsibleKeyRight :: () -> i32 #export {
+    return 2
+}
+
+CollapsibleKeyUp :: () -> i32 #export {
+    return 3
+}
+
+CollapsibleKeyDown :: () -> i32 #export {
+    return 4
+}
+
 CollapsibleHeaderRole :: () -> i32 #export {
     return 13
 }
@@ -106,4 +148,61 @@ CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
         if layout.body.width < 0.0 { layout.body.width = 0.0 }
     }
     return layout
+}
+
+CollapsiblePointerDecisionFor :: (enabled: bool, closed: bool, hot_body: bool,
+    released: bool, leaf: bool, has_open: bool) -> CollapsiblePointerDecision #export {
+    decision: CollapsiblePointerDecision
+    if !enabled || closed || !hot_body {
+        return decision
+    }
+    decision.mark_clickable = true
+    if !released {
+        return decision
+    }
+    decision.focus = true
+    decision.consume_release = true
+    decision.toggle_open = !leaf && has_open
+    decision.changed = decision.toggle_open
+    return decision
+}
+
+CollapsibleCloseDecisionFor :: (enabled: bool, has_visible: bool,
+    clicked: bool) -> CollapsibleCloseDecision #export {
+    decision: CollapsibleCloseDecision
+    decision.hide = enabled && has_visible && clicked
+    decision.changed = decision.hide
+    return decision
+}
+
+CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
+    key_already_handled: bool, tree: bool, key: i32, open: bool, leaf: bool,
+    has_open: bool, activate: bool) -> CollapsibleKeyboardDecision #export {
+    decision: CollapsibleKeyboardDecision
+    if !focused || focus_captured || key_already_handled {
+        return decision
+    }
+    if tree && (key == CollapsibleKeyDown() || key == CollapsibleKeyUp() ||
+       (key == CollapsibleKeyRight() && open && !leaf) ||
+       (key == CollapsibleKeyLeft() && (!open || leaf))) {
+        decision.move_focus = true
+        decision.focus_key = key
+        decision.handled = true
+        return decision
+    }
+    if !leaf && has_open {
+        if key == CollapsibleKeyRight() {
+            decision.set_open = true
+            decision.open = true
+        }
+        if key == CollapsibleKeyLeft() {
+            decision.set_open = true
+            decision.open = false
+        }
+        if activate {
+            decision.toggle_open = true
+        }
+        decision.handled = key != CollapsibleKeyNone() || activate
+    }
+    return decision
 }
