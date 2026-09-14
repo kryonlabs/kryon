@@ -206,17 +206,18 @@ main(void)
     frame.value.icon_size = 0.0f;
     frame.value.padding_x = 10.0f;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
-        25, 20.0f, 1.0f, frame, frame, frame);
+        25, 20.0f, 12.0f, 1.0f, frame, frame, frame);
     check_float("progress label padding falls back when unset",
                 progress_paint.layout.label_x, 41.0f);
+    check_float("progress label y", progress_paint.layout.label_y, 24.0f);
     frame.value.fields |= StylePaddingX;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
-        25, 20.0f, 1.0f, frame, frame, frame);
+        25, 20.0f, 12.0f, 1.0f, frame, frame, frame);
     check_float("progress label padding comes from label style",
                 progress_paint.layout.label_x, 45.0f);
     frame.value.padding_x = 0.0f;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
-        25, 20.0f, 1.0f, frame, frame, frame);
+        25, 20.0f, 12.0f, 1.0f, frame, frame, frame);
     check_float("progress keeps explicit zero label padding",
                 progress_paint.layout.label_x, 35.0f);
     frame.value.fields &= ~StylePaddingX;

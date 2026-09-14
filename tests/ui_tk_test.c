@@ -672,13 +672,17 @@ static void
 test_progress_layout_policy(void)
 {
     Rectangle bounds = {10, 20, 100, 10};
-    ProgressLayout low = ProgressLayoutFor(bounds, 0, 100, 25, 20.0f, 6.0f);
-    ProgressLayout high = ProgressLayoutFor(bounds, 0, 100, 80, 20.0f, 6.0f);
-    ProgressLayout clamped = ProgressLayoutFor(bounds, 10, 10, 99, 20.0f, 6.0f);
+    ProgressLayout low = ProgressLayoutFor(bounds, 0, 100, 25, 20.0f,
+                                           8.0f, 6.0f);
+    ProgressLayout high = ProgressLayoutFor(bounds, 0, 100, 80, 20.0f,
+                                            8.0f, 6.0f);
+    ProgressLayout clamped = ProgressLayoutFor(bounds, 10, 10, 99, 20.0f,
+                                               8.0f, 6.0f);
 
     check_int("progress low ratio", (int)(low.ratio * 100.0f + 0.5f), 25);
     check_int("progress low fill", (int)low.fill_bounds.width, 25);
     check_int("progress low label after fill", (int)low.label_x, 41);
+    check_int("progress low label y", (int)low.label_y, 21);
     check_int("progress low label color", low.label_on_fill, 0);
     check_int("progress high fill", (int)high.fill_bounds.width, 80);
     check_int("progress high label inside fill", (int)high.label_x, 64);

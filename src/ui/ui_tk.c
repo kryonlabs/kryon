@@ -1994,13 +1994,14 @@ RenderProgress(ProgressProps progress)
                                              text_style.font_size),
                            GetSmallFontSize());
     int label_w = label != NULL ? TextWidth(label, font) : 0;
+    int label_h = label != NULL ? TextLineHeight(font) : 0;
     StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 4);
     StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
         ButtonStateNormal, 0, 1, progress.class_name, StyleKindProgress(), 5);
 
     paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
-                             progress.value, (float)label_w,
+                             progress.value, (float)label_w, (float)label_h,
                              (float)Scale(1000) / 1000.0f, track, active,
                              text);
     fill = paint.layout.fill_bounds;
@@ -2032,8 +2033,7 @@ RenderProgress(ProgressProps progress)
     }
     if(label != NULL) {
         int text_x = (int)paint.layout.label_x;
-        int text_y = ControlTextY(label, (int)progress.bounds.y,
-                                       (int)progress.bounds.height, font);
+        int text_y = (int)paint.layout.label_y;
         Color text_color = GetColor(paint.layout.label_on_fill
             ? paint.filled_label_color
             : paint.label_color);

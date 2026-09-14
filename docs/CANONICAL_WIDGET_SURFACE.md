@@ -749,7 +749,8 @@ and host plumbing behind the canonical names.
   `TextField`/`TextArea` double-click slop, field pan
   drag threshold, and `TextArea` gutter metrics now route through
   `runtime/text_input.kry`; retained wrapped text measurement now uses
-  `runtime/paragraph.kry` default line-gap policy. Continue by
+  `runtime/paragraph.kry` default line-gap policy; `Progress` label
+  vertical placement now routes through `runtime/progress.kry`. Continue by
   reducing raw native constants in shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,

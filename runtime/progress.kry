@@ -7,6 +7,7 @@ ProgressLayout :: struct {
     ratio: float
     fill_bounds: Rectangle
     label_x: float
+    label_y: float
     label_on_fill: bool
 }
 
@@ -70,18 +71,23 @@ ProgressLabelX :: (bounds: Rectangle, fill_width: float,
     return x
 }
 
+ProgressLabelY :: (bounds: Rectangle, label_line_height: float) -> float #export {
+    return bounds.y + (bounds.height - label_line_height) * 0.5
+}
+
 ProgressLabelOnFill :: (fill_width: float, label_width: float,
     padding: float) -> bool #export {
     return fill_width >= label_width + padding * 2.0
 }
 
 ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
-    label_width: float, padding: float) -> ProgressLayout #export {
+    label_width: float, label_line_height: float, padding: float) -> ProgressLayout #export {
     layout: ProgressLayout
     layout.ratio = ProgressRatio(min, max, value)
     layout.fill_bounds = ProgressFillBounds(bounds, layout.ratio)
     layout.label_x = ProgressLabelX(bounds, layout.fill_bounds.width,
         label_width, padding)
+    layout.label_y = ProgressLabelY(bounds, label_line_height)
     layout.label_on_fill = ProgressLabelOnFill(layout.fill_bounds.width,
         label_width, padding)
     return layout
@@ -94,12 +100,13 @@ ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float) -> float #expo
 }
 
 ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
-    label_width: float, scale: float, track: StyleFrame, fill: StyleFrame,
-    label: StyleFrame) -> ProgressPaint #export {
+    label_width: float, label_line_height: float, scale: float,
+    track: StyleFrame, fill: StyleFrame, label: StyleFrame) -> ProgressPaint #export {
     paint: ProgressPaint
     if scale <= 0.0 { scale = 1.0 }
     padding: float = ProgressLabelPaddingForStyle(label, scale)
-    paint.layout = ProgressLayoutFor(bounds, min, max, value, label_width, padding)
+    paint.layout = ProgressLayoutFor(bounds, min, max, value, label_width,
+        label_line_height, padding)
     paint.track = track
     paint.fill = fill
     paint.label = label
