@@ -105,6 +105,12 @@ TextCompositionViewRange :: struct {
     composition_end: i32
 }
 
+TextCompositionPaintSpan :: struct {
+    visible: bool
+    start: i32
+    end: i32
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
 }
@@ -194,6 +200,49 @@ TextCompositionViewRangeFor :: (selection_start: i32, selection_end: i32,
     range.composition_start = range.replace_start
     range.composition_end = range.replace_start + preedit_len
     return range
+}
+
+TextCompositionPaintSpanForText :: (composition_start: i32,
+    composition_end: i32, text_len: i32) -> TextCompositionPaintSpan #export {
+    span: TextCompositionPaintSpan
+    if text_len < 0 { text_len = 0 }
+    if composition_start < 0 { composition_start = 0 }
+    if composition_end < 0 { composition_end = 0 }
+    if composition_start > text_len { composition_start = text_len }
+    if composition_end > text_len { composition_end = text_len }
+    if composition_end <= composition_start { return span }
+    span.visible = true
+    span.start = composition_start
+    span.end = composition_end
+    return span
+}
+
+TextCompositionPaintSpanForLine :: (composition_start: i32,
+    composition_end: i32, line_start: i32,
+    line_end: i32) -> TextCompositionPaintSpan #export {
+    span: TextCompositionPaintSpan
+    if composition_end <= composition_start { return span }
+    if line_end < line_start { line_end = line_start }
+    span.start = composition_start
+    if span.start < line_start { span.start = line_start }
+    span.end = composition_end
+    if span.end > line_end { span.end = line_end }
+    if span.end <= span.start { return span }
+    span.visible = true
+    return span
+}
+
+TextCompositionUnderlineEndX :: (start_x: i32, end_x: i32,
+    stroke_width: i32) -> i32 #export {
+    if stroke_width < 1 { stroke_width = 1 }
+    if end_x <= start_x { return start_x + stroke_width }
+    return end_x
+}
+
+TextCompositionUnderlineY :: (text_y: i32, line_height: i32,
+    stroke_width: i32) -> i32 #export {
+    if stroke_width < 1 { stroke_width = 1 }
+    return text_y + line_height - stroke_width
 }
 
 TextSelectionRange :: struct {

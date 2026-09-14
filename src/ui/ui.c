@@ -2153,27 +2153,34 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 
     if(composition_end > composition_start) {
         char composition[1024];
+        TextCompositionPaintSpan span;
         int len = (int)strlen(value);
         int composition_len;
         int composition_x;
         int composition_w;
+        int composition_y;
 
-        composition_start = ui_clampi(composition_start, 0, len);
-        composition_end = ui_clampi(composition_end, 0, len);
-        composition_len = composition_end - composition_start;
-        if(composition_len >= (int)sizeof(composition))
-            composition_len = (int)sizeof(composition) - 1;
-        memcpy(composition, value + composition_start,
-               (size_t)composition_len);
-        composition[composition_len] = '\0';
-        composition_x = text_x +
-            ui_text_width_before_cursor(value, font, composition_start);
-        composition_w = TextWidth(composition, font);
-        if(composition_w < stroke_width)
-            composition_w = stroke_width;
-        DrawRectangle(composition_x,
-                      text_y + TextLineHeight(font) - stroke_width,
-                      composition_w, stroke_width, cursor_color);
+        span = TextCompositionPaintSpanForText(composition_start,
+                                               composition_end, len);
+        if(span.visible) {
+            composition_len = span.end - span.start;
+            if(composition_len >= (int)sizeof(composition))
+                composition_len = (int)sizeof(composition) - 1;
+            memcpy(composition, value + span.start,
+                   (size_t)composition_len);
+            composition[composition_len] = '\0';
+            composition_x = text_x +
+                ui_text_width_before_cursor(value, font, span.start);
+            composition_w = TextWidth(composition, font);
+            composition_w = TextCompositionUnderlineEndX(
+                composition_x, composition_x + composition_w,
+                stroke_width) - composition_x;
+            composition_y = TextCompositionUnderlineY(
+                text_y, TextLineHeight(font), stroke_width);
+            DrawRectangle(composition_x,
+                          composition_y,
+                          composition_w, stroke_width, cursor_color);
+        }
     }
 
     if(focused && cursor_visible) {
@@ -3141,6 +3148,7 @@ ui_draw_text_area_composition(const char *text, int line_start, int line_end,
                               int composition_start, int composition_end)
 {
     int stroke_width = TextInputStrokeWidth((float)Scale(1000) / 1000.0f);
+    TextCompositionPaintSpan span;
     int start;
     int end;
     int start_x;
@@ -3148,15 +3156,17 @@ ui_draw_text_area_composition(const char *text, int line_start, int line_end,
 
     if(text == NULL || composition_end <= composition_start)
         return;
-    start = composition_start > line_start ? composition_start : line_start;
-    end = composition_end < line_end ? composition_end : line_end;
-    if(end <= start)
+    span = TextCompositionPaintSpanForLine(composition_start, composition_end,
+                                           line_start, line_end);
+    if(!span.visible)
         return;
+    start = span.start;
+    end = span.end;
     start_x = x + ui_text_column_x(text, line_start, start, font);
     end_x = x + ui_text_column_x(text, line_start, end, font);
-    if(end_x <= start_x)
-        end_x = start_x + stroke_width;
-    DrawRectangle(start_x, y + TextLineHeight(font) - stroke_width,
+    end_x = TextCompositionUnderlineEndX(start_x, end_x, stroke_width);
+    DrawRectangle(start_x, TextCompositionUnderlineY(
+                      y, TextLineHeight(font), stroke_width),
                   end_x - start_x, stroke_width, color);
 }
 

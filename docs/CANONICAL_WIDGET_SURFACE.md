@@ -840,7 +840,8 @@ and host plumbing behind the canonical names.
    buffer-limit, navigation, edit-intent, selection range, preedit
    accept/cancel/drain gating, composition session visibility/cancel policy,
    composition phase classification, apply-result flag policy, preedit
-   selection-length policy, and composition view range/offset policy in
+   selection-length policy, composition view range/offset policy, and
+   composition paint span/underline policy in
    `.kry`; remaining native work is buffer mutation, IME/composition,
    selection ownership/painting, and the final decision about how much of that
    can become reusable `.kry` policy.
