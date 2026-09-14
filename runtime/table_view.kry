@@ -38,6 +38,14 @@ TableViewSelectionClearDecision :: struct {
     changed: bool
 }
 
+TableViewSortDecision :: struct {
+    selected_row: i32
+    selected_column: i32
+    sort_column: i32
+    sort_direction: i32
+    changed: bool
+}
+
 TableViewClipboardDecision :: struct {
     copy_selection: bool
     paste: bool
@@ -374,6 +382,29 @@ TableViewSelectionClearFor :: (selected_row: i32,
         decision.column = -1
         decision.changed = true
     }
+    return decision
+}
+
+TableViewSortDecisionFor :: (column: i32, previous_sort_column: i32,
+    previous_sort_direction: i32) -> TableViewSortDecision #export {
+    decision: TableViewSortDecision
+    decision.selected_row = -1
+    decision.selected_column = column
+    decision.sort_column = column
+    decision.sort_direction = previous_sort_direction
+    if column < 0 {
+        decision.selected_column = -1
+        decision.sort_column = previous_sort_column
+        return decision
+    }
+    if previous_sort_column != column || previous_sort_direction == 0 {
+        decision.sort_direction = 1
+    } else if previous_sort_direction > 0 {
+        decision.sort_direction = -1
+    } else {
+        decision.sort_direction = 0
+    }
+    decision.changed = true
     return decision
 }
 

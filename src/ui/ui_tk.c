@@ -3968,21 +3968,17 @@ RenderTableView(TableViewProps table)
         }
         if(!table.disabled && ui_contains(all_headers,header_mouse) && ui_contains(head,local_mouse) &&
            !InputCapturesClick(header_mouse) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.sort_column != NULL) {
-            int previous_sort_column = *table.sort_column;
+            TableViewSortDecision sort_decision = TableViewSortDecisionFor(
+                c, *table.sort_column,
+                table.sort_direction != NULL ? *table.sort_direction : 0);
             if(table.selected_row != NULL)
-                *table.selected_row = -1;
+                *table.selected_row = sort_decision.selected_row;
             if(table.selected_column != NULL)
-                *table.selected_column = c;
-            *table.sort_column = c;
-            if(table.sort_direction != NULL) {
-                if(previous_sort_column != c || *table.sort_direction == 0)
-                    *table.sort_direction = 1;
-                else if(*table.sort_direction > 0)
-                    *table.sort_direction = -1;
-                else
-                    *table.sort_direction = 0;
-            }
-            changed = 1;
+                *table.selected_column = sort_decision.selected_column;
+            *table.sort_column = sort_decision.sort_column;
+            if(table.sort_direction != NULL)
+                *table.sort_direction = sort_decision.sort_direction;
+            changed = sort_decision.changed;
         }
     }
 

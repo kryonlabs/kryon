@@ -30,6 +30,7 @@ main(void)
     TableViewScrollLayout scroll;
     TableViewClipboardDecision clipboard;
     TableViewResizeClearDecision resize_clear;
+    TableViewSortDecision sort_decision;
     Rectangle row;
 
     assert(metrics.default_row_height == 56);
@@ -110,6 +111,22 @@ main(void)
     assert(!clear_decision.changed);
     assert(clear_decision.row == -1);
     assert(clear_decision.column == -1);
+    sort_decision = TableViewSortDecisionFor(2, -1, 0);
+    assert(sort_decision.changed);
+    assert(sort_decision.selected_row == -1);
+    assert(sort_decision.selected_column == 2);
+    assert(sort_decision.sort_column == 2);
+    assert(sort_decision.sort_direction == 1);
+    sort_decision = TableViewSortDecisionFor(2, 2, 1);
+    assert(sort_decision.sort_direction == -1);
+    sort_decision = TableViewSortDecisionFor(2, 2, -1);
+    assert(sort_decision.sort_direction == 0);
+    sort_decision = TableViewSortDecisionFor(2, 2, 0);
+    assert(sort_decision.sort_direction == 1);
+    sort_decision = TableViewSortDecisionFor(-1, 3, -1);
+    assert(!sort_decision.changed);
+    assert(sort_decision.sort_column == 3);
+    assert(sort_decision.sort_direction == -1);
     clipboard = TableViewClipboardDecisionFor(false, true, false, true, true);
     assert(!clipboard.copy_selection);
     assert(!clipboard.paste);

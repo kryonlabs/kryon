@@ -795,7 +795,8 @@ and host plumbing behind the canonical names.
   through `runtime/drag_drop.kry`; scroll-page content-width normalization and
   scroll drag/scrollbar-drag/ensure-visible policy now route through
   `runtime/scroll.kry`;
-  table keyboard selection, clear-selection, resize lifecycle/width, clipboard intent, and scroll-into-view policy now route through
+  table keyboard selection, clear-selection, header sort cycling,
+  resize lifecycle/width, clipboard intent, and scroll-into-view policy now route through
   `runtime/table_view.kry`; `Input` numeric kind default format, integer
   rounding, step dispatch, temp-edit activation, and pointer-drag
   threshold/start/direction policy now route through `runtime/input.kry`; retained
