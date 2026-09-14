@@ -4,6 +4,7 @@
 #include "ui_style_internal.h"
 #include "theme.h"
 #include "runtime/dropdown.h"
+#include "runtime/input.h"
 #include "runtime/style.h"
 #include "ui_paint_internal.h"
 #include "ui_style_sheet.h"
@@ -364,11 +365,15 @@ ui_dropdown(DropdownProps props)
     Vector2 mouse = ui_mouse_world();
     Color button_text;
     int button_inside = CheckCollisionPointRec(mouse, btn_bounds);
-    int active = button_inside &&
-                 (state->open
-                      ? !ui_base_input_captures_click(mouse, 1)
-                      : !InputCapturesClick(mouse));
-    int hover = active && HoverEffectsEnabled();
+    InputPointerInteraction trigger_interaction = InputPointerInteractionFor(
+        button_inside != 0,
+        (state->open
+             ? ui_base_input_captures_click(mouse, 1)
+             : InputCapturesClick(mouse)) != 0,
+        ContentDisabled() != 0, HoverEffectsEnabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
+    int active = trigger_interaction.active;
+    int hover = trigger_interaction.hovered;
     int can_draw = IsWindowReady();
 
     state->frame_seen = g_ui_frame_serial;
@@ -394,11 +399,15 @@ ui_dropdown(DropdownProps props)
     btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     WidgetSetBounds(&widget, btn_bounds);
     button_inside = CheckCollisionPointRec(mouse, btn_bounds);
-    active = !ContentDisabled() && button_inside &&
-             (state->open
-                  ? !ui_base_input_captures_click(mouse, 1)
-                  : !InputCapturesClick(mouse));
-    hover = active && HoverEffectsEnabled();
+    trigger_interaction = InputPointerInteractionFor(
+        button_inside != 0,
+        (state->open
+             ? ui_base_input_captures_click(mouse, 1)
+             : InputCapturesClick(mouse)) != 0,
+        ContentDisabled() != 0, HoverEffectsEnabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
+    active = trigger_interaction.active;
+    hover = trigger_interaction.hovered;
     int focused = !ContentDisabled() && id > 0 && RegisterFocus(id, btn_bounds);
     if(focused) SetFocusTextInputActive(0);
 
@@ -432,7 +441,7 @@ ui_dropdown(DropdownProps props)
     if(active)
         MarkClickable();
 
-    int pointer_activate = active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    int pointer_activate = trigger_interaction.activated;
     int next_open = Trigger(state->open, ContentDisabled(), option_count, focused,
         !ui_popup_input_keyboard_captures(), pointer_activate,
         IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER),
@@ -647,9 +656,13 @@ dropdown_paint_menu(int id)
         if(visible_h <= 0)
             continue;
 
-        int option_active = !options[i].disabled && CheckCollisionPointRec(mouse, visible_bounds);
+        InputPointerInteraction option_interaction = InputPointerInteractionFor(
+            CheckCollisionPointRec(mouse, visible_bounds) != 0, false,
+            options[i].disabled != 0, HoverEffectsEnabled() != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
+        int option_active = option_interaction.active;
         int option_hover = !options[i].disabled && (state->highlight_index == i ||
-                           (option_active && HoverEffectsEnabled()));
+                           option_interaction.hovered);
 
         Color row_text = content_style.foreground;
         if(can_draw) {
@@ -670,7 +683,7 @@ dropdown_paint_menu(int id)
             if(option_active) MarkClickable();
 
             if(CanCommit(!options[i].disabled, state->just_opened, false, false,
-                option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+                option_interaction.activated,
                 state->scrollbar_pressed, state->gesture.dragging,
                 state->scroll_offset == state->gesture.origin_offset)) {
                 ClearTextInputFocus();
