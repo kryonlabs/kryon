@@ -74,7 +74,7 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
                           .emphasis = ButtonEmphasisSoft,
                           .class_name = class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-            StyleKindPopup(), 2).value);
+            StyleKindPopup(), PopupPanelRole()).value);
         ui_draw_material(popup, (Rectangle){0}, panel.background, panel.border,
                          panel.border, panel.radius, panel.border_width,
                          0, 0, 0, panel.focus, 0, panel.opacity,

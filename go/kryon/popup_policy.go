@@ -17,6 +17,11 @@ type PopupContextActivation struct {
 	Origin Vector2
 }
 
+func PopupPolicy_PopupPanelRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
 func PopupPolicy_PopupDecisionFor(flags uint32, disabled bool) PopupDecision {
 	var decision PopupDecision = PopupDecision{}
 	var value_0 int32 = 1

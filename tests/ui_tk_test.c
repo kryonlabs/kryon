@@ -1066,6 +1066,7 @@ test_popup_policy(void)
         PopupContextActivationFor(context, trigger, (Vector2){20, 18},
                                   0, 1, 1);
 
+    check_int("popup panel role", PopupPanelRole(), 2);
     check_int("popup plain valid", plain.valid, 1);
     check_int("popup plain captures", plain.captures_input, 1);
     check_int("popup plain requires open", plain.requires_open, 1);

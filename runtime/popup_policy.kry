@@ -16,6 +16,10 @@ PopupContextActivation :: struct {
     origin: Vector2
 }
 
+PopupPanelRole :: () -> i32 #export {
+    return 2
+}
+
 PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
     decision: PopupDecision
     tooltip_flag: u32 = (u32)1

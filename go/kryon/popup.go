@@ -76,7 +76,7 @@ func (r *runtime) PopupScope(p PopupProps) bool {
 	}
 	r.scrollClips = append(r.scrollClips, p.Bounds)
 	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, p.ClassName, StyleSheet_StyleKindPopup(), 2)
+		false, false, p.ClassName, StyleSheet_StyleKindPopup(), PopupPolicy_PopupPanelRole())
 	panelOp := styleFrameRectOp(p.Bounds, Rectangle{}, panelFrame)
 	panelOp.ID = p.ID
 	r.record(panelOp)
