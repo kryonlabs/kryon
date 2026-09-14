@@ -88,6 +88,10 @@ main(void)
     assert(TextAreaGutterRowsFor(80.0f, 20, gutter_metrics) == 7);
     assert(TextAreaGutterRowsFor(80.0f, 0, gutter_metrics) == 0);
     assert(TextAreaGutterFirstY(10.0f, 23, 20, gutter_metrics) == 27);
+    assert(TextAreaMaxScrollFor(200, 80.0f, 6) == 132);
+    assert(TextAreaMaxScrollFor(40, 80.0f, 6) == 0);
+    assert(TextAreaWheelScrollFor(50, 1.0f, 20) == -10);
+    assert(TextAreaWheelScrollFor(50, -0.5f, 20) == 80);
     area_paint = TextAreaPaintFor((Rectangle){10, 20, 100, 80},
                                   16, 4, 8, 6, 1, 200, 500, 18,
                                   TextAreaMinWrapWidth(1.0f));

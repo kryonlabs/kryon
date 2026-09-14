@@ -4252,15 +4252,15 @@ ui_text_area_render(TextAreaProps area)
                                             composition.text != NULL
                                                 ? 0 : area.content_version,
                                             changed);
-    max_scroll = content_h - ((int)area.bounds.height - padding_y * 2);
-    if(max_scroll < 0)
-        max_scroll = 0;
+    max_scroll = TextAreaMaxScrollFor(content_h, area.bounds.height,
+                                      padding_y);
     scrollbar_w = TextAreaScrollbarShouldShow(area.scroll_y != NULL,
         max_scroll)
         ? TextAreaScrollbarWidthFor((float)Scale(1000) / 1000.0f)
         : 0;
     if(TextAreaWheelShouldScroll(mouse_inside, captured, ui_mod_key_down()))
-        scroll_y -= (int)(GetMouseWheelMove() * (float)line_h * 3.0f);
+        scroll_y = TextAreaWheelScrollFor(scroll_y, GetMouseWheelMove(),
+                                          line_h);
     reveal_cursor = TextAreaRevealCursorShouldRun(focused, changed,
         IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
         IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END) ||

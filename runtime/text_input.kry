@@ -568,6 +568,21 @@ TextAreaScrollbarWidthFor :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(12.0, scale)
 }
 
+TextAreaMaxScrollFor :: (content_height: i32, bounds_height: float,
+    padding_y: i32) -> i32 #export {
+    viewport_height: i32 = (i32)bounds_height - padding_y * 2
+    max_scroll: i32 = content_height - viewport_height
+    if max_scroll < 0 {
+        return 0
+    }
+    return max_scroll
+}
+
+TextAreaWheelScrollFor :: (scroll: i32, wheel: float,
+    line_height: i32) -> i32 #export {
+    return scroll - (i32)(wheel * (float)line_height * 3.0)
+}
+
 TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
     metrics: TextAreaGutterMetrics
     metrics.top_inset = TextInputScaledMetric(10.0, scale)
@@ -715,8 +730,8 @@ TextAreaPaintFor :: (bounds: Rectangle, font: i32, line_gap: i32,
     line_height: i32 = font + line_gap
     paint.viewport_height = (i32)bounds.height - padding_y * 2
     if paint.viewport_height < 0 { paint.viewport_height = 0 }
-    paint.max_scroll = content_height - paint.viewport_height
-    if paint.max_scroll < 0 { paint.max_scroll = 0 }
+    paint.max_scroll = TextAreaMaxScrollFor(content_height, bounds.height,
+                                            padding_y)
     paint.scroll_y = scroll_y
     if paint.scroll_y < 0 { paint.scroll_y = 0 }
     if paint.scroll_y > paint.max_scroll { paint.scroll_y = paint.max_scroll }
