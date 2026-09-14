@@ -1756,6 +1756,12 @@ ClearTextInputFocus(void)
 static int
 IsTextFocusOwner(int *focused)
 {
+    TextFocusOwnerDecision decision = TextFocusOwnerDecisionFor(
+        focused != NULL, g_ui_text_focus_owner == focused,
+        g_ui_text_focus_owner_this_frame != NULL,
+        focused != NULL && *focused != 0,
+        g_ui_text_focus_owner != NULL);
+
     /* Strict single-owner enforcement. A text input is focused if and only if
      * it is the recorded owner. Ownership survives across frames (so a stale
      * per-widget `focused` flag can never revive a caret that another input
@@ -1764,27 +1770,15 @@ IsTextFocusOwner(int *focused)
      * first widget to claim/adopt wins; every other text input is denied. */
     if(focused == NULL)
         return 0;
-    if(g_ui_text_focus_owner == focused) {
+    if(decision.mark_frame_owner) {
+        if(decision.adopt_owner)
+            g_ui_text_focus_owner = focused;
         g_ui_text_focus_owner_this_frame = focused;
         g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
-        return 1;
     }
-    /* Already owned by someone else this frame: deny and clear stale flag. */
-    if(g_ui_text_focus_owner_this_frame != NULL) {
+    if(decision.clear_target)
         *focused = 0;
-        return 0;
-    }
-    /* No owner yet this frame. Allow adoption only if the app set this widgets
-     * flag (autofocus / programmatic SetFocus). First adoption wins; any
-     * later widget with a stale flag is denied above. */
-    if(*focused != 0 && g_ui_text_focus_owner == NULL) {
-        g_ui_text_focus_owner = focused;
-        g_ui_text_focus_owner_this_frame = focused;
-        g_ui_text_focus_owner_frame = g_ui_text_focus_frame;
-        return 1;
-    }
-    *focused = 0;
-    return 0;
+    return decision.focused ? 1 : 0;
 }
 
 int

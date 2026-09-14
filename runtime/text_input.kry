@@ -158,6 +158,13 @@ TextFocusReleaseDecision :: struct {
     clear_area_drag: bool
 }
 
+TextFocusOwnerDecision :: struct {
+    focused: bool
+    adopt_owner: bool
+    mark_frame_owner: bool
+    clear_target: bool
+}
+
 TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
     same_owner: bool) -> TextFocusClaimDecision #export {
     decision: TextFocusClaimDecision
@@ -169,6 +176,32 @@ TextFocusClaimDecisionFor :: (has_target: bool, has_previous_owner: bool,
     decision.cancel_previous = !same_owner
     decision.close_context = !same_owner
     decision.clear_peer_selection = !same_owner
+    return decision
+}
+
+TextFocusOwnerDecisionFor :: (has_target: bool, owns_focus: bool,
+    has_frame_owner: bool, target_flag: bool,
+    has_focus_owner: bool) -> TextFocusOwnerDecision #export {
+    decision: TextFocusOwnerDecision
+    if !has_target {
+        return decision
+    }
+    if owns_focus {
+        decision.focused = true
+        decision.mark_frame_owner = true
+        return decision
+    }
+    if has_frame_owner {
+        decision.clear_target = true
+        return decision
+    }
+    if target_flag && !has_focus_owner {
+        decision.focused = true
+        decision.adopt_owner = true
+        decision.mark_frame_owner = true
+        return decision
+    }
+    decision.clear_target = true
     return decision
 }
 
