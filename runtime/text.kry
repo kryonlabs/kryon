@@ -58,6 +58,25 @@ TextDoubleClickSlopFor :: (scale: float) -> i32 #export {
     return (i32)(6.0 * scale)
 }
 
+TextDoubleClickShouldSelectLine :: (same_target: bool, same_line: bool,
+    last_time: float, now: float, dx: float, dy: float,
+    scale: float) -> bool #export {
+    slop: i32 = TextDoubleClickSlopFor(scale)
+    if !same_target || !same_line || last_time < 0.0 {
+        return false
+    }
+    if now - last_time > 0.40 {
+        return false
+    }
+    if dx < (float)-slop || dx > (float)slop {
+        return false
+    }
+    if dy < (float)-slop || dy > (float)slop {
+        return false
+    }
+    return true
+}
+
 TextControlBaselineSample :: () -> const char* #export {
     return "Hg"
 }

@@ -34,6 +34,18 @@ int main(void)
     assert(TextWrapPolicy(100, 0) == 0 && TextWrapPolicy(100, 1) == 1);
     assert(TextDoubleClickSlopFor(2.0f) == 12);
     assert(TextDoubleClickSlopFor(0.0f) == 6);
+    assert(TextDoubleClickShouldSelectLine(true, true, 1.0f, 1.30f,
+                                           5.0f, -5.0f, 1.0f));
+    assert(!TextDoubleClickShouldSelectLine(false, true, 1.0f, 1.30f,
+                                            5.0f, -5.0f, 1.0f));
+    assert(!TextDoubleClickShouldSelectLine(true, false, 1.0f, 1.30f,
+                                            5.0f, -5.0f, 1.0f));
+    assert(!TextDoubleClickShouldSelectLine(true, true, -1.0f, 1.30f,
+                                            5.0f, -5.0f, 1.0f));
+    assert(!TextDoubleClickShouldSelectLine(true, true, 1.0f, 1.50f,
+                                            5.0f, -5.0f, 1.0f));
+    assert(!TextDoubleClickShouldSelectLine(true, true, 1.0f, 1.30f,
+                                            7.0f, -5.0f, 1.0f));
     assert(strcmp(TextControlBaselineSample(), "Hg") == 0);
     assert(TextControlClipGuardFor(0.0f) == 1);
     assert(TextControlClipGuardFor(2.0f) == 2);

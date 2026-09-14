@@ -1656,12 +1656,11 @@ RenderSelectableTextBlock(SelectableTextBlock block)
             float dx = mouse.x - g_ui_text_block_last_click_position.x;
             float dy = mouse.y - g_ui_text_block_last_click_position.y;
             float scale = (float)Scale(1000) / 1000.0f;
-            int slop = TextDoubleClickSlopFor(scale);
-            int double_click = g_ui_text_block_last_click_id == block.id &&
-                g_ui_text_block_last_click_line == i &&
-                g_ui_text_block_last_click_time >= 0.0 &&
-                now - g_ui_text_block_last_click_time <= 0.40 &&
-                dx >= -slop && dx <= slop && dy >= -slop && dy <= slop;
+            int double_click = TextDoubleClickShouldSelectLine(
+                g_ui_text_block_last_click_id == block.id,
+                g_ui_text_block_last_click_line == i,
+                (float)g_ui_text_block_last_click_time, (float)now,
+                dx, dy, scale);
 
             if(double_click) {
                 /* A wrapped visual line is the useful unit here. Keep the
