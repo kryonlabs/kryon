@@ -3633,7 +3633,9 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     int active;
     int total;
     int y;
+    float scale;
     Rectangle gutter;
+    TextAreaGutterMetrics gutter_metrics;
     TextInputStyle style;
 
     if(gutter_width <= 0)
@@ -3651,7 +3653,9 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
         return area.bounds;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
     first = scroll_y / line_h;
-    rows = ((int)area.bounds.height / line_h) + 3;
+    scale = (float)Scale(1000) / 1000.0f;
+    gutter_metrics = TextAreaGutterMetricsFor(scale);
+    rows = TextAreaGutterRowsFor(area.bounds.height, line_h, gutter_metrics);
     active = TextBufferLineAtCursor(area.text, area.cursor_position != NULL
         ? *area.cursor_position : 0);
     total = TextBufferLineCount(area.text);
@@ -3661,7 +3665,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     DrawLine((int)(gutter.x + gutter.width) - 1, (int)gutter.y,
              (int)(gutter.x + gutter.width) - 1,
              (int)(gutter.y + gutter.height), style.border);
-    y = (int)gutter.y + Scale(10) - (scroll_y % line_h);
+    y = TextAreaGutterFirstY(gutter.y, scroll_y, line_h, gutter_metrics);
     for(int row = 0; row < rows; row++) {
         int line_no = first + row + 1;
         char label[24];
@@ -3669,12 +3673,14 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
         if(line_no > total)
             break;
         if(line_no == active)
-            DrawRectangle((int)gutter.x, y - Scale(2), (int)gutter.width,
+            DrawRectangle((int)gutter.x, y - gutter_metrics.active_y_inset,
+                          (int)gutter.width,
                           line_h, style.border);
         snprintf(label, sizeof(label), "%d", line_no);
         Color inactive = ui_default_text_color();
         inactive.a = (unsigned char)(inactive.a * 0.62f);
-        RenderText(label, (int)gutter.x + Scale(6), y, Scale(10),
+        RenderText(label, (int)gutter.x + gutter_metrics.label_x_inset, y,
+                   gutter_metrics.label_font,
                    line_no == active ? style.text : inactive);
         y += line_h;
         if(y > (int)(gutter.y + gutter.height))

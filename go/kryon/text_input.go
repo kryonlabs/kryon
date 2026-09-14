@@ -35,6 +35,14 @@ type TextAreaPaint struct {
 	PlaceholderY   int32
 }
 
+type TextAreaGutterMetrics struct {
+	TopInset     int32
+	ActiveYInset int32
+	LabelXInset  int32
+	LabelFont    int32
+	ExtraRows    int32
+}
+
 type TextNavigationDecision struct {
 	Consumed               bool
 	CollapseSelectionStart bool
@@ -198,6 +206,78 @@ func TextInput_TextAreaMinWrapWidth(scale float32) int32 {
 	var value_1 float32 = scale
 	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
 	return value_2
+}
+
+func TextInput_TextAreaGutterMetricsFor(scale float32) TextAreaGutterMetrics {
+	var metrics TextAreaGutterMetrics = TextAreaGutterMetrics{}
+	var value_0 float32 = 10.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	metrics.TopInset = value_2
+	var value_3 float32 = 2.0
+	var value_4 float32 = scale
+	var value_5 int32 = TextInput_TextInputScaledMetric(value_3, value_4)
+	metrics.ActiveYInset = value_5
+	var value_6 float32 = 6.0
+	var value_7 float32 = scale
+	var value_8 int32 = TextInput_TextInputScaledMetric(value_6, value_7)
+	metrics.LabelXInset = value_8
+	var value_9 float32 = 10.0
+	var value_10 float32 = scale
+	var value_11 int32 = TextInput_TextInputScaledMetric(value_9, value_10)
+	metrics.LabelFont = value_11
+	var value_12 int32 = 3
+	metrics.ExtraRows = value_12
+	var value_13 TextAreaGutterMetrics = metrics
+	return value_13
+}
+
+func TextInput_TextAreaGutterRowsFor(bounds_height float32, line_height int32, metrics TextAreaGutterMetrics) int32 {
+	var value_0 int32 = line_height
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 float32 = bounds_height
+	var value_5 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_4), 32, true)), uint64(0), 32, true, 0))
+	var value_6 int32 = line_height
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 4))
+	var value_8 int32 = metrics.ExtraRows
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
+	var rows int32 = value_9
+	var value_10 int32 = rows
+	var value_11 int32 = 0
+	var value_12 bool = value_10 < value_11
+	if value_12 {
+		var value_13 int32 = 0
+		return value_13
+	}
+	var value_14 int32 = rows
+	return value_14
+}
+
+func TextInput_TextAreaGutterFirstY(gutter_y float32, scroll_y int32, line_height int32, metrics TextAreaGutterMetrics) int32 {
+	var value_0 int32 = line_height
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = gutter_y
+		var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
+		var value_5 int32 = metrics.TopInset
+		var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+		return value_6
+	}
+	var value_7 float32 = gutter_y
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+	var value_9 int32 = metrics.TopInset
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
+	var value_11 int32 = scroll_y
+	var value_12 int32 = line_height
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 5))
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 2))
+	return value_14
 }
 
 func TextInput_TextFieldRevealMargin(scale float32) int32 {

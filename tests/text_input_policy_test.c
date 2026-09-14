@@ -42,6 +42,7 @@ main(void)
     TextFieldScroll scroll;
     TextFieldPaint field_paint;
     TextAreaPaint area_paint;
+    TextAreaGutterMetrics gutter_metrics;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -67,6 +68,15 @@ main(void)
                                 TextAreaMinWrapWidth(1.0f)) == 0);
     assert(TextAreaWrapWidthFor(100.0f, 8, 0,
                                 TextAreaMinWrapWidth(1.0f)) == 0);
+    gutter_metrics = TextAreaGutterMetricsFor(2.0f);
+    assert(gutter_metrics.top_inset == 20);
+    assert(gutter_metrics.active_y_inset == 4);
+    assert(gutter_metrics.label_x_inset == 12);
+    assert(gutter_metrics.label_font == 20);
+    assert(gutter_metrics.extra_rows == 3);
+    assert(TextAreaGutterRowsFor(80.0f, 20, gutter_metrics) == 7);
+    assert(TextAreaGutterRowsFor(80.0f, 0, gutter_metrics) == 0);
+    assert(TextAreaGutterFirstY(10.0f, 23, 20, gutter_metrics) == 27);
     area_paint = TextAreaPaintFor((Rectangle){10, 20, 100, 80},
                                   16, 4, 8, 6, 1, 200, 500, 18,
                                   TextAreaMinWrapWidth(1.0f));

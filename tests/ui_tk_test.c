@@ -1088,6 +1088,7 @@ test_text_input_policy(void)
         0, 0, 0, 0, 16, 10, 8, 6);
     TextFieldScroll scroll = TextFieldScrollFor(20.0f, 100.0f,
                                                 metrics.padding_x, 180, 999);
+    TextAreaGutterMetrics gutter_metrics = TextAreaGutterMetricsFor(1.0f);
 
     check_int("text input font default", metrics.font, 16);
     check_int("text input padding x default", metrics.padding_x, 10);
@@ -1102,6 +1103,10 @@ test_text_input_policy(void)
               TextInputDefaultPaddingY(1.0f), 8);
     check_int("text area min wrap width",
               TextAreaMinWrapWidth(1.0f), 24);
+    check_int("text area gutter top inset",
+              gutter_metrics.top_inset, 10);
+    check_int("text area gutter rows",
+              TextAreaGutterRowsFor(80.0f, 20, gutter_metrics), 7);
     check_int("text field reveal margin",
               TextFieldRevealMargin(1.0f), 8);
     check_int("text field min cursor height",

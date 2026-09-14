@@ -34,6 +34,14 @@ TextAreaPaint :: struct {
     placeholder_y: i32
 }
 
+TextAreaGutterMetrics :: struct {
+    top_inset: i32
+    active_y_inset: i32
+    label_x_inset: i32
+    label_font: i32
+    extra_rows: i32
+}
+
 TextNavigationDecision :: struct {
     consumed: bool
     collapse_selection_start: bool
@@ -145,6 +153,30 @@ TextInputDefaultPaddingY :: (scale: float) -> i32 #export {
 
 TextAreaMinWrapWidth :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(24.0, scale)
+}
+
+TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
+    metrics: TextAreaGutterMetrics
+    metrics.top_inset = TextInputScaledMetric(10.0, scale)
+    metrics.active_y_inset = TextInputScaledMetric(2.0, scale)
+    metrics.label_x_inset = TextInputScaledMetric(6.0, scale)
+    metrics.label_font = TextInputScaledMetric(10.0, scale)
+    metrics.extra_rows = 3
+    return metrics
+}
+
+TextAreaGutterRowsFor :: (bounds_height: float, line_height: i32,
+    metrics: TextAreaGutterMetrics) -> i32 #export {
+    if line_height <= 0 { return 0 }
+    rows: i32 = ((i32)bounds_height / line_height) + metrics.extra_rows
+    if rows < 0 { return 0 }
+    return rows
+}
+
+TextAreaGutterFirstY :: (gutter_y: float, scroll_y: i32, line_height: i32,
+    metrics: TextAreaGutterMetrics) -> i32 #export {
+    if line_height <= 0 { return (i32)gutter_y + metrics.top_inset }
+    return (i32)gutter_y + metrics.top_inset - (scroll_y % line_height)
 }
 
 TextFieldRevealMargin :: (scale: float) -> i32 #export {
