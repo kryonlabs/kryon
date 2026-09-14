@@ -30,6 +30,8 @@ main(void)
     TableViewScrollLayout scroll;
     TableViewClipboardDecision clipboard;
     TableViewResizeClearDecision resize_clear;
+    TableViewRowClickDecision row_click;
+    TableViewRowContextDecision row_context;
     TableViewSortDecision sort_decision;
     Rectangle row;
 
@@ -148,6 +150,22 @@ main(void)
     assert(!TableViewActivationShouldRun(2, true, 3, 4, 2, 0.30f));
     assert(!TableViewActivationShouldRun(2, true, 4, 4, 1, 0.30f));
     assert(!TableViewActivationShouldRun(2, true, 4, 4, 2, 0.50f));
+    row_click = TableViewRowClickDecisionFor(4, 2, false, 4, 2, 0.20f);
+    assert(row_click.changed);
+    assert(row_click.selected_row == 4);
+    assert(row_click.selected_column == 2);
+    assert(row_click.activated_row == -1);
+    assert(row_click.activated_column == -1);
+    row_click = TableViewRowClickDecisionFor(4, 2, true, 4, 2, 0.20f);
+    assert(row_click.activated_row == 4);
+    assert(row_click.activated_column == 2);
+    row_click = TableViewRowClickDecisionFor(4, -1, true, 4, -1, 0.20f);
+    assert(row_click.selected_column == -1);
+    assert(row_click.activated_row == -1);
+    row_context = TableViewRowContextDecisionFor(7, 3);
+    assert(row_context.changed);
+    assert(row_context.row == 7);
+    assert(row_context.column == 3);
     assert(TableViewSelectionScrollOffset(4, 1, 20, 60, 0, 100) == 20);
     assert(TableViewSelectionScrollOffset(2, 1, 20, 60, 80, 100) == 20);
     assert(TableViewSelectionScrollOffset(0, 1, 20, 60, 120, 100) == 100);

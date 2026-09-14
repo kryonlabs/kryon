@@ -46,6 +46,20 @@ TableViewSortDecision :: struct {
     changed: bool
 }
 
+TableViewRowClickDecision :: struct {
+    selected_row: i32
+    selected_column: i32
+    activated_row: i32
+    activated_column: i32
+    changed: bool
+}
+
+TableViewRowContextDecision :: struct {
+    row: i32
+    column: i32
+    changed: bool
+}
+
 TableViewClipboardDecision :: struct {
     copy_selection: bool
     paste: bool
@@ -432,6 +446,32 @@ TableViewActivationShouldRun :: (clicked_column: i32, same_table: bool,
         return false
     }
     return elapsed_seconds <= 0.45
+}
+
+TableViewRowClickDecisionFor :: (row: i32, clicked_column: i32,
+    same_table: bool, last_row: i32, last_column: i32,
+    elapsed_seconds: float) -> TableViewRowClickDecision #export {
+    decision: TableViewRowClickDecision
+    decision.selected_row = row
+    decision.selected_column = clicked_column
+    decision.activated_row = -1
+    decision.activated_column = -1
+    if TableViewActivationShouldRun(clicked_column, same_table, last_row,
+        row, last_column, elapsed_seconds) {
+        decision.activated_row = row
+        decision.activated_column = clicked_column
+    }
+    decision.changed = true
+    return decision
+}
+
+TableViewRowContextDecisionFor :: (row: i32,
+    clicked_column: i32) -> TableViewRowContextDecision #export {
+    decision: TableViewRowContextDecision
+    decision.row = row
+    decision.column = clicked_column
+    decision.changed = true
+    return decision
 }
 
 TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,

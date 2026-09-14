@@ -4087,8 +4087,8 @@ RenderTableView(TableViewProps table)
             int clicked_col = -1;
             double now = GetTime();
             Vector2 mouse = ui_mouse_world();
+            TableViewRowClickDecision row_decision;
             ConsumeRelease();
-            *table.selected_row = r;
             for(int slot = 0; slot < table.column_count; slot++) {
                 int c = ui_table_display_column(table, slot);
                 if(c < 0)
@@ -4100,26 +4100,29 @@ RenderTableView(TableViewProps table)
                     break;
                 }
             }
+            row_decision = TableViewRowClickDecisionFor(
+                r, clicked_col, toolkit->last_table_id == table.id,
+                toolkit->last_table_row, toolkit->last_table_column,
+                (float)(now - toolkit->last_table_click_time));
+            *table.selected_row = row_decision.selected_row;
             if(clicked_col >= 0 && table.selected_column != NULL)
-                *table.selected_column = clicked_col;
-            if(TableViewActivationShouldRun(
-                   clicked_col, toolkit->last_table_id == table.id,
-                   toolkit->last_table_row, r, toolkit->last_table_column,
-                   (float)(now - toolkit->last_table_click_time))) {
+                *table.selected_column = row_decision.selected_column;
+            if(row_decision.activated_row >= 0) {
                 if(table.activated_row != NULL)
-                    *table.activated_row = r;
+                    *table.activated_row = row_decision.activated_row;
                 if(table.activated_column != NULL)
-                    *table.activated_column = clicked_col;
+                    *table.activated_column = row_decision.activated_column;
             }
             toolkit->last_table_id = table.id;
             toolkit->last_table_row = r;
             toolkit->last_table_column = clicked_col;
             toolkit->last_table_click_time = now;
-            changed = 1;
+            changed = row_decision.changed;
         }
         if(!table.disabled && hot && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
             int clicked_col = -1;
             Vector2 mouse = ui_mouse_world();
+            TableViewRowContextDecision context_decision;
             for(int slot = 0; slot < table.column_count; slot++) {
                 int c = ui_table_display_column(table, slot);
                 if(c < 0)
@@ -4131,11 +4134,12 @@ RenderTableView(TableViewProps table)
                     break;
                 }
             }
+            context_decision = TableViewRowContextDecisionFor(r, clicked_col);
             if(table.right_clicked_row != NULL)
-                *table.right_clicked_row = r;
+                *table.right_clicked_row = context_decision.row;
             if(table.right_clicked_column != NULL)
-                *table.right_clicked_column = clicked_col;
-            changed = 1;
+                *table.right_clicked_column = context_decision.column;
+            changed = context_decision.changed;
         }
     }
     if(paint)
