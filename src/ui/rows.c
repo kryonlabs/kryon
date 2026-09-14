@@ -250,10 +250,10 @@ GetSpinboxRowHeight(SpinboxRowProps row)
     return spinbox_row_metrics(row).row_height;
 }
 
-Form
-FormBegin(int x, int y, int width)
+RowForm
+RowFormBegin(int x, int y, int width)
 {
-    Form form;
+    RowForm form;
 
     memset(&form, 0, sizeof(form));
     form.x = x;
@@ -265,13 +265,13 @@ FormBegin(int x, int y, int width)
 }
 
 int
-FormY(const Form *form)
+RowFormY(const RowForm *form)
 {
     return form != NULL ? form->cursor_y : 0;
 }
 
 int
-FormAdvance(Form *form, int height)
+RowFormAdvance(RowForm *form, int height)
 {
     int y;
 
@@ -283,7 +283,7 @@ FormAdvance(Form *form, int height)
 }
 
 Rectangle
-FormTakeRect(Form *form, int height)
+RowFormTakeRect(RowForm *form, int height)
 {
     FormRectResult result;
 
@@ -297,7 +297,7 @@ FormTakeRect(Form *form, int height)
 }
 
 void
-FormNoteFocus(Form *form, int focus_id, Rectangle bounds)
+RowFormNoteFocus(RowForm *form, int focus_id, Rectangle bounds)
 {
     if(form == NULL || focus_id <= 0)
         return;
@@ -308,7 +308,7 @@ FormNoteFocus(Form *form, int focus_id, Rectangle bounds)
 }
 
 int
-FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin)
+RowFormEnsureFocusedVisible(RowForm *form, ScrollArea area, int margin)
 {
     if(form == NULL || !form->focused_rect_valid)
         return 0;
@@ -318,7 +318,7 @@ FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin)
 }
 
 int
-FormSection(Form *form, SectionLabelProps label)
+RowFormSection(RowForm *form, SectionLabelProps label)
 {
     int y;
     int height;
@@ -327,12 +327,12 @@ FormSection(Form *form, SectionLabelProps label)
         return 0;
     y = form->cursor_y;
     height = ui_section_label_height(label);
-    FormTakeRect(form, height);
+    RowFormTakeRect(form, height);
     return RenderSectionLabel(label, form->x, y);
 }
 
 int
-FormTextField(Form *form, LabelTextFieldProps row)
+RowFormTextField(RowForm *form, LabelTextFieldProps row)
 {
     int y;
     int height;
@@ -344,19 +344,19 @@ FormTextField(Form *form, LabelTextFieldProps row)
         return 0;
     y = form->cursor_y;
     height = ui_label_text_field_height(row);
-    FormTakeRect(form, height);
+    RowFormTakeRect(form, height);
     result = RenderLabelTextField(row, form->x, y, form->width);
 
     metrics = label_text_field_metrics(row);
     field_bounds = LabelTextFieldLayoutFor(form->x, y, form->width,
                                            row.field.bounds, metrics)
                        .field_bounds;
-    FormNoteFocus(form, row.field.focus_id, field_bounds);
+    RowFormNoteFocus(form, row.field.focus_id, field_bounds);
     return result;
 }
 
 int
-FormCheckbox(Form *form, CheckboxRowProps row)
+RowFormCheckbox(RowForm *form, CheckboxRowProps row)
 {
     int y;
     int height;
@@ -365,12 +365,12 @@ FormCheckbox(Form *form, CheckboxRowProps row)
         return 0;
     y = form->cursor_y;
     height = ui_checkbox_row_height(row);
-    FormTakeRect(form, height);
+    RowFormTakeRect(form, height);
     return RenderCheckboxRow(row, form->x, y);
 }
 
 int
-FormSpinbox(Form *form, SpinboxRowProps row)
+RowFormSpinbox(RowForm *form, SpinboxRowProps row)
 {
     int y;
     int height;
@@ -384,7 +384,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     y = form->cursor_y;
     SpinboxRowMetrics metrics = spinbox_row_metrics(row);
     height = metrics.row_height;
-    FormTakeRect(form, height);
+    RowFormTakeRect(form, height);
 
     label_font = ResolveFont(row.label_font, 0, GetFontSize());
     layout = SpinboxRowLayoutFor(form->x, y, form->width, row.label_width,
@@ -404,7 +404,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
 }
 
 int
-FormButtons(Form *form, ButtonRowProps row)
+RowFormButtons(RowForm *form, ButtonRowProps row)
 {
     int height;
 
@@ -414,7 +414,7 @@ FormButtons(Form *form, ButtonRowProps row)
     row.y = form->cursor_y;
     row.width = form->width;
     height = GetButtonRowHeight(row);
-    FormTakeRect(form, height);
+    RowFormTakeRect(form, height);
     return RenderButtonRow(row);
 }
 

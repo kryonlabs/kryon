@@ -525,7 +525,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | `ButtonRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Row` with `Button` children. |
 | `SectionLabel` | Removed | Removed from public headers; internal row helper only. Public code should use `Text`/`Heading` props or `.kry` composition. |
 | `InfoRows` | Native support | Internal repeated label/value row helper; typography uses resolved KSS font sizes directly; public forms should use `.kry` layout with `Row`/`Text`. |
-| `Form` | Native support | Cursor/layout helper for legacy native row APIs; not a public widget concept. Prefer `.kry` layout blocks. |
 
 ## Layout And Containers
 

@@ -58,7 +58,7 @@ typedef struct {
     Rectangle last_bounds;
     int focused_rect_valid;
     Rectangle focused_rect;
-} Form;
+} RowForm;
 
 typedef struct {
     const char *label;
@@ -74,16 +74,16 @@ int GetLabelTextFieldHeight(LabelTextFieldProps row);
 int GetButtonRowHeight(ButtonRowProps row);
 int GetSpinboxRowHeight(SpinboxRowProps row);
 
-Form FormBegin(int x, int y, int width);
-int FormY(const Form *form);
-int FormAdvance(Form *form, int height);
-Rectangle FormTakeRect(Form *form, int height);
-void FormNoteFocus(Form *form, int focus_id, Rectangle bounds);
-int FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin);
-int FormSection(Form *form, SectionLabelProps row);
-int FormTextField(Form *form, LabelTextFieldProps row);
-int FormCheckbox(Form *form, CheckboxRowProps row);
-int FormSpinbox(Form *form, SpinboxRowProps row);
-int FormButtons(Form *form, ButtonRowProps row);
+RowForm RowFormBegin(int x, int y, int width);
+int RowFormY(const RowForm *form);
+int RowFormAdvance(RowForm *form, int height);
+Rectangle RowFormTakeRect(RowForm *form, int height);
+void RowFormNoteFocus(RowForm *form, int focus_id, Rectangle bounds);
+int RowFormEnsureFocusedVisible(RowForm *form, ScrollArea area, int margin);
+int RowFormSection(RowForm *form, SectionLabelProps row);
+int RowFormTextField(RowForm *form, LabelTextFieldProps row);
+int RowFormCheckbox(RowForm *form, CheckboxRowProps row);
+int RowFormSpinbox(RowForm *form, SpinboxRowProps row);
+int RowFormButtons(RowForm *form, ButtonRowProps row);
 
 #endif

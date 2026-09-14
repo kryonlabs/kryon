@@ -55,7 +55,8 @@ scaffold_title(const char *title, int height, void *user_data)
     ScaffoldFixture *fixture = user_data;
 
     check_int("scaffold title text", strcmp(title, "Settings"), 0);
-    check_int("scaffold title height", height, Scale(48));
+    check_int("scaffold title height", height,
+              GetNodeHeight(NodeTitleBar(0)));
     return fixture != NULL ? fixture->closed : 0;
 }
 
@@ -83,7 +84,7 @@ main(void)
     LabelTextFieldProps field = {.field_h = 40};
     CheckboxRowProps checkbox = {0};
     ButtonRowProps row = {.width = 240, .height = 40};
-    Form form;
+    RowForm form;
     Rectangle taken;
     GridMetrics grid_metrics;
     GridCursor grid_cursor;
@@ -166,19 +167,19 @@ main(void)
     check_int("button row",
               GetButtonRowHeight(row),
               Scale(40));
-    form = FormBegin(10, 20, 240);
-    taken = FormTakeRect(&form, Scale(18));
+    form = RowFormBegin(10, 20, 240);
+    taken = RowFormTakeRect(&form, Scale(18));
     check_int("form rect x", (int)taken.x, 10);
     check_int("form rect y", (int)taken.y, 20);
     check_int("form rect width", (int)taken.width, 240);
-    check_int("form advances", FormY(&form), 20 + Scale(18));
+    check_int("form advances", RowFormY(&form), 20 + Scale(18));
     BeginTree(6);
-    FormSection(&form, (SectionLabelProps){.label = "Account"});
+    RowFormSection(&form, (SectionLabelProps){.label = "Account"});
     EndTree();
-    check_int("form section helper advances", FormY(&form),
+    check_int("form section helper advances", RowFormY(&form),
               20 + Scale(18) + Scale(24));
-    FormCheckbox(&form, checkbox);
-    check_int("form checkbox helper advances", FormY(&form),
+    RowFormCheckbox(&form, checkbox);
+    check_int("form checkbox helper advances", RowFormY(&form),
               20 + Scale(18) + Scale(24) + Scale(42));
     check_int("spinbox row height",
               GetSpinboxRowHeight((SpinboxRowProps){0}),
@@ -188,7 +189,7 @@ main(void)
               NavigationBarDefaultHeight(1.0f));
     check_int("tab bar",
               GetNodeHeight(NodeTabBar(tabs)),
-              Scale(48));
+              GetTabBarHeight());
     check_int("title bar custom",
               GetNodeHeight(NodeTitleBar(64)),
               64);
@@ -298,9 +299,10 @@ main(void)
         .draw_title = scaffold_title
     });
     check_int("scaffold closed", scaffold.closed, 1);
-    check_int("scaffold content y", scaffold.content_y, Scale(48));
+    check_int("scaffold content y", scaffold.content_y,
+              GetNodeHeight(NodeTitleBar(0)));
     check_int("scaffold content h", scaffold.content_h,
-              240 - Scale(48) - 12);
+              240 - GetNodeHeight(NodeTitleBar(0)) - 12);
     check_int("scaffold content w", scaffold.content_w,
               scaffold_fixture.seen_w);
     EndScreenScaffold(scaffold);
