@@ -489,7 +489,7 @@ RenderIconAction(IconActionSpec button)
     spec.props.icon = button.icon;
     spec.props.icon_type = button.icon_type;
     spec.props.icon_only = 1;
-    spec.paint.icon_size = (float)icon_size / scale;
+    spec.paint.icon_size = IconActionStyleIconSize(icon_size, scale);
     spec.props.tone = ButtonToneNeutral;
     spec.props.emphasis = button.background.a != 0
         ? ButtonEmphasisSoft : ButtonEmphasisGhost;
@@ -514,8 +514,8 @@ RenderIconAction(IconActionSpec button)
     }
     if(button.radius > 0.0f) {
         spec.style.normal.fields |= StyleRadius;
-        spec.style.normal.radius = button.radius *
-            fminf(button.bounds.width, button.bounds.height) / (2.0f * scale);
+        spec.style.normal.radius = IconActionStyleRadius(button.radius,
+                                                         button.bounds, scale);
     }
     spec.paint.background = button.background;
     spec.hover_background = button.hover_background;

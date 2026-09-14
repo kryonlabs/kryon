@@ -470,6 +470,18 @@ test_button_policy(void)
                                         0, 0, 1.0f, frame);
     check_int("icon action explicit zero padding", icon_metrics.padding, 0);
     check_int("icon action explicit zero size", icon_metrics.icon_size, 20);
+    check_float("icon action style icon size",
+                IconActionStyleIconSize(24, 2.0f), 12.0f);
+    check_float("icon action style icon clamps negative",
+                IconActionStyleIconSize(-24, 2.0f), 0.0f);
+    check_float("icon action style radius",
+                IconActionStyleRadius(0.5f, (Rectangle){0, 0, 40, 20},
+                                      2.0f),
+                2.5f);
+    check_float("icon action style radius empty",
+                IconActionStyleRadius(0.5f, (Rectangle){0, 0, -40, 20},
+                                      2.0f),
+                0.0f);
 
     frame = (StyleFrame){0};
     text_metrics = TextButtonMetricsFor(1.0f, frame);

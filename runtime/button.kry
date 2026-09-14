@@ -204,6 +204,21 @@ IconActionMetricsFor :: (bounds: Rectangle, requested_icon_size: i32,
     return metrics
 }
 
+IconActionStyleIconSize :: (icon_size: i32, scale: float) -> float #export {
+    if icon_size < 0 { icon_size = 0 }
+    if scale <= 0.0 { scale = 1.0 }
+    return (float)icon_size / scale
+}
+
+IconActionStyleRadius :: (radius: float, bounds: Rectangle, scale: float) -> float #export {
+    if radius <= 0.0 { return 0.0 }
+    if scale <= 0.0 { scale = 1.0 }
+    side: float = bounds.width
+    if bounds.height < side { side = bounds.height }
+    if side < 0.0 { side = 0.0 }
+    return radius * side / (2.0 * scale)
+}
+
 TextButtonMetricsFor :: (scale: float, face: StyleFrame) -> TextButtonMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TextButtonMetrics
