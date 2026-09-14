@@ -2487,7 +2487,7 @@ void
 AppBackground(void)
 {
     Style app = ui_unpack_style(ResolveActiveStyle(
-        (StyleData){.fields = StyleOpacity, .opacity = 1.0f},
+        (StyleData){0},
         StyleDefaultFacts(StyleKindApp()),
         ButtonStateNormal));
 

@@ -93,7 +93,9 @@ Next commits, in order:
 4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
 5. [done 2026-09-14] Button/generic control facts path: `ButtonRoleFactsFor` in `runtime/button.kry`, `button-policy-test` gate, pack coverage for every generic-path kind, and the zero-base flip with effective opacity in the resolve funnels. Full matrix green.
 6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
-7. No-style tests, then the five scanners as Makefile gates.
+7. [done 2026-09-14] The five style scanners exist as gates: `scripts/check-style-gates.py` with Makefile targets `style-facts-bridge-check`, `paint-style-leak-check`, `no-glow-pack-check`, `no-theme-chrome-check`, `visual-props-check`, wired into the `test` gate. All are ratchets with classified allowlists. First catch: a hidden App base in `src/ui/ui_tree.c` (removed in the same commit).
+
+Remaining follow-ups (not blocking): no-style widget-family tests (plan/style/07), `render.go` ad-hoc opacity patches unified through `StyleOpacityValue`, redundant `opacity: 1;` pack lines cleaned during formatter work.
 
 ## Parallel Agent Coordination
 
