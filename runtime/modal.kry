@@ -60,6 +60,11 @@ ModalActionPlacement :: struct {
     total_width: i32
 }
 
+ModalDismissal :: struct {
+    dismissed: bool
+    release_consumed: bool
+}
+
 ModalHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -211,6 +216,18 @@ ModalPromptFocusIdFor :: (requested_focus_id: i32, fallback_focus_id: i32) -> i3
 ModalPromptCommitResult :: (action_count: i32) -> i32 #export {
     if action_count > 1 { return 2 }
     return 1
+}
+
+ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,
+    pointer_inside: bool) -> ModalDismissal #export {
+    dismissal: ModalDismissal
+    if released && !release_consumed && !pointer_inside {
+        dismissal.dismissed = true
+        dismissal.release_consumed = true
+        return dismissal
+    }
+    dismissal.release_consumed = release_consumed
+    return dismissal
 }
 
 ModalLayoutFor :: (view_width: i32, view_height: i32, max_width: i32,

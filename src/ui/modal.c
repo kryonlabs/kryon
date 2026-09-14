@@ -225,6 +225,7 @@ RenderActionModal(ModalProps modal)
                      modal.focused != NULL;
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
+    ModalDismissal dismissal;
     Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.class_name = modal.class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
@@ -282,9 +283,11 @@ RenderActionModal(ModalProps modal)
     capture.width = (float)modal_w;
     capture.height = (float)modal_h;
     SetModalCapture(capture);
-    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !ReleaseConsumed() &&
-       !CheckCollisionPointRec(mouse_world, capture)) {
+    dismissal = ModalOutsideDismissalFor(
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        ReleaseConsumed() != 0,
+        CheckCollisionPointRec(mouse_world, capture) != 0);
+    if(dismissal.dismissed) {
         ConsumeRelease();
         result = -1;
     }
@@ -377,6 +380,7 @@ RenderModalFrame(int width, int height, const char *title,
     int hover = 0;
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
+    ModalDismissal dismissal;
     Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 2).value);
@@ -417,9 +421,11 @@ RenderModalFrame(int width, int height, const char *title,
     title_w = TextWidth(title, title_font);
     capture = layout.panel;
     SetModalCapture(capture);
-    if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !ReleaseConsumed() &&
-       !CheckCollisionPointRec(mouse_world, capture)) {
+    dismissal = ModalOutsideDismissalFor(
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        ReleaseConsumed() != 0,
+        CheckCollisionPointRec(mouse_world, capture) != 0);
+    if(dismissal.dismissed) {
         ConsumeRelease();
         frame.right_clicked = 1;
     }

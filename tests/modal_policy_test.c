@@ -31,6 +31,7 @@ main(void)
     ModalLayout layout;
     ModalFrameLayout frame_layout;
     ModalActionPlacement placement;
+    ModalDismissal dismissal;
 
     panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
                          StyleIconSize | StyleContentOffset;
@@ -135,6 +136,18 @@ main(void)
     assert(ModalPromptFocusIdFor(0, 7301) == 7301);
     assert(ModalPromptCommitResult(1) == 1);
     assert(ModalPromptCommitResult(2) == 2);
+    dismissal = ModalOutsideDismissalFor(true, false, false);
+    assert(dismissal.dismissed);
+    assert(dismissal.release_consumed);
+    dismissal = ModalOutsideDismissalFor(true, false, true);
+    assert(!dismissal.dismissed);
+    assert(!dismissal.release_consumed);
+    dismissal = ModalOutsideDismissalFor(true, true, false);
+    assert(!dismissal.dismissed);
+    assert(dismissal.release_consumed);
+    dismissal = ModalOutsideDismissalFor(false, false, false);
+    assert(!dismissal.dismissed);
+    assert(!dismissal.release_consumed);
 
     metrics = test_modal_metrics(1.0f, panel, title, message, action, close);
     layout = ModalLayoutFor(640, 480, 0, 24, 1, true, metrics);
