@@ -60,6 +60,12 @@ StyleElevationPaint :: struct {
     visible: bool
 }
 
+StyleRipplePaint :: struct {
+    radius: float
+    alpha: i32
+    visible: bool
+}
+
 # Activation is an action result, not a visual-state override. Explicit
 # previews keep their resolved state even when a user activates the control.
 ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
@@ -247,6 +253,25 @@ StyleRippleRadius :: (radius: float, max_radius: float, scale: float) -> float #
     if radius < min_radius { radius = min_radius }
     if radius > max_radius { radius = max_radius }
     return radius
+}
+
+StyleRipplePaintFor :: (age: float, pressed: bool, max_radius: float,
+    scale: float) -> StyleRipplePaint #export {
+    paint: StyleRipplePaint
+    duration: float = 0.32
+    base_alpha: i32 = 28
+    if age < 0.0 { age = 0.0 }
+    if !pressed && age > duration { return paint }
+    progress: float = age / duration
+    if progress < 0.0 { progress = 0.0 }
+    if progress > 1.0 { progress = 1.0 }
+    paint.radius = StyleRippleRadius(max_radius * progress, max_radius, scale)
+    paint.alpha = base_alpha
+    if !pressed {
+        paint.alpha = (i32)((float)base_alpha * (1.0 - progress))
+    }
+    paint.visible = paint.alpha > 0
+    return paint
 }
 
 StyleData :: struct {

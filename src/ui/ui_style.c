@@ -636,7 +636,7 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     Vector2 mouse;
     float dt;
     float max_radius;
-    float radius;
+    StyleRipplePaint paint;
     Color color = on_color;
     unsigned int hash = (unsigned int)key * 2654435761u;
 
@@ -664,17 +664,17 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     if(dt <= 0.0f || dt > 0.1f)
         dt = 1.0f / 60.0f;
     ripple->age += dt;
-    if(!pressed && ripple->age > 0.32f) {
+
+    max_radius = sqrtf(bounds.width * bounds.width + bounds.height * bounds.height);
+    paint = StyleRipplePaintFor(ripple->age, pressed != 0, max_radius,
+                                (float)Scale(1000) / 1000.0f);
+    if(!paint.visible) {
         ripple->active = 0;
         return;
     }
 
-    max_radius = sqrtf(bounds.width * bounds.width + bounds.height * bounds.height);
-    radius = max_radius * (ripple->age / 0.32f);
-    radius = StyleRippleRadius(radius, max_radius,
-                               (float)Scale(1000) / 1000.0f);
-    color.a = pressed ? 28 : (unsigned char)(28.0f * (1.0f - ripple->age / 0.32f));
-    DrawCircleV(ripple->origin, radius, color);
+    color.a = (unsigned char)paint.alpha;
+    DrawCircleV(ripple->origin, paint.radius, color);
 #endif
 }
 

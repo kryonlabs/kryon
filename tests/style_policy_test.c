@@ -86,6 +86,12 @@ int main(void)
     assert(StyleRippleRadius(24, 100, 2) == 24);
     assert(StyleRippleRadius(120, 100, 2) == 100);
     assert(StyleRippleRadius(2, 100, 0) == 8);
+    StyleRipplePaint ripple = StyleRipplePaintFor(0.16f, false, 100, 1);
+    assert(ripple.visible && ripple.radius == 50 && ripple.alpha == 14);
+    ripple = StyleRipplePaintFor(0.40f, false, 100, 1);
+    assert(!ripple.visible);
+    ripple = StyleRipplePaintFor(0.40f, true, 100, 1);
+    assert(ripple.visible && ripple.radius == 100 && ripple.alpha == 28);
     StyleData base = {.fields = 8191, .background = 0x102030ff,
         .radius = 8, .opacity = 1, .offset_x = 3, .offset_y = -2};
     StyleData transparent = {.fields = 1 | 16 | 64 | 4096};
