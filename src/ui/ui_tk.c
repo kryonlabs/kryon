@@ -4075,9 +4075,10 @@ RenderTableView(TableViewProps table)
             }
             if(clicked_col >= 0 && table.selected_column != NULL)
                 *table.selected_column = clicked_col;
-            if(clicked_col >= 0 && toolkit->last_table_id == table.id &&
-               toolkit->last_table_row == r && toolkit->last_table_column == clicked_col &&
-               now - toolkit->last_table_click_time <= 0.45) {
+            if(TableViewActivationShouldRun(
+                   clicked_col, toolkit->last_table_id == table.id,
+                   toolkit->last_table_row, r, toolkit->last_table_column,
+                   (float)(now - toolkit->last_table_click_time))) {
                 if(table.activated_row != NULL)
                     *table.activated_row = r;
                 if(table.activated_column != NULL)

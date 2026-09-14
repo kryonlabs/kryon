@@ -125,6 +125,12 @@ main(void)
     clipboard = TableViewClipboardDecisionFor(true, false, false, true, true);
     assert(!clipboard.copy_selection);
     assert(clipboard.paste);
+    assert(TableViewActivationShouldRun(2, true, 4, 4, 2, 0.30f));
+    assert(!TableViewActivationShouldRun(-1, true, 4, 4, 2, 0.30f));
+    assert(!TableViewActivationShouldRun(2, false, 4, 4, 2, 0.30f));
+    assert(!TableViewActivationShouldRun(2, true, 3, 4, 2, 0.30f));
+    assert(!TableViewActivationShouldRun(2, true, 4, 4, 1, 0.30f));
+    assert(!TableViewActivationShouldRun(2, true, 4, 4, 2, 0.50f));
     assert(TableViewSelectionScrollOffset(4, 1, 20, 60, 0, 100) == 20);
     assert(TableViewSelectionScrollOffset(2, 1, 20, 60, 80, 100) == 20);
     assert(TableViewSelectionScrollOffset(0, 1, 20, 60, 120, 100) == 100);

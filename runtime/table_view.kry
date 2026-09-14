@@ -389,6 +389,20 @@ TableViewClipboardDecisionFor :: (modifier_down: bool,
     return decision
 }
 
+TableViewActivationShouldRun :: (clicked_column: i32, same_table: bool,
+    last_row: i32, row: i32, last_column: i32, elapsed_seconds: float) -> bool #export {
+    if clicked_column < 0 {
+        return false
+    }
+    if !same_table {
+        return false
+    }
+    if last_row != row || last_column != clicked_column {
+        return false
+    }
+    return elapsed_seconds <= 0.45
+}
+
 TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,
     row_height: i32, view_height: i32, scroll_offset: i32,
     max_scroll: i32) -> i32 #export {
