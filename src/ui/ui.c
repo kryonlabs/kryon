@@ -754,6 +754,13 @@ PushInputCapture(Rectangle bounds, int allow_inside)
 }
 
 void
+PopInputCapture(void)
+{
+    if(g_ui_input_capture_stack_count > 0)
+        g_ui_input_capture_stack_count--;
+}
+
+void
 BeginModalLayer(void)
 {
     ClearInputCaptures();

@@ -2561,6 +2561,11 @@ test_menu_bar_switches_while_popup_captures_input(void)
 
     BeginInterfaceFrame(640, 480, 1.0f);
     PushInputCapture((Rectangle){0, 28, 180, 64}, 1);
+    PushInputCapture((Rectangle){0, 0, 180, 200}, 0);
+    check_int("nested preview captures pointer", InputCapturesClick((Vector2){20, 40}), 1);
+    PopInputCapture();
+    check_int("preview pop restores outer inside", InputCapturesClick((Vector2){20, 40}), 0);
+    check_int("preview pop preserves outer capture", InputCapturesClick((Vector2){20, 120}), 1);
     result = Menu((MenuProps){.id = 700, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open_index});
     EndInterfaceFrame();
 

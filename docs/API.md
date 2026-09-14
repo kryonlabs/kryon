@@ -2237,3 +2237,9 @@ values, and Go constant types are preserved. The former internal `Policy*` enums
 and `Field*` aliases are removed; shared declarations use the public names. Native
 contract enum constants retain their Go enum type unless their source explicitly
 casts the value to a scalar type, as the `uint32_t` Style flags do.
+
+Input capture scopes use `PushInputCapture(bounds, allow_inside)` and
+`PopInputCapture()`. Popping an empty stack is harmless. For an inert widget
+preview, push a capture with `allow_inside = 0`, disable keyboard input with
+`SetKeyboardInputEnabled(0)`, draw controls without focus IDs, then pop and
+restore the previous keyboard setting. Outer captures remain in effect.

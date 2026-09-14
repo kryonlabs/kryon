@@ -1374,6 +1374,7 @@ include/ui_core.h function IsKeyboardInputEnabled
 include/ui_core.h function MarkClickable
 include/ui_core.h function MarkCursor
 include/ui_core.h function MarkDisabled
+include/ui_core.h function PopInputCapture
 include/ui_core.h function PopInputClip
 include/ui_core.h function PushInputCapture
 include/ui_core.h function PushInputClip

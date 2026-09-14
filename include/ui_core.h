@@ -60,6 +60,7 @@ int IsKeyboardInputEnabled(void);
 
 void ClearInputCaptures(void);
 void PushInputCapture(Rectangle bounds, int allow_inside);
+void PopInputCapture(void);
 void BeginModalLayer(void);
 void PushInputClip(Rectangle bounds);
 void PopInputClip(void);
