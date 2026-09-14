@@ -72,7 +72,7 @@ func TestStylePackRegistryInGo(t *testing.T) {
 			Background: 0x111111ff,
 		},
 	}}
-	glow := []StyleRule{{
+	second := []StyleRule{{
 		Selector: button,
 		State:    StyleSheet_StyleStateAny(),
 		Style: StyleData{
@@ -107,21 +107,21 @@ func TestStylePackRegistryInGo(t *testing.T) {
 	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
 		t.Fatalf("vanilla did not resolve: 0x%08x", resolved.Background)
 	}
-	if !RegisterStylePack(StylePack{ID: "glow", Label: "Glow", Sheet: glow}) {
-		t.Fatal("glow pack did not register")
+	if !RegisterStylePack(StylePack{ID: "second", Label: "Second", Sheet: second}) {
+		t.Fatal("second pack did not register")
 	}
-	if !SetActiveStylePack("glow") {
-		t.Fatal("glow pack did not activate")
+	if !SetActiveStylePack("second") {
+		t.Fatal("second pack did not activate")
 	}
 	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x222222ff {
-		t.Fatalf("glow did not resolve: 0x%08x", resolved.Background)
+		t.Fatalf("second pack did not resolve: 0x%08x", resolved.Background)
 	}
 	options := GetStylePackOptions()
 	if len(options) != 2 || options[0].Active || !options[1].Active {
 		t.Fatalf("bad options: %#v", options)
 	}
-	if !RegisterStylePack(StylePack{ID: "glow", Label: "Glow Updated", Sheet: vanilla}) {
-		t.Fatal("replacement glow pack did not register")
+	if !RegisterStylePack(StylePack{ID: "second", Label: "Second Updated", Sheet: vanilla}) {
+		t.Fatal("replacement second pack did not register")
 	}
 	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
 		t.Fatalf("replacement active pack did not resolve: 0x%08x", resolved.Background)
@@ -644,7 +644,6 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		"material",
 		"tk",
 		"vanilla",
-		"glow",
 		"lightfield",
 	}
 
@@ -656,9 +655,11 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	}
 	if FindStylePack("tk") == nil ||
 		FindStylePack("vanilla") == nil ||
-		FindStylePack("glow") == nil ||
 		FindStylePack("lightfield") == nil {
 		t.Fatalf("missing built-ins: %#v", GetStylePackOptions())
+	}
+	if FindStylePack("glow") != nil {
+		t.Fatalf("glow must not be a standalone built-in: %#v", GetStylePackOptions())
 	}
 	for _, packID := range packIDs {
 		if !SetActiveStylePack(packID) {
@@ -704,14 +705,6 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	if resolved.Background != 0x245be0ff || resolved.Material != MaterialFlat {
 		t.Fatalf("vanilla did not resolve: %#v", resolved)
 	}
-	if !SetActiveStylePack("glow") {
-		t.Fatal("glow did not activate")
-	}
-	field := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindTextField())
-	resolved = ResolveActiveStyle(StyleData{}, field, int32(ButtonStateNormal))
-	if resolved.Material != MaterialGlass || resolved.BackgroundEnd != 0x171b24ff {
-		t.Fatalf("glow did not resolve: %#v", resolved)
-	}
 	if !SetActiveStylePack("lightfield") {
 		t.Fatal("lightfield did not activate")
 	}
@@ -751,16 +744,16 @@ func TestEnsureBuiltInStylePacksInGo(t *testing.T) {
 	if GetActiveStylePackID() != "material" {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
-	if len(GetStylePackOptions()) < 5 {
+	if len(GetStylePackOptions()) < 4 {
 		t.Fatalf("missing built-in options: %#v", GetStylePackOptions())
 	}
-	if !SetActiveStylePack("glow") {
-		t.Fatal("glow did not activate")
+	if !SetActiveStylePack("lightfield") {
+		t.Fatal("lightfield did not activate")
 	}
 	if !EnsureBuiltInStylePacks() {
 		t.Fatal("second ensure failed")
 	}
-	if GetActiveStylePackID() != "glow" {
+	if GetActiveStylePackID() != "lightfield" {
 		t.Fatalf("ensure did not preserve selection: %q", GetActiveStylePackID())
 	}
 }

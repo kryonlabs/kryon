@@ -281,7 +281,6 @@ main(void)
         "material",
         "tk",
         "vanilla",
-        "glow",
         "lightfield",
     };
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -297,13 +296,13 @@ main(void)
 
     ClearStylePacks();
     assert(RegisterBuiltInStylePacks());
-    assert(GetStylePackCount() >= 5);
+    assert(GetStylePackCount() >= 4);
     assert(strcmp(GetActiveStylePackId(), "material") == 0);
     assert(FindStylePack("material") != NULL);
     assert(FindStylePack("tk") != NULL);
     assert(FindStylePack("vanilla") != NULL);
-    assert(FindStylePack("glow") != NULL);
     assert(FindStylePack("lightfield") != NULL);
+    assert(FindStylePack("glow") == NULL);
 
     for(size_t p = 0; p < sizeof(pack_ids) / sizeof(pack_ids[0]); p++)
         for(size_t k = 0; k < sizeof(style_kinds) / sizeof(style_kinds[0]); k++)
@@ -342,13 +341,13 @@ main(void)
     assert(resolved.background == 0x245be0ffu);
     assert(resolved.material == MaterialFlat);
 
-    assert(SetActiveStylePack("glow"));
+    assert(SetActiveStylePack("lightfield"));
     resolved = ResolveActiveStyle(base, field, ButtonStateNormal);
-    assert(resolved.background_end == 0x171b24ffu);
-    assert(resolved.material == MaterialGlass);
+    assert(resolved.background_end == 0x2b3342eeu);
+    assert(resolved.material == MaterialLightfield);
 
     assert(EnsureBuiltInStylePacks());
-    assert(strcmp(GetActiveStylePackId(), "glow") == 0);
+    assert(strcmp(GetActiveStylePackId(), "lightfield") == 0);
 
     ClearStylePacks();
     assert(EnsureBuiltInStylePacks());

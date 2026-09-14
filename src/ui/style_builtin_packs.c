@@ -37,15 +37,9 @@ static BuiltInStylePack builtin_style_packs[] = {
         .path = "styles/kryon/vanilla.kss",
     },
     {
-        .id = "glow",
-        .label = "Glow",
-        .description = "Current glow treatment as an explicit pack",
-        .path = "styles/kryon/glow.kss",
-    },
-    {
         .id = "lightfield",
         .label = "Lightfield",
-        .description = "Premium translucent Lightfield controls",
+        .description = "Premium translucent controls with glow-capable treatment",
         .path = "styles/kryon/lightfield.kss",
     },
 };

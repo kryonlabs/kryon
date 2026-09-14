@@ -48,7 +48,7 @@ int
 main(void)
 {
     const char *source =
-        "@pack glow;\n"
+        "@pack sample;\n"
         "tokens {\n"
         "  color { face: #111111; ink: #eeeeeeff; accent: #2f6bff; }\n"
         "  length { radius.md: 6; space.3: 12; line: 2; }\n"
@@ -182,7 +182,7 @@ main(void)
 
     assert(kss_parse_string(source, rules, 40, &result, diagnostic,
                             sizeof(diagnostic)));
-    assert(strcmp(result.pack_id, "glow") == 0);
+    assert(strcmp(result.pack_id, "sample") == 0);
     assert(result.rule_count == 34);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
@@ -286,7 +286,6 @@ main(void)
     assert_pack_parses("styles/kryon/material.kss", "material");
     assert_pack_parses("styles/kryon/tk.kss", "tk");
     assert_pack_parses("styles/kryon/vanilla.kss", "vanilla");
-    assert_pack_parses("styles/kryon/glow.kss", "glow");
     assert_pack_parses("styles/kryon/lightfield.kss", "lightfield");
 
     return 0;

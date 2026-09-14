@@ -24,7 +24,6 @@ main(void)
     assert_style_asset("styles/kryon/material.kss", "@pack material");
     assert_style_asset("./styles/kryon/tk.kss", "@pack tk");
     assert_style_asset("styles/kryon/vanilla.kss", "@pack vanilla");
-    assert_style_asset("styles/kryon/glow.kss", "@pack glow");
     assert_style_asset("/styles/kryon/lightfield.kss",
                        "@pack lightfield");
     return 0;

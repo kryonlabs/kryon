@@ -10,10 +10,8 @@ PACKS = [
      "Dense toolkit controls for desktop utilities", "styles/kryon/tk.kss"),
     ("vanilla", "vanilla", "Vanilla",
      "Current Kryon default controls as an explicit pack", "styles/kryon/vanilla.kss"),
-    ("glow", "glow", "Glow",
-     "Current glow treatment as an explicit pack", "styles/kryon/glow.kss"),
     ("lightfield", "lightfield", "Lightfield",
-     "Premium translucent Lightfield controls", "styles/kryon/lightfield.kss"),
+     "Premium translucent controls with glow-capable treatment", "styles/kryon/lightfield.kss"),
 ]
 
 
