@@ -864,7 +864,7 @@ ConsumePointerRelease(void)
     ConsumeRelease();
 }
 
-static int
+int
 press_started_inside(Rectangle bounds)
 {
     if(g_ui_pointer_start_x == INT_MIN && g_ui_pointer_start_y == INT_MIN)

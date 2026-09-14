@@ -53,6 +53,14 @@ NavigationBarItemPaint :: struct {
     icon_alpha: i32
 }
 
+NavigationBarItemInteraction :: struct {
+    active: bool
+    hovered: bool
+    disabled_marker: bool
+    activated: bool
+    state: ButtonState
+}
+
 NavigationBarConfigMetrics :: struct {
     frame_width: i32
     frame_base_height: i32
@@ -112,6 +120,27 @@ NavigationBarDefaultHeightFor :: (classic: bool, scale: float) -> i32 #export {
 NavigationBarFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     if style_font > 0 { return style_font }
     return default_font
+}
+
+NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
+    captured: bool, hover_effects: bool, released: bool,
+    release_consumed: bool, press_started_inside: bool,
+    selected: bool) -> NavigationBarItemInteraction #export {
+    interaction: NavigationBarItemInteraction
+    interaction.active = pointer_inside && !disabled && !captured
+    interaction.hovered = interaction.active && hover_effects
+    interaction.disabled_marker = pointer_inside && disabled && !captured
+    interaction.activated = interaction.active && released &&
+        !release_consumed && press_started_inside
+    interaction.state = (ButtonState)ButtonStateNormal
+    if disabled {
+        interaction.state = (ButtonState)ButtonStateDisabled
+    } else if selected {
+        interaction.state = (ButtonState)ButtonStateSelected
+    } else if interaction.hovered {
+        interaction.state = (ButtonState)ButtonStateHover
+    }
+    return interaction
 }
 
 NavigationBarConfigCountsFor :: (route_count: i32, max_route_count: i32,

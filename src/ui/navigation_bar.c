@@ -24,17 +24,20 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
     Vector2 mouse = ui_mouse_world();
     int inside = CheckCollisionPointRec(mouse, bounds);
     int captured = InputCapturesClick(mouse);
-    int active = inside && !disabled && !captured;
+    NavigationBarItemInteraction interaction =
+        NavigationBarItemInteractionFor(
+            disabled != 0, inside != 0, captured != 0,
+            HoverEffectsEnabled() != 0,
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            ReleaseConsumed() != 0, press_started_inside(bounds) != 0, false);
 
     if(hovered != NULL)
-        *hovered = active && HoverEffectsEnabled();
-    if(inside && !captured) {
-        if(disabled)
-            MarkDisabled();
-        else
-            MarkClickable();
-    }
-    if(mouse_release_activates_rect(bounds, mouse, active)) {
+        *hovered = interaction.hovered;
+    if(interaction.disabled_marker)
+        MarkDisabled();
+    else if(interaction.active)
+        MarkClickable();
+    if(interaction.activated) {
         ConsumeRelease();
         return 1;
     }

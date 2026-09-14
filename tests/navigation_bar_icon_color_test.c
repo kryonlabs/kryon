@@ -195,6 +195,41 @@ main(void)
     check_int("compact navigation bar style font override",
               NavigationBarFontFor(11, 13), 13);
     {
+        NavigationBarItemInteraction interaction =
+            NavigationBarItemInteractionFor(false, true, false, true, true,
+                                            false, true, false);
+        check_true("navigation bar interaction active", interaction.active);
+        check_true("navigation bar interaction hovered", interaction.hovered);
+        check_true("navigation bar interaction activated",
+                   interaction.activated);
+        check_true("navigation bar interaction hover state",
+                   interaction.state == ButtonStateHover);
+
+        interaction = NavigationBarItemInteractionFor(false, true, true, true,
+                                                      true, false, true,
+                                                      false);
+        check_true("navigation bar captured inactive",
+                   !interaction.active && !interaction.activated);
+        check_true("navigation bar captured normal state",
+                   interaction.state == ButtonStateNormal);
+
+        interaction = NavigationBarItemInteractionFor(true, true, false, true,
+                                                      true, false, true,
+                                                      false);
+        check_true("navigation bar disabled marker",
+                   interaction.disabled_marker);
+        check_true("navigation bar disabled not activated",
+                   !interaction.activated);
+        check_true("navigation bar disabled state",
+                   interaction.state == ButtonStateDisabled);
+
+        interaction = NavigationBarItemInteractionFor(false, false, false,
+                                                      true, true, false, true,
+                                                      true);
+        check_true("navigation bar selected state",
+                   interaction.state == ButtonStateSelected);
+    }
+    {
         StyleFrame bar = test_style_frame(0x111111ffu, 0x222222ffu,
                                           0x333333ffu);
         StyleFrame item = test_style_frame(0x444444ffu, 0x555555ffu,

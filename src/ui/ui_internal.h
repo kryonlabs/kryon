@@ -298,6 +298,7 @@ int PointerReleaseConsumed(void);
 void ConsumePointerRelease(void);
 int PointerReleaseAvailable(Vector2 point);
 int PointerReleaseOutside(Rectangle bounds);
+int press_started_inside(Rectangle bounds);
 int mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active);
 void ClearTextInputFocus(void);
 int HandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
