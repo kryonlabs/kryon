@@ -388,6 +388,22 @@ main(void)
         true, false, false));
     assert(!TextShortcutShouldClaimSelectionFocus(true, false, true, false,
         true, false, false));
+    assert(TextDeleteShortcutShouldRun(false, true, false, 0));
+    assert(TextDeleteShortcutShouldRun(false, false, true, 0));
+    assert(TextDeleteShortcutShouldRun(false, false, false, 2));
+    assert(!TextDeleteShortcutShouldRun(true, true, true, 2));
+    assert(TextSelectionReplacementShouldRun(false, false, true, false));
+    assert(!TextSelectionReplacementShouldRun(true, false, true, false));
+    assert(!TextSelectionReplacementShouldRun(false, true, true, false));
+    assert(!TextSelectionReplacementShouldRun(false, false, false, false));
+    assert(!TextSelectionReplacementShouldRun(false, false, true, true));
+    assert(TextNativeEditShouldRun(false, false));
+    assert(!TextNativeEditShouldRun(true, false));
+    assert(!TextNativeEditShouldRun(false, true));
+    assert(TextCommitAfterHandledShouldRun(false, true, true));
+    assert(!TextCommitAfterHandledShouldRun(true, true, true));
+    assert(!TextCommitAfterHandledShouldRun(false, false, true));
+    assert(!TextCommitAfterHandledShouldRun(false, true, false));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

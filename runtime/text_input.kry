@@ -393,6 +393,26 @@ TextShortcutShouldClaimSelectionFocus :: (has_selection: bool, focused: bool,
         (copy_pressed || cut_pressed || paste_pressed)
 }
 
+TextDeleteShortcutShouldRun :: (read_only: bool, backspace_pressed: bool,
+    delete_pressed: bool, queued_backspace_count: i32) -> bool #export {
+    return !read_only && (backspace_pressed || delete_pressed ||
+        queued_backspace_count > 0)
+}
+
+TextSelectionReplacementShouldRun :: (read_only: bool, handled: bool,
+    has_selection: bool, modifier: bool) -> bool #export {
+    return !read_only && !handled && has_selection && !modifier
+}
+
+TextNativeEditShouldRun :: (read_only: bool, handled: bool) -> bool #export {
+    return !read_only && !handled
+}
+
+TextCommitAfterHandledShouldRun :: (read_only: bool, handled: bool,
+    enter_requested: bool) -> bool #export {
+    return !read_only && handled && enter_requested
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }

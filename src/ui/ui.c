@@ -4045,9 +4045,9 @@ ui_text_area_render(TextAreaProps area)
                                      decision.paste ||
                                      decision.collapse_selection;
         }
-        if(!area.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
-            g_ui_text_input_backspace_count > 0)) {
+        if(TextDeleteShortcutShouldRun(area.read_only,
+           IsKeyPressed(KEY_BACKSPACE), IsKeyPressed(KEY_DELETE),
+           g_ui_text_input_backspace_count)) {
             int anchor = has_selection
                 ? g_ui_text_area_selection.anchor : *area.cursor_position;
             int backspace_count = g_ui_text_input_backspace_count +
@@ -4071,9 +4071,9 @@ ui_text_area_render(TextAreaProps area)
         if(ui_mod_key_down() &&
            (copy_pressed || cut_pressed || paste_pressed))
             selection_key_handled = 1;
-        if(!area.read_only && !selection_key_handled &&
-           selection_end > selection_start &&
-           !ui_mod_key_down()) {
+        if(TextSelectionReplacementShouldRun(area.read_only,
+           selection_key_handled, selection_end > selection_start,
+           ui_mod_key_down())) {
             int inserted = 0;
             int deleted_selection = 0;
             int codepoint = GetCharPressed();
@@ -4160,7 +4160,7 @@ ui_text_area_render(TextAreaProps area)
                 selection_key_handled = 1;
             }
         }
-        if(!area.read_only && !selection_key_handled) {
+        if(TextNativeEditShouldRun(area.read_only, selection_key_handled)) {
             changed |= EditText(area_edit);
         }
         if(!area.read_only && enter_requested) {
@@ -4755,9 +4755,9 @@ ui_text_field_render_filtered(TextFieldProps field,
                                  decision.paste ||
                                  decision.collapse_selection;
         }
-        if(!field.read_only &&
-           (IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_DELETE) ||
-            g_ui_text_input_backspace_count > 0)) {
+        if(TextDeleteShortcutShouldRun(field.read_only,
+           IsKeyPressed(KEY_BACKSPACE), IsKeyPressed(KEY_DELETE),
+           g_ui_text_input_backspace_count)) {
             int anchor = ui_text_selection_matches(
                 g_ui_text_field_selection, field.focus_id, field.focused)
                 ? g_ui_text_field_selection.anchor : *field.cursor_position;
@@ -4815,9 +4815,9 @@ ui_text_field_render_filtered(TextFieldProps field,
                 selection_handled = 1;
             }
         }
-        if(!field.read_only && !selection_handled &&
-           selection_end > selection_start &&
-           !ui_mod_key_down()) {
+        if(TextSelectionReplacementShouldRun(field.read_only,
+           selection_handled, selection_end > selection_start,
+           ui_mod_key_down())) {
             int inserted = 0;
             int deleted_selection = 0;
             int codepoint = GetCharPressed();
@@ -4867,12 +4867,12 @@ ui_text_field_render_filtered(TextFieldProps field,
                 selection_handled = 1;
             }
         }
-        if(!field.read_only && !selection_handled) {
+        if(TextNativeEditShouldRun(field.read_only, selection_handled)) {
             changed |= EditText(field_edit);
         }
-        if(!field.read_only && selection_handled &&
-           (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
-            g_ui_text_input_enter_count > 0)) {
+        if(TextCommitAfterHandledShouldRun(field.read_only, selection_handled,
+           IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+           g_ui_text_input_enter_count > 0)) {
             if(field.commit_pressed != NULL)
                 *field.commit_pressed = 1;
             g_ui_text_input_enter_count = 0;
