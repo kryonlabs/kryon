@@ -68,6 +68,7 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
     while(PollTextComposition(&event)) {
         TextCompositionPhaseDecision phase =
             TextCompositionPhaseDecisionFor((int)event.phase);
+        TextCompositionApplyDecision apply;
         if(phase.store_preedit) {
             text_composition.owner = owner;
             strncpy(text_composition.text, event.text,
@@ -75,19 +76,21 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
             text_composition.text[sizeof(text_composition.text) - 1] = '\0';
             text_composition.cursor = event.cursor;
             text_composition.selection_length = event.selection_length;
-            result.presentation_changed = 1;
+            apply = TextCompositionApplyDecisionFor((int)event.phase, 0);
+            result.presentation_changed |= apply.presentation_changed;
         } else if(phase.commit) {
             TextSelectionRange range = TextSelectionRangeFor(
                 *anchor, *edit.cursor_position);
             TextSelectionState collapsed;
+            int text_changed = 0;
             int start = range.start;
             int end = range.end;
 
             if(end > start)
-                result.text_changed |= ui_text_delete_range(
+                text_changed |= ui_text_delete_range(
                     edit.text, edit.text_size, edit.cursor_position,
                     start, end);
-            result.text_changed |= ui_text_insert_text(
+            text_changed |= ui_text_insert_text(
                 edit.text, edit.text_size, edit.cursor_position, event.text,
                 allow_newlines, edit.filter, edit.filter_user_data,
                 edit.max_codepoints);
@@ -95,11 +98,15 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
             *anchor = collapsed.anchor;
             *edit.cursor_position = collapsed.cursor;
             ui_text_composition_cancel(NULL);
-            result.presentation_changed = 1;
-            result.selection_changed = 1;
+            apply = TextCompositionApplyDecisionFor((int)event.phase,
+                                                    text_changed != 0);
+            result.text_changed |= apply.text_changed;
+            result.presentation_changed |= apply.presentation_changed;
+            result.selection_changed |= apply.selection_changed;
         } else if(phase.cancel) {
             ui_text_composition_cancel(NULL);
-            result.presentation_changed = 1;
+            apply = TextCompositionApplyDecisionFor((int)event.phase, 0);
+            result.presentation_changed |= apply.presentation_changed;
         }
     }
     return result;

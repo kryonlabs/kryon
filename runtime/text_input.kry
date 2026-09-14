@@ -89,6 +89,12 @@ TextCompositionPhaseDecision :: struct {
     cancel: bool
 }
 
+TextCompositionApplyDecision :: struct {
+    text_changed: bool
+    presentation_changed: bool
+    selection_changed: bool
+}
+
 TextCompositionViewRange :: struct {
     replace_start: i32
     replace_end: i32
@@ -130,6 +136,22 @@ TextCompositionPhaseDecisionFor :: (phase: i32) -> TextCompositionPhaseDecision 
     decision.store_preedit = phase == 1 || phase == 2
     decision.commit = phase == 3
     decision.cancel = phase == 4
+    return decision
+}
+
+TextCompositionApplyDecisionFor :: (phase: i32,
+    text_changed: bool) -> TextCompositionApplyDecision #export {
+    event: TextCompositionPhaseDecision = TextCompositionPhaseDecisionFor(phase)
+    decision: TextCompositionApplyDecision
+    if event.store_preedit || event.cancel {
+        decision.presentation_changed = true
+        return decision
+    }
+    if event.commit {
+        decision.text_changed = text_changed
+        decision.presentation_changed = true
+        decision.selection_changed = true
+    }
     return decision
 }
 

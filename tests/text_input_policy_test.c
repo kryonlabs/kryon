@@ -47,6 +47,7 @@ main(void)
     TextCompositionInputDecision composition_input;
     TextCompositionSessionDecision composition_session;
     TextCompositionPhaseDecision composition_phase;
+    TextCompositionApplyDecision composition_apply;
     TextCompositionViewRange composition_range;
     TextFieldPanDecision pan_decision;
 
@@ -154,6 +155,26 @@ main(void)
     assert(!composition_phase.store_preedit);
     assert(!composition_phase.commit);
     assert(!composition_phase.cancel);
+    composition_apply = TextCompositionApplyDecisionFor(1, false);
+    assert(!composition_apply.text_changed);
+    assert(composition_apply.presentation_changed);
+    assert(!composition_apply.selection_changed);
+    composition_apply = TextCompositionApplyDecisionFor(3, true);
+    assert(composition_apply.text_changed);
+    assert(composition_apply.presentation_changed);
+    assert(composition_apply.selection_changed);
+    composition_apply = TextCompositionApplyDecisionFor(3, false);
+    assert(!composition_apply.text_changed);
+    assert(composition_apply.presentation_changed);
+    assert(composition_apply.selection_changed);
+    composition_apply = TextCompositionApplyDecisionFor(4, false);
+    assert(!composition_apply.text_changed);
+    assert(composition_apply.presentation_changed);
+    assert(!composition_apply.selection_changed);
+    composition_apply = TextCompositionApplyDecisionFor(99, true);
+    assert(!composition_apply.text_changed);
+    assert(!composition_apply.presentation_changed);
+    assert(!composition_apply.selection_changed);
     assert(TextCompositionSelectionLength(6, 2, 3) == 3);
     assert(TextCompositionSelectionLength(6, 2, 99) == 4);
     assert(TextCompositionSelectionLength(6, 9, 2) == 0);
