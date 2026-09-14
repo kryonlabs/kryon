@@ -583,6 +583,21 @@ TextAreaWheelScrollFor :: (scroll: i32, wheel: float,
     return scroll - (i32)(wheel * (float)line_height * 3.0)
 }
 
+TextAreaDragScrollFor :: (scroll: i32, mouse_y: i32, bounds_y: float,
+    bounds_height: float, padding_y: i32, line_height: i32) -> i32 #export {
+    next: i32 = scroll
+    if mouse_y < (i32)bounds_y + padding_y {
+        next -= line_height
+    }
+    if mouse_y > (i32)(bounds_y + bounds_height) - padding_y {
+        next += line_height
+    }
+    if next < 0 {
+        return 0
+    }
+    return next
+}
+
 TextAreaGutterMetricsFor :: (scale: float) -> TextAreaGutterMetrics #export {
     metrics: TextAreaGutterMetrics
     metrics.top_inset = TextInputScaledMetric(10.0, scale)

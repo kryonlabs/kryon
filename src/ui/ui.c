@@ -3907,12 +3907,9 @@ ui_text_area_render(TextAreaProps area)
     }
     if(g_ui_text_area_drag_owner == area.focused &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        if((int)mouse_world.y < (int)area.bounds.y + padding_y)
-            scroll_y -= line_h;
-        if((int)mouse_world.y > (int)(area.bounds.y + area.bounds.height) - padding_y)
-            scroll_y += line_h;
-        if(scroll_y < 0)
-            scroll_y = 0;
+        scroll_y = TextAreaDragScrollFor(scroll_y, (int)mouse_world.y,
+                                         area.bounds.y, area.bounds.height,
+                                         padding_y, line_h);
         focused = 1;
         ClaimTextAreaFocus(area.focused);
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,

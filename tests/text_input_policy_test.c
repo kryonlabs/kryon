@@ -92,6 +92,10 @@ main(void)
     assert(TextAreaMaxScrollFor(40, 80.0f, 6) == 0);
     assert(TextAreaWheelScrollFor(50, 1.0f, 20) == -10);
     assert(TextAreaWheelScrollFor(50, -0.5f, 20) == 80);
+    assert(TextAreaDragScrollFor(50, 8, 10.0f, 100.0f, 6, 20) == 30);
+    assert(TextAreaDragScrollFor(50, 112, 10.0f, 100.0f, 6, 20) == 70);
+    assert(TextAreaDragScrollFor(10, 20, 10.0f, 100.0f, 6, 20) == 10);
+    assert(TextAreaDragScrollFor(5, 8, 10.0f, 100.0f, 6, 20) == 0);
     area_paint = TextAreaPaintFor((Rectangle){10, 20, 100, 80},
                                   16, 4, 8, 6, 1, 200, 500, 18,
                                   TextAreaMinWrapWidth(1.0f));
