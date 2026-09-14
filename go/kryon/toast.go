@@ -17,6 +17,22 @@ type ToastLayout struct {
 	ContentWidth int32
 }
 
+type ToastTruncation struct {
+	PrefixLen int32
+	Ellipsis  bool
+}
+
+type ToastRequestDecision struct {
+	Show    bool
+	Clear   bool
+	Seconds float32
+}
+
+type ToastRenderDecision struct {
+	Render bool
+	Clear  bool
+}
+
 func Toast_ToastMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -91,6 +107,107 @@ func Toast_ToastDuration(seconds float32, metrics ToastMetrics) float32 {
 	}
 	var value_4 float32 = seconds
 	return value_4
+}
+
+func Toast_ToastRequestDecisionFor(has_message bool, seconds float32, metrics ToastMetrics) ToastRequestDecision {
+	var decision ToastRequestDecision = ToastRequestDecision{}
+	var value_0 bool = has_message
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = true
+		decision.Clear = value_2
+		var value_3 ToastRequestDecision = decision
+		return value_3
+	}
+	var value_4 bool = true
+	decision.Show = value_4
+	var value_5 float32 = seconds
+	var value_6 ToastMetrics = metrics
+	var value_7 float32 = Toast_ToastDuration(value_5, value_6)
+	decision.Seconds = value_7
+	var value_8 ToastRequestDecision = decision
+	return value_8
+}
+
+func Toast_ToastRenderDecisionFor(has_message bool, now_seconds float32, until_seconds float32) ToastRenderDecision {
+	var decision ToastRenderDecision = ToastRenderDecision{}
+	var value_0 bool = has_message
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 float32 = now_seconds
+		var value_4 float32 = until_seconds
+		var value_5 bool = value_3 >= value_4
+		value_2 = value_5
+	}
+	if value_2 {
+		var value_6 bool = true
+		decision.Clear = value_6
+		var value_7 ToastRenderDecision = decision
+		return value_7
+	}
+	var value_8 bool = true
+	decision.Render = value_8
+	var value_9 ToastRenderDecision = decision
+	return value_9
+}
+
+func Toast_ToastTruncationFor(text_len int32, fits bool) ToastTruncation {
+	var truncation ToastTruncation = ToastTruncation{}
+	var value_0 int32 = text_len
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		text_len = value_3
+	}
+	var value_4 int32 = text_len
+	truncation.PrefixLen = value_4
+	var value_5 bool = fits
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 int32 = text_len
+		var value_8 int32 = 3
+		var value_9 bool = value_7 <= value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 ToastTruncation = truncation
+		return value_10
+	}
+	var value_11 int32 = text_len
+	var value_12 int32 = 3
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+	truncation.PrefixLen = value_13
+	var value_14 bool = true
+	truncation.Ellipsis = value_14
+	var value_15 ToastTruncation = truncation
+	return value_15
+}
+
+func Toast_ToastTruncationNext(truncation ToastTruncation, fits bool) ToastTruncation {
+	var value_0 bool = fits
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = truncation.Ellipsis
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	if value_1 {
+		var value_4 ToastTruncation = truncation
+		return value_4
+	}
+	var value_5 int32 = truncation.PrefixLen
+	var value_6 int32 = 0
+	var value_7 bool = value_5 > value_6
+	if value_7 {
+		var value_8 int32 = truncation.PrefixLen
+		var value_9 int32 = 1
+		var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
+		truncation.PrefixLen = value_10
+	}
+	var value_11 ToastTruncation = truncation
+	return value_11
 }
 
 func Toast_ToastMaxWidth(view_width int32, metrics ToastMetrics) int32 {

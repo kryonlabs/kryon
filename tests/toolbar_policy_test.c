@@ -17,6 +17,11 @@ test_toolbar_action_bounds(void)
     assert(layout.action_width == 72);
     assert(layout.action_gap == 12);
     assert(layout.side_padding == 24);
+    assert(ToolbarBarRole() == 1);
+    assert(ToolbarDividerRole() == 18);
+    assert(ToolbarActionRole() == 17);
+    assert(ToolbarBottomBarRole() == 28);
+    assert(ToolbarBottomActionRole() == 29);
     assert(first.x == 140.0f);
     assert(first.y == -12.0f);
     assert(second.x == 224.0f);

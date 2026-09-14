@@ -16,17 +16,20 @@ RenderToolbar(ToolbarProps toolbar)
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
                       .class_name = toolbar.class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 1);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(),
+        ToolbarBarRole());
     divider_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
                       .class_name = toolbar.class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 18);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(),
+        ToolbarDividerRole());
     action_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .icon_only = true,
                       .class_name = toolbar.class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 17);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(),
+        ToolbarActionRole());
     bar = ui_unpack_style(bar_frame.value);
     divider = ui_unpack_style(divider_frame.value);
     action_style = ui_unpack_style(action_frame.value);
@@ -69,7 +72,8 @@ RenderToolbar(ToolbarProps toolbar)
                               .size = ControlSizeMedium,
                               .icon_only = true,
                               .class_name = toolbar.class_name},
-                ButtonStateHover, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
+                ButtonStateHover, 0, 0, 0, 0, StyleKindToolbar(),
+                ToolbarActionRole()).value);
             button.props.bounds = action_bounds;
             button.props.icon = toolbar.actions[i].icon;
             button.props.icon_type = toolbar.actions[i].icon_type;

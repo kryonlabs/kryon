@@ -5064,9 +5064,9 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 		actionCount = int32(len(props.Actions))
 	}
 	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindToolbar(), 1)
+		props.ClassName, StyleSheet_StyleKindToolbar(), Toolbar_ToolbarBarRole())
 	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindToolbar(), 17)
+		props.ClassName, StyleSheet_StyleKindToolbar(), Toolbar_ToolbarActionRole())
 	layout := Toolbar_ToolbarLayoutFor(ToolbarSpec{
 		X:                 props.X,
 		Y:                 props.Y,
@@ -5087,7 +5087,7 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	bounds := layout.Bounds
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	dividerStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindToolbar(), 18).Value)
+		props.ClassName, StyleSheet_StyleKindToolbar(), Toolbar_ToolbarDividerRole()).Value)
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: dividerStyle.Border})
 	for i := int32(0); i < actionCount; i++ {
 		action := props.Actions[i]

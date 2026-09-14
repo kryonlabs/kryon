@@ -34,6 +34,12 @@ type TitleBarTitlePaint struct {
 	Y int32
 }
 
+type TitleBarState struct {
+	Height      int32
+	HasLeading  bool
+	HasDropdown bool
+}
+
 func TitleBar_TitleBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -136,6 +142,32 @@ func TitleBar_TitleBarMetricsFor(scale float32, bar StyleFrame, title StyleFrame
 	metrics.TitleHorizontalPadding = value_60
 	var value_61 TitleBarMetrics = metrics
 	return value_61
+}
+
+func TitleBar_TitleBarStateFor(requested_height int32, fallback_height int32, has_leading bool, has_dropdown bool) TitleBarState {
+	var state TitleBarState = TitleBarState{}
+	var value_0 int32 = requested_height
+	state.Height = value_0
+	var value_1 int32 = state.Height
+	var value_2 int32 = 0
+	var value_3 bool = value_1 <= value_2
+	if value_3 {
+		var value_4 int32 = fallback_height
+		state.Height = value_4
+	}
+	var value_5 int32 = state.Height
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = 0
+		state.Height = value_8
+	}
+	var value_9 bool = has_leading
+	state.HasLeading = value_9
+	var value_10 bool = has_dropdown
+	state.HasDropdown = value_10
+	var value_11 TitleBarState = state
+	return value_11
 }
 
 func TitleBar_TitleBarLayoutFor(view_width int32, height int32, has_leading bool, has_dropdown bool, dropdown_height int32, dropdown_min_width int32, metrics TitleBarMetrics) TitleBarLayout {

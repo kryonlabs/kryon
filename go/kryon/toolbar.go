@@ -155,6 +155,31 @@ func Toolbar_ToolbarStyleMetric(fields uint32, field uint32, value float32, fall
 	return value_25
 }
 
+func Toolbar_ToolbarBarRole() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func Toolbar_ToolbarDividerRole() int32 {
+	var value_0 int32 = 18
+	return value_0
+}
+
+func Toolbar_ToolbarActionRole() int32 {
+	var value_0 int32 = 17
+	return value_0
+}
+
+func Toolbar_ToolbarBottomBarRole() int32 {
+	var value_0 int32 = 28
+	return value_0
+}
+
+func Toolbar_ToolbarBottomActionRole() int32 {
+	var value_0 int32 = 29
+	return value_0
+}
+
 func Toolbar_ToolbarSidePadding(value int32, fields uint32, scale float32) int32 {
 	var value_0 int32 = value
 	var value_1 int32 = 0
@@ -462,6 +487,28 @@ func Toolbar_ToolbarActionBoundsFor(layout ToolbarLayout, index int32, action_co
 	bounds.Height = value_34
 	var value_35 Rectangle = bounds
 	return value_35
+}
+
+func Toolbar_ToolbarActionStyleIconSize(icon_size int32, scale float32) float32 {
+	var value_0 int32 = icon_size
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		icon_size = value_3
+	}
+	var value_4 float32 = scale
+	var value_5 float32 = 0.0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 float32 = 1.0
+		scale = value_7
+	}
+	var value_8 int32 = icon_size
+	var value_9 float32 = float32(value_8)
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 / value_10
+	return value_11
 }
 
 func Toolbar_BottomIconRowLayoutFor(row BottomIconRowProps, scale float32) BottomIconRowLayout {

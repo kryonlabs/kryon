@@ -123,6 +123,21 @@ func Slider_SliderLabelGapForStyle(label StyleFrame, scale float32) float32 {
 	return value_7
 }
 
+func Slider_SliderTrackRole() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func Slider_SliderFillRole() int32 {
+	var value_0 int32 = 5
+	return value_0
+}
+
+func Slider_SliderLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Slider_SliderCenteredHitBounds(x int32, y int32, width int32, height int32, min_width int32, min_height int32) Rectangle {
 	var hit Rectangle = Rectangle{}
 	var value_0 int32 = width

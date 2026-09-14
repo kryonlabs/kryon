@@ -33,6 +33,21 @@ type TableViewSelection struct {
 	ColumnSlot int32
 }
 
+type TableViewSelectionClearDecision struct {
+	Row     int32
+	Column  int32
+	Changed bool
+}
+
+type TableViewClipboardDecision struct {
+	CopySelection bool
+	Paste         bool
+}
+
+type TableViewResizeClearDecision struct {
+	Clear bool
+}
+
 func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -619,6 +634,81 @@ func TableView_TableViewMinimumColumnWidth(requested_min_width int32, scale floa
 	return value_16
 }
 
+func TableView_TableViewResizeColumnWidthFor(start_width int32, start_x int32, pointer_x int32, minimum_width int32) int32 {
+	var value_0 int32 = start_width
+	var value_1 int32 = pointer_x
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
+	var value_3 int32 = start_x
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 2))
+	var width int32 = value_4
+	var value_5 int32 = width
+	var value_6 int32 = minimum_width
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = minimum_width
+		return value_8
+	}
+	var value_9 int32 = width
+	return value_9
+}
+
+func TableView_TableViewResizeClearFor(active bool, owner_captured bool, content_disabled bool, released bool, same_table bool, table_disabled bool, resizable bool, has_column_widths bool) TableViewResizeClearDecision {
+	var decision TableViewResizeClearDecision = TableViewResizeClearDecision{}
+	var value_0 bool = active
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 TableViewResizeClearDecision = decision
+		return value_2
+	}
+	var value_3 bool = owner_captured
+	if value_3 {
+		var value_4 bool = true
+		decision.Clear = value_4
+		var value_5 TableViewResizeClearDecision = decision
+		return value_5
+	}
+	var value_6 bool = content_disabled
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 bool = released
+		value_7 = value_8
+	}
+	var value_9 bool = value_7
+	if value_9 {
+		var value_10 bool = content_disabled
+		var value_11 bool = value_10
+		if !value_11 {
+			var value_12 bool = same_table
+			var value_13 bool = !value_12
+			value_11 = value_13
+		}
+		var value_14 bool = value_11
+		if !value_14 {
+			var value_15 bool = table_disabled
+			value_14 = value_15
+		}
+		var value_16 bool = value_14
+		if !value_16 {
+			var value_17 bool = resizable
+			var value_18 bool = !value_17
+			value_16 = value_18
+		}
+		var value_19 bool = value_16
+		if !value_19 {
+			var value_20 bool = has_column_widths
+			var value_21 bool = !value_20
+			value_19 = value_21
+		}
+		value_9 = value_19
+	}
+	if value_9 {
+		var value_22 bool = true
+		decision.Clear = value_22
+	}
+	var value_23 TableViewResizeClearDecision = decision
+	return value_23
+}
+
 func TableView_TableViewSelectedRowFor(selected_row int32, row_count int32) int32 {
 	var value_0 int32 = row_count
 	var value_1 int32 = 0
@@ -845,6 +935,60 @@ func TableView_TableViewSelectionTab(row int32, column_slot int32, row_count int
 	}
 	var value_43 TableViewSelection = selection
 	return value_43
+}
+
+func TableView_TableViewSelectionClearFor(selected_row int32, selected_column int32) TableViewSelectionClearDecision {
+	var decision TableViewSelectionClearDecision = TableViewSelectionClearDecision{}
+	var value_0 int32 = selected_row
+	decision.Row = value_0
+	var value_1 int32 = selected_column
+	decision.Column = value_1
+	var value_2 int32 = selected_row
+	var value_3 int32 = 0
+	var value_4 bool = value_2 >= value_3
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 int32 = selected_column
+		var value_7 int32 = 0
+		var value_8 bool = value_6 >= value_7
+		value_5 = value_8
+	}
+	if value_5 {
+		var value_9 int32 = -1
+		decision.Row = value_9
+		var value_10 int32 = -1
+		decision.Column = value_10
+		var value_11 bool = true
+		decision.Changed = value_11
+	}
+	var value_12 TableViewSelectionClearDecision = decision
+	return value_12
+}
+
+func TableView_TableViewClipboardDecisionFor(modifier_down bool, copy_pressed bool, cut_pressed bool, paste_pressed bool, has_paste_target bool) TableViewClipboardDecision {
+	var decision TableViewClipboardDecision = TableViewClipboardDecision{}
+	var value_0 bool = modifier_down
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 TableViewClipboardDecision = decision
+		return value_2
+	}
+	var value_3 bool = copy_pressed
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 bool = cut_pressed
+		value_4 = value_5
+	}
+	decision.CopySelection = value_4
+	var value_6 bool = paste_pressed
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = has_paste_target
+		value_7 = value_8
+	}
+	decision.Paste = value_7
+	var value_9 TableViewClipboardDecision = decision
+	return value_9
 }
 
 func TableView_TableViewSelectionScrollOffset(row int32, frozen_rows int32, row_height int32, view_height int32, scroll_offset int32, max_scroll int32) int32 {

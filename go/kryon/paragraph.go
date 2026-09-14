@@ -18,6 +18,11 @@ type ParagraphLayoutPolicy struct {
 	LineGap     int32
 }
 
+type ParagraphLineStep struct {
+	Wrap  bool
+	Width int32
+}
+
 func Paragraph_ParagraphResolveMetrics(requested_font int32, default_font int32, requested_line_gap int32, default_line_gap int32, requested_icon_size int32, requested_width int32, fallback_width int32, measured_height int32, current_y int32) ParagraphMetrics {
 	var metrics ParagraphMetrics = ParagraphMetrics{}
 	var value_0 int32 = requested_font
@@ -174,6 +179,53 @@ func Paragraph_ParagraphLayoutTotalHeight(line_count int32, drawn_line_height in
 	return value_20
 }
 
+func Paragraph_ParagraphLineStepFor(current_width int32, spacing int32, element_width int32, max_width int32) ParagraphLineStep {
+	var step ParagraphLineStep = ParagraphLineStep{}
+	var value_0 int32 = current_width
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		current_width = value_3
+	}
+	var value_4 int32 = spacing
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		spacing = value_7
+	}
+	var value_8 int32 = element_width
+	var value_9 int32 = 0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 int32 = 0
+		element_width = value_11
+	}
+	var value_12 int32 = current_width
+	var value_13 int32 = spacing
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
+	var value_15 int32 = element_width
+	var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
+	var value_17 int32 = max_width
+	var value_18 bool = value_16 <= value_17
+	if value_18 {
+		var value_19 int32 = current_width
+		var value_20 int32 = spacing
+		var value_21 int32 = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 1))
+		var value_22 int32 = element_width
+		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
+		step.Width = value_23
+	} else {
+		var value_24 bool = true
+		step.Wrap = value_24
+		var value_25 int32 = element_width
+		step.Width = value_25
+	}
+	var value_26 ParagraphLineStep = step
+	return value_26
+}
+
 func Paragraph_ParagraphLineXFor(x int32, width int32, line_width int32, align int32) int32 {
 	var value_0 int32 = width
 	var value_1 int32 = line_width
@@ -223,4 +275,20 @@ func Paragraph_ParagraphNextLineY(current_y int32, drawn_line_height int32, line
 	}
 	var value_6 int32 = next
 	return value_6
+}
+
+func Paragraph_ParagraphLineStride(drawn_line_height int32, line_gap int32) int32 {
+	var value_0 int32 = drawn_line_height
+	var value_1 int32 = line_gap
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
+	var stride int32 = value_2
+	var value_3 int32 = stride
+	var value_4 int32 = 1
+	var value_5 bool = value_3 < value_4
+	if value_5 {
+		var value_6 int32 = 1
+		return value_6
+	}
+	var value_7 int32 = stride
+	return value_7
 }

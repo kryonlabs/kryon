@@ -32,6 +32,31 @@ type ScrollBarPaint struct {
 	ScrollPerPixel float32
 }
 
+type ScrollBarDragDecision struct {
+	StartDrag        bool
+	ContinueDrag     bool
+	CancelDrag       bool
+	ClaimScrollOwner bool
+	ScrollOffset     int32
+}
+
+type ScrollContentDragDecision struct {
+	StartDrag        bool
+	Active           bool
+	Dragging         bool
+	GesturePending   bool
+	ClaimScrollOwner bool
+	CaptureInput     bool
+	ScrollOffset     int32
+}
+
+type ScrollClipGeometry struct {
+	ScreenBounds       Rectangle
+	ClippedWorldBounds Rectangle
+	VisualScreenBounds Rectangle
+	VisualBleed        int32
+}
+
 func Scroll_ScrollMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -325,6 +350,254 @@ func Scroll_ScrollScopeContentBounds(bounds Rectangle, has_scroll bool, metrics 
 	return value_10
 }
 
+func Scroll_ScrollScreenBoundsFor(bounds Rectangle, camera_offset Vector2, zoom float32) Rectangle {
+	var value_0 float32 = zoom
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		zoom = value_3
+	}
+	var screen Rectangle = Rectangle{}
+	var value_4 float32 = camera_offset.X
+	var value_5 float32 = bounds.X
+	var value_6 float32 = zoom
+	var value_7 float32 = value_5 * value_6
+	var value_8 float32 = value_4 + value_7
+	screen.X = value_8
+	var value_9 float32 = camera_offset.Y
+	var value_10 float32 = bounds.Y
+	var value_11 float32 = zoom
+	var value_12 float32 = value_10 * value_11
+	var value_13 float32 = value_9 + value_12
+	screen.Y = value_13
+	var value_14 float32 = bounds.Width
+	var value_15 float32 = zoom
+	var value_16 float32 = value_14 * value_15
+	screen.Width = value_16
+	var value_17 float32 = bounds.Height
+	var value_18 float32 = zoom
+	var value_19 float32 = value_17 * value_18
+	screen.Height = value_19
+	var value_20 Rectangle = screen
+	return value_20
+}
+
+func Scroll_ScrollWorldBoundsFor(screen_bounds Rectangle, camera_offset Vector2, zoom float32) Rectangle {
+	var value_0 float32 = zoom
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		zoom = value_3
+	}
+	var world Rectangle = Rectangle{}
+	var value_4 float32 = screen_bounds.X
+	var value_5 float32 = camera_offset.X
+	var value_6 float32 = value_4 - value_5
+	var value_7 float32 = zoom
+	var value_8 float32 = value_6 / value_7
+	world.X = value_8
+	var value_9 float32 = screen_bounds.Y
+	var value_10 float32 = camera_offset.Y
+	var value_11 float32 = value_9 - value_10
+	var value_12 float32 = zoom
+	var value_13 float32 = value_11 / value_12
+	world.Y = value_13
+	var value_14 float32 = screen_bounds.Width
+	var value_15 float32 = zoom
+	var value_16 float32 = value_14 / value_15
+	world.Width = value_16
+	var value_17 float32 = screen_bounds.Height
+	var value_18 float32 = zoom
+	var value_19 float32 = value_17 / value_18
+	world.Height = value_19
+	var value_20 Rectangle = world
+	return value_20
+}
+
+func Scroll_ScrollVisualBoundsFor(screen_bounds Rectangle, visual_bleed int32, zoom float32, screen_width int32, screen_height int32, view_width int32, view_height int32, camera_offset Vector2) Rectangle {
+	var value_0 float32 = zoom
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		zoom = value_3
+	}
+	var value_4 int32 = visual_bleed
+	var value_5 float32 = float32(value_4)
+	var value_6 float32 = zoom
+	var value_7 float32 = value_5 * value_6
+	var value_8 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_7), 32, true)), uint64(0), 32, true, 0))
+	var bleed int32 = value_8
+	var value_9 int32 = bleed
+	var value_10 int32 = 1
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = 1
+		bleed = value_12
+	}
+	var visual Rectangle = Rectangle{}
+	var value_13 float32 = screen_bounds.X
+	var value_14 int32 = bleed
+	var value_15 float32 = float32(value_14)
+	var value_16 float32 = value_13 - value_15
+	visual.X = value_16
+	var value_17 float32 = screen_bounds.Y
+	var value_18 int32 = bleed
+	var value_19 float32 = float32(value_18)
+	var value_20 float32 = value_17 - value_19
+	visual.Y = value_20
+	var value_21 float32 = screen_bounds.Width
+	var value_22 int32 = bleed
+	var value_23 int32 = 2
+	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 3))
+	var value_25 float32 = float32(value_24)
+	var value_26 float32 = value_21 + value_25
+	visual.Width = value_26
+	var value_27 float32 = screen_bounds.Height
+	var value_28 int32 = bleed
+	var value_29 int32 = 2
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 3))
+	var value_31 float32 = float32(value_30)
+	var value_32 float32 = value_27 + value_31
+	visual.Height = value_32
+	var value_33 float32 = visual.X
+	var value_34 float32 = 0.0
+	var value_35 bool = value_33 < value_34
+	if value_35 {
+		var value_36 float32 = visual.Width
+		var value_37 float32 = visual.X
+		visual.Width = value_36 + value_37
+		var value_38 float32 = 0.0
+		visual.X = value_38
+	}
+	var value_39 float32 = visual.Y
+	var value_40 float32 = 0.0
+	var value_41 bool = value_39 < value_40
+	if value_41 {
+		var value_42 float32 = visual.Height
+		var value_43 float32 = visual.Y
+		visual.Height = value_42 + value_43
+		var value_44 float32 = 0.0
+		visual.Y = value_44
+	}
+	var value_45 int32 = screen_width
+	var value_46 int32 = 0
+	var value_47 bool = value_45 <= value_46
+	if value_47 {
+		var value_48 float32 = camera_offset.X
+		var value_49 int32 = view_width
+		var value_50 float32 = float32(value_49)
+		var value_51 float32 = zoom
+		var value_52 float32 = value_50 * value_51
+		var value_53 float32 = value_48 + value_52
+		var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
+		screen_width = value_54
+	}
+	var value_55 int32 = screen_height
+	var value_56 int32 = 0
+	var value_57 bool = value_55 <= value_56
+	if value_57 {
+		var value_58 float32 = camera_offset.Y
+		var value_59 int32 = view_height
+		var value_60 float32 = float32(value_59)
+		var value_61 float32 = zoom
+		var value_62 float32 = value_60 * value_61
+		var value_63 float32 = value_58 + value_62
+		var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
+		screen_height = value_64
+	}
+	var value_65 float32 = visual.X
+	var value_66 float32 = visual.Width
+	var value_67 float32 = value_65 + value_66
+	var value_68 int32 = screen_width
+	var value_69 float32 = float32(value_68)
+	var value_70 bool = value_67 > value_69
+	if value_70 {
+		var value_71 int32 = screen_width
+		var value_72 float32 = float32(value_71)
+		var value_73 float32 = visual.X
+		var value_74 float32 = value_72 - value_73
+		visual.Width = value_74
+	}
+	var value_75 float32 = visual.Y
+	var value_76 float32 = visual.Height
+	var value_77 float32 = value_75 + value_76
+	var value_78 int32 = screen_height
+	var value_79 float32 = float32(value_78)
+	var value_80 bool = value_77 > value_79
+	if value_80 {
+		var value_81 int32 = screen_height
+		var value_82 float32 = float32(value_81)
+		var value_83 float32 = visual.Y
+		var value_84 float32 = value_82 - value_83
+		visual.Height = value_84
+	}
+	var value_85 float32 = visual.Width
+	var value_86 float32 = 0.0
+	var value_87 bool = value_85 < value_86
+	if value_87 {
+		var value_88 float32 = 0.0
+		visual.Width = value_88
+	}
+	var value_89 float32 = visual.Height
+	var value_90 float32 = 0.0
+	var value_91 bool = value_89 < value_90
+	if value_91 {
+		var value_92 float32 = 0.0
+		visual.Height = value_92
+	}
+	var value_93 Rectangle = visual
+	return value_93
+}
+
+func Scroll_ScrollClipGeometryFor(bounds Rectangle, clipped_screen_bounds Rectangle, visual_bleed int32, camera_offset Vector2, zoom float32, screen_width int32, screen_height int32, view_width int32, view_height int32) ScrollClipGeometry {
+	var value_0 float32 = zoom
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		zoom = value_3
+	}
+	var geometry ScrollClipGeometry = ScrollClipGeometry{}
+	var value_4 Rectangle = bounds
+	var value_5 Vector2 = camera_offset
+	var value_6 float32 = zoom
+	var value_7 Rectangle = Scroll_ScrollScreenBoundsFor(value_4, value_5, value_6)
+	geometry.ScreenBounds = value_7
+	var value_8 Rectangle = clipped_screen_bounds
+	var value_9 Vector2 = camera_offset
+	var value_10 float32 = zoom
+	var value_11 Rectangle = Scroll_ScrollWorldBoundsFor(value_8, value_9, value_10)
+	geometry.ClippedWorldBounds = value_11
+	var value_12 Rectangle = geometry.ScreenBounds
+	var value_13 int32 = visual_bleed
+	var value_14 float32 = zoom
+	var value_15 int32 = screen_width
+	var value_16 int32 = screen_height
+	var value_17 int32 = view_width
+	var value_18 int32 = view_height
+	var value_19 Vector2 = camera_offset
+	var value_20 Rectangle = Scroll_ScrollVisualBoundsFor(value_12, value_13, value_14, value_15, value_16, value_17, value_18, value_19)
+	geometry.VisualScreenBounds = value_20
+	var value_21 int32 = visual_bleed
+	var value_22 float32 = float32(value_21)
+	var value_23 float32 = zoom
+	var value_24 float32 = value_22 * value_23
+	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
+	geometry.VisualBleed = value_25
+	var value_26 int32 = geometry.VisualBleed
+	var value_27 int32 = 1
+	var value_28 bool = value_26 < value_27
+	if value_28 {
+		var value_29 int32 = 1
+		geometry.VisualBleed = value_29
+	}
+	var value_30 ScrollClipGeometry = geometry
+	return value_30
+}
+
 func Scroll_ScrollWheelOffsetFor(scroll_offset int32, wheel_move float32, max_scroll int32, wheel_step int32) int32 {
 	var value_0 float32 = wheel_move
 	var value_1 int32 = wheel_step
@@ -417,6 +690,184 @@ func Scroll_ScrollThumbDragDeltaOffsetFor(start_scroll int32, delta_y int32, max
 	var value_11 int32 = max_scroll
 	var value_12 int32 = Scroll_ScrollClamp(value_10, value_11)
 	return value_12
+}
+
+func Scroll_ScrollBarDragFor(mouse_down bool, input_captured bool, thumb_active bool, pointer_owner_none bool, drag_active bool, owns_drag bool, current_scroll int32, start_scroll int32, delta_y int32, max_scroll int32, paint ScrollBarPaint) ScrollBarDragDecision {
+	var decision ScrollBarDragDecision = ScrollBarDragDecision{}
+	var value_0 int32 = current_scroll
+	var value_1 int32 = max_scroll
+	var value_2 int32 = Scroll_ScrollClamp(value_0, value_1)
+	decision.ScrollOffset = value_2
+	var value_3 bool = mouse_down
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = input_captured
+		var value_6 bool = !value_5
+		var value_7 bool = value_6
+		if !value_7 {
+			var value_8 bool = owns_drag
+			value_7 = value_8
+		}
+		value_4 = value_7
+	}
+	if value_4 {
+		var value_9 bool = drag_active
+		var value_10 bool = !value_9
+		if value_10 {
+			var value_11 bool = thumb_active
+			var value_12 bool = value_11
+			if value_12 {
+				var value_13 bool = pointer_owner_none
+				value_12 = value_13
+			}
+			if value_12 {
+				var value_14 bool = true
+				decision.StartDrag = value_14
+				var value_15 bool = true
+				decision.ClaimScrollOwner = value_15
+			}
+			var value_16 ScrollBarDragDecision = decision
+			return value_16
+		}
+		var value_17 bool = owns_drag
+		if value_17 {
+			var value_18 bool = true
+			decision.ContinueDrag = value_18
+			var value_19 bool = true
+			decision.ClaimScrollOwner = value_19
+			var value_20 int32 = start_scroll
+			var value_21 int32 = delta_y
+			var value_22 int32 = max_scroll
+			var value_23 ScrollBarPaint = paint
+			var value_24 int32 = Scroll_ScrollThumbDragDeltaOffsetFor(value_20, value_21, value_22, value_23)
+			decision.ScrollOffset = value_24
+		}
+		var value_25 ScrollBarDragDecision = decision
+		return value_25
+	}
+	var value_26 bool = owns_drag
+	if value_26 {
+		var value_27 bool = true
+		decision.CancelDrag = value_27
+	}
+	var value_28 ScrollBarDragDecision = decision
+	return value_28
+}
+
+func Scroll_ScrollContentDragFor(max_scroll int32, mouse_pressed bool, mouse_down bool, inside bool, input_captured bool, on_scrollbar bool, pointer_owner_none bool, pointer_owner_scroll bool, blocked_by_other_drag bool, active bool, dragging bool, current_scroll int32, start_scroll int32, delta_y int32, drag_threshold int32) ScrollContentDragDecision {
+	var decision ScrollContentDragDecision = ScrollContentDragDecision{}
+	var value_0 int32 = current_scroll
+	var value_1 int32 = max_scroll
+	var value_2 int32 = Scroll_ScrollClamp(value_0, value_1)
+	decision.ScrollOffset = value_2
+	var value_3 bool = blocked_by_other_drag
+	if value_3 {
+		var value_4 ScrollContentDragDecision = decision
+		return value_4
+	}
+	var value_5 int32 = max_scroll
+	var value_6 int32 = 0
+	var value_7 bool = value_5 > value_6
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = pointer_owner_none
+		value_8 = value_9
+	}
+	var value_10 bool = value_8
+	if value_10 {
+		var value_11 bool = mouse_pressed
+		value_10 = value_11
+	}
+	var value_12 bool = value_10
+	if value_12 {
+		var value_13 bool = inside
+		value_12 = value_13
+	}
+	var value_14 bool = value_12
+	if value_14 {
+		var value_15 bool = input_captured
+		var value_16 bool = !value_15
+		value_14 = value_16
+	}
+	var value_17 bool = value_14
+	if value_17 {
+		var value_18 bool = on_scrollbar
+		var value_19 bool = !value_18
+		value_17 = value_19
+	}
+	if value_17 {
+		var value_20 bool = true
+		decision.StartDrag = value_20
+		var value_21 bool = true
+		decision.Active = value_21
+		var value_22 bool = true
+		decision.GesturePending = value_22
+		var value_23 ScrollContentDragDecision = decision
+		return value_23
+	}
+	var value_24 bool = active
+	var value_25 bool = value_24
+	if value_25 {
+		var value_26 bool = mouse_down
+		value_25 = value_26
+	}
+	var value_27 bool = value_25
+	if value_27 {
+		var value_28 bool = pointer_owner_none
+		var value_29 bool = value_28
+		if !value_29 {
+			var value_30 bool = pointer_owner_scroll
+			value_29 = value_30
+		}
+		value_27 = value_29
+	}
+	if value_27 {
+		var value_31 bool = true
+		decision.Active = value_31
+		var value_32 bool = dragging
+		var value_33 bool = value_32
+		if !value_33 {
+			var value_34 int32 = delta_y
+			var value_35 int32 = drag_threshold
+			var value_36 bool = value_34 > value_35
+			value_33 = value_36
+		}
+		var value_37 bool = value_33
+		if !value_37 {
+			var value_38 int32 = delta_y
+			var value_39 int32 = drag_threshold
+			var value_40 int32 = int32(number_runtime_bits(uint64(0), uint64(value_39), 32, true, 2))
+			var value_41 bool = value_38 < value_40
+			value_37 = value_41
+		}
+		if value_37 {
+			var value_42 bool = true
+			decision.Dragging = value_42
+			var value_43 bool = true
+			decision.ClaimScrollOwner = value_43
+			var value_44 bool = true
+			decision.CaptureInput = value_44
+			var value_45 int32 = start_scroll
+			var value_46 int32 = delta_y
+			var value_47 int32 = max_scroll
+			var value_48 int32 = Scroll_ScrollDragDeltaOffsetFor(value_45, value_46, value_47)
+			decision.ScrollOffset = value_48
+		}
+		var value_49 ScrollContentDragDecision = decision
+		return value_49
+	}
+	var value_50 bool = active
+	var value_51 bool = value_50
+	if value_51 {
+		var value_52 bool = dragging
+		value_51 = value_52
+	}
+	if value_51 {
+		var value_53 bool = true
+		decision.CaptureInput = value_53
+	}
+	var value_54 ScrollContentDragDecision = decision
+	return value_54
 }
 
 func Scroll_ScrollRectVisibleOffsetFor(scroll_offset int32, viewport_y int32, viewport_height int32, rect_y int32, rect_height int32, margin int32, max_scroll int32) int32 {

@@ -89,11 +89,13 @@ RenderBottomIconRow(BottomIconRowProps row)
     bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 28);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(),
+        ToolbarBottomBarRole());
     action_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .icon_only = true},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 29);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(),
+        ToolbarBottomActionRole());
 
     layout = BottomIconRowLayoutForStyle(row, (float)Scale(1000) / 1000.0f,
                                         bar_frame, action_frame);

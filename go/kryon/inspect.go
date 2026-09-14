@@ -65,6 +65,36 @@ func Inspect_InspectResizeHandleBounds(bounds Rectangle, handle_size int32) Rect
 	return value_4
 }
 
+func Inspect_InspectResizeHitHandleSize(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 12.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
+func Inspect_InspectResizePaintHandleSize(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 10.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
 func Inspect_InspectEditForDelta(start Rectangle, screen_start Rectangle, dx float32, dy float32, zoom float32, resizing bool, min_size float32) InspectEdit {
 	var edit InspectEdit = InspectEdit{}
 	var value_0 float32 = zoom

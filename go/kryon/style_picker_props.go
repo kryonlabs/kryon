@@ -16,6 +16,12 @@ type StylePickerProps struct {
 	Disabled  bool
 }
 
+type StylePickerState struct {
+	OptionCount   int32
+	SelectedIndex int32
+	HasOptions    bool
+}
+
 func StylePickerProps_StylePickerOptionCountFor(count int32, limit int32) int32 {
 	var value_0 int32 = count
 	var value_1 int32 = 0
@@ -72,4 +78,22 @@ func StylePickerProps_StylePickerSelectedIndexFor(selected int32, count int32) i
 	}
 	var value_17 int32 = selected
 	return value_17
+}
+
+func StylePickerProps_StylePickerStateFor(count int32, selected int32, limit int32) StylePickerState {
+	var state StylePickerState = StylePickerState{}
+	var value_0 int32 = count
+	var value_1 int32 = limit
+	var value_2 int32 = StylePickerProps_StylePickerOptionCountFor(value_0, value_1)
+	state.OptionCount = value_2
+	var value_3 int32 = selected
+	var value_4 int32 = state.OptionCount
+	var value_5 int32 = StylePickerProps_StylePickerSelectedIndexFor(value_3, value_4)
+	state.SelectedIndex = value_5
+	var value_6 int32 = state.OptionCount
+	var value_7 int32 = 0
+	var value_8 bool = value_6 > value_7
+	state.HasOptions = value_8
+	var value_9 StylePickerState = state
+	return value_9
 }

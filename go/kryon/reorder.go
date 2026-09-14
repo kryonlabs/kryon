@@ -9,6 +9,15 @@ type ReorderDragMotion struct {
 	ScrollOffset int32
 }
 
+type ReorderLifecycleDecision struct {
+	CancelActive bool
+	IgnoreList   bool
+}
+
+type ReorderPressDecision struct {
+	CanPress bool
+}
+
 func Reorder_ReorderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -607,6 +616,200 @@ func Reorder_ReorderTargetIndexFor(target int32, item_count int32) int32 {
 	}
 	var value_15 int32 = target
 	return value_15
+}
+
+func Reorder_ReorderListResultDefault(pointer_y int32) ReorderListResult {
+	var result ReorderListResult = ReorderListResult{}
+	var value_0 int32 = -1
+	result.FromIndex = value_0
+	var value_1 int32 = -1
+	result.ToIndex = value_1
+	var value_2 int32 = -1
+	result.ActiveIndex = value_2
+	var value_3 int32 = -1
+	result.TargetIndex = value_3
+	var value_4 int32 = pointer_y
+	result.PointerY = value_4
+	var value_5 ReorderListResult = result
+	return value_5
+}
+
+func Reorder_ReorderListPressResultFor(index int32, item_id int32, pointer_y int32) ReorderListResult {
+	var value_0 int32 = pointer_y
+	var value_1 ReorderListResult = Reorder_ReorderListResultDefault(value_0)
+	var result ReorderListResult = value_1
+	var value_2 int32 = 1
+	result.Active = value_2
+	var value_3 int32 = index
+	result.FromIndex = value_3
+	var value_4 int32 = index
+	result.ToIndex = value_4
+	var value_5 int32 = index
+	result.ActiveIndex = value_5
+	var value_6 int32 = index
+	result.TargetIndex = value_6
+	var value_7 int32 = item_id
+	result.ActiveId = value_7
+	var value_8 ReorderListResult = result
+	return value_8
+}
+
+func Reorder_ReorderListActiveResultFor(from_index int32, active_index int32, target_index int32, active_id int32, pointer_y int32, press_y int32) ReorderListResult {
+	var value_0 int32 = pointer_y
+	var value_1 ReorderListResult = Reorder_ReorderListResultDefault(value_0)
+	var result ReorderListResult = value_1
+	var value_2 int32 = 1
+	result.Active = value_2
+	var value_3 int32 = from_index
+	result.FromIndex = value_3
+	var value_4 int32 = target_index
+	result.ToIndex = value_4
+	var value_5 int32 = active_index
+	result.ActiveIndex = value_5
+	var value_6 int32 = target_index
+	result.TargetIndex = value_6
+	var value_7 int32 = active_id
+	result.ActiveId = value_7
+	var value_8 int32 = pointer_y
+	var value_9 int32 = press_y
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 2))
+	result.DragDeltaY = value_10
+	var value_11 ReorderListResult = result
+	return value_11
+}
+
+func Reorder_ReorderListCommitResultFor(active ReorderListResult, item_count int32) ReorderListResult {
+	var value_0 ReorderListResult = active
+	var result ReorderListResult = value_0
+	var value_1 int32 = 0
+	result.Dragging = value_1
+	var value_2 int32 = active.ActiveIndex
+	result.FromIndex = value_2
+	var value_3 int32 = 0
+	result.Committed = value_3
+	var value_4 int32 = result.TargetIndex
+	var value_5 int32 = 0
+	var value_6 bool = value_4 >= value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 int32 = result.TargetIndex
+		var value_9 int32 = item_count
+		var value_10 bool = value_8 < value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if value_11 {
+		var value_12 int32 = result.TargetIndex
+		var value_13 int32 = active.ActiveIndex
+		var value_14 bool = value_12 != value_13
+		value_11 = value_14
+	}
+	if value_11 {
+		var value_15 int32 = 1
+		result.Committed = value_15
+	}
+	var value_16 ReorderListResult = result
+	return value_16
+}
+
+func Reorder_ReorderForeignActiveListFor(has_active_list bool, active_list_id int32, list_id int32, mouse_down bool) ReorderLifecycleDecision {
+	var decision ReorderLifecycleDecision = ReorderLifecycleDecision{}
+	var value_0 bool = has_active_list
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 int32 = active_list_id
+		var value_3 int32 = list_id
+		var value_4 bool = value_2 != value_3
+		value_1 = value_4
+	}
+	if value_1 {
+		var value_5 bool = true
+		decision.IgnoreList = value_5
+		var value_6 bool = mouse_down
+		var value_7 bool = !value_6
+		if value_7 {
+			var value_8 bool = true
+			decision.CancelActive = value_8
+		}
+	}
+	var value_9 ReorderLifecycleDecision = decision
+	return value_9
+}
+
+func Reorder_ReorderActiveItemLifecycleFor(active_index int32, item_count int32, has_items bool, active_item_disabled bool) ReorderLifecycleDecision {
+	var decision ReorderLifecycleDecision = ReorderLifecycleDecision{}
+	var value_0 int32 = active_index
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = active_index
+		var value_5 int32 = item_count
+		var value_6 bool = value_4 >= value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 bool = has_items
+		var value_9 bool = !value_8
+		value_7 = value_9
+	}
+	var value_10 bool = value_7
+	if !value_10 {
+		var value_11 bool = active_item_disabled
+		value_10 = value_11
+	}
+	if value_10 {
+		var value_12 bool = true
+		decision.CancelActive = value_12
+		var value_13 bool = true
+		decision.IgnoreList = value_13
+	}
+	var value_14 ReorderLifecycleDecision = decision
+	return value_14
+}
+
+func Reorder_ReorderPressFor(list_id int32, has_items bool, item_count int32, mouse_pressed bool, captured bool, pointer_owner_none bool, inside_bounds bool) ReorderPressDecision {
+	var decision ReorderPressDecision = ReorderPressDecision{}
+	var value_0 int32 = list_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 bool = has_items
+		value_3 = value_4
+	}
+	var value_5 bool = value_3
+	if value_5 {
+		var value_6 int32 = item_count
+		var value_7 int32 = 0
+		var value_8 bool = value_6 > value_7
+		value_5 = value_8
+	}
+	var value_9 bool = value_5
+	if value_9 {
+		var value_10 bool = mouse_pressed
+		value_9 = value_10
+	}
+	var value_11 bool = value_9
+	if value_11 {
+		var value_12 bool = captured
+		var value_13 bool = !value_12
+		value_11 = value_13
+	}
+	var value_14 bool = value_11
+	if value_14 {
+		var value_15 bool = pointer_owner_none
+		value_14 = value_15
+	}
+	var value_16 bool = value_14
+	if value_16 {
+		var value_17 bool = inside_bounds
+		value_16 = value_17
+	}
+	decision.CanPress = value_16
+	var value_18 ReorderPressDecision = decision
+	return value_18
 }
 
 func Reorder_ReorderDragMotionFor(pointer_y int32, press_y int32, was_dragging int32, bounds Rectangle, viewport_top int32, viewport_bottom int32, scroll_offset int32, max_scroll int32, metrics ReorderMetrics) ReorderDragMotion {

@@ -25,6 +25,13 @@ type TreeViewTextPaint struct {
 	TextY   int32
 }
 
+type TreeViewRowDecision struct {
+	Select         bool
+	SelectedID     int32
+	ConsumeRelease bool
+	Changed        bool
+}
+
 func TreeView_TreeViewHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -406,6 +413,38 @@ func TreeView_TreeViewTextPaintFor(marker Rectangle, text Rectangle, text_line_h
 	paint.TextY = value_21
 	var value_22 TreeViewTextPaint = paint
 	return value_22
+}
+
+func TreeView_TreeViewRowDecisionFor(hot bool, released bool, selectable bool, has_selection bool, item_id int32) TreeViewRowDecision {
+	var decision TreeViewRowDecision = TreeViewRowDecision{}
+	var value_0 int32 = item_id
+	decision.SelectedID = value_0
+	var value_1 bool = hot
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = released
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = selectable
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = has_selection
+		value_6 = value_7
+	}
+	if value_6 {
+		var value_8 bool = true
+		decision.Select = value_8
+		var value_9 bool = true
+		decision.ConsumeRelease = value_9
+		var value_10 bool = true
+		decision.Changed = value_10
+	}
+	var value_11 TreeViewRowDecision = decision
+	return value_11
 }
 
 func TreeView_TreeViewScrollbarBoundsFor(bounds Rectangle, scrollbar_width int32) Rectangle {

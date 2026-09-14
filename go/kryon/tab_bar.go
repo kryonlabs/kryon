@@ -637,6 +637,34 @@ func TabBar_TabBarSelectedIndexFor(selected int32, count int32) int32 {
 	return value_12
 }
 
+func TabBar_TabBarClampedIndexFor(index int32, count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = index
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = index
+	var value_9 int32 = count
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		return value_13
+	}
+	var value_14 int32 = index
+	return value_14
+}
+
 func TabBar_TabBarWrappedIndex(from int32, direction int32, step int32, count int32) int32 {
 	var value_0 int32 = count
 	var value_1 int32 = 0

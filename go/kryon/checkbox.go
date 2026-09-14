@@ -269,6 +269,24 @@ func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) C
 	return value_19
 }
 
+func Checkbox_CheckboxBoxRoleForTone(tone ButtonTone) int32 {
+	var value_0 ButtonTone = ButtonTone(tone)
+	var value_1 int32 = int32(ButtonToneAccent)
+	var value_2 ButtonTone = ButtonTone(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
+	var value_3 bool = value_0 == value_2
+	if value_3 {
+		var value_4 int32 = 10
+		return value_4
+	}
+	var value_5 int32 = 9
+	return value_5
+}
+
+func Checkbox_CheckboxLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {
 	var paint CheckboxPaint = CheckboxPaint{}
 	var value_0 float32 = spec.Scale

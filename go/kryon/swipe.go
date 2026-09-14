@@ -9,6 +9,24 @@ type SwipeDragState struct {
 	Progress  float32
 }
 
+type SwipeReleaseState struct {
+	Direction SwipeDirection
+	Progress  float32
+	Committed bool
+}
+
+type SwipeDragLifecycle struct {
+	CancelActive      bool
+	ClaimPointerOwner bool
+	CaptureInput      bool
+	Dragging          bool
+}
+
+type SwipeReleaseLifecycle struct {
+	ConsumeRelease bool
+	CaptureInput   bool
+}
+
 func Swipe_SwipeAbs(value float32) float32 {
 	var value_0 float32 = value
 	var value_1 float32 = 0.0
@@ -67,6 +85,31 @@ func Swipe_SwipeDecisionDistanceFor(scale float32) float32 {
 	var value_1 float32 = scale
 	var value_2 float32 = value_0 * value_1
 	return value_2
+}
+
+func Swipe_SwipeCanBegin(bounds Rectangle, pointer_inside bool, input_clear bool) bool {
+	var value_0 float32 = bounds.Width
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 float32 = bounds.Height
+		var value_5 float32 = 0.0
+		var value_6 bool = value_4 <= value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 bool = false
+		return value_7
+	}
+	var value_8 bool = pointer_inside
+	var value_9 bool = !value_8
+	if value_9 {
+		var value_10 bool = false
+		return value_10
+	}
+	var value_11 bool = input_clear
+	return value_11
 }
 
 func Swipe_SwipeDirectionFor(delta Vector2, directions uint32, axis_bias float32) SwipeDirection {
@@ -329,4 +372,97 @@ func Swipe_SwipeDragStateFor(delta Vector2, directions uint32, axis_bias float32
 	}
 	var value_31 SwipeDragState = state
 	return value_31
+}
+
+func Swipe_SwipeDragLifecycleFor(pointer_owner_clear bool, drag_cancelled bool, was_dragging bool, next_dragging bool) SwipeDragLifecycle {
+	var lifecycle SwipeDragLifecycle = SwipeDragLifecycle{}
+	var value_0 bool = pointer_owner_clear
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = drag_cancelled
+		value_2 = value_3
+	}
+	if value_2 {
+		var value_4 bool = true
+		lifecycle.CancelActive = value_4
+		var value_5 SwipeDragLifecycle = lifecycle
+		return value_5
+	}
+	var value_6 bool = next_dragging
+	lifecycle.Dragging = value_6
+	var value_7 bool = was_dragging
+	var value_8 bool = !value_7
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 bool = next_dragging
+		value_9 = value_10
+	}
+	lifecycle.ClaimPointerOwner = value_9
+	var value_11 bool = next_dragging
+	lifecycle.CaptureInput = value_11
+	var value_12 SwipeDragLifecycle = lifecycle
+	return value_12
+}
+
+func Swipe_SwipeReleaseStateFor(delta Vector2, directions uint32, axis_bias float32, min_distance float32, elapsed float64, max_duration float32, was_dragging bool) SwipeReleaseState {
+	var state SwipeReleaseState = SwipeReleaseState{}
+	var value_0 Vector2 = delta
+	var value_1 uint32 = directions
+	var value_2 float32 = axis_bias
+	var value_3 SwipeDirection = SwipeDirection(Swipe_SwipeDirectionFor(value_0, value_1, value_2))
+	state.Direction = value_3
+	var value_4 Vector2 = delta
+	var value_5 SwipeDirection = SwipeDirection(state.Direction)
+	var value_6 float32 = Swipe_SwipePrimaryDistanceFor(value_4, value_5)
+	var primary float32 = value_6
+	var value_7 float32 = max_duration
+	var value_8 float32 = 0.0
+	var value_9 bool = value_7 <= value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float64 = elapsed
+		var value_12 float32 = max_duration
+		var value_13 float64 = float64(value_12)
+		var value_14 bool = value_11 <= value_13
+		value_10 = value_14
+	}
+	var within_time bool = value_10
+	var value_15 float32 = primary
+	var value_16 float32 = min_distance
+	var value_17 float32 = Swipe_SwipeProgressFor(value_15, value_16)
+	state.Progress = value_17
+	var value_18 bool = was_dragging
+	var value_19 bool = value_18
+	if value_19 {
+		var value_20 bool = within_time
+		value_19 = value_20
+	}
+	var value_21 bool = value_19
+	if value_21 {
+		var value_22 float32 = primary
+		var value_23 float32 = min_distance
+		var value_24 bool = value_22 >= value_23
+		value_21 = value_24
+	}
+	state.Committed = value_21
+	var value_25 bool = state.Committed
+	var value_26 bool = !value_25
+	if value_26 {
+		var value_27 int32 = int32(SwipeNone)
+		var value_28 SwipeDirection = SwipeDirection(int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0)))
+		state.Direction = value_28
+	}
+	var value_29 SwipeReleaseState = state
+	return value_29
+}
+
+func Swipe_SwipeReleaseLifecycleFor(was_dragging bool) SwipeReleaseLifecycle {
+	var lifecycle SwipeReleaseLifecycle = SwipeReleaseLifecycle{}
+	var value_0 bool = was_dragging
+	lifecycle.ConsumeRelease = value_0
+	var value_1 bool = was_dragging
+	lifecycle.CaptureInput = value_1
+	var value_2 SwipeReleaseLifecycle = lifecycle
+	return value_2
 }

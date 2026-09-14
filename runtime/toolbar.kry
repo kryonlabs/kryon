@@ -59,6 +59,26 @@ ToolbarStyleMetric :: (fields: u32, field: u32, value: float,
     return (i32)(value * scale)
 }
 
+ToolbarBarRole :: () -> i32 #export {
+    return 1
+}
+
+ToolbarDividerRole :: () -> i32 #export {
+    return 18
+}
+
+ToolbarActionRole :: () -> i32 #export {
+    return 17
+}
+
+ToolbarBottomBarRole :: () -> i32 #export {
+    return 28
+}
+
+ToolbarBottomActionRole :: () -> i32 #export {
+    return 29
+}
+
 ToolbarSidePadding :: (value: i32, fields: u32, scale: float) -> i32 #export {
     if value < 0 { return 0 }
     return ToolbarMetric(fields, (u32)StylePaddingX, value, 12.0, scale)

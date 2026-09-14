@@ -54,6 +54,14 @@ type NavigationBarItemPaint struct {
 	IconAlpha   int32
 }
 
+type NavigationBarItemInteraction struct {
+	Active         bool
+	Hovered        bool
+	DisabledMarker bool
+	Activated      bool
+	State          ButtonState
+}
+
 type NavigationBarConfigMetrics struct {
 	FrameWidth       int32
 	FrameBaseHeight  int32
@@ -147,6 +155,87 @@ func NavigationBar_NavigationBarFontFor(default_font int32, style_font int32) in
 	return value_4
 }
 
+func NavigationBar_NavigationBarItemInteractionFor(disabled bool, pointer_inside bool, captured bool, hover_effects bool, released bool, release_consumed bool, press_started_inside bool, selected bool) NavigationBarItemInteraction {
+	var interaction NavigationBarItemInteraction = NavigationBarItemInteraction{}
+	var value_0 bool = pointer_inside
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = disabled
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = captured
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	interaction.Active = value_4
+	var value_7 bool = interaction.Active
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = hover_effects
+		value_8 = value_9
+	}
+	interaction.Hovered = value_8
+	var value_10 bool = pointer_inside
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = disabled
+		value_11 = value_12
+	}
+	var value_13 bool = value_11
+	if value_13 {
+		var value_14 bool = captured
+		var value_15 bool = !value_14
+		value_13 = value_15
+	}
+	interaction.DisabledMarker = value_13
+	var value_16 bool = interaction.Active
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = released
+		value_17 = value_18
+	}
+	var value_19 bool = value_17
+	if value_19 {
+		var value_20 bool = release_consumed
+		var value_21 bool = !value_20
+		value_19 = value_21
+	}
+	var value_22 bool = value_19
+	if value_22 {
+		var value_23 bool = press_started_inside
+		value_22 = value_23
+	}
+	interaction.Activated = value_22
+	var value_24 int32 = int32(ButtonStateNormal)
+	var value_25 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_24), uint64(0), 32, true, 0)))
+	interaction.State = value_25
+	var value_26 bool = disabled
+	if value_26 {
+		var value_27 int32 = int32(ButtonStateDisabled)
+		var value_28 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0)))
+		interaction.State = value_28
+	} else {
+		var value_29 bool = selected
+		if value_29 {
+			var value_30 int32 = int32(ButtonStateSelected)
+			var value_31 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0)))
+			interaction.State = value_31
+		} else {
+			var value_32 bool = interaction.Hovered
+			if value_32 {
+				var value_33 int32 = int32(ButtonStateHover)
+				var value_34 ButtonState = ButtonState(int32(number_runtime_bits(uint64(value_33), uint64(0), 32, true, 0)))
+				interaction.State = value_34
+			}
+		}
+	}
+	var value_35 NavigationBarItemInteraction = interaction
+	return value_35
+}
+
 func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_count int32, option_count int32, slot_limit int32) NavigationBarConfigCounts {
 	var counts NavigationBarConfigCounts = NavigationBarConfigCounts{}
 	var value_0 int32 = slot_limit
@@ -213,6 +302,34 @@ func NavigationBar_NavigationBarConfigCountsFor(route_count int32, max_route_cou
 	counts.OptionCount = value_34
 	var value_35 NavigationBarConfigCounts = counts
 	return value_35
+}
+
+func NavigationBar_NavigationBarConfigNextRowY(row_y int32, metrics NavigationBarConfigMetrics) int32 {
+	var value_0 int32 = metrics.RowHeight
+	var row_height int32 = value_0
+	var value_1 int32 = row_height
+	var value_2 int32 = 0
+	var value_3 bool = value_1 < value_2
+	if value_3 {
+		var value_4 int32 = 0
+		row_height = value_4
+	}
+	var value_5 int32 = row_y
+	var value_6 int32 = row_height
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 1))
+	return value_7
+}
+
+func NavigationBar_NavigationBarConfigDefaultRoute(option_count int32, first_route int32) int32 {
+	var value_0 int32 = option_count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = first_route
+		return value_3
+	}
+	var value_4 int32 = 0
+	return value_4
 }
 
 func NavigationBar_NavigationBarMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {

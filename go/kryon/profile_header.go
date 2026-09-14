@@ -64,6 +64,65 @@ func ProfileHeader_ProfilePx(value float32, scale float32) int32 {
 	return value_4
 }
 
+func ProfileHeader_ProfileHeaderUsernameHitWidth(text_width int32, scale float32) int32 {
+	var value_0 int32 = text_width
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		text_width = value_3
+	}
+	var value_4 int32 = text_width
+	var value_5 float32 = 8.0
+	var value_6 float32 = scale
+	var value_7 int32 = ProfileHeader_ProfilePx(value_5, value_6)
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
+func ProfileHeader_ProfileHeaderUsernameHitHeight(text_height int32, scale float32) int32 {
+	var value_0 int32 = text_height
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		text_height = value_3
+	}
+	var value_4 int32 = text_height
+	var value_5 float32 = 8.0
+	var value_6 float32 = scale
+	var value_7 int32 = ProfileHeader_ProfilePx(value_5, value_6)
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
+func ProfileHeader_ProfileHeaderSubtitleY(name_y int32, scale float32) int32 {
+	var value_0 int32 = name_y
+	var value_1 float32 = 22.0
+	var value_2 float32 = scale
+	var value_3 int32 = ProfileHeader_ProfilePx(value_1, value_2)
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
+	return value_4
+}
+
+func ProfileHeader_ProfileHeaderFriendsTextX(header_x int32, scale float32) int32 {
+	var value_0 int32 = header_x
+	var value_1 float32 = 12.0
+	var value_2 float32 = scale
+	var value_3 int32 = ProfileHeader_ProfilePx(value_1, value_2)
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
+	return value_4
+}
+
+func ProfileHeader_ProfileHeaderFriendsTextY(count_y int32, scale float32) int32 {
+	var value_0 int32 = count_y
+	var value_1 float32 = 8.0
+	var value_2 float32 = scale
+	var value_3 int32 = ProfileHeader_ProfilePx(value_1, value_2)
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
+	return value_4
+}
+
 func ProfileHeader_ProfileHeaderLayoutFor(x int32, y int32, width int32, requested_height int32, requested_padding_x int32, username_width int32, username_height int32, scale float32) ProfileHeaderLayout {
 	var layout ProfileHeaderLayout = ProfileHeaderLayout{}
 	var value_0 int32 = requested_height

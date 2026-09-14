@@ -26,6 +26,18 @@ const (
 	AudioMusic AudioKind = 1
 )
 
+type SceneProps struct {
+	TimeScale      float32
+	PhysicsEnabled int32
+	Gravity        Vector2
+}
+
+type Node2DProps struct {
+	Position Vector2
+	Rotation float32
+	Scale    Vector2
+}
+
 type Camera2DProps struct {
 	Zoom     float32
 	Rotation float32
@@ -110,4 +122,46 @@ type AudioSourceProps struct {
 	Playing   int32
 	Loaded    int32
 	Handle    *byte
+}
+
+func Node2dProps_ScenePropsDefault() SceneProps {
+	var props SceneProps = SceneProps{}
+	var value_0 float32 = 1.0
+	props.TimeScale = value_0
+	var value_1 int32 = 0
+	props.PhysicsEnabled = value_1
+	var value_2 float32 = 0.0
+	props.Gravity.X = value_2
+	var value_3 float32 = 9.8
+	props.Gravity.Y = value_3
+	var value_4 SceneProps = props
+	return value_4
+}
+
+func Node2dProps_SceneTimeScaleFor(time_scale float32) float32 {
+	var value_0 float32 = time_scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		return value_3
+	}
+	var value_4 float32 = time_scale
+	return value_4
+}
+
+func Node2dProps_Node2DPropsDefault() Node2DProps {
+	var props Node2DProps = Node2DProps{}
+	var value_0 float32 = 0.0
+	props.Position.X = value_0
+	var value_1 float32 = 0.0
+	props.Position.Y = value_1
+	var value_2 float32 = 0.0
+	props.Rotation = value_2
+	var value_3 float32 = 1.0
+	props.Scale.X = value_3
+	var value_4 float32 = 1.0
+	props.Scale.Y = value_4
+	var value_5 Node2DProps = props
+	return value_5
 }

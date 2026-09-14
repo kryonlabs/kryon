@@ -69,6 +69,14 @@ type TextInsertDecision struct {
 	Stop   bool
 }
 
+type TextInputDoubleClickDecision struct {
+	DoubleClick bool
+}
+
+type TextFieldPanDecision struct {
+	Pan bool
+}
+
 type TextSelectionRange struct {
 	Start        int32
 	End          int32
@@ -301,11 +309,122 @@ func TextInput_TextInputDoubleClickSlopFor(scale float32) int32 {
 	return value_2
 }
 
+func TextInput_TextInputDoubleClickMaxSeconds() float32 {
+	var value_0 float32 = 0.45
+	return value_0
+}
+
+func TextInput_TextInputDoubleClickDecisionFor(same_owner bool, same_id bool, elapsed_seconds float32, dx int32, dy int32, slop int32) TextInputDoubleClickDecision {
+	var decision TextInputDoubleClickDecision = TextInputDoubleClickDecision{}
+	var value_0 int32 = slop
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		slop = value_3
+	}
+	var value_4 int32 = dx
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = dx
+		var value_8 int32 = int32(number_runtime_bits(uint64(0), uint64(value_7), 32, true, 2))
+		dx = value_8
+	}
+	var value_9 int32 = dy
+	var value_10 int32 = 0
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = dy
+		var value_13 int32 = int32(number_runtime_bits(uint64(0), uint64(value_12), 32, true, 2))
+		dy = value_13
+	}
+	var value_14 bool = same_owner
+	var value_15 bool = value_14
+	if value_15 {
+		var value_16 bool = same_id
+		value_15 = value_16
+	}
+	var value_17 bool = value_15
+	if value_17 {
+		var value_18 float32 = elapsed_seconds
+		var value_19 float32 = TextInput_TextInputDoubleClickMaxSeconds()
+		var value_20 bool = value_18 <= value_19
+		value_17 = value_20
+	}
+	var value_21 bool = value_17
+	if value_21 {
+		var value_22 int32 = dx
+		var value_23 int32 = slop
+		var value_24 bool = value_22 <= value_23
+		value_21 = value_24
+	}
+	var value_25 bool = value_21
+	if value_25 {
+		var value_26 int32 = dy
+		var value_27 int32 = slop
+		var value_28 bool = value_26 <= value_27
+		value_25 = value_28
+	}
+	decision.DoubleClick = value_25
+	var value_29 TextInputDoubleClickDecision = decision
+	return value_29
+}
+
 func TextInput_TextFieldPanDragThresholdFor(scale float32) int32 {
 	var value_0 float32 = 5.0
 	var value_1 float32 = scale
 	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
 	return value_2
+}
+
+func TextInput_TextFieldPanDecisionFor(already_panning bool, dx int32, dy int32, threshold int32) TextFieldPanDecision {
+	var decision TextFieldPanDecision = TextFieldPanDecision{}
+	var value_0 int32 = threshold
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		threshold = value_3
+	}
+	var value_4 int32 = dx
+	var abs_dx int32 = value_4
+	var value_5 int32 = dy
+	var abs_dy int32 = value_5
+	var value_6 int32 = abs_dx
+	var value_7 int32 = 0
+	var value_8 bool = value_6 < value_7
+	if value_8 {
+		var value_9 int32 = abs_dx
+		var value_10 int32 = int32(number_runtime_bits(uint64(0), uint64(value_9), 32, true, 2))
+		abs_dx = value_10
+	}
+	var value_11 int32 = abs_dy
+	var value_12 int32 = 0
+	var value_13 bool = value_11 < value_12
+	if value_13 {
+		var value_14 int32 = abs_dy
+		var value_15 int32 = int32(number_runtime_bits(uint64(0), uint64(value_14), 32, true, 2))
+		abs_dy = value_15
+	}
+	var value_16 bool = already_panning
+	var value_17 bool = value_16
+	if !value_17 {
+		var value_18 int32 = abs_dx
+		var value_19 int32 = threshold
+		var value_20 bool = value_18 > value_19
+		var value_21 bool = value_20
+		if value_21 {
+			var value_22 int32 = abs_dx
+			var value_23 int32 = abs_dy
+			var value_24 bool = value_22 >= value_23
+			value_21 = value_24
+		}
+		value_17 = value_21
+	}
+	decision.Pan = value_17
+	var value_25 TextFieldPanDecision = decision
+	return value_25
 }
 
 func TextInput_TextFieldMinCursorHeight(scale float32) int32 {

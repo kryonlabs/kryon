@@ -61,6 +61,15 @@ type ModalActionPlacement struct {
 	TotalWidth  int32
 }
 
+type ModalDismissal struct {
+	Dismissed       bool
+	ReleaseConsumed bool
+}
+
+type ModalResultDecision struct {
+	Result int32
+}
+
 func Modal_ModalHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -590,6 +599,29 @@ func Modal_ModalButtonsHeight(rows int32, metrics ModalMetrics) int32 {
 	return value_12
 }
 
+func Modal_ModalActionNextY(y int32, button_height int32, gap int32) int32 {
+	var value_0 int32 = button_height
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		button_height = value_3
+	}
+	var value_4 int32 = gap
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		gap = value_7
+	}
+	var value_8 int32 = y
+	var value_9 int32 = button_height
+	var value_10 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, true, 1))
+	var value_11 int32 = gap
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+	return value_12
+}
+
 func Modal_ModalFontFor(default_font int32, style_font int32) int32 {
 	var value_0 int32 = style_font
 	var value_1 int32 = 0
@@ -639,6 +671,69 @@ func Modal_ModalPromptCommitResult(action_count int32) int32 {
 	}
 	var value_4 int32 = 1
 	return value_4
+}
+
+func Modal_ModalPromptResultFor(current_result int32, has_prompt bool, commit_pressed bool, escape_pressed bool, action_count int32) ModalResultDecision {
+	var decision ModalResultDecision = ModalResultDecision{}
+	var value_0 int32 = current_result
+	decision.Result = value_0
+	var value_1 int32 = current_result
+	var value_2 int32 = 0
+	var value_3 bool = value_1 != value_2
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 bool = has_prompt
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	if value_4 {
+		var value_7 ModalResultDecision = decision
+		return value_7
+	}
+	var value_8 bool = commit_pressed
+	if value_8 {
+		var value_9 int32 = action_count
+		var value_10 int32 = Modal_ModalPromptCommitResult(value_9)
+		decision.Result = value_10
+		var value_11 ModalResultDecision = decision
+		return value_11
+	}
+	var value_12 bool = escape_pressed
+	if value_12 {
+		var value_13 int32 = 1
+		decision.Result = value_13
+	}
+	var value_14 ModalResultDecision = decision
+	return value_14
+}
+
+func Modal_ModalOutsideDismissalFor(released bool, release_consumed bool, pointer_inside bool) ModalDismissal {
+	var dismissal ModalDismissal = ModalDismissal{}
+	var value_0 bool = released
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = release_consumed
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = pointer_inside
+		var value_6 bool = !value_5
+		value_4 = value_6
+	}
+	if value_4 {
+		var value_7 bool = true
+		dismissal.Dismissed = value_7
+		var value_8 bool = true
+		dismissal.ReleaseConsumed = value_8
+		var value_9 ModalDismissal = dismissal
+		return value_9
+	}
+	var value_10 bool = release_consumed
+	dismissal.ReleaseConsumed = value_10
+	var value_11 ModalDismissal = dismissal
+	return value_11
 }
 
 func Modal_ModalLayoutFor(view_width int32, view_height int32, max_width int32, message_height int32, button_rows int32, has_prompt bool, metrics ModalMetrics) ModalLayout {

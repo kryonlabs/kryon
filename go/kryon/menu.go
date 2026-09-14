@@ -28,6 +28,23 @@ type MenuLine struct {
 	Y2 int32
 }
 
+type MenuGroupPointerDecision struct {
+	ChangedOpen     bool
+	NextOpenId      int32
+	ClearSubmenu    bool
+	ConsumeRelease  bool
+	SetFocus        bool
+	ResetNavigation bool
+	NavigationTop   int32
+}
+
+type MenuOutsideCloseDecision struct {
+	CloseOpen      bool
+	ClearSubmenu   bool
+	ConsumeRelease bool
+	OpenIndex      int32
+}
+
 func Menu_MenuHas(fields uint32, field uint32) bool {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -357,6 +374,112 @@ func Menu_MenuBarMoveTopIndex(top int32, menu_count int32, direction int32) int3
 	var value_16 int32 = menu_count
 	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 5))
 	return value_17
+}
+
+func Menu_MenuGroupPointerDecisionFor(menu_id int32, index int32, open_id int32, hot bool, mouse_released bool) MenuGroupPointerDecision {
+	var decision MenuGroupPointerDecision = MenuGroupPointerDecision{}
+	var value_0 int32 = open_id
+	decision.NextOpenId = value_0
+	var value_1 int32 = index
+	decision.NavigationTop = value_1
+	var value_2 int32 = open_id
+	var value_3 int32 = menu_id
+	var value_4 bool = value_2 == value_3
+	var open bool = value_4
+	var value_5 bool = hot
+	var value_6 bool = value_5
+	if value_6 {
+		var value_7 bool = mouse_released
+		value_6 = value_7
+	}
+	if value_6 {
+		var value_8 bool = true
+		decision.ConsumeRelease = value_8
+		var value_9 bool = true
+		decision.SetFocus = value_9
+		var value_10 bool = true
+		decision.ChangedOpen = value_10
+		var value_11 bool = open
+		if value_11 {
+			var value_12 int32 = 0
+			decision.NextOpenId = value_12
+			var value_13 bool = true
+			decision.ClearSubmenu = value_13
+		} else {
+			var value_14 int32 = menu_id
+			decision.NextOpenId = value_14
+			var value_15 bool = true
+			decision.ResetNavigation = value_15
+		}
+		var value_16 MenuGroupPointerDecision = decision
+		return value_16
+	}
+	var value_17 bool = hot
+	var value_18 bool = value_17
+	if value_18 {
+		var value_19 int32 = open_id
+		var value_20 int32 = 0
+		var value_21 bool = value_19 != value_20
+		value_18 = value_21
+	}
+	var value_22 bool = value_18
+	if value_22 {
+		var value_23 bool = open
+		var value_24 bool = !value_23
+		value_22 = value_24
+	}
+	if value_22 {
+		var value_25 bool = true
+		decision.ChangedOpen = value_25
+		var value_26 int32 = menu_id
+		decision.NextOpenId = value_26
+		var value_27 bool = true
+		decision.ClearSubmenu = value_27
+	}
+	var value_28 MenuGroupPointerDecision = decision
+	return value_28
+}
+
+func Menu_MenuOutsideCloseDecisionFor(open_id int32, mouse_released bool, contains_bar bool, panel_valid bool, contains_panel bool) MenuOutsideCloseDecision {
+	var decision MenuOutsideCloseDecision = MenuOutsideCloseDecision{}
+	var value_0 int32 = -1
+	decision.OpenIndex = value_0
+	var value_1 int32 = open_id
+	var value_2 int32 = 0
+	var value_3 bool = value_1 != value_2
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = mouse_released
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = contains_bar
+		var value_8 bool = !value_7
+		value_6 = value_8
+	}
+	var value_9 bool = value_6
+	if value_9 {
+		var value_10 bool = panel_valid
+		var value_11 bool = !value_10
+		var value_12 bool = value_11
+		if !value_12 {
+			var value_13 bool = contains_panel
+			var value_14 bool = !value_13
+			value_12 = value_14
+		}
+		value_9 = value_12
+	}
+	if value_9 {
+		var value_15 bool = true
+		decision.CloseOpen = value_15
+		var value_16 bool = true
+		decision.ClearSubmenu = value_16
+		var value_17 bool = true
+		decision.ConsumeRelease = value_17
+	}
+	var value_18 MenuOutsideCloseDecision = decision
+	return value_18
 }
 
 func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {

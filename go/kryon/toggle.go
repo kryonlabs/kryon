@@ -225,6 +225,32 @@ func Toggle_ToggleThumbGlowExpansionForStyle(thumb StyleFrame, scale float32) fl
 	return value_7
 }
 
+func Toggle_ToggleTrackRoleFor(checked bool, has_labels bool) int32 {
+	var value_0 bool = checked
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = has_labels
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	if value_1 {
+		var value_4 int32 = 5
+		return value_4
+	}
+	var value_5 int32 = 4
+	return value_5
+}
+
+func Toggle_ToggleFillRole() int32 {
+	var value_0 int32 = 5
+	return value_0
+}
+
+func Toggle_ToggleLabelRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
 func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_width int32, scale float32, track StyleFrame, active StyleFrame, label StyleFrame) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
