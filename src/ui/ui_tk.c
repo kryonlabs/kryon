@@ -3255,12 +3255,11 @@ RenderListBox(ListBoxProps list)
     if(focused) SetFocusTextInputActive(0);
     if(focused && list.selected_index != NULL && list.item_count > 0 &&
        !ui_popup_input_focus_captures(list.id)) {
-        int key = 0;
-        if(IsKeyPressed(KEY_HOME)) key = 1;
-        else if(IsKeyPressed(KEY_END)) key = 2;
-        else if(IsKeyPressed(KEY_UP)) key = 3;
-        else if(IsKeyPressed(KEY_DOWN)) key = 4;
-        if(key != 0) {
+        int key = ListBoxKeyFor(IsKeyPressed(KEY_HOME) != 0,
+                                IsKeyPressed(KEY_END) != 0,
+                                IsKeyPressed(KEY_UP) != 0,
+                                IsKeyPressed(KEY_DOWN) != 0);
+        if(key != ListBoxKeyNone()) {
             ListBoxNavigation nav = ListBoxNavigate(selected, list.item_count,
                                                     key, layout.scroll, row_h,
                                                     list.bounds.height,

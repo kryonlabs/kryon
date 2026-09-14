@@ -110,27 +110,55 @@ ListBoxRevealScroll :: (selected: i32, scroll: i32, row_height: i32,
 }
 
 # key: 1 home, 2 end, 3 up, 4 down.
+ListBoxKeyNone :: () -> i32 #export {
+    return 0
+}
+
+ListBoxKeyHome :: () -> i32 #export {
+    return 1
+}
+
+ListBoxKeyEnd :: () -> i32 #export {
+    return 2
+}
+
+ListBoxKeyUp :: () -> i32 #export {
+    return 3
+}
+
+ListBoxKeyDown :: () -> i32 #export {
+    return 4
+}
+
+ListBoxKeyFor :: (home: bool, end: bool, up: bool, down: bool) -> i32 #export {
+    if home { return ListBoxKeyHome() }
+    if end { return ListBoxKeyEnd() }
+    if up { return ListBoxKeyUp() }
+    if down { return ListBoxKeyDown() }
+    return ListBoxKeyNone()
+}
+
 ListBoxNavigate :: (selected: i32, item_count: i32, key: i32,
     scroll: i32, row_height: i32, viewport_height: float,
     max_scroll: i32, scale: float, item: StyleFrame) -> ListBoxNavigation #export {
     nav: ListBoxNavigation
     nav.selected = selected
     nav.scroll = ListBoxClampScroll(scroll, max_scroll)
-    if item_count <= 0 || key == 0 {
+    if item_count <= 0 || key == ListBoxKeyNone() {
         return nav
     }
     next: i32 = selected
-    if key == 1 {
+    if key == ListBoxKeyHome() {
         next = 0
-    } else if key == 2 {
+    } else if key == ListBoxKeyEnd() {
         next = item_count - 1
-    } else if key == 3 {
+    } else if key == ListBoxKeyUp() {
         if selected < 0 {
             next = item_count - 1
         } else {
             next = selected - 1
         }
-    } else if key == 4 {
+    } else if key == ListBoxKeyDown() {
         if selected < 0 {
             next = 0
         } else {

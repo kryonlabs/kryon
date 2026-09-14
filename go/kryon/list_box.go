@@ -248,6 +248,56 @@ func ListBox_ListBoxRevealScroll(selected int32, scroll int32, row_height int32,
 	return value_32
 }
 
+func ListBox_ListBoxKeyNone() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func ListBox_ListBoxKeyHome() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func ListBox_ListBoxKeyEnd() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func ListBox_ListBoxKeyUp() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func ListBox_ListBoxKeyDown() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func ListBox_ListBoxKeyFor(home bool, end bool, up bool, down bool) int32 {
+	var value_0 bool = home
+	if value_0 {
+		var value_1 int32 = ListBox_ListBoxKeyHome()
+		return value_1
+	}
+	var value_2 bool = end
+	if value_2 {
+		var value_3 int32 = ListBox_ListBoxKeyEnd()
+		return value_3
+	}
+	var value_4 bool = up
+	if value_4 {
+		var value_5 int32 = ListBox_ListBoxKeyUp()
+		return value_5
+	}
+	var value_6 bool = down
+	if value_6 {
+		var value_7 int32 = ListBox_ListBoxKeyDown()
+		return value_7
+	}
+	var value_8 int32 = ListBox_ListBoxKeyNone()
+	return value_8
+}
+
 func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll int32, row_height int32, viewport_height float32, max_scroll int32, scale float32, item StyleFrame) ListBoxNavigation {
 	var nav ListBoxNavigation = ListBoxNavigation{}
 	var value_0 int32 = selected
@@ -262,7 +312,7 @@ func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll
 	var value_7 bool = value_6
 	if !value_7 {
 		var value_8 int32 = key
-		var value_9 int32 = 0
+		var value_9 int32 = ListBox_ListBoxKeyNone()
 		var value_10 bool = value_8 == value_9
 		value_7 = value_10
 	}
@@ -273,14 +323,14 @@ func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll
 	var value_12 int32 = selected
 	var next int32 = value_12
 	var value_13 int32 = key
-	var value_14 int32 = 1
+	var value_14 int32 = ListBox_ListBoxKeyHome()
 	var value_15 bool = value_13 == value_14
 	if value_15 {
 		var value_16 int32 = 0
 		next = value_16
 	} else {
 		var value_17 int32 = key
-		var value_18 int32 = 2
+		var value_18 int32 = ListBox_ListBoxKeyEnd()
 		var value_19 bool = value_17 == value_18
 		if value_19 {
 			var value_20 int32 = item_count
@@ -289,7 +339,7 @@ func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll
 			next = value_22
 		} else {
 			var value_23 int32 = key
-			var value_24 int32 = 3
+			var value_24 int32 = ListBox_ListBoxKeyUp()
 			var value_25 bool = value_23 == value_24
 			if value_25 {
 				var value_26 int32 = selected
@@ -308,7 +358,7 @@ func ListBox_ListBoxNavigate(selected int32, item_count int32, key int32, scroll
 				}
 			} else {
 				var value_35 int32 = key
-				var value_36 int32 = 4
+				var value_36 int32 = ListBox_ListBoxKeyDown()
 				var value_37 bool = value_35 == value_36
 				if value_37 {
 					var value_38 int32 = selected
