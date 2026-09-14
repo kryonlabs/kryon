@@ -37,6 +37,13 @@ main(void)
     check_rect(header.username_bounds, 96, 54, 88, 24);
     check_rect(header.friends_bounds, 10, 108, 260, 36);
     check_rect(header.header_bounds, 10, 20, 260, 138);
+    assert(ProfileHeaderUsernameHitWidth(80, 1.0f) == 88);
+    assert(ProfileHeaderUsernameHitWidth(-4, 1.0f) == 8);
+    assert(ProfileHeaderUsernameHitHeight(16, 1.0f) == 24);
+    assert(ProfileHeaderUsernameHitHeight(-4, 1.0f) == 8);
+    assert(ProfileHeaderSubtitleY(58, 1.0f) == 80);
+    assert(ProfileHeaderFriendsTextX(10, 1.0f) == 22);
+    assert(ProfileHeaderFriendsTextY(108, 1.0f) == 116);
 
     header = ProfileHeaderLayoutFor(0, 0, 120, 90, 12, 300, 30, 2.0f);
     assert(header.height == 90);
@@ -45,6 +52,10 @@ main(void)
     assert(header.name_x == 152);
     assert(header.max_name_width == 96);
     check_rect(header.username_bounds, 152, 68, 96, 30);
+    assert(ProfileHeaderUsernameHitWidth(80, 2.0f) == 96);
+    assert(ProfileHeaderSubtitleY(68, 2.0f) == 112);
+    assert(ProfileHeaderFriendsTextX(10, 2.0f) == 34);
+    assert(ProfileHeaderFriendsTextY(108, 2.0f) == 124);
 
     picker = ProfilePickerLayoutFor(640, 480, 0, 25, 1.0f);
     assert(picker.width == 520);

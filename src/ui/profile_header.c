@@ -213,8 +213,11 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     const char *subtitle = header.subtitle != NULL ? header.subtitle : "";
     const char *friends_text =
         header.friends_text != NULL ? header.friends_text : "";
-    int username_w = TextWidth(username, name_font) + Scale(8);
-    int username_h = TextHeight(username, name_font) + Scale(8);
+    float scale = (float)GetScale();
+    int username_w =
+        ProfileHeaderUsernameHitWidth(TextWidth(username, name_font), scale);
+    int username_h =
+        ProfileHeaderUsernameHitHeight(TextHeight(username, name_font), scale);
     ProfileHeaderLayout layout;
     Texture2D pfp_icon = header.pfp_icon;
     Vector2 mouse = ui_mouse_world();
@@ -222,8 +225,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
 
     layout = ProfileHeaderLayoutFor(header.x, header.y, header.width,
                                     header.height, header.content_padding_x,
-                                    username_w, username_h,
-                                    (float)GetScale());
+                                    username_w, username_h, scale);
     if(pfp_icon.id == 0 && header.icons != NULL &&
        header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT)
@@ -281,7 +283,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                            Text8, text_style.foreground);
     if(subtitle[0] != '\0')
         RenderText(subtitle, layout.name_x,
-                   layout.name_y + Scale(22), small_font, muted_text);
+                   ProfileHeaderSubtitleY(layout.name_y, scale), small_font,
+                   muted_text);
 
     if(CheckCollisionPointRec(mouse, layout.friends_bounds) &&
        !InputCapturesClick(mouse)) {
@@ -298,8 +301,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
         }
     }
     if(friends_text[0] != '\0')
-        RenderText(friends_text, header.x + Scale(12),
-                   layout.count_y + Scale(8), small_font,
+        RenderText(friends_text, ProfileHeaderFriendsTextX(header.x, scale),
+                   ProfileHeaderFriendsTextY(layout.count_y, scale), small_font,
                    text_style.foreground);
 
     return result;

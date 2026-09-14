@@ -51,6 +51,28 @@ ProfilePx :: (value: float, scale: float) -> i32 {
     return (i32)(value * ProfileScale(scale))
 }
 
+ProfileHeaderUsernameHitWidth :: (text_width: i32, scale: float) -> i32 #export {
+    if text_width < 0 { text_width = 0 }
+    return text_width + ProfilePx(8.0, scale)
+}
+
+ProfileHeaderUsernameHitHeight :: (text_height: i32, scale: float) -> i32 #export {
+    if text_height < 0 { text_height = 0 }
+    return text_height + ProfilePx(8.0, scale)
+}
+
+ProfileHeaderSubtitleY :: (name_y: i32, scale: float) -> i32 #export {
+    return name_y + ProfilePx(22.0, scale)
+}
+
+ProfileHeaderFriendsTextX :: (header_x: i32, scale: float) -> i32 #export {
+    return header_x + ProfilePx(12.0, scale)
+}
+
+ProfileHeaderFriendsTextY :: (count_y: i32, scale: float) -> i32 #export {
+    return count_y + ProfilePx(8.0, scale)
+}
+
 ProfileHeaderLayoutFor :: (x: i32, y: i32, width: i32,
     requested_height: i32, requested_padding_x: i32, username_width: i32,
     username_height: i32, scale: float) -> ProfileHeaderLayout #export {
