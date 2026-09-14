@@ -46,6 +46,9 @@ main(void)
                                 metrics.default_wheel_step) == 0);
     assert(ScrollWheelOffsetFor(50, -1.0f, 200,
                                 metrics.default_wheel_step) == 134);
+    assert(ScrollRowWheelStepFor(18, 2.0f) == 54);
+    assert(ScrollRowWheelStepFor(0, 2.0f) == 180);
+    assert(ScrollRowWheelStepFor(0, 0.0f) == 90);
 
     metrics = ScrollMetricsFor(1.0f, track, thumb);
     view = ScrollMeasure((Rectangle){0, 20, 320, 100}, 260, 12, 280, 40,

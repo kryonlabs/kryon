@@ -125,6 +125,12 @@ ScrollWheelOffsetFor :: (scroll_offset: i32, wheel_move: float,
     return ScrollClamp(scroll_offset - delta, max_scroll)
 }
 
+ScrollRowWheelStepFor :: (row_height: i32, scale: float) -> i32 #export {
+    if row_height > 0 { return row_height * 3 }
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(90.0 * scale)
+}
+
 ScrollDragOffsetFor :: (mouse_y: float, track_y: float, grab_y: float,
     max_scroll: i32, paint: ScrollBarPaint) -> i32 #export {
     if paint.scroll_per_pixel <= 0.0 {

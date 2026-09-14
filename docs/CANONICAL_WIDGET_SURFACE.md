@@ -742,8 +742,9 @@ and host plumbing behind the canonical names.
   rounding, and step dispatch now route through `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
   that runtime policy; `Drag` text inset and label-gap metrics now route
-  through `runtime/drag.kry`. Continue by reducing raw native constants in
-  shared immediate-mode helpers.
+  through `runtime/drag.kry`; immediate list/tree/table row wheel-step policy
+  now routes through `runtime/scroll.kry`. Continue by reducing raw native
+  constants in shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

@@ -23,6 +23,7 @@
 #include "runtime/popup_policy.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
+#include "runtime/scroll.h"
 #include "runtime/selectable.h"
 #include "runtime/separator.h"
 #include "runtime/slider.h"
@@ -571,7 +572,8 @@ ui_update_scroll(Rectangle bounds, int content_h, int *scroll_offset, int row_h)
 
     wheel = GetMouseWheelMove();
     if(wheel != 0.0f) {
-        int step = row_h > 0 ? row_h * 3 : Scale(90);
+        float scale = (float)Scale(1000) / 1000.0f;
+        int step = ScrollRowWheelStepFor(row_h, scale);
         *scroll_offset -= (int)(wheel * (float)step);
         if(*scroll_offset < 0)
             *scroll_offset = 0;

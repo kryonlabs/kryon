@@ -340,6 +340,30 @@ func Scroll_ScrollWheelOffsetFor(scroll_offset int32, wheel_move float32, max_sc
 	return value_9
 }
 
+func Scroll_ScrollRowWheelStepFor(row_height int32, scale float32) int32 {
+	var value_0 int32 = row_height
+	var value_1 int32 = 0
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 int32 = row_height
+		var value_4 int32 = 3
+		var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 3))
+		return value_5
+	}
+	var value_6 float32 = scale
+	var value_7 float32 = 0.0
+	var value_8 bool = value_6 <= value_7
+	if value_8 {
+		var value_9 float32 = 1.0
+		scale = value_9
+	}
+	var value_10 float32 = 90.0
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 * value_11
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	return value_13
+}
+
 func Scroll_ScrollDragOffsetFor(mouse_y float32, track_y float32, grab_y float32, max_scroll int32, paint ScrollBarPaint) int32 {
 	var value_0 float32 = paint.ScrollPerPixel
 	var value_1 float32 = 0.0
