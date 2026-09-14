@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "../backend/kry_input_internal.h"
 #include "ui_paint_layers_internal.h"
 #include "ui_disabled_internal.h"
 #include "ui_input_clip_internal.h"
@@ -704,9 +705,14 @@ ui_update_pointer_gesture(void)
         g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
         g_ui_pointer_owner = POINTER_OWNER_NONE;
-        g_ui_pointer_start_x = mx;
-        g_ui_pointer_start_y = my;
-        g_ui_pointer_start_world = screen_to_world_for_input(mouse);
+        Vector2 press = kry_mouse_press_position(mouse);
+        g_ui_pointer_start_x = (int)press.x;
+        g_ui_pointer_start_y = (int)press.y;
+        g_ui_pointer_start_world = screen_to_world_for_input(press);
+        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+           InputPointerDragShouldStart(mx - g_ui_pointer_start_x,
+                                       my - g_ui_pointer_start_y, drag_threshold))
+            g_ui_pointer_dragged_this_click = 1;
     } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && g_ui_pointer_down) {
         int dx = ui_pointer_dx();
         int dy = ui_pointer_dy();

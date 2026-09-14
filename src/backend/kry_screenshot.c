@@ -11,6 +11,7 @@
  * HiDPI handling, so no backend internals are needed. */
 
 #include "kryon.h"
+#include "kry_input_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,6 +95,9 @@ void kry_android_prepare_input_poll(void);
 
 void EndDrawing(void)
 {
+#ifdef KRYON_BACKEND_RAYLIB
+    kry_sdl_prepare_input_poll();
+#endif
 #if ANDROID_BUILD
     kry_android_prepare_input_poll();
 #endif
@@ -101,6 +105,9 @@ void EndDrawing(void)
         return; /* non-raylib link: nothing to swap */
     if(!kry_shot_armed()) {
         KryonRaylibBackend_EndDrawing();
+#ifdef KRYON_BACKEND_RAYLIB
+        kry_sdl_finish_input_poll();
+#endif
         kryon_run_post_frame_callbacks();
         kry_event_wait_after_frame();
         return;
@@ -134,6 +141,9 @@ void EndDrawing(void)
     }
 #endif
     KryonRaylibBackend_EndDrawing();
+#ifdef KRYON_BACKEND_RAYLIB
+    kry_sdl_finish_input_poll();
+#endif
     kryon_run_post_frame_callbacks();
     kry_event_wait_after_frame();
 }

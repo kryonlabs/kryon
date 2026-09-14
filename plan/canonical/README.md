@@ -88,3 +88,19 @@ snapshots; generated C/Go/JS parity; both real-browser DOM suites; retained
 Initial failures in obsolete button styling, leaked web end-scope statements,
 and browser table-name fixtures were fixed and their checks rerun successfully.
 The root cross-module Go command was replaced with the real module test target.
+
+## Inbe interaction follow-up
+
+- SDL pointer input now preserves press and release edges drained in one poll.
+  The native regression proves the raw backend misses that tap, the shared
+  frontend activates once, quick drags remain blocked, and other-window edges
+  do not leak into the app.
+- Input capture scopes can be popped without clearing outer captures; native
+  UI regression covers nested inert previews.
+- All four built-in packs give selected buttons a visible border. Built-in pack
+  coverage and style-picker tests cover the four supported choices.
+- Downstream startup must bundle the KSS assets and explicitly select its pack.
+  A successful native build alone does not prove controls are styled or clickable.
+
+The policy migration work listed above remains open. These interaction fixes
+are not evidence that every legacy path or every platform has been verified.

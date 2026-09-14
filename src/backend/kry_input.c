@@ -5,6 +5,7 @@
  * only into the generated raylib wrappers (tools/generate-kryon-compat.sh). */
 
 #include "kry_input.h"
+#include "kry_input_internal.h"
 #include "kry_inject.h"
 #include "app_host.h"
 
@@ -57,6 +58,55 @@ kry_android_prepare_input_poll(void)
 
 #ifdef KRYON_BACKEND_RAYLIB
 #include <SDL.h>
+
+static SDL_atomic_t sdl_pending_press[8];
+static SDL_atomic_t sdl_pending_release[8];
+static int sdl_frame_press[8];
+static int sdl_frame_release[8];
+static Vector2 sdl_pending_press_position;
+static Vector2 sdl_frame_press_position;
+
+static int
+sdl_pointer_event(void *userdata, SDL_Event *event)
+{
+    (void)userdata;
+    if(event->type != SDL_MOUSEBUTTONDOWN && event->type != SDL_MOUSEBUTTONUP)
+        return 1;
+    SDL_Window *window = (SDL_Window *)GetWindowHandle();
+    if(window == NULL || event->button.windowID != SDL_GetWindowID(window))
+        return 1;
+    int button = event->button.button - 1;
+    if(event->button.button == SDL_BUTTON_RIGHT)
+        button = MOUSE_BUTTON_RIGHT;
+    else if(event->button.button == SDL_BUTTON_MIDDLE)
+        button = MOUSE_BUTTON_MIDDLE;
+    if(button == MOUSE_BUTTON_LEFT && event->type == SDL_MOUSEBUTTONDOWN)
+        sdl_pending_press_position = (Vector2){event->button.x, event->button.y};
+    if(button >= 0 && button < 8) {
+        SDL_AtomicSet(event->type == SDL_MOUSEBUTTONDOWN
+            ? &sdl_pending_press[button] : &sdl_pending_release[button], 1);
+    }
+    return 1;
+}
+
+void
+kry_sdl_prepare_input_poll(void)
+{
+    /* Reinstall after a possible window/SDL restart without duplicating watches. */
+    SDL_DelEventWatch(sdl_pointer_event, NULL);
+    SDL_AddEventWatch(sdl_pointer_event, NULL);
+}
+
+void
+kry_sdl_finish_input_poll(void)
+{
+    /* Preserve a complete tap even when SDL drains both edges in one poll. */
+    sdl_frame_press_position = sdl_pending_press_position;
+    for(int button = 0; button < 8; button++) {
+        sdl_frame_press[button] = SDL_AtomicSet(&sdl_pending_press[button], 0);
+        sdl_frame_release[button] = SDL_AtomicSet(&sdl_pending_release[button], 0);
+    }
+}
 #endif
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -486,6 +536,17 @@ int GetCharPressed(void)
     return BackendRaw_GetCharPressed();
 }
 
+Vector2
+kry_mouse_press_position(Vector2 fallback)
+{
+#ifdef KRYON_BACKEND_RAYLIB
+    if(sdl_frame_press[MOUSE_BUTTON_LEFT] && !InjectMouseActive() &&
+       !g_kryon_input_override.enabled)
+        return sdl_frame_press_position;
+#endif
+    return fallback;
+}
+
 bool IsMouseButtonPressed(int button)
 {
     if(InjectMousePressed(button))
@@ -494,6 +555,10 @@ bool IsMouseButtonPressed(int button)
         return false;
 #if ANDROID_BUILD
     if(button == MOUSE_BUTTON_LEFT && android_frame_press)
+        return true;
+#endif
+#ifdef KRYON_BACKEND_RAYLIB
+    if(button >= 0 && button < 8 && sdl_frame_press[button])
         return true;
 #endif
     return BackendRaw_IsMouseButtonPressed(button);
@@ -521,6 +586,10 @@ bool IsMouseButtonReleased(int button)
         if(android_frame_release)
             return true;
     }
+#endif
+#ifdef KRYON_BACKEND_RAYLIB
+    if(button >= 0 && button < 8 && sdl_frame_release[button])
+        return true;
 #endif
     return BackendRaw_IsMouseButtonReleased(button);
 }

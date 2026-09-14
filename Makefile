@@ -1764,3 +1764,7 @@ $(BUILD_DIR)/tests/surface_cache_test: tests/surface_cache_test.c $(LIB) $(KRYON
 .PHONY: dropdown-reference-test
 dropdown-reference-test: dropdown-capture
 	python3 tests/dropdown_reference_test.py
+
+$(BUILD_DIR)/tests/sdl_pointer_edges_test: tests/sdl_pointer_edges_test.c $(LIB) $(KRYON_BACKEND_LIBS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
