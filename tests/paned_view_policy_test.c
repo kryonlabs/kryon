@@ -18,6 +18,7 @@ main(void)
     Rectangle bounds = {10, 20, 240, 80};
     StyleFrame handle = {0};
     PanedViewLayout layout;
+    PanedViewDragDecision drag;
     assert(PanedViewMetricsFor(0.0f, handle).grip == 8);
     assert(PanedViewMetricsFor(0.0f, handle).drop_edge == 46);
 
@@ -69,6 +70,32 @@ main(void)
     assert(PanedViewChanged(50, 60, true));
     assert(!PanedViewChanged(50, 50, true));
     assert(!PanedViewChanged(0, 60, false));
+    drag = PanedViewDragFor(false, false, false, true, false, true, true,
+                            true);
+    assert(drag.start_drag);
+    assert(drag.drag_active);
+    assert(!drag.clear_active);
+    drag = PanedViewDragFor(true, true, false, true, false, true, false,
+                            false);
+    assert(!drag.start_drag);
+    assert(drag.drag_active);
+    assert(!drag.clear_active);
+    drag = PanedViewDragFor(true, true, true, true, false, true, true,
+                            true);
+    assert(drag.clear_active);
+    assert(!drag.drag_active);
+    drag = PanedViewDragFor(true, true, false, false, false, true, true,
+                            true);
+    assert(drag.clear_active);
+    assert(!drag.drag_active);
+    drag = PanedViewDragFor(true, true, false, true, true, true, true,
+                            true);
+    assert(drag.clear_active);
+    assert(!drag.drag_active);
+    drag = PanedViewDragFor(false, false, false, true, false, false, true,
+                            true);
+    assert(!drag.start_drag);
+    assert(!drag.drag_active);
 
     metrics.drop_edge = 46;
     assert(PanedViewDropZoneFor(bounds, (Vector2){1, 30}, metrics) ==

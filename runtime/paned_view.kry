@@ -16,6 +16,12 @@ PanedViewLayout :: struct {
     handle: Rectangle
 }
 
+PanedViewDragDecision :: struct {
+    clear_active: bool
+    start_drag: bool
+    drag_active: bool
+}
+
 PanedViewMetric :: (fields: u32, field: u32, value: float, fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
     return (i32)(value * scale)
@@ -114,6 +120,30 @@ PanedViewChanged :: (previous_split: i32, next_split: i32,
     has_split: bool) -> bool #export {
     if !has_split { return false }
     return previous_split != next_split
+}
+
+PanedViewDragFor :: (has_active: bool, active_is_current: bool,
+    owner_captured: bool, mouse_down: bool, disabled: bool, has_split: bool,
+    handle_hot: bool, mouse_pressed: bool) -> PanedViewDragDecision #export {
+    decision: PanedViewDragDecision
+    if has_active && owner_captured {
+        decision.clear_active = true
+    }
+    if has_active && !mouse_down {
+        decision.clear_active = true
+    }
+    if disabled && active_is_current {
+        decision.clear_active = true
+    }
+    has_active = has_active && !decision.clear_active
+    active_is_current = active_is_current && !decision.clear_active
+    if !decision.clear_active && !disabled && has_split && handle_hot &&
+        mouse_down && mouse_pressed {
+        decision.start_drag = true
+        active_is_current = true
+    }
+    decision.drag_active = active_is_current || decision.start_drag
+    return decision
 }
 
 PanedViewDropZoneFor :: (bounds: Rectangle, mouse: Vector2,

@@ -4217,21 +4217,24 @@ RenderPanedView(PanedViewProps panes)
         panes.min_first, panes.min_second, metrics);
     int split = layout.split;
     Rectangle handle = layout.handle;
-    if(toolkit->active_split != NULL &&
-       ui_popup_input_owner_captures(toolkit->active_split_owner))
+    int handle_hot = !ContentDisabled() && ui_hot(handle);
+    PanedViewDragDecision drag = PanedViewDragFor(
+        toolkit->active_split != NULL, toolkit->active_split == panes.split,
+        toolkit->active_split != NULL &&
+            ui_popup_input_owner_captures(toolkit->active_split_owner),
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        ContentDisabled() != 0, panes.split != NULL, handle_hot != 0,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
+    if(drag.clear_active)
         toolkit->active_split = NULL;
-    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-        toolkit->active_split = NULL;
-    if(ContentDisabled() && toolkit->active_split == panes.split)
-        toolkit->active_split = NULL;
-    if(!ContentDisabled() && ui_hot(handle)) {
+    if(handle_hot) {
         MarkClickable();
-        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        if(drag.start_drag) {
             toolkit->active_split = panes.split;
             toolkit->active_split_owner = ui_popup_input_owner();
         }
     }
-    if(toolkit->active_split != NULL && toolkit->active_split == panes.split) {
+    if(drag.drag_active) {
         Vector2 mouse = ui_mouse_world();
         split = PanedViewPointerSplitFor(panes.bounds, panes.vertical != 0,
                                          mouse.x, mouse.y, panes.min_first,
