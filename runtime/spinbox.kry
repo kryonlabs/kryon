@@ -101,3 +101,20 @@ SpinboxStepValue :: (value: i32, min_value: i32, max_value: i32,
     result.changed = result.value != value
     return result
 }
+
+SpinboxStepButtonsValue :: (value: i32, min_value: i32, max_value: i32,
+    step: i32, decrement: bool, increment: bool, wrap: bool) -> SpinboxStepResult #export {
+    result: SpinboxStepResult
+    result.value = value
+    if decrement {
+        result = SpinboxStepValue(result.value, min_value, max_value, step,
+            -1, wrap)
+    }
+    if increment {
+        next: SpinboxStepResult = SpinboxStepValue(result.value, min_value,
+            max_value, step, 1, wrap)
+        result.changed = result.changed || next.changed
+        result.value = next.value
+    }
+    return result
+}

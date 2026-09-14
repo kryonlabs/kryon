@@ -247,3 +247,42 @@ func Spinbox_SpinboxStepValue(value int32, min_value int32, max_value int32, ste
 	var value_40 SpinboxStepResult = result
 	return value_40
 }
+
+func Spinbox_SpinboxStepButtonsValue(value int32, min_value int32, max_value int32, step int32, decrement bool, increment bool, wrap bool) SpinboxStepResult {
+	var result SpinboxStepResult = SpinboxStepResult{}
+	var value_0 int32 = value
+	result.Value = value_0
+	var value_1 bool = decrement
+	if value_1 {
+		var value_2 int32 = result.Value
+		var value_3 int32 = min_value
+		var value_4 int32 = max_value
+		var value_5 int32 = step
+		var value_6 int32 = -1
+		var value_7 bool = wrap
+		var value_8 SpinboxStepResult = Spinbox_SpinboxStepValue(value_2, value_3, value_4, value_5, value_6, value_7)
+		result = value_8
+	}
+	var value_9 bool = increment
+	if value_9 {
+		var value_10 int32 = result.Value
+		var value_11 int32 = min_value
+		var value_12 int32 = max_value
+		var value_13 int32 = step
+		var value_14 int32 = 1
+		var value_15 bool = wrap
+		var value_16 SpinboxStepResult = Spinbox_SpinboxStepValue(value_10, value_11, value_12, value_13, value_14, value_15)
+		var next SpinboxStepResult = value_16
+		var value_17 bool = result.Changed
+		var value_18 bool = value_17
+		if !value_18 {
+			var value_19 bool = next.Changed
+			value_18 = value_19
+		}
+		result.Changed = value_18
+		var value_20 int32 = next.Value
+		result.Value = value_20
+	}
+	var value_21 SpinboxStepResult = result
+	return value_21
+}

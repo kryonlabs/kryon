@@ -3131,8 +3131,6 @@ RenderSpinbox(SpinboxProps spinbox)
     Rectangle right = layout.right;
     Rectangle text = layout.text;
 
-    spinbox.step = SpinboxEffectiveStep(spinbox.step);
-
     if(disabled)
         MarkDisabled();
     if(spinbox.value_text != NULL)
@@ -3160,31 +3158,22 @@ RenderSpinbox(SpinboxProps spinbox)
                            (int)(text.y + text.height / 2), value_font,
                            Fade(value_style.foreground, value_style.opacity));
     }
-    if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
+    int decrement = ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
         .id = SpinboxDecrementIdFor(spinbox.id), .class_name = spinbox.class_name,
         .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
-        .style_kind = StyleKindButton()}) &&
-       spinbox.value != NULL) {
-        SpinboxStepResult step = SpinboxStepValue(
-            *spinbox.value, spinbox.min, spinbox.max, spinbox.step, -1,
-            spinbox.wrap != 0);
-
-        *spinbox.value = step.value;
-        changed |= step.changed;
-    }
-    if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
+        .style_kind = StyleKindButton()});
+    int increment = ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
         .id = SpinboxIncrementIdFor(spinbox.id), .class_name = spinbox.class_name,
         .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
-        .style_kind = StyleKindButton()}) &&
-       spinbox.value != NULL) {
-        SpinboxStepResult step = SpinboxStepValue(
-            *spinbox.value, spinbox.min, spinbox.max, spinbox.step, 1,
-            spinbox.wrap != 0);
-
+        .style_kind = StyleKindButton()});
+    if(spinbox.value != NULL) {
+        SpinboxStepResult step = SpinboxStepButtonsValue(
+            *spinbox.value, spinbox.min, spinbox.max, spinbox.step,
+            decrement != 0, increment != 0, spinbox.wrap != 0);
         *spinbox.value = step.value;
-        changed |= step.changed;
+        changed = step.changed;
     }
     return changed;
 }

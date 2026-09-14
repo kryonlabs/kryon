@@ -5786,16 +5786,11 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 		ID: Spinbox_SpinboxDecrementIdFor(p.ID), ClassName: p.ClassName, Disabled: disabled})
 	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+",
 		ID: Spinbox_SpinboxIncrementIdFor(p.ID), ClassName: p.ClassName, Disabled: disabled})
-	step := Spinbox_SpinboxEffectiveStep(p.Step)
 	changed := false
-	if p.Value != nil && minus {
-		result := Spinbox_SpinboxStepValue(*p.Value, p.Min, p.Max, step, -1, p.Wrap)
+	if p.Value != nil {
+		result := Spinbox_SpinboxStepButtonsValue(*p.Value, p.Min, p.Max,
+			p.Step, minus, plus, p.Wrap)
 		changed = result.Changed
-		*p.Value = result.Value
-	}
-	if p.Value != nil && plus {
-		result := Spinbox_SpinboxStepValue(*p.Value, p.Min, p.Max, step, 1, p.Wrap)
-		changed = changed || result.Changed
 		*p.Value = result.Value
 	}
 	center := layout.Text

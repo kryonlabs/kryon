@@ -58,6 +58,7 @@ needs_surface=0
 needs_style=0
 needs_style_sheet=0
 needs_radio=0
+needs_spinbox=0
 needs_tab_bar=0
 needs_text_policy=0
 needs_text_input_policy=0
@@ -341,6 +342,13 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
+        runtime/spinbox.kry|go/kryon/spinbox.go|go/kryon/runtime.go|src/ui/ui_tk.c|tests/spinbox_policy_test.c)
+            needs_spinbox=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
         runtime/tab_bar.kry|src/ui/tab_bar.c|go/kryon/tab_bar.go|go/kryon/runtime.go|tests/tab_bar_policy_test.c)
             needs_tab_bar=1
             interesting=1
@@ -592,6 +600,9 @@ if [ "$needs_style_sheet" -eq 1 ]; then
 fi
 if [ "$needs_radio" -eq 1 ]; then
     targets="$targets radio-policy-test"
+fi
+if [ "$needs_spinbox" -eq 1 ]; then
+    targets="$targets spinbox-policy-test"
 fi
 if [ "$needs_tab_bar" -eq 1 ]; then
     targets="$targets tab-bar-policy-test"
