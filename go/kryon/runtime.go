@@ -4610,8 +4610,10 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	bounds = r.layoutRect(bounds)
 	input := r.ReadActivation(bounds, props.ID, !disabled)
-	if input.Activated {
-		if *props.Value == 0 {
+	toggle := Toggle_ToggleValueFor(*props.Value != 0, input.Activated,
+		!disabled, props.Value != nil)
+	if toggle.Changed {
+		if toggle.Value {
 			*props.Value = 1
 		} else {
 			*props.Value = 0

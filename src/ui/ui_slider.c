@@ -641,12 +641,16 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     if(interaction.disabled_marker)
         MarkDisabled();
 
-    pressed = interaction.activated;
-
-    if(pressed) {
-        *value = !*value;
-        ConsumeRelease();
+    {
+        ToggleValueResult toggle = ToggleValueFor(
+            value != NULL && *value != 0, interaction.activated != 0,
+            enabled != 0, value != NULL);
+        pressed = toggle.changed;
+        if(toggle.changed && value != NULL)
+            *value = toggle.value;
     }
+    if(pressed)
+        ConsumeRelease();
     if(!can_draw) {
         EndWidget(&widget);
         return pressed;

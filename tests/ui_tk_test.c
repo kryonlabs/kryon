@@ -868,6 +868,7 @@ test_toggle_paint_policy(void)
     active.value.gap = 3.0f;
     label.value.fields |= StylePaddingX;
     label.value.padding_x = 16.0f;
+    ToggleValueResult value_result;
 
     check_int("toggle unlabeled width",
               ToggleMinimumWidthForStyle(0, 0, 0, 1.0f, track, active,
@@ -882,6 +883,14 @@ test_toggle_paint_policy(void)
               ToggleMinimumWidthForStyle(1, 18, 22, 1.0f, track, active,
                                           label),
               50);
+    value_result = ToggleValueFor(0, 1, 1, 1);
+    check_int("toggle value changed", value_result.changed ? 1 : 0, 1);
+    check_int("toggle value flips on", value_result.value ? 1 : 0, 1);
+    value_result = ToggleValueFor(1, 1, 0, 1);
+    check_int("toggle disabled unchanged", value_result.changed ? 1 : 0, 0);
+    check_int("toggle disabled keeps value", value_result.value ? 1 : 0, 1);
+    value_result = ToggleValueFor(1, 1, 1, 0);
+    check_int("toggle no pointer unchanged", value_result.changed ? 1 : 0, 0);
 }
 
 static void

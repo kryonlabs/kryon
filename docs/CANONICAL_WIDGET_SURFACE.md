@@ -135,7 +135,7 @@ surface review:
 | `runtime/theme.kry` | Theme data/helpers and typed `ThemePolicy` resolution | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar effective state, layout, reservation, and paint geometry policy | `.kry canonical` |
 | `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
-| `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
+| `runtime/toggle.kry` | Toggle composition, paint/layout, and value policy | `.kry canonical` |
 | `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar, bottom icon row, and icon slider popup metrics/geometry/style-size/close policy | `.kry canonical` |
 | `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
@@ -201,7 +201,7 @@ has a single place to land.
 | `TextField` | `Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, paint geometry, buffer-limit, cursor normalization, navigation, edit intent, double-click/pan/focus decisions, text-buffer mutation/range/bracket policy, and selection range/movement/collapse/select-all/paint-span policy are `.kry`; raw string storage/memmove/scanning, IME, pointer history/ownership, selection ownership, and paint still native. |
 | `Dropdown` | `Input` | Selection | `runtime/dropdown.kry`, `runtime/dropdown_props.kry` | `.kry-backed` | Selection-only control; option/index normalization, popup placement, row/window, scrollbar, scrolling, keyboard intent, navigation, indicator geometry, and rich option data are generated from `.kry`. |
 | `Slider` | `Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, angle/unit, component/editor/hit layout, and text paint geometry are props/policy; label/value typography is KSS-owned. |
-| `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
+| `Toggle` | `Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host samples input and draws; paint/layout and value policy are `.kry`. |
 | `Checkbox` | `Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint, row/text layout, and flag policy are `.kry`; box, mark, and label roles are KSS-owned. |
 | `Radio` | `Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, and marker text policy are `.kry`; host keeps group input. |
 | `Progress` | `Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
@@ -495,7 +495,7 @@ should use canonical `.kry` names and blocks.
 | `Drag` | `.kry canonical` | Public props live in `runtime/drag_props.kry`; value type, range mode, typed keyboard input, component layout, and text paint geometry live in `DragProps`/`.kry`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Public props live in `runtime/input_props.kry`; value type, values, component/step-button layout, step policy, and temp-edit activation live in `.kry`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
-| `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
+| `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout and value policy are in `.kry`, label typography is KSS-owned, host samples input and draws. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, row/text layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout and toggle policy are in `.kry`; review whether list item props should absorb it later. |

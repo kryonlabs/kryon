@@ -55,6 +55,11 @@ TogglePaint :: struct {
     thumb_glow_color: u32
 }
 
+ToggleValueResult :: struct {
+    value: bool
+    changed: bool
+}
+
 ToggleMetric :: (fields: u32, field: u32, value: float, fallback: float,
     scale: float, allow_zero: bool) -> float {
     if scale <= 0.0 { scale = 1.0 }
@@ -125,6 +130,18 @@ ToggleFillRole :: () -> i32 #export {
 
 ToggleLabelRole :: () -> i32 #export {
     return 6
+}
+
+ToggleValueFor :: (value: bool, activated: bool, enabled: bool,
+    has_value: bool) -> ToggleValueResult #export {
+    result: ToggleValueResult
+    result.value = value
+    result.changed = false
+    if activated && enabled && has_value {
+        result.value = !value
+        result.changed = true
+    }
+    return result
 }
 
 ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,

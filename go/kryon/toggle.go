@@ -56,6 +56,11 @@ type TogglePaint struct {
 	ThumbGlowColor       uint32
 }
 
+type ToggleValueResult struct {
+	Value   bool
+	Changed bool
+}
+
 func Toggle_ToggleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -249,6 +254,17 @@ func Toggle_ToggleFillRole() int32 {
 func Toggle_ToggleLabelRole() int32 {
 	var value_0 int32 = 6
 	return value_0
+}
+
+func Toggle_ToggleValueFor(value bool, activated bool, enabled bool, has_value bool) ToggleValueResult {
+	var result ToggleValueResult
+	result.Value = value
+	result.Changed = false
+	if activated && enabled && has_value {
+		result.Value = !value
+		result.Changed = true
+	}
+	return result
 }
 
 func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_width int32, scale float32, track StyleFrame, active StyleFrame, label StyleFrame) int32 {

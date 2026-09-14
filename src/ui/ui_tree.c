@@ -14,6 +14,7 @@
 #include "runtime/text_input.h"
 #include "runtime/input.h"
 #include "runtime/drag.h"
+#include "runtime/toggle.h"
 #include "runtime/grid.h"
 #include "runtime/image.h"
 #include "ui_image_internal.h"
@@ -2774,12 +2775,19 @@ Toggle(ToggleProps toggle)
         ui_tree_nodes[node].data.toggle.on_label = toggle.on_label;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
-    changed = value != NULL && !toggle.disabled && ui_focusable_pressed(
-        node >= 0 ? ui_tree_nodes[node].bounds
-                  : bounds,
-        id, value == NULL || toggle.disabled, &focused);
+    {
+        int activated = ui_focusable_pressed(
+            node >= 0 ? ui_tree_nodes[node].bounds
+                      : bounds,
+            id, value == NULL || toggle.disabled, &focused);
+        ToggleValueResult toggle_value = ToggleValueFor(
+            value != NULL && *value != 0, activated != 0,
+            !toggle.disabled, value != NULL);
+        changed = toggle_value.changed ? 1 : 0;
+        if(changed && value != NULL)
+            *value = toggle_value.value;
+    }
     if(changed) {
-        *value = !*value;
         if(node >= 0) {
             Event event = {0};
             event.key = ui_tree_nodes[node].key;
