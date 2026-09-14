@@ -1351,8 +1351,7 @@ TextLineHeight(int font_size)
             return native_h;
     }
 
-    return base > 0 ? (int)((float)base * scale + 0.5f) :
-        (int)((float)TextBaseSize * scale + 0.5f);
+    return TextLineHeightFor(base, TextBaseSize, scale);
 }
 
 Font

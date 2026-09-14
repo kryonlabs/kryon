@@ -118,6 +118,16 @@ TextHeightFor :: (fallback_height: i32, has_glyphs: bool,
     return (i32)(max_bottom - min_top + 0.5)
 }
 
+TextLineHeightFor :: (font_base_size: i32, fallback_base_size: i32,
+    scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    base: i32 = font_base_size
+    if base <= 0 {
+        base = fallback_base_size
+    }
+    return (i32)((float)base * scale + 0.5)
+}
+
 TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(6.0 * scale)
