@@ -1898,7 +1898,8 @@ DrawCenteredText(const char *text, int center_x, int center_y, int font_size, Co
 {
     int text_w = TextWidth(text, font_size);
     int line_h = TextLineHeight(font_size);
-    int y = TextBaselineY("Hg", center_y - line_h / 2, line_h, font_size);
+    int y = TextBaselineY(TextControlBaselineSample(), center_y - line_h / 2,
+                          line_h, font_size);
 
     RenderText(text, center_x - text_w / 2, y, font_size, color);
 }

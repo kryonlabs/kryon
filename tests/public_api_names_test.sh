@@ -733,7 +733,7 @@ if [ -n "$public_text_helper_matches" ]; then
 fi
 
 internal_text_helper_matches="$(
-    rg -n '\bDrawLeftControlTextInRect\b' \
+    rg -n '\b(DrawLeftControlTextInRect|ControlTextY)\b' \
         src/ui include \
         --glob '!vendor/**' \
         --glob '!build/**' || true

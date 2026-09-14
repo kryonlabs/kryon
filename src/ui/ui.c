@@ -1397,7 +1397,8 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
     float scale = (float)Scale(1000) / 1000.0f;
     int text_w = TextWidth(value, font_size);
     int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
-    int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
+    int y = ControlTextBaselineY(value, (int)rect.y, (int)rect.height,
+                                 font_size);
 
     ui_begin_world_clip(TextControlClipBounds(rect, scale));
     RenderText(value, x, y, font_size, color);
@@ -1487,7 +1488,8 @@ RenderControlTextInRect(const char *text, Rectangle rect, int font_size,
 {
     const char *value = text != NULL ? text : "";
     float scale = (float)Scale(1000) / 1000.0f;
-    int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
+    int y = ControlTextBaselineY(value, (int)rect.y, (int)rect.height,
+                                 font_size);
 
     ui_begin_world_clip(TextControlClipBounds(rect, scale));
     RenderText(value, (int)rect.x, y, font_size, color);
@@ -1855,7 +1857,7 @@ GetTitleFontSize(const char *title, int max_width)
 }
 
 int
-ControlTextY(const char *text, int box_y, int box_h, int font)
+ControlTextBaselineY(const char *text, int box_y, int box_h, int font)
 {
     (void)text;
     return TextBaselineY(TextControlBaselineSample(), box_y, box_h, font);
@@ -2102,7 +2104,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                                              TextFieldCursorVerticalPadding(scale),
                                              clip_guard);
     int text_x = paint.text_x;
-    int text_y = ControlTextY(value, y, h, font);
+    int text_y = ControlTextBaselineY(value, y, h, font);
     int cursor_h = paint.cursor_height;
     int cursor_y = paint.cursor_y;
     Color text_color = style.text.a != 0 ? style.text : c_text;
@@ -2449,7 +2451,8 @@ RenderLink(LinkProps link)
     }
 
     RenderText(text, (int)bounds.x,
-               ControlTextY(text, (int)bounds.y, (int)bounds.height, font),
+               ControlTextBaselineY(text, (int)bounds.y,
+                                    (int)bounds.height, font),
                font, color);
     if(appearance.underline && text_w > 0) {
         int underline_y = LinkUnderlineYFor(
@@ -3769,8 +3772,9 @@ ui_text_area_render(TextAreaProps area)
     line_h = TextLineHeight(font) + line_gap;
     wrap_width = TextAreaWrapWidthFor(area.bounds.width, padding_x,
         area.wrap != 0, TextAreaMinWrapWidth((float)Scale(1000) / 1000.0f));
-    first_line_y = ControlTextY("Hg", (int)area.bounds.y + padding_y,
-                                     line_h, font);
+    first_line_y = ControlTextBaselineY(TextControlBaselineSample(),
+                                        (int)area.bounds.y + padding_y,
+                                        line_h, font);
     focused = *area.focused != 0;
     focused = IsTextFocusOwner(area.focused) ? focused : 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
