@@ -563,6 +563,23 @@ TextContextCommandDecisionFor :: (command: i32, has_selection: bool,
         true, !read_only, !read_only)
 }
 
+TextShortcutInput :: struct {
+    select_all: bool
+    copy: bool
+    cut: bool
+    paste: bool
+}
+
+TextShortcutInputFor :: (modifier: bool, select_all: bool, copy: bool,
+    cut: bool, paste: bool) -> TextShortcutInput #export {
+    input: TextShortcutInput
+    input.select_all = modifier && select_all
+    input.copy = modifier && copy
+    input.cut = modifier && cut
+    input.paste = modifier && paste
+    return input
+}
+
 TextShortcutShouldClaimSelectionFocus :: (has_selection: bool, focused: bool,
     keyboard_enabled: bool, modifier: bool, copy_pressed: bool,
     cut_pressed: bool, paste_pressed: bool) -> bool #export {

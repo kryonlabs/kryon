@@ -155,3 +155,13 @@ tables; the compiler reads this contract through its embedded declaration source
 Dropdown interaction and layout policy belongs in `runtime/dropdown.kry`. Native
 hosts own input collection, popup storage, clipping, and painting through shared
 Button frames and materials; they must not add independent dropdown theme paths.
+
+## Keyboard and release policy
+
+Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
+and text shortcut/edit-command decisions belong to `runtime/*.kry`. Native and
+Go event loops sample keys and apply those decisions; clipboard IO, buffer
+storage, focus registration and pointer-event queues remain host services.
+Generated JavaScript keyboard policy is checked by `make keyboard-policy-test`.
+This focused policy proof does not imply complete web block or IME parity; see
+`plan/canonical/README.md` for the remaining execution audit.

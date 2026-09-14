@@ -5522,7 +5522,8 @@ func (r *runtime) popupMenu(id, className, x, y int32, items []MenuItem, itemCou
 		r.registerField(id)
 	}
 	state := r.menuNav(id)
-	if r.focusID == id && !r.popupFocusCaptures(id) && r.keyDown[KeyEscape] {
+	if Menu_MenuEscapeShouldClose(!r.contentDisabled() && r.focusID == id,
+		r.popupFocusCaptures(id), r.keyDown[KeyEscape]) {
 		state.Path = state.Path[:0]
 		r.setFocus(0)
 		return 0
@@ -5568,7 +5569,8 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 	if !r.contentDisabled() {
 		r.registerField(props.ID)
 	}
-	if !r.contentDisabled() && r.focusID == props.ID && !r.popupFocusCaptures(props.ID) && r.keyDown[KeyEscape] {
+	if Menu_MenuEscapeShouldClose(!r.contentDisabled() && r.focusID == props.ID,
+		r.popupFocusCaptures(props.ID), r.keyDown[KeyEscape]) {
 		delete(r.contextMenus, props.ID)
 		delete(r.openSubmenus, props.ID)
 		r.menuNav(props.ID).Path = r.menuNav(props.ID).Path[:0]
@@ -5991,35 +5993,25 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		for _, event := range r.inputEvents {
 			handled := false
 			if !event.shortcut && r.focusID == p.ID {
-				if p.Tree && (event.key == KeyUp || event.key == KeyDown ||
-					event.key == KeyLeft && (p.Leaf || p.Open == nil || !*p.Open) ||
-					event.key == KeyRight && !p.Leaf && p.Open != nil && *p.Open) {
-					r.setFocus(r.treeHeaderTarget(p, event.key))
-					handled = true
-				} else if event.key == KeyTab {
+				if event.key == KeyTab {
 					r.setFocus(r.nextFocus(p.ID, event.shift))
 					handled = true
-				} else if !p.Leaf && p.Open != nil {
-					switch event.key {
-					case KeyRight:
-						openResult := Collapsible_CollapsibleOpenApply(
-							*p.Open, false, true, true, true)
-						*p.Open = openResult.Open
-						pressed = pressed || openResult.Changed
-						handled = true
-					case KeyLeft:
-						openResult := Collapsible_CollapsibleOpenApply(
-							*p.Open, false, true, false, true)
-						*p.Open = openResult.Open
-						pressed = pressed || openResult.Changed
-						handled = true
-					case KeyEnter, KeySpace:
-						openResult := Collapsible_CollapsibleOpenApply(
-							*p.Open, true, false, false, true)
-						*p.Open = openResult.Open
-						pressed = pressed || openResult.Changed
-						handled = true
+				} else {
+					key := Collapsible_CollapsibleKeyFor(event.key == KeyDown,
+						event.key == KeyUp, event.key == KeyRight, event.key == KeyLeft)
+					open := p.Open != nil && *p.Open
+					decision := Collapsible_CollapsibleKeyboardDecisionFor(true, false,
+						false, p.Tree, key, open, p.Leaf, p.Open != nil,
+						event.key == KeyEnter || event.key == KeySpace)
+					if decision.MoveFocus {
+						r.setFocus(r.treeHeaderTarget(p, event.key))
+					} else if p.Open != nil {
+						result := Collapsible_CollapsibleOpenApply(*p.Open,
+							decision.ToggleOpen, decision.SetOpen, decision.Open, true)
+						*p.Open = result.Open
+						pressed = pressed || result.Changed
 					}
+					handled = decision.Handled
 				}
 			}
 			if !handled {
@@ -6953,36 +6945,49 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		}
 		textSelection := event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 		if event.shortcut {
-			switch event.key {
-			case KeyA:
-				sel = selectAllSelection(len(text))
-			case KeyC:
-				if !options.secure && sel.Anchor != sel.Cursor {
+			shortcuts := TextInput_TextShortcutInputFor(event.shortcut,
+				event.key == KeyA, event.key == KeyC, event.key == KeyX, event.key == KeyV)
+			command := int32(0)
+			switch {
+			case shortcuts.SelectAll:
+				command = TextInput_TextContextCommandSelectAll()
+			case shortcuts.Copy:
+				command = TextInput_TextContextCommandCopy()
+			case shortcuts.Cut:
+				command = TextInput_TextContextCommandCut()
+			case shortcuts.Paste:
+				command = TextInput_TextContextCommandPaste()
+			}
+			if command != 0 {
+				decision := TextInput_TextEditCommandDecisionFor(command,
+					sel.Anchor != sel.Cursor, false, false, len(text) > 0,
+					!options.secure && (!shortcuts.Cut || !options.readOnly),
+					!options.readOnly, !options.readOnly)
+				if decision.SelectAll {
+					sel = selectAllSelection(len(text))
+				}
+				if decision.CopySelection {
 					start, end := selectionRange(sel)
 					r.clipboard = text[start:end]
 				}
-			case KeyX:
-				if options.readOnly {
-					continue
-				}
-				if !options.secure && sel.Anchor != sel.Cursor {
+				if decision.DeleteSelection && !decision.Paste {
 					start, end := selectionRange(sel)
-					r.clipboard = text[start:end]
 					text = text[:start] + text[end:]
 					pos = start
 					sel = collapsedSelection(pos)
 					changed = true
 				}
-			case KeyV:
-				if options.readOnly {
-					continue
+				if decision.Paste {
+					var inserted bool
+					text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, options.maxCodepoints))
+					if inserted {
+						changed = true
+						sel = collapsedSelection(pos)
+					}
 				}
-				var inserted bool
-				text, pos, inserted = insertText(text, pos, sel, r.clipboard, textLimit(buf, options.maxCodepoints))
-				if inserted {
-					changed = true
-					sel = collapsedSelection(pos)
-				}
+				continue
+			}
+			switch event.key {
 			case KeyHome:
 				pos, sel = textMoveSelection(sel, pos, 0, textSelection)
 			case KeyEnd:

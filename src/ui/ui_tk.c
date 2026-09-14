@@ -1768,8 +1768,8 @@ RenderPopupMenu(int id, int class_name, int x, int y, const MenuItem *items,
 {
     Rectangle panel = menu_items_panel_bounds(x,y,items,item_count, class_name);
     int focused = !ContentDisabled() && id > 0 && RegisterFocus(id,panel);
-    if(focused && !ui_popup_input_focus_captures(id) &&
-       IsKeyPressed(KEY_ESCAPE)) {
+    if(MenuEscapeShouldClose(focused, ui_popup_input_focus_captures(id),
+                             IsKeyPressed(KEY_ESCAPE))) {
         menu_navigation_reset(0,NULL,0);
         SetFocus(0);
         return 0;
@@ -1830,7 +1830,6 @@ RenderContextMenu(MenuProps menu)
         *menu.y = (int)activation.origin.y;
         SetFocus(menu.id);
         menu_navigation_reset(menu.id,menu.items,menu.item_count);
-        suppress_close = 1;
     }
     if(!*menu.open) {
         if(state->context_open_id == menu.id)
@@ -1838,16 +1837,17 @@ RenderContextMenu(MenuProps menu)
         return 0;
     }
 
-    if(ui_contains(menu.trigger, mouse) &&
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-        suppress_close = 1;
+    suppress_close = MenuContextShouldSuppressClose(
+        activation.open, ui_contains(menu.trigger, mouse),
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
     state->context_open_id = menu.id;
     panel = menu_items_panel_bounds(*menu.x, *menu.y,
                                     menu.items, menu.item_count,
                                     menu.class_name);
     focused = !ContentDisabled() && menu.id > 0 && RegisterFocus(menu.id,panel) &&
               !ui_popup_input_focus_captures(menu.id);
-    if(focused && IsKeyPressed(KEY_ESCAPE)) {
+    if(MenuEscapeShouldClose(focused, ui_popup_input_focus_captures(menu.id),
+                             IsKeyPressed(KEY_ESCAPE))) {
         MenuContextOpenResult open_result =
             MenuContextOpenFor(*menu.open != 0, 0, 1, menu.open != NULL);
 
@@ -4486,16 +4486,10 @@ RenderCollapsible(CollapsibleProps section)
         changed |= open_result.changed;
     }
     {
-        int key = CollapsibleKeyNone();
+        int key = CollapsibleKeyFor(
+            IsKeyPressed(KEY_DOWN) != 0, IsKeyPressed(KEY_UP) != 0,
+            IsKeyPressed(KEY_RIGHT) != 0, IsKeyPressed(KEY_LEFT) != 0);
         int open = section.open != NULL && *section.open;
-        if(IsKeyPressed(KEY_DOWN))
-            key = CollapsibleKeyDown();
-        else if(IsKeyPressed(KEY_UP))
-            key = CollapsibleKeyUp();
-        else if(IsKeyPressed(KEY_RIGHT))
-            key = CollapsibleKeyRight();
-        else if(IsKeyPressed(KEY_LEFT))
-            key = CollapsibleKeyLeft();
         keyboard_decision = CollapsibleKeyboardDecisionFor(
             focused != 0, ui_popup_input_focus_captures(section.id) != 0,
             toolkit->tree_key_frame == g_ui_frame_serial,

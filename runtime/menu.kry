@@ -388,6 +388,16 @@ MenuContextOpenFor :: (open: bool, open_requested: bool,
     return result
 }
 
+MenuEscapeShouldClose :: (focused: bool, focus_captured: bool,
+    escape_pressed: bool) -> bool #export {
+    return focused && !focus_captured && escape_pressed
+}
+
+MenuContextShouldSuppressClose :: (opened: bool, contains_trigger: bool,
+    mouse_released: bool) -> bool #export {
+    return opened || (contains_trigger && mouse_released)
+}
+
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }

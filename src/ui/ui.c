@@ -2234,14 +2234,18 @@ EditText(TextEdit edit)
         (void)ui_text_navigate(navigation, &anchor, edit.cursor_position);
     }
 
-    if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+    TextShortcutInput shortcuts =
+        TextShortcutInputFor(ui_mod_key_down(), 0, IsKeyPressed(KEY_C),
+                             IsKeyPressed(KEY_X), IsKeyPressed(KEY_V));
+
+    if(shortcuts.copy) {
         TextContextCommandDecision decision =
             TextEditCommandDecisionFor(TextContextCommandCopy(), 0, 1, 0, 1,
                 1, 1, 1);
         if(decision.copy_all)
             SetClipboardTextValue(edit.text);
     }
-    if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+    if(shortcuts.cut) {
         TextContextCommandDecision decision =
             TextEditCommandDecisionFor(TextContextCommandCut(), 0, 1, 1, 1,
                 1, 1, 1);
@@ -2253,7 +2257,7 @@ EditText(TextEdit edit)
             changed = 1;
         }
     }
-    if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
+    if(shortcuts.paste) {
         TextContextCommandDecision decision =
             TextEditCommandDecisionFor(TextContextCommandPaste(), 0, 0, 0, 1,
                 1, 1, 1);
@@ -3891,7 +3895,10 @@ ui_text_area_render(TextAreaProps area)
         }
     }
     if(TextKeyboardShouldRun(focused, IsKeyboardInputEnabled())) {
-        if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
+        TextShortcutInput shortcuts = TextShortcutInputFor(
+            ui_mod_key_down(), IsKeyPressed(KEY_A), IsKeyPressed(KEY_C),
+            IsKeyPressed(KEY_X), IsKeyPressed(KEY_V));
+        if(shortcuts.select_all) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandSelectAll(),
                     selection_end > selection_start, 0, 0,
@@ -3908,7 +3915,7 @@ ui_text_area_render(TextAreaProps area)
             }
             selection_key_handled = 1;
         }
-        if(ui_mod_key_down() && copy_pressed) {
+        if(shortcuts.copy) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandCopy(),
                     selection_end > selection_start, 0, 0,
@@ -3918,7 +3925,7 @@ ui_text_area_render(TextAreaProps area)
                 ui_text_copy_range(area.text, selection_start, selection_end);
             selection_key_handled |= decision.copy_selection;
         }
-        if(ui_mod_key_down() && cut_pressed) {
+        if(shortcuts.cut) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandCut(),
                     selection_end > selection_start, 0, 0,
@@ -3942,7 +3949,7 @@ ui_text_area_render(TextAreaProps area)
                                      decision.delete_selection ||
                                      decision.collapse_selection;
         }
-        if(ui_mod_key_down() && paste_pressed) {
+        if(shortcuts.paste) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandPaste(),
                     selection_end > selection_start, 0, 0,
@@ -4584,7 +4591,10 @@ ui_text_field_render_filtered(TextFieldProps field,
     }
 
     if(TextKeyboardShouldRun(focused, IsKeyboardInputEnabled())) {
-        if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
+        TextShortcutInput shortcuts = TextShortcutInputFor(
+            ui_mod_key_down(), IsKeyPressed(KEY_A), IsKeyPressed(KEY_C),
+            IsKeyPressed(KEY_X), IsKeyPressed(KEY_V));
+        if(shortcuts.select_all) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandSelectAll(),
                     selection_end > selection_start, 0, 0,
@@ -4601,7 +4611,7 @@ ui_text_field_render_filtered(TextFieldProps field,
             }
             selection_handled = 1;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
+        if(shortcuts.copy) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandCopy(),
                     selection_end > selection_start, 1, 0,
@@ -4613,7 +4623,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                 SetClipboardTextValue(field.text);
             selection_handled |= decision.copy_selection || decision.copy_all;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
+        if(shortcuts.cut) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandCut(),
                     selection_end > selection_start, 1, 1,
@@ -4651,7 +4661,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                                  decision.clear_all ||
                                  decision.collapse_selection;
         }
-        if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
+        if(shortcuts.paste) {
             TextContextCommandDecision decision =
                 TextEditCommandDecisionFor(TextContextCommandPaste(),
                     selection_end > selection_start, 0, 0,

@@ -16,6 +16,14 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
+    assert(MenuEscapeShouldClose(true, false, true));
+    assert(!MenuEscapeShouldClose(false, false, true));
+    assert(!MenuEscapeShouldClose(true, true, true));
+    assert(!MenuEscapeShouldClose(true, false, false));
+    assert(MenuContextShouldSuppressClose(true, false, false));
+    assert(MenuContextShouldSuppressClose(false, true, true));
+    assert(!MenuContextShouldSuppressClose(false, true, false));
+    assert(!MenuContextShouldSuppressClose(false, false, true));
     StyleFrame panel = {0};
     StyleFrame item = {0};
     StyleFrame bar = {0};

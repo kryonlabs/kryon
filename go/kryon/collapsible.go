@@ -386,6 +386,31 @@ func Collapsible_CollapsibleCloseDecisionFor(enabled bool, has_visible bool, cli
 	return value_6
 }
 
+func Collapsible_CollapsibleKeyFor(down bool, up bool, right bool, left bool) int32 {
+	var value_0 bool = down
+	if value_0 {
+		var value_1 int32 = Collapsible_CollapsibleKeyDown()
+		return value_1
+	}
+	var value_2 bool = up
+	if value_2 {
+		var value_3 int32 = Collapsible_CollapsibleKeyUp()
+		return value_3
+	}
+	var value_4 bool = right
+	if value_4 {
+		var value_5 int32 = Collapsible_CollapsibleKeyRight()
+		return value_5
+	}
+	var value_6 bool = left
+	if value_6 {
+		var value_7 int32 = Collapsible_CollapsibleKeyLeft()
+		return value_7
+	}
+	var value_8 int32 = Collapsible_CollapsibleKeyNone()
+	return value_8
+}
+
 func Collapsible_CollapsibleKeyboardDecisionFor(focused bool, focus_captured bool, key_already_handled bool, tree bool, key int32, open bool, leaf bool, has_open bool, activate bool) CollapsibleKeyboardDecision {
 	var decision CollapsibleKeyboardDecision = CollapsibleKeyboardDecision{}
 	var value_0 bool = focused

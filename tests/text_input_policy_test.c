@@ -30,6 +30,14 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
+    TextShortcutInput shortcuts = TextShortcutInputFor(false, true, true, true, true);
+    assert(!shortcuts.select_all && !shortcuts.copy && !shortcuts.cut &&
+           !shortcuts.paste);
+    shortcuts = TextShortcutInputFor(true, true, true, true, true);
+    assert(shortcuts.select_all && shortcuts.copy && shortcuts.cut && shortcuts.paste);
+    shortcuts = TextShortcutInputFor(true, false, true, false, false);
+    assert(!shortcuts.select_all && shortcuts.copy && !shortcuts.cut &&
+           !shortcuts.paste);
     TextInputMetrics metrics = TextInputMetricsFor(0, 0, 0, -1, -1,
                                                    16, 6, 8, 4);
     TextInputMetrics zero_metrics = TextInputMetricsFor(

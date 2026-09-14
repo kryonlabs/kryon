@@ -871,6 +871,37 @@ func Menu_MenuContextOpenFor(open bool, open_requested bool, close_requested boo
 	return value_11
 }
 
+func Menu_MenuEscapeShouldClose(focused bool, focus_captured bool, escape_pressed bool) bool {
+	var value_0 bool = focused
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = focus_captured
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = escape_pressed
+		value_4 = value_5
+	}
+	return value_4
+}
+
+func Menu_MenuContextShouldSuppressClose(opened bool, contains_trigger bool, mouse_released bool) bool {
+	var value_0 bool = opened
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = contains_trigger
+		var value_3 bool = value_2
+		if value_3 {
+			var value_4 bool = mouse_released
+			value_3 = value_4
+		}
+		value_1 = value_3
+	}
+	return value_1
+}
+
 func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar StyleFrame) MenuMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

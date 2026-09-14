@@ -16,6 +16,11 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
+    assert(CollapsibleKeyFor(false, false, false, false) == CollapsibleKeyNone());
+    assert(CollapsibleKeyFor(false, false, false, true) == CollapsibleKeyLeft());
+    assert(CollapsibleKeyFor(false, false, true, true) == CollapsibleKeyRight());
+    assert(CollapsibleKeyFor(false, true, true, true) == CollapsibleKeyUp());
+    assert(CollapsibleKeyFor(true, true, true, true) == CollapsibleKeyDown());
     StyleFrame header = {0};
     StyleFrame tree_header = {0};
     StyleFrame close = {0};

@@ -179,6 +179,37 @@ range/movement/collapse/select-all and selection paint-span policy in `.kry`,
 but raw string storage/memmove/scanning, IME, selection ownership/drawing, and
 rich text reflow/rendering remain host work.
 
+## Release and keyboard ownership audit (2026-09-14)
+
+All 34 `ConsumeRelease()` calls in C widget implementations apply generated
+policy flags. The `ConsumeRelease` definition in `src/ui/ui.c` stores the
+frame's consumed state; it does not decide which widget should consume input.
+The nine generic `InputPointerInteractionFor` calls use `runtime/input.kry`.
+
+| Native files | Policy owner | Native responsibility |
+|---|---|---|
+| `button.c`, `dropdown.c`, `ui_slider.c`, generic helpers in `ui.c`/`ui_tk.c` | `input.kry`, with dropdown/value policy | Sample input, apply activation/consume flags, draw/store results |
+| `modal.c`, `overlay.c`, `popup.c` | `modal.kry`, `overlay.kry`, `popup_policy.kry` | Capture and dismiss according to returned flags |
+| `navigation_bar.c`, `profile_header.c` | `navigation_bar.kry`, `profile_header.kry` | Apply pointer/image-cell decisions |
+| `swipe.c`, `tab_bar.c`, `ui_inspect.c` | `swipe.kry`, `tab_bar.kry`, `inspect.kry` | Store gesture/drag state and apply release decisions |
+| Scrollbar path in `ui.c` | `scroll.kry` | Store scroll/drag state and apply release flag |
+| Collection/menu paths in `ui_tk.c` | `drag_drop.kry`, `list_box_multi.kry`, `menu.kry`, `list_box.kry`, `tree_view.kry`, `table_view.kry`, `collapsible.kry` | Apply source/target, row, menu, resize and header decision flags |
+
+Immediate menu Escape and context-trigger dismissal suppression now come from
+`menu.kry`. Collapsible arrow priority comes from `collapsible.kry`; the Go
+host also applies its keyboard decision record. Immediate C text widgets and
+buffer editing use `text_input.kry` shortcut facts, and Go text commands use
+its edit-command decisions. Go menu Escape uses the shared menu decision.
+The old Go desktop pointer fallback was removed; desktop input uses the current
+mouse interface, with wheel sampling remaining a host capability.
+
+This audit does not classify every surrounding branch as complete. Go/web host
+runtimes still contain independent policy, and web block/composition fixtures
+are not all executed by the shared parity runner. Public canonical names and
+successful generation are not proof of equivalent behavior. The outstanding
+inventory and web expression-placeholder removal are tracked in
+`plan/canonical/README.md`.
+
 ## Registry Surface Audit
 
 This table is the authoritative shared list of public node names from

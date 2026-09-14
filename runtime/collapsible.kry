@@ -180,6 +180,23 @@ CollapsibleCloseDecisionFor :: (enabled: bool, has_visible: bool,
     return decision
 }
 
+CollapsibleKeyFor :: (down: bool, up: bool, right: bool,
+    left: bool) -> i32 #export {
+    if down {
+        return CollapsibleKeyDown()
+    }
+    if up {
+        return CollapsibleKeyUp()
+    }
+    if right {
+        return CollapsibleKeyRight()
+    }
+    if left {
+        return CollapsibleKeyLeft()
+    }
+    return CollapsibleKeyNone()
+}
+
 CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
     key_already_handled: bool, tree: bool, key: i32, open: bool, leaf: bool,
     has_open: bool, activate: bool) -> CollapsibleKeyboardDecision #export {

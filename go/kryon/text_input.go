@@ -220,6 +220,13 @@ type TextSelectionState struct {
 	HasSelection bool
 }
 
+type TextShortcutInput struct {
+	SelectAll bool
+	Copy      bool
+	Cut       bool
+	Paste     bool
+}
+
 type TextBackspaceRepeat struct {
 	Count        int32
 	NextRepeatAt float64
@@ -1142,6 +1149,40 @@ func TextInput_TextContextCommandDecisionFor(command int32, has_selection bool, 
 	var value_9 bool = !value_8
 	var value_10 TextContextCommandDecision = TextInput_TextEditCommandDecisionFor(value_0, value_1, value_2, value_3, value_4, value_5, value_7, value_9)
 	return value_10
+}
+
+func TextInput_TextShortcutInputFor(modifier bool, select_all bool, copy bool, cut bool, paste bool) TextShortcutInput {
+	var input TextShortcutInput = TextShortcutInput{}
+	var value_0 bool = modifier
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = select_all
+		value_1 = value_2
+	}
+	input.SelectAll = value_1
+	var value_3 bool = modifier
+	var value_4 bool = value_3
+	if value_4 {
+		var value_5 bool = copy
+		value_4 = value_5
+	}
+	input.Copy = value_4
+	var value_6 bool = modifier
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = cut
+		value_7 = value_8
+	}
+	input.Cut = value_7
+	var value_9 bool = modifier
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 bool = paste
+		value_10 = value_11
+	}
+	input.Paste = value_10
+	var value_12 TextShortcutInput = input
+	return value_12
 }
 
 func TextInput_TextShortcutShouldClaimSelectionFocus(has_selection bool, focused bool, keyboard_enabled bool, modifier bool, copy_pressed bool, cut_pressed bool, paste_pressed bool) bool {

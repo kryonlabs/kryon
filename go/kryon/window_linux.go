@@ -47,11 +47,6 @@ func (w *windowRuntime) textWithFont(props TextProps, fontID uint32) {
 	w.Runtime.Text(props)
 }
 
-type legacyPointerController interface {
-	QueueMouseButton(int32, float32, float32)
-	QueueMouseWheel(float32)
-}
-
 func openWindowRuntime(config AppConfig) (Runtime, error) {
 	base := New(config)
 	win, err := openX11Window(config)
@@ -188,8 +183,6 @@ func (r *windowRuntime) pumpEvents() {
 		case x11EventTap:
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
-			} else if c, ok := r.Runtime.(legacyPointerController); ok {
-				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventMotion:
 			if c, ok := r.Runtime.(mouseController); ok {
@@ -203,7 +196,7 @@ func (r *windowRuntime) pumpEvents() {
 				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventWheel:
-			if c, ok := r.Runtime.(legacyPointerController); ok {
+			if c, ok := r.Runtime.(interface{ QueueMouseWheel(float32) }); ok {
 				c.QueueMouseWheel(ev.wheel)
 			}
 		case x11EventKey:

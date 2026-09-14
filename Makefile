@@ -566,6 +566,12 @@ k2js-runtime-snapshot-test: $(K2JS)
 generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
+.PHONY: keyboard-policy-test
+keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test
+	sh tests/keyboard_policy_test.sh $(BUILD_DIR)
+
+fast-test: keyboard-policy-test
+
 .PHONY: widget-instance-test
 preflight test: widget-instance-test
 widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS) web/instance.js
