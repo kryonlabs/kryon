@@ -1390,10 +1390,12 @@ RouteInput(void)
                     ? (KeyID)field->focus_id : node->key;
                 int click_dx = (int)mouse.x - ui_tree_text_last_click_x;
                 int click_dy = (int)mouse.y - ui_tree_text_last_click_y;
+                int click_slop = TextDoubleClickSlopFor(
+                    (float)Scale(1000) / 1000.0f);
                 int double_click = ui_tree_text_last_click_key == click_key &&
                     now - ui_tree_text_last_click_time <= 0.45 &&
-                    abs(click_dx) <= Scale(6) &&
-                    abs(click_dy) <= Scale(6);
+                    abs(click_dx) <= click_slop &&
+                    abs(click_dy) <= click_slop;
 
                 if(double_click) {
                     ui_tree_text_select_all(state, field->text != NULL

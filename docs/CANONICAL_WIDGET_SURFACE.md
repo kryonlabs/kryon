@@ -744,8 +744,9 @@ and host plumbing behind the canonical names.
   that runtime policy; `Drag` text inset and label-gap metrics now route
   through `runtime/drag.kry`; immediate list/tree/table row wheel-step policy
   now routes through `runtime/scroll.kry`; numeric temp-edit and selectable
-  text double-click slop metrics now route through `runtime/input.kry` and
-  `runtime/text.kry`; `TextField`/`TextArea` double-click slop, field pan
+  text double-click slop metrics, including retained text widget click slop,
+  now route through `runtime/input.kry` and `runtime/text.kry`;
+  `TextField`/`TextArea` double-click slop, field pan
   drag threshold, and `TextArea` gutter metrics now route through
   `runtime/text_input.kry`. Continue by
   reducing raw native constants in shared immediate-mode helpers.
