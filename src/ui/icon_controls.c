@@ -46,7 +46,8 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
             .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft
         },
         .style = {.normal = {.fields = StyleIconSize,
-            .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}},
+            .icon_size = ToolbarActionStyleIconSize(layout.icon_size,
+                (float)Scale(1000) / 1000.0f)}},
         .style_resolved = 1
     });
     if(icon_clicked) {
@@ -114,7 +115,8 @@ RenderBottomIconRow(BottomIconRowProps row)
                 .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft
             },
             .style = {.normal = {.fields = StyleIconSize,
-                .icon_size = (float)layout.icon_size * 1000.0f / Scale(1000)}},
+                .icon_size = ToolbarActionStyleIconSize(layout.icon_size,
+                    (float)Scale(1000) / 1000.0f)}},
             .style_resolved = 1
         }))
             result.clicked_index = i;
