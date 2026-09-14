@@ -2,6 +2,7 @@
 #include "ui_style_internal.h"
 #include "runtime/checkbox.h"
 #include "runtime/focus.h"
+#include "runtime/input.h"
 #include "runtime/slider.h"
 #include "runtime/style.h"
 #include "runtime/toggle.h"
@@ -789,6 +790,7 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
                                                   label_frame);
     Rectangle bounds = layout.bounds;
     Vector2 mouse_world = ui_mouse_world();
+    InputPointerInteraction interaction;
     int pressed;
     int can_draw = IsWindowReady();
 
@@ -801,17 +803,18 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
     bounds = widget.bounds;
     x = (int)bounds.x;
     y = (int)bounds.y;
+    interaction = InputPointerInteractionFor(
+        CheckCollisionPointRec(mouse_world, bounds) != 0,
+        InputCapturesClick(mouse_world) != 0, disabled != 0,
+        HoverEffectsEnabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
 
-    if(CheckCollisionPointRec(mouse_world, bounds) && !InputCapturesClick(mouse_world)) {
-        if(disabled)
-            MarkDisabled();
-        else
-            MarkClickable();
-    }
+    if(interaction.disabled_marker)
+        MarkDisabled();
+    if(interaction.active)
+        MarkClickable();
 
-    pressed = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-              !InputCapturesClick(mouse_world) &&
-              IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    pressed = interaction.activated;
     if(pressed) {
         *value = !(*value);
         ConsumeRelease();
@@ -822,9 +825,7 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
     }
 
     {
-        int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-                      !InputCapturesClick(mouse_world) &&
-                      HoverEffectsEnabled();
+        int hovered = interaction.hovered;
         int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         ButtonState state = ui_checkbox_button_state(hovered, down, 0,
                                                      disabled);
