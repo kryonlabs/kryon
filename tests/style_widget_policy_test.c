@@ -116,6 +116,11 @@ main(void)
         fprintf(stderr, "separator role policy changed\n");
         return 1;
     }
+    if(ProgressTrackRole() != 4 || ProgressFillRole() != 5 ||
+       ProgressLabelRole() != 6) {
+        fprintf(stderr, "progress role policy changed\n");
+        return 1;
+    }
 
     check_float("checkbox keeps zero border width",
                 checkbox_paint.border_width, 0.0f);

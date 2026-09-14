@@ -2003,7 +2003,8 @@ RenderProgress(ProgressProps progress)
     Rectangle fill;
     const char *label = progress.label;
     StyleFrame text = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 6);
+        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(),
+        ProgressLabelRole());
     Style text_style = ui_unpack_style(ui_style_apply_effects_frame(text).value);
     int font = ResolveFont(0, StyleFontValue(text_style.fields,
                                              text_style.font_size),
@@ -2011,9 +2012,11 @@ RenderProgress(ProgressProps progress)
     int label_w = label != NULL ? TextWidth(label, font) : 0;
     int label_h = label != NULL ? TextLineHeight(font) : 0;
     StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 4);
+        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(),
+        ProgressTrackRole());
     StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
-        ButtonStateNormal, 0, 1, progress.class_name, StyleKindProgress(), 5);
+        ButtonStateNormal, 0, 1, progress.class_name, StyleKindProgress(),
+        ProgressFillRole());
 
     paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
                              progress.value, (float)label_w, (float)label_h,

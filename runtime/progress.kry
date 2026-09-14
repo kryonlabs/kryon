@@ -25,6 +25,18 @@ ProgressPaint :: struct {
     border_width: float
 }
 
+ProgressTrackRole :: () -> i32 #export {
+    return 4
+}
+
+ProgressFillRole :: () -> i32 #export {
+    return 5
+}
+
+ProgressLabelRole :: () -> i32 #export {
+    return 6
+}
+
 ProgressMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> float {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
