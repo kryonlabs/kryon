@@ -34,6 +34,7 @@ check_missing_path() {
 }
 
 python3 tests/canonical_widget_surface_doc_test.py
+python3 tests/style_role_policy_test.py
 
 # Names already migrated during the canonical surface cleanup. Keep this list
 # focused on completed migrations so it stays a fast regression guard instead
