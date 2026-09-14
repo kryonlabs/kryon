@@ -194,6 +194,10 @@ main(void)
               NavigationBarFontFor(11, 0), 11);
     check_int("compact navigation bar style font override",
               NavigationBarFontFor(11, 13), 13);
+    check_int("navigation bar full tint alpha",
+              NavigationBarTintAlpha(255, 128), 128);
+    check_int("navigation bar partial tint alpha",
+              NavigationBarTintAlpha(200, 128), 100);
     check_true("navigation bar item normal state",
                NavigationBarItemStateFor(false, false, false) ==
                    ButtonStateNormal);

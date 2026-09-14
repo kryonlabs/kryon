@@ -843,6 +843,8 @@ and host plumbing behind the canonical names.
   profile header muted-text alpha now routes through `runtime/profile_header.kry`;
   text-area gutter inactive-label alpha now routes through
   `runtime/text_input.kry`;
+  navigation-bar icon tint alpha now routes through
+  `runtime/navigation_bar.kry`;
   profile image picker selected-stroke width now routes through
   `runtime/profile_header.kry`; toolbar divider line geometry now routes
   through `runtime/toolbar.kry`. Continue by reducing raw

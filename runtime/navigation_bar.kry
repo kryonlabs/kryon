@@ -138,6 +138,10 @@ NavigationBarFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     return default_font
 }
 
+NavigationBarTintAlpha :: (color_alpha: u8, tint_alpha: u8) -> u8 #export {
+    return (u8)(((i32)color_alpha * (i32)tint_alpha) / 255)
+}
+
 NavigationBarItemStateFor :: (active: bool, disabled: bool,
     hovered: bool) -> ButtonState #export {
     if disabled { return (ButtonState)ButtonStateDisabled }
