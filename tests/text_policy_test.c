@@ -33,6 +33,11 @@ int main(void)
     assert(TextWrapPolicy(100, 0) == 0 && TextWrapPolicy(100, 1) == 1);
     assert(TextDoubleClickSlopFor(2.0f) == 12);
     assert(TextDoubleClickSlopFor(0.0f) == 6);
+    assert(TextSelectionLineEndPaddingFor(2.0f) == 12);
+    assert(TextSelectionMinWidthFor(2.0f) == 8);
+    assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);
+    assert(TextSelectionHighlightEndX(10, 10, false, 1.0f) == 14);
+    assert(TextSelectionHighlightEndX(10, 2, true, 1.0f) == 14);
     assert(TextAlignmentOffset(100, 40, 0) == 0);
     assert(TextAlignmentOffset(100, 40, 1) == 30);
     assert(TextAlignmentOffset(100, 40, 2) == 60);

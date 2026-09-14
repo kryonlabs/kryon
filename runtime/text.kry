@@ -58,6 +58,27 @@ TextDoubleClickSlopFor :: (scale: float) -> i32 #export {
     return (i32)(6.0 * scale)
 }
 
+TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(6.0 * scale)
+}
+
+TextSelectionMinWidthFor :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(4.0 * scale)
+}
+
+TextSelectionHighlightEndX :: (start_x: i32, end_x: i32,
+    continues_past_line: bool, scale: float) -> i32 #export {
+    if continues_past_line {
+        end_x += TextSelectionLineEndPaddingFor(scale)
+    }
+    if end_x <= start_x {
+        return start_x + TextSelectionMinWidthFor(scale)
+    }
+    return end_x
+}
+
 TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> float #export {
     if alignment == 1 {
         return (available - measured) * 0.5

@@ -756,8 +756,10 @@ and host plumbing behind the canonical names.
   `DragRange` label placement now routes through `runtime/drag.kry`; generic
   pointer drag threshold policy now routes through `runtime/input.kry`;
   `TextArea` scrollbar width now routes through `runtime/text_input.kry`;
-  `Link` underline placement now routes through `runtime/link.kry`. Continue by
-  reducing raw native constants in shared immediate-mode helpers.
+  `Link` underline placement now routes through `runtime/link.kry`; text
+  selection highlight padding and minimum width now route through
+  `runtime/text.kry`. Continue by reducing raw native constants in shared
+  immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

@@ -17,6 +17,7 @@
 #include "runtime/scroll.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
+#include "runtime/text.h"
 #include "runtime/text_input.h"
 #include "kry_uri.h"
 #include <ctype.h>
@@ -3125,10 +3126,9 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
         return;
     start_x = x + ui_text_column_x(text, line_start, start, font);
     end_x = x + ui_text_column_x(text, line_start, end, font);
-    if(selection_start <= line_start && selection_end > line_end)
-        end_x += Scale(6);
-    if(end_x <= start_x)
-        end_x = start_x + Scale(4);
+    end_x = TextSelectionHighlightEndX(start_x, end_x,
+        selection_start <= line_start && selection_end > line_end,
+        (float)Scale(1000) / 1000.0f);
     DrawRectangle(start_x, y, end_x - start_x, TextLineHeight(font),
                   color);
 }
