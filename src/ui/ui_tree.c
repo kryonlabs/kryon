@@ -756,6 +756,28 @@ static const WidgetOps ui_widget_ops[] = {
     [WidgetKindDrag] = {ui_measure_bounds_height},
     [WidgetKindRouter] = {ui_measure_bounds_height},
     [WidgetKindCard] = {ui_measure_bounds_height},
+    [WidgetKindIcon] = {ui_measure_bounds_height},
+    [WidgetKindInput] = {ui_measure_bounds_height},
+    [WidgetKindSeparator] = {ui_measure_bounds_height},
+    [WidgetKindDragDrop] = {ui_measure_bounds_height},
+    [WidgetKindRadio] = {ui_measure_bounds_height},
+    [WidgetKindProgress] = {ui_measure_bounds_height},
+    [WidgetKindPlot] = {ui_measure_bounds_height},
+    [WidgetKindFocus] = {ui_measure_bounds_height},
+    [WidgetKindSpinbox] = {ui_measure_bounds_height},
+    [WidgetKindFieldset] = {ui_measure_bounds_height},
+    [WidgetKindListBox] = {ui_measure_bounds_height},
+    [WidgetKindTreeView] = {ui_measure_bounds_height},
+    [WidgetKindTableView] = {ui_measure_bounds_height},
+    [WidgetKindCanvasGrid] = {ui_measure_bounds_height},
+    [WidgetKindPanedView] = {ui_measure_bounds_height},
+    [WidgetKindCollapsible] = {ui_measure_bounds_height},
+    [WidgetKindColorPicker] = {ui_measure_bounds_height},
+    [WidgetKindModal] = {ui_measure_bounds_height},
+    [WidgetKindToolbar] = {ui_measure_bounds_height},
+    [WidgetKindMenu] = {ui_measure_bounds_height},
+    [WidgetKindSelectable] = {ui_measure_bounds_height},
+    [WidgetKindBullet] = {ui_measure_bounds_height},
 };
 
 static void
@@ -2134,6 +2156,28 @@ GetNodeKindName(int kind)
         [WidgetKindDrag] = "Drag",
         [WidgetKindRouter] = "Router",
         [WidgetKindCard] = "Card",
+        [WidgetKindIcon] = "Icon",
+        [WidgetKindInput] = "Input",
+        [WidgetKindSeparator] = "Separator",
+        [WidgetKindDragDrop] = "DragDrop",
+        [WidgetKindRadio] = "Radio",
+        [WidgetKindProgress] = "Progress",
+        [WidgetKindPlot] = "Plot",
+        [WidgetKindFocus] = "Focus",
+        [WidgetKindSpinbox] = "Spinbox",
+        [WidgetKindFieldset] = "Fieldset",
+        [WidgetKindListBox] = "ListBox",
+        [WidgetKindTreeView] = "TreeView",
+        [WidgetKindTableView] = "TableView",
+        [WidgetKindCanvasGrid] = "CanvasGrid",
+        [WidgetKindPanedView] = "PanedView",
+        [WidgetKindCollapsible] = "Collapsible",
+        [WidgetKindColorPicker] = "ColorPicker",
+        [WidgetKindModal] = "Modal",
+        [WidgetKindToolbar] = "Toolbar",
+        [WidgetKindMenu] = "Menu",
+        [WidgetKindSelectable] = "Selectable",
+        [WidgetKindBullet] = "Bullet",
     };
 
     if(kind < 0 || kind >= WidgetKindCount || names[kind] == NULL)
@@ -2198,16 +2242,30 @@ ui_accessibility_role(int kind)
     case WidgetKindTextField:
     case WidgetKindTextArea: return "textbox";
     case WidgetKindDropdown: return "combobox";
+    case WidgetKindSpinbox:
+    case WidgetKindInput:
     case WidgetKindSlider: return "slider";
+    case WidgetKindRadio: return "radio";
     case WidgetKindToggle:
     case WidgetKindCheckbox: return "checkbox";
+    case WidgetKindProgress: return "progressbar";
+    case WidgetKindMenu: return "menu";
     case WidgetKindTabBar: return "tablist";
+    case WidgetKindToolbar: return "toolbar";
+    case WidgetKindListBox: return "listbox";
+    case WidgetKindTreeView: return "tree";
+    case WidgetKindTableView: return "table";
+    case WidgetKindModal: return "dialog";
     case WidgetKindColumn:
     case WidgetKindRow:
     case WidgetKindStack:
     case WidgetKindGrid:
     case WidgetKindRouter:
+    case WidgetKindFieldset:
+    case WidgetKindPanedView:
+    case WidgetKindCollapsible:
     case WidgetKindGroup: return "group";
+    case WidgetKindIcon:
     case WidgetKindImage: return "img";
     default: return NULL;
     }
@@ -2745,7 +2803,7 @@ Icon(int id, int x, int y, int size, IconType icon, Color tint)
 {
     IconLayout layout = IconLayoutFor(x, y, size);
 
-    ui_tree_add(id, WidgetKindCustom, layout.bounds, NULL);
+    ui_tree_add(id, WidgetKindIcon, layout.bounds, NULL);
     if(layout.drawable)
         DrawIcon(icon, layout.bounds, tint);
 }
@@ -2837,35 +2895,35 @@ Checkbox(CheckboxProps checkbox)
 void
 Separator(SeparatorProps separator)
 {
-    ui_tree_add(0, WidgetKindCustom, separator.bounds, &separator);
+    ui_tree_add(0, WidgetKindSeparator, separator.bounds, &separator);
     RenderSeparator(separator);
 }
 
 int
 DragDrop(DragDropProps drag_drop)
 {
-    ui_tree_add(drag_drop.id, WidgetKindCustom, drag_drop.bounds, &drag_drop);
+    ui_tree_add(drag_drop.id, WidgetKindDragDrop, drag_drop.bounds, &drag_drop);
     return RenderDragDrop(drag_drop);
 }
 
 int
 Radio(RadioProps radio)
 {
-    ui_tree_add(radio.id, WidgetKindCustom, radio.bounds, &radio);
+    ui_tree_add(radio.id, WidgetKindRadio, radio.bounds, &radio);
     return RenderRadio(radio);
 }
 
 void
 Progress(ProgressProps progress)
 {
-    ui_tree_add(0, WidgetKindCustom, progress.bounds, &progress);
+    ui_tree_add(0, WidgetKindProgress, progress.bounds, &progress);
     RenderProgress(progress);
 }
 
 void
 Plot(PlotProps plot)
 {
-    ui_tree_add(0, WidgetKindCustom, plot.bounds, &plot);
+    ui_tree_add(0, WidgetKindPlot, plot.bounds, &plot);
     if(plot.mode == PlotBars)
         RenderPlotHistogram(plot);
     else
@@ -3181,7 +3239,7 @@ static int
 ui_numeric_input_begin(int id, Rectangle *bounds)
 {
     int depth = ui_tree_stack_depth;
-    NodeId node = ui_tree_add(id, WidgetKindCustom, *bounds, NULL);
+    NodeId node = ui_tree_add(id, WidgetKindInput, *bounds, NULL);
     if(node >= 0) {
         *bounds = ui_tree_nodes[node].bounds;
         if(ui_tree_stack_depth >= TREE_MAX_DEPTH) abort();
@@ -3243,21 +3301,21 @@ Input(InputProps input)
 int
 Spinbox(SpinboxProps spinbox)
 {
-    ui_tree_add(spinbox.id, WidgetKindCustom, spinbox.bounds, &spinbox);
+    ui_tree_add(spinbox.id, WidgetKindSpinbox, spinbox.bounds, &spinbox);
     return RenderSpinbox(spinbox);
 }
 
 void
 Fieldset(FieldsetProps frame)
 {
-    ui_tree_add(0, WidgetKindCustom, frame.bounds, &frame);
+    ui_tree_add(0, WidgetKindFieldset, frame.bounds, &frame);
     RenderFieldset(frame);
 }
 
 int
 ListBox(ListBoxProps list)
 {
-    ui_tree_add(list.id, WidgetKindCustom, list.bounds, &list);
+    ui_tree_add(list.id, WidgetKindListBox, list.bounds, &list);
     if(list.selected != NULL)
         return RenderListBoxMulti(list);
     return RenderListBox(list);
@@ -3266,14 +3324,14 @@ ListBox(ListBoxProps list)
 int
 TreeView(TreeViewProps tree)
 {
-    ui_tree_add(tree.id, WidgetKindCustom, tree.bounds, &tree);
+    ui_tree_add(tree.id, WidgetKindTreeView, tree.bounds, &tree);
     return RenderTreeView(tree);
 }
 
 int
 TableView(TableViewProps table)
 {
-    ui_tree_add(table.id, WidgetKindCustom, table.bounds, &table);
+    ui_tree_add(table.id, WidgetKindTableView, table.bounds, &table);
     return RenderTableView(table);
 }
 
@@ -3298,28 +3356,28 @@ TextArea(TextAreaProps area)
 void
 CanvasGrid(Rectangle bounds, int step, Color color)
 {
-    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
+    ui_tree_add(0, WidgetKindCanvasGrid, bounds, NULL);
     RenderCanvasGrid(bounds, step, color);
 }
 
 int
 PanedView(PanedViewProps panes)
 {
-    ui_tree_add(panes.id, WidgetKindCustom, panes.bounds, &panes);
+    ui_tree_add(panes.id, WidgetKindPanedView, panes.bounds, &panes);
     return RenderPanedView(panes);
 }
 
 int
 Collapsible(CollapsibleProps section)
 {
-    ui_tree_add(section.id, WidgetKindCustom, section.bounds, &section);
+    ui_tree_add(section.id, WidgetKindCollapsible, section.bounds, &section);
     return RenderCollapsible(section);
 }
 
 int
 ColorPicker(ColorPickerProps picker)
 {
-    ui_tree_add(picker.id, WidgetKindCustom, picker.bounds, &picker);
+    ui_tree_add(picker.id, WidgetKindColorPicker, picker.bounds, &picker);
     return RenderColorPicker(picker);
 }
 
@@ -3349,14 +3407,14 @@ int
 Modal(ModalProps modal)
 {
     ui_tree_paint_before_overlay();
-    ui_tree_add(0, WidgetKindCustom, (Rectangle){0, 0, 0, 0}, &modal);
+    ui_tree_add(0, WidgetKindModal, (Rectangle){0, 0, 0, 0}, &modal);
     return RenderActionModal(modal);
 }
 
 void
 Focus(Rectangle bounds)
 {
-    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
+    ui_tree_add(0, WidgetKindFocus, bounds, NULL);
     RenderFocus(bounds);
 }
 
@@ -3371,7 +3429,7 @@ NavigationBar(NavigationBarProps nav)
 ToolbarResult
 Toolbar(ToolbarProps toolbar)
 {
-    ui_tree_add(toolbar.id, WidgetKindCustom,
+    ui_tree_add(toolbar.id, WidgetKindToolbar,
                 (Rectangle){toolbar.x, toolbar.y, toolbar.width, toolbar.height}, &toolbar);
     return RenderToolbar(toolbar);
 }
@@ -3656,7 +3714,7 @@ Menu(MenuProps menu)
 {
     Rectangle bounds = menu.mode == MenuModeContext ? menu.trigger : menu.bounds;
 
-    ui_tree_add(menu.id, WidgetKindCustom, bounds, &menu);
+    ui_tree_add(menu.id, WidgetKindMenu, bounds, &menu);
     return RenderMenu(menu);
 }
 
@@ -3693,7 +3751,7 @@ CardScope(CardProps card)
 int
 Selectable(SelectableProps selectable)
 {
-    ui_tree_add(selectable.id, WidgetKindCustom, selectable.bounds,
+    ui_tree_add(selectable.id, WidgetKindSelectable, selectable.bounds,
                 &selectable);
     return RenderSelectable(selectable);
 }
@@ -3701,7 +3759,7 @@ Selectable(SelectableProps selectable)
 void
 Bullet(Rectangle bounds)
 {
-    ui_tree_add(0, WidgetKindCustom, bounds, NULL);
+    ui_tree_add(0, WidgetKindBullet, bounds, NULL);
     RenderBullet(bounds);
 }
 

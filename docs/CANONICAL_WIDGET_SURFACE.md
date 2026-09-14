@@ -655,36 +655,35 @@ stays prefix-free.
 | `WidgetKindDrag` | `Drag` | `.kry canonical` |
 | `WidgetKindRouter` | `Router` | `.kry canonical` |
 | `WidgetKindCard` | `Card` | `.kry canonical` |
+| `WidgetKindIcon` | `Icon` | `.kry-backed`; retained node kind now matches the public icon concept |
+| `WidgetKindInput` | `Input` | `.kry canonical`; shared numeric input composition and step policy live in `runtime/input.kry` |
+| `WidgetKindSeparator` | `Separator` | `.kry canonical`; line/label/bullet policy lives in `runtime/separator.kry` |
+| `WidgetKindDragDrop` | `DragDrop` | `.kry canonical`; source/target lifecycle policy lives in `runtime/drag_drop.kry` |
+| `WidgetKindRadio` | `Radio` | `.kry canonical`; paint/layout/marker policy lives in `runtime/radio.kry` |
+| `WidgetKindProgress` | `Progress` | `.kry canonical`; track/fill/label layout policy lives in `runtime/progress.kry` |
+| `WidgetKindPlot` | `Plot` | `.kry canonical`; range/mark/text paint policy lives in `runtime/plot.kry` |
+| `WidgetKindFocus` | `Focus` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
+| `WidgetKindSpinbox` | `Spinbox` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
+| `WidgetKindFieldset` | `Fieldset` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |
+| `WidgetKindListBox` | `ListBox` | `.kry canonical`; row/window and multi-select policy lives in `runtime/list_box.kry` and `runtime/list_box_multi.kry` |
+| `WidgetKindTreeView` | `TreeView` | `.kry canonical`; row/window/marker/selection paint policy lives in `runtime/tree_view.kry` |
+| `WidgetKindTableView` | `TableView` | `.kry canonical`; table geometry, roles, pointer decisions, selection, activation, resize, clipboard intent, and scroll policy live in `runtime/table_view.kry` |
+| `WidgetKindCanvasGrid` | `CanvasGrid` | `.kry canonical`; grid line policy lives in `runtime/canvas_grid.kry` |
+| `WidgetKindPanedView` | `PanedView` | `.kry canonical`; split/handle/drag policy lives in `runtime/paned_view.kry` |
+| `WidgetKindCollapsible` | `Collapsible` | `.kry canonical`; header/close/layout and input decision policy lives in `runtime/collapsible.kry` |
+| `WidgetKindColorPicker` | `ColorPicker` | `.kry canonical`; channel/swatch policy lives in `runtime/color_picker.kry` |
+| `WidgetKindModal` | `Modal` | `.kry canonical`; layout/frame/action policy lives in `runtime/modal.kry` |
+| `WidgetKindToolbar` | `Toolbar` | `.kry canonical`; toolbar, bottom-row layout, and icon slider popup policy lives in `runtime/toolbar.kry` |
+| `WidgetKindMenu` | `Menu` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |
+| `WidgetKindSelectable` | `Selectable` | `.kry canonical`; paint/layout and toggle policy live in `runtime/selectable.kry` |
+| `WidgetKindBullet` | `Bullet` | `.kry-backed`; bullet paint geometry lives in `runtime/separator.kry` |
 
-### Canonical Widgets Lowered Through `WidgetKindCustom`
+### WidgetKindCustom Policy
 
-These names are still clean public concepts even though the retained tree uses
-`WidgetKindCustom` as the temporary host bucket. Do not expose the host bucket
-as a public widget name. Use this list as the feedback surface for deciding
-which concepts deserve dedicated retained node kinds later.
-
-| Public widget/concept | Current retained lowering | Decision |
-|---|---|---|
-| `Separator` | `WidgetKindCustom` | `.kry canonical`; line/label/bullet policy lives in `runtime/separator.kry` |
-| `DragDrop` | `WidgetKindCustom` | `.kry canonical`; source/target lifecycle policy lives in `runtime/drag_drop.kry` |
-| `Radio` | `WidgetKindCustom` | `.kry canonical`; paint/layout/marker policy lives in `runtime/radio.kry` |
-| `Progress` | `WidgetKindCustom` | `.kry canonical`; track/fill/label layout policy lives in `runtime/progress.kry` |
-| `Plot` | `WidgetKindCustom` | `.kry canonical`; range/mark/text paint policy lives in `runtime/plot.kry` |
-| `Focus` | `WidgetKindCustom` | `.kry-backed`; focus ring geometry lives in `runtime/focus.kry` |
-| `Spinbox` | `WidgetKindCustom` | `.kry canonical`; step and layout policy lives in `runtime/spinbox.kry` |
-| `Fieldset` | `WidgetKindCustom` | `.kry canonical`; title/border paint policy lives in `runtime/fieldset.kry` |
-| `ListBox` | `WidgetKindCustom` | `.kry canonical`; row/window and multi-select policy lives in `runtime/list_box.kry` and `runtime/list_box_multi.kry` |
-| `TreeView` | `WidgetKindCustom` | `.kry canonical`; row/window/marker/selection paint policy lives in `runtime/tree_view.kry` |
-| `TableView` | `WidgetKindCustom` | `.kry canonical`; table geometry, roles, pointer decisions, selection, activation, resize, clipboard intent, and scroll policy live in `runtime/table_view.kry` |
-| `PanedView` | `WidgetKindCustom` | `.kry canonical`; split/handle/drag policy lives in `runtime/paned_view.kry` |
-| `Collapsible` | `WidgetKindCustom` | `.kry canonical`; header/close/layout and input decision policy lives in `runtime/collapsible.kry` |
-| `ColorPicker` | `WidgetKindCustom` | `.kry canonical`; channel/swatch policy lives in `runtime/color_picker.kry` |
-| `Modal` | `WidgetKindCustom` | `.kry canonical`; layout/frame/action policy lives in `runtime/modal.kry` |
-| `Toolbar` | `WidgetKindCustom` | `.kry canonical`; toolbar, bottom-row layout, and icon slider popup policy lives in `runtime/toolbar.kry` |
-| `Menu` | `WidgetKindCustom` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |
-| `Selectable` | `WidgetKindCustom` | `.kry canonical`; paint/layout and toggle policy live in `runtime/selectable.kry` |
-| `StylePicker` | `WidgetKindCustom` | `.kry canonical`; public props and option state live in `runtime/style_picker_props.kry` |
-| `Guide` | `WidgetKindCustom` | `.kry canonical`; guide and pager policy live in `runtime/guide.kry` and `runtime/guide_pager.kry` |
+`WidgetKindCustom` remains only as an internal retained-tree escape hatch for
+host-only helper nodes, transient paint submissions, and future app-defined
+experiments. Canonical widgets must use their own retained node kind instead of
+lowering through this bucket.
 
 The public retained-tree and generated-code surface is guarded by
 `canonical-surface-test` and `public-api-names-check`. Public names must be the

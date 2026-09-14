@@ -33,7 +33,29 @@ const (
 	WidgetKindDrag          = 26
 	WidgetKindRouter        = 27
 	WidgetKindCard          = 28
-	WidgetKindCount         = 29
+	WidgetKindIcon          = 29
+	WidgetKindInput         = 30
+	WidgetKindSeparator     = 31
+	WidgetKindDragDrop      = 32
+	WidgetKindRadio         = 33
+	WidgetKindProgress      = 34
+	WidgetKindPlot          = 35
+	WidgetKindFocus         = 36
+	WidgetKindSpinbox       = 37
+	WidgetKindFieldset      = 38
+	WidgetKindListBox       = 39
+	WidgetKindTreeView      = 40
+	WidgetKindTableView     = 41
+	WidgetKindCanvasGrid    = 42
+	WidgetKindPanedView     = 43
+	WidgetKindCollapsible   = 44
+	WidgetKindColorPicker   = 45
+	WidgetKindModal         = 46
+	WidgetKindToolbar       = 47
+	WidgetKindMenu          = 48
+	WidgetKindSelectable    = 49
+	WidgetKindBullet        = 50
+	WidgetKindCount         = 51
 )
 
 type WidgetFlag int32
