@@ -71,7 +71,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
         TitleBarActionRole()).value);
     button.icon_color = normal.foreground;
     button.hover_background = hover.background;
-    button.radius = 0.50f;
+    button.radius = TitleBarActionRadius();
     return RenderIconAction(button);
 }
 

@@ -57,6 +57,10 @@ TitleBarActionRole :: () -> i32 #export {
     return 17
 }
 
+TitleBarActionRadius :: () -> float #export {
+    return 0.50
+}
+
 TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
     action: StyleFrame) -> TitleBarMetrics #export {
     if scale <= 0.0 { scale = 1.0 }

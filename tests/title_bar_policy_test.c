@@ -37,6 +37,7 @@ main(void)
     assert(TitleBarBarRole() == 1);
     assert(TitleBarTitleRole() == 16);
     assert(TitleBarActionRole() == 17);
+    assert(TitleBarActionRadius() == 0.50f);
     assert(metrics.side_margin == 24);
     assert(metrics.leading_reserved == 120);
     assert(metrics.leading_icon_size == 40);

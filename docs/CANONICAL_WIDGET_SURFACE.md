@@ -851,7 +851,8 @@ and host plumbing behind the canonical names.
   profile image picker selected-stroke width now routes through
   `runtime/profile_header.kry`; toolbar divider line geometry now routes
   through `runtime/toolbar.kry`; radio state-layer alpha now routes through
-  `runtime/radio.kry`. Continue by reducing raw
+  `runtime/radio.kry`; title-bar action radius now routes through
+  `runtime/title_bar.kry`. Continue by reducing raw
   native constants in shared immediate-mode helpers. Icon slider popup and
   bottom icon row style icon sizing now route through `runtime/toolbar.kry`;
   icon action style size/radius policy now routes through `runtime/button.kry`;
