@@ -297,7 +297,8 @@ RenderActionModal(ModalProps modal)
         ReleaseConsumed() != 0,
         CheckCollisionPointRec(mouse_world, capture) != 0);
     if(dismissal.dismissed) {
-        ConsumeRelease();
+        if(dismissal.release_consumed)
+            ConsumeRelease();
         result = -1;
     }
     msg_x = layout.message_x;
@@ -436,7 +437,8 @@ RenderModalFrame(int width, int height, const char *title,
         ReleaseConsumed() != 0,
         CheckCollisionPointRec(mouse_world, capture) != 0);
     if(dismissal.dismissed) {
-        ConsumeRelease();
+        if(dismissal.release_consumed)
+            ConsumeRelease();
         frame.right_clicked = 1;
     }
 

@@ -18,7 +18,7 @@ DismissibleOverlay(DismissibleOverlayProps overlay)
     policy = DismissibleOverlayPolicyFor(
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT), ReleaseConsumed(),
         overlay.dismiss_disabled != 0, CheckCollisionPointRec(mouse, bounds));
-    if(policy.closed) {
+    if(policy.closed && policy.release_consumed) {
         ConsumeRelease();
     }
     result.closed = policy.closed;
