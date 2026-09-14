@@ -2651,13 +2651,16 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
                         (focused ? ButtonStateFocus :
                          (hovered ? ButtonStateHover : ButtonStateNormal));
     StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-        state, disabled, 0, class_name, StyleKindSlider(), 4);
+        state, disabled, 0, class_name, StyleKindSlider(),
+        SliderTrackRole());
     StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
-        state, disabled, 1, class_name, StyleKindSlider(), 5);
+        state, disabled, 1, class_name, StyleKindSlider(),
+        SliderFillRole());
     StyleFrame thumb = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
         state, disabled, 1, class_name, StyleKindSliderThumb(), StyleAny());
     StyleFrame label = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-        state, disabled, 0, class_name, StyleKindSlider(), 6);
+        state, disabled, 0, class_name, StyleKindSlider(),
+        SliderLabelRole());
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label).value);
     int label_font = ResolveFont(0, StyleFontValue(label_style.fields,
                                                    label_style.font_size),
@@ -2690,7 +2693,8 @@ ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
 {
     if(IsWindowReady() && label != NULL) {
         StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-            ButtonStateNormal, 0, 0, class_name, StyleKindSlider(), 6);
+            ButtonStateNormal, 0, 0, class_name, StyleKindSlider(),
+            SliderLabelRole());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         int font = ResolveFont(0, StyleFontValue(style.fields,
                                                  style.font_size),

@@ -3300,9 +3300,9 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 	} else if hovered {
 		state = ButtonStateHover
 	}
-	trackFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), 4)
-	activeFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled, true, className, StyleSheet_StyleKindSlider(), 5)
-	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), 6)
+	trackFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), Slider_SliderTrackRole())
+	activeFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled, true, className, StyleSheet_StyleKindSlider(), Slider_SliderFillRole())
+	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), Slider_SliderLabelRole())
 	trackStyle := unpackStyle(trackFrame.Value)
 	activeStyle := unpackStyle(activeFrame.Value)
 	labelStyle := unpackStyle(labelFrame.Value)
@@ -3333,7 +3333,7 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 
 func (r *runtime) drawSliderLabel(bounds Rectangle, label string, className, id int32) {
 	if label != "" {
-		style := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, className, StyleSheet_StyleKindSlider(), 6).Value)
+		style := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, className, StyleSheet_StyleKindSlider(), Slider_SliderLabelRole()).Value)
 		font, fontID := styleTextFace(style, Text14)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: id})
 	}
@@ -4587,24 +4587,23 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	disabled := props.Disabled || r.contentDisabled()
 	labelStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 		disabled, false, props.ClassName,
-		StyleSheet_StyleKindToggle(), 6).Value)
+		StyleSheet_StyleKindToggle(), Toggle_ToggleLabelRole()).Value)
 	labelFont, labelFontID := styleTextFace(labelStyle, Text16)
 	offWidth := int32(runtimeTextWidthWithFont(props.OffLabel, labelFont, labelFontID))
 	onWidth := int32(runtimeTextWidthWithFont(props.OnLabel, labelFont, labelFontID))
 	checkedForMetrics := *props.Value != 0
 	trackToneForMetrics := ButtonToneNeutral
-	trackRoleForMetrics := int32(4)
+	trackRoleForMetrics := Toggle_ToggleTrackRoleFor(checkedForMetrics, hasLabels)
 	if checkedForMetrics && !hasLabels {
 		trackToneForMetrics = ButtonToneAccent
-		trackRoleForMetrics = 5
 	}
 	trackFrameForMetrics := simpleStyleFrameWithClassRole(trackToneForMetrics, ButtonStateNormal,
 		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(),
 		trackRoleForMetrics)
 	activeFrameForMetrics := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,
-		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(), 5)
+		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(), Toggle_ToggleFillRole())
 	labelFrameForMetrics := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		disabled, false, props.ClassName, StyleSheet_StyleKindToggle(), 6)
+		disabled, false, props.ClassName, StyleSheet_StyleKindToggle(), Toggle_ToggleLabelRole())
 	thumbFrameForMetrics := simpleStyleFrameWithClassRole(trackToneForMetrics, ButtonStateNormal,
 		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggleThumb(),
 		StyleSheet_StyleAny())
@@ -4637,13 +4636,12 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		state = ButtonStateHover
 	}
 	trackTone := ButtonToneNeutral
-	trackRole := int32(4)
+	trackRole := Toggle_ToggleTrackRoleFor(checked, hasLabels)
 	if checked && !hasLabels {
 		trackTone = ButtonToneAccent
-		trackRole = 5
 	}
 	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled,
-		false, props.ClassName, StyleSheet_StyleKindToggle(), 6)
+		false, props.ClassName, StyleSheet_StyleKindToggle(), Toggle_ToggleLabelRole())
 	paint := Toggle_TogglePaintFor(ToggleSpec{
 		Bounds:    bounds,
 		Checked:   checked,
@@ -4659,7 +4657,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		Track: simpleStyleFrameWithClassRole(trackTone, state, disabled, checked,
 			props.ClassName, StyleSheet_StyleKindToggle(), trackRole),
 		Active: simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled,
-			checked, props.ClassName, StyleSheet_StyleKindToggle(), 5),
+			checked, props.ClassName, StyleSheet_StyleKindToggle(), Toggle_ToggleFillRole()),
 		Label: labelFrame,
 		Thumb: simpleStyleFrameWithClassRole(trackTone, state, disabled, checked,
 			props.ClassName, StyleSheet_StyleKindToggleThumb(), StyleSheet_StyleAny()),
