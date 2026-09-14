@@ -60,5 +60,7 @@ main(void)
     assert(ParagraphLineXFor(10, 50, 60, TextAlignEnd) == 10);
     assert(ParagraphNextLineY(20, 18, 4, true) == 42);
     assert(ParagraphNextLineY(20, 18, 4, false) == 38);
+    assert(ParagraphLineStride(18, 4) == 22);
+    assert(ParagraphLineStride(0, -8) == 1);
     return 0;
 }

@@ -1636,6 +1636,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     Vector2 mouse = ui_mouse_world();
     int count;
     int line_h;
+    int line_stride;
     int height;
     int captured;
     int selected_start = 0;
@@ -1646,11 +1647,12 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     count = ui_text_block_lines(block.text, (int)block.bounds.width,
                                 block.font_size, &lines);
     line_h = TextLineHeight(block.font_size);
+    line_stride = ParagraphLineStride(line_h, block.line_gap);
     height = ParagraphLayoutTotalHeight(count, line_h, block.line_gap);
     captured = InputCapturesClick(mouse);
 
-    for(int i = 0; i < count; i++) {
-        int y = (int)block.bounds.y + i * (line_h + block.line_gap);
+    for(int i = 0, y = (int)block.bounds.y; i < count;
+        i++, y = ParagraphNextLineY(y, line_h, block.line_gap, true)) {
         char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
         int line_w = line != NULL ? TextWidth(line, block.font_size) : 0;
         Rectangle hit = {block.bounds.x, (float)y, (float)line_w, (float)line_h};
@@ -1699,8 +1701,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     if(g_ui_text_block_selection.id == block.id &&
        g_ui_text_block_selection.dragging) {
         if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int line_index = (int)(mouse.y - block.bounds.y) /
-                             (line_h + block.line_gap);
+            int line_index = (int)(mouse.y - block.bounds.y) / line_stride;
             char *line;
             int local;
 
@@ -1733,8 +1734,8 @@ RenderSelectableTextBlock(SelectableTextBlock block)
             ui_text_copy_selection(block.text, selected_start, selected_end);
     }
 
-    for(int i = 0; i < count; i++) {
-        int y = (int)block.bounds.y + i * (line_h + block.line_gap);
+    for(int i = 0, y = (int)block.bounds.y; i < count;
+        i++, y = ParagraphNextLineY(y, line_h, block.line_gap, true)) {
         int start = selected_start > lines[i].start ? selected_start : lines[i].start;
         int end = selected_end < lines[i].end ? selected_end : lines[i].end;
         char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);

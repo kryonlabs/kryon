@@ -99,3 +99,9 @@ ParagraphNextLineY :: (current_y: i32, drawn_line_height: i32,
     if has_next_line { next += line_gap }
     return next
 }
+
+ParagraphLineStride :: (drawn_line_height: i32, line_gap: i32) -> i32 #export {
+    stride: i32 = drawn_line_height + line_gap
+    if stride < 1 { return 1 }
+    return stride
+}
