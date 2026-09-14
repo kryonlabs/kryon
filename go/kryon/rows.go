@@ -141,6 +141,51 @@ func Rows_RowsRequestedMetric(requested int32, fields uint32, field uint32, valu
 	return value_10
 }
 
+func Rows_InfoRowsTextRole() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func Rows_LabelTextFieldLabelRole() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func Rows_LabelTextFieldFieldRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func Rows_SectionLabelRole() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func Rows_CheckboxRowRole() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func Rows_ButtonRowPrimaryRole() int32 {
+	var value_0 int32 = 5
+	return value_0
+}
+
+func Rows_ButtonRowSecondaryRole() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
+func Rows_SpinboxRowLabelRole() int32 {
+	var value_0 int32 = 7
+	return value_0
+}
+
+func Rows_SpinboxRowControlRole() int32 {
+	var value_0 int32 = 8
+	return value_0
+}
+
 func Rows_InfoRowsMetricsFor(row_height int32, padding_x int32, scale float32, row StyleFrame) InfoRowsMetrics {
 	var metrics InfoRowsMetrics = InfoRowsMetrics{}
 	var value_0 int32 = row_height

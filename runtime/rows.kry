@@ -93,6 +93,42 @@ RowsRequestedMetric :: (requested: i32, fields: u32, field: u32,
     return RowsMetric(fields, field, value, fallback, scale, allow_zero)
 }
 
+InfoRowsTextRole :: () -> i32 #export {
+    return 0
+}
+
+LabelTextFieldLabelRole :: () -> i32 #export {
+    return 1
+}
+
+LabelTextFieldFieldRole :: () -> i32 #export {
+    return 2
+}
+
+SectionLabelRole :: () -> i32 #export {
+    return 3
+}
+
+CheckboxRowRole :: () -> i32 #export {
+    return 4
+}
+
+ButtonRowPrimaryRole :: () -> i32 #export {
+    return 5
+}
+
+ButtonRowSecondaryRole :: () -> i32 #export {
+    return 6
+}
+
+SpinboxRowLabelRole :: () -> i32 #export {
+    return 7
+}
+
+SpinboxRowControlRole :: () -> i32 #export {
+    return 8
+}
+
 InfoRowsMetricsFor :: (row_height: i32, padding_x: i32, scale: float,
     row: StyleFrame) -> InfoRowsMetrics #export {
     metrics: InfoRowsMetrics

@@ -23,6 +23,16 @@ main(void)
     SpinboxRowLayout spinbox_layout;
     Rectangle requested;
 
+    assert(InfoRowsTextRole() == 0);
+    assert(LabelTextFieldLabelRole() == 1);
+    assert(LabelTextFieldFieldRole() == 2);
+    assert(SectionLabelRole() == 3);
+    assert(CheckboxRowRole() == 4);
+    assert(ButtonRowPrimaryRole() == 5);
+    assert(ButtonRowSecondaryRole() == 6);
+    assert(SpinboxRowLabelRole() == 7);
+    assert(SpinboxRowControlRole() == 8);
+
     info = InfoRowsMetricsFor(0, 0, 1.0f, row);
     assert(info.row_height == 32);
     assert(info.padding_x == 10);

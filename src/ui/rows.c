@@ -24,7 +24,8 @@ info_rows_metrics(InfoRowsProps rows)
 {
     return InfoRowsMetricsFor(rows.row_height, rows.padding_x,
                               rows_runtime_scale(),
-                              rows_style_frame(StyleKindText(), 0));
+                              rows_style_frame(StyleKindText(),
+                                               InfoRowsTextRole()));
 }
 
 static LabelTextFieldMetrics
@@ -32,8 +33,9 @@ label_text_field_metrics(LabelTextFieldProps row)
 {
     return LabelTextFieldMetricsFor(
         row.label_h, row.field_h, row.gap, row.bottom_gap,
-        rows_runtime_scale(), rows_style_frame(StyleKindText(), 1),
-        rows_style_frame(StyleKindTextField(), 2));
+        rows_runtime_scale(), rows_style_frame(StyleKindText(),
+                                               LabelTextFieldLabelRole()),
+        rows_style_frame(StyleKindTextField(), LabelTextFieldFieldRole()));
 }
 
 static SectionLabelMetrics
@@ -41,22 +43,26 @@ section_label_metrics(SectionLabelProps label)
 {
     return SectionLabelMetricsFor(label.height, label.icon_diameter,
                                   rows_runtime_scale(),
-                                  rows_style_frame(StyleKindText(), 3));
+                                  rows_style_frame(StyleKindText(),
+                                                   SectionLabelRole()));
 }
 
 static CheckboxRowMetrics
 checkbox_row_metrics(CheckboxRowProps row)
 {
     return CheckboxRowMetricsFor(row.height, rows_runtime_scale(),
-                                 rows_style_frame(StyleKindCheckbox(), 4));
+                                 rows_style_frame(StyleKindCheckbox(),
+                                                  CheckboxRowRole()));
 }
 
 static ButtonRowMetrics
 button_row_metrics(ButtonRowProps row)
 {
     return ButtonRowMetricsFor(row.height, row.gap, rows_runtime_scale(),
-                               rows_style_frame(StyleKindButton(), 5),
-                               rows_style_frame(StyleKindButton(), 6));
+                               rows_style_frame(StyleKindButton(),
+                                                ButtonRowPrimaryRole()),
+                               rows_style_frame(StyleKindButton(),
+                                                ButtonRowSecondaryRole()));
 }
 
 static SpinboxRowMetrics
@@ -64,8 +70,10 @@ spinbox_row_metrics(SpinboxRowProps row)
 {
     return SpinboxRowMetricsFor(row.row_height, row.control_width,
                                 rows_runtime_scale(),
-                                rows_style_frame(StyleKindSpinbox(), 7),
-                                rows_style_frame(StyleKindSpinbox(), 8));
+                                rows_style_frame(StyleKindSpinbox(),
+                                                 SpinboxRowLabelRole()),
+                                rows_style_frame(StyleKindSpinbox(),
+                                                 SpinboxRowControlRole()));
 }
 
 void
