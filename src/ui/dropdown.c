@@ -580,8 +580,15 @@ dropdown_paint_menu(int id)
         IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
         state->scrollbar_pressed, my, max_scroll, metrics.drag_threshold);
     state->scroll_offset = state->gesture.offset;
-    if(Dismiss(state->open, state->just_opened, option_count, h, false, false,
-        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !pointer_in_dropdown))
+    {
+        DropdownTriggerInput trigger_input = {0};
+        DropdownOpenDecision open_decision = DropdownOpenDecisionFor(
+            state->open, false, option_count, false, false, false,
+            trigger_input, h, false, false,
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !pointer_in_dropdown);
+        state->open = open_decision.open;
+    }
+    if(!state->open)
         close_dropdown_state(state);
 
     if(!state->open) return 0;
@@ -771,8 +778,12 @@ ui_dropdown_overlays(void)
                ui_popup_input_snapshot_keyboard_captures(
                    state->input_snapshot))
                 continue;
-            if(Dismiss(state->open, false, state->option_count, state->h,
-                escape_pressed, lost_focus, false))
+            DropdownTriggerInput trigger_input = {0};
+            DropdownOpenDecision open_decision = DropdownOpenDecisionFor(
+                state->open, false, state->option_count, false, false, false,
+                trigger_input, state->h, escape_pressed, lost_focus, false);
+            state->open = open_decision.open;
+            if(open_decision.closed)
                 close_dropdown_state(state);
         }
     }
