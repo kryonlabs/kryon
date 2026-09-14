@@ -21,6 +21,7 @@ main(void)
     ReorderDragMotion motion;
     ReorderLifecycleDecision lifecycle;
     ReorderPressDecision press;
+    ReorderReleaseDecision release;
     ReorderListResult result;
     Rectangle handle;
     ReorderHandlePaint handle_paint;
@@ -205,6 +206,18 @@ main(void)
     assert(!press.can_press);
     press = ReorderPressFor(9, 1, 3, 1, 0, 1, 0);
     assert(!press.can_press);
+    release = ReorderReleaseFor(1, 1);
+    assert(release.capture_input);
+    assert(release.commit);
+    assert(release.cancel_active);
+    release = ReorderReleaseFor(1, 0);
+    assert(release.capture_input);
+    assert(!release.commit);
+    assert(release.cancel_active);
+    release = ReorderReleaseFor(0, 1);
+    assert(!release.capture_input);
+    assert(!release.commit);
+    assert(release.cancel_active);
 
     metrics = (ReorderMetrics){.drag_threshold = 10,
                                .auto_scroll_margin = 20,

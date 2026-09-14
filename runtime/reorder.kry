@@ -17,6 +17,12 @@ ReorderPressDecision :: struct {
     can_press: bool
 }
 
+ReorderReleaseDecision :: struct {
+    capture_input: bool
+    commit: bool
+    cancel_active: bool
+}
+
 ReorderMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -275,6 +281,15 @@ ReorderPressFor :: (list_id: i32, has_items: bool, item_count: i32,
     decision: ReorderPressDecision
     decision.can_press = list_id != 0 && has_items && item_count > 0 &&
         mouse_pressed && !captured && pointer_owner_none && inside_bounds
+    return decision
+}
+
+ReorderReleaseFor :: (mouse_released: bool,
+    was_dragging: bool) -> ReorderReleaseDecision #export {
+    decision: ReorderReleaseDecision
+    decision.capture_input = mouse_released
+    decision.commit = mouse_released && was_dragging
+    decision.cancel_active = true
     return decision
 }
 

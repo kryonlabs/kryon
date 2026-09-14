@@ -18,6 +18,12 @@ type ReorderPressDecision struct {
 	CanPress bool
 }
 
+type ReorderReleaseDecision struct {
+	CaptureInput bool
+	Commit       bool
+	CancelActive bool
+}
+
 func Reorder_ReorderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -810,6 +816,23 @@ func Reorder_ReorderPressFor(list_id int32, has_items bool, item_count int32, mo
 	decision.CanPress = value_16
 	var value_18 ReorderPressDecision = decision
 	return value_18
+}
+
+func Reorder_ReorderReleaseFor(mouse_released bool, was_dragging bool) ReorderReleaseDecision {
+	var decision ReorderReleaseDecision = ReorderReleaseDecision{}
+	var value_0 bool = mouse_released
+	decision.CaptureInput = value_0
+	var value_1 bool = mouse_released
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = was_dragging
+		value_2 = value_3
+	}
+	decision.Commit = value_2
+	var value_4 bool = true
+	decision.CancelActive = value_4
+	var value_5 ReorderReleaseDecision = decision
+	return value_5
 }
 
 func Reorder_ReorderDragMotionFor(pointer_y int32, press_y int32, was_dragging int32, bounds Rectangle, viewport_top int32, viewport_bottom int32, scroll_offset int32, max_scroll int32, metrics ReorderMetrics) ReorderDragMotion {

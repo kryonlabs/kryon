@@ -130,14 +130,17 @@ UpdateReorderList(ReorderList list)
             return result;
         }
 
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        ReorderReleaseDecision release = ReorderReleaseFor(
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+            g_ui_reorder_state.dragging != 0);
+        if(release.capture_input) {
             PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
-            if(g_ui_reorder_state.dragging) {
+            if(release.commit)
                 result = ReorderListCommitResultFor(result, list.item_count);
-            }
         }
-        ui_reorder_cancel();
+        if(release.cancel_active)
+            ui_reorder_cancel();
         return result;
     }
 
