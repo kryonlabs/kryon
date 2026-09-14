@@ -764,6 +764,7 @@ and host plumbing behind the canonical names.
   through `runtime/icon.kry`; desktop layout breakpoint policy now routes
   through `runtime/layout.kry`; default focus outline bounds now route through
   `runtime/focus.kry`; default control shine bounds now route through
+  `runtime/style.kry`; default ripple radius policy now routes through
   `runtime/style.kry`. Continue by reducing raw native constants in shared
   immediate-mode helpers.
 2. Keep prefix cleanup verified:

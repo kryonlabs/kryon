@@ -679,10 +679,8 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
 
     max_radius = sqrtf(bounds.width * bounds.width + bounds.height * bounds.height);
     radius = max_radius * (ripple->age / 0.32f);
-    if(radius < Scale(8))
-        radius = (float)Scale(8);
-    if(radius > max_radius)
-        radius = max_radius;
+    radius = StyleRippleRadius(radius, max_radius,
+                               (float)Scale(1000) / 1000.0f);
     color.a = pressed ? 28 : (unsigned char)(28.0f * (1.0f - ripple->age / 0.32f));
     DrawCircleV(ripple->origin, radius, color);
 #endif

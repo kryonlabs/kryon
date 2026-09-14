@@ -204,6 +204,15 @@ StyleShinePaintFor :: (bounds: Rectangle, radius: float,
     return paint
 }
 
+# Ripple animation timing is native, but radius policy belongs to style.
+StyleRippleRadius :: (radius: float, max_radius: float, scale: float) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    min_radius: float = 8.0 * scale
+    if radius < min_radius { radius = min_radius }
+    if radius > max_radius { radius = max_radius }
+    return radius
+}
+
 StyleData :: struct {
     fields: u32
     background: u32

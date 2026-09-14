@@ -70,6 +70,10 @@ int main(void)
     assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.5f, 32, 1.0f).visible);
     assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.25f, 0, 1.0f).visible);
     assert(!StyleShinePaintFor((Rectangle){10, 20, 3, 3}, 0.25f, 32, 1.0f).visible);
+    assert(StyleRippleRadius(2, 100, 2) == 16);
+    assert(StyleRippleRadius(24, 100, 2) == 24);
+    assert(StyleRippleRadius(120, 100, 2) == 100);
+    assert(StyleRippleRadius(2, 100, 0) == 8);
     StyleData base = {.fields = 8191, .background = 0x102030ff,
         .radius = 8, .opacity = 1, .offset_x = 3, .offset_y = -2};
     StyleData transparent = {.fields = 1 | 16 | 64 | 4096};
