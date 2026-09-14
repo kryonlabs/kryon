@@ -22,6 +22,11 @@ type SelectablePaint struct {
 	DrawFill  bool
 }
 
+type SelectableToggleResult struct {
+	Selected bool
+	Changed  bool
+}
+
 func Selectable_SelectableLabelInset(scale float32, face StyleFrame) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -88,4 +93,15 @@ func Selectable_SelectablePaintFor(spec SelectableSpec) SelectablePaint {
 	paint.FillColor = value_13
 	var value_14 SelectablePaint = paint
 	return value_14
+}
+
+func Selectable_SelectableToggleFor(selected bool, activated bool, has_value bool) SelectableToggleResult {
+	var result SelectableToggleResult
+	result.Selected = selected
+	result.Changed = false
+	if activated && has_value {
+		result.Selected = !selected
+		result.Changed = true
+	}
+	return result
 }

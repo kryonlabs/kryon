@@ -21,6 +21,11 @@ SelectablePaint :: struct {
     draw_fill: bool
 }
 
+SelectableToggleResult :: struct {
+    selected: bool
+    changed: bool
+}
+
 SelectableLabelInset :: (scale: float, face: StyleFrame) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
     inset: float = face.value.padding_x
@@ -39,4 +44,15 @@ SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {
     paint.draw_fill = !spec.disabled && (spec.selected || spec.hovered || spec.pressed)
     paint.fill_color = spec.face.value.background
     return paint
+}
+
+SelectableToggleFor :: (selected: bool, activated: bool, has_value: bool) -> SelectableToggleResult #export {
+    result: SelectableToggleResult
+    result.selected = selected
+    result.changed = false
+    if activated && has_value {
+        result.selected = !selected
+        result.changed = true
+    }
+    return result
 }

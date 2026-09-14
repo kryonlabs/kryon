@@ -768,6 +768,7 @@ test_selectable_paint_policy(void)
         .face = test_style_frame(0x11223344, 0x01020304, 0),
         .label_inset = 8.0f
     });
+    SelectableToggleResult toggle;
 
     check_int("selectable idle fill", idle.draw_fill, 0);
     check_int("selectable label inset", (int)idle.label_x, 18);
@@ -783,6 +784,14 @@ test_selectable_paint_policy(void)
     check_int("selectable hovered color", (int)hovered.fill_color, 0x55667788);
     check_int("selectable disabled fill", disabled.draw_fill, 0);
     check_int("selectable disabled text", (int)disabled.text_color, 0x01020304);
+    toggle = SelectableToggleFor(0, 1, 1);
+    check_int("selectable toggle changed", toggle.changed ? 1 : 0, 1);
+    check_int("selectable toggle selected", toggle.selected ? 1 : 0, 1);
+    toggle = SelectableToggleFor(1, 1, 0);
+    check_int("selectable toggle no value unchanged",
+              toggle.changed ? 1 : 0, 0);
+    check_int("selectable toggle no value selected",
+              toggle.selected ? 1 : 0, 1);
 }
 
 static void

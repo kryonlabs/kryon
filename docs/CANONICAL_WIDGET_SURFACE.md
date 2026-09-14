@@ -109,7 +109,7 @@ surface review:
 | `runtime/rows.kry` | Info/form/button row sizing, wrapping, and layout fallback policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout, gap, font fallback, wrapping, and segment sizing policy | `.kry canonical` |
 | `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
-| `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
+| `runtime/selectable.kry` | Selectable paint/layout and toggle policy | `.kry canonical` |
 | `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
 | `runtime/separator_props.kry` | Separator props | `.kry canonical` |
@@ -498,7 +498,7 @@ should use canonical `.kry` names and blocks.
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, row/text layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
-| `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
+| `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout and toggle policy are in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Public props live in `runtime/progress_props.kry`; prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Public props live in `runtime/color_picker_props.kry`; channel layout, swatch paint geometry, and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; segment typography and paint are KSS-owned; host handles label measurement, focus/input, and button drawing. |
@@ -682,7 +682,7 @@ which concepts deserve dedicated retained node kinds later.
 | `Modal` | `WidgetKindCustom` | `.kry canonical`; layout/frame/action policy lives in `runtime/modal.kry` |
 | `Toolbar` | `WidgetKindCustom` | `.kry canonical`; toolbar, bottom-row layout, and icon slider popup policy lives in `runtime/toolbar.kry` |
 | `Menu` | `WidgetKindCustom` | `.kry canonical`; bar/popup/context metrics and navigation policy live in `runtime/menu.kry` |
-| `Selectable` | `WidgetKindCustom` | `.kry canonical`; paint/layout policy lives in `runtime/selectable.kry` |
+| `Selectable` | `WidgetKindCustom` | `.kry canonical`; paint/layout and toggle policy live in `runtime/selectable.kry` |
 | `StylePicker` | `WidgetKindCustom` | `.kry canonical`; public props and option state live in `runtime/style_picker_props.kry` |
 | `Guide` | `WidgetKindCustom` | `.kry canonical`; guide and pager policy live in `runtime/guide.kry` and `runtime/guide_pager.kry` |
 

@@ -932,12 +932,11 @@ RenderSelectable(SelectableProps selectable)
                                           face.value.opacity)));
     if(focused && IsWindowReady())
         RenderFocus(selectable.bounds);
-    if(pressed) {
-        if(selectable.selected != NULL)
-            *selectable.selected = !*selectable.selected;
-        return 1;
-    }
-    return 0;
+    SelectableToggleResult toggle = SelectableToggleFor(
+        selected != 0, pressed != 0, selectable.selected != NULL);
+    if(toggle.changed && selectable.selected != NULL)
+        *selectable.selected = toggle.selected;
+    return toggle.changed ? 1 : 0;
 }
 
 int
