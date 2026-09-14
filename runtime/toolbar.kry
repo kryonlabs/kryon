@@ -147,6 +147,12 @@ ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: i32,
     return bounds
 }
 
+ToolbarActionStyleIconSize :: (icon_size: i32, scale: float) -> float #export {
+    if icon_size < 0 { icon_size = 0 }
+    if scale <= 0.0 { scale = 1.0 }
+    return (float)icon_size / scale
+}
+
 BottomIconRowLayout :: struct {
     y: i32
     button_width: i32

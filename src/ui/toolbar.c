@@ -82,7 +82,9 @@ RenderToolbar(ToolbarProps toolbar)
             button.style.hover = action_hover;
             button.style.normal.fields |= StyleIconSize;
             button.style.normal.icon_size =
-                (float)layout.action_icon_size * 1000.0f / Scale(1000);
+                ToolbarActionStyleIconSize(
+                    layout.action_icon_size,
+                    (float)Scale(1000) / 1000.0f);
             button.style_kind = StyleKindToolbar();
             button.style_resolved = 1;
             if(!toolbar.actions[i].disabled && ui_button_render(button))

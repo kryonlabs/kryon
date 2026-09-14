@@ -20,6 +20,9 @@ test_toolbar_action_bounds(void)
     assert(first.x == 140.0f);
     assert(first.y == -12.0f);
     assert(second.x == 224.0f);
+    assert(ToolbarActionStyleIconSize(40, 2.0f) == 20.0f);
+    assert(ToolbarActionStyleIconSize(-40, 2.0f) == 0.0f);
+    assert(ToolbarActionStyleIconSize(20, 0.0f) == 20.0f);
 
     layout = ToolbarLayoutFor((ToolbarSpec){
         .x = 0, .y = 0, .width = 120, .height = 32,

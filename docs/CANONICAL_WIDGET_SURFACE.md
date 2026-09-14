@@ -137,7 +137,7 @@ surface review:
 | `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
 | `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
-| `runtime/toolbar.kry` | Toolbar, bottom icon row, and icon slider popup metrics/geometry policy | `.kry canonical` |
+| `runtime/toolbar.kry` | Toolbar, bottom icon row, and icon slider popup metrics/geometry/style-size policy | `.kry canonical` |
 | `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
 | `runtime/toast.kry` | Toast request/render decision, duration, layout, text-placement, and truncation policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
@@ -218,7 +218,7 @@ has a single place to land.
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
 | `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data and bar, popup, and context behavior props are generated from `.kry`. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Item interaction/state, paint, sizing, and configuration modal layout/count policy are `.kry`. |
-| `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry are `.kry`; host dispatches child actions. |
+| `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry/style-size policy are `.kry`; host dispatches child actions. |
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing, scroll, keyboard index, and reorder marker policy are `.kry`; host keeps input sampling. |
 | `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Effective height/state, layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
@@ -582,7 +582,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | Item interaction/state, paint, sizing, and configuration modal layout/count policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
-| `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
+| `Toolbar` | `.kry canonical` | Metrics, geometry, and icon style-size policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable navigation, bar open/index policy, and group pointer open/close decisions are in `.kry`. |
 | `TabBar` | `.kry canonical` | Sizing, scroll, keyboard index, and reorder marker policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Effective height/state, layout, and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
