@@ -24,6 +24,17 @@ TabBarReorderDragDecision :: struct {
     capture_input: bool
 }
 
+TabBarReorderReleaseDecision :: struct {
+    finish: bool
+    consume_release: bool
+}
+
+TabBarTabPointerDecision :: struct {
+    close: bool
+    activate: bool
+    consume_release: bool
+}
+
 TabBarPressCleanupDecision :: struct {
     clear_press: bool
     clear_pointer_owner: bool
@@ -379,6 +390,34 @@ TabBarReorderDragDecisionFor :: (disabled: bool, reorder_enabled: bool,
         abs_dx >= abs_dy
     decision.dragging = drag_active || decision.start_drag
     decision.capture_input = decision.dragging
+    return decision
+}
+
+TabBarReorderReleaseDecisionFor :: (disabled: bool, reorder_enabled: bool,
+    owns_drag: bool, released: bool, press_index: i32,
+    count: i32) -> TabBarReorderReleaseDecision #export {
+    decision: TabBarReorderReleaseDecision
+    decision.finish = !disabled && reorder_enabled && owns_drag && released &&
+        press_index >= 0 && press_index < count
+    decision.consume_release = decision.finish
+    return decision
+}
+
+TabBarTabPointerDecisionFor :: (close_active: bool, released: bool,
+    owns_drag: bool, press_matches: bool) -> TabBarTabPointerDecision #export {
+    decision: TabBarTabPointerDecision
+    if !released || owns_drag {
+        return decision
+    }
+    if close_active {
+        decision.close = true
+        decision.consume_release = true
+        return decision
+    }
+    if press_matches {
+        decision.activate = true
+        decision.consume_release = true
+    }
     return decision
 }
 

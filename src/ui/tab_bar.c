@@ -628,7 +628,18 @@ RenderTabBar(TabBarProps bar)
                 tab_bar_store->reorder_drag_active = 0;
             }
 
-            if(close_active && released && !owns_drag) {
+            int press_matches =
+                tab_bar_store->press_index < 0 ||
+                (ui_tab_bar_same_identity(bar.id,bar.bounds,
+                                          tab_bar_store->press_bar_id,
+                                          tab_bar_store->press_bar_bounds) &&
+                 tab_bar_store->press_index == i);
+            TabBarTabPointerDecision pointer_decision =
+                TabBarTabPointerDecisionFor(close_active != 0, released != 0,
+                                            owns_drag != 0,
+                                            press_matches != 0);
+
+            if(pointer_decision.close) {
                 clicked_tab = -1;
                 if(bar.closed_index != NULL)
                     *bar.closed_index = i;
@@ -637,13 +648,7 @@ RenderTabBar(TabBarProps bar)
                 tab_bar_store->last_clicked_bar_bounds =
                     (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
                 tab_bar_store->last_click_time = 0.0;
-                ConsumeRelease();
-            } else if(!close_active && released && !owns_drag &&
-                      (tab_bar_store->press_index < 0 ||
-                       (ui_tab_bar_same_identity(bar.id,bar.bounds,
-                                                 tab_bar_store->press_bar_id,
-                                                 tab_bar_store->press_bar_bounds) &&
-                        tab_bar_store->press_index == i))) {
+            } else if(pointer_decision.activate) {
                 double now = GetTime();
 
                 if(bar.double_clicked_index != NULL &&
@@ -665,6 +670,8 @@ RenderTabBar(TabBarProps bar)
                     focused = 1;
                 }
             }
+            if(pointer_decision.consume_release)
+                ConsumeRelease();
         }
 
         if(can_draw && focused &&
@@ -682,9 +689,11 @@ RenderTabBar(TabBarProps bar)
                                            tab_bar_store->press_bar_id,
                                            tab_bar_store->press_bar_bounds);
     owns_drag = tab_bar_store->reorder_drag_active && owns_press;
-    if(!disabled && reorder_enabled && owns_drag && released &&
-       tab_bar_store->press_index >= 0 &&
-       tab_bar_store->press_index < bar.count) {
+    TabBarReorderReleaseDecision reorder_release =
+        TabBarReorderReleaseDecisionFor(disabled != 0, reorder_enabled != 0,
+                                        owns_drag != 0, released != 0,
+                                        tab_bar_store->press_index, bar.count);
+    if(reorder_release.finish) {
         int target = drag_target;
 
         if(target < 0)
@@ -698,7 +707,8 @@ RenderTabBar(TabBarProps bar)
             *bar.reordered_to_index = target;
         }
         clicked_tab = -1;
-        ConsumeRelease();
+        if(reorder_release.consume_release)
+            ConsumeRelease();
     }
     TabBarPressCleanupDecision cleanup_decision =
         TabBarPressCleanupDecisionFor(
@@ -757,8 +767,6 @@ RenderTabBar(TabBarProps bar)
         }
     }
 
-    if(clicked_tab >= 0)
-        ConsumeRelease();
     return clicked_tab;
 }
 

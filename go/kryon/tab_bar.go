@@ -25,6 +25,17 @@ type TabBarReorderDragDecision struct {
 	CaptureInput bool
 }
 
+type TabBarReorderReleaseDecision struct {
+	Finish         bool
+	ConsumeRelease bool
+}
+
+type TabBarTabPointerDecision struct {
+	Close          bool
+	Activate       bool
+	ConsumeRelease bool
+}
+
 type TabBarPressCleanupDecision struct {
 	ClearPress        bool
 	ClearPointerOwner bool
@@ -1064,6 +1075,79 @@ func TabBar_TabBarReorderDragDecisionFor(disabled bool, reorder_enabled bool, ow
 	decision.CaptureInput = value_44
 	var value_45 TabBarReorderDragDecision = decision
 	return value_45
+}
+
+func TabBar_TabBarReorderReleaseDecisionFor(disabled bool, reorder_enabled bool, owns_drag bool, released bool, press_index int32, count int32) TabBarReorderReleaseDecision {
+	var decision TabBarReorderReleaseDecision = TabBarReorderReleaseDecision{}
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = reorder_enabled
+		value_2 = value_3
+	}
+	var value_4 bool = value_2
+	if value_4 {
+		var value_5 bool = owns_drag
+		value_4 = value_5
+	}
+	var value_6 bool = value_4
+	if value_6 {
+		var value_7 bool = released
+		value_6 = value_7
+	}
+	var value_8 bool = value_6
+	if value_8 {
+		var value_9 int32 = press_index
+		var value_10 int32 = 0
+		var value_11 bool = value_9 >= value_10
+		value_8 = value_11
+	}
+	var value_12 bool = value_8
+	if value_12 {
+		var value_13 int32 = press_index
+		var value_14 int32 = count
+		var value_15 bool = value_13 < value_14
+		value_12 = value_15
+	}
+	decision.Finish = value_12
+	var value_16 bool = decision.Finish
+	decision.ConsumeRelease = value_16
+	var value_17 TabBarReorderReleaseDecision = decision
+	return value_17
+}
+
+func TabBar_TabBarTabPointerDecisionFor(close_active bool, released bool, owns_drag bool, press_matches bool) TabBarTabPointerDecision {
+	var decision TabBarTabPointerDecision = TabBarTabPointerDecision{}
+	var value_0 bool = released
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = owns_drag
+		value_2 = value_3
+	}
+	if value_2 {
+		var value_4 TabBarTabPointerDecision = decision
+		return value_4
+	}
+	var value_5 bool = close_active
+	if value_5 {
+		var value_6 bool = true
+		decision.Close = value_6
+		var value_7 bool = true
+		decision.ConsumeRelease = value_7
+		var value_8 TabBarTabPointerDecision = decision
+		return value_8
+	}
+	var value_9 bool = press_matches
+	if value_9 {
+		var value_10 bool = true
+		decision.Activate = value_10
+		var value_11 bool = true
+		decision.ConsumeRelease = value_11
+	}
+	var value_12 TabBarTabPointerDecision = decision
+	return value_12
 }
 
 func TabBar_TabBarPressCleanupDecisionFor(released bool, pointer_down bool, owns_press bool, pointer_owner_is_reorder bool) TabBarPressCleanupDecision {
