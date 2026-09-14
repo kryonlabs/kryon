@@ -20,23 +20,23 @@ Update this file whenever a phase advances. Files 01-09 describe the target desi
 | 2 | Canonical grouped token syntax | done | all four packs use `tokens { ... }` blocks |
 | 2 | Lightfield glow variant API | pending | glow folded into the catalog; explicit `@pack option` syntax not landed |
 | 2 | Makefile gates | done | `kss-parser-test`, `style-assets-test`, `style-builtins-test`, `go-style-builtins[-check]` targets exist |
-| 3 | Widget facts helpers | started | only `runtime/toast.kry` (`ToastSurfaceFactsFor`, `ToastLabelFactsFor`) |
+| 3 | Widget facts helpers | in progress | done: `runtime/toast.kry`, `runtime/table_view.kry` (`TableViewFactsFor`, `TableViewRoleFactsFor`); NavigationBar, PanedView handle, button generic path remain |
 | 4 | Zero visual base | pending | six nonzero bases remain (list below) |
 | 5 | Metrics/paint policy in `.kry` | partial | reorder, scroll/link/tab-bar release consumption, text input resolution migrated |
 | 6 | Parser cleanup | partial | canonical syntax shipped in packs; legacy `@token` prefix removal, source maps, formatter pending |
-| 7 | Runtime/backend parity | partial | Go still mirrors TableView with direct facts (`go/kryon/runtime.go:6238`) |
+| 7 | Runtime/backend parity | partial | Go TableView path now uses generated facts helpers; Go generic control path remains (`runtime.go:1747`) |
 | 8 | Tooling/inspector | pending | capture boards and inspector phases not verified |
 | 9 | Downstream | partial | 15 of 27 `examples/*.kry` attach `#style` |
 | 10 | Legacy deletion | pending | theme getters, visual props, legacy syntax all still present |
 
 ## Remaining Direct Facts Construction (Phase 3 Queue)
 
-- `src/ui/ui_tk.c:3614-3627` - TableView table/header/cell/divider frames (4 sites)
 - `src/ui/navigation_bar.c:255` - NavigationBar role frames
 - `src/ui/tab_bar.c:778` - PanedView handle frame
 - `src/ui/button.c:33` - generic control facts path (decide: shared `.kry` helper or widget-local)
 - `go/kryon/runtime.go:1747` - `resolveMinimalControlRoleState` generic helper
-- `go/kryon/runtime.go:6238` - `tableViewMetricFrame`
+
+Done: TableView (`src/ui/ui_tk.c` and `go/kryon/runtime.go` now call `TableViewFactsFor`/`TableViewRoleFactsFor`).
 
 Tests that construct `StyleControlFacts` directly are valid and stay.
 
@@ -53,7 +53,7 @@ Tests that construct `StyleControlFacts` directly are valid and stay.
 
 Next commits, in order:
 
-1. TableView facts helper in `runtime/table_view.kry` (C `ui_tk.c` sites + Go `runtime.go:6238` in one commit).
+1. [done 2026-09-14] TableView facts helper in `runtime/table_view.kry` (C `ui_tk.c` sites + Go `runtime.go` in one commit).
 2. NavigationBar facts helper (C `navigation_bar.c` + Go retained path).
 3. PanedView handle facts helper (`tab_bar.c`).
 4. Button generic facts path decision (`button.c` + `resolveMinimalControlRoleState`).

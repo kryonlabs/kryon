@@ -6227,16 +6227,16 @@ func tableViewMetrics(props TableViewProps) TableViewMetrics {
 	if props.Disabled {
 		state = ButtonStateDisabled
 	}
-	tableFrame := tableViewMetricFrame(props.ClassName, state, StyleSheet_StyleAny())
-	headerFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewHeaderRole())
-	cellFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewCellRole())
-	dividerFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewDividerRole())
+	tableFrame := StyleFrame{Value: ResolveActiveStyle(StyleData{},
+		TableView_TableViewFactsFor(props.ClassName, int32(state)), int32(state))}
+	headerFrame := tableViewRoleFrame(props.ClassName, state, TableView_TableViewHeaderRole())
+	cellFrame := tableViewRoleFrame(props.ClassName, state, TableView_TableViewCellRole())
+	dividerFrame := tableViewRoleFrame(props.ClassName, state, TableView_TableViewDividerRole())
 	return TableView_TableViewMetricsFor(1, tableFrame, headerFrame, cellFrame, dividerFrame)
 }
 
-func tableViewMetricFrame(className int32, state ButtonState, role int32) StyleFrame {
-	facts := StyleSheet_StyleControlRoleFacts(StyleSheet_StyleKindTableView(), 0, className,
-		role, int32(ButtonToneNeutral), int32(ButtonEmphasisSoft), int32(ControlSizeMedium), int32(state))
+func tableViewRoleFrame(className int32, state ButtonState, role int32) StyleFrame {
+	facts := TableView_TableViewRoleFactsFor(className, role, int32(state))
 	value := ResolveActiveStyle(StyleData{}, facts, int32(state))
 	return StyleFrame{Value: value}
 }

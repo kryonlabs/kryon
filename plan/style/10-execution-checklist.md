@@ -66,7 +66,7 @@ Tasks:
 
 Priority (remaining call sites from `00-status.md`):
 
-1. TableView - `src/ui/ui_tk.c:3614-3627`, `go/kryon/runtime.go:6238`
+1. [done 2026-09-14] TableView - `src/ui/ui_tk.c`, `go/kryon/runtime.go`
 2. NavigationBar - `src/ui/navigation_bar.c:255`
 3. PanedView handle - `src/ui/tab_bar.c:778`
 4. Button generic facts path - `src/ui/button.c:33`, `go/kryon/runtime.go:1747`
@@ -75,7 +75,7 @@ Priority (remaining call sites from `00-status.md`):
 7. Toolbar/TitleBar
 8. Remaining smaller widgets
 
-Done: toast facts helpers in `runtime/toast.kry`.
+Done: toast facts helpers in `runtime/toast.kry`; table view facts helpers in `runtime/table_view.kry`.
 
 Evidence:
 

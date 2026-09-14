@@ -713,8 +713,8 @@ tree-view-policy-test: $(GENERATED_SRC_DIR)/runtime/tree_view.c $(GENERATED_SRC_
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/tree_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/tree_view.c -lm -o $(TREE_VIEW_POLICY_TEST)
 	$(TREE_VIEW_POLICY_TEST)
 
-table-view-policy-test: $(GENERATED_SRC_DIR)/runtime/table_view.c $(GENERATED_SRC_DIR)/runtime/table_view.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/table_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/table_view.c -lm -o $(TABLE_VIEW_POLICY_TEST)
+table-view-policy-test: $(GENERATED_SRC_DIR)/runtime/table_view.c $(GENERATED_SRC_DIR)/runtime/table_view.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/table_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/table_view.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $(TABLE_VIEW_POLICY_TEST)
 	$(TABLE_VIEW_POLICY_TEST)
 
 primitive-policy-test: $(GENERATED_SRC_DIR)/runtime/primitive.c $(GENERATED_SRC_DIR)/runtime/primitive.h
