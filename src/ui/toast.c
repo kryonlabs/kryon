@@ -43,15 +43,19 @@ void
 Toast(ToastProps props)
 {
     ToastMetrics metrics = ToastMetricsFor(1.0f, (StyleFrame){0});
+    ToastRequestDecision decision = ToastRequestDecisionFor(
+        props.message != NULL && props.message[0] != '\0',
+        (float)props.seconds, metrics);
 
-    if(props.message == NULL || props.message[0] == '\0') {
+    if(decision.clear) {
         ClearToast();
         return;
     }
+    if(!decision.show)
+        return;
     copy_toast_message(props.message);
     toast_class_name = props.class_name;
-    toast_until = GetTime() + (double)ToastDuration((float)props.seconds,
-                                                    metrics);
+    toast_until = GetTime() + (double)decision.seconds;
 }
 
 void
@@ -66,13 +70,15 @@ RenderToast(void)
     int content_w;
     char display[TOAST_MESSAGE_SIZE];
     ToastTruncation truncation;
+    ToastRenderDecision decision = ToastRenderDecisionFor(
+        toast_message[0] != '\0', (float)GetTime(), (float)toast_until);
 
-    if(toast_message[0] == '\0')
-        return;
-    if(GetTime() >= toast_until) {
+    if(decision.clear) {
         ClearToast();
         return;
     }
+    if(!decision.render)
+        return;
 
     StyleData base = {.fields = (uint32_t)(StyleOpacity | StyleFontSize |
                                            StyleMaterial),

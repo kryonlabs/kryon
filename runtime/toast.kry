@@ -21,6 +21,17 @@ ToastTruncation :: struct {
     ellipsis: bool
 }
 
+ToastRequestDecision :: struct {
+    show: bool
+    clear: bool
+    seconds: float
+}
+
+ToastRenderDecision :: struct {
+    render: bool
+    clear: bool
+}
+
 ToastMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -43,6 +54,29 @@ ToastMetricsFor :: (scale: float, frame: StyleFrame) -> ToastMetrics #export {
 ToastDuration :: (seconds: float, metrics: ToastMetrics) -> float #export {
     if seconds <= 0.0 { return metrics.default_seconds }
     return seconds
+}
+
+ToastRequestDecisionFor :: (has_message: bool, seconds: float,
+    metrics: ToastMetrics) -> ToastRequestDecision #export {
+    decision: ToastRequestDecision
+    if !has_message {
+        decision.clear = true
+        return decision
+    }
+    decision.show = true
+    decision.seconds = ToastDuration(seconds, metrics)
+    return decision
+}
+
+ToastRenderDecisionFor :: (has_message: bool, now_seconds: float,
+    until_seconds: float) -> ToastRenderDecision #export {
+    decision: ToastRenderDecision
+    if !has_message || now_seconds >= until_seconds {
+        decision.clear = true
+        return decision
+    }
+    decision.render = true
+    return decision
 }
 
 ToastTruncationFor :: (text_len: i32, fits: bool) -> ToastTruncation #export {

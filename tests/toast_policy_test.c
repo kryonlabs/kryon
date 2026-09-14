@@ -20,6 +20,8 @@ main(void)
     ToastMetrics metrics = ToastMetricsFor(2.0f, frame);
     ToastLayout layout;
     ToastTruncation truncation;
+    ToastRequestDecision request;
+    ToastRenderDecision render;
 
     assert(metrics.pad_x == 28);
     assert(metrics.pad_y == 20);
@@ -27,6 +29,25 @@ main(void)
     assert(fabsf(metrics.default_seconds - 3.0f) < 0.001f);
     assert(fabsf(ToastDuration(0.0f, metrics) - 3.0f) < 0.001f);
     assert(fabsf(ToastDuration(2.5f, metrics) - 2.5f) < 0.001f);
+    request = ToastRequestDecisionFor(false, 2.5f, metrics);
+    assert(!request.show);
+    assert(request.clear);
+    request = ToastRequestDecisionFor(true, 0.0f, metrics);
+    assert(request.show);
+    assert(!request.clear);
+    assert(fabsf(request.seconds - 3.0f) < 0.001f);
+    request = ToastRequestDecisionFor(true, 2.5f, metrics);
+    assert(request.show);
+    assert(fabsf(request.seconds - 2.5f) < 0.001f);
+    render = ToastRenderDecisionFor(false, 1.0f, 2.0f);
+    assert(!render.render);
+    assert(render.clear);
+    render = ToastRenderDecisionFor(true, 1.0f, 2.0f);
+    assert(render.render);
+    assert(!render.clear);
+    render = ToastRenderDecisionFor(true, 2.0f, 2.0f);
+    assert(!render.render);
+    assert(render.clear);
     assert(ToastMaxWidth(640, metrics) == 568);
     assert(ToastContentWidth(640, metrics) == 512);
     truncation = ToastTruncationFor(12, true);
