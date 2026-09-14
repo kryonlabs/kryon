@@ -3366,17 +3366,14 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
         return;
     content_h = ui_text_area_content_height(
         area.text, font, line_gap, wrap_width, area.content_version, 1);
-    max_scroll = content_h - viewport_h;
-    if(max_scroll < 0)
-        max_scroll = 0;
+    max_scroll = TextAreaMaxScrollFor(content_h, area.bounds.height,
+                                      padding_y);
     scroll_y = ui_clampi(*area.scroll_y, 0, max_scroll);
     cursor_h = TextLineHeight(font);
     cursor_y = ui_text_area_cursor_y(area.text, cursor, font, line_gap,
                                      wrap_width, &cursor_h);
-    if(cursor_y < scroll_y)
-        scroll_y = cursor_y;
-    else if(cursor_y + cursor_h > scroll_y + viewport_h)
-        scroll_y = cursor_y + cursor_h - viewport_h;
+    scroll_y = TextAreaRevealScroll(scroll_y, cursor_y, cursor_h,
+                                    viewport_h);
     *area.scroll_y = ui_clampi(scroll_y, 0, max_scroll);
 }
 
