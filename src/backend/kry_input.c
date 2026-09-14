@@ -59,6 +59,7 @@ kry_android_prepare_input_poll(void)
 #ifdef KRYON_BACKEND_RAYLIB
 #include <SDL.h>
 
+static Uint32 sdl_core_window_id;
 static SDL_atomic_t sdl_pending_press[8];
 static SDL_atomic_t sdl_pending_release[8];
 static int sdl_frame_press[8];
@@ -72,8 +73,7 @@ sdl_pointer_event(void *userdata, SDL_Event *event)
     (void)userdata;
     if(event->type != SDL_MOUSEBUTTONDOWN && event->type != SDL_MOUSEBUTTONUP)
         return 1;
-    SDL_Window *window = (SDL_Window *)GetWindowHandle();
-    if(window == NULL || event->button.windowID != SDL_GetWindowID(window))
+    if(sdl_core_window_id == 0 || event->button.windowID != sdl_core_window_id)
         return 1;
     int button = event->button.button - 1;
     if(event->button.button == SDL_BUTTON_RIGHT)
@@ -92,6 +92,8 @@ sdl_pointer_event(void *userdata, SDL_Event *event)
 void
 kry_sdl_prepare_input_poll(void)
 {
+    SDL_Window *window = SDL_GL_GetCurrentWindow();
+    sdl_core_window_id = window != NULL ? SDL_GetWindowID(window) : 0;
     /* Reinstall after a possible window/SDL restart without duplicating watches. */
     SDL_DelEventWatch(sdl_pointer_event, NULL);
     SDL_AddEventWatch(sdl_pointer_event, NULL);

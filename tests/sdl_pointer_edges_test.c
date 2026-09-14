@@ -31,8 +31,10 @@ main(void)
     InitWindow(200, 160, "Pointer edge regression");
     SetTargetFPS(0);
     frame();
-    SDL_Window *native_window = (SDL_Window *)GetWindowHandle();
+    SDL_Window *native_window = SDL_GL_GetCurrentWindow();
+    assert(native_window != NULL);
     Uint32 window = SDL_GetWindowID(native_window);
+    assert(window != 0);
     SDL_Event motion = {0};
     motion.type = SDL_MOUSEMOTION;
     motion.motion.windowID = window;
