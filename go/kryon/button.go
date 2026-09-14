@@ -681,6 +681,29 @@ func Button_ButtonFallbackPolicyFor(hovered bool, pressed bool, disabled bool, c
 	return value_30
 }
 
+func Button_ButtonDrawRadiusFor(fields uint32, radius float32, fallback ButtonFallbackPolicy) float32 {
+	var value_0 uint32 = fields
+	var value_1 int32 = int32(StyleRadius)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_4 int32 = 0
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 bool = value_3 == value_5
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 float32 = radius
+		var value_9 float32 = 0.0
+		var value_10 bool = value_8 < value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 float32 = fallback.Radius
+		return value_11
+	}
+	var value_12 float32 = radius
+	return value_12
+}
+
 func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {
 	var value_0 bool = clicked
 	if value_0 {

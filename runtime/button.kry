@@ -290,6 +290,14 @@ ButtonFallbackPolicyFor :: (hovered: bool, pressed: bool, disabled: bool,
     return policy
 }
 
+ButtonDrawRadiusFor :: (fields: u32, radius: float,
+    fallback: ButtonFallbackPolicy) -> float #export {
+    if (fields & (u32)StyleRadius) == (u32)0 || radius < 0.0 {
+        return fallback.radius
+    }
+    return radius
+}
+
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {
     if clicked { return !open }
     return open

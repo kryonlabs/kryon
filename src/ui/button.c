@@ -324,8 +324,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     border = button.paint.border.a != 0 ? button.paint.border
              : LightenColor(background,
                             fallback_policy.fallback_border_lighten);
-    radius = button.paint.radius > 0.0f ? button.paint.radius
-             : fallback_policy.radius;
+    radius = ButtonDrawRadiusFor(button.paint.fields, button.paint.radius,
+                                 fallback_policy);
     draw_bounds = button.props.bounds;
     if(button.props.invisible) {
         if(focused)

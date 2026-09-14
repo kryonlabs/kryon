@@ -547,6 +547,14 @@ test_button_policy(void)
     fallback_policy = ButtonFallbackPolicyFor(false, false, false, false,
                                               false);
     check_float("button fallback radius", fallback_policy.radius, 0.06f);
+    check_float("button missing radius fallback",
+                ButtonDrawRadiusFor(0, 0.0f, fallback_policy), 0.06f);
+    check_float("button explicit zero radius",
+                ButtonDrawRadiusFor(StyleRadius, 0.0f, fallback_policy), 0.0f);
+    check_float("button negative radius fallback",
+                ButtonDrawRadiusFor(StyleRadius, -1.0f, fallback_policy), 0.06f);
+    check_float("button styled radius",
+                ButtonDrawRadiusFor(StyleRadius, 7.0f, fallback_policy), 7.0f);
     check_int("button fallback disabled background alpha",
               fallback_policy.disabled_background_alpha, 120);
     check_int("button fallback border light", fallback_policy.fallback_border_lighten,
