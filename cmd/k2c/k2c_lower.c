@@ -1558,8 +1558,9 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     }
     /* Block widgets lower to host-hook calls (ScrollScope, RenderImage, ...)
      * from plain functions too, not only #ui functions. The prototypes use
-     * public widget types, so they come after the module's includes; unused
+     * public widget types, so pull the tree surface in first; unused
      * prototypes are harmless. */
+    fputs("#include \"ui_tree.h\"\n", c);
     emit_ui_host_hook_prototypes(c);
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     /* Kry module constants lowered to C preprocessor constants. */
