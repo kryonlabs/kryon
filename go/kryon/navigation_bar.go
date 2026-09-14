@@ -1384,25 +1384,23 @@ func NavigationBar_NavigationBarItemPaintFor(spec NavigationBarItemSpec) Navigat
 	if value_218 {
 		var value_219 uint32 = paint.Face.Value.Foreground
 		paint.IconColor = value_219
-		var value_220 uint32 = paint.Face.Value.Foreground
-		paint.TextColor = value_220
 	}
-	var value_221 bool = spec.Active
-	var value_222 bool = !value_221
-	if value_222 {
-		var value_223 float32 = 0.45
-		paint.Face.Value.Opacity = value_223
+	var value_220 bool = spec.Active
+	var value_221 bool = !value_220
+	if value_221 {
+		var value_222 float32 = 0.45
+		paint.Face.Value.Opacity = value_222
 	}
-	var value_224 bool = spec.Disabled
-	var value_225 int32 = 0
-	if value_224 {
-		var value_226 int32 = 150
-		value_225 = value_226
+	var value_223 bool = spec.Disabled
+	var value_224 int32 = 0
+	if value_223 {
+		var value_225 int32 = 150
+		value_224 = value_225
 	} else {
-		var value_227 int32 = 255
-		value_225 = value_227
+		var value_226 int32 = 255
+		value_224 = value_226
 	}
-	paint.IconAlpha = value_225
-	var value_228 NavigationBarItemPaint = paint
-	return value_228
+	paint.IconAlpha = value_224
+	var value_227 NavigationBarItemPaint = paint
+	return value_227
 }

@@ -455,7 +455,6 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.text_color = spec.base.value.foreground
     if spec.active {
         paint.icon_color = paint.face.value.foreground
-        paint.text_color = paint.face.value.foreground
     }
     if !spec.active {
         paint.face.value.opacity = 0.45

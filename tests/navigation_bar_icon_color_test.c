@@ -393,6 +393,22 @@ main(void)
         check_int("compact navigation bar zero label width uses KSS",
                   (int)item_paint.label_bounds.width, 225);
 
+        StyleFrame selected = item;
+        selected.value.foreground = 0x101010ff;
+        item.value.foreground = 0xf0f0f0ff;
+        item_paint = NavigationBarItemPaintFor((NavigationBarItemSpec){
+            .bar = paint,
+            .index = 1,
+            .active = true,
+            .label_height = TextLineHeight(GetSmallFontSize()),
+            .base = item,
+            .face = selected,
+        });
+        check_true("selected icon uses badge foreground",
+                   item_paint.icon_color == selected.value.foreground);
+        check_true("label below badge keeps bar foreground",
+                   item_paint.text_color == item.value.foreground);
+
         paint = NavigationBarPaintFor((NavigationBarSpec){
             .view_width = 900,
             .view_height = 720,
