@@ -789,6 +789,7 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
     char editor_id[96];
     Widget widget;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
+    disabled = disabled || value == NULL;
     int checked = value != NULL && *value;
     StyleFrame label_frame = ui_checkbox_label_style_frame(
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, checked);
@@ -833,9 +834,15 @@ DrawDisabledCheckboxToggle(int x, int y, const char *label,
     if(interaction.active)
         MarkClickable();
 
-    pressed = interaction.activated;
+    {
+        CheckboxValueResult toggle = CheckboxValueApply(
+            checked != 0, interaction.activated != 0, value != NULL);
+        pressed = toggle.changed;
+        checked = toggle.checked;
+        if(toggle.changed && value != NULL)
+            *value = toggle.checked ? 1 : 0;
+    }
     if(pressed) {
-        *value = !(*value);
         ConsumeRelease();
     }
     if(!can_draw) {
