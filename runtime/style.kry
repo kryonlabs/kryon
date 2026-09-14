@@ -195,7 +195,7 @@ StyleData :: struct {
     offset_x: float
     offset_y: float
     background_end: u32
-    material: i32
+    material: MaterialKind
     typeface: string
     letter_spacing: float
 }

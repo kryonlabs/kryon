@@ -73,7 +73,7 @@ Button.material-light:hover { background: #123456; material: Lightfield; }`, "Ma
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus} {
 		props.State = state
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-		if MaterialKind(frame.Button.Material.Value.Material) != MaterialFlat {
+		if frame.Button.Material.Value.Material != MaterialFlat {
 			t.Fatal("resolved material did not reach the renderer")
 		}
 		img := RenderFrame(100, 60, []FrameOp{frame})
@@ -91,18 +91,18 @@ Button.material-light:hover { background: #123456; material: Lightfield; }`, "Ma
 	props.ClassName = StyleClassID("material-light")
 	props.State = ButtonStateHover
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-	if MaterialKind(frame.Button.Material.Value.Material) != MaterialLightfield {
+	if frame.Button.Material.Value.Material != MaterialLightfield {
 		t.Fatal("explicit zero-valued Lightfield did not replace inherited flat material")
 	}
 }
 
 func TestFlatMaterialLayersPreserveAlphaAndFocus(t *testing.T) {
-	if Surface_MaterialLayerCount(int32(MaterialFlat)) != 3 || Surface_MaterialLayerCount(int32(MaterialLightfield)) != 12 {
+	if Surface_MaterialLayerCount(MaterialFlat) != 3 || Surface_MaterialLayerCount(MaterialLightfield) != 12 {
 		t.Fatal("material layer counts do not match their definitions")
 	}
 	for _, alpha := range []uint32{0, 128, 255} {
-		for index := int32(0); index < Surface_MaterialLayerCount(int32(MaterialLightfield)); index++ {
-			layer := Surface_MaterialLayer(1, index, 80, 40, 8, 2,
+		for index := int32(0); index < Surface_MaterialLayerCount(MaterialLightfield); index++ {
+			layer := Surface_MaterialLayer(MaterialFlat, index, 80, 40, 8, 2,
 				0x12345600|alpha, 0x789abc00|alpha, 0xffffffff, 0xff000000|alpha,
 				1, 1, 1, false, 1, 0x092039ff)
 			if layer.Blur != 0 || layer.InnerBlur != 0 || layer.X != 0 || layer.Y != 0 {
@@ -113,7 +113,7 @@ func TestFlatMaterialLayersPreserveAlphaAndFocus(t *testing.T) {
 			}
 		}
 	}
-	if Surface_MaterialOffset(1, 1, 1, false) != 0 {
+	if Surface_MaterialOffset(MaterialFlat, 1, 1, false) != 0 {
 		t.Fatal("flat content acquired an elevation offset")
 	}
 }
@@ -122,7 +122,7 @@ func TestMaterialDrawingCoordinatesAndFill(t *testing.T) {
 	paint := Material_PrepareMaterial(MaterialPaint{
 		Bounds:  Rectangle{X: 50, Y: 20, Width: 80, Height: 40},
 		Surface: Rectangle{X: 10, Y: 20, Width: 160, Height: 40}, Scale: 2,
-		Value: StyleData{Material: int32(MaterialFlat), Radius: 4, Opacity: 1,
+		Value: StyleData{Material: MaterialFlat, Radius: 4, Opacity: 1,
 			Fields: uint32(StyleBackgroundEnd), Background: 0x12345600, BackgroundEnd: 0xabcdef80},
 	})
 	command := Material_PaintMaterialLayer(paint, 0)

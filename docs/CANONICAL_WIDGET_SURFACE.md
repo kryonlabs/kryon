@@ -77,7 +77,7 @@ surface review:
 | `runtime/link_props.kry` | Link props | `.kry canonical` |
 | `runtime/list_box.kry` | ListBox layout/navigation and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
-| `runtime/material.kry` | Material layer assembly | `.kry canonical` |
+| `runtime/material.kry` | Material layer assembly with typed `MaterialKind` policy | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics, geometry, selectable navigation, and bar open/index policy | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
 | `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
@@ -495,7 +495,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Bevel` | Native canonical | Primitive drawing effect unless replaced by surface props. |
 | `Icon` | `.kry canonical` | Bounds/size policy is in `.kry`; icon sheet/type surface is `IconType` with C `ICON_*` values and Go `kr.IconHome`-style constants. |
 | `Image` | `.kry canonical` | Canonical image widget. |
-| `Surface` | `.kry canonical` | Material/container paint helper; layer assembly policy is in `.kry`. |
+| `Surface` | `.kry canonical` | Material/container paint helper; layer assembly policy is in `.kry`; material selection uses `MaterialKind`, not raw integers. |
 | `Bullet` | `.kry canonical` | Bullet geometry and paint policy are in `.kry`; keep as a small primitive unless list item props absorb it. |
 
 ## Controls

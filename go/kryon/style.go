@@ -33,7 +33,7 @@ type StyleData struct {
 	OffsetX       float32
 	OffsetY       float32
 	BackgroundEnd uint32
-	Material      int32
+	Material      MaterialKind
 	Typeface      string
 	LetterSpacing float32
 }
@@ -840,7 +840,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
 	var value_126 bool = value_123 != value_125
 	if value_126 {
-		var value_127 int32 = override.Material
+		var value_127 MaterialKind = MaterialKind(override.Material)
 		base.Material = value_127
 	}
 	var value_128 uint32 = override.Fields

@@ -1250,7 +1250,7 @@ func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float
 	var layer int32 = value_0
 	for {
 		var value_1 int32 = layer
-		var value_2 int32 = frame.Material.Value.Material
+		var value_2 MaterialKind = MaterialKind(frame.Material.Value.Material)
 		var value_3 int32 = Surface_MaterialLayerCount(value_2)
 		var value_4 bool = value_1 < value_3
 		if !value_4 {

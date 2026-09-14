@@ -60,7 +60,7 @@ func Material_MaterialContentBounds(paint MaterialPaint) Rectangle {
 	var value_0 Rectangle = paint.Bounds
 	var result Rectangle = value_0
 	var value_1 float32 = result.Y
-	var value_2 int32 = paint.Value.Material
+	var value_2 MaterialKind = MaterialKind(paint.Value.Material)
 	var value_3 float32 = paint.Hover
 	var value_4 float32 = paint.Press
 	var value_5 bool = paint.Disabled
@@ -76,7 +76,7 @@ func Material_PaintMaterialLayer(paint MaterialPaint, index int32) SurfaceDrawin
 	var result SurfaceDrawing = SurfaceDrawing{}
 	var value_0 StyleData = paint.Value
 	var value StyleData = value_0
-	var value_1 int32 = value.Material
+	var value_1 MaterialKind = MaterialKind(value.Material)
 	var value_2 int32 = index
 	var value_3 float32 = paint.Surface.Width
 	var value_4 float32 = paint.Scale

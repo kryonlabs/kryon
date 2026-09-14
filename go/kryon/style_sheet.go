@@ -1187,7 +1187,7 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		value_272 = value_275
 	}
 	if value_272 {
-		var value_276 int32 = style.Material
+		var value_276 MaterialKind = MaterialKind(style.Material)
 		cascade.Result.Material = value_276
 		var value_277 uint32 = cascade.Result.Fields
 		var value_278 int32 = int32(StyleMaterial)

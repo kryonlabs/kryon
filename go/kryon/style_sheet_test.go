@@ -693,14 +693,14 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		int32(ButtonToneAccent), int32(ButtonEmphasisFilled),
 		int32(ControlSizeMedium), int32(ButtonStateHover))
 	resolved := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
-	if resolved.Background != 0xd5bbffff || resolved.Material != int32(MaterialFlat) {
+	if resolved.Background != 0xd5bbffff || resolved.Material != MaterialFlat {
 		t.Fatalf("material did not resolve: %#v", resolved)
 	}
 	if !SetActiveStylePack("vanilla") {
 		t.Fatal("vanilla did not activate")
 	}
 	resolved = ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
-	if resolved.Background != 0x245be0ff || resolved.Material != int32(MaterialFlat) {
+	if resolved.Background != 0x245be0ff || resolved.Material != MaterialFlat {
 		t.Fatalf("vanilla did not resolve: %#v", resolved)
 	}
 	if !SetActiveStylePack("glow") {
@@ -708,7 +708,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	}
 	field := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindTextField())
 	resolved = ResolveActiveStyle(StyleData{}, field, int32(ButtonStateNormal))
-	if resolved.Material != int32(MaterialGlass) || resolved.BackgroundEnd != 0x171b24ff {
+	if resolved.Material != MaterialGlass || resolved.BackgroundEnd != 0x171b24ff {
 		t.Fatalf("glow did not resolve: %#v", resolved)
 	}
 	if !SetActiveStylePack("lightfield") {
@@ -716,7 +716,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	}
 	surface := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindSurface())
 	resolved = ResolveActiveStyle(StyleData{}, surface, int32(ButtonStateNormal))
-	if resolved.Material != int32(MaterialLightfield) || resolved.BackgroundEnd != 0x222936ee {
+	if resolved.Material != MaterialLightfield || resolved.BackgroundEnd != 0x222936ee {
 		t.Fatalf("lightfield did not resolve: %#v", resolved)
 	}
 }

@@ -17,7 +17,7 @@ type styleParser struct {
 type styleTokens struct {
 	colors    map[string]uint32
 	lengths   map[string]float32
-	materials map[string]int32
+	materials map[string]MaterialKind
 }
 
 func ParseStyleSheet(source string) (string, []StyleRule, error) {
@@ -252,7 +252,7 @@ func (p *styleParser) tokenGroup() error {
 				return err
 			}
 			if p.tokens.materials == nil {
-				p.tokens.materials = map[string]int32{}
+				p.tokens.materials = map[string]MaterialKind{}
 			}
 			p.tokens.materials[name] = value
 		}
@@ -587,7 +587,7 @@ func (p *styleParser) color() (uint32, error) {
 	return uint32(v), nil
 }
 
-func (p *styleParser) materialValue() (int32, error) {
+func (p *styleParser) materialValue() (MaterialKind, error) {
 	name, ok := p.ident()
 	if !ok {
 		return 0, p.err("expected material")
@@ -883,14 +883,14 @@ func styleSize(name string) (int32, bool) {
 	}
 }
 
-func styleMaterial(name string) (int32, bool) {
+func styleMaterial(name string) (MaterialKind, bool) {
 	switch strings.ToLower(name) {
 	case "lightfield":
-		return int32(MaterialLightfield), true
+		return MaterialLightfield, true
 	case "flat":
-		return int32(MaterialFlat), true
+		return MaterialFlat, true
 	case "glass":
-		return int32(MaterialGlass), true
+		return MaterialGlass, true
 	default:
 		return 0, false
 	}

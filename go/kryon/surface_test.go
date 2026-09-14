@@ -1363,7 +1363,7 @@ func TestSurfaceLayers(t *testing.T) {
 	if face.Width != 100 || face.Height != 40 || face.Y != -1 || !face.Gradient {
 		t.Fatalf("hover face: %+v", face)
 	}
-	for i := int32(0); i < Surface_MaterialLayerCount(int32(MaterialLightfield)); i++ {
+	for i := int32(0); i < Surface_MaterialLayerCount(MaterialLightfield); i++ {
 		if got := layer(i, false, 0); got.Color&255 != 0 {
 			t.Fatalf("layer %d ignores explicit zero opacity: %+v", i, got)
 		}
@@ -1383,7 +1383,7 @@ func TestSurfaceIdentifiesItsFillLayer(t *testing.T) {
 		for _, disabled := range []bool{false, true} {
 			for _, opacity := range []float32{0, 0.5, 1} {
 				faces := 0
-				for index := int32(0); index < Surface_MaterialLayerCount(int32(MaterialLightfield)); index++ {
+				for index := int32(0); index < Surface_MaterialLayerCount(MaterialLightfield); index++ {
 					layer := Surface_LightfieldLayer(index, 72, 40, 8, 1,
 						0x006cffff, 0x006cffff, 0x006cffff, 0x409cff80,
 						0.5, 0.25, 0.75, disabled, opacity, ambient)

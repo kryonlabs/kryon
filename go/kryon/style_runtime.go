@@ -4,7 +4,7 @@ package kryon
 func packStyle(value Style) StyleData {
 	return StyleData{
 		Fields:        value.Fields,
-		Material:      int32(value.Material),
+		Material:      value.Material,
 		Typeface:      value.Typeface,
 		LetterSpacing: value.LetterSpacing,
 		Background:    packRGBA(value.Background),
@@ -27,7 +27,7 @@ func packStyle(value Style) StyleData {
 
 func unpackStyle(value StyleData) Style {
 	return Style{
-		Material:      MaterialKind(value.Material),
+		Material:      value.Material,
 		Typeface:      value.Typeface,
 		LetterSpacing: value.LetterSpacing,
 		Fields:        value.Fields,

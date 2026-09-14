@@ -1753,7 +1753,7 @@ func minimalControlStyleData() StyleData {
 		Opacity:  1,
 		FontSize: 16,
 		IconSize: 20,
-		Material: int32(MaterialFlat),
+		Material: MaterialFlat,
 	}
 }
 

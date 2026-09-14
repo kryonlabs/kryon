@@ -1,4 +1,5 @@
 #module "surface"
+#import "control_props"
 
 # Shared visual primitives returned as data. Hosts execute these instructions;
 # material geometry, layer order, colors and motion are defined here.
@@ -747,9 +748,9 @@ FaceOffset :: (hover: float, press: float, disabled: bool) -> float #export {
     return 2.0 * Unit(press) - Unit(hover)
 }
 
-MaterialLayerCount :: (material: i32) -> i32 #export {
-    if material == 1 { return 3 }
-    if material == 2 { return 8 }
+MaterialLayerCount :: (material: MaterialKind) -> i32 #export {
+    if material == (MaterialKind)MaterialFlat { return 3 }
+    if material == (MaterialKind)MaterialGlass { return 8 }
     return 12
 }
 
@@ -764,33 +765,33 @@ SegmentCoverage :: (pixel_x: float, segment_x: float, segment_width: float, surf
     return coverage
 }
 
-MaterialOffset :: (material: i32, hover: float, press: float, disabled: bool) -> float #export {
-    if material == 1 || material == 2 { return 0.0 }
+MaterialOffset :: (material: MaterialKind, hover: float, press: float, disabled: bool) -> float #export {
+    if material == (MaterialKind)MaterialFlat || material == (MaterialKind)MaterialGlass { return 0.0 }
     return FaceOffset(hover, press, disabled)
 }
 
 MaterialLayer :: (
-    material: i32, index: i32, width: float, height: float, radius: float,
+    material: MaterialKind, index: i32, width: float, height: float, radius: float,
     border_width: float, background: u32, border: u32, light: u32,
     focus_color: u32, hover: float, press: float, focused: float,
     disabled: bool, opacity: float, ambient: u32
 ) -> SurfaceLayer #export {
-    if material == 2 {
+    if material == (MaterialKind)MaterialGlass {
         return GlassLayer(index, width, height, radius, border_width,
             background, border, focus_color, hover, press, focused, disabled, opacity, ambient)
     }
-    if material != 1 {
+    if material != (MaterialKind)MaterialFlat {
         return LightfieldLayer(index, width, height, radius, border_width,
             background, border, light, focus_color, hover, press, focused,
             disabled, opacity, ambient)
     }
     layer: SurfaceLayer
-    if index == 0 || index == 1 {
+    if index == (i32)0 || index == (i32)1 {
         layer = FlatLayer(index, width, height, radius, border_width,
             background, border, opacity)
-        layer.is_face = index == 0
+        layer.is_face = index == (i32)0
     }
-    if index == 2 && !disabled {
+    if index == (i32)2 && !disabled {
         layer = FlatLayer(1, width, height, radius, 1.0, background,
             focus_color, opacity * Unit(focused))
     }
@@ -815,7 +816,7 @@ GlassLayer :: (index: i32, width: float, height: float, radius: float,
         p = 0.0
         f = 0.0
     }
-    if index == 0 {
+    if index == (i32)0 {
         layer.y = 5.0 * (1.0 - p)
         layer.blur = 12.0
         shadow: u32 = (u32)24
@@ -823,16 +824,16 @@ GlassLayer :: (index: i32, width: float, height: float, radius: float,
         layer.color = Opacity(shadow, opacity)
         if disabled { layer.color = (u32)0 }
     }
-    if index == 1 {
+    if index == (i32)1 {
         layer.blur = 5.0 + h * 3.0
         layer.color = Opacity(border, (0.12 + 0.30 * h) * (1.0 - p) * opacity)
         if disabled { layer.color = (u32)0 }
     }
-    if index == 2 {
+    if index == (i32)2 {
         layer.is_face = true
         layer.color = Opacity(background, opacity)
     }
-    if index == 3 {
+    if index == (i32)3 {
         layer.stroke = border_width
         layer.gradient = true
         white: u32 = (~(u32)0)
@@ -840,23 +841,23 @@ GlassLayer :: (index: i32, width: float, height: float, radius: float,
         layer.end_color = Opacity(border, 0.72 * opacity)
         if light { layer.color = Opacity(border, opacity) }
     }
-    if index == 4 && !light && !disabled {
+    if index == (i32)4 && !light && !disabled {
         layer.stroke = 1.0
         layer.inner_blur = 9.0
         layer.gradient = true
         layer.color = Opacity(border, 0.16 * opacity)
         layer.end_color = Opacity(border, 0.54 * opacity)
     }
-    if index == 5 && !disabled {
+    if index == (i32)5 && !disabled {
         layer.stroke = 1.0
         layer.blur = 4.0
         layer.color = Opacity(focus, f * 0.85 * opacity)
     }
-    if index == 6 && !disabled {
+    if index == (i32)6 && !disabled {
         layer.stroke = 1.5
         layer.color = Opacity(focus, f * opacity)
     }
-    if index == 7 && !light && !disabled {
+    if index == (i32)7 && !light && !disabled {
         layer.stroke = 1.0
         layer.inner_blur = 2.0
         layer.color = Opacity((~(u32)0), f * 0.8 * opacity)
@@ -866,7 +867,7 @@ GlassLayer :: (index: i32, width: float, height: float, radius: float,
 
 FinishLightfieldLayer :: (layer: SurfaceLayer, index: i32,
     background: u32, opacity: float) -> SurfaceLayer {
-    if index == 0 || index == 1 || index == 4 {
+    if index == (i32)0 || index == (i32)1 || index == (i32)4 {
         face_opacity: float = (float)(background & (u32)255) / 255.0
         layer.color = Opacity(layer.color, face_opacity)
         layer.end_color = Opacity(layer.end_color, face_opacity)
@@ -907,7 +908,7 @@ LightfieldLayer :: (
     }
     broad_light: float = broad * Unit(((float)ColorChroma(light) - 128.0) / 64.0) * (1.0 - p)
     # Keep the outside field restrained: material light belongs inside the face.
-    if index == 0 {
+    if index == (i32)0 {
         layer.y += 3.0 + h
         layer.blur = 4.0 + 2.0 * h
         strength: float = (0.025 + 0.025 * broad + 0.08 * h + 0.06 * Unit(focused)) * (1.0 - p * 0.8)
@@ -922,8 +923,8 @@ LightfieldLayer :: (
         layer.color = Opacity(light, strength * opacity)
         return layer
     }
-    index -= 1
-    if index == 0 {
+    index -= (i32)1
+    if index == (i32)0 {
         layer.x = 1.0
         layer.y = 2.0 + 2.0 * p
         layer.width = width - 2.0
@@ -952,7 +953,7 @@ LightfieldLayer :: (
         layer.color = (u32)alpha
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    if index == 1 {
+    if index == (i32)1 {
         layer.x = 1.0
         # Hover pulls the contact light toward the face and softens its tail.
         # Shifting a filled glow downward leaves a solid ledge before the blur.
@@ -1005,7 +1006,7 @@ LightfieldLayer :: (
         }
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    if index == 2 {
+    if index == (i32)2 {
         layer.is_face = true
         # Focus concentrates light at the rim rather than washing the face.
         # Hover and press retain their own material response while active.
@@ -1118,7 +1119,7 @@ LightfieldLayer :: (
         layer.gradient = true
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    if index == 3 {
+    if index == (i32)3 {
         layer.stroke = border_width
         if border_width > 0.0 {
             layer.color = border
@@ -1146,7 +1147,7 @@ LightfieldLayer :: (
         }
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    if index == 4 {
+    if index == (i32)4 {
         # Hover raises the crown to the face edge without moving the lower
         # bevel. Borderless and pale controls retain their softer silhouette.
         edge_hover: float = 0.0
@@ -1213,10 +1214,10 @@ LightfieldLayer :: (
         layer.gradient = true
         return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    if index == 5 || index == 6 {
+    if index == (i32)5 || index == (i32)6 {
         gap: float = 1.0
-        if index == 5 { gap = 2.0 }
-        if index == 5 && !light_surroundings { gap = 0.0 }
+        if index == (i32)5 { gap = 2.0 }
+        if index == (i32)5 && !light_surroundings { gap = 0.0 }
         layer.x -= gap
         layer.y -= gap
         layer.width += 2.0 * gap
@@ -1225,12 +1226,12 @@ LightfieldLayer :: (
         layer.stroke = 1.0
         strength: float = Unit(focused)
         if disabled { strength = 0.0 }
-        if index == 5 { strength *= 0.28235294 }
+        if index == (i32)5 { strength *= 0.28235294 }
         if light_surroundings {
             # Pale material needs one crisp ring, not a second offset outline.
-            if index == 5 { strength = 0.0 }
+            if index == (i32)5 { strength = 0.0 }
         }
-        if index == 5 && !light_surroundings {
+        if index == (i32)5 && !light_surroundings {
             brightness: u32 = ((background >> (u32)24) & (u32)255) +
                 ((background >> (u32)16) & (u32)255) + ((background >> (u32)8) & (u32)255)
             strength = Unit(focused) * (0.35 + 0.65 * Unit(((float)brightness - 140.0) / 140.0))
@@ -1242,7 +1243,7 @@ LightfieldLayer :: (
             layer.inner_blur = 12.0
         }
         rim_color: u32 = focus_color
-        if index == 5 && !light_surroundings {
+        if index == (i32)5 && !light_surroundings {
             # Semantic material keeps its own inward light. The focus color
             # controls the separate outer edge, not the hue of the whole face.
             if ColorChroma(light) > (u32)64 &&
@@ -1253,7 +1254,7 @@ LightfieldLayer :: (
             }
             rim_color = DepthColor(DepthColor(rim_color, 1.0), 0.4)
         }
-        if index == 6 && !light_surroundings && (border & (u32)255) != (u32)0 && ColorChroma(border) > (u32)64 {
+    if index == (i32)6 && !light_surroundings && (border & (u32)255) != (u32)0 && ColorChroma(border) > (u32)64 {
             # Concentrated light on the inner edge; the outer field retains
             # its hue. Preserve explicit alpha, including transparent focus.
             white: u32 = ((u32)16777215 << (u32)8) | (focus_color & (u32)255)
@@ -1270,7 +1271,7 @@ LightfieldLayer :: (
     }
     # A translucent light volume sits behind the content, inset from the rim.
     # Its rounded coverage is the clip: no blur can leak onto the surroundings.
-    if index == 7 {
+    if index == (i32)7 {
         # Neutral borderless faces need more chromatic hover reflection than
         # already-tinted faces. Fade the boost with chroma and press amount.
         borderless_hover: float = h * (1.0 - p) *
@@ -1355,7 +1356,7 @@ LightfieldLayer :: (
     }
     # A broad crown reflection gives the face volume without a hard gloss
     # stripe. It is clipped inside the same rounded face as the lower light.
-    if index == 8 {
+    if index == (i32)8 {
         layer.x = 1.5
         layer.y += 1.5
         layer.width -= 3.0
@@ -1382,7 +1383,7 @@ LightfieldLayer :: (
     # Pressing places the upper edge above the recessed face. This inward
     # shadow follows the same continuous press track as the face displacement;
     # it never adds a second drop shadow outside the control.
-    if index == 9 {
+    if index == (i32)9 {
         layer.x = 1.0
         layer.y += 1.0
         layer.width -= 2.0
@@ -1402,7 +1403,7 @@ LightfieldLayer :: (
     # Optical bloom belongs to the narrow focus edge, not a blurred face.
     # A stroked field leaves the label center clear; the material volume above
     # remains clipped inward. Light surfaces retain their crisp focus outline.
-    if index == 10 && !light_surroundings && !disabled {
+    if index == (i32)10 && !light_surroundings && !disabled {
         layer.x -= 1.0
         layer.y -= 1.0
         layer.width += 2.0

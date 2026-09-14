@@ -118,7 +118,7 @@ func frameMaterial(op FrameOp) MaterialPaint {
 	}
 	value := StyleData{Background: packRGBA(op.Color), Border: packRGBA(op.BorderColor),
 		Focus: packRGBA(op.FocusColor), Radius: op.Radius, BorderWidth: op.BorderWidth,
-		Opacity: op.Opacity, Material: int32(op.Material), BackgroundEnd: packRGBA(op.BackgroundEnd)}
+		Opacity: op.Opacity, Material: op.Material, BackgroundEnd: packRGBA(op.BackgroundEnd)}
 	if op.HasBackgroundEnd {
 		value.Fields = uint32(StyleBackgroundEnd)
 	}
@@ -141,7 +141,7 @@ func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
 		return op.Bounds
 	}
 	paint := frameMaterial(op)
-	for i := int32(0); i < Surface_MaterialLayerCount(int32(op.Material)); i++ {
+	for i := int32(0); i < Surface_MaterialLayerCount(op.Material); i++ {
 		renderSurfaceDrawing(img, Material_PaintMaterialLayer(paint, i))
 	}
 	return Material_MaterialContentBounds(paint)
