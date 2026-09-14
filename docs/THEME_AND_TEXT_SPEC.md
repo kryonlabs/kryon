@@ -3,7 +3,7 @@
 Status: proposal for review\
 Scope: canonical read-only text, typography tokens, text measurement, selection, and shared text behavior in controls\
 Companion: [Theme and Button Specification](THEME_AND_BUTTON_SPEC.md)\
-Rule: no legacy text API, public `UI` prefix, renderer-specific style, or per-call theme reconstruction remains in the target state
+Rule: no legacy text API, prefixed public synonym, renderer-specific style, or per-call theme reconstruction remains in the target state
 
 ![Text node widget sprite sheet](assets/text-node-widget-sprite-sheet.png)
 
@@ -19,7 +19,7 @@ Text message: {
 }
 ```
 
-There is no `UIText`, `UITextNode`, `WidgetText`, or other prefixed synonym.
+There is no prefixed synonym for `Text`.
 The corresponding generated runtime surface also has exactly one function:
 
 ```c
@@ -78,11 +78,12 @@ There is no independent Button label renderer.
 editable buffers, cursor movement, composition, focus, scrolling, validation,
 and commit behavior. They shall use the same `Theme`, `ControlSize`, typography,
 selection, and focus tokens as `Text` and `Button`. They shall not maintain a
-parallel `TextInputStyle` theme.
+parallel text-input theme.
 
-The end state contains no positional `Text(...)` overload, public `RenderText*`,
-`UIText*`, `TextStyle`, `TextInputStyle`, `ParagraphText`, or generated compatibility shim. Maintained callers
-are migrated to canonical props and the old surface is deleted.
+The end state contains no positional text overload, public draw-prefixed text
+entry point, prefixed text synonym, standalone style record, semantic paragraph
+alias, or generated compatibility shim. Maintained callers are migrated to
+canonical props and the old surface is deleted.
 
 ## 2. Goals
 
@@ -116,7 +117,7 @@ are migrated to canonical props and the old surface is deleted.
 
 | Use | Remove or keep private |
 |---|---|
-| `Text` | positional `Text`, `RenderText*`, `UIText*` |
+| `Text` | positional, draw-prefixed, or prefixed synonym forms |
 | `TextProps` | parallel text node structs |
 | `TextRole` | raw public size/style recipes |
 | `TextTone` | direct theme-color getters in app text calls |
@@ -333,10 +334,9 @@ TextMetrics MeasureText(TextProps props);
 bounds height, role, wrapping, overflow, alignment constraints, and max lines.
 It resolves the active theme exactly as `Text` does.
 
-Legacy `TextWidth`, `TextHeight`, `TextLineHeight`, `TextBaselineY`,
-`ScaledTextWidth`, and centered-draw helpers are removed from the public API.
-Internal widgets use the common layout engine or `MeasureText`, never a private
-font-size approximation.
+Legacy width, height, line-height, baseline, scaled-width, and centered-draw
+helpers are removed from the public API. Internal widgets use the common layout
+engine or `MeasureText`, never a private font-size approximation.
 
 ## 10. Selection and interaction
 
@@ -354,7 +354,7 @@ and keyboard selection without turning `Text` into an editor.
 - pointer capture and clipping follow the same host rules as `Button`.
 
 Selection storage and clipboard helpers remain private implementation details.
-There is no global `PushTextSelectable` public mode.
+There is no global selectable-text mode.
 
 ## 11. TextField and TextArea integration
 
@@ -389,8 +389,8 @@ typedef struct TextFieldProps {
 `TextAreaProps` adds multiline editing concerns such as scrolling, syntax mode,
 line numbers, and tab behavior. Both widgets own cursor and selection state by
 stable ID; application code owns the buffer. Public props do not expose
-renderer paint structs, focus booleans, cursor pointers, or a
-`TextInputStyle` bundle.
+renderer paint structs, focus booleans, cursor pointers, or a separate
+text-input style bundle.
 
 The active theme supplies:
 
@@ -473,8 +473,8 @@ Text hint: {
 ```
 
 Generated output emits one explicit `TextProps` value. It does not lower role
-back into raw font sizes/colors, call `RenderText*`, inject a runtime object, or
-select a backend-specific font.
+back into raw font sizes/colors, call a public draw-prefixed text helper, inject
+a runtime object, or select a backend-specific font.
 
 The zero-value pairing is intentionally symmetrical:
 
@@ -548,14 +548,14 @@ line boxes, baseline positions, clipping, selection ranges, and semantic paint.
 |---|---|
 | `TextProps.font` | `TextProps.role` resolved through `ThemeTypography` |
 | `TextProps.color` | `TextProps.tone` resolved through `ThemeColors` |
-| positional or macro `Text` forms | `Text(TextProps)` only |
-| public `RenderText*` and `DrawScaledText` | private painter behind `Text` |
-| public `TextStyle` | remove; role + tone + theme |
-| public `TextInputStyle` | remove; shared control and theme resolution |
-| `TextWidth` / `TextHeight` / baseline helpers | `MeasureText(TextProps)` |
+| positional or macro text forms | `Text(TextProps)` only |
+| public draw-prefixed text helpers | private painter behind `Text` |
+| public standalone text style records | remove; role + tone + theme |
+| public standalone text-input style records | remove; shared control and theme resolution |
+| direct width, height, or baseline helpers | `MeasureText(TextProps)` |
 | label/value text, bullet text, value text | app composition or private composed helpers |
 | `ParagraphText` | `Text` with wrapping and bounds |
-| `PushTextSelectable` / `PopTextSelectable` | `TextProps.selectable` |
+| global selectable-text mode | `TextProps.selectable` |
 | external cursor/focus pointers in text inputs | state owned by stable widget ID |
 | raw theme getters in ordinary text calls | semantic zero defaults or tone |
 | C/Go/web-specific text decisions | shared resolved layout and paint contract |
@@ -611,8 +611,9 @@ selection rectangles—not screenshots alone. Screenshot tests verify hierarchy,
 contrast, clipping, alignment, cursor/focus paint, and theme switching.
 
 Run the clean text API scanner across every changed source root. Its final
-denylist includes positional `Text`, public/generated draw-prefixed text helpers, `UIText*`,
-`TextInputStyle`, raw `.font`/`.color` text styling, and removed helper widgets.
+denylist includes positional text calls, public/generated draw-prefixed text
+helpers, prefixed text synonyms, raw `.font`/`.color` text styling, and removed
+helper widgets.
 
 ## 20. Acceptance criteria
 

@@ -783,17 +783,20 @@ if [ -n "$public_text_draw_matches" ]; then
 fi
 
 public_text_helper_matches="$(
-    rg -n '\b(TextStyle|UITextStyle|SelectableTextBlock|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|GetUIControlTextY|ScaledTextWidth|ScaledTextBaselineY|PushTextSelectable|PopTextSelectable|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect|DrawLeftUIControlTextInRect|DrawFittedTextInRect)\b' \
+    rg -n '\b(TextStyle|TextInputStyle|UIText|UITextNode|WidgetText|UITextStyle|SelectableTextBlock|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|GetUIControlTextY|ScaledTextWidth|ScaledTextBaselineY|PushTextSelectable|PopTextSelectable|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect|DrawLeftUIControlTextInRect|DrawFittedTextInRect)\b' \
         include/ui_text.h \
         include/ui_draw.h \
         docs/API.md \
+        docs/CANONICAL_WIDGET_SURFACE.md \
+        docs/THEME_AND_TEXT_SPEC.md \
+        docs/TEXT_NODE_PROPOSALS.md \
         docs/site/highlight.js \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
 if [ -n "$public_text_helper_matches" ]; then
-    echo "Public text helper APIs must use clean Text* names without stale UIText prefixes:"
+    echo "Public text helper APIs and docs must use clean Text names without stale style records, prefixed synonyms, or helper aliases:"
     echo "$public_text_helper_matches"
     exit 1
 fi

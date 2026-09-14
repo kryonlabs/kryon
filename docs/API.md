@@ -1357,20 +1357,6 @@ int Link(LinkProps link);
 
 ### Text Input
 
-#### `TextInputStyle`
-
-```c
-typedef struct {
-    Color background;
-    Color border;
-    Color focus_border;
-    Color text;
-    Color cursor;
-    float radius;
-    int padding_x;
-} TextInputStyle;
-```
-
 #### `TextInput`
 
 ```c
