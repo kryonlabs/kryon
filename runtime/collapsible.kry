@@ -46,6 +46,11 @@ CollapsibleKeyboardDecision :: struct {
     handled: bool
 }
 
+CollapsibleOpenResult :: struct {
+    open: bool
+    changed: bool
+}
+
 CollapsibleKeyNone :: () -> i32 #export {
     return 0
 }
@@ -205,4 +210,22 @@ CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
         decision.handled = key != CollapsibleKeyNone() || activate
     }
     return decision
+}
+
+CollapsibleOpenApply :: (open: bool, toggle_open: bool, set_open: bool,
+    next_open: bool, has_open: bool) -> CollapsibleOpenResult #export {
+    result: CollapsibleOpenResult
+    result.open = open
+    result.changed = false
+    if !has_open {
+        return result
+    }
+    if set_open {
+        result.open = next_open
+    }
+    if toggle_open {
+        result.open = !result.open
+    }
+    result.changed = result.open != open
+    return result
 }

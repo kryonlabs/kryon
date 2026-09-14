@@ -5,6 +5,7 @@
 #include "runtime/plot.h"
 #include "runtime/canvas_grid.h"
 #include "runtime/checkbox.h"
+#include "runtime/collapsible.h"
 #include "runtime/color_picker.h"
 #include "runtime/dropdown.h"
 #include "runtime/drag.h"
@@ -2709,6 +2710,31 @@ test_deep_disabled_scopes(void)
         check_int("deep disabled restored", IsKeyboardInputEnabled(), 1);
     }
     SetKeyboardInputEnabled(keyboard);
+}
+
+static void
+test_collapsible_open_policy(void)
+{
+    CollapsibleOpenResult opened = CollapsibleOpenApply(false, true, false,
+                                                        false, true);
+    CollapsibleOpenResult closed = CollapsibleOpenApply(true, true, false,
+                                                        false, true);
+    CollapsibleOpenResult set_open = CollapsibleOpenApply(false, false, true,
+                                                          true, true);
+    CollapsibleOpenResult set_same = CollapsibleOpenApply(true, false, true,
+                                                          true, true);
+    CollapsibleOpenResult missing = CollapsibleOpenApply(false, true, true,
+                                                         true, false);
+
+    check_int("collapsible toggle opens", opened.open, 1);
+    check_int("collapsible toggle open changed", opened.changed, 1);
+    check_int("collapsible toggle closes", closed.open, 0);
+    check_int("collapsible toggle close changed", closed.changed, 1);
+    check_int("collapsible set opens", set_open.open, 1);
+    check_int("collapsible set open changed", set_open.changed, 1);
+    check_int("collapsible set same unchanged", set_same.changed, 0);
+    check_int("collapsible missing keeps state", missing.open, 0);
+    check_int("collapsible missing unchanged", missing.changed, 0);
 }
 
 static void
@@ -5465,6 +5491,7 @@ main(void)
     test_multi_select_keyboard_navigation();
     test_focusable_image_keyboard_navigation();
     test_deep_disabled_scopes();
+    test_collapsible_open_policy();
     test_collapsible_composes_children();
     test_tree_header_modes();
     test_closeable_collapsible();

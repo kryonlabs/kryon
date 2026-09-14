@@ -4458,8 +4458,11 @@ RenderCollapsible(CollapsibleProps section)
     if(pointer_decision.focus && section.id > 0)
         SetFocus(section.id);
     if(pointer_decision.toggle_open && section.open != NULL) {
-        *section.open = !*section.open;
-        changed |= pointer_decision.changed;
+        CollapsibleOpenResult open_result = CollapsibleOpenApply(
+            *section.open != 0, pointer_decision.toggle_open != 0,
+            false, false, true);
+        *section.open = open_result.open;
+        changed |= open_result.changed;
     }
     {
         int key = CollapsibleKeyNone();
@@ -4488,12 +4491,12 @@ RenderCollapsible(CollapsibleProps section)
                 ? KEY_LEFT : 0;
             SetFocus(ui_tree_header_target(section.id, focus_key));
         } else if(section.open != NULL) {
-            int previous_open = *section.open;
-            if(keyboard_decision.set_open)
-                *section.open = keyboard_decision.open;
-            if(keyboard_decision.toggle_open)
-                *section.open = !*section.open;
-            changed |= previous_open != *section.open;
+            CollapsibleOpenResult open_result = CollapsibleOpenApply(
+                *section.open != 0, keyboard_decision.toggle_open != 0,
+                keyboard_decision.set_open != 0, keyboard_decision.open != 0,
+                true);
+            *section.open = open_result.open;
+            changed |= open_result.changed;
         }
         if(keyboard_decision.handled)
             toolkit->tree_key_frame = g_ui_frame_serial;

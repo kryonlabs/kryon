@@ -5916,7 +5916,10 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	pressed := tapped && !p.Leaf && p.Open != nil
 	if pressed {
-		*p.Open = !*p.Open
+		openResult := Collapsible_CollapsibleOpenApply(
+			*p.Open, true, false, false, true)
+		*p.Open = openResult.Open
+		pressed = openResult.Changed
 	}
 	if enabled && p.ID != 0 && r.focusID == p.ID && !r.popupFocusCaptures(p.ID) {
 		remaining := r.inputEvents[:0]
@@ -5932,19 +5935,26 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 					r.setFocus(r.nextFocus(p.ID, event.shift))
 					handled = true
 				} else if !p.Leaf && p.Open != nil {
-					old := *p.Open
 					switch event.key {
 					case KeyRight:
-						*p.Open = true
+						openResult := Collapsible_CollapsibleOpenApply(
+							*p.Open, false, true, true, true)
+						*p.Open = openResult.Open
+						pressed = pressed || openResult.Changed
 						handled = true
 					case KeyLeft:
-						*p.Open = false
+						openResult := Collapsible_CollapsibleOpenApply(
+							*p.Open, false, true, false, true)
+						*p.Open = openResult.Open
+						pressed = pressed || openResult.Changed
 						handled = true
 					case KeyEnter, KeySpace:
-						*p.Open = !*p.Open
+						openResult := Collapsible_CollapsibleOpenApply(
+							*p.Open, true, false, false, true)
+						*p.Open = openResult.Open
+						pressed = pressed || openResult.Changed
 						handled = true
 					}
-					pressed = pressed || old != *p.Open
 				}
 			}
 			if !handled {

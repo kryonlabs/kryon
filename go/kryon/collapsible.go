@@ -27,6 +27,11 @@ type CollapsibleLayout struct {
 	HasClose    bool
 }
 
+type CollapsibleOpenResult struct {
+	Open    bool
+	Changed bool
+}
+
 func Collapsible_CollapsibleHeaderRole() int32 {
 	var value_0 int32 = 13
 	return value_0
@@ -267,4 +272,21 @@ func Collapsible_CollapsibleLayoutFor(bounds Rectangle, tree bool, depth int32, 
 	}
 	var value_45 CollapsibleLayout = layout
 	return value_45
+}
+
+func Collapsible_CollapsibleOpenApply(open bool, toggle_open bool, set_open bool, next_open bool, has_open bool) CollapsibleOpenResult {
+	var result CollapsibleOpenResult = CollapsibleOpenResult{}
+	result.Open = open
+	result.Changed = false
+	if !has_open {
+		return result
+	}
+	if set_open {
+		result.Open = next_open
+	}
+	if toggle_open {
+		result.Open = !result.Open
+	}
+	result.Changed = result.Open != open
+	return result
 }
