@@ -84,7 +84,7 @@ surface review:
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
 | `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/node2d_props.kry` | Game2D node props and enums | `.kry canonical` |
-| `runtime/paint.kry` | Paint/drawing helpers | Native support |
+| `runtime/paint.kry` | Paint/drawing helpers | `.kry support` |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `runtime/page.kry` | Page, Section, Heading, ParagraphText, and Flow composition | `.kry canonical` |
@@ -389,7 +389,7 @@ host roles rather than retained nodes.
 | `Flow` | `.kry canonical` | Page/content flow layout. |
 | `Grid` | `.kry canonical` | Grid layout; metrics and cursor placement are in `.kry`. |
 | `Scroll` | `.kry canonical` | Parser statement form for generated/runtime lowering; lexical block form remains canonical for scroll content. |
-| `End` | Native support | Lowered/parser block close marker, not a widget. |
+| `End` | Lowered support | Parser block close marker, not a widget. |
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |
 | `TabBar` | `.kry canonical` | Tab navigation surface. |
@@ -524,7 +524,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `SpinboxRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `Spinbox`. |
 | `ButtonRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Row` with `Button` children. |
 | `SectionLabel` | Removed | Removed from public headers; internal row helper only. Public code should use `Text`/`Heading` props or `.kry` composition. |
-| `InfoRows` | Native support | Internal repeated label/value row helper; typography uses resolved KSS font sizes directly; public forms should use `.kry` layout with `Row`/`Text`. |
+| `InfoRows` | Internal support | Internal repeated label/value row helper; typography uses resolved KSS font sizes directly; public forms should use `.kry` layout with `Row`/`Text`. |
 
 ## Layout And Containers
 
@@ -542,9 +542,9 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Collapsible` | `.kry canonical` | Public props live in `runtime/collapsible_props.kry`; header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Public props live in `runtime/scroll_props.kry`; lexical scroll-content block. Measurement, sizing, wheel offset, content/thumb drag offset, and ensure-visible policy are in `.kry`; host keeps pointer ownership, clipping, and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
-| `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
-| `ScrollPage` | Native support | Internal host helper only; not a public widget concept. |
-| `ScreenScaffold` | Native support | Internal app-shell helper only; compose pages from `.kry` layout. |
+| `ScrollContainer` | Internal support | Internal host helper only; public callers should use `Scroll` blocks. |
+| `ScrollPage` | Internal support | Internal host helper only; not a public widget concept. |
+| `ScreenScaffold` | Internal support | Internal app-shell helper only; compose pages from `.kry` layout. |
 
 ## Page And Web Surfaces
 
@@ -618,7 +618,7 @@ native Game2D support.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `Custom` | Native support | Escape hatch, not preferred public design surface. |
+| `Custom` | Internal support | Retained-tree escape hatch for host-only nodes; not preferred public design surface. |
 
 ## Retained Node Kinds
 
@@ -657,10 +657,10 @@ stays prefix-free.
 | `WIDGET_STACK` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |
 | `WIDGET_GRID` | `Grid` | `.kry canonical`; metrics and cursor placement policy are `.kry-backed` |
 | `WIDGET_IMAGE` | `Image` | `.kry canonical` |
-| `WIDGET_CUSTOM` | `Custom` | Native support escape hatch |
+| `WIDGET_CUSTOM` | `Custom` | Internal support escape hatch |
 | `WIDGET_DRAG` | `Drag` | `.kry canonical` |
 | `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WIDGET_CUSTOM` with a private runtime flag. |
-| `WIDGET_ROUTER` | `Router` | Native support |
+| `WIDGET_ROUTER` | `Router` | `.kry canonical` |
 | `WIDGET_CARD` | `Card` | `.kry canonical` |
 
 Recent retained-tree public C cleanup:
