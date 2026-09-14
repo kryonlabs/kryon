@@ -259,7 +259,8 @@ RenderActionModal(ModalProps modal)
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
-    ReflowTextLayout(&msg_layout, msg_w, msg_font, Scale(4));
+    ReflowTextLayout(&msg_layout, msg_w, msg_font,
+                     ModalMessageLineGap((float)GetScale()));
 
     button_rows = ui_modal_measure_action_rows(modal.actions, modal.action_count,
                                                msg_w, btn_gap, btn_font,

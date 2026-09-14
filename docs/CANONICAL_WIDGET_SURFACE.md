@@ -140,7 +140,7 @@ surface review:
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | `.kry support` |
 | `runtime/transition_props.kry` | Transition phase enum names | `.kry support` |
-| `runtime/modal.kry` | Modal layout, frame geometry, and action policy | `.kry canonical` |
+| `runtime/modal.kry` | Modal layout, frame geometry, message line-gap, and action policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window and paint geometry policy | `.kry canonical` |
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
@@ -217,7 +217,7 @@ has a single place to land.
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing, scroll, keyboard index, and reorder marker policy are `.kry`; host keeps input sampling. |
 | `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
-| `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, and action sizing policy are `.kry`; host keeps modal input layer, text editing, and drawing. |
+| `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, message line-gap, and action sizing policy are `.kry`; host keeps modal input layer, text editing, and drawing. |
 | `Scene` | `Game2D/Core` | Scene root | missing | Game2D native scene | Separate Game2D surface; introduce `.kry` scene declarations later. |
 | `Node2D` | `Game2D/Core` | Transform | missing | Game2D native scene | Separate Game2D surface. |
 | `Camera2D` | `Game2D/Core` | Camera | `runtime/node2d_props.kry` | Partly `.kry-backed` | Public props are generated from `.kry`; scene lifecycle and camera activation remain native Game2D support. |

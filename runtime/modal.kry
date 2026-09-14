@@ -198,6 +198,11 @@ ModalFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
     return default_font
 }
 
+ModalMessageLineGap :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(4.0 * scale)
+}
+
 ModalPromptFocusIdFor :: (requested_focus_id: i32, fallback_focus_id: i32) -> i32 #export {
     if requested_focus_id > 0 { return requested_focus_id }
     return fallback_focus_id

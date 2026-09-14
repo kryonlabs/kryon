@@ -602,6 +602,21 @@ func Modal_ModalFontFor(default_font int32, style_font int32) int32 {
 	return value_4
 }
 
+func Modal_ModalMessageLineGap(scale float32) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 4.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
+	return value_7
+}
+
 func Modal_ModalPromptFocusIdFor(requested_focus_id int32, fallback_focus_id int32) int32 {
 	var value_0 int32 = requested_focus_id
 	var value_1 int32 = 0

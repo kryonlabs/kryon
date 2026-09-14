@@ -128,6 +128,9 @@ main(void)
     assert(ModalFontFor(14, 0) == 14);
     assert(ModalFontFor(14, 18) == 18);
     assert(ModalFontFor(14, 0) == 14);
+    assert(ModalMessageLineGap(1.0f) == 4);
+    assert(ModalMessageLineGap(2.0f) == 8);
+    assert(ModalMessageLineGap(0.0f) == 4);
     assert(ModalPromptFocusIdFor(42, 7301) == 42);
     assert(ModalPromptFocusIdFor(0, 7301) == 7301);
     assert(ModalPromptCommitResult(1) == 1);
