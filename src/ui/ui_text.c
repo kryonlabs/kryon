@@ -1434,28 +1434,17 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         if(g_ui_text_selection.id == id && IsKeyboardInputEnabled() &&
            ui_text_mod_key_down() &&
            IsKeyPressed(KEY_C)) {
-            int start = g_ui_text_selection.anchor;
-            int end = g_ui_text_selection.cursor;
-
-            if(start > end) {
-                int tmp = start;
-                start = end;
-                end = tmp;
-            }
-            start = ui_clampi(start, 0, byte_len);
-            end = ui_clampi(end, 0, byte_len);
-            ui_text_copy_selection(text, start, end);
+            TextSelectionRange range = TextSelectionRangeForLength(
+                g_ui_text_selection.anchor, g_ui_text_selection.cursor,
+                byte_len);
+            ui_text_copy_selection(text, range.start, range.end);
         }
         if(g_ui_text_selection.id == id) {
-            selected_start = g_ui_text_selection.anchor;
-            selected_end = g_ui_text_selection.cursor;
-            if(selected_start > selected_end) {
-                int tmp = selected_start;
-                selected_start = selected_end;
-                selected_end = tmp;
-            }
-            selected_start = ui_clampi(selected_start, 0, byte_len);
-            selected_end = ui_clampi(selected_end, 0, byte_len);
+            TextSelectionRange range = TextSelectionRangeForLength(
+                g_ui_text_selection.anchor, g_ui_text_selection.cursor,
+                byte_len);
+            selected_start = range.start;
+            selected_end = range.end;
             ui_text_draw_selection(text, x, y, font_size,
                                    ui_text_default_selection_color(color),
                                    selected_start, selected_end);
@@ -1722,13 +1711,11 @@ RenderSelectableTextBlock(SelectableTextBlock block)
     }
 
     if(g_ui_text_block_selection.id == block.id) {
-        selected_start = g_ui_text_block_selection.anchor;
-        selected_end = g_ui_text_block_selection.cursor;
-        if(selected_start > selected_end) {
-            int tmp = selected_start;
-            selected_start = selected_end;
-            selected_end = tmp;
-        }
+        TextSelectionRange range = TextSelectionRangeForLength(
+            g_ui_text_block_selection.anchor,
+            g_ui_text_block_selection.cursor, (int)strlen(block.text));
+        selected_start = range.start;
+        selected_end = range.end;
         if(IsKeyboardInputEnabled() && ui_text_mod_key_down() &&
            IsKeyPressed(KEY_C))
             ui_text_copy_selection(block.text, selected_start, selected_end);
