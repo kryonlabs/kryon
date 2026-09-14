@@ -2208,7 +2208,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     if(focused && cursor_visible) {
         char before_cursor[1024];
         int len = (int)strlen(value);
-        int clamped_cursor = ui_clampi(cursor_position, 0, len);
+        int clamped_cursor = TextCursorForLength(cursor_position, len);
         int copy_len = clamped_cursor;
         if(copy_len >= (int)sizeof(before_cursor))
             copy_len = (int)sizeof(before_cursor) - 1;
@@ -2393,7 +2393,7 @@ EditText(TextEdit edit)
     g_ui_text_input_codepoint_count = 0;
 
     len = (int)strlen(edit.text);
-    *edit.cursor_position = ui_clampi(*edit.cursor_position, 0, len);
+    *edit.cursor_position = TextCursorForLength(*edit.cursor_position, len);
     return changed;
 }
 
@@ -2541,7 +2541,7 @@ ui_text_line_end(const char *text, int cursor)
     if(text == NULL)
         return 0;
     len = (int)strlen(text);
-    cursor = ui_clampi(cursor, 0, len);
+    cursor = TextCursorForLength(cursor, len);
     for(i = cursor; i < len; i++) {
         if(text[i] == '\n')
             return i;
@@ -2920,7 +2920,7 @@ ui_text_area_cursor_y(const char *text, int cursor, int font, int line_gap,
     if(text == NULL)
         text = "";
     len = (int)strlen(text);
-    cursor = ui_clampi(cursor, 0, len);
+    cursor = TextCursorForLength(cursor, len);
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
             int line_font = ui_text_area_line_font(text, line_start, i, font);
@@ -2964,7 +2964,7 @@ ui_text_area_select_line(const char *text, int cursor, int *start, int *end)
     if(text == NULL || start == NULL || end == NULL)
         return 0;
     len = (int)strlen(text);
-    cursor = ui_clampi(cursor, 0, len);
+    cursor = TextCursorForLength(cursor, len);
     if(cursor > 0 && (cursor == len || text[cursor] == '\n'))
         cursor--;
     *start = ui_text_line_start(text, cursor);
@@ -4190,7 +4190,8 @@ ui_text_area_render(TextAreaProps area)
         }
     } else {
         int text_len = (int)strlen(area.text);
-        *area.cursor_position = ui_clampi(*area.cursor_position, 0, text_len);
+        *area.cursor_position = TextCursorForLength(*area.cursor_position,
+                                                    text_len);
     }
 
     if(ui_text_selection_matches(g_ui_text_area_selection, drag_id,
@@ -4903,7 +4904,8 @@ ui_text_field_render_filtered(TextFieldProps field,
         }
     } else {
         int len = (int)strlen(field.text);
-        *field.cursor_position = ui_clampi(*field.cursor_position, 0, len);
+        *field.cursor_position = TextCursorForLength(*field.cursor_position,
+                                                     len);
     }
 
     if(ui_text_selection_matches(g_ui_text_field_selection,
