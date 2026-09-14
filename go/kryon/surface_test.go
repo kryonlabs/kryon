@@ -788,6 +788,7 @@ func TestSharedControlIconCoverage(t *testing.T) {
 }
 
 func TestStyledSurfaceUsesSharedLayersAndExplicitZeros(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	r.BeginFrame()
 	r.Surface(Rectangle{X: 4, Y: 4, Width: 24, Height: 24}, Style{

@@ -54,8 +54,8 @@ Button.light-gradient { background: #123456; background-end: #50142880; border: 
 	}
 	r := New(AppConfig{}).(*runtime)
 	r.Surface(Rectangle{Width: 80, Height: 40}, Style{})
-	if r.FrameOps()[0].Material != MaterialFlat {
-		t.Fatal("plain surface stopped defaulting to flat material")
+	if r.FrameOps()[0].Material != 0 {
+		t.Fatal("plain surface fabricated material without a surface rule")
 	}
 }
 

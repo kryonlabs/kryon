@@ -13,22 +13,6 @@
 #include "runtime/surface.h"
 
 static StyleData
-ui_minimal_control_style_data(void)
-{
-    /* Temporary bridge: hidden base retained until the generic-path test
-       expectations migrate to the zero-base contract. Deletion is tracked
-       in plan/style/00-status.md. */
-    return (StyleData){
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
-                             StyleMaterial),
-        .opacity = 1.0f,
-        .font_size = 16.0f,
-        .icon_size = 20.0f,
-        .material = MaterialFlat
-    };
-}
-
-static StyleData
 ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
                                       int style_kind, int role,
                                       ControlStyle override)
@@ -36,8 +20,10 @@ ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
     StyleFacts facts = ButtonRoleFactsFor(style_kind, button.id,
         button.class_name, role, (int)button.tone, (int)button.emphasis,
         (int)button.size, state);
-    StyleData value = ResolveActiveStyle(ui_minimal_control_style_data(),
-                                         facts, state);
+    /* Zero base: packs own every visual value. Opacity composes as
+       declared-or-visible while field bits keep declared-ness. */
+    StyleData value = ResolveActiveStyle((StyleData){0}, facts, state);
+    value.opacity = StyleOpacityValue(value.fields, value.opacity);
     return ResolveValues(value, ui_pack_style_states(override), state);
 }
 

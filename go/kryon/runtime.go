@@ -1730,27 +1730,18 @@ func resolveButtonFrameForKind(theme themePalette, dark bool, active *Theme, pro
 		focusAmount, styleKind)
 }
 
-// Temporary bridge: hidden base retained until the generic-path test
-// expectations migrate to the zero-base contract. Deletion is tracked in
-// plan/style/00-status.md.
-func minimalControlStyleData() StyleData {
-	return StyleData{
-		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize | StyleMaterial),
-		Opacity:  1,
-		FontSize: 16,
-		IconSize: 20,
-		Material: MaterialFlat,
-	}
-}
-
 func resolveMinimalControlState(props ButtonProps, state ButtonState, styleKind int32) StyleData {
 	return resolveMinimalControlRoleState(props, state, styleKind, StyleSheet_StyleAny())
 }
 
+// Generic control style resolves from a zero base; packs own every visual
+// value. Opacity composes as declared-or-visible so absent opacity never
+// hides content, while field bits keep declared-ness for explicit zeros.
 func resolveMinimalControlRoleState(props ButtonProps, state ButtonState, styleKind int32, role int32) StyleData {
 	facts := Button_ButtonRoleFactsFor(styleKind, props.ID, props.ClassName,
 		role, int32(props.Tone), int32(props.Emphasis), int32(props.Size), int32(state))
-	value := ResolveActiveStyle(minimalControlStyleData(), facts, int32(state))
+	value := ResolveActiveStyle(StyleData{}, facts, int32(state))
+	value.Opacity = Style_StyleOpacityValue(value.Fields, value.Opacity)
 	return value
 }
 
@@ -4762,7 +4753,8 @@ func (r *runtime) Modal(props ModalProps) int32 {
 }
 
 func defaultStyleFrame(styleKind int32) StyleFrame {
-	value := ResolveActiveStyle(minimalControlStyleData(), StyleSheet_StyleDefaultFacts(styleKind), int32(ButtonStateNormal))
+	value := ResolveActiveStyle(StyleData{}, StyleSheet_StyleDefaultFacts(styleKind), int32(ButtonStateNormal))
+	value.Opacity = Style_StyleOpacityValue(value.Fields, value.Opacity)
 	return StyleFrame{Value: value, Fill: Surface_FillState(value.Fields, value.Background, value.BackgroundEnd)}
 }
 

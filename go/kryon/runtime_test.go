@@ -4931,6 +4931,7 @@ func TestAppThemeCatalogHonorsThemeID(t *testing.T) {
 }
 
 func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
+	useMaterialStyleForTest(t)
 	rt := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	SetRuntime(rt)
 	defer SetRuntime(nil)
