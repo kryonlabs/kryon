@@ -1050,7 +1050,8 @@ func (r *runtime) EndFrame() {
 	for id, open := range r.openPopups {
 		if !r.popupsSeen[id] {
 			if open != nil {
-				*open = false
+				openResult := PopupPolicy_PopupOpenFor(*open, false, true, true)
+				*open = openResult.Open
 			}
 			delete(r.openPopups, id)
 			r.closePopupInput(id)
