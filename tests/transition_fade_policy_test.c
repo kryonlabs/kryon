@@ -20,10 +20,10 @@ main(void)
     check_near(TransitionReverseElapsed(1.0f, 0.25f), 0.75f);
     check_near(TransitionReverseElapsed(1.0f, 2.0f), 0.0f);
 
-    check_near(TransitionAlpha(true, TransitionPhaseOut, 0.5f, 1.0f), 0.5f);
-    check_near(TransitionAlpha(true, TransitionPhaseIn, 0.25f, 1.0f), 0.84375f);
-    check_near(TransitionAlpha(false, TransitionPhaseOut, 0.5f, 1.0f), 0.0f);
-    assert(TransitionFadeAlphaByte(true, TransitionPhaseOut, 1.0f, 1.0f) == 255);
+    check_near(TransitionAlpha(true, TransitionOut, 0.5f, 1.0f), 0.5f);
+    check_near(TransitionAlpha(true, TransitionIn, 0.25f, 1.0f), 0.84375f);
+    check_near(TransitionAlpha(false, TransitionOut, 0.5f, 1.0f), 0.0f);
+    assert(TransitionFadeAlphaByte(true, TransitionOut, 1.0f, 1.0f) == 255);
     assert(TransitionApplyAlpha(128, 255) == 128);
     assert(TransitionApplyAlpha(255, 128) == 128);
     assert(TransitionApplyAlpha(300, -2) == 0);

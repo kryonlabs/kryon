@@ -1,10 +1,5 @@
 #module "transition_fade"
-
-TransitionFadePhase :: enum {
-    TransitionPhaseNone = 0
-    TransitionPhaseOut = 1
-    TransitionPhaseIn = 2
-}
+#import "transition_props"
 
 TransitionClampProgress :: (value: float) -> float #export {
     if value < 0.0 { return 0.0 }
@@ -38,8 +33,8 @@ TransitionAlpha :: (active: bool, phase: i32, elapsed_seconds: float,
     duration_seconds: float) -> float #export {
     if !active || duration_seconds <= 0.0 { return 0.0 }
     progress: float = TransitionSmoothProgress(elapsed_seconds / duration_seconds)
-    if phase == TransitionPhaseOut { return progress }
-    if phase == TransitionPhaseIn { return 1.0 - progress }
+    if phase == TransitionOut { return progress }
+    if phase == TransitionIn { return 1.0 - progress }
     return 0.0
 }
 

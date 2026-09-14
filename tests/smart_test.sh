@@ -184,7 +184,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/transition_fade.kry|src/ui/ui_transition.c|include/ui_transition.h|tests/transition_fade_policy_test.c|tests/transition_test.c)
+        runtime/transition_fade.kry|runtime/transition_props.kry|src/ui/ui_transition.c|include/ui_transition.h|include/ui_transition_props.generated.h|tests/transition_fade_policy_test.c|tests/transition_test.c)
             needs_transition_fade=1
             interesting=1
             ;;

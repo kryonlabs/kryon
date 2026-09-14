@@ -138,6 +138,7 @@ surface review:
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | `.kry support` |
+| `runtime/transition_props.kry` | Transition phase enum names | `.kry support` |
 | `runtime/modal.kry` | Modal layout, frame geometry, and action policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window and paint geometry policy | `.kry canonical` |

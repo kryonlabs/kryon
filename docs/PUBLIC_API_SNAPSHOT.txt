@@ -1817,14 +1817,12 @@ include/ui_toast.h function Toast
 include/ui_toast_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_toggle_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_toolbar_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_transition.h enum TRANSITION_IN
-include/ui_transition.h enum TRANSITION_NONE
-include/ui_transition.h enum TRANSITION_OUT
 include/ui_transition.h function BeginTransition
 include/ui_transition.h function GetTransitionAlpha
 include/ui_transition.h function ResetTransition
 include/ui_transition.h function ReverseTransitionToOut
 include/ui_transition.h function StepTransition
+include/ui_transition_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_tree.h enum EVENT_BLUR
 include/ui_tree.h enum EVENT_CLICK
 include/ui_tree.h enum EVENT_COMPOSITION_CHANGED

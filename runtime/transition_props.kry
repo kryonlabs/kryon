@@ -1,0 +1,7 @@
+#module "transition_props"
+
+TransitionPhase :: enum {
+    TransitionNone = 0
+    TransitionOut = 1
+    TransitionIn = 2
+}

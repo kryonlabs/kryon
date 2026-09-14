@@ -9,7 +9,7 @@ ResetTransition(TransitionState *transition)
     if(transition == NULL)
         return;
     transition->active = 0;
-    transition->phase = TRANSITION_NONE;
+    transition->phase = TransitionNone;
     transition->elapsed_seconds = 0.0f;
     transition->duration_seconds = 0.0f;
 }
@@ -20,7 +20,7 @@ BeginTransition(TransitionState *transition, float duration_seconds)
     if(transition == NULL)
         return;
     transition->active = 1;
-    transition->phase = TRANSITION_OUT;
+    transition->phase = TransitionOut;
     transition->elapsed_seconds = 0.0f;
     transition->duration_seconds = TransitionDuration(duration_seconds);
 }
@@ -30,8 +30,8 @@ ReverseTransitionToOut(TransitionState *transition)
 {
     if(transition == NULL || !transition->active)
         return;
-    if(transition->phase == TRANSITION_IN) {
-        transition->phase = TRANSITION_OUT;
+    if(transition->phase == TransitionIn) {
+        transition->phase = TransitionOut;
         transition->elapsed_seconds = TransitionReverseElapsed(
             transition->duration_seconds, transition->elapsed_seconds);
     }
@@ -47,24 +47,24 @@ GetTransitionAlpha(const TransitionState *transition)
                            transition->duration_seconds);
 }
 
-int
+TransitionPhase
 StepTransition(TransitionState *transition, float delta_seconds)
 {
     if(transition == NULL || !transition->active)
-        return TRANSITION_NONE;
+        return TransitionNone;
 
     transition->elapsed_seconds += TransitionDelta(delta_seconds);
     if(transition->elapsed_seconds < transition->duration_seconds)
-        return TRANSITION_NONE;
+        return TransitionNone;
 
-    if(transition->phase == TRANSITION_OUT) {
-        transition->phase = TRANSITION_IN;
+    if(transition->phase == TransitionOut) {
+        transition->phase = TransitionIn;
         transition->elapsed_seconds = 0.0f;
-        return TRANSITION_OUT;
+        return TransitionOut;
     }
 
     ResetTransition(transition);
-    return TRANSITION_IN;
+    return TransitionIn;
 }
 
 void

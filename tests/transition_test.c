@@ -40,12 +40,12 @@ test_smooth_fade_alpha(void)
 
     BeginTransition(&transition, 1.0f);
     check_float_near("fade out starts transparent", GetTransitionAlpha(&transition), 0.0f);
-    check_true("half step does not complete", StepTransition(&transition, 0.5f) == TRANSITION_NONE);
+    check_true("half step does not complete", StepTransition(&transition, 0.5f) == TransitionNone);
     check_float_near("fade out smooth midpoint", GetTransitionAlpha(&transition), 0.5f);
-    check_true("fade out completes once", StepTransition(&transition, 0.5f) == TRANSITION_OUT);
-    check_true("phase changes to fade in", transition.phase == TRANSITION_IN);
+    check_true("fade out completes once", StepTransition(&transition, 0.5f) == TransitionOut);
+    check_true("phase changes to fade in", transition.phase == TransitionIn);
     check_float_near("fade in starts opaque", GetTransitionAlpha(&transition), 1.0f);
-    check_true("fade in completes once", StepTransition(&transition, 1.0f) == TRANSITION_IN);
+    check_true("fade in completes once", StepTransition(&transition, 1.0f) == TransitionIn);
     check_true("transition resets after fade in", !transition.active);
 }
 
@@ -57,10 +57,10 @@ test_large_delta_and_clamp(void)
     BeginTransition(&transition, 0.0f);
     check_true("zero duration clamps active", transition.active);
     check_true("large delta completes only fade out phase",
-               StepTransition(&transition, 100.0f) == TRANSITION_OUT);
+               StepTransition(&transition, 100.0f) == TransitionOut);
     check_true("still active after large fade out step", transition.active);
     check_true("large delta completes fade in phase",
-               StepTransition(&transition, 100.0f) == TRANSITION_IN);
+               StepTransition(&transition, 100.0f) == TransitionIn);
     check_true("inactive after large fade in step", !transition.active);
 }
 
@@ -70,10 +70,10 @@ test_reverse_from_fade_in(void)
     TransitionState transition;
 
     BeginTransition(&transition, 1.0f);
-    check_true("enter fade in", StepTransition(&transition, 1.0f) == TRANSITION_OUT);
-    check_true("advance fade in", StepTransition(&transition, 0.25f) == TRANSITION_NONE);
+    check_true("enter fade in", StepTransition(&transition, 1.0f) == TransitionOut);
+    check_true("advance fade in", StepTransition(&transition, 0.25f) == TransitionNone);
     ReverseTransitionToOut(&transition);
-    check_true("reverse changes phase", transition.phase == TRANSITION_OUT);
+    check_true("reverse changes phase", transition.phase == TransitionOut);
     check_float_near("reverse preserves eased visual alpha", GetTransitionAlpha(&transition), 0.84375f);
 }
 

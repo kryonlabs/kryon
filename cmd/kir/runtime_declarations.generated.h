@@ -1406,6 +1406,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    clicked_action: i32\n"
         "}\n"
     },
+    {"runtime/transition_props.kry",
+        "#module \"transition_props\"\n"
+        "\n"
+        "TransitionPhase :: enum {\n"
+        "    TransitionNone = 0\n"
+        "    TransitionOut = 1\n"
+        "    TransitionIn = 2\n"
+        "}\n"
+    },
     {"runtime/tree_view_props.kry",
         "#module \"tree_view_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

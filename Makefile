@@ -679,7 +679,7 @@ icon-policy-test: $(GENERATED_SRC_DIR)/runtime/icon.c $(GENERATED_SRC_DIR)/runti
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/icon_policy_test.c $(GENERATED_SRC_DIR)/runtime/icon.c -lm -o $(ICON_POLICY_TEST)
 	$(ICON_POLICY_TEST)
 
-transition-fade-policy-test: $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h
+transition-fade-policy-test: $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/transition_fade_policy_test.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -lm -o $(TRANSITION_FADE_POLICY_TEST)
 	$(TRANSITION_FADE_POLICY_TEST)
 
@@ -1157,7 +1157,7 @@ $(SYNC_CRYPTO_TEST): tests/sync_crypto_test.c src/sync/sync_crypto.c include/syn
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sync_crypto_test.c src/sync/sync_crypto.c \
 		src/sync/monocypher.c src/sync/monocypher_ed25519.c -o $@
 
-$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h | $(BUILD_DIR)
+$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h include/ui_transition_props.generated.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h $(GENERATED_SRC_DIR)/runtime/transition_props.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -o $@
 
