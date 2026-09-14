@@ -785,13 +785,15 @@ SegmentedControl(SegmentedControlProps control)
                 button.style_kind = StyleKindSegment();
                 button.style_resolved = 1;
                 if(ui_button_render(button)) {
+                    SegmentedSelectionResult selection =
+                        SegmentedSelectionFor(selected, item_index,
+                            control.selected_index != NULL);
                     result.clicked_index = item_index;
-                    if(control.selected_index != NULL &&
-                       *control.selected_index != item_index) {
-                        *control.selected_index = item_index;
-                        result.changed = 1;
-                    }
-                    result.selected_index = item_index;
+                    result.selected_index = selection.selected_index;
+                    result.changed |= selection.changed;
+                    if(selection.changed && control.selected_index != NULL)
+                        *control.selected_index = selection.selected_index;
+                    selected = selection.selected_index;
                 }
                 x += button_w + metrics.gap;
             }

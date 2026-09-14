@@ -1250,6 +1250,7 @@ test_segmented_control_policy(void)
     SegmentedRow row;
     SegmentedRowAdvance advance;
     SegmentedMetrics zero_gap;
+    SegmentedSelectionResult selection;
 
     control.value.fields |= StyleGap | StyleIconSize | StyleContentOffset;
     control.value.gap = 6.0f;
@@ -1285,6 +1286,19 @@ test_segmented_control_policy(void)
     check_int("segmented focus disabled id", SegmentedFocusIdFor(0, 1), 0);
     check_int("segmented focus negative index", SegmentedFocusIdFor(7, -1), 0);
     check_int("segmented focus id", SegmentedFocusIdFor(7, 2), 7003);
+    selection = SegmentedSelectionFor(1, 2, 1);
+    check_int("segmented selection clicked", selection.selected_index, 2);
+    check_int("segmented selection changed", selection.changed, 1);
+    selection = SegmentedSelectionFor(2, 2, 1);
+    check_int("segmented selection same unchanged", selection.changed, 0);
+    selection = SegmentedSelectionFor(1, -1, 1);
+    check_int("segmented selection no click keeps selected",
+              selection.selected_index, 1);
+    check_int("segmented selection no click unchanged", selection.changed, 0);
+    selection = SegmentedSelectionFor(1, 2, 0);
+    check_int("segmented selection no storage reports clicked",
+              selection.selected_index, 2);
+    check_int("segmented selection no storage unchanged", selection.changed, 0);
     check_int("segmented row button width", row.button_width, 117);
     check_int("segmented row x", row.x, 10);
 

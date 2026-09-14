@@ -3875,14 +3875,17 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 					ClassName: props.ClassName,
 				}, font)
 				if pressed {
+					selection := SegmentedControl_SegmentedSelectionFor(
+						selected, int32(index), props.SelectedIndex != nil)
 					result.ClickedIndex = int32(index)
-					result.SelectedIndex = int32(index)
-					if selected != int32(index) {
+					result.SelectedIndex = selection.SelectedIndex
+					if selection.Changed {
 						result.Changed = 1
 					}
-					if props.SelectedIndex != nil {
-						*props.SelectedIndex = int32(index)
+					if selection.Changed && props.SelectedIndex != nil {
+						*props.SelectedIndex = selection.SelectedIndex
 					}
+					selected = selection.SelectedIndex
 				}
 			}
 			y += metrics.RowHeight + metrics.Gap

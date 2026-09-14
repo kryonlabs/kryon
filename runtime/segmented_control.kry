@@ -25,6 +25,11 @@ SegmentedRowAdvance :: struct {
     wrap_before: bool
 }
 
+SegmentedSelectionResult :: struct {
+    selected_index: i32
+    changed: bool
+}
+
 SegmentedMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -126,6 +131,19 @@ SegmentedFocusIdFor :: (control_id: i32, index: i32) -> i32 #export {
         return 0
     }
     return control_id * 1000 + index + 1
+}
+
+SegmentedSelectionFor :: (selected_index: i32, clicked_index: i32,
+    has_selected_index: bool) -> SegmentedSelectionResult #export {
+    result: SegmentedSelectionResult
+    result.selected_index = selected_index
+    result.changed = false
+    if clicked_index < 0 {
+        return result
+    }
+    result.selected_index = clicked_index
+    result.changed = has_selected_index && selected_index != clicked_index
+    return result
 }
 
 SegmentedRowFor :: (bounds_x: float, bounds_width: float, y: i32,

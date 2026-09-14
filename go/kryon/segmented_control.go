@@ -26,6 +26,11 @@ type SegmentedRowAdvance struct {
 	WrapBefore bool
 }
 
+type SegmentedSelectionResult struct {
+	SelectedIndex int32
+	Changed       bool
+}
+
 func SegmentedControl_SegmentedMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field
@@ -323,6 +328,18 @@ func SegmentedControl_SegmentedFocusIdFor(control_id int32, index int32) int32 {
 	var value_13 int32 = 1
 	var value_14 int32 = int32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, true, 1))
 	return value_14
+}
+
+func SegmentedControl_SegmentedSelectionFor(selected_index int32, clicked_index int32, has_selected_index bool) SegmentedSelectionResult {
+	var result SegmentedSelectionResult = SegmentedSelectionResult{}
+	result.SelectedIndex = selected_index
+	result.Changed = false
+	if clicked_index < 0 {
+		return result
+	}
+	result.SelectedIndex = clicked_index
+	result.Changed = has_selected_index && selected_index != clicked_index
+	return result
 }
 
 func SegmentedControl_SegmentedRowFor(bounds_x float32, bounds_width float32, y int32, row_start int32, row_count int32, row_width int32, wrap bool, metrics SegmentedMetrics) SegmentedRow {
