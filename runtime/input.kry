@@ -43,6 +43,18 @@ InputPointerDragThresholdFor :: (scale: float) -> i32 #export {
     return InputScaledMetric(5.0, scale)
 }
 
+InputPointerDragShouldStart :: (dx: i32, dy: i32, threshold: i32) -> bool #export {
+    if threshold < 0 { threshold = 0 }
+    return dx > threshold || dx < -threshold ||
+        dy > threshold || dy < -threshold
+}
+
+InputPointerDragIsHorizontal :: (dx: i32, dy: i32) -> bool #export {
+    if dx < 0 { dx = -dx }
+    if dy < 0 { dy = -dy }
+    return dx >= dy
+}
+
 InputTempEditActivationFor :: (pressed: bool, control: bool,
     same_kind: bool, same_widget: bool, same_component: bool,
     elapsed_seconds: float, dx: float, dy: float, slop: i32) -> bool #export {

@@ -797,7 +797,8 @@ and host plumbing behind the canonical names.
   `runtime/scroll.kry`;
   table keyboard selection, clear-selection, resize lifecycle/width, clipboard intent, and scroll-into-view policy now route through
   `runtime/table_view.kry`; `Input` numeric kind default format, integer
-  rounding, and step dispatch now route through `runtime/input.kry`; retained
+  rounding, step dispatch, temp-edit activation, and pointer-drag
+  threshold/start/direction policy now route through `runtime/input.kry`; retained
   and immediate `Drag`/`Slider`/`Spinbox` default numeric formats now also use
   that runtime policy; `Spinbox` child focus IDs now route through
   `runtime/spinbox.kry`; `Drag` text inset, label-gap metrics, and component

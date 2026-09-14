@@ -475,12 +475,6 @@ MarkTextCursor(void)
     ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, CURSOR_PRIORITY_TEXT);
 }
 
-static int
-ui_iabs(int value)
-{
-    return value < 0 ? -value : value;
-}
-
 int
 IsKeyboardInputEnabled(void)
 {
@@ -703,7 +697,7 @@ ui_mod_key_down(void)
 int
 ui_pointer_drag_is_horizontal(void)
 {
-    return ui_iabs(ui_pointer_dx()) >= ui_iabs(ui_pointer_dy());
+    return InputPointerDragIsHorizontal(ui_pointer_dx(), ui_pointer_dy());
 }
 
 static void
@@ -728,8 +722,7 @@ ui_update_pointer_gesture(void)
     } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && g_ui_pointer_down) {
         int dx = ui_pointer_dx();
         int dy = ui_pointer_dy();
-        if(dx > drag_threshold || dx < -drag_threshold ||
-           dy > drag_threshold || dy < -drag_threshold) {
+        if(InputPointerDragShouldStart(dx, dy, drag_threshold)) {
             g_ui_pointer_dragging = 1;
             g_ui_pointer_dragged_this_click = 1;
         }

@@ -23,6 +23,13 @@ main(void)
     assert(InputDefaultStepButtonWidth(1.0f) == 24);
     assert(InputDoubleClickSlopFor(2.0f) == 12);
     assert(InputPointerDragThresholdFor(2.0f) == 10);
+    assert(!InputPointerDragShouldStart(5, 0, 5));
+    assert(InputPointerDragShouldStart(6, 0, 5));
+    assert(InputPointerDragShouldStart(0, -6, 5));
+    assert(InputPointerDragShouldStart(0, -1, -1));
+    assert(InputPointerDragIsHorizontal(7, -6));
+    assert(InputPointerDragIsHorizontal(-6, 6));
+    assert(!InputPointerDragIsHorizontal(5, -6));
 
     assert(InputTempEditActivationFor(1, 1, 0, 0, 0, 99.0f,
                                       99.0f, 99.0f, 6));
