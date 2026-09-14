@@ -404,6 +404,22 @@ main(void)
     assert(!TextCommitAfterHandledShouldRun(true, true, true));
     assert(!TextCommitAfterHandledShouldRun(false, false, true));
     assert(!TextCommitAfterHandledShouldRun(false, true, false));
+    assert(TextNavigationShouldRun(false));
+    assert(!TextNavigationShouldRun(true));
+    assert(TextAreaEnterNewlineShouldRun(false, true));
+    assert(!TextAreaEnterNewlineShouldRun(true, true));
+    assert(!TextAreaEnterNewlineShouldRun(false, false));
+    assert(TextAreaChangedShouldCollapseSelection(true, false));
+    assert(!TextAreaChangedShouldCollapseSelection(true, true));
+    assert(!TextAreaChangedShouldCollapseSelection(false, false));
+    assert(TextFieldChangedShouldCollapseSelection(true, false, false,
+        false, false));
+    assert(TextFieldChangedShouldCollapseSelection(false, true, false,
+        false, false));
+    assert(TextFieldChangedShouldCollapseSelection(false, false, false,
+        true, false));
+    assert(!TextFieldChangedShouldCollapseSelection(false, false, false,
+        false, false));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

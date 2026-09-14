@@ -413,6 +413,25 @@ TextCommitAfterHandledShouldRun :: (read_only: bool, handled: bool,
     return !read_only && handled && enter_requested
 }
 
+TextNavigationShouldRun :: (handled: bool) -> bool #export {
+    return !handled
+}
+
+TextAreaEnterNewlineShouldRun :: (read_only: bool,
+    enter_requested: bool) -> bool #export {
+    return !read_only && enter_requested
+}
+
+TextAreaChangedShouldCollapseSelection :: (changed: bool,
+    handled: bool) -> bool #export {
+    return changed && !handled
+}
+
+TextFieldChangedShouldCollapseSelection :: (changed: bool, left_pressed: bool,
+    right_pressed: bool, home_pressed: bool, end_pressed: bool) -> bool #export {
+    return changed || left_pressed || right_pressed || home_pressed || end_pressed
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }

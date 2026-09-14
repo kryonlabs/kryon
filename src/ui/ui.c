@@ -4131,7 +4131,7 @@ ui_text_area_render(TextAreaProps area)
                 selection_key_handled = 1;
             }
         }
-        if(!selection_key_handled) {
+        if(TextNavigationShouldRun(selection_key_handled)) {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
                         IsKeyDown(KEY_RIGHT_SHIFT);
             int cursor = *area.cursor_position;
@@ -4163,7 +4163,7 @@ ui_text_area_render(TextAreaProps area)
         if(TextNativeEditShouldRun(area.read_only, selection_key_handled)) {
             changed |= EditText(area_edit);
         }
-        if(!area.read_only && enter_requested) {
+        if(TextAreaEnterNewlineShouldRun(area.read_only, enter_requested)) {
             if(ui_text_insert_newline(area.text, area.text_size,
                                       area.cursor_position,
                                       area.max_codepoints)) {
@@ -4171,7 +4171,8 @@ ui_text_area_render(TextAreaProps area)
             }
             g_ui_text_input_enter_count = 0;
         }
-        if(changed && !selection_key_handled) {
+        if(TextAreaChangedShouldCollapseSelection(changed,
+           selection_key_handled)) {
             if(!g_ui_text_area_selection.dragging) {
                 ui_text_selection_set_collapsed(&g_ui_text_area_selection,
                                                 drag_id, area.focused,
@@ -4787,7 +4788,7 @@ ui_text_field_render_filtered(TextFieldProps field,
             }
             selection_handled = 1;
         }
-        if(!selection_handled) {
+        if(TextNavigationShouldRun(selection_handled)) {
             int shift = IsKeyDown(KEY_LEFT_SHIFT) ||
                         IsKeyDown(KEY_RIGHT_SHIFT);
             int cursor = *field.cursor_position;
@@ -4877,8 +4878,9 @@ ui_text_field_render_filtered(TextFieldProps field,
                 *field.commit_pressed = 1;
             g_ui_text_input_enter_count = 0;
         }
-        if(changed || IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
-           IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END)) {
+        if(TextFieldChangedShouldCollapseSelection(changed,
+           IsKeyPressed(KEY_LEFT), IsKeyPressed(KEY_RIGHT),
+           IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END))) {
             if(!g_ui_text_field_selection.dragging) {
                 TextSelectionState collapsed = ui_text_selection_collapsed(
                     *field.cursor_position);

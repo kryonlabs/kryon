@@ -844,10 +844,10 @@ and host plumbing behind the canonical names.
    composition paint span/underline policy, selection paint span policy,
    selection owner match policy, context-menu availability policy, and
    context-menu plus keyboard edit-command decision policy, text-area shortcut
-   focus-claim policy, and delete/replacement/native-edit/commit gate policy in
-   `.kry`; remaining native work is buffer mutation, IME/composition, selection
-   ownership/painting, and the final decision about how much of that can become
-   reusable `.kry` policy.
+   focus-claim policy, delete/replacement/native-edit/commit gate policy, and
+   navigation/enter/collapse gate policy in `.kry`; remaining native work is
+   buffer mutation, IME/composition, selection ownership/painting, and the final
+   decision about how much of that can become reusable `.kry` policy.
 4. Finish rich text migration:
   `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment
   policy, retained selectable text block height/line advance, and generated `ParagraphSpec` data, but parsing, line-break ownership,
