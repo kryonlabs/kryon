@@ -103,6 +103,21 @@ InfoIndicatorMetrics :: struct {
     diameter: i32
 }
 
+ButtonFallbackPolicy :: struct {
+    radius: float
+    disabled_background_alpha: u8
+    disabled_foreground_alpha: u8
+    fallback_border_lighten: i32
+    hover_border_lighten: i32
+    pressed_background_darken: i32
+    hover_background_lighten: i32
+    termi_border_lighten: i32
+    termi_hover_border_lighten: i32
+    outline_width: float
+    outline_adjust: i32
+    outline_white: bool
+}
+
 ButtonSplitLayout :: struct {
     width: float
     action_width: float
@@ -211,6 +226,31 @@ InfoIndicatorMetricsFor :: (requested_diameter: i32, scale: float,
             face.value.icon_size, 18.0, scale, false)
     }
     return metrics
+}
+
+ButtonFallbackPolicyFor :: (hovered: bool, pressed: bool, disabled: bool,
+    cues: bool, termi: bool) -> ButtonFallbackPolicy #export {
+    policy: ButtonFallbackPolicy
+    policy.radius = 0.06
+    policy.disabled_background_alpha = (u8)120
+    policy.disabled_foreground_alpha = (u8)150
+    policy.fallback_border_lighten = 32
+    policy.hover_border_lighten = cues ? 54 : 40
+    policy.pressed_background_darken = 18
+    policy.hover_background_lighten = 6
+    policy.termi_border_lighten = 58
+    policy.termi_hover_border_lighten = 78
+    policy.outline_width = hovered || pressed ? 2.0 : 1.0
+    policy.outline_adjust = 36
+    if disabled {
+        policy.outline_adjust = -45
+    } else if pressed {
+        policy.outline_adjust = 0
+        policy.outline_white = true
+    } else if hovered {
+        policy.outline_adjust = 72
+    }
+    return policy
 }
 
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {

@@ -442,6 +442,7 @@ test_button_policy(void)
     IconActionMetrics icon_metrics;
     TextButtonMetrics text_metrics;
     InfoIndicatorMetrics info_metrics;
+    ButtonFallbackPolicy fallback_policy;
 
     check_int("action enabled", ButtonActionEnabled(false, false) ? 1 : 0, 1);
     check_int("action own disabled", ButtonActionEnabled(true, false) ? 1 : 0, 0);
@@ -502,6 +503,44 @@ test_button_policy(void)
     check_int("info indicator requested diameter", info_metrics.diameter, 20);
     info_metrics = InfoIndicatorMetricsFor(0, 2.0f, frame);
     check_int("info indicator styled diameter", info_metrics.diameter, 28);
+
+    fallback_policy = ButtonFallbackPolicyFor(false, false, false, false,
+                                              false);
+    check_float("button fallback radius", fallback_policy.radius, 0.06f);
+    check_int("button fallback disabled background alpha",
+              fallback_policy.disabled_background_alpha, 120);
+    check_int("button fallback border light", fallback_policy.fallback_border_lighten,
+              32);
+    check_int("button fallback hover border light",
+              fallback_policy.hover_border_lighten, 40);
+    check_float("button fallback outline width",
+                fallback_policy.outline_width, 1.0f);
+    check_int("button fallback outline light",
+              fallback_policy.outline_adjust, 36);
+
+    fallback_policy = ButtonFallbackPolicyFor(true, false, false, true, true);
+    check_int("button fallback animated hover border light",
+              fallback_policy.hover_border_lighten, 54);
+    check_int("button fallback termi hover border light",
+              fallback_policy.termi_hover_border_lighten, 78);
+    check_float("button fallback hover outline width",
+                fallback_policy.outline_width, 2.0f);
+    check_int("button fallback hover outline light",
+              fallback_policy.outline_adjust, 72);
+
+    fallback_policy = ButtonFallbackPolicyFor(false, true, false, false,
+                                              true);
+    check_int("button fallback pressed background dark",
+              fallback_policy.pressed_background_darken, 18);
+    check_int("button fallback pressed outline white",
+              fallback_policy.outline_white ? 1 : 0, 1);
+
+    fallback_policy = ButtonFallbackPolicyFor(false, false, true, false,
+                                              true);
+    check_int("button fallback disabled foreground alpha",
+              fallback_policy.disabled_foreground_alpha, 150);
+    check_int("button fallback disabled outline dark",
+              fallback_policy.outline_adjust, -45);
 }
 
 static void

@@ -225,21 +225,22 @@ ui_termi_backend(void)
 
 static void
 ui_draw_termi_button_outline(Rectangle bounds, Color border, int hovered,
-                             int pressed, int disabled)
+                             int pressed, int disabled,
+                             ButtonFallbackPolicy policy)
 {
     Color outline = border;
-    float thick = hovered || pressed ? 2.0f : 1.0f;
 
-    if(disabled)
-        outline = DarkenColor(outline, 45);
-    else if(pressed)
+    (void)hovered;
+    (void)pressed;
+    (void)disabled;
+    if(policy.outline_white)
         outline = WHITE;
-    else if(hovered)
-        outline = LightenColor(outline, 72);
+    else if(policy.outline_adjust < 0)
+        outline = DarkenColor(outline, -policy.outline_adjust);
     else
-        outline = LightenColor(outline, 36);
+        outline = LightenColor(outline, policy.outline_adjust);
     outline.a = 255;
-    DrawRectangleLinesEx(bounds, thick, outline);
+    DrawRectangleLinesEx(bounds, policy.outline_width, outline);
 }
 
 
@@ -266,9 +267,10 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Color background = button.paint.background.a != 0 ? button.paint.background : normal_style.background;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : hover_style.background;
     Color text = button.paint.foreground.a != 0 ? button.paint.foreground : normal_style.foreground;
-    Color border = button.paint.border.a != 0 ? button.paint.border : LightenColor(background, 32);
-    float radius = button.paint.radius > 0.0f ? button.paint.radius : 0.06f;
+    Color border;
+    float radius;
     int cues = TransitionCuesEnabled();
+    ButtonFallbackPolicy fallback_policy;
     Color draw_background;
     Color draw_border;
     float hover_amount = 0.0f;
@@ -313,6 +315,16 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     hovered = input.interaction.hovered;
     retained_pressed = input.interaction.pressed;
     focused = input.interaction.focused;
+    fallback_policy = ButtonFallbackPolicyFor(hovered != 0,
+                                             retained_pressed != 0,
+                                             button.props.disabled,
+                                             cues != 0,
+                                             termi_button != 0);
+    border = button.paint.border.a != 0 ? button.paint.border
+             : LightenColor(background,
+                            fallback_policy.fallback_border_lighten);
+    radius = button.paint.radius > 0.0f ? button.paint.radius
+             : fallback_policy.radius;
     draw_bounds = button.props.bounds;
     if(button.props.invisible) {
         if(focused)
@@ -389,25 +401,35 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     hover_amount = hovered ? 1.0f : 0.0f;
 
     if(button.props.disabled) {
-        background.a = background.a > 120 ? 120 : background.a;
-        text.a = text.a > 150 ? 150 : text.a;
+        background.a = background.a > fallback_policy.disabled_background_alpha
+            ? fallback_policy.disabled_background_alpha : background.a;
+        text.a = text.a > fallback_policy.disabled_foreground_alpha
+            ? fallback_policy.disabled_foreground_alpha : text.a;
     }
     draw_background = ColorLerp(background, hover_background, hover_amount);
-    draw_border = ColorLerp(border, LightenColor(hover_background, cues ? 54 : 40),
+    draw_border = ColorLerp(border,
+                            LightenColor(hover_background,
+                                fallback_policy.hover_border_lighten),
                             hover_amount);
     if(termi_button && !button.props.disabled && retained_pressed)
-        draw_background = DarkenColor(draw_background, 18);
+        draw_background = DarkenColor(draw_background,
+                                      fallback_policy.pressed_background_darken);
     if(cues && hovered)
-        draw_background = LightenColor(draw_background, 6);
+        draw_background = LightenColor(draw_background,
+                                       fallback_policy.hover_background_lighten);
     if(termi_button)
-        draw_border = hovered ? LightenColor(hover_background, 78)
-                              : LightenColor(background, 58);
+        draw_border = hovered
+            ? LightenColor(hover_background,
+                           fallback_policy.termi_hover_border_lighten)
+            : LightenColor(background,
+                           fallback_policy.termi_border_lighten);
 
     ui_draw_control_background(draw_bounds, draw_background, draw_border, radius);
     if(termi_button)
         ui_draw_termi_button_outline(draw_bounds, draw_border, hovered,
                                      retained_pressed,
-                                     button.props.disabled);
+                                     button.props.disabled,
+                                     fallback_policy);
     if(focused) {
         SetFocusTextInputActive(0);
         RenderFocus(draw_bounds);
