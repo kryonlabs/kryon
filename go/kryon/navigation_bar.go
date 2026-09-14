@@ -107,6 +107,26 @@ type NavigationBarConfigCounts struct {
 	OptionCount   int32
 }
 
+func NavigationBar_NavigationBarPanelRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func NavigationBar_NavigationBarRowRole() int32 {
+	var value_0 int32 = 21
+	return value_0
+}
+
+func NavigationBar_NavigationBarActionRole() int32 {
+	var value_0 int32 = 17
+	return value_0
+}
+
+func NavigationBar_NavigationBarRouteRole() int32 {
+	var value_0 int32 = 18
+	return value_0
+}
+
 func NavigationBar_NavigationBarDefaultHeight(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

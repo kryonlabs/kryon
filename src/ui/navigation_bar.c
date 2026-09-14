@@ -267,10 +267,10 @@ static NavigationBarConfigMetrics
 ui_navigation_bar_config_metrics(int class_name, float scale)
 {
     return NavigationBarConfigMetricsFor(scale,
-        ui_navigation_bar_metric_frame(class_name, 2),
-        ui_navigation_bar_metric_frame(class_name, 21),
-        ui_navigation_bar_metric_frame(class_name, 17),
-        ui_navigation_bar_metric_frame(class_name, 18));
+        ui_navigation_bar_metric_frame(class_name, NavigationBarPanelRole()),
+        ui_navigation_bar_metric_frame(class_name, NavigationBarRowRole()),
+        ui_navigation_bar_metric_frame(class_name, NavigationBarActionRole()),
+        ui_navigation_bar_metric_frame(class_name, NavigationBarRouteRole()));
 }
 
 NavigationBarConfigResult

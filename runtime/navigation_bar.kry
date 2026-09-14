@@ -106,6 +106,22 @@ NavigationBarConfigCounts :: struct {
     option_count: i32
 }
 
+NavigationBarPanelRole :: () -> i32 #export {
+    return 2
+}
+
+NavigationBarRowRole :: () -> i32 #export {
+    return 21
+}
+
+NavigationBarActionRole :: () -> i32 #export {
+    return 17
+}
+
+NavigationBarRouteRole :: () -> i32 #export {
+    return 18
+}
+
 NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(86.0 * scale)

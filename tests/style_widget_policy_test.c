@@ -6,6 +6,7 @@
 #include "runtime/image.h"
 #include "runtime/menu.h"
 #include "runtime/modal.h"
+#include "runtime/navigation_bar.h"
 #include "runtime/paned_view.h"
 #include "runtime/plot.h"
 #include "runtime/progress.h"
@@ -158,6 +159,11 @@ main(void)
        TableViewDividerRole() != 18 || TableViewRowRole() != 21 ||
        TableViewCellRole() != 22 || TableViewSelectionRole() != 23) {
         fprintf(stderr, "table view role policy changed\n");
+        return 1;
+    }
+    if(NavigationBarPanelRole() != 2 || NavigationBarRowRole() != 21 ||
+       NavigationBarActionRole() != 17 || NavigationBarRouteRole() != 18) {
+        fprintf(stderr, "navigation bar role policy changed\n");
         return 1;
     }
 
