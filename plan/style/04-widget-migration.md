@@ -23,6 +23,8 @@ Only migrate widgets that are already substantially represented in `.kry`.
 
 Do not fight the parallel agent converting whole widgets to `.kry`. If a widget is currently being converted, leave it alone unless the relevant surface is already stable.
 
+Git and staging safety rules for sharing the working tree with that agent are recorded in `00-status.md`.
+
 ## Standard Widget Shape
 
 Each widget should own these helpers in `runtime/<widget>.kry`:
@@ -191,7 +193,9 @@ Use these as templates:
 - toast style facts moved to `.kry`;
 - button radius fallback moved to `.kry`;
 - page layout metrics moved to KSS policy;
-- link/tab/dropdown release-consumption policy moved to `.kry`.
+- link/tab/dropdown release-consumption policy moved to `.kry`;
+- scroll release consumption moved to `.kry` (`b4eca640`);
+- reorder release policy moved to `.kry` (`c2a1a1c4`).
 
 ## Done Criteria
 

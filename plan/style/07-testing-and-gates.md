@@ -17,6 +17,21 @@ The test suite should fail when:
 - generated style built-ins are stale;
 - parser behavior changes without test updates.
 
+## Current Gate Status (2026-09-14)
+
+Existing Makefile gates:
+
+- `kss-parser-test`
+- `style-assets-test`
+- `style-builtins-test`
+- `go-style-builtins` / `go-style-builtins-check`
+
+Still pending:
+
+- all five scanners (`visual-props-check`, `paint-style-leak-check`, `style-facts-bridge-check`, `no-glow-pack-check`, `no-theme-chrome-check`);
+- no-style tests for widget families;
+- runtime parity fixtures for style resolution.
+
 ## Test Categories
 
 ### Parser Tests

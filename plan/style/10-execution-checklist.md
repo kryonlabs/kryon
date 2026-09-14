@@ -9,6 +9,8 @@ Provide the 1:1 work plan for finishing the style separation project.
 
 This file is the execution checklist. The other nine files explain each area in detail.
 
+Progress is recorded in `00-status.md` (audit 2026-09-14). Inline markers below are synced to it.
+
 ## Phase 1 - Stabilize Contract
 
 Tasks:
@@ -17,7 +19,7 @@ Tasks:
 2. Confirm public vocabulary: `StyleSheet`, `StylePack`, `StyleRule`, `StyleToken`, `StyleFacts`.
 3. Keep `kss_` names internal to parser/formatter/import loader.
 4. Document zero-base style resolution as invariant.
-5. Add or update scanner for nonzero visual bases in widget code.
+5. [pending] Add or update scanner for nonzero visual bases in widget code.
 
 Evidence:
 
@@ -29,12 +31,12 @@ Evidence:
 
 Tasks:
 
-1. Keep built-ins at `material`, `tk`, `vanilla`, `lightfield`.
-2. Keep Material as default.
-3. Keep Glow out of the top-level registry.
-4. Add Lightfield variant plan/API for glow treatment.
-5. Convert built-in packs to final grouped token syntax.
-6. Verify every pack covers every style kind and role.
+1. [done] Keep built-ins at `material`, `tk`, `vanilla`, `lightfield`.
+2. [done] Keep Material as default.
+3. [done] Keep Glow out of the top-level registry.
+4. [pending] Add Lightfield variant plan/API for glow treatment.
+5. [done] Convert built-in packs to final grouped token syntax.
+6. [pending] Verify every pack covers every style kind and role.
 
 Commands:
 
@@ -62,16 +64,18 @@ Tasks:
 4. Keep facts semantic and class-aware.
 5. Add policy tests for helpers.
 
-Priority:
+Priority (remaining call sites from `00-status.md`):
 
-1. TableView
-2. Image
-3. NavigationBar
-4. TabBar/PanedView helper paths
+1. TableView - `src/ui/ui_tk.c:3614-3627`, `go/kryon/runtime.go:6238`
+2. NavigationBar - `src/ui/navigation_bar.c:255`
+3. PanedView handle - `src/ui/tab_bar.c:778`
+4. Button generic facts path - `src/ui/button.c:33`, `go/kryon/runtime.go:1747`
 5. Modal
 6. Menu/ListBox/TreeView
 7. Toolbar/TitleBar
 8. Remaining smaller widgets
+
+Done: toast facts helpers in `runtime/toast.kry`.
 
 Evidence:
 
@@ -82,7 +86,7 @@ Evidence:
 
 Tasks:
 
-1. Audit `StyleData base = {.fields = ...}` in widget paths.
+1. [done 2026-09-14] Audit `StyleData base = {.fields = ...}` in widget paths (six sites remain, listed in `00-status.md`).
 2. Replace visual bases with zero base.
 3. Move needed visual defaults into `.kss`.
 4. Keep structural metric fallbacks in `.kry`.
