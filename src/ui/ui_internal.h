@@ -501,7 +501,7 @@ NavigationBarConfigResult RenderNavigationBarConfigModal(NavigationBarConfigProp
 ToolbarResult RenderToolbar(ToolbarProps toolbar);
 int ui_tab_bar_keyboard_input(TabBarProps bar);
 int RenderTabBar(TabBarProps bar);
-PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
+DropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
 void RenderSeparator(SeparatorProps separator);
 int RenderDragDrop(DragDropProps drag_drop);
 int RenderListBoxMulti(ListBoxProps list);

@@ -2,6 +2,17 @@
 package kryon
 
 // #import kryon_compat.generated.h
+type DropZone int32
+
+const (
+	DropNone   DropZone = 0
+	DropCenter DropZone = 1
+	DropLeft   DropZone = 2
+	DropRight  DropZone = 3
+	DropTop    DropZone = 4
+	DropBottom DropZone = 5
+)
+
 type PanedViewProps struct {
 	Bounds    Rectangle
 	ID        int32

@@ -1,6 +1,7 @@
 #module "paned_view"
 #import "control_props"
 #import "drawing_props"
+#import "paned_view_props"
 #import "style"
 
 PanedViewMetrics :: struct {
@@ -21,30 +22,6 @@ PanedViewMetricsFor :: (scale: float, handle: StyleFrame) -> PanedViewMetrics #e
     metrics.drop_edge = PanedViewMetric(handle.value.fields, (u32)StylePaddingX,
         handle.value.padding_x, 46.0, scale)
     return metrics
-}
-
-PanedViewDropNone :: () -> i32 #export {
-    return 0
-}
-
-PanedViewDropCenter :: () -> i32 #export {
-    return 1
-}
-
-PanedViewDropLeft :: () -> i32 #export {
-    return 2
-}
-
-PanedViewDropRight :: () -> i32 #export {
-    return 3
-}
-
-PanedViewDropTop :: () -> i32 #export {
-    return 4
-}
-
-PanedViewDropBottom :: () -> i32 #export {
-    return 5
 }
 
 PanedViewSize :: (bounds: Rectangle, vertical: bool) -> i32 #export {
@@ -96,13 +73,13 @@ PanedViewDropZoneFor :: (bounds: Rectangle, mouse: Vector2,
     metrics: PanedViewMetrics) -> i32 #export {
     if mouse.x < bounds.x || mouse.x > bounds.x + bounds.width ||
        mouse.y < bounds.y || mouse.y > bounds.y + bounds.height {
-        return PanedViewDropNone()
+        return DropNone
     }
     edge: i32 = metrics.drop_edge
     if edge < 0 { edge = 0 }
-    if mouse.x < bounds.x + (float)edge { return PanedViewDropLeft() }
-    if mouse.x > bounds.x + bounds.width - (float)edge { return PanedViewDropRight() }
-    if mouse.y < bounds.y + (float)edge { return PanedViewDropTop() }
-    if mouse.y > bounds.y + bounds.height - (float)edge { return PanedViewDropBottom() }
-    return PanedViewDropCenter()
+    if mouse.x < bounds.x + (float)edge { return DropLeft }
+    if mouse.x > bounds.x + bounds.width - (float)edge { return DropRight }
+    if mouse.y < bounds.y + (float)edge { return DropTop }
+    if mouse.y > bounds.y + bounds.height - (float)edge { return DropBottom }
+    return DropCenter
 }

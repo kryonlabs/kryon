@@ -21,6 +21,15 @@ static inline bool StringEqual(String a, String b) {
 #endif
 #include "kryon_compat.generated.h"
 
+typedef enum DropZone {
+    DropNone = 0,
+    DropCenter = 1,
+    DropLeft = 2,
+    DropRight = 3,
+    DropTop = 4,
+    DropBottom = 5,
+} DropZone;
+
 typedef struct PanedViewProps {
     Rectangle bounds;
     int32_t id;

@@ -3,6 +3,7 @@ package kryon
 
 // #import control_props
 // #import drawing_props
+// #import paned_view_props
 // #import style
 type PanedViewMetrics struct {
 	Grip     int32
@@ -61,36 +62,6 @@ func PanedView_PanedViewMetricsFor(scale float32, handle StyleFrame) PanedViewMe
 	metrics.DropEdge = value_17
 	var value_18 PanedViewMetrics = metrics
 	return value_18
-}
-
-func PanedView_PanedViewDropNone() int32 {
-	var value_0 int32 = 0
-	return value_0
-}
-
-func PanedView_PanedViewDropCenter() int32 {
-	var value_0 int32 = 1
-	return value_0
-}
-
-func PanedView_PanedViewDropLeft() int32 {
-	var value_0 int32 = 2
-	return value_0
-}
-
-func PanedView_PanedViewDropRight() int32 {
-	var value_0 int32 = 3
-	return value_0
-}
-
-func PanedView_PanedViewDropTop() int32 {
-	var value_0 int32 = 4
-	return value_0
-}
-
-func PanedView_PanedViewDropBottom() int32 {
-	var value_0 int32 = 5
-	return value_0
 }
 
 func PanedView_PanedViewSize(bounds Rectangle, vertical bool) int32 {
@@ -236,7 +207,7 @@ func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics Pan
 		value_13 = value_18
 	}
 	if value_13 {
-		var value_19 int32 = PanedView_PanedViewDropNone()
+		var value_19 int32 = int32(DropNone)
 		return value_19
 	}
 	var value_20 int32 = metrics.DropEdge
@@ -255,7 +226,7 @@ func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics Pan
 	var value_29 float32 = value_26 + value_28
 	var value_30 bool = value_25 < value_29
 	if value_30 {
-		var value_31 int32 = PanedView_PanedViewDropLeft()
+		var value_31 int32 = int32(DropLeft)
 		return value_31
 	}
 	var value_32 float32 = mouse.X
@@ -267,7 +238,7 @@ func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics Pan
 	var value_38 float32 = value_35 - value_37
 	var value_39 bool = value_32 > value_38
 	if value_39 {
-		var value_40 int32 = PanedView_PanedViewDropRight()
+		var value_40 int32 = int32(DropRight)
 		return value_40
 	}
 	var value_41 float32 = mouse.Y
@@ -277,7 +248,7 @@ func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics Pan
 	var value_45 float32 = value_42 + value_44
 	var value_46 bool = value_41 < value_45
 	if value_46 {
-		var value_47 int32 = PanedView_PanedViewDropTop()
+		var value_47 int32 = int32(DropTop)
 		return value_47
 	}
 	var value_48 float32 = mouse.Y
@@ -289,9 +260,9 @@ func PanedView_PanedViewDropZoneFor(bounds Rectangle, mouse Vector2, metrics Pan
 	var value_54 float32 = value_51 - value_53
 	var value_55 bool = value_48 > value_54
 	if value_55 {
-		var value_56 int32 = PanedView_PanedViewDropBottom()
+		var value_56 int32 = int32(DropBottom)
 		return value_56
 	}
-	var value_57 int32 = PanedView_PanedViewDropCenter()
+	var value_57 int32 = int32(DropCenter)
 	return value_57
 }

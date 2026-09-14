@@ -749,7 +749,7 @@ RenderTabBar(TabBarProps bar)
     return clicked_tab;
 }
 
-PaneDropZone
+DropZone
 GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 {
     StyleFrame frame = {0};
@@ -760,5 +760,5 @@ GetPaneDropZone(Rectangle bounds, Vector2 mouse)
         ButtonStateNormal);
     PanedViewMetrics metrics = PanedViewMetricsFor((float)GetScale(),
                                                    frame);
-    return (PaneDropZone)PanedViewDropZoneFor(bounds, mouse, metrics);
+    return (DropZone)PanedViewDropZoneFor(bounds, mouse, metrics);
 }

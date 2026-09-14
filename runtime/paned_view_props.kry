@@ -1,6 +1,15 @@
 #module "paned_view_props"
 #import "kryon_compat.generated.h"
 
+DropZone :: enum {
+    DropNone = 0
+    DropCenter = 1
+    DropLeft = 2
+    DropRight = 3
+    DropTop = 4
+    DropBottom = 5
+}
+
 PanedViewProps :: struct {
     bounds: Rectangle
     id: i32

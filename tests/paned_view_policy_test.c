@@ -53,17 +53,17 @@ main(void)
 
     metrics.drop_edge = 46;
     assert(PanedViewDropZoneFor(bounds, (Vector2){1, 30}, metrics) ==
-           PanedViewDropNone());
+           DropNone);
     assert(PanedViewDropZoneFor(bounds, (Vector2){20, 60}, metrics) ==
-           PanedViewDropLeft());
+           DropLeft);
     assert(PanedViewDropZoneFor(bounds, (Vector2){245, 60}, metrics) ==
-           PanedViewDropRight());
+           DropRight);
     assert(PanedViewDropZoneFor(bounds, (Vector2){120, 25}, metrics) ==
-           PanedViewDropTop());
+           DropTop);
     assert(PanedViewDropZoneFor(bounds, (Vector2){120, 97}, metrics) ==
-           PanedViewDropBottom());
+           DropBottom);
     assert(PanedViewDropZoneFor((Rectangle){10, 20, 240, 200},
                                 (Vector2){120, 120}, metrics) ==
-           PanedViewDropCenter());
+           DropCenter);
     return 0;
 }
