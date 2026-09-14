@@ -175,5 +175,46 @@ main(void)
     assert(MenuBarMoveTopIndex(2, 3, 1) == 0);
     assert(MenuBarMoveTopIndex(1, 3, 0) == 1);
     assert(MenuBarMoveTopIndex(1, 0, 1) == -1);
+    MenuGroupPointerDecision item_decision =
+        MenuGroupPointerDecisionFor(21, 0, 0, true, true);
+    assert(item_decision.changed_open);
+    assert(item_decision.next_open_id == 21);
+    assert(!item_decision.clear_submenu);
+    assert(item_decision.consume_release);
+    assert(item_decision.set_focus);
+    assert(item_decision.reset_navigation);
+    assert(item_decision.navigation_top == 0);
+    item_decision = MenuGroupPointerDecisionFor(21, 0, 21, true, true);
+    assert(item_decision.changed_open);
+    assert(item_decision.next_open_id == 0);
+    assert(item_decision.clear_submenu);
+    assert(item_decision.consume_release);
+    assert(item_decision.set_focus);
+    assert(!item_decision.reset_navigation);
+    item_decision = MenuGroupPointerDecisionFor(22, 1, 21, true, false);
+    assert(item_decision.changed_open);
+    assert(item_decision.next_open_id == 22);
+    assert(item_decision.clear_submenu);
+    assert(!item_decision.consume_release);
+    assert(!item_decision.set_focus);
+    assert(!item_decision.reset_navigation);
+    item_decision = MenuGroupPointerDecisionFor(22, 1, 21, false, true);
+    assert(!item_decision.changed_open);
+    assert(item_decision.next_open_id == 21);
+    MenuOutsideCloseDecision close_decision =
+        MenuOutsideCloseDecisionFor(21, true, false, true, false);
+    assert(close_decision.close_open);
+    assert(close_decision.clear_submenu);
+    assert(close_decision.consume_release);
+    assert(close_decision.open_index == -1);
+    close_decision = MenuOutsideCloseDecisionFor(21, true, true, true,
+                                                false);
+    assert(!close_decision.close_open);
+    close_decision = MenuOutsideCloseDecisionFor(21, true, false, true,
+                                                true);
+    assert(!close_decision.close_open);
+    close_decision = MenuOutsideCloseDecisionFor(0, true, false, false,
+                                                false);
+    assert(!close_decision.close_open);
     return 0;
 }

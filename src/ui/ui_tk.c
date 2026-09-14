@@ -1606,22 +1606,22 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
                        MenuBarLabelX(item, metrics),
                        MenuBarLabelY(item, TextLineHeight(item_font)),
                        item_font, item_text);
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+        MenuGroupPointerDecision pointer_decision =
+            MenuGroupPointerDecisionFor(menu_id, i, state->open_id, hot,
+                                        IsMouseButtonReleased(
+                                            MOUSE_BUTTON_LEFT));
+        if(pointer_decision.consume_release)
             ConsumeRelease();
+        if(pointer_decision.set_focus)
             SetFocus(id);
-            state->open_id = open ? 0 : menu_id;
-            if(state->open_id == 0)
-                state->submenu_id = 0;
-            else {
-                state->navigation.top = i;
-                menu_navigation_reset(id,menus[i].items,menus[i].item_count);
-                state->navigation.top = i;
-            }
-            open = state->open_id == menu_id;
-        }
-        if(hot && state->open_id != 0 && !open) {
-            state->open_id = menu_id;
+        if(pointer_decision.changed_open)
+            state->open_id = pointer_decision.next_open_id;
+        if(pointer_decision.clear_submenu)
             state->submenu_id = 0;
+        if(pointer_decision.reset_navigation) {
+            state->navigation.top = pointer_decision.navigation_top;
+            menu_navigation_reset(id,menus[i].items,menus[i].item_count);
+            state->navigation.top = pointer_decision.navigation_top;
         }
         open = state->open_id == menu_id;
         if(open) {
@@ -1639,13 +1639,17 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         }
         x = MenuBarNextItemX(x, w, metrics);
     }
-    if(state->open_id != 0 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !ui_contains(bounds, mouse) &&
-       (!state->panel_valid || !ui_contains(state->panel_bounds, mouse))) {
-        ConsumeRelease();
+    MenuOutsideCloseDecision close_decision = MenuOutsideCloseDecisionFor(
+        state->open_id, IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+        ui_contains(bounds, mouse), state->panel_valid,
+        ui_contains(state->panel_bounds, mouse));
+    if(close_decision.close_open) {
+        if(close_decision.consume_release)
+            ConsumeRelease();
         state->open_id = 0;
-        state->submenu_id = 0;
-        result.open_index = -1;
+        if(close_decision.clear_submenu)
+            state->submenu_id = 0;
+        result.open_index = close_decision.open_index;
     }
     if(state->open_id != 0 && !bar_capture_pushed &&
        ui_menu_bar_owns_open_menu(id, menu_count))

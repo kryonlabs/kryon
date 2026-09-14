@@ -27,6 +27,23 @@ MenuLine :: struct {
     y2: i32
 }
 
+MenuGroupPointerDecision :: struct {
+    changed_open: bool
+    next_open_id: i32
+    clear_submenu: bool
+    consume_release: bool
+    set_focus: bool
+    reset_navigation: bool
+    navigation_top: i32
+}
+
+MenuOutsideCloseDecision :: struct {
+    close_open: bool
+    clear_submenu: bool
+    consume_release: bool
+    open_index: i32
+}
+
 MenuHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -113,6 +130,47 @@ MenuBarMoveTopIndex :: (top: i32, menu_count: i32,
     top = MenuBarTopIndexFor(top, menu_count)
     if direction == 0 { return top }
     return (top + direction + menu_count) % menu_count
+}
+
+MenuGroupPointerDecisionFor :: (menu_id: i32, index: i32,
+    open_id: i32, hot: bool, mouse_released: bool) -> MenuGroupPointerDecision #export {
+    decision: MenuGroupPointerDecision
+    decision.next_open_id = open_id
+    decision.navigation_top = index
+    open: bool = open_id == menu_id
+    if hot && mouse_released {
+        decision.consume_release = true
+        decision.set_focus = true
+        decision.changed_open = true
+        if open {
+            decision.next_open_id = 0
+            decision.clear_submenu = true
+        } else {
+            decision.next_open_id = menu_id
+            decision.reset_navigation = true
+        }
+        return decision
+    }
+    if hot && open_id != 0 && !open {
+        decision.changed_open = true
+        decision.next_open_id = menu_id
+        decision.clear_submenu = true
+    }
+    return decision
+}
+
+MenuOutsideCloseDecisionFor :: (open_id: i32, mouse_released: bool,
+    contains_bar: bool, panel_valid: bool,
+    contains_panel: bool) -> MenuOutsideCloseDecision #export {
+    decision: MenuOutsideCloseDecision
+    decision.open_index = -1
+    if open_id != 0 && mouse_released && !contains_bar &&
+       (!panel_valid || !contains_panel) {
+        decision.close_open = true
+        decision.clear_submenu = true
+        decision.consume_release = true
+    }
+    return decision
 }
 
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
