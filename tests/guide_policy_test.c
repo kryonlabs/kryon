@@ -99,6 +99,7 @@ main(void)
     StyleFrame close = {0};
     GuideMetrics metrics;
     GuidePolicy policy;
+    GuideInput input;
     GuideScrim scrim;
     GuideLayout layout;
     GuideArrow arrow;
@@ -166,6 +167,22 @@ main(void)
     assert(policy.step == 1 && policy.changed && !policy.closed);
     policy = GuidePolicyFor(1, 3, false, false, true);
     assert(policy.step == 1 && policy.closed);
+
+    input = GuideInputFor(true, false, false, false, false);
+    assert(input.previous_requested && !input.next_requested &&
+           !input.close_requested);
+    input = GuideInputFor(false, true, false, false, false);
+    assert(!input.previous_requested && input.next_requested &&
+           !input.close_requested);
+    input = GuideInputFor(false, false, true, false, false);
+    assert(!input.previous_requested && input.next_requested &&
+           !input.close_requested);
+    input = GuideInputFor(false, false, false, true, false);
+    assert(!input.previous_requested && !input.next_requested &&
+           input.close_requested);
+    input = GuideInputFor(false, false, false, false, true);
+    assert(!input.previous_requested && !input.next_requested &&
+           input.close_requested);
 
     tip = GuideTipBounds((Rectangle){100, 100, 50, 40}, 200, 120, 640, 480,
                          0, 0, metrics);

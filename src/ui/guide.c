@@ -93,6 +93,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     Rectangle tip;
     int y;
     IconActionSpec icon_props;
+    GuideInput keyboard_input;
     int previous_requested = 0;
     int next_requested = 0;
     int close_requested = 0;
@@ -113,9 +114,14 @@ RenderGuideOverlay(GuideOverlayProps guide)
     *guide.step = step;
     result.step = step;
 
-    next_requested = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER);
-    previous_requested = IsKeyPressed(KEY_LEFT);
-    close_requested = IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE);
+    keyboard_input = GuideInputFor(IsKeyPressed(KEY_LEFT) != 0,
+                                   IsKeyPressed(KEY_RIGHT) != 0,
+                                   IsKeyPressed(KEY_ENTER) != 0,
+                                   IsKeyPressed(KEY_BACK) != 0,
+                                   IsKeyPressed(KEY_ESCAPE) != 0);
+    previous_requested = keyboard_input.previous_requested;
+    next_requested = keyboard_input.next_requested;
+    close_requested = keyboard_input.close_requested;
     policy = GuidePolicyFor(step, guide.count, previous_requested != 0,
                             next_requested != 0, close_requested != 0);
     if(policy.closed || policy.finished || policy.changed) {

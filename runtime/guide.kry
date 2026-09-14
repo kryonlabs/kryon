@@ -59,6 +59,12 @@ GuidePolicy :: struct {
     finished: bool
 }
 
+GuideInput :: struct {
+    previous_requested: bool
+    next_requested: bool
+    close_requested: bool
+}
+
 guide_clampi :: (value: i32, minimum: i32, maximum: i32) -> i32 {
     if value < minimum { return minimum }
     if value > maximum { return maximum }
@@ -147,6 +153,15 @@ GuidePolicyFor :: (step: i32, count: i32, previous: bool, next: bool,
         }
     }
     return policy
+}
+
+GuideInputFor :: (left_pressed: bool, right_pressed: bool,
+    enter_pressed: bool, back_pressed: bool, escape_pressed: bool) -> GuideInput #export {
+    input: GuideInput
+    input.previous_requested = left_pressed
+    input.next_requested = right_pressed || enter_pressed
+    input.close_requested = back_pressed || escape_pressed
+    return input
 }
 
 GuideTipWidth :: (view_width: i32, max_width: i32,
