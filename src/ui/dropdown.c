@@ -571,10 +571,12 @@ dropdown_paint_menu(int id)
     int pointer_in_dropdown = CheckCollisionPointRec(mouse, btn_bounds) ||
                               CheckCollisionPointRec(mouse, menu_bounds);
     Rectangle scrollbar_bounds = menu_layout.scrollbar_bounds;
-    state->scrollbar_pressed = DropdownScrollbarPressedNext(
+    int next_scrollbar_pressed = DropdownScrollbarPressedNext(
         state->scrollbar_pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0, max_scroll,
         CheckCollisionPointRec(mouse, scrollbar_bounds) != 0);
+    /* Retain scrollbar ownership through release-frame row processing. */
+    state->scrollbar_pressed = state->scrollbar_pressed || next_scrollbar_pressed;
 
     state->gesture = PopupDragGesture(state->gesture, state->scroll_offset,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
@@ -759,9 +761,7 @@ dropdown_paint_menu(int id)
     if(clip_started)
         EndClip();
 
-    state->scrollbar_pressed = DropdownScrollbarPressedNext(
-        state->scrollbar_pressed != 0, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
-        false, max_scroll, false);
+    state->scrollbar_pressed = next_scrollbar_pressed;
 
 
     return changed;
