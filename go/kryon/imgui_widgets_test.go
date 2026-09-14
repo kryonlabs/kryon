@@ -258,6 +258,7 @@ func TestDropdownPopupLifecycle(t *testing.T) {
 }
 
 func TestDropdownOverlayLayerAndCapture(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
 	actions := 0
@@ -1477,6 +1478,7 @@ func TestNativeBasicImGuiWidgets(t *testing.T) {
 }
 
 func TestNativeSelectionAndImageWidgets(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	selected := int32(0)
 	r.QueueTap(20, 20)

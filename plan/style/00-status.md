@@ -67,6 +67,29 @@ Worklist before the generic base can be zero-based:
 
 The Go runtime auto-activates Material when the style registry is empty (`go/kryon/style_pack.go` `EnsureBuiltInStylePacks`), so runtime tests exercise pack-styled rendering, not no-style rendering.
 
+## Opacity Contract (decided 2026-09-14)
+
+Opacity is optional and absent means fully visible, like browser CSS:
+
+- `StyleOpacityValue(fields, opacity)` in `runtime/style.kry` is the consumption helper: declared value wins (explicit `0` stays `0`), absent field composes as `1`.
+- The Text record path now composes color with it (`runtime.go` `textWithFont`).
+- Packs do NOT need `opacity: 1` boilerplate; the 410 `opacity: 1;` lines currently in packs are redundant but harmless, and state rules legitimately use `opacity: 1` to reset lower base values - do not bulk-strip without cascade review.
+- Known gap: `FrameOp` does not carry field presence, so record sites are the only place that can distinguish absent from explicit zero. `render.go` already contains ad-hoc `if Opacity == 0 { = 1 }` patches - unify them through `StyleOpacityValue` when the record sites are normalized.
+
+## Zero-Base Flip Status (attempted 2026-09-14, rolled back to a documented bridge)
+
+The generic control base (`ui_minimal_control_style_data()` / `minimalControlStyleData()`) was flipped to zero base and rolled back the same day: a body of Go tests pins the old hidden-base contract and must migrate in the SAME commit for the matrix to stay green. Both functions now carry a "Temporary bridge" comment pointing here.
+
+Test expectation migration needed before the flip can land:
+
+- `go/kryon/material_test.go:58` - asserts plain surface defaults to flat material (old contract).
+- `go/kryon/material_test.go:83` - flat fill shading expectation tied to the base.
+- `go/kryon/runtime_test.go:213,418,523,1393,1891,2281` - icon/toolbar/collapsible/dropdown/toggle style ops pin raw zero opacity for rules that do not declare it.
+- `go/kryon/surface_test.go:663` (`TestButtonUsesSharedStyleGradient`) and `:790` (`TestStyledSurfaceUsesSharedLayersAndExplicitZeros`) - material painting composes raw opacity; fixed by normalizing opacity at the record funnels (`resolveMinimalControlRoleState` and friends), not in `render.go` (that would erase explicit zero).
+- `go/kryon/style_runtime_test.go` (`TestButtonWithoutStylePackHasNoVisualDefaults`) - strengthen from color-leak to `Fields == 0` when the flip lands.
+
+Flip procedure when ready: normalize effective opacity (declared-or-1, field bits preserved) in `resolveMinimalControlRoleState`/`ui_resolve_minimal_control_role_state` and `defaultStyleFrame`, zero both bases, update the tests above, run the full matrix plus `ui_tk_test` in one commit.
+
 ## Continuation Queue
 
 Next commits, in order:

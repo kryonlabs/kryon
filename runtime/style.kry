@@ -144,6 +144,16 @@ StyleFontValue :: (fields: u32, font_size: float) -> i32 #export {
     return (i32)(font_size + 0.5)
 }
 
+# Opacity is optional: content is fully visible unless a rule declares a
+# different value. An absent field means identity (1.0), the same way optional
+# fonts fall back at consumption. Explicit declared zero stays zero.
+StyleOpacityValue :: (fields: u32, opacity: float) -> float #export {
+    if (fields & (u32)StyleOpacity) == (u32)0 { return 1.0 }
+    if opacity < 0.0 { return 0.0 }
+    if opacity > 1.0 { return 1.0 }
+    return opacity
+}
+
 # Explicit dimensions win. Natural dimensions retain the theme minimum but
 # expand to fit content and padding. Hosts pass all values in the same units.
 FitHeight :: (requested: float, minimum: float, content: float, padding: float) -> float #export {

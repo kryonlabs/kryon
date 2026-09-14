@@ -15,6 +15,9 @@
 static StyleData
 ui_minimal_control_style_data(void)
 {
+    /* Temporary bridge: hidden base retained until the generic-path test
+       expectations migrate to the zero-base contract. Deletion is tracked
+       in plan/style/00-status.md. */
     return (StyleData){
         .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
                              StyleMaterial),

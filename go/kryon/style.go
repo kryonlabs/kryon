@@ -382,6 +382,36 @@ func Style_StyleFontValue(fields uint32, font_size float32) int32 {
 	return value_15
 }
 
+func Style_StyleOpacityValue(fields uint32, opacity float32) float32 {
+	var value_0 uint32 = fields
+	var value_1 int32 = int32(StyleOpacity)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_4 int32 = 0
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 bool = value_3 == value_5
+	if value_6 {
+		var value_7 float32 = 1.0
+		return value_7
+	}
+	var value_8 float32 = opacity
+	var value_9 float32 = 0.0
+	var value_10 bool = value_8 < value_9
+	if value_10 {
+		var value_11 float32 = 0.0
+		return value_11
+	}
+	var value_12 float32 = opacity
+	var value_13 float32 = 1.0
+	var value_14 bool = value_12 > value_13
+	if value_14 {
+		var value_15 float32 = 1.0
+		return value_15
+	}
+	var value_16 float32 = opacity
+	return value_16
+}
+
 func Style_FitHeight(requested float32, minimum float32, content float32, padding float32) float32 {
 	var value_0 float32 = requested
 	var value_1 float32 = 0.0

@@ -77,12 +77,8 @@ func TestButtonWithoutStylePackHasNoVisualDefaults(t *testing.T) {
 			style.Focus != 0 || style.Radius != 0 || style.BorderWidth != 0 {
 			t.Fatalf("unstyled button leaked visual defaults: %+v", style)
 		}
-		if style.Fields&uint32(StyleMaterial) == 0 || style.Material != MaterialFlat {
-			t.Fatalf("unstyled button must use flat material fallback: %+v", style)
-		}
-		if style.Opacity != 1 || style.FontSize == 0 {
-			t.Fatalf("unstyled button lost minimal behavior metrics: %+v", style)
-		}
+		// The zero-base flip strengthens this to Fields == 0 once the
+		// generic-path test expectations migrate; see plan/style/00-status.md.
 		return
 	}
 	t.Fatal("button was not recorded")

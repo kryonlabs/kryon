@@ -1202,7 +1202,8 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 		packRGBA(style.Foreground), packRGBA(inheritedColor), 0xffffffff,
 		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, letterSpacing)
 	font, spacing := appearance.Font, appearance.LetterSpacing
-	color := unpackRGBA(Surface_Opacity(appearance.Color, style.Opacity))
+	color := unpackRGBA(Surface_Opacity(appearance.Color,
+		Style_StyleOpacityValue(uint32(style.Fields), style.Opacity)))
 	measure := func(text string) int {
 		width := 0
 		for _, line := range strings.Split(text, "\n") {
@@ -1729,6 +1730,9 @@ func resolveButtonFrameForKind(theme themePalette, dark bool, active *Theme, pro
 		focusAmount, styleKind)
 }
 
+// Temporary bridge: hidden base retained until the generic-path test
+// expectations migrate to the zero-base contract. Deletion is tracked in
+// plan/style/00-status.md.
 func minimalControlStyleData() StyleData {
 	return StyleData{
 		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize | StyleMaterial),
