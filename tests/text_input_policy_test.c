@@ -60,6 +60,7 @@ main(void)
     TextPlatformInputSyncDecision platform_sync;
     TextBufferInsertDecision buffer_insert;
     TextBufferDeleteDecision buffer_delete;
+    TextBufferDeleteRangeDecision buffer_delete_range;
     TextBufferBracketDecision bracket_decision;
 
     assert(metrics.font == 16);
@@ -637,6 +638,22 @@ main(void)
     assert(!buffer_delete.can_delete);
     buffer_delete = TextBufferDeleteDecisionFor(9, -1, 1);
     assert(!buffer_delete.can_delete);
+    buffer_delete_range = TextBufferDeleteRangeDecisionFor(9, 2, 5);
+    assert(buffer_delete_range.can_delete);
+    assert(buffer_delete_range.start == 2);
+    assert(buffer_delete_range.end == 5);
+    assert(buffer_delete_range.cursor == 2);
+    assert(buffer_delete_range.tail_count == 5);
+    buffer_delete_range = TextBufferDeleteRangeDecisionFor(9, -2, 99);
+    assert(buffer_delete_range.can_delete);
+    assert(buffer_delete_range.start == 0);
+    assert(buffer_delete_range.end == 9);
+    assert(buffer_delete_range.cursor == 0);
+    assert(buffer_delete_range.tail_count == 1);
+    buffer_delete_range = TextBufferDeleteRangeDecisionFor(9, 4, 4);
+    assert(!buffer_delete_range.can_delete);
+    buffer_delete_range = TextBufferDeleteRangeDecisionFor(-1, 0, 1);
+    assert(!buffer_delete_range.can_delete);
     assert(TextBufferCursorAfterInsert(5, 2, 3) == 8);
     assert(TextBufferCursorAfterInsert(1, 2, 3) == 1);
     assert(TextBufferCursorAfterDelete(8, 2, 3) == 5);

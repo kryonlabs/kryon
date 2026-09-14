@@ -78,6 +78,14 @@ TextBufferDeleteDecision :: struct {
     tail_count: i32
 }
 
+TextBufferDeleteRangeDecision :: struct {
+    can_delete: bool
+    start: i32
+    end: i32
+    cursor: i32
+    tail_count: i32
+}
+
 TextBufferBracketDecision :: struct {
     valid: bool
     pos: i32
@@ -1066,6 +1074,27 @@ TextBufferDeleteDecisionFor :: (used: i32, at: i32,
     }
     decision.can_delete = true
     decision.tail_count = used - at - delete_len + 1
+    return decision
+}
+
+TextBufferDeleteRangeDecisionFor :: (used: i32, start: i32,
+    end: i32) -> TextBufferDeleteRangeDecision #export {
+    decision: TextBufferDeleteRangeDecision
+    if used < 0 {
+        return decision
+    }
+    if start < 0 { start = 0 }
+    if end < 0 { end = 0 }
+    if start > used { start = used }
+    if end > used { end = used }
+    if end <= start {
+        return decision
+    }
+    decision.can_delete = true
+    decision.start = start
+    decision.end = end
+    decision.cursor = start
+    decision.tail_count = used - end + 1
     return decision
 }
 

@@ -274,17 +274,18 @@ ui_utf8_encode(int codepoint, char out[5])
 int
 ui_text_delete_range(char *text, size_t text_size, int *cursor, int start, int end)
 {
+    TextBufferDeleteRangeDecision decision;
     int len;
 
     if(text == NULL || text_size == 0 || cursor == NULL)
         return 0;
     len = (int)strlen(text);
-    start = ui_clampi(start, 0, len);
-    end = ui_clampi(end, 0, len);
-    if(end <= start)
+    decision = TextBufferDeleteRangeDecisionFor(len, start, end);
+    if(!decision.can_delete)
         return 0;
-    memmove(text + start, text + end, (size_t)(len - end + 1));
-    *cursor = start;
+    memmove(text + decision.start, text + decision.end,
+            (size_t)decision.tail_count);
+    *cursor = decision.cursor;
     return 1;
 }
 
