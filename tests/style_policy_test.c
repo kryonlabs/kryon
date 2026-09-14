@@ -70,6 +70,8 @@ int main(void)
     assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.5f, 32, 1.0f).visible);
     assert(!StyleShinePaintFor((Rectangle){10, 20, 40, 20}, 0.25f, 0, 1.0f).visible);
     assert(!StyleShinePaintFor((Rectangle){10, 20, 3, 3}, 0.25f, 32, 1.0f).visible);
+    Vector2 ripple_origin = StyleRippleFallbackOrigin((Rectangle){10, 20, 40, 20});
+    assert(ripple_origin.x == 30 && ripple_origin.y == 30);
     assert(StyleRippleRadius(2, 100, 2) == 16);
     assert(StyleRippleRadius(24, 100, 2) == 24);
     assert(StyleRippleRadius(120, 100, 2) == 100);

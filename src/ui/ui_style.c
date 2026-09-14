@@ -660,8 +660,7 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     if(pressed && !ripple->active) {
         ripple->origin = CheckCollisionPointRec(mouse, bounds)
                              ? mouse
-                             : (Vector2){bounds.x + bounds.width * 0.5f,
-                                         bounds.y + bounds.height * 0.5f};
+                             : StyleRippleFallbackOrigin(bounds);
         ripple->age = 0.0f;
         ripple->active = 1;
     }
