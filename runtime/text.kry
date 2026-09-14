@@ -58,6 +58,26 @@ TextDoubleClickSlopFor :: (scale: float) -> i32 #export {
     return (i32)(6.0 * scale)
 }
 
+TextControlBaselineSample :: () -> const char* #export {
+    return "Hg"
+}
+
+TextControlClipGuardFor :: (scale: float) -> i32 #export {
+    pad: i32 = 1
+    if scale <= 0.0 { scale = 1.0 }
+    pad = (i32)(1.0 * scale)
+    if pad < 1 { pad = 1 }
+    return pad
+}
+
+TextControlClipBounds :: (bounds: Rectangle, scale: float) -> Rectangle #export {
+    pad: i32 = TextControlClipGuardFor(scale)
+    clip: Rectangle = bounds
+    clip.y -= (float)pad
+    clip.height += (float)(pad * 2)
+    return clip
+}
+
 TextSelectionLineEndPaddingFor :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(6.0 * scale)

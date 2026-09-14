@@ -1,5 +1,6 @@
 #include "runtime/text.h"
 #include <assert.h>
+#include <string.h>
 
 int main(void)
 {
@@ -33,6 +34,11 @@ int main(void)
     assert(TextWrapPolicy(100, 0) == 0 && TextWrapPolicy(100, 1) == 1);
     assert(TextDoubleClickSlopFor(2.0f) == 12);
     assert(TextDoubleClickSlopFor(0.0f) == 6);
+    assert(strcmp(TextControlBaselineSample(), "Hg") == 0);
+    assert(TextControlClipGuardFor(0.0f) == 1);
+    assert(TextControlClipGuardFor(2.0f) == 2);
+    Rectangle clip = TextControlClipBounds((Rectangle){10, 20, 30, 40}, 2.0f);
+    assert(clip.x == 10 && clip.y == 18 && clip.width == 30 && clip.height == 44);
     assert(TextSelectionLineEndPaddingFor(2.0f) == 12);
     assert(TextSelectionMinWidthFor(2.0f) == 8);
     assert(TextSelectionHighlightEndX(10, 20, true, 1.0f) == 26);

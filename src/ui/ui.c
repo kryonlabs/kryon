@@ -1392,13 +1392,12 @@ static void
 ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
+    float scale = (float)Scale(1000) / 1000.0f;
     int text_w = TextWidth(value, font_size);
     int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
     int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
-    int guard = 1;
 
-    ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
-                                    rect.width, rect.height + guard * 2});
+    ui_begin_world_clip(TextControlClipBounds(rect, scale));
     RenderText(value, x, y, font_size, color);
     EndClip();
 }
@@ -1484,11 +1483,10 @@ void
 DrawLeftControlTextInRect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
+    float scale = (float)Scale(1000) / 1000.0f;
     int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
-    int guard = 1;
 
-    ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
-                                    rect.width, rect.height + guard * 2});
+    ui_begin_world_clip(TextControlClipBounds(rect, scale));
     RenderText(value, (int)rect.x, y, font_size, color);
     EndClip();
 }
@@ -1857,7 +1855,7 @@ int
 ControlTextY(const char *text, int box_y, int box_h, int font)
 {
     (void)text;
-    return TextBaselineY("Hg", box_y, box_h, font);
+    return TextBaselineY(TextControlBaselineSample(), box_y, box_h, font);
 }
 
 int
