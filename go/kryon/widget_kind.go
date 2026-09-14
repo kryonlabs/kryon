@@ -44,3 +44,17 @@ const (
 	WidgetFlagReadOnly    = 4
 	WidgetFlagTemporaryId = 8
 )
+
+type TreeNodeFlag int32
+
+const (
+	TreeNodeFlagBuildActivated    = 4194304
+	TreeNodeFlagTextInputPaint    = 8388608
+	TreeNodeFlagTextDisabled      = 16777216
+	TreeNodeFlagInheritForeground = 33554432
+	TreeNodeFlagScopeDisabled     = 67108864
+	TreeNodeFlagPaintedImmediate  = 134217728
+	TreeNodeFlagHovered           = 268435456
+	TreeNodeFlagPressed           = 536870912
+	TreeNodeFlagOwnsState         = 1073741824
+)

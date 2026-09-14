@@ -145,7 +145,7 @@ surface review:
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
 | `runtime/table_view.kry` | TableView layout, scroll, scrollbar, cell geometry, and keyboard selection policy | `.kry canonical` |
 | `runtime/table_view_props.kry` | TableView row and props | `.kry canonical` |
-| `runtime/widget_kind.kry` | Retained tree node kind values | `.kry support` |
+| `runtime/widget_kind.kry` | Retained tree node kind and internal flag values | `.kry support` |
 
 ## Current Implementation Audit
 
@@ -694,6 +694,7 @@ Recent retained-tree public C cleanup:
 | `GetFontSize`, `GetSmallFontSize`, `GetTitleFontSize`, `FitFontSize` | Internal native/KSS typography helpers; public code uses explicit text tokens or style props. |
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | Public code uses `Drag(DragProps)` and `Slider(SliderProps)` with value kind/props; scalar/whole helper splits are internal runtime policy only. |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WidgetFlagMovable`/`WidgetFlagResizable`/`WidgetFlagReadOnly` | Internal inspect registration; public code uses canonical widget declarations. |
+| retained-tree `NODE_*` state flags | Generated `TreeNodeFlag*` support names in `runtime/widget_kind.kry`; not public widget concepts. |
 | `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
 | app-facing `Texture`, `DrawTexture`, `DrawTexturePro`, `DrawTextureRec` fixes | `Image(ImageProps)`; if `ImageProps` cannot express the app case, add the reusable Kryon image primitive first. |
 | Go package-level `BeginButton`, `BeginCard` | Removed; public Go code uses `kr.Button` and `kr.Card`. Composed block lowering uses internal `ButtonScope`/`CardScope` hooks until direct child lowering is canonicalized. |
