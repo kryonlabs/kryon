@@ -622,7 +622,6 @@ RenderSeparator(SeparatorProps separator)
                                              label_style.font_size),
                            GetSmallFontSize());
     int text_width = TextWidth(label, font);
-    int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame line_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
         separator.disabled, 0, separator.class_name, StyleKindSeparator(),
@@ -640,7 +639,7 @@ RenderSeparator(SeparatorProps separator)
     if(!IsWindowReady())
         return;
     if(paint.show_text)
-        RenderText(label, (int)paint.text.x, text_y, font,
+        RenderText(label, (int)paint.text.x, (int)paint.text.y, font,
                    Fade(GetColor(paint.text_color), label_style.opacity));
     if(paint.show_line)
         DrawLine((int)paint.line.x, (int)paint.line.y,

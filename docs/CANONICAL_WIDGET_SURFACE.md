@@ -836,7 +836,8 @@ and host plumbing behind the canonical names.
   `runtime/style.kry`; default ripple radius policy now routes through
   `runtime/style.kry`; retained `Button(info)` bounds and diameter policy now
   routes through `runtime/button.kry`; immediate `Paragraph` default line-gap
-  policy now routes through `runtime/paragraph.kry`. Continue by reducing raw
+  policy now routes through `runtime/paragraph.kry`; immediate `Separator`
+  label vertical placement now routes through `runtime/separator.kry`. Continue by reducing raw
   native constants in shared immediate-mode helpers. Icon slider popup and
   bottom icon row style icon sizing now route through `runtime/toolbar.kry`;
   icon action style size/radius policy now routes through `runtime/button.kry`.

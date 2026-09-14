@@ -68,7 +68,7 @@ SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
     end_x: float = bounds.x + bounds.width
 
     paint.text.x = bounds.x
-    paint.text.y = bounds.y
+    paint.text.y = bounds.y + (bounds.height - (float)font) * 0.5
     paint.text.width = label_width
     paint.text.height = bounds.height
     paint.text_color = frame.value.foreground

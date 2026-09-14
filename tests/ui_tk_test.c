@@ -592,6 +592,8 @@ test_separator_policy(void)
     check_int("separator horizontal width", (int)horizontal.line.width, 100);
     check_int("separator vertical x", (int)vertical.line.x, 60);
     check_int("separator vertical height", (int)vertical.line.height, 30);
+    check_int("separator text y", (int)text.text.y, 28);
+    check_int("separator text height", (int)text.text.height, 30);
     check_int("separator text line x", (int)text.line.x, 62);
     check_int("separator text line width", (int)text.line.width, 48);
     check_int("separator text visible", text.show_text, 1);
