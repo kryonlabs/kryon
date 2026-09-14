@@ -65,6 +65,21 @@ func TitleBar_TitleBarMetric(fields uint32, field uint32, value float32, fallbac
 	return value_14
 }
 
+func TitleBar_TitleBarBarRole() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func TitleBar_TitleBarTitleRole() int32 {
+	var value_0 int32 = 16
+	return value_0
+}
+
+func TitleBar_TitleBarActionRole() int32 {
+	var value_0 int32 = 17
+	return value_0
+}
+
 func TitleBar_TitleBarMetricsFor(scale float32, bar StyleFrame, title StyleFrame, action StyleFrame) TitleBarMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0

@@ -14,7 +14,8 @@ RenderTitleBarBackground(int height, int class_name)
     StyleFrame bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarBarRole());
     Style bar = ui_unpack_style(bar_frame.value);
 
     ui_draw_material(paint.bounds, (Rectangle){0}, bar.background, bar.border,
@@ -32,15 +33,18 @@ ui_title_bar_metrics(int class_name)
     StyleFrame bar = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarBarRole());
     StyleFrame title = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarTitleRole());
     StyleFrame action = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .icon_only = true, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 17);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarActionRole());
 
     return TitleBarMetricsFor((float)GetScale(), bar, title, action);
 }
@@ -58,11 +62,13 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
     Style normal = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .icon_only = true, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarActionRole()).value);
     Style hover = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .icon_only = true, .class_name = class_name},
-        ButtonStateHover, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
+        ButtonStateHover, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarActionRole()).value);
     button.icon_color = normal.foreground;
     button.hover_background = hover.background;
     button.radius = 0.50f;
@@ -85,7 +91,8 @@ RenderTitleBarCenteredTitle(const char *title, int height,
     Style text = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium, .class_name = class_name},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16).value);
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(),
+        TitleBarTitleRole()).value);
 
     if(title == NULL)
         title = "";

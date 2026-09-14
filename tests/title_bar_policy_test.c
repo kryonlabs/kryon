@@ -34,6 +34,9 @@ main(void)
     TitleBarPaint paint;
     TitleBarTitlePaint title_paint;
     TitleBarState state;
+    assert(TitleBarBarRole() == 1);
+    assert(TitleBarTitleRole() == 16);
+    assert(TitleBarActionRole() == 17);
     assert(metrics.side_margin == 24);
     assert(metrics.leading_reserved == 120);
     assert(metrics.leading_icon_size == 40);

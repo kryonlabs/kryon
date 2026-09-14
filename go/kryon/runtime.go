@@ -4911,11 +4911,11 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 		height = 44
 	}
 	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindTitleBar(), 1)
+		props.ClassName, StyleSheet_StyleKindTitleBar(), TitleBar_TitleBarBarRole())
 	titleFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindTitleBar(), 16)
+		props.ClassName, StyleSheet_StyleKindTitleBar(), TitleBar_TitleBarTitleRole())
 	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindTitleBar(), 17)
+		props.ClassName, StyleSheet_StyleKindTitleBar(), TitleBar_TitleBarActionRole())
 	metrics := TitleBar_TitleBarMetricsFor(1, surfaceFrame, titleFrame, actionFrame)
 	layout := TitleBar_TitleBarLayoutFor(r.GetScreenWidth(), height,
 		props.HasLeadingAction, props.HasDropdown, props.Dropdown.Height,
@@ -4930,7 +4930,7 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 			Tone:      ButtonToneNeutral,
 			Emphasis:  ButtonEmphasisSoft,
 			Size:      ControlSizeMedium,
-		}, layout.Bounds, false, StyleSheet_StyleKindTitleBar(), 17)
+		}, layout.Bounds, false, StyleSheet_StyleKindTitleBar(), TitleBar_TitleBarActionRole())
 		if pressed {
 			clicked = 1
 		}

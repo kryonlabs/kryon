@@ -45,6 +45,18 @@ TitleBarMetric :: (fields: u32, field: u32, value: float, fallback: float,
     return (i32)(value * scale)
 }
 
+TitleBarBarRole :: () -> i32 #export {
+    return 1
+}
+
+TitleBarTitleRole :: () -> i32 #export {
+    return 16
+}
+
+TitleBarActionRole :: () -> i32 #export {
+    return 17
+}
+
 TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
     action: StyleFrame) -> TitleBarMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
