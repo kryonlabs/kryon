@@ -733,8 +733,8 @@ grid-policy-test: $(GENERATED_SRC_DIR)/runtime/grid.c $(GENERATED_SRC_DIR)/runti
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/grid_policy_test.c $(GENERATED_SRC_DIR)/runtime/grid.c -lm -o $(GRID_POLICY_TEST)
 	$(GRID_POLICY_TEST)
 
-toast-policy-test: $(GENERATED_SRC_DIR)/runtime/toast.c $(GENERATED_SRC_DIR)/runtime/toast.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/toast_policy_test.c $(GENERATED_SRC_DIR)/runtime/toast.c -lm -o $(TOAST_POLICY_TEST)
+toast-policy-test: $(GENERATED_SRC_DIR)/runtime/toast.c $(GENERATED_SRC_DIR)/runtime/toast.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/toast_policy_test.c $(GENERATED_SRC_DIR)/runtime/toast.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $(TOAST_POLICY_TEST)
 	$(TOAST_POLICY_TEST)
 
 overlay-policy-test: $(GENERATED_SRC_DIR)/runtime/overlay.c $(GENERATED_SRC_DIR)/runtime/overlay.h

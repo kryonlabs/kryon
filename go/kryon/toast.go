@@ -4,6 +4,7 @@ package kryon
 // #import control_props
 // #import drawing_props
 // #import style
+// #import style_sheet
 type ToastMetrics struct {
 	PadX           int32
 	PadY           int32
@@ -36,6 +37,32 @@ type ToastRenderDecision struct {
 func Toast_ToastLabelRole() int32 {
 	var value_0 int32 = 6
 	return value_0
+}
+
+func Toast_ToastSurfaceFactsFor(class_name int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindToast()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = StyleSheet_StyleAny()
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = int32(ButtonStateNormal)
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
+}
+
+func Toast_ToastLabelFactsFor(class_name int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindToast()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = Toast_ToastLabelRole()
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = int32(ButtonStateNormal)
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
 }
 
 func Toast_ToastMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {

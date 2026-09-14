@@ -5640,10 +5640,14 @@ func (r *runtime) recordToast() {
 		r.toastMessage = ""
 		return
 	}
-	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, r.toastClassName, StyleSheet_StyleKindToast(), StyleSheet_StyleAny())
-	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, r.toastClassName, StyleSheet_StyleKindToast(), Toast_ToastLabelRole())
+	surfaceFrame := StyleFrame{
+		Value: ResolveActiveStyle(StyleData{}, Toast_ToastSurfaceFactsFor(r.toastClassName),
+			int32(ButtonStateNormal)),
+	}
+	labelFrame := StyleFrame{
+		Value: ResolveActiveStyle(StyleData{}, Toast_ToastLabelFactsFor(r.toastClassName),
+			int32(ButtonStateNormal)),
+	}
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
 	metrics := Toast_ToastMetricsFor(1, surfaceFrame)

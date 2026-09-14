@@ -80,27 +80,14 @@ RenderToast(void)
     if(!decision.render)
         return;
 
-    StyleData base = {.fields = (uint32_t)(StyleOpacity | StyleFontSize |
-                                           StyleMaterial),
-                      .opacity = 1.0f,
-                      .font_size = (float)font,
-                      .material = MaterialFlat};
+    StyleData base = {0};
     StyleFrame surface_frame = {
-        .value = ResolveActiveStyle(
-            base,
-            StyleControlRoleFacts(StyleKindToast(), 0, toast_class_name,
-                                  StyleAny(), ButtonToneNeutral,
-                                  ButtonEmphasisSoft, ControlSizeMedium,
-                                  ButtonStateNormal),
-            ButtonStateNormal)};
+        .value = ResolveActiveStyle(base,
+                                    ToastSurfaceFactsFor(toast_class_name),
+                                    ButtonStateNormal)};
     StyleFrame label_frame = {
         .value = ResolveActiveStyle(base,
-                                    StyleControlRoleFacts(
-                                        StyleKindToast(), 0,
-                                        toast_class_name, ToastLabelRole(),
-                                        ButtonToneNeutral,
-                                        ButtonEmphasisSoft,
-                                        ControlSizeMedium, ButtonStateNormal),
+                                    ToastLabelFactsFor(toast_class_name),
                                     ButtonStateNormal)};
     Style surface = ui_unpack_style(ui_style_apply_effects_frame(surface_frame).value);
     Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);

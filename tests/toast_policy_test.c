@@ -27,6 +27,12 @@ main(void)
     assert(metrics.pad_y == 20);
     assert(metrics.margin == 36);
     assert(fabsf(metrics.default_seconds - 3.0f) < 0.001f);
+    assert(ToastSurfaceFactsFor(123).kind == StyleKindToast());
+    assert(ToastSurfaceFactsFor(123).class_name == 123);
+    assert(ToastSurfaceFactsFor(123).role == StyleAny());
+    assert(ToastLabelFactsFor(123).kind == StyleKindToast());
+    assert(ToastLabelFactsFor(123).class_name == 123);
+    assert(ToastLabelFactsFor(123).role == ToastLabelRole());
     assert(fabsf(ToastDuration(0.0f, metrics) - 3.0f) < 0.001f);
     assert(fabsf(ToastDuration(2.5f, metrics) - 2.5f) < 0.001f);
     assert(fabsf(ToastDeadlineFor(10.0f, 2.5f) - 12.5f) < 0.001f);

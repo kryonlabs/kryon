@@ -2,6 +2,7 @@
 #import "control_props"
 #import "drawing_props"
 #import "style"
+#import "style_sheet"
 
 ToastMetrics :: struct {
     pad_x: i32
@@ -34,6 +35,18 @@ ToastRenderDecision :: struct {
 
 ToastLabelRole :: () -> i32 #export {
     return 6
+}
+
+ToastSurfaceFactsFor :: (class_name: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindToast(), 0, class_name, StyleAny(),
+        ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+        ButtonStateNormal)
+}
+
+ToastLabelFactsFor :: (class_name: i32) -> StyleFacts #export {
+    return StyleControlRoleFacts(StyleKindToast(), 0, class_name,
+        ToastLabelRole(), ButtonToneNeutral, ButtonEmphasisSoft,
+        ControlSizeMedium, ButtonStateNormal)
 }
 
 ToastMetric :: (fields: u32, field: u32, value: float,

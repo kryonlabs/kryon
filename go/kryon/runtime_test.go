@@ -2052,6 +2052,38 @@ Toast[role=Label] { foreground: text; font-size: 18; opacity: 0.66; }
 	}
 }
 
+func TestToastWithoutStylePackHasNoVisualDefaults(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+
+	rt := New(AppConfig{Width: 220, Height: 120}).(*runtime)
+
+	rt.BeginFrame()
+	rt.Toast(ToastProps{Message: "Saved", Seconds: 1})
+	rt.EndFrame()
+
+	var sawSurface, sawLabel bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect:
+			sawSurface = true
+			if op.Color != (Color{}) || op.BorderColor != (Color{}) ||
+				op.BorderWidth != 0 || op.Radius != 0 ||
+				op.Material != MaterialKind(0) || op.Opacity != 0 {
+				t.Fatalf("unstyled toast surface gained defaults: %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Saved":
+			sawLabel = true
+			if op.Color != (Color{}) || op.Opacity != 0 {
+				t.Fatalf("unstyled toast label gained defaults: %+v", op)
+			}
+		}
+	}
+	if !sawSurface || !sawLabel {
+		t.Fatalf("missing unstyled toast ops: surface=%v label=%v ops=%+v", sawSurface, sawLabel, rt.FrameOps())
+	}
+}
+
 func TestChromeWidgetsResolveClassSelectors(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
