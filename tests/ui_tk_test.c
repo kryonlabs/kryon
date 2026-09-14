@@ -1196,6 +1196,9 @@ test_segmented_control_policy(void)
               SegmentedShouldWrap(1, next, next + metrics.gap + second,
                                   240), 1);
     check_int("segmented height", SegmentedHeightForRows(2, 30, 6), 66);
+    check_int("segmented focus disabled id", SegmentedFocusIdFor(0, 1), 0);
+    check_int("segmented focus negative index", SegmentedFocusIdFor(7, -1), 0);
+    check_int("segmented focus id", SegmentedFocusIdFor(7, 2), 7003);
     check_int("segmented row button width", row.button_width, 117);
     check_int("segmented row x", row.x, 10);
 

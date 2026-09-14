@@ -3873,7 +3873,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 				}
 				pressed := r.segmentedButtonAt(ButtonProps{
 					Bounds:    bounds,
-					ID:        props.ID*1000 + int32(index) + 1,
+					ID:        SegmentedControl_SegmentedFocusIdFor(props.ID, int32(index)),
 					Label:     option.Label,
 					Pill:      true,
 					Selected:  int32(index) == selected,

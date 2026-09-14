@@ -765,8 +765,7 @@ SegmentedControl(SegmentedControlProps control)
             for(int j = 0; j < row_count; j++) {
                 int item_index = row_start + j;
                 const SegmentOption *option = &control.options[item_index];
-                int focus_id = control.id > 0 ? control.id * 100 + item_index + 1
-                                              : 0;
+                int focus_id = SegmentedFocusIdFor(control.id, item_index);
                 ButtonSpec button;
                 int selected_item = item_index == selected;
 
