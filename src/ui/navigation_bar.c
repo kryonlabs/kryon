@@ -284,7 +284,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     const char *option_labels[16];
     int option_count = modal.option_count;
     int route_count = modal.route_count != NULL ? *modal.route_count : 0;
-    int max_route_count = modal.max_route_count > 0 ? modal.max_route_count : route_count;
+    int max_route_count = modal.max_route_count;
     NavigationBarConfigCounts counts;
     int selected[16] = {0};
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -377,7 +377,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
             result.changed = 1;
             break;
         }
-        y += metrics.row_height;
+        y = NavigationBarConfigNextRowY(y, metrics);
     }
     EndScrollContainer(route_area, route_view);
 
@@ -392,7 +392,9 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
                .emphasis = ButtonEmphasisSoft,
                .disabled = dropdown_blocks_buttons
            })) {
-            modal.routes[route_count] = option_count > 0 ? modal.options[0].route : 0;
+            modal.routes[route_count] = NavigationBarConfigDefaultRoute(
+                option_count,
+                option_count > 0 ? modal.options[0].route : 0);
             route_count++;
             if(modal.route_count != NULL)
                 *modal.route_count = route_count;

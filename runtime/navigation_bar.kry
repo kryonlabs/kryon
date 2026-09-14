@@ -160,6 +160,18 @@ NavigationBarConfigCountsFor :: (route_count: i32, max_route_count: i32,
     return counts
 }
 
+NavigationBarConfigNextRowY :: (row_y: i32,
+    metrics: NavigationBarConfigMetrics) -> i32 #export {
+    row_height: i32 = metrics.row_height
+    if row_height < 0 { row_height = 0 }
+    return row_y + row_height
+}
+
+NavigationBarConfigDefaultRoute :: (option_count: i32, first_route: i32) -> i32 #export {
+    if option_count > 0 { return first_route }
+    return 0
+}
+
 NavigationBarMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||

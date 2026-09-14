@@ -489,8 +489,22 @@ main(void)
                   counts.max_route_count, 0);
         check_int("navigation config negative option count clamps",
                   counts.option_count, 0);
+        counts = NavigationBarConfigCountsFor(4, 0, 3, 16);
+        check_int("navigation config max route defaults to route count",
+                  counts.max_route_count, 4);
+        check_int("navigation config defaulted route count remains",
+                  counts.route_count, 4);
         check_int("navigation config frame height",
                   NavigationBarConfigFrameHeight(3, metrics), 394);
+        check_int("navigation config next row y",
+                  NavigationBarConfigNextRowY(196, metrics), 254);
+        check_int("navigation config next row y clamps bad height",
+                  NavigationBarConfigNextRowY(196,
+                      (NavigationBarConfigMetrics){.row_height = -20}), 196);
+        check_int("navigation config default route",
+                  NavigationBarConfigDefaultRoute(2, 42), 42);
+        check_int("navigation config empty default route",
+                  NavigationBarConfigDefaultRoute(0, 42), 0);
         check_int("navigation config route view height",
                   (int)layout.route_bounds.height, 196);
         check_int("navigation config route content height",
