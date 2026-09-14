@@ -7,6 +7,7 @@
 #include "ui_color.h"
 #include "ui_style_sheet.h"
 #include "runtime/button.h"
+#include "runtime/input.h"
 #include "runtime/segmented_control.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
@@ -828,6 +829,7 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
     Color stroke;
     Color text;
     int font;
+    InputPointerInteraction interaction;
 
     diameter = metrics.diameter;
     radius = diameter / 2;
@@ -835,11 +837,15 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
                                   diameter, diameter,
                                   metrics.min_touch, metrics.min_touch);
 
-    active = CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world);
-    if(active) {
-        hover = HoverEffectsEnabled();
+    interaction = InputPointerInteractionFor(
+        CheckCollisionPointRec(mouse_world, hit) != 0,
+        InputCapturesClick(mouse_world) != 0, false,
+        HoverEffectsEnabled() != 0,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false, true);
+    active = interaction.active;
+    hover = interaction.hovered;
+    if(active)
         MarkClickable();
-    }
 
     {
         ButtonProps props = {.tone = ButtonToneNeutral,
@@ -864,7 +870,7 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
                       font, text, TextWrapNone, TextAlignCenter,
                       TextAlignCenter, ui_active_font_token(), 0);
 
-    if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    if(interaction.activated) {
         ConsumeRelease();
         return 1;
     }

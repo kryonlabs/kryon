@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_image_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/input.h"
 #include "runtime/profile_header.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -180,6 +181,15 @@ ui_profile_images_dark_mode(void)
     return IsThemeColorDark(ui_surface_style().background) ? 1 : 0;
 }
 
+static InputPointerInteraction
+ui_profile_pointer_interaction(Rectangle bounds, Vector2 mouse, int released)
+{
+    return InputPointerInteractionFor(
+        CheckCollisionPointRec(mouse, bounds) != 0,
+        InputCapturesClick(mouse) != 0, false, HoverEffectsEnabled() != 0,
+        released != 0, false, true);
+}
+
 static void
 ui_draw_pfp_fallback(int x, int y, int size, Color color)
 {
@@ -239,10 +249,11 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                      0.0f, 0.0f, 0, surface_style.focus, 0.0f,
                      surface_style.opacity, ui_style_fill(surface_style),
                      surface_style.material);
-    if(CheckCollisionPointRec(mouse, layout.profile_bounds) &&
-       !InputCapturesClick(mouse)) {
+    InputPointerInteraction profile_interaction =
+        ui_profile_pointer_interaction(layout.profile_bounds, mouse, released);
+    if(profile_interaction.active) {
         MarkClickable();
-        if(released) {
+        if(profile_interaction.activated) {
             ConsumeRelease();
             result.pfp_clicked = 1;
         }
@@ -262,10 +273,11 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                              layout.avatar_center_y - layout.avatar_radius,
                              layout.avatar_size, text_style.foreground);
 
-    if(CheckCollisionPointRec(mouse, layout.username_bounds) &&
-       !InputCapturesClick(mouse)) {
+    InputPointerInteraction username_interaction =
+        ui_profile_pointer_interaction(layout.username_bounds, mouse, released);
+    if(username_interaction.active) {
         MarkClickable();
-        if(released) {
+        if(username_interaction.activated) {
             ConsumeRelease();
             result.username_clicked = 1;
         }
@@ -277,8 +289,9 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                    ProfileHeaderSubtitleY(layout.name_y, scale), small_font,
                    muted_text);
 
-    if(CheckCollisionPointRec(mouse, layout.friends_bounds) &&
-       !InputCapturesClick(mouse)) {
+    InputPointerInteraction friends_interaction =
+        ui_profile_pointer_interaction(layout.friends_bounds, mouse, released);
+    if(friends_interaction.active) {
         ui_draw_material(layout.friends_bounds, layout.header_bounds,
                          hover_style.background, hover_style.border,
                          hover_style.border, hover_style.radius,
@@ -286,7 +299,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                          hover_style.focus, 0.0f, hover_style.opacity,
                          ui_style_fill(hover_style), hover_style.material);
         MarkClickable();
-        if(released) {
+        if(friends_interaction.activated) {
             ConsumeRelease();
             result.friends_clicked = 1;
         }
