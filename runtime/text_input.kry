@@ -111,6 +111,13 @@ TextCompositionPaintSpan :: struct {
     end: i32
 }
 
+TextSelectionPaintSpan :: struct {
+    visible: bool
+    start: i32
+    end: i32
+    continues_past_line: bool
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
 }
@@ -243,6 +250,26 @@ TextCompositionUnderlineY :: (text_y: i32, line_height: i32,
     stroke_width: i32) -> i32 #export {
     if stroke_width < 1 { stroke_width = 1 }
     return text_y + line_height - stroke_width
+}
+
+TextSelectionPaintSpanForLine :: (selection_start: i32,
+    selection_end: i32, line_start: i32,
+    line_end: i32) -> TextSelectionPaintSpan #export {
+    span: TextSelectionPaintSpan
+    if selection_end <= selection_start { return span }
+    if line_end < line_start { line_end = line_start }
+    span.start = selection_start
+    if span.start < line_start { span.start = line_start }
+    span.end = selection_end
+    if span.end > line_end { span.end = line_end }
+    span.continues_past_line = selection_start <= line_start &&
+        selection_end > line_end
+    if span.end < span.start { return span }
+    if span.end == span.start && !span.continues_past_line {
+        return span
+    }
+    span.visible = true
+    return span
 }
 
 TextSelectionRange :: struct {

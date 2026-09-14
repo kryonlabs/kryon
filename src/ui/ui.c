@@ -3116,6 +3116,7 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
                             int x, int y, int font, Color color,
                             int selection_start, int selection_end)
 {
+    TextSelectionPaintSpan span;
     int start;
     int end;
     int start_x;
@@ -3123,21 +3124,16 @@ ui_draw_text_area_selection(const char *text, int line_start, int line_end,
 
     if(text == NULL || selection_end <= selection_start)
         return;
-    start = selection_start > line_start ? selection_start : line_start;
-    end = selection_end < line_end ? selection_end : line_end;
-    if(selection_start <= line_end && selection_end > line_end &&
-       end == line_end)
-        end = line_end;
-    if(end < start)
+    span = TextSelectionPaintSpanForLine(selection_start, selection_end,
+                                         line_start, line_end);
+    if(!span.visible)
         return;
-    if(end == start && !(selection_start <= line_start &&
-                         selection_end > line_end))
-        return;
+    start = span.start;
+    end = span.end;
     start_x = x + ui_text_column_x(text, line_start, start, font);
     end_x = x + ui_text_column_x(text, line_start, end, font);
     end_x = TextSelectionHighlightEndX(start_x, end_x,
-        selection_start <= line_start && selection_end > line_end,
-        (float)Scale(1000) / 1000.0f);
+        span.continues_past_line, (float)Scale(1000) / 1000.0f);
     DrawRectangle(start_x, y, end_x - start_x, TextLineHeight(font),
                   color);
 }
