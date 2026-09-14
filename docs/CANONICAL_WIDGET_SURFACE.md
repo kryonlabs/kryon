@@ -23,7 +23,7 @@ and what must move out of native code into `.kry`.
 | `.kry canonical` | This should be implemented as a first-class `.kry` widget or node. |
 | `.kry support` | Generated `.kry` policy/data used by a host-owned interaction or runtime helper, not a standalone public widget. |
 | `Native canonical` | This is low-level drawing/layout/runtime surface that may remain native. |
-| `Native support` | Runtime support only; not a canonical public widget. |
+| `Internal support` | Runtime support only; not a canonical public widget. |
 | `Composite candidate` | Keep as `.kry` composition if it is reusable, otherwise fold into callers. |
 | `Rename review` | Public name needs a naming decision. |
 | `Removed` | Deleted from public headers/codegen/runtime surfaces. |
@@ -67,7 +67,7 @@ surface review:
 | `runtime/image_props.kry` | Image props | `.kry canonical` |
 | `runtime/input.kry` | Input component layout and value/step policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
-| `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
+| `runtime/instance.kry` | Generated widget instance identity helpers | `.kry support` |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
 | `runtime/focus.kry` | Focus ring and debug overlay geometry policy | `.kry support` |

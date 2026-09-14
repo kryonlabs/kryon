@@ -892,8 +892,9 @@ import re
 doc = Path("docs/CANONICAL_WIDGET_SURFACE.md").read_text()
 statuses = (
     ".kry canonical",
+    ".kry support",
     "Native canonical",
-    "Native support",
+    "Internal support",
     "Composite candidate",
     "Rename review",
     "Removed",
