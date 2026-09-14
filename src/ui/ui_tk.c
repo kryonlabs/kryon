@@ -3612,21 +3612,16 @@ ui_table_metrics(TableViewProps table)
     StyleFrame cell_frame = {0};
     StyleFrame divider_frame = {0};
     table_frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            StyleAny(), ButtonToneNeutral, ButtonEmphasisSoft,
-            ControlSizeMedium, state), state);
+        TableViewFactsFor(table.class_name, state), state);
     header_frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            TableViewHeaderRole(), ButtonToneNeutral, ButtonEmphasisSoft,
-            ControlSizeMedium, state), state);
+        TableViewRoleFactsFor(table.class_name, TableViewHeaderRole(), state),
+        state);
     cell_frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            TableViewCellRole(), ButtonToneNeutral, ButtonEmphasisSoft,
-            ControlSizeMedium, state), state);
+        TableViewRoleFactsFor(table.class_name, TableViewCellRole(), state),
+        state);
     divider_frame.value = ResolveActiveStyle((StyleData){0},
-        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            TableViewDividerRole(), ButtonToneNeutral, ButtonEmphasisSoft,
-            ControlSizeMedium, state), state);
+        TableViewRoleFactsFor(table.class_name, TableViewDividerRole(), state),
+        state);
     return TableViewMetricsFor((float)GetScale(), table_frame, header_frame,
                                cell_frame, divider_frame);
 }
@@ -3659,30 +3654,28 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         }
     }
 
-    if(IsKeyPressed(KEY_UP)) {
-        row = TableViewSelectionMoveRow(row, table.row_count, -1);
+    TableViewKeyboardIntent intent = TableViewKeyboardIntentFor(
+        IsKeyPressed(KEY_UP) != 0, IsKeyPressed(KEY_DOWN) != 0,
+        IsKeyPressed(KEY_LEFT) != 0, IsKeyPressed(KEY_RIGHT) != 0,
+        IsKeyPressed(KEY_TAB) != 0,
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT),
+        IsKeyPressed(KEY_ENTER) != 0 || IsKeyPressed(KEY_KP_ENTER) != 0,
+        IsKeyPressed(KEY_F2) != 0, IsKeyPressed(KEY_ESCAPE) != 0);
+    if(intent.move_row != 0) {
+        row = TableViewSelectionMoveRow(row, table.row_count,
+                                        intent.move_row);
         selection_changed = changed = 1;
     }
-    if(IsKeyPressed(KEY_DOWN)) {
-        row = TableViewSelectionMoveRow(row, table.row_count, 1);
-        selection_changed = changed = 1;
-    }
-    if(IsKeyPressed(KEY_LEFT)) {
+    if(intent.move_column != 0) {
         column_slot = TableViewSelectionMoveColumn(column_slot, visible_columns,
-                                                   -1);
+                                                   intent.move_column);
         column = ui_table_display_column(table,column_slot);
         selection_changed = changed = 1;
     }
-    if(IsKeyPressed(KEY_RIGHT)) {
-        column_slot = TableViewSelectionMoveColumn(column_slot, visible_columns,
-                                                   1);
-        column = ui_table_display_column(table,column_slot);
-        selection_changed = changed = 1;
-    }
-    if(IsKeyPressed(KEY_TAB)) {
+    if(intent.tab) {
         TableViewSelection selection = TableViewSelectionTab(
             row, column_slot, table.row_count, visible_columns,
-            IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+            intent.tab_backwards);
         row = selection.row;
         column_slot = selection.column_slot;
         column = ui_table_display_column(table,column_slot);
@@ -3713,13 +3706,12 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
                 ? *table.selected_column : -1;
         changed = 1;
     }
-    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
-       IsKeyPressed(KEY_F2)) {
+    if(intent.activate) {
         if(table.activated_row != NULL) *table.activated_row = row;
         if(table.activated_column != NULL) *table.activated_column = column;
         selection_changed = changed = 1;
     }
-    if(IsKeyPressed(KEY_ESCAPE)) {
+    if(intent.clear_selection) {
         TableViewSelectionClearDecision clear_decision =
             TableViewSelectionClearFor(
                 *table.selected_row,

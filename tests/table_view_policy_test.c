@@ -37,6 +37,7 @@ main(void)
     TableViewRowClickDecision row_click;
     TableViewRowContextDecision row_context;
     TableViewSortDecision sort_decision;
+    TableViewKeyboardIntent keyboard;
     Rectangle row;
 
     assert(metrics.default_row_height == 56);
@@ -45,6 +46,22 @@ main(void)
     assert(metrics.header_text_pad_x == 12);
     assert(metrics.resize_tolerance == 10);
     assert(metrics.scrollbar_width == 16);
+    assert(TableViewFactsFor(123, ButtonStateNormal).kind == StyleKindTableView());
+    assert(TableViewFactsFor(123, ButtonStateNormal).class_name == 123);
+    assert(TableViewFactsFor(123, ButtonStateNormal).role == StyleAny());
+    assert(TableViewFactsFor(123, ButtonStateNormal).state == ButtonStateNormal);
+    assert(TableViewRoleFactsFor(123, TableViewHeaderRole(),
+                                 ButtonStateDisabled).kind == StyleKindTableView());
+    assert(TableViewRoleFactsFor(123, TableViewHeaderRole(),
+                                 ButtonStateDisabled).class_name == 123);
+    assert(TableViewRoleFactsFor(123, TableViewHeaderRole(),
+                                 ButtonStateDisabled).role == TableViewHeaderRole());
+    assert(TableViewRoleFactsFor(123, TableViewHeaderRole(),
+                                 ButtonStateDisabled).state == ButtonStateDisabled);
+    assert(TableViewRoleFactsFor(123, TableViewCellRole(),
+                                 ButtonStateHover).role == TableViewCellRole());
+    assert(TableViewRoleFactsFor(123, TableViewDividerRole(),
+                                 ButtonStateHover).role == TableViewDividerRole());
     assert(TableViewRowHeight(0, 2.0f, metrics) == 56);
     assert(TableViewRowHeight(18, 2.0f, metrics) == 36);
     assert(TableViewHeaderHeight(20, 2.0f, metrics) == 60);
@@ -137,6 +154,39 @@ main(void)
     assert(TableViewSelectionMoveColumn(0, 3, -1) == 0);
     assert(TableViewSelectionMoveColumn(0, 3, 1) == 1);
     assert(TableViewSelectionMoveColumn(2, 3, 1) == 2);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, false,
+        false, false, false, false, false);
+    assert(keyboard.move_row == 0);
+    assert(keyboard.move_column == 0);
+    assert(!keyboard.tab);
+    assert(!keyboard.tab_backwards);
+    assert(!keyboard.activate);
+    assert(!keyboard.clear_selection);
+    keyboard = TableViewKeyboardIntentFor(true, false, false, false,
+        false, false, false, false, false);
+    assert(keyboard.move_row == -1);
+    keyboard = TableViewKeyboardIntentFor(false, true, false, false,
+        false, false, false, false, false);
+    assert(keyboard.move_row == 1);
+    keyboard = TableViewKeyboardIntentFor(false, false, true, false,
+        false, false, false, false, false);
+    assert(keyboard.move_column == -1);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, true,
+        false, false, false, false, false);
+    assert(keyboard.move_column == 1);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, false,
+        true, true, false, false, false);
+    assert(keyboard.tab);
+    assert(keyboard.tab_backwards);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, false,
+        false, false, true, false, false);
+    assert(keyboard.activate);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, false,
+        false, false, false, true, false);
+    assert(keyboard.activate);
+    keyboard = TableViewKeyboardIntentFor(false, false, false, false,
+        false, false, false, false, true);
+    assert(keyboard.clear_selection);
     TableViewSelection selection = TableViewSelectionTab(0, 2, 4, 3, false);
     assert(selection.row == 1);
     assert(selection.column_slot == 0);

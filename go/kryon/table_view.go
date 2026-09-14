@@ -3,6 +3,7 @@ package kryon
 
 // #import drawing_props
 // #import style
+// #import style_sheet
 // #import control_props
 type TableViewMetrics struct {
 	DefaultRowHeight      int32
@@ -93,6 +94,15 @@ type TableViewResizeDragDecision struct {
 	MarkClickable  bool
 }
 
+type TableViewKeyboardIntent struct {
+	MoveRow        int32
+	MoveColumn     int32
+	Tab            bool
+	TabBackwards   bool
+	Activate       bool
+	ClearSelection bool
+}
+
 func TableView_TableViewPanelRole() int32 {
 	var value_0 int32 = 2
 	return value_0
@@ -121,6 +131,32 @@ func TableView_TableViewCellRole() int32 {
 func TableView_TableViewSelectionRole() int32 {
 	var value_0 int32 = 23
 	return value_0
+}
+
+func TableView_TableViewFactsFor(class_name int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindTableView()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = StyleSheet_StyleAny()
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
+}
+
+func TableView_TableViewRoleFactsFor(class_name int32, role int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindTableView()
+	var value_1 int32 = 0
+	var value_2 int32 = class_name
+	var value_3 int32 = role
+	var value_4 int32 = int32(ButtonToneNeutral)
+	var value_5 int32 = int32(ButtonEmphasisSoft)
+	var value_6 int32 = int32(ControlSizeMedium)
+	var value_7 int32 = state
+	var value_8 StyleFacts = StyleSheet_StyleControlRoleFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	return value_8
 }
 
 func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
@@ -1215,6 +1251,45 @@ func TableView_TableViewSelectionClearFor(selected_row int32, selected_column in
 	}
 	var value_12 TableViewSelectionClearDecision = decision
 	return value_12
+}
+
+func TableView_TableViewKeyboardIntentFor(up bool, down bool, left bool, right bool, tab bool, tab_backwards bool, enter bool, f2 bool, escape bool) TableViewKeyboardIntent {
+	var intent TableViewKeyboardIntent = TableViewKeyboardIntent{}
+	var value_0 bool = up
+	if value_0 {
+		var value_1 int32 = -1
+		intent.MoveRow = value_1
+	}
+	var value_2 bool = down
+	if value_2 {
+		var value_3 int32 = 1
+		intent.MoveRow = value_3
+	}
+	var value_4 bool = left
+	if value_4 {
+		var value_5 int32 = -1
+		intent.MoveColumn = value_5
+	}
+	var value_6 bool = right
+	if value_6 {
+		var value_7 int32 = 1
+		intent.MoveColumn = value_7
+	}
+	var value_8 bool = tab
+	intent.Tab = value_8
+	var value_9 bool = tab_backwards
+	intent.TabBackwards = value_9
+	var value_10 bool = enter
+	var value_11 bool = value_10
+	if !value_11 {
+		var value_12 bool = f2
+		value_11 = value_12
+	}
+	intent.Activate = value_11
+	var value_13 bool = escape
+	intent.ClearSelection = value_13
+	var value_14 TableViewKeyboardIntent = intent
+	return value_14
 }
 
 func TableView_TableViewHeaderPointerDecisionFor(disabled bool, header_hot bool, released bool, has_sort_column bool) TableViewHeaderPointerDecision {
