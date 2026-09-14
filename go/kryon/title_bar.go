@@ -305,6 +305,13 @@ func TitleBar_TitleBarLayoutFor(view_width int32, height int32, has_leading bool
 	return value_107
 }
 
+func TitleBar_TitleBarReservedHasLeading(side_reserved int32, metrics TitleBarMetrics) bool {
+	var value_0 int32 = side_reserved
+	var value_1 int32 = metrics.SideMargin
+	var value_2 bool = value_0 > value_1
+	return value_2
+}
+
 func TitleBar_TitleBarPaintFor(view_width int32, height int32) TitleBarPaint {
 	var paint TitleBarPaint = TitleBarPaint{}
 	var value_0 int32 = view_width

@@ -40,6 +40,8 @@ main(void)
     assert(metrics.dropdown_default_height == 64);
     assert(TitleBarMetricsFor(0.0f, (StyleFrame){0}, (StyleFrame){0},
                               (StyleFrame){0}).side_margin == 12);
+    assert(!TitleBarReservedHasLeading(metrics.side_margin, metrics));
+    assert(TitleBarReservedHasLeading(metrics.leading_reserved, metrics));
 
     TitleBarLayout layout = TitleBarLayoutFor(360, 88, true, true, 0, 0,
                                               metrics);

@@ -114,6 +114,11 @@ TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
     return layout
 }
 
+TitleBarReservedHasLeading :: (side_reserved: i32,
+    metrics: TitleBarMetrics) -> bool #export {
+    return side_reserved > metrics.side_margin
+}
+
 TitleBarPaintFor :: (view_width: i32, height: i32) -> TitleBarPaint #export {
     paint: TitleBarPaint
     paint.bounds.width = (float)view_width

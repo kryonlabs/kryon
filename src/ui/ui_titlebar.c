@@ -78,7 +78,8 @@ RenderTitleBarCenteredTitle(const char *title, int height,
     TitleBarTitlePaint paint;
     TitleBarMetrics metrics = ui_title_bar_metrics(class_name);
     TitleBarLayout layout = TitleBarLayoutFor(ui_view_width, height,
-                                              side_reserved > Scale(12),
+                                              TitleBarReservedHasLeading(
+                                                  side_reserved, metrics),
                                               false, 0, 0, metrics);
     int max_w = (int)layout.title_bounds.width;
     Style text = ui_unpack_style(ui_control_style_frame_role_kind(
