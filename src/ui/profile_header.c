@@ -362,8 +362,10 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                  scroll_view.content_w, layout);
         IconType type = GetProfileImageIconType(i);
         Texture2D icon = {0};
-        int hovered = CheckCollisionPointRec(mouse, cell.bounds) &&
-                      !InputCapturesClick(mouse);
+        InputPointerInteraction cell_interaction =
+            ui_profile_pointer_interaction(cell.bounds, mouse,
+                                           IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
+        int hovered = cell_interaction.active;
         int active = type == selected;
         ButtonState state = active ? ButtonStateSelected
                           : hovered ? ButtonStateHover
@@ -399,7 +401,7 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
 
         if(hovered) {
             MarkClickable();
-            if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+            if(cell_interaction.activated) {
                 ConsumeRelease();
                 if(modal.selected_icon_type != NULL)
                     *modal.selected_icon_type = type;
