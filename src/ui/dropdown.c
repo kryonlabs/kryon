@@ -451,7 +451,7 @@ ui_dropdown(DropdownProps props)
         h, false, false, false);
     if(open_decision.changed) {
         ClearTextInputFocus();
-        if(pointer_activate)
+        if(trigger_interaction.consume_release)
             ConsumeRelease();
         state->open = open_decision.open;
         if(open_decision.opened) {
@@ -707,7 +707,8 @@ dropdown_paint_menu(int id)
                 DropdownOpenDecision open_decision =
                     DropdownOpenAfterCommit(state->open, true);
                 ClearTextInputFocus();
-                ConsumeRelease();
+                if(option_interaction.consume_release)
+                    ConsumeRelease();
                 state->pending_changed = state->selected_index != i;
                 state->selected_index = i;
                 state->pending_index = i;
