@@ -21,6 +21,11 @@ FocusMetric :: (fields: u32, field: u32, value: float,
     return (i32)(value * scale)
 }
 
+FocusStrokeWidthFor :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(2.0 * scale)
+}
+
 FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
     pad: i32 = FocusMetric(frame.value.fields, (u32)StylePaddingX,

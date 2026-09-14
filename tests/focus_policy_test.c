@@ -23,6 +23,8 @@ main(void)
                                      frame);
     check_rect(paint.bounds, 4, 14, 42, 52);
     assert(paint.stroke_width == 4);
+    assert(FocusStrokeWidthFor(0.0f) == 2);
+    assert(FocusStrokeWidthFor(2.0f) == 4);
 
     frame.value.fields = StylePaddingX | StyleBorderWidth;
     paint = FocusPaintFor((Rectangle){10, 20, 30, 40}, 2.0f, frame);

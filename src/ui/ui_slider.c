@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/checkbox.h"
+#include "runtime/focus.h"
 #include "runtime/slider.h"
 #include "runtime/style.h"
 #include "runtime/toggle.h"
@@ -683,12 +684,14 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         track_style = ui_unpack_style(track_frame.value);
 
         if(paint.show_focus) {
+            float scale = (float)Scale(1000) / 1000.0f;
             Color focus = GetColor(track_frame.value.focus);
             Color glow = GetColor(Opacity(track_frame.value.focus, 0.24f));
 
             DrawRectangleRounded(paint.focus_bounds, 0.5f, 16, glow);
             DrawRectangleRoundedLinesEx(paint.focus_bounds, 0.5f, 16,
-                                        (float)Scale(2), focus);
+                                        (float)FocusStrokeWidthFor(scale),
+                                        focus);
         }
         ui_draw_material(paint.track_bounds, (Rectangle){0},
                          track_style.background, track_style.border,
