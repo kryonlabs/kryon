@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_image_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/profile_header.h"
 
@@ -146,23 +147,13 @@ GetSyncIDForProfileImageIconType(IconType type)
 static void
 ui_draw_pfp_texture(Texture2D icon, int x, int y, int size)
 {
-    Rectangle src;
-    Rectangle dst;
-    Vector2 origin;
+    ImageProps image = {0};
 
     if(icon.id == 0 || size <= 0)
         return;
-    dst.x = (float)x;
-    dst.y = (float)y;
-    dst.width = (float)size;
-    dst.height = (float)size;
-    src.x = 0.0f;
-    src.y = 0.0f;
-    src.width = (float)icon.width;
-    src.height = (float)icon.height;
-    origin.x = 0.0f;
-    origin.y = 0.0f;
-    DrawTexturePro(icon, src, dst, origin, 0.0f, WHITE);
+    image.bounds = (Rectangle){(float)x, (float)y, (float)size, (float)size};
+    image.fit = ImageFitStretch;
+    ImageTextureTinted(icon, image, WHITE);
 }
 
 static void
