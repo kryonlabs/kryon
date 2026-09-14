@@ -110,28 +110,28 @@ ui_title_bar_height(void)
 int
 RenderTitleBar(TitleBarProps title_bar)
 {
-    int height = title_bar.height;
     int clicked = 0;
+    TitleBarState state = TitleBarStateFor(
+        title_bar.height, ui_title_bar_height(),
+        title_bar.has_leading_action != 0, title_bar.has_dropdown != 0);
+    int height = state.height;
     TitleBarMetrics metrics = ui_title_bar_metrics(title_bar.class_name);
     TitleBarLayout layout;
     int side_reserved = metrics.side_margin;
 
-    if(height <= 0)
-        height = ui_title_bar_height();
-    layout = TitleBarLayoutFor(ui_view_width, height,
-                               title_bar.has_leading_action != 0,
-                               title_bar.has_dropdown != 0,
+    layout = TitleBarLayoutFor(ui_view_width, height, state.has_leading,
+                               state.has_dropdown,
                                title_bar.dropdown.height,
                                title_bar.dropdown.min_width,
                                metrics);
     RenderTitleBarBackground(height, title_bar.class_name);
-    if(title_bar.has_leading_action) {
+    if(state.has_leading) {
         clicked = RenderTitleBarReturnButton(title_bar.leading_icon,
                                              layout.leading_bounds, metrics,
                                              title_bar.class_name);
         side_reserved = layout.side_reserved;
     }
-    if(title_bar.has_dropdown) {
+    if(state.has_dropdown) {
         TitleBarDropdown dropdown = title_bar.dropdown;
         if(!dropdown.disabled)
             Dropdown((DropdownProps){.id = dropdown.id, .bounds = layout.dropdown_bounds,

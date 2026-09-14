@@ -33,6 +33,7 @@ main(void)
     TitleBarMetrics metrics = TitleBarMetricsFor(2.0f, bar, title, action);
     TitleBarPaint paint;
     TitleBarTitlePaint title_paint;
+    TitleBarState state;
     assert(metrics.side_margin == 24);
     assert(metrics.leading_reserved == 120);
     assert(metrics.leading_icon_size == 40);
@@ -42,6 +43,16 @@ main(void)
                               (StyleFrame){0}).side_margin == 12);
     assert(!TitleBarReservedHasLeading(metrics.side_margin, metrics));
     assert(TitleBarReservedHasLeading(metrics.leading_reserved, metrics));
+    state = TitleBarStateFor(0, 44, true, false);
+    assert(state.height == 44);
+    assert(state.has_leading);
+    assert(!state.has_dropdown);
+    state = TitleBarStateFor(32, 44, false, true);
+    assert(state.height == 32);
+    assert(!state.has_leading);
+    assert(state.has_dropdown);
+    state = TitleBarStateFor(-10, -4, false, false);
+    assert(state.height == 0);
 
     TitleBarLayout layout = TitleBarLayoutFor(360, 88, true, true, 0, 0,
                                               metrics);

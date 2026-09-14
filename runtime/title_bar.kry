@@ -33,6 +33,12 @@ TitleBarTitlePaint :: struct {
     y: i32
 }
 
+TitleBarState :: struct {
+    height: i32
+    has_leading: bool
+    has_dropdown: bool
+}
+
 TitleBarMetric :: (fields: u32, field: u32, value: float, fallback: float,
     scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -61,6 +67,17 @@ TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
     metrics.title_horizontal_padding = TitleBarMetric(title.value.fields,
         (u32)StylePaddingX, title.value.padding_x, 16.0, scale)
     return metrics
+}
+
+TitleBarStateFor :: (requested_height: i32, fallback_height: i32,
+    has_leading: bool, has_dropdown: bool) -> TitleBarState #export {
+    state: TitleBarState
+    state.height = requested_height
+    if state.height <= 0 { state.height = fallback_height }
+    if state.height < 0 { state.height = 0 }
+    state.has_leading = has_leading
+    state.has_dropdown = has_dropdown
+    return state
 }
 
 TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
