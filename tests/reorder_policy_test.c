@@ -19,6 +19,8 @@ main(void)
     StyleFrame placeholder_frame = {0};
     ReorderMetrics metrics;
     ReorderDragMotion motion;
+    ReorderLifecycleDecision lifecycle;
+    ReorderPressDecision press;
     ReorderListResult result;
     Rectangle handle;
     ReorderHandlePaint handle_paint;
@@ -171,6 +173,38 @@ main(void)
     result = ReorderListCommitResultFor(
         ReorderListActiveResultFor(1, 3, 7, 99, 120, 75), 6);
     assert(result.committed == 0);
+
+    lifecycle = ReorderForeignActiveListFor(1, 12, 13, 1);
+    assert(lifecycle.ignore_list);
+    assert(!lifecycle.cancel_active);
+    lifecycle = ReorderForeignActiveListFor(1, 12, 13, 0);
+    assert(lifecycle.ignore_list);
+    assert(lifecycle.cancel_active);
+    lifecycle = ReorderForeignActiveListFor(1, 12, 12, 0);
+    assert(!lifecycle.ignore_list);
+    assert(!lifecycle.cancel_active);
+    lifecycle = ReorderActiveItemLifecycleFor(2, 4, 1, 0);
+    assert(!lifecycle.ignore_list);
+    assert(!lifecycle.cancel_active);
+    lifecycle = ReorderActiveItemLifecycleFor(-1, 4, 1, 0);
+    assert(lifecycle.ignore_list);
+    assert(lifecycle.cancel_active);
+    lifecycle = ReorderActiveItemLifecycleFor(2, 4, 0, 0);
+    assert(lifecycle.ignore_list);
+    assert(lifecycle.cancel_active);
+    lifecycle = ReorderActiveItemLifecycleFor(2, 4, 1, 1);
+    assert(lifecycle.ignore_list);
+    assert(lifecycle.cancel_active);
+    press = ReorderPressFor(9, 1, 3, 1, 0, 1, 1);
+    assert(press.can_press);
+    press = ReorderPressFor(0, 1, 3, 1, 0, 1, 1);
+    assert(!press.can_press);
+    press = ReorderPressFor(9, 1, 3, 1, 1, 1, 1);
+    assert(!press.can_press);
+    press = ReorderPressFor(9, 1, 3, 1, 0, 0, 1);
+    assert(!press.can_press);
+    press = ReorderPressFor(9, 1, 3, 1, 0, 1, 0);
+    assert(!press.can_press);
 
     metrics = (ReorderMetrics){.drag_threshold = 10,
                                .auto_scroll_margin = 20,

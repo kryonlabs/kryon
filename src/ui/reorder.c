@@ -74,23 +74,32 @@ UpdateReorderList(ReorderList list)
     if(list.item_count < 0)
         list.item_count = 0;
 
-    if(g_ui_reorder_state.list_id != 0 &&
-       g_ui_reorder_state.list_id != list.id) {
-        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+    {
+        ReorderLifecycleDecision foreign = ReorderForeignActiveListFor(
+            g_ui_reorder_state.list_id != 0, g_ui_reorder_state.list_id,
+            list.id, IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
+        if(foreign.cancel_active)
             ui_reorder_cancel();
-        return result;
+        if(foreign.ignore_list)
+            return result;
     }
 
     if(g_ui_reorder_state.list_id == list.id) {
         int active_index = ui_reorder_find_index(&list,
                                                  g_ui_reorder_state.item_id);
         int dragged_center_y;
+        ReorderLifecycleDecision active_lifecycle =
+            ReorderActiveItemLifecycleFor(
+                active_index, list.item_count, list.items != NULL,
+                active_index >= 0 && active_index < list.item_count &&
+                    list.items != NULL
+                    ? list.items[active_index].disabled
+                    : 0);
 
-        if(active_index < 0 || active_index >= list.item_count ||
-           list.items == NULL || list.items[active_index].disabled) {
+        if(active_lifecycle.cancel_active)
             ui_reorder_cancel();
+        if(active_lifecycle.ignore_list)
             return result;
-        }
 
         dragged_center_y = ReorderDraggedCenterY(
             pointer_y, g_ui_reorder_state.press_offset_y,
@@ -132,11 +141,15 @@ UpdateReorderList(ReorderList list)
         return result;
     }
 
-    if(list.id == 0 || list.items == NULL || list.item_count <= 0 ||
-       !IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || captured ||
-       g_ui_pointer_owner != POINTER_OWNER_NONE ||
-       !CheckCollisionPointRec(mouse, list.bounds))
-        return result;
+    {
+        ReorderPressDecision press = ReorderPressFor(
+            list.id, list.items != NULL, list.item_count,
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0, captured != 0,
+            g_ui_pointer_owner == POINTER_OWNER_NONE,
+            CheckCollisionPointRec(mouse, list.bounds) != 0);
+        if(!press.can_press)
+            return result;
+    }
 
     for(int i = 0; i < list.item_count; i++) {
         const ReorderItem *item = &list.items[i];

@@ -8,6 +8,15 @@ ReorderDragMotion :: struct {
     scroll_offset: i32
 }
 
+ReorderLifecycleDecision :: struct {
+    cancel_active: bool
+    ignore_list: bool
+}
+
+ReorderPressDecision :: struct {
+    can_press: bool
+}
+
 ReorderMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
@@ -234,6 +243,39 @@ ReorderListCommitResultFor :: (active: ReorderListResult,
         result.committed = 1
     }
     return result
+}
+
+ReorderForeignActiveListFor :: (has_active_list: bool,
+    active_list_id: i32, list_id: i32,
+    mouse_down: bool) -> ReorderLifecycleDecision #export {
+    decision: ReorderLifecycleDecision
+    if has_active_list && active_list_id != list_id {
+        decision.ignore_list = true
+        if !mouse_down {
+            decision.cancel_active = true
+        }
+    }
+    return decision
+}
+
+ReorderActiveItemLifecycleFor :: (active_index: i32, item_count: i32,
+    has_items: bool, active_item_disabled: bool) -> ReorderLifecycleDecision #export {
+    decision: ReorderLifecycleDecision
+    if active_index < 0 || active_index >= item_count || !has_items ||
+        active_item_disabled {
+        decision.cancel_active = true
+        decision.ignore_list = true
+    }
+    return decision
+}
+
+ReorderPressFor :: (list_id: i32, has_items: bool, item_count: i32,
+    mouse_pressed: bool, captured: bool, pointer_owner_none: bool,
+    inside_bounds: bool) -> ReorderPressDecision #export {
+    decision: ReorderPressDecision
+    decision.can_press = list_id != 0 && has_items && item_count > 0 &&
+        mouse_pressed && !captured && pointer_owner_none && inside_bounds
+    return decision
 }
 
 ReorderDragMotionFor :: (pointer_y: i32, press_y: i32, was_dragging: i32,

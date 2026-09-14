@@ -103,7 +103,7 @@ surface review:
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
-| `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, target-index, and result normalization policy | `.kry support` |
+| `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, target-index, lifecycle gates, and result normalization policy | `.kry support` |
 | `runtime/reorder_props.kry` | Reorder support state, data, and result records | `.kry support` |
 | `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
 | `runtime/rows.kry` | Info/form row sizing and layout fallback policy | `.kry canonical` |
@@ -164,7 +164,7 @@ text measurement, painting, storage, or platform services.
 | Text and drawing | `Text` style resolution, `Paragraph` metrics/default line-gap/layout spacing/height/alignment policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/reflow/drawing |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options; button fallback/terminal paint constants | helper button variants belong in `ButtonProps` or composition; invisible hit testing and rasterization are host support |
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` step-button default, component/step-button layout, and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox` button-width/layout/value policy, `TextField`/`TextArea` defaults/metrics/paint geometry/buffer-limit/navigation/edit intent/selection state policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
-| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership storage and reorder pointer ownership/gesture lifecycle remain host support |
+| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/lifecycle gate/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership storage and reorder pointer ownership storage remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry/mode/text policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` default-height variant, item interaction, paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` effective state/layout/reservation/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, internal dismissible-overlay viewport/dismissal policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe begin/drag/release decision policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/outside-dismissal/action policy, `Toast` duration/layout/text-placement/truncation policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection/dropdown state policy, profile header/profile image picker geometry support, inspector edit/resize geometry policy | theme picker, inspector state/input, and profile image rendering/input host support; swipe pointer ownership remains host support |
@@ -752,7 +752,8 @@ and host plumbing behind the canonical names.
   routes through `runtime/rows.kry`; menu selectable-item, submenu activation,
   wraparound navigation, and bar open/index policy now route through
   `runtime/menu.kry`; centered-column and page side-padding policy now route
-  through `runtime/layout.kry`; scroll-page content-width normalization and
+  through `runtime/layout.kry`; reorder lifecycle gates now route through
+  `runtime/reorder.kry`; scroll-page content-width normalization and
   scroll drag/scrollbar-drag/ensure-visible policy now route through
   `runtime/scroll.kry`;
   table keyboard selection and scroll-into-view policy now route through
@@ -804,7 +805,7 @@ and host plumbing behind the canonical names.
   icon shaping, and rendering are still host work.
 5. Audit host-owned input/state lifecycles:
    retained menu open/focus/input state, drag/drop payload storage, reorder and
-   swipe pointer ownership, paned-view active split storage, tree/table stored selection
+   swipe pointer ownership storage, paned-view active split storage, tree/table stored selection
    mutation, table resizing/clipboard, modal input capture, and toast message
    storage/timing are still native support around `.kry` policy.
 6. Finish lowered block backend cleanup:
