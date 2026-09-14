@@ -17,6 +17,11 @@ ParagraphLayoutPolicy :: struct {
     line_gap: i32
 }
 
+ParagraphLineStep :: struct {
+    wrap: bool
+    width: i32
+}
+
 ParagraphResolveMetrics :: (requested_font: i32, default_font: i32,
     requested_line_gap: i32, default_line_gap: i32, requested_icon_size: i32,
     requested_width: i32, fallback_width: i32, measured_height: i32,
@@ -63,6 +68,21 @@ ParagraphLayoutTotalHeight :: (line_count: i32, drawn_line_height: i32,
     if line_count > 1 { height += (line_count - 1) * line_gap }
     if height < 0 { return 0 }
     return height
+}
+
+ParagraphLineStepFor :: (current_width: i32, spacing: i32,
+    element_width: i32, max_width: i32) -> ParagraphLineStep #export {
+    step: ParagraphLineStep
+    if current_width < 0 { current_width = 0 }
+    if spacing < 0 { spacing = 0 }
+    if element_width < 0 { element_width = 0 }
+    if current_width + spacing + element_width <= max_width {
+        step.width = current_width + spacing + element_width
+    } else {
+        step.wrap = true
+        step.width = element_width
+    }
+    return step
 }
 
 ParagraphLineXFor :: (x: i32, width: i32, line_width: i32, align: i32) -> i32 #export {

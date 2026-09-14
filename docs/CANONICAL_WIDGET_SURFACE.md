@@ -92,7 +92,7 @@ surface review:
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `runtime/page.kry` | Page, Section, Heading, ParagraphText, and Flow composition | `.kry canonical` |
 | `runtime/page_props.kry` | Page/Section/Heading/Paragraph props | `.kry canonical` |
-| `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, height, and alignment policy | `.kry canonical` |
+| `runtime/paragraph.kry` | Paragraph metrics/default line-gap, layout spacing, line-step, height, and alignment policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props and mode names | `.kry canonical` |
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
@@ -161,7 +161,7 @@ text measurement, painting, storage, or platform services.
 
 | Group | `.kry`-backed today | Still native-only or compatibility |
 |---|---|---|
-| Text and drawing | `Text` style resolution, `Paragraph` metrics/default line-gap/layout spacing/height/alignment policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/reflow/drawing |
+| Text and drawing | `Text` style resolution, `Paragraph` metrics/default line-gap/layout spacing/line-step/height/alignment policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph parsing/line storage/drawing |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options; button fallback/terminal paint constants | helper button variants belong in `ButtonProps` or composition; invisible hit testing and rasterization are host support |
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` step-button default, component/step-button layout, and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox` button-width/layout/value policy, `TextField`/`TextArea` defaults/metrics/paint geometry/buffer-limit/navigation/edit intent/selection state/double-click/pan decision policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split/layout/change geometry and drag lifecycle policy, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/content-drag/scrollbar-drag decision/thumb-drag/ensure-visible/clip geometry policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index/lifecycle gate/result policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership storage and reorder pointer ownership storage remain host support |
@@ -187,7 +187,7 @@ has a single place to land.
 |---|---|---|---|---|---|
 | `Background` | `UI/Display` | Fill | `runtime/primitive.kry` | `.kry-backed` | Viewport bounds and app fallback policy are `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `UI/Display` | Label | `runtime/text.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface; retained tree typography uses resolved KSS font sizes directly. |
-| `Paragraph` | `UI/Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, height, alignment policy, and `ParagraphSpec` data are `.kry`; text parsing, line-break ownership, icon shaping, and drawing remain host support. |
+| `Paragraph` | `UI/Display` | Rich text | `runtime/paragraph.kry`, `runtime/drawing_props.kry` | Partly `.kry-backed` | Metrics/default line-gap, layout spacing, line-step, height, alignment policy, and `ParagraphSpec` data are `.kry`; text parsing, line-break array ownership, icon shaping, and drawing remain host support. |
 | `Box` | `UI/Display` | Shape | `runtime/primitive.kry` | `.kry-backed` | Rectangle bounds policy is `.kry`; host keeps fill/border drawing. |
 | `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |

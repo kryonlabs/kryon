@@ -140,13 +140,15 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
             spacing = (current_line_width > 0) ? policy.icon_spacing : 0;
         }
 
-        if(current_line_width + spacing + element_width <= max_width) {
-            current_line_width += spacing + element_width;
-        } else {
+        ParagraphLineStep step = ParagraphLineStepFor(
+            current_line_width, spacing, element_width, max_width);
+        if(step.wrap) {
             layout->line_count++;
             layout->line_breaks[layout->line_count] = i;
             layout->line_widths[layout->line_count - 1] = current_line_width;
-            current_line_width = element_width;
+            current_line_width = step.width;
+        } else {
+            current_line_width = step.width;
         }
     }
 

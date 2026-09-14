@@ -8,6 +8,7 @@ main(void)
     ParagraphMetrics metrics = ParagraphResolveMetrics(
         0, 16, 0, 4, 0, 0, 240, 0, 30);
     ParagraphLayoutPolicy policy;
+    ParagraphLineStep step;
 
     assert(metrics.font == 16);
     assert(metrics.line_gap == 4);
@@ -44,6 +45,15 @@ main(void)
     assert(policy.line_gap == 6);
     assert(ParagraphLayoutTotalHeight(3, 18, 4) == 62);
     assert(ParagraphLayoutTotalHeight(0, 18, 4) == 0);
+    step = ParagraphLineStepFor(20, 4, 30, 60);
+    assert(!step.wrap);
+    assert(step.width == 54);
+    step = ParagraphLineStepFor(40, 4, 30, 60);
+    assert(step.wrap);
+    assert(step.width == 30);
+    step = ParagraphLineStepFor(-10, -4, -30, 60);
+    assert(!step.wrap);
+    assert(step.width == 0);
     assert(ParagraphLineXFor(10, 100, 60, TextAlignStart) == 10);
     assert(ParagraphLineXFor(10, 100, 60, TextAlignCenter) == 30);
     assert(ParagraphLineXFor(10, 100, 60, TextAlignEnd) == 50);
