@@ -151,6 +151,14 @@ TextFieldRevealMargin :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(8.0, scale)
 }
 
+TextInputDoubleClickSlopFor :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(6.0, scale)
+}
+
+TextFieldPanDragThresholdFor :: (scale: float) -> i32 #export {
+    return TextInputScaledMetric(5.0, scale)
+}
+
 TextFieldMinCursorHeight :: (scale: float) -> i32 #export {
     return TextInputScaledMetric(8.0, scale)
 }

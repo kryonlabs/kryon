@@ -745,8 +745,9 @@ and host plumbing behind the canonical names.
   through `runtime/drag.kry`; immediate list/tree/table row wheel-step policy
   now routes through `runtime/scroll.kry`; numeric temp-edit and selectable
   text double-click slop metrics now route through `runtime/input.kry` and
-  `runtime/text.kry`. Continue by reducing raw native constants in shared
-  immediate-mode helpers.
+  `runtime/text.kry`; `TextField`/`TextArea` double-click slop and field pan
+  drag threshold now route through `runtime/text_input.kry`. Continue by
+  reducing raw native constants in shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and

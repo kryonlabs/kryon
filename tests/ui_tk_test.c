@@ -1114,6 +1114,10 @@ test_text_input_policy(void)
               TextInputStrokeWidth(1.0f), 2);
     check_int("text input scaled stroke floor",
               TextInputStrokeWidth(0.25f), 1);
+    check_int("text input double click slop",
+              TextInputDoubleClickSlopFor(2.0f), 12);
+    check_int("text field pan drag threshold",
+              TextFieldPanDragThresholdFor(2.0f), 10);
     check_int("text input content width",
               TextInputContentWidth(100.0f, metrics.padding_x), 80);
     check_int("text area page rows",

@@ -207,6 +207,20 @@ func TextInput_TextFieldRevealMargin(scale float32) int32 {
 	return value_2
 }
 
+func TextInput_TextInputDoubleClickSlopFor(scale float32) int32 {
+	var value_0 float32 = 6.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
+func TextInput_TextFieldPanDragThresholdFor(scale float32) int32 {
+	var value_0 float32 = 5.0
+	var value_1 float32 = scale
+	var value_2 int32 = TextInput_TextInputScaledMetric(value_0, value_1)
+	return value_2
+}
+
 func TextInput_TextFieldMinCursorHeight(scale float32) int32 {
 	var value_0 float32 = 8.0
 	var value_1 float32 = scale

@@ -96,6 +96,8 @@ main(void)
     assert(TextFieldClipGuard(1.0f) == 1);
     assert(TextInputStrokeWidth(1.0f) == 2);
     assert(TextInputStrokeWidth(0.25f) == 1);
+    assert(TextInputDoubleClickSlopFor(2.0f) == 12);
+    assert(TextFieldPanDragThresholdFor(2.0f) == 10);
     assert(TextFieldCursorHeightFor(18, 40.0f, 20,
                                     TextFieldMinCursorHeight(1.0f),
                                     TextFieldCursorVerticalPadding(1.0f)) == 20);

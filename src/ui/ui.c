@@ -3816,7 +3816,8 @@ ui_text_area_render(TextAreaProps area)
             double now = GetTime();
             int click_dx = (int)mouse_world.x - g_ui_text_area_last_click_x;
             int click_dy = (int)mouse_world.y - g_ui_text_area_last_click_y;
-            int double_click_slop = Scale(6);
+            float scale = (float)Scale(1000) / 1000.0f;
+            int double_click_slop = TextInputDoubleClickSlopFor(scale);
 
             focused = 1;
             ClaimTextAreaFocus(area.focused);
@@ -4467,10 +4468,13 @@ ui_text_field_render_filtered(TextFieldProps field,
             double now = GetTime();
             int click_dx = (int)mouse_world.x - g_ui_text_field_last_click_x;
             int click_dy = (int)mouse_world.y - g_ui_text_field_last_click_y;
+            float scale = (float)Scale(1000) / 1000.0f;
+            int double_click_slop = TextInputDoubleClickSlopFor(scale);
             int double_click = g_ui_text_field_last_click_owner == field.focused &&
                 g_ui_text_field_last_click_id == field.focus_id &&
                 now - g_ui_text_field_last_click_time <= 0.45 &&
-                abs(click_dx) <= Scale(6) && abs(click_dy) <= Scale(6);
+                abs(click_dx) <= double_click_slop &&
+                abs(click_dy) <= double_click_slop;
             focused = 1;
             ClaimTextFieldFocus(field.focused);
             g_ui_text_input_show_requested = 1;
@@ -4515,7 +4519,8 @@ ui_text_field_render_filtered(TextFieldProps field,
         g_ui_pointer_owner == POINTER_OWNER_TEXT_FIELD_PAN)) {
         int dx = (int)mouse_world.x - g_ui_text_field_pan_start_x;
         int dy = (int)mouse_world.y - g_ui_text_field_pan_start_y;
-        int drag_threshold = Scale(5);
+        float scale = (float)Scale(1000) / 1000.0f;
+        int drag_threshold = TextFieldPanDragThresholdFor(scale);
 
         if(g_ui_text_field_panning ||
            ((dx > drag_threshold || dx < -drag_threshold) &&
