@@ -44,6 +44,7 @@ main(void)
     TextAreaPaint area_paint;
     TextAreaGutterMetrics gutter_metrics;
     TextInputDoubleClickDecision double_click;
+    TextCompositionInputDecision composition_input;
     TextFieldPanDecision pan_decision;
 
     assert(metrics.font == 16);
@@ -109,6 +110,18 @@ main(void)
     assert(TextInputStrokeWidth(1.0f) == 2);
     assert(TextInputStrokeWidth(0.25f) == 1);
     assert(TextInputDoubleClickSlopFor(2.0f) == 12);
+    composition_input = TextCompositionInputDecisionFor(true, false);
+    assert(composition_input.accept_events);
+    assert(!composition_input.cancel);
+    assert(!composition_input.drain_events);
+    composition_input = TextCompositionInputDecisionFor(false, false);
+    assert(!composition_input.accept_events);
+    assert(composition_input.cancel);
+    assert(!composition_input.drain_events);
+    composition_input = TextCompositionInputDecisionFor(true, true);
+    assert(!composition_input.accept_events);
+    assert(composition_input.cancel);
+    assert(composition_input.drain_events);
     assert(TextCompositionSelectionLength(6, 2, 3) == 3);
     assert(TextCompositionSelectionLength(6, 2, 99) == 4);
     assert(TextCompositionSelectionLength(6, 9, 2) == 0);

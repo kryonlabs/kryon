@@ -44,14 +44,16 @@ ui_text_composition_apply(TextEdit edit, int *anchor, const void *owner,
                           int focused, int read_only, int allow_newlines)
 {
     TextCompositionResult result = {0};
+    TextCompositionInputDecision decision;
     KryTextCompositionEvent event;
 
     if(owner == NULL || edit.text == NULL || edit.text_size == 0 ||
        edit.cursor_position == NULL || anchor == NULL)
         return result;
-    if(!focused || read_only) {
+    decision = TextCompositionInputDecisionFor(focused != 0, read_only != 0);
+    if(!decision.accept_events) {
         result.presentation_changed = ui_text_composition_cancel(owner);
-        if(focused && read_only)
+        if(decision.drain_events)
             while(PollTextComposition(&event)) {}
         return result;
     }

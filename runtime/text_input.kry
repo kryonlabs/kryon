@@ -72,8 +72,22 @@ TextInputDoubleClickDecision :: struct {
     double_click: bool
 }
 
+TextCompositionInputDecision :: struct {
+    accept_events: bool
+    cancel: bool
+    drain_events: bool
+}
+
 TextFieldPanDecision :: struct {
     pan: bool
+}
+
+TextCompositionInputDecisionFor :: (focused: bool, read_only: bool) -> TextCompositionInputDecision #export {
+    decision: TextCompositionInputDecision
+    decision.accept_events = focused && !read_only
+    decision.cancel = !decision.accept_events
+    decision.drain_events = focused && read_only
+    return decision
 }
 
 TextCompositionSelectionLength :: (preedit_len: i32, cursor: i32,
