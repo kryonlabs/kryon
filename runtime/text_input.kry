@@ -450,6 +450,11 @@ TextCompositionDisplayShouldRun :: (secure: bool) -> bool #export {
     return !secure
 }
 
+TextEditCommitShouldRun :: (enter_pressed: bool,
+    queued_enter_count: i32) -> bool #export {
+    return enter_pressed || queued_enter_count > 0
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }

@@ -433,6 +433,9 @@ main(void)
     assert(!TextSelectionRangeShouldResolve(true, true, false));
     assert(TextCompositionDisplayShouldRun(false));
     assert(!TextCompositionDisplayShouldRun(true));
+    assert(TextEditCommitShouldRun(true, 0));
+    assert(TextEditCommitShouldRun(false, 1));
+    assert(!TextEditCommitShouldRun(false, 0));
 
     moved = TextSelectionAfterMove(5, 5, 2, true);
     assert(moved.anchor == 5);

@@ -2307,38 +2307,54 @@ EditText(TextEdit edit)
     }
 
     if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
-        SetClipboardTextValue(edit.text);
+        TextContextCommandDecision decision =
+            TextEditCommandDecisionFor(TextContextCommandCopy(), 0, 1, 0, 1,
+                1, 1, 1);
+        if(decision.copy_all)
+            SetClipboardTextValue(edit.text);
     }
     if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
-        SetClipboardTextValue(edit.text);
-        edit.text[0] = '\0';
-        *edit.cursor_position = 0;
-        changed = 1;
+        TextContextCommandDecision decision =
+            TextEditCommandDecisionFor(TextContextCommandCut(), 0, 1, 1, 1,
+                1, 1, 1);
+        if(decision.copy_all)
+            SetClipboardTextValue(edit.text);
+        if(decision.clear_all) {
+            edit.text[0] = '\0';
+            *edit.cursor_position = 0;
+            changed = 1;
+        }
     }
     if(ui_mod_key_down() && IsKeyPressed(KEY_V)) {
-        changed |= ui_text_paste_clipboard(edit, 0);
+        TextContextCommandDecision decision =
+            TextEditCommandDecisionFor(TextContextCommandPaste(), 0, 0, 0, 1,
+                1, 1, 1);
+        if(decision.paste)
+            changed |= ui_text_paste_clipboard(edit, 0);
     }
 
     {
         int repeat = g_ui_text_input_backspace_count + ui_backspace_repeat_count();
 
-        anchor = *edit.cursor_position;
-        for(int i = 0; i < repeat; i++)
-            changed |= ui_text_delete_key(
-                edit.text, edit.text_size, &anchor, edit.cursor_position,
-                TextDeleteBackspace(), ui_mod_key_down(), 0);
+        if(TextDeleteShortcutShouldRun(0, 0, 0, repeat)) {
+            anchor = *edit.cursor_position;
+            for(int i = 0; i < repeat; i++)
+                changed |= ui_text_delete_key(
+                    edit.text, edit.text_size, &anchor, edit.cursor_position,
+                    TextDeleteBackspace(), ui_mod_key_down(), 0);
+        }
         g_ui_text_input_backspace_count = 0;
     }
 
-    if(IsKeyPressed(KEY_DELETE)) {
+    if(TextDeleteShortcutShouldRun(0, 0, IsKeyPressed(KEY_DELETE), 0)) {
         anchor = *edit.cursor_position;
         changed |= ui_text_delete_key(
             edit.text, edit.text_size, &anchor, edit.cursor_position,
             TextDeleteForward(), ui_mod_key_down(), 0);
     }
 
-    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
-       g_ui_text_input_enter_count > 0) {
+    if(TextEditCommitShouldRun(IsKeyPressed(KEY_ENTER) ||
+       IsKeyPressed(KEY_KP_ENTER), g_ui_text_input_enter_count)) {
         if(edit.commit_pressed != NULL)
             *edit.commit_pressed = 1;
         g_ui_text_input_enter_count = 0;
