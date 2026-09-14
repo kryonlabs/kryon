@@ -1234,6 +1234,10 @@ test_spinbox_policy(void)
               SpinboxDefaultButtonWidth(1.0f), 28);
     check_int("spinbox scaled button width",
               SpinboxDefaultButtonWidth(2.0f), 56);
+    check_int("spinbox decrement disabled id", SpinboxDecrementIdFor(0), 0);
+    check_int("spinbox increment disabled id", SpinboxIncrementIdFor(0), 0);
+    check_int("spinbox decrement id", SpinboxDecrementIdFor(7), 71);
+    check_int("spinbox increment id", SpinboxIncrementIdFor(7), 72);
     check_int("spinbox left width", (int)layout.left.width, 28);
     check_int("spinbox text x", (int)layout.text.x, 38);
     check_int("spinbox text width", (int)layout.text.width, 44);
@@ -1949,7 +1953,7 @@ test_step_button_keyboard_navigation(void)
 
     InjectReset();
     BeginInterfaceFrame(240,140,1); RenderSpinbox(spin); RenderInputDiscrete(field); EndInterfaceFrame();
-    SetFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
+    SetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,140,1);
     check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
     RenderInputDiscrete(field); EndInterfaceFrame();
@@ -1965,7 +1969,7 @@ test_step_button_keyboard_navigation(void)
     }
 
     spin.disabled = 1;
-    SetFocus(spin.id * 10 + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+    SetFocus(SpinboxIncrementIdFor(spin.id)); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginInterfaceFrame(240,140,1);
     check_int("disabled spinbox keyboard",RenderSpinbox(spin),0);
     EndInterfaceFrame();

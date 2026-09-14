@@ -3129,7 +3129,7 @@ RenderSpinbox(SpinboxProps spinbox)
                            Fade(value_style.foreground, value_style.opacity));
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
-        .id = spinbox.id * 10 + 1, .class_name = spinbox.class_name,
+        .id = SpinboxDecrementIdFor(spinbox.id), .class_name = spinbox.class_name,
         .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&
@@ -3142,7 +3142,7 @@ RenderSpinbox(SpinboxProps spinbox)
         changed |= step.changed;
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
-        .id = spinbox.id * 10 + 2, .class_name = spinbox.class_name,
+        .id = SpinboxIncrementIdFor(spinbox.id), .class_name = spinbox.class_name,
         .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&

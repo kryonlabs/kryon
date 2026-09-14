@@ -41,6 +41,20 @@ SpinboxDefaultButtonWidth :: (scale: float) -> i32 #export {
     return SpinboxScaledMetric(28.0, scale)
 }
 
+SpinboxDecrementIdFor :: (control_id: i32) -> i32 #export {
+    if control_id <= 0 {
+        return 0
+    }
+    return control_id * 10 + 1
+}
+
+SpinboxIncrementIdFor :: (control_id: i32) -> i32 #export {
+    if control_id <= 0 {
+        return 0
+    }
+    return control_id * 10 + 2
+}
+
 SpinboxLayoutFor :: (bounds: Rectangle, requested_button_width: i32) -> SpinboxLayout #export {
     layout: SpinboxLayout
     layout.button_width = requested_button_width

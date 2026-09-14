@@ -76,6 +76,38 @@ func Spinbox_SpinboxDefaultButtonWidth(scale float32) int32 {
 	return value_2
 }
 
+func Spinbox_SpinboxDecrementIdFor(control_id int32) int32 {
+	var value_0 int32 = control_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = control_id
+	var value_5 int32 = 10
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
+	var value_7 int32 = 1
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
+func Spinbox_SpinboxIncrementIdFor(control_id int32) int32 {
+	var value_0 int32 = control_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = 0
+		return value_3
+	}
+	var value_4 int32 = control_id
+	var value_5 int32 = 10
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
+	var value_7 int32 = 2
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
 func Spinbox_SpinboxLayoutFor(bounds Rectangle, requested_button_width int32) SpinboxLayout {
 	var layout SpinboxLayout = SpinboxLayout{}
 	var value_0 int32 = requested_button_width

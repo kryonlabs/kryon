@@ -1416,14 +1416,14 @@ func TestNativeSpinboxUsesButtonInteraction(t *testing.T) {
 	}
 
 	draw(false)
-	r.SetFocus(props.ID*10 + 2)
+	r.SetFocus(Spinbox_SpinboxIncrementIdFor(props.ID))
 	r.QueueKey(KeyEnter)
 	if !draw(false) || value != 3 {
 		t.Fatalf("Spinbox keyboard value=%d, want 3", value)
 	}
 	focused := false
 	for _, op := range r.FrameOps() {
-		if op.ID == props.ID*10+2 && op.Focused {
+		if op.ID == Spinbox_SpinboxIncrementIdFor(props.ID) && op.Focused {
 			focused = true
 		}
 	}
@@ -1435,11 +1435,11 @@ func TestNativeSpinboxUsesButtonInteraction(t *testing.T) {
 		t.Fatalf("disabled Spinbox changed value=%d", value)
 	}
 	draw(false)
-	r.SetFocus(props.ID*10 + 1)
+	r.SetFocus(Spinbox_SpinboxDecrementIdFor(props.ID))
 	r.QueueKey(KeyTab)
 	draw(false)
-	if r.Focus() != props.ID*10+2 {
-		t.Fatalf("Spinbox Tab focus=%d, want %d", r.Focus(), props.ID*10+2)
+	if r.Focus() != Spinbox_SpinboxIncrementIdFor(props.ID) {
+		t.Fatalf("Spinbox Tab focus=%d, want %d", r.Focus(), Spinbox_SpinboxIncrementIdFor(props.ID))
 	}
 }
 
