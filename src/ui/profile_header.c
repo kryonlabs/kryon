@@ -242,7 +242,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                       .emphasis = ButtonEmphasisSoft},
                                                     ButtonStateHover, StyleKindSelectable());
     Color muted_text = text_style.foreground;
-    muted_text.a = (unsigned char)(muted_text.a * 0.72f);
+    muted_text.a = ProfileHeaderMutedAlpha(muted_text.a);
     ui_draw_material(layout.header_bounds, (Rectangle){0}, surface_style.background,
                      surface_style.border, surface_style.border,
                      surface_style.radius, surface_style.border_width,

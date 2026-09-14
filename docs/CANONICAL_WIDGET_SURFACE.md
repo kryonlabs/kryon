@@ -840,6 +840,7 @@ and host plumbing behind the canonical names.
   policy now routes through `runtime/paragraph.kry`; immediate `Separator`
   label vertical placement now routes through `runtime/separator.kry`;
   row muted-label alpha now routes through `runtime/rows.kry`;
+  profile header muted-text alpha now routes through `runtime/profile_header.kry`;
   profile image picker selected-stroke width now routes through
   `runtime/profile_header.kry`; toolbar divider line geometry now routes
   through `runtime/toolbar.kry`. Continue by reducing raw

@@ -89,6 +89,10 @@ ProfileHeaderFriendsTextY :: (count_y: i32, scale: float) -> i32 #export {
     return count_y + ProfilePx(8.0, scale)
 }
 
+ProfileHeaderMutedAlpha :: (alpha: u8) -> u8 #export {
+    return (u8)((float)alpha * 0.72)
+}
+
 ProfilePickerSelectedStrokeWidth :: (scale: float) -> i32 #export {
     return ProfilePx(2.0, scale)
 }
