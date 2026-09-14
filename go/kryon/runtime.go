@@ -6170,9 +6170,9 @@ func tableViewMetrics(props TableViewProps) TableViewMetrics {
 		state = ButtonStateDisabled
 	}
 	tableFrame := tableViewMetricFrame(props.ClassName, state, StyleSheet_StyleAny())
-	headerFrame := tableViewMetricFrame(props.ClassName, state, 13)
-	cellFrame := tableViewMetricFrame(props.ClassName, state, 22)
-	dividerFrame := tableViewMetricFrame(props.ClassName, state, 18)
+	headerFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewHeaderRole())
+	cellFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewCellRole())
+	dividerFrame := tableViewMetricFrame(props.ClassName, state, TableView_TableViewDividerRole())
 	return TableView_TableViewMetricsFor(1, tableFrame, headerFrame, cellFrame, dividerFrame)
 }
 
@@ -8009,17 +8009,17 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		tableState = ButtonStateDisabled
 	}
 	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		props.ClassName, StyleSheet_StyleKindTableView(), 2)
+		props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewPanelRole())
 	cellStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		props.ClassName, StyleSheet_StyleKindTableView(), 22).Value)
+		props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewCellRole()).Value)
 	rowFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		props.ClassName, StyleSheet_StyleKindTableView(), 21)
+		props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewRowRole())
 	rowStyle := unpackStyle(rowFrame.Value)
 	selectedFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, props.Disabled, true,
-		props.ClassName, StyleSheet_StyleKindTableView(), 23)
+		props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewSelectionRole())
 	selectedStyle := unpackStyle(selectedFrame.Value)
 	dividerFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		props.ClassName, StyleSheet_StyleKindTableView(), 18)
+		props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewDividerRole())
 	dividerStyle := unpackStyle(dividerFrame.Value)
 	metrics := tableViewMetrics(props)
 	tableOp := styleFrameRectOp(props.Bounds, Rectangle{}, surfaceFrame)
@@ -8071,7 +8071,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				return ButtonStateSelected
 			}
 			return ButtonStateNormal
-		}(), props.Disabled, selected, props.ClassName, StyleSheet_StyleKindTableView(), 13)
+		}(), props.Disabled, selected, props.ClassName, StyleSheet_StyleKindTableView(), TableView_TableViewHeaderRole())
 		headerStyle := unpackStyle(headerFrame.Value)
 		headerFont, headerFontID := styleTextFace(headerStyle, fallbackFont)
 		shift := tableHeaderShift(props, rect.Y)

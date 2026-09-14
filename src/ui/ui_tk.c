@@ -3574,15 +3574,15 @@ ui_table_metrics(TableViewProps table)
             ControlSizeMedium, state), state);
     header_frame.value = ResolveActiveStyle((StyleData){0},
         StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            13, ButtonToneNeutral, ButtonEmphasisSoft,
+            TableViewHeaderRole(), ButtonToneNeutral, ButtonEmphasisSoft,
             ControlSizeMedium, state), state);
     cell_frame.value = ResolveActiveStyle((StyleData){0},
         StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            22, ButtonToneNeutral, ButtonEmphasisSoft,
+            TableViewCellRole(), ButtonToneNeutral, ButtonEmphasisSoft,
             ControlSizeMedium, state), state);
     divider_frame.value = ResolveActiveStyle((StyleData){0},
         StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
-            18, ButtonToneNeutral, ButtonEmphasisSoft,
+            TableViewDividerRole(), ButtonToneNeutral, ButtonEmphasisSoft,
             ControlSizeMedium, state), state);
     return TableViewMetricsFor((float)GetScale(), table_frame, header_frame,
                                cell_frame, divider_frame);
@@ -3771,10 +3771,10 @@ RenderTableView(TableViewProps table)
     metrics = ui_table_metrics(table);
     StyleFrame default_header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        table.disabled, 0, table.class_name, StyleKindTableView(), 13);
+        table.disabled, 0, table.class_name, StyleKindTableView(), TableViewHeaderRole());
     StyleFrame default_cell_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        table.disabled, 0, table.class_name, StyleKindTableView(), 22);
+        table.disabled, 0, table.class_name, StyleKindTableView(), TableViewCellRole());
     header_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_header_frame).value);
     text_style = ui_unpack_style(
@@ -3884,16 +3884,16 @@ RenderTableView(TableViewProps table)
     if(paint) {
         StyleFrame surface_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, table.class_name, StyleKindTableView(), 2);
+            table.disabled, 0, table.class_name, StyleKindTableView(), TableViewPanelRole());
         StyleFrame text_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, table.class_name, StyleKindTableView(), 22);
+            table.disabled, 0, table.class_name, StyleKindTableView(), TableViewCellRole());
         StyleFrame selection_frame = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
             table.disabled ? ButtonStateDisabled : ButtonStateSelected,
-            table.disabled, 1, table.class_name, StyleKindTableView(), 23);
+            table.disabled, 1, table.class_name, StyleKindTableView(), TableViewSelectionRole());
         StyleFrame divider_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            table.disabled, 0, table.class_name, StyleKindTableView(), 18);
+            table.disabled, 0, table.class_name, StyleKindTableView(), TableViewDividerRole());
         text_style = ui_unpack_style(ui_style_apply_effects_frame(text_frame).value);
         selection_style = ui_unpack_style(ui_style_apply_effects_frame(selection_frame).value);
         divider_style = ui_unpack_style(ui_style_apply_effects_frame(divider_frame).value);
@@ -3926,7 +3926,7 @@ RenderTableView(TableViewProps table)
                  (selected_header ? ButtonStateSelected : ButtonStateNormal));
             StyleFrame header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
                 header_state, table.disabled, selected_header,
-                table.class_name, StyleKindTableView(), 13);
+                table.class_name, StyleKindTableView(), TableViewHeaderRole());
             Style header_paint = ui_unpack_style(
                 ui_style_apply_effects_frame(header_frame).value);
             Color header_color = header_paint.background;
@@ -4017,7 +4017,7 @@ RenderTableView(TableViewProps table)
         if(paint && (r % 2) == 1) {
             StyleFrame row_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
                 table.disabled ? ButtonStateDisabled : ButtonStateNormal,
-                table.disabled, 0, table.class_name, StyleKindTableView(), 21);
+                table.disabled, 0, table.class_name, StyleKindTableView(), TableViewRowRole());
             ui_tk_draw_style_frame(row, table.bounds, row_frame, 0, 0,
                                    table.disabled, 0);
         }
@@ -4026,7 +4026,7 @@ RenderTableView(TableViewProps table)
             ButtonState row_state = hot ? ButtonStateHover : ButtonStateSelected;
             StyleFrame row_frame = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
                 row_state, table.disabled, selected, table.class_name,
-                StyleKindTableView(), 23);
+                StyleKindTableView(), TableViewSelectionRole());
             selection_style = ui_unpack_style(ui_style_apply_effects_frame(row_frame).value);
             ui_tk_draw_style_frame(row, table.bounds, row_frame, hot, 0,
                                    table.disabled, 0);

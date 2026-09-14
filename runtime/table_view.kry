@@ -47,6 +47,30 @@ TableViewResizeClearDecision :: struct {
     clear: bool
 }
 
+TableViewPanelRole :: () -> i32 #export {
+    return 2
+}
+
+TableViewHeaderRole :: () -> i32 #export {
+    return 13
+}
+
+TableViewDividerRole :: () -> i32 #export {
+    return 18
+}
+
+TableViewRowRole :: () -> i32 #export {
+    return 21
+}
+
+TableViewCellRole :: () -> i32 #export {
+    return 22
+}
+
+TableViewSelectionRole :: () -> i32 #export {
+    return 23
+}
+
 TableViewMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||

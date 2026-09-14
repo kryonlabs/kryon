@@ -48,6 +48,36 @@ type TableViewResizeClearDecision struct {
 	Clear bool
 }
 
+func TableView_TableViewPanelRole() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func TableView_TableViewHeaderRole() int32 {
+	var value_0 int32 = 13
+	return value_0
+}
+
+func TableView_TableViewDividerRole() int32 {
+	var value_0 int32 = 18
+	return value_0
+}
+
+func TableView_TableViewRowRole() int32 {
+	var value_0 int32 = 21
+	return value_0
+}
+
+func TableView_TableViewCellRole() int32 {
+	var value_0 int32 = 22
+	return value_0
+}
+
+func TableView_TableViewSelectionRole() int32 {
+	var value_0 int32 = 23
+	return value_0
+}
+
 func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field

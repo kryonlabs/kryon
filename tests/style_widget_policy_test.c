@@ -12,6 +12,7 @@
 #include "runtime/radio.h"
 #include "runtime/separator.h"
 #include "runtime/slider.h"
+#include "runtime/table_view.h"
 #include "runtime/toggle.h"
 #include "runtime/toast.h"
 
@@ -151,6 +152,12 @@ main(void)
        ModalActionRole() != 17 || ModalScrimRole() != 19 ||
        ModalMessageRole() != 20 || ModalCloseRole() != 15) {
         fprintf(stderr, "modal role policy changed\n");
+        return 1;
+    }
+    if(TableViewPanelRole() != 2 || TableViewHeaderRole() != 13 ||
+       TableViewDividerRole() != 18 || TableViewRowRole() != 21 ||
+       TableViewCellRole() != 22 || TableViewSelectionRole() != 23) {
+        fprintf(stderr, "table view role policy changed\n");
         return 1;
     }
 
