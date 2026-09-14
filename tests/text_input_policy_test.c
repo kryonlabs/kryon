@@ -58,6 +58,8 @@ main(void)
     TextFocusReleaseDecision focus_release;
     TextFocusOwnerDecision focus_owner;
     TextPlatformInputSyncDecision platform_sync;
+    TextBufferInsertDecision buffer_insert;
+    TextBufferDeleteDecision buffer_delete;
 
     assert(metrics.font == 16);
     assert(metrics.padding_x == 6);
@@ -615,6 +617,30 @@ main(void)
     assert(moved.anchor == 0);
     assert(moved.cursor == 0);
     assert(!moved.has_selection);
+
+    assert(TextBufferLineStartCursor(-4) == 0);
+    assert(TextBufferLineStartCursor(7) == 7);
+    buffer_insert = TextBufferInsertDecisionFor(16, 5, 2, 3);
+    assert(buffer_insert.can_insert);
+    assert(buffer_insert.tail_count == 4);
+    buffer_insert = TextBufferInsertDecisionFor(8, 5, 6, 1);
+    assert(!buffer_insert.can_insert);
+    buffer_insert = TextBufferInsertDecisionFor(8, 7, 0, 1);
+    assert(!buffer_insert.can_insert);
+    buffer_insert = TextBufferInsertDecisionFor(8, 5, 1, 0);
+    assert(!buffer_insert.can_insert);
+    buffer_delete = TextBufferDeleteDecisionFor(9, 2, 3);
+    assert(buffer_delete.can_delete);
+    assert(buffer_delete.tail_count == 5);
+    buffer_delete = TextBufferDeleteDecisionFor(9, 7, 3);
+    assert(!buffer_delete.can_delete);
+    buffer_delete = TextBufferDeleteDecisionFor(9, -1, 1);
+    assert(!buffer_delete.can_delete);
+    assert(TextBufferCursorAfterInsert(5, 2, 3) == 8);
+    assert(TextBufferCursorAfterInsert(1, 2, 3) == 1);
+    assert(TextBufferCursorAfterDelete(8, 2, 3) == 5);
+    assert(TextBufferCursorAfterDelete(3, 2, 3) == 2);
+    assert(TextBufferCursorAfterDelete(1, 2, 3) == 1);
 
     check_zero(TextNavigationDecisionFor(TextNavNone(), false, false, false,
                                          false, false));

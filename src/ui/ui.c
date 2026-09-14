@@ -3513,12 +3513,10 @@ TextBufferLineCount(const char *text)
 static int
 text_buffer_line_start(const char *text, int cursor)
 {
-    int start = cursor;
+    int start = TextBufferLineStartCursor(cursor);
 
     if(text == NULL)
         return 0;
-    if(start < 0)
-        start = 0;
     while(start > 0 && text[start - 1] != '\n')
         start--;
     return start;
@@ -3529,13 +3527,15 @@ text_buffer_insert(char *text, int text_size, int at, const char *bytes,
                    int len)
 {
     int used;
+    TextBufferInsertDecision decision;
 
     if(text == NULL || bytes == NULL || text_size <= 0 || len <= 0)
         return 0;
     used = (int)strlen(text);
-    if(at < 0 || at > used || used + len >= text_size)
+    decision = TextBufferInsertDecisionFor(text_size, used, at, len);
+    if(!decision.can_insert)
         return 0;
-    memmove(text + at + len, text + at, (size_t)(used - at + 1));
+    memmove(text + at + len, text + at, (size_t)decision.tail_count);
     memcpy(text + at, bytes, (size_t)len);
     return 1;
 }
@@ -3544,13 +3544,15 @@ static int
 text_buffer_delete(char *text, int at, int len)
 {
     int used;
+    TextBufferDeleteDecision decision;
 
     if(text == NULL || len <= 0)
         return 0;
     used = (int)strlen(text);
-    if(at < 0 || at + len > used)
+    decision = TextBufferDeleteDecisionFor(used, at, len);
+    if(!decision.can_delete)
         return 0;
-    memmove(text + at, text + at + len, (size_t)(used - at - len + 1));
+    memmove(text + at, text + at + len, (size_t)decision.tail_count);
     return 1;
 }
 
@@ -3569,16 +3571,12 @@ TextBufferToggleLineComment(char *text, int text_size, int *cursor)
     if(text[p] == '/' && text[p + 1] == '/') {
         if(!text_buffer_delete(text, p, 2))
             return 0;
-        if(*cursor >= p + 2)
-            *cursor -= 2;
-        else if(*cursor > p)
-            *cursor = p;
+        *cursor = TextBufferCursorAfterDelete(*cursor, p, 2);
         return 1;
     }
     if(!text_buffer_insert(text, text_size, p, "//", 2))
         return 0;
-    if(*cursor >= p)
-        *cursor += 2;
+    *cursor = TextBufferCursorAfterInsert(*cursor, p, 2);
     return 1;
 }
 
@@ -3600,16 +3598,12 @@ TextBufferIndentLine(char *text, int text_size, int *cursor, int outdent)
             return 0;
         if(!text_buffer_delete(text, start, remove))
             return 0;
-        if(*cursor >= start + remove)
-            *cursor -= remove;
-        else if(*cursor > start)
-            *cursor = start;
+        *cursor = TextBufferCursorAfterDelete(*cursor, start, remove);
         return 1;
     }
     if(!text_buffer_insert(text, text_size, start, "    ", 4))
         return 0;
-    if(*cursor >= start)
-        *cursor += 4;
+    *cursor = TextBufferCursorAfterInsert(*cursor, start, 4);
     return 1;
 }
 

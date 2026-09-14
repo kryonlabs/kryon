@@ -68,6 +68,16 @@ TextInsertDecision :: struct {
     stop: bool
 }
 
+TextBufferInsertDecision :: struct {
+    can_insert: bool
+    tail_count: i32
+}
+
+TextBufferDeleteDecision :: struct {
+    can_delete: bool
+    tail_count: i32
+}
+
 TextContextMenuState :: struct {
     cut_enabled: bool
     copy_enabled: bool
@@ -1019,6 +1029,54 @@ TextSelectionAll :: (length: i32) -> TextSelectionState #export {
     out.cursor = length
     out.has_selection = length > 0
     return out
+}
+
+TextBufferLineStartCursor :: (cursor: i32) -> i32 #export {
+    if cursor < 0 { return 0 }
+    return cursor
+}
+
+TextBufferInsertDecisionFor :: (text_size: i32, used: i32, at: i32,
+    insert_len: i32) -> TextBufferInsertDecision #export {
+    decision: TextBufferInsertDecision
+    if text_size <= 0 || used < 0 || at < 0 || at > used || insert_len <= 0 {
+        return decision
+    }
+    if used + insert_len >= text_size {
+        return decision
+    }
+    decision.can_insert = true
+    decision.tail_count = used - at + 1
+    return decision
+}
+
+TextBufferDeleteDecisionFor :: (used: i32, at: i32,
+    delete_len: i32) -> TextBufferDeleteDecision #export {
+    decision: TextBufferDeleteDecision
+    if used < 0 || at < 0 || delete_len <= 0 || at + delete_len > used {
+        return decision
+    }
+    decision.can_delete = true
+    decision.tail_count = used - at - delete_len + 1
+    return decision
+}
+
+TextBufferCursorAfterInsert :: (cursor: i32, at: i32, insert_len: i32) -> i32 #export {
+    if cursor >= at {
+        return cursor + insert_len
+    }
+    return cursor
+}
+
+TextBufferCursorAfterDelete :: (cursor: i32, at: i32,
+    delete_len: i32) -> i32 #export {
+    if cursor >= at + delete_len {
+        return cursor - delete_len
+    }
+    if cursor > at {
+        return at
+    }
+    return cursor
 }
 
 TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
