@@ -147,6 +147,11 @@ with tempfile.TemporaryDirectory(prefix="kryon-language-") as directory:
 static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
 static inline void PopInspectSource(void) {}
 ''')
+    # Generated units reference the retained-tree header when widget
+    # lowering is active; the scalar fixture only needs it to exist.
+    (work / "c/ui_tree.h").write_text('''
+#pragma once
+''')
     # Include the generated translation unit so the harness can inspect its
     # private state without changing the generated API.
     (work / "c/driver.c").write_text('''#include <stdbool.h>
@@ -187,6 +192,7 @@ int main(int argc, char **argv) {
     run(os.environ.get("CC", "cc"), "-std=c11", "-Wall", "-Wextra", "-Werror", str(work / "c/driver.c"), "-o", str(work / "c/test"))
     run(str(work / "c/test"))
     shutil.copyfile(work / "c/ui_inspect.h", work / "cpp/ui_inspect.h")
+    shutil.copyfile(work / "c/ui_tree.h", work / "cpp/ui_tree.h")
     (work / "cpp/driver.cpp").write_text((work / "c/driver.c").read_text().replace('"cleanup.c"', '"cleanup.cpp"'))
     run(os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", str(work / "cpp/driver.cpp"), "-o", str(work / "cpp/test"))
     run(str(work / "cpp/test"))
@@ -302,6 +308,7 @@ Shared :: (value: bool) -> bool {
                     symbol = ''.join(part.capitalize() for part in name.split('_')) + '_Check'
                     if target in ("c", "cpp"):
                         shutil.copyfile(work / "c/ui_inspect.h", output / "ui_inspect.h")
+                        shutil.copyfile(work / "c/ui_tree.h", output / "ui_tree.h")
                         driver = output / f"driver.{target}"
                         header = "h" if target == "c" else "hpp"
                         driver.write_text(f'#include "{name}.{header}"\nint main(void) {{ return {name}_Check() != {expected}; }}\n')

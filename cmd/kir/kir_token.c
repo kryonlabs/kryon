@@ -32,8 +32,10 @@ token_copy(KirToken *tok, const char *src, size_t begin, size_t end)
 {
     size_t n = end > begin ? end - begin : 0;
 
-    if(n >= sizeof(tok->text))
+    if(n >= sizeof(tok->text)) {
         n = sizeof(tok->text) - 1;
+        tok->truncated = 1;
+    }
     memcpy(tok->text, src + begin, n);
     tok->text[n] = '\0';
 }

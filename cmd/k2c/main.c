@@ -49,6 +49,8 @@ main(int argc, char **argv)
             k2c_plan9_add_include_dir(argv[++i]);
         } else if(strcmp(argv[i], "--strict") == 0) {
             strict = 1;
+        } else if(strcmp(argv[i], "--no-strict") == 0) {
+            strict = 0;
         } else if(argv[i][0] == '-') {
             usage();
             return 1;

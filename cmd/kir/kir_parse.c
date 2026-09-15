@@ -2377,6 +2377,12 @@ parse_import_line(KirModule *module, const char *path, int line_no,
     quoted = parse_quoted(directive, target, sizeof(target));
     if(!quoted && !parse_angled(directive, target, sizeof(target)))
         return 0;
+    /* Import targets are emitted verbatim inside #include "..." lines;
+     * quotes and control bytes would let a crafted path escape the literal. */
+    for(const char *p = target; *p != '\0'; p++)
+        if(*p == '"' || *p == '>' || (unsigned char)*p < 0x20)
+            die("%s:%d: #import target contains a character that cannot "
+                "appear in an include path", path, line_no);
     if(parse_symbol_before_colons(line, name, sizeof(name)))
         kind = KIR_IMPORT_MODULE;
     else {
@@ -2433,6 +2439,10 @@ parse_style_line(KirModule *module, const char *path, int line_no,
     if(!quoted && !parse_angled(directive, target, sizeof(target)))
         die("%s:%d: #style requires \"file.kss\" or <builtin.pack>",
             path, line_no);
+    for(const char *p = target; *p != '\0'; p++)
+        if(*p == '"' || *p == '>' || (unsigned char)*p < 0x20)
+            die("%s:%d: #style target contains a character that cannot "
+                "appear in a style path", path, line_no);
     if(!parse_style_alias(directive, alias, sizeof(alias)))
         die("%s:%d: #style alias must be `as name`", path, line_no);
     imp = KirModuleAddStyleImport(module,
@@ -3340,12 +3350,20 @@ strip_block_comments(char *s, int *in_comment)
     *w = '\0';
 }
 
-/* File and embedded declarations share the complete frontend. */
+/* File and embedded declarations share the complete frontend. A line that
+ * does not fit whole is refused: silently splitting it would change meaning. */
 static char *
-read_source_line(char *line, size_t size, FILE *file, const char **source)
+read_source_line(char *line, size_t size, FILE *file, const char **source,
+                 const char *path, int line_no)
 {
-    if(file != NULL)
-        return fgets(line, (int)size, file);
+    if(file != NULL) {
+        if(fgets(line, (int)size, file) == NULL)
+            return NULL;
+        if(!feof(file) && strchr(line, '\n') == NULL)
+            die("%s:%d: source line exceeds %d characters",
+                path, line_no + 1, (int)size - 1);
+        return line;
+    }
     if(**source == '\0')
         return NULL;
     size_t length = 0;
@@ -3355,6 +3373,9 @@ read_source_line(char *line, size_t size, FILE *file, const char **source)
         if(next == '\n')
             break;
     }
+    if(**source != '\0' && length > 0 && line[length - 1] != '\n')
+        die("%s:%d: source line exceeds %d characters",
+            path, line_no + 1, (int)size - 1);
     line[length] = '\0';
     return line;
 }
@@ -3418,7 +3439,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     if(module == NULL)
         die("out of memory");
 
-    while(have_look || onelineq_count > 0 || read_source_line(line, sizeof(line), in, &source) != NULL) {
+    while(have_look || onelineq_count > 0 || read_source_line(line, sizeof(line), in, &source, path, line_no) != NULL) {
         char raw[K2KIR_LINE_MAX];
         char *t;
 
@@ -3632,7 +3653,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                      * statement; the first non-continuation line is stashed
                      * for the next iteration (appending it blindly here is
                      * how block-closing '}'s used to get swallowed). */
-                    while(read_source_line(la, sizeof(la), in, &source) != NULL) {
+                    while(read_source_line(la, sizeof(la), in, &source, path, line_no) != NULL) {
                         const char *lt;
                         int cont;
 

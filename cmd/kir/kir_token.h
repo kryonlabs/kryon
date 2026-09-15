@@ -20,6 +20,7 @@ typedef enum KirTokenKind {
 
 typedef struct KirToken {
     KirTokenKind kind;
+    int truncated;   /* token text exceeded the buffer and was cut */
     char text[KIR_TEXT_MAX];
     KirSourceSpan span;
 } KirToken;

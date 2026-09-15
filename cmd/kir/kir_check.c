@@ -299,6 +299,17 @@ contextual_slot(Checker *c, int index, const char *expected)
     kir_copy(value->type, sizeof(value->type), expected);
 }
 
+/* Modules that import C headers interoperate with C: calls and names the
+ * frontend cannot see are verified by the C compiler, not by strict checking. */
+static int
+module_uses_c(const Checker *c)
+{
+    for(int i = 0; i < c->module->import_count; i++)
+        if(c->module->imports[i].kind == KIR_IMPORT_HEADER)
+            return 1;
+    return 0;
+}
+
 static const char *
 expression_type(Checker *c, int index)
 {
@@ -406,6 +417,8 @@ expression_type(Checker *c, int index)
     case KIR_EXPR_IDENT:
         if(!strcmp(e->name, "true") || !strcmp(e->name, "false")) type = "bool";
         else type = lookup(c, e->name);
+        if(!*type && KirFindRuntimeEnumMember(e->name) != NULL)
+            type = "integer";   /* runtime enum member; the emitter resolves it */
         if(!*type) error(c, e->span, "unresolved name", e->name);
         break;
     case KIR_EXPR_CALL: {
@@ -477,7 +490,8 @@ expression_type(Checker *c, int index)
             type = return_type;
             if(actual != expected)
                 signature_error(c, callee, e->span, "argument count mismatch", e->name);
-        } else error(c, e->span, "unresolved function", e->name);
+        } else if(!module_uses_c(c))
+            error(c, e->span, "unresolved function", e->name);
         if(slot_contract && c->errors != errors_before_slot)
             c->failed = 1;
         c->strict = strict_before_slot;
@@ -518,7 +532,8 @@ expression_type(Checker *c, int index)
             error(c, e->span, "increment requires an assignable expression", "");
         if(!strcmp(e->op, "!")) type = "bool";
         else if(numeric(right)) type = right;
-        else error(c, e->span, "unresolved unary operation", e->op);
+        else if(!module_uses_c(c))
+            error(c, e->span, "unresolved unary operation", e->op);
         break;
     case KIR_EXPR_POSTFIX:
         if(!numeric(left)) error(c, e->span, "increment requires a numeric value", e->op);
@@ -1013,8 +1028,10 @@ check_function(Checker *c, KirFunction *fn)
             if(*type && strcmp(type, "bool")) error(c, st->span, "condition requires bool", type);
         } else if(st->kind == KIR_STMT_RAW || st->kind == KIR_STMT_UNKNOWN ||
                   st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_GOTO ||
-                  st->kind == KIR_STMT_LABEL || st->kind == KIR_STMT_WIDGET)
-            error(c, st->span, "statement is not supported by strict checking", st->text);
+                  st->kind == KIR_STMT_LABEL || st->kind == KIR_STMT_WIDGET) {
+            if(!module_uses_c(c))
+                error(c, st->span, "statement is not supported by strict checking", st->text);
+        }
         if(st->kind == KIR_STMT_BLOCK_OPEN || st->kind == KIR_STMT_IF ||
            st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
             c->depth++;

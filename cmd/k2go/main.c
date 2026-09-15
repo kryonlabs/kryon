@@ -48,6 +48,8 @@ main(int argc, char **argv)
             no_main = 1;
         } else if(strcmp(argv[i], "--strict") == 0) {
             strict = 1;
+        } else if(strcmp(argv[i], "--no-strict") == 0) {
+            strict = 0;
         } else if(strcmp(argv[i], "--runtime-implementation") == 0) {
             runtime_implementation = 1;
         } else if(argv[i][0] == '-') {

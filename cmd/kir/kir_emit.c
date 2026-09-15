@@ -1074,19 +1074,24 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
     }
     case KIR_EXPR_INDEX: {
         const char *base_type = e->fn->exprs[expr->left].type;
+        int capacity = 0;
 
         if(member_path(e->fn, expr->left))
             emit_destination(e, expr->left, a, sizeof(a));
         else
             emit_expr(e, expr->left, base_type, a, sizeof(a));
         emit_expr(e, expr->right, "i32", b, sizeof(b));
+        KirArrayElementType(base_type, NULL, 0, &capacity);
         if(!strcmp(base_type, "string")) {
             if(e->target == KIR_JS)
                 format(result, sizeof(result), "%s.charCodeAt(%s)", a, b);
             else if(e->target == KIR_GO)
                 format(result, sizeof(result), "%s[%s]", a, b);
             else
-                format(result, sizeof(result), "(uint8_t)%s.data[%s]", a, b);
+                format(result, sizeof(result), "(uint8_t)KRYON_INDEX(%s.data, %s.length, %s)", a, a, b);
+        } else if((e->target == KIR_C || e->target == KIR_CPP) && capacity > 0) {
+            /* fixed-capacity .kry arrays: debug builds bounds-check */
+            format(result, sizeof(result), "KRYON_INDEX(%s, %d, %s)", a, capacity, b);
         } else {
             format(result, sizeof(result), "%s[%s]", a, b);
         }

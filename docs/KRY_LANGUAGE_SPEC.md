@@ -277,6 +277,26 @@ Rules:
   byte-aware `kryon.index` helper and copies array fields element-wise.
   `tests/spec/spec_test.sh` executes the shared contract through Go and
   JavaScript.
+- C/C++ output lowers `record.field[index]` and `text[index]` through the
+  `KRYON_INDEX` macro. Builds that define `KRYON_BOUNDS_CHECK` trap on
+  out-of-range indexes with a diagnostic naming the array; release builds
+  compile to plain indexing. Go and JS always bounds-check natively.
+
+## Trust model
+
+Compiling a `.kry` file executes no code from that file, but the generated
+output is only as trustworthy as its source:
+
+- The `c <raw C>` statement and any statement the frontend cannot type-check
+  pass through to the generated code verbatim. A `.kry` file can therefore do
+  anything C can. Only compile `.kry` sources you trust; treat fetched `.kry`
+  like fetched C. Generated C marks each raw-C statement with a
+  `/* kry: raw-c source:line */` provenance comment so injected code is
+  auditable.
+- `#import` targets are validated: quotes, `>`, and control bytes are rejected
+  so a crafted path cannot escape an emitted `#include "..."` line.
+- Source lines longer than the frontend's fixed line buffer are rejected with
+  a located error instead of being silently split.
 
 `kryon fmt [--check] file.kry...` formats Kry source with stable indentation
 and simple spacing cleanup. `--check` exits non-zero when a file would change.

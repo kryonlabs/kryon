@@ -11,6 +11,11 @@ the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
   expressions, indirect calls, postfix operations, and chained indexing.
 - Separate assignment destinations and declaration bindings in KIR.
 - Shared scalar type annotation and opt-in strict checking before emission.
+  Strict mode fully checks Kry-to-Kry scalar code. Modules that import C
+  headers interoperate with C: calls, statements, and enum/identifier names
+  the frontend cannot see are left to the C compiler instead of failing the
+  strict pass, and runtime enum members resolve through the embedded runtime
+  declarations the same way the emitter resolves them.
 - Shared lexical cleanup lowering for normal block exits, returns, loop breaks,
   and loop continuation. Return values are evaluated before cleanup.
 - One structured statement emitter for checked scalar C/C++/Go/JS functions:

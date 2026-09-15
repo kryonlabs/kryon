@@ -725,7 +725,12 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cppModuleSyms *restab,
         fprintf(c, "    %s\n", rw);
         return;
     }
-    fprintf(c, "    PushInspectSource(\"%s\", %d);\n", m->source_path, line);
+    {
+        char esc[KIR_PATH_MAX * 2];
+
+        kir_escape_c_string(m->source_path, esc, sizeof(esc));
+        fprintf(c, "    PushInspectSource(\"%s\", %d);\n", esc, line);
+    }
     fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopInspectSource();\n");
 }
@@ -1100,6 +1105,13 @@ lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int resta
             break;
         default:
             if(rw[0] != '\0') {
+                if(st->kind == KIR_STMT_RAW) {
+                    char esc[KIR_PATH_MAX * 2];
+
+                    kir_escape_c_string(m->source_path, esc, sizeof(esc));
+                    emit_indent(c, indent);
+                    fprintf(c, "/* kry: raw-c %s:%d */\n", esc, st->span.line);
+                }
                 emit_indent(c, indent);
                 fprintf(c, "%s\n", rw);
             }

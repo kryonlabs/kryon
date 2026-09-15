@@ -131,4 +131,18 @@ if "$k2b" --root "$root" -o "$work/krb" "$root/tests/spec/assert_unresolved.kry"
 fi
 grep -Fq "unresolved #assert is not supported by KRB" "$work/assert_unresolved_krb.err"
 
+# Over-long source lines and crafted #import targets must fail with located
+# errors instead of being silently truncated or injected into includes.
+if "$k2c" --root "$root" -o "$work/c" "$root/tests/spec/long_line.kry" 2>"$work/long_line.err"; then
+    echo "spec long line did not fail in k2c" >&2
+    exit 1
+fi
+grep -Fq "source line exceeds" "$work/long_line.err"
+
+if "$k2c" --root "$root" -o "$work/c" "$root/tests/spec/bad_import.kry" 2>"$work/bad_import.err"; then
+    echo "spec bad import did not fail in k2c" >&2
+    exit 1
+fi
+grep -Fq "#import target contains a character that cannot appear in an include path" "$work/bad_import.err"
+
 echo "spec ok"

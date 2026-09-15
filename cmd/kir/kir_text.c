@@ -123,6 +123,48 @@ kir_go_field_ident(const char *s, char *dst, size_t dst_size)
     }
 }
 
+/* Escape s for safe inclusion inside a C string literal in generated code:
+ * quotes, backslashes, and non-printable bytes cannot terminate or alter the
+ * surrounding literal. Returns the number of chars written; dst always holds
+ * a NUL-terminated prefix of the escaped text when dst_size > 0. */
+size_t
+kir_escape_c_string(const char *s, char *dst, size_t dst_size)
+{
+    size_t n = 0;
+
+    if(dst_size == 0)
+        return 0;
+    for(const char *p = s != NULL ? s : ""; *p != '\0'; p++) {
+        char buf[8];
+        const char *rep = NULL;
+
+        switch(*p) {
+        case '"': rep = "\\\""; break;
+        case '\\': rep = "\\\\"; break;
+        case '\n': rep = "\\n"; break;
+        case '\r': rep = "\\r"; break;
+        case '\t': rep = "\\t"; break;
+        default:
+            if((unsigned char)*p < 0x20 || (unsigned char)*p == 0x7f) {
+                snprintf(buf, sizeof(buf), "\\x%02x", (unsigned char)*p);
+                rep = buf;
+            }
+            break;
+        }
+        if(rep == NULL) {
+            buf[0] = *p;
+            buf[1] = '\0';
+            rep = buf;
+        }
+        for(const char *q = rep; *q != '\0'; q++) {
+            if(n + 1 < dst_size)
+                dst[n++] = *q;
+        }
+    }
+    dst[n] = '\0';
+    return n;
+}
+
 int
 kir_split_top(const char *s, char *parts, int max, size_t part_size)
 {

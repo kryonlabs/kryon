@@ -228,14 +228,17 @@ name_is_shadowed(const char *shadow, const char *ident, size_t len)
     return 0;
 }
 
-static void
+/* Returns 1 when the whole source was rewritten, 0 when the output buffer
+ * ran out (the rewritten statement would be silently cut otherwise). */
+static int
 rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
               int restab_count, const char *src, char *dst, size_t dst_size,
               const char *shadow)
 {
     size_t n = 0;
+    const char *p;
 
-    for(const char *p = src; *p != '\0' && n + 6 < dst_size; p++) {
+    for(p = src; *p != '\0' && n + 6 < dst_size; p++) {
         if(strncmp(p, "nil", 3) == 0 &&
            (p == src || !isalnum((unsigned char)p[-1])) &&
            !isalnum((unsigned char)p[3]) && p[3] != '_') {
@@ -351,6 +354,7 @@ rewrite_body2(const KirModule *m, const K2cModuleSyms *restab,
         }
     }
     dst[n] = '\0';
+    return *p == '\0';
 }
 
 /* C function name: <module>_<name> (module dots -> underscores), with a
@@ -617,6 +621,16 @@ split_multi(const char *t, char names[][LOWER_NAME_MAX], int name_cap,
  * with ',' and the brace closes with '};' */
 static int k2c_in_array_init;
 
+/* Rewriting a statement exceeded an internal fixed buffer; a silently cut
+ * statement would change program meaning, so fail loudly instead. */
+static void
+k2c_rewrite_overflow(const char *path, int line)
+{
+    fprintf(stderr, "k2c: %s:%d: statement too long to lower (buffer limit)\n",
+            path != NULL ? path : "?", line);
+    exit(1);
+}
+
 static void
 emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
                int restab_count, int line, const char *text,
@@ -624,7 +638,8 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
 {
     char rw[LOWER_TEXT_MAX];
 
-    rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
+    if(!rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow))
+        k2c_rewrite_overflow(m->source_path, line);
     if(strncmp(rw, "Image(", 6) == 0) {
         size_t suffix_len = strlen(rw + strlen("Image")) + 1;
 
@@ -639,9 +654,44 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
         fprintf(c, "    %s\n", rw);
         return;
     }
-    fprintf(c, "    PushInspectSource(\"%s\", %d);\n", m->source_path, line);
+    {
+        char esc[KIR_PATH_MAX * 2];
+
+        kir_escape_c_string(m->source_path, esc, sizeof(esc));
+        fprintf(c, "    PushInspectSource(\"%s\", %d);\n", esc, line);
+    }
     fprintf(c, "    %s;\n", rw);
     fprintf(c, "    PopInspectSource();\n");
+}
+
+/* Host hooks are only needed when a lowered body actually calls one; a
+ * scalar-only module must not be forced to know the widget type surface. */
+static int
+module_uses_host_hooks(const KirModule *m)
+{
+    static const char *const hooks[] = {
+        "DisabledScope", "DisabledEndScope", "ScrollScope", "ScrollEndScope",
+        "ButtonScope", "CardScope", "PopupScope", "PopupEndScope",
+        "TableCellScope", "TableCellEndScope", "CanvasScope", "CanvasEndScope",
+        "RenderImage", "PushTextSelectable", "PopTextSelectable",
+        NULL
+    };
+
+    for(int fi = 0; fi < m->function_count; fi++) {
+        const KirFunction *fn = &m->functions[fi];
+
+        for(int si = 0; si < fn->stmt_count; si++) {
+            const KirStmt *st = &fn->stmts[si];
+
+            if(st->kind == KIR_STMT_WIDGET)
+                return 1;
+            for(int h = 0; hooks[h] != NULL; h++)
+                if(strstr(st->text, hooks[h]) != NULL ||
+                   strstr(st->args, hooks[h]) != NULL)
+                    return 1;
+        }
+    }
+    return 0;
 }
 
 static void
@@ -722,7 +772,9 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                 if(colon > p) {
                     size_t nl = (size_t)(colon - p);
 
-                    if(strlen(shadow) + nl + 2 < sizeof(shadow)) {
+                    if(strlen(shadow) + nl + 2 >= sizeof(shadow))
+                        k2c_rewrite_overflow(m->source_path, fn->span.line);
+                    {
                         if(shadow[0] != '\0')
                             strcat(shadow, " ");
                         strncat(shadow, p, nl);
@@ -736,8 +788,9 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
         const KirStmt *st = &fn->stmts[j];
         char rw[LOWER_TEXT_MAX];
 
-        rewrite_body2(m, restab, restab_count, st->text, rw, sizeof(rw),
-                      shadow);
+        if(!rewrite_body2(m, restab, restab_count, st->text, rw, sizeof(rw),
+                          shadow))
+            k2c_rewrite_overflow(m->source_path, st->span.line);
         switch(st->kind) {
         case KIR_STMT_BLOCK_CLOSE: {
             int skip_close = 0;
@@ -883,16 +936,18 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
                         if(c2 != NULL) {
                             size_t nl = (size_t)(c2 - rw);
 
-                            if(nl > 0 &&
-                               strlen(shadow) + nl + 2 < sizeof(shadow)) {
+                            if(nl > 0) {
+                                if(strlen(shadow) + nl + 2 >= sizeof(shadow))
+                                    k2c_rewrite_overflow(m->source_path,
+                                                        st->span.line);
                                 if(shadow[0] != '\0')
                                     strcat(shadow, " ");
                                 strncat(shadow, rw, nl);
                             }
                         }
-                    } else if(nm[0] != '\0' &&
-                              strlen(shadow) + strlen(nm) + 2 <
-                              sizeof(shadow)) {
+                    } else if(nm[0] != '\0') {
+                        if(strlen(shadow) + strlen(nm) + 2 >= sizeof(shadow))
+                            k2c_rewrite_overflow(m->source_path, st->span.line);
                         if(shadow[0] != '\0')
                             strcat(shadow, " ");
                         strcat(shadow, nm);
@@ -1038,6 +1093,13 @@ lower_body(FILE *c, const KirModule *m, const K2cModuleSyms *restab, int restab_
             break;
         default:
             if(rw[0] != '\0') {
+                if(st->kind == KIR_STMT_RAW) {
+                    char esc[KIR_PATH_MAX * 2];
+
+                    kir_escape_c_string(m->source_path, esc, sizeof(esc));
+                    emit_indent(c, indent);
+                    fprintf(c, "/* kry: raw-c %s:%d */\n", esc, st->span.line);
+                }
                 emit_indent(c, indent);
                 fprintf(c, "%s\n", rw);
             }
@@ -1501,7 +1563,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             if(suffix[0] != '\0') {
                 char tmps[LOWER_NAME_MAX];
 
-                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL);
+                if(!rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL))
+                    k2c_rewrite_overflow(m->source_path, g->span.line);
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
@@ -1558,10 +1621,12 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
     }
     /* Block widgets lower to host-hook calls (ScrollScope, RenderImage, ...)
      * from plain functions too, not only #ui functions. The prototypes use
-     * public widget types, so pull the tree surface in first; unused
-     * prototypes are harmless. */
-    fputs("#include \"ui_tree.h\"\n", c);
-    emit_ui_host_hook_prototypes(c);
+     * public widget types, so pull the tree surface in only when some body
+     * actually calls a hook. */
+    if(module_uses_host_hooks(m)) {
+        fputs("#include \"ui_tree.h\"\n", c);
+        emit_ui_host_hook_prototypes(c);
+    }
     fprintf(c, "\n#define KRYON_PRIVATE_UNUSED __attribute__((unused))\n");
     /* Kry module constants lowered to C preprocessor constants. */
     for(i = 0; i < m->define_count; i++) {
@@ -1627,7 +1692,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                 /* the alias sits inside brackets ('[state.MAX]'), so use the
                  * body rewriter (strips alias.member anywhere), not the
                  * leading-alias-only type strip */
-                rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL);
+                if(!rewrite_body2(m, NULL, 0, suffix, tmps, sizeof(tmps), NULL))
+                    k2c_rewrite_overflow(m->source_path, g->span.line);
                 snprintf(suffix, sizeof(suffix), "%s", tmps);
             }
         }
@@ -1636,7 +1702,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
 
             /* initializers carry 'nil' and module-local function refs */
             if(!KirScalarLiteral(g->type, g->init, KIR_C, g->span, initw, sizeof(initw)))
-                rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw), NULL);
+                if(!rewrite_body2(m, NULL, 0, g->init, initw, sizeof(initw), NULL))
+                    k2c_rewrite_overflow(m->source_path, g->span.line);
             emit_guard_open(c, g->guard);
             fprintf(c, "%s%s %s%s = %s;\n", g->is_static ? "static " : "",
                     base, g->name, suffix,

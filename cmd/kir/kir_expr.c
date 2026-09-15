@@ -21,6 +21,8 @@ static void
 next(ExprParser *p)
 {
     p->token = KirLexerNext(&p->lexer);
+    if(p->token.truncated)
+        p->failed = 1;   /* a cut token cannot round-trip to source text */
     p->begin = p->lexer.pos - strlen(p->token.text);
 }
 
