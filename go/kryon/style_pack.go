@@ -199,3 +199,23 @@ func (r *runtime) StylePicker(props StylePickerProps) bool {
 	}
 	return false
 }
+
+// StyleColorToken replaces a named color while retaining the source's layout and materials.
+type StyleColorToken struct {
+	Name  string
+	Color uint32
+}
+
+func RegisterStylePackVariant(id, source, label string, colors []StyleColorToken) bool {
+	if id == "" || len(id) >= 64 {
+		return false
+	}
+	base, rules, err := parseStyleVariant(source, colors)
+	if err != nil || base == "" || len(rules) == 0 {
+		return false
+	}
+	if label == "" {
+		label = id
+	}
+	return RegisterStylePack(StylePack{ID: id, Label: label, Sheet: rules})
+}

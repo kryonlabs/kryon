@@ -2246,3 +2246,19 @@ restore the previous keyboard setting. Outer captures remain in effect.
 
 A `TitleBar` with `has_leading_action` uses a back arrow when no explicit
 leading texture is supplied. Applications need no private back-icon texture.
+
+### Style color variations
+
+`RegisterStylePackVariant(id, source, label, colors, color_count)` registers a
+named variation of a KSS source using `StyleColorToken { name, color }` values
+(packed RGBA). It replaces declared color tokens before resolving rules, while
+retaining selectors, states, dimensions, typefaces, and materials. The base
+source and registered base pack remain unchanged. Unknown token names are
+ignored so one semantic palette can color several packs. Invalid input leaves
+an existing variant unchanged. Re-register an ID to update its palette, then
+select it with `SetActiveStylePack`.
+
+Go accepts `[]StyleColorToken` without a count. Web callers pass a color-token
+object as the second argument to `parseWebStyleSheet(source, colors)` and install
+the returned sheet. Built-in packs expose their control colors as tokens;
+applications own mapping their theme palette to those tokens.

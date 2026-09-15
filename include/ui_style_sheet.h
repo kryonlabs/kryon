@@ -16,6 +16,14 @@ typedef struct StylePack {
     const StyleSheet *sheet;
 } StylePack;
 
+typedef struct StyleColorToken {
+    const char *name;
+    uint32_t color;
+} StyleColorToken;
+
+bool RegisterStylePackVariant(const char *id, const char *source,
+                              const char *label, const StyleColorToken *colors,
+                              int color_count);
 bool RegisterStylePack(StylePack pack);
 bool RegisterStylePackSource(const char *source, const char *label,
                              const char *description);

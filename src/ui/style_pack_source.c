@@ -7,7 +7,7 @@
 #include <string.h>
 
 #define STYLE_SOURCE_PACK_MAX 32
-#define STYLE_SOURCE_RULE_MAX 256
+#define STYLE_SOURCE_RULE_MAX 320
 
 typedef struct StyleSourcePack {
     char id[64];
@@ -48,9 +48,10 @@ style_source_pack_slot(const char *id)
     return &source_packs[source_pack_count++];
 }
 
-bool
-RegisterStylePackSource(const char *source, const char *label,
-                        const char *description)
+static bool
+register_style_source(const char *source, const char *label,
+                      const char *description, const char *id,
+                      const StyleColorToken *colors, int color_count)
 {
     KssParseResult result = {0};
     StyleRule rules[STYLE_SOURCE_RULE_MAX] = {0};
@@ -65,8 +66,9 @@ RegisterStylePackSource(const char *source, const char *label,
     source_copy = style_copy_text(source);
     if(source_copy == NULL)
         return false;
-    if(!kss_parse_string(source_copy, rules, STYLE_SOURCE_RULE_MAX, &result,
-                         diagnostic, sizeof(diagnostic)))
+    if(!kss_parse_variant(source_copy, colors, color_count, rules,
+                          STYLE_SOURCE_RULE_MAX, &result,
+                          diagnostic, sizeof(diagnostic)))
     {
         free(source_copy);
         return false;
@@ -77,6 +79,13 @@ RegisterStylePackSource(const char *source, const char *label,
         return false;
     }
 
+    if(id != NULL) {
+        if(id[0] == '\0' || strlen(id) >= sizeof(result.pack_id)) {
+            free(source_copy);
+            return false;
+        }
+        snprintf(result.pack_id, sizeof(result.pack_id), "%s", id);
+    }
     slot = style_source_pack_slot(result.pack_id);
     if(slot == NULL) {
         free(source_copy);
@@ -109,4 +118,20 @@ RegisterStylePackSource(const char *source, const char *label,
         .description = slot->description,
         .sheet = &slot->sheet,
     });
+}
+
+bool
+RegisterStylePackSource(const char *source, const char *label,
+                        const char *description)
+{
+    return register_style_source(source, label, description, NULL, NULL, 0);
+}
+
+bool
+RegisterStylePackVariant(const char *id, const char *source, const char *label,
+                         const StyleColorToken *colors, int color_count)
+{
+    if(id == NULL)
+        return false;
+    return register_style_source(source, label, "", id, colors, color_count);
 }

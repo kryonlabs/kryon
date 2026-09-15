@@ -39,6 +39,29 @@ main(void)
 
     assert(!RegisterStylePackSource("@layer components;", "Empty", ""));
 
+    const char *base = "@pack base; tokens { color { accent: #112233; } } "
+        "Button { background: accent; radius: 9; material: glass; } "
+        "Button:hover { border: accent; }";
+    StyleColorToken colors[] = {{"accent", 0x44aa88ffu}};
+    assert(RegisterStylePackSource(base, "Base", ""));
+    assert(RegisterStylePackVariant("green", base, "Green", colors, 1));
+    assert(SetActiveStylePack("green"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x44aa88ffu);
+    assert(resolved.border == 0x44aa88ffu);
+    assert(resolved.radius == 9.0f);
+    assert(resolved.material == MaterialGlass);
+    assert(SetActiveStylePack("base"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x112233ffu);
+    uint64_t version = StylePackVersion();
+    assert(!RegisterStylePackVariant("green", base, "Broken", NULL, 1));
+    assert(StylePackVersion() == version);
+    assert(SetActiveStylePack("green"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x44aa88ffu);
+
+
     ClearStylePacks();
     return 0;
 }

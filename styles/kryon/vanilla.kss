@@ -20,6 +20,8 @@ tokens {
     danger: #bd2430;
     danger-hover: #a41f2a;
     danger-ink: #ffffff;
+    row: #171d25;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -1337,7 +1339,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #171d25;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -1860,7 +1862,7 @@ Toggle:disabled {
 
 ToggleThumb {
   background: surface;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border-hover;
   focus: focus;
   radius: radius.lg;
@@ -1873,7 +1875,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent;
   focus: accent;
   icon-size: 24;

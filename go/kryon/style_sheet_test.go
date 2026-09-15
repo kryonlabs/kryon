@@ -757,3 +757,25 @@ func TestEnsureBuiltInStylePacksInGo(t *testing.T) {
 		t.Fatalf("ensure did not preserve selection: %q", GetActiveStylePackID())
 	}
 }
+
+func TestStylePackColorVariant(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	source := `@pack base; tokens { color { accent: #112233; } }
+        Button { background: accent; radius: 9; material: glass; }
+        Button:hover { border: accent; }`
+	if !RegisterStylePackSource(source, "Base", "") ||
+		!RegisterStylePackVariant("green", source, "Green", []StyleColorToken{{Name: "accent", Color: 0x44aa88ff}}) {
+		t.Fatal("could not register variant")
+	}
+	SetActiveStylePack("green")
+	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
+	value := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
+	if value.Background != 0x44aa88ff || value.Border != 0x44aa88ff || value.Radius != 9 || value.Material != MaterialGlass {
+		t.Fatalf("variant lost color or geometry: %+v", value)
+	}
+	SetActiveStylePack("base")
+	if value := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover)); value.Background != 0x112233ff {
+		t.Fatal("base palette was modified")
+	}
+}

@@ -1690,6 +1690,7 @@ include/ui_style_sheet.h function GetStylePackOptions
 include/ui_style_sheet.h function RegisterBuiltInStylePacks
 include/ui_style_sheet.h function RegisterStylePack
 include/ui_style_sheet.h function RegisterStylePackSource
+include/ui_style_sheet.h function RegisterStylePackVariant
 include/ui_style_sheet.h function ResolveActiveStyle
 include/ui_style_sheet.h function ResolveStyle
 include/ui_style_sheet.h function SetActiveStylePack

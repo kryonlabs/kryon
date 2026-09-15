@@ -22,6 +22,16 @@ tokens {
     danger: #f07178;
     danger-ink: #220b0d;
     danger-border: #ff9da2;
+    divider: #343b48;
+    row: #171c25;
+    track: #222832;
+    field-border: #2b3039;
+    accent-border: #d8c0ff;
+    border-hover-strong: #4b5361;
+    scroll-thumb: #6f7480;
+    scroll-border: #9ca2ad;
+    field: #11151d;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -101,7 +111,7 @@ Canvas {
 Card {
   background: card;
   foreground: text;
-  border: #343b48;
+  border: divider;
   radius: radius.md;
   border-width: border;
   padding-x: 18;
@@ -1329,7 +1339,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #171c25;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -1443,21 +1453,21 @@ Link:disabled {
 
 Separator {
   material: default;
-  background: #343b48;
+  background: divider;
   foreground: muted;
   gap: space.3;
   opacity: 1;
 }
 
 Separator[role=Line] {
-  background: #343b48;
+  background: divider;
   foreground: muted;
   gap: space.3;
   opacity: 1;
 }
 
 Separator[role=Label] {
-  background: #343b48;
+  background: divider;
   foreground: muted;
   font-size: font.sm;
   gap: space.3;
@@ -1465,7 +1475,7 @@ Separator[role=Label] {
 }
 
 Separator[role=Bullet] {
-  background: #343b48;
+  background: divider;
   foreground: muted;
   icon-size: 6;
   gap: space.3;
@@ -1475,7 +1485,7 @@ Separator[role=Bullet] {
 Progress {
   font-size: font.md;
   icon-size: icon.md;
-  background: #222832;
+  background: track;
   foreground: text;
   border: border-soft;
   radius: radius.md;
@@ -1485,7 +1495,7 @@ Progress {
 }
 
 Progress[role=Track] {
-  background: #222832;
+  background: track;
   foreground: text;
   border: border-soft;
   radius: radius.md;
@@ -1542,13 +1552,18 @@ Button:pressed {
   background-end: panel;
 }
 
+Button:selected {
+  border: focus;
+  border-width: 2;
+}
+
 Button:focus {
   border: focus;
 }
 
 Button:disabled {
   foreground: muted;
-  border: #2b3039;
+  border: field-border;
   opacity: 0.55;
 }
 
@@ -1560,7 +1575,7 @@ Button[tone=Accent] {
   background: accent;
   background-end: accent-hover;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Button[tone=Accent]:hover {
@@ -1585,7 +1600,7 @@ Button[tone=Danger] {
 Button[emphasis=Outline] {
   background: transparent;
   foreground: text;
-  border: #4b5361;
+  border: border-hover-strong;
 }
 
 Button[emphasis=Ghost] {
@@ -1614,10 +1629,10 @@ Button[size=Large] {
 Dropdown {
   icon-size: icon.md;
   opacity: 1;
-  background: #171c25;
-  foreground: #f5f2ff;
-  border: #3a4250;
-  focus: #c9a8ff;
+  background: row;
+  foreground: text;
+  border: border;
+  focus: focus;
   radius: 8;
   border-width: 1;
   padding-x: 14;
@@ -1626,6 +1641,7 @@ Dropdown {
   offset-y: 16;
   font-size: font.md;
   material: Flat;
+  offset-x: 24;
 }
 
 Dropdown:hover {
@@ -1649,13 +1665,13 @@ Dropdown:disabled {
 Dropdown[tone=Accent] {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Dropdown:selected {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Dropdown[role=Panel] {
@@ -1681,21 +1697,21 @@ Dropdown[role=Scrollbar] {
 Dropdown[role=Option]:hover {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Dropdown[role=Option]:selected {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Slider {
   font-size: font.md;
   icon-size: icon.md;
-  background: #2a303b;
+  background: border-soft;
   foreground: text;
-  border: #3a4250;
+  border: border;
   focus: focus;
   radius: radius.lg;
   border-width: border;
@@ -1719,17 +1735,17 @@ Slider[role=Label] {
 }
 
 Slider:hover {
-  background: #343b48;
+  background: divider;
 }
 
 Slider:pressed {
-  background: #202631;
+  background: panel;
 }
 
 Slider[role=Fill] {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Slider:disabled {
@@ -1740,7 +1756,7 @@ Slider:disabled {
 SliderThumb {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
   focus: accent;
   radius: radius.lg;
   border-width: border;
@@ -1759,7 +1775,7 @@ SliderThumb:disabled {
 }
 
 Scroll {
-  background: #202631;
+  background: panel;
   foreground: text;
   border: border-soft;
   focus: focus;
@@ -1776,9 +1792,9 @@ Scroll {
 }
 
 ScrollThumb {
-  background: #6f7480;
+  background: scroll-thumb;
   foreground: surface;
-  border: #9ca2ad;
+  border: scroll-border;
   focus: focus;
   radius: radius.lg;
   border-width: border;
@@ -1791,21 +1807,21 @@ ScrollThumb {
 ScrollThumb:hover {
   background: accent-hover;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 ScrollThumb:pressed {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
 }
 
 Toggle {
   font-size: font.md;
   icon-size: icon.md;
-  background: #2a303b;
+  background: border-soft;
   foreground: text;
-  border: #3a4250;
+  border: border;
   focus: focus;
   radius: radius.lg;
   border-width: border;
@@ -1828,17 +1844,17 @@ Toggle[role=Label] {
 }
 
 Toggle:hover {
-  background: #343b48;
+  background: divider;
 }
 
 Toggle:pressed {
-  background: #202631;
+  background: panel;
 }
 
 Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
-  border: #d8c0ff;
+  border: accent-border;
   gap: 3;
 }
 
@@ -1849,7 +1865,7 @@ Toggle:disabled {
 
 ToggleThumb {
   background: surface;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border-hover;
   focus: focus;
   radius: radius.lg;
@@ -1862,8 +1878,8 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
-  border: #d8c0ff;
+  foreground: thumb-ink;
+  border: accent-border;
   focus: accent;
   icon-size: 24;
 }
@@ -2017,10 +2033,10 @@ Radio[role=Label]:disabled {
 
 TextField {
   opacity: 1;
-  background: #11151d;
-  foreground: #f5f2ff;
-  border: #3a4250;
-  focus: #c9a8ff;
+  background: field;
+  foreground: text;
+  border: border;
+  focus: focus;
   radius: 8;
   border-width: 1;
   padding-x: 12;
@@ -2031,10 +2047,10 @@ TextField {
 
 TextArea {
   opacity: 1;
-  background: #11151d;
-  foreground: #f5f2ff;
-  border: #3a4250;
-  focus: #c9a8ff;
+  background: field;
+  foreground: text;
+  border: border;
+  focus: focus;
   radius: 8;
   border-width: 1;
   padding-x: 12;
@@ -2066,6 +2082,9 @@ tokens {
     accent-border: #1d55d8;
     accent-ink: #ffffff;
     outline-border: #8c95a3;
+    row: #f3f5f8;
+    accent-end: #5589ff;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -3386,7 +3405,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #f3f5f8;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -3589,6 +3608,11 @@ Button:pressed {
   background-end: button;
 }
 
+Button:selected {
+  border: accent;
+  border-width: 2;
+}
+
 Button:focus {
   border: accent;
 }
@@ -3607,7 +3631,7 @@ Button:loading {
 
 Button[tone=Accent] {
   background: accent;
-  background-end: #5589ff;
+  background-end: accent-end;
   foreground: accent-ink;
   border: accent-border;
 }
@@ -3643,6 +3667,7 @@ Dropdown {
   offset-y: 16;
   font-size: font;
   material: default;
+  offset-x: 24;
 }
 
 Dropdown:hover {
@@ -3757,7 +3782,7 @@ Slider:disabled {
 
 SliderThumb {
   background: accent;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   radius: radius;
@@ -3868,7 +3893,7 @@ Toggle:disabled {
 
 ToggleThumb {
   background: card;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border-hover;
   focus: accent;
   radius: radius;
@@ -3881,7 +3906,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   icon-size: 18;
@@ -4087,6 +4112,8 @@ tokens {
     danger: #bd2430;
     danger-hover: #a41f2a;
     danger-ink: #ffffff;
+    row: #171d25;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -5404,7 +5431,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #171d25;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -5617,6 +5644,11 @@ Button:pressed {
   background-end: panel;
 }
 
+Button:selected {
+  border: focus;
+  border-width: 2;
+}
+
 Button:focus {
   border: focus;
 }
@@ -5700,6 +5732,7 @@ Dropdown {
   offset-y: 16;
   font-size: font.md;
   material: default;
+  offset-x: 24;
 }
 
 Dropdown:hover {
@@ -5921,7 +5954,7 @@ Toggle:disabled {
 
 ToggleThumb {
   background: surface;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border-hover;
   focus: focus;
   radius: radius.lg;
@@ -5934,7 +5967,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent;
   focus: accent;
   icon-size: 24;
@@ -6144,6 +6177,8 @@ tokens {
     accent-hover-end: #c49fff;
     accent-ink: #171022;
     accent-border: #dbc4ff;
+    row: #171d27aa;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -7517,7 +7552,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #171d27aa;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -7725,6 +7760,11 @@ Button:pressed {
   background-end: button-pressed-end;
 }
 
+Button:selected {
+  border: focus;
+  border-width: 2;
+}
+
 Button:focus {
   border: focus;
 }
@@ -7770,6 +7810,7 @@ Dropdown {
   offset-y: 16;
   font-size: font;
   material: premium;
+  offset-x: 24;
 }
 
 Dropdown:hover {
@@ -8008,7 +8049,7 @@ Toggle:disabled {
 ToggleThumb {
   background: surface;
   background-end: surface-end;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border;
   focus: focus;
   radius: radius;
@@ -8021,7 +8062,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   icon-size: 24;

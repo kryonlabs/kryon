@@ -19,6 +19,9 @@ tokens {
     accent-border: #1d55d8;
     accent-ink: #ffffff;
     outline-border: #8c95a3;
+    row: #f3f5f8;
+    accent-end: #5589ff;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -1339,7 +1342,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #f3f5f8;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -1565,7 +1568,7 @@ Button:loading {
 
 Button[tone=Accent] {
   background: accent;
-  background-end: #5589ff;
+  background-end: accent-end;
   foreground: accent-ink;
   border: accent-border;
 }
@@ -1716,7 +1719,7 @@ Slider:disabled {
 
 SliderThumb {
   background: accent;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   radius: radius;
@@ -1827,7 +1830,7 @@ Toggle:disabled {
 
 ToggleThumb {
   background: card;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border-hover;
   focus: accent;
   radius: radius;
@@ -1840,7 +1843,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   icon-size: 18;

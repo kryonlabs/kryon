@@ -3,6 +3,9 @@
 Status: implementation plan
 Scope: concrete end-to-end order for finishing full Kryon styling support.
 
+The reconciled implementation status is in `00-status.md` (2026-09-15).
+Color-token variants are implemented; full theme/environment grammar remains open.
+
 ## Objective
 
 Provide the 1:1 work plan for finishing the style separation project.

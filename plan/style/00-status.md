@@ -7,26 +7,27 @@ Update this file whenever a phase advances. Files 01-09 describe the target desi
 
 ## Audit Date
 
-2026-09-14, at `de57be1b` (Document style implementation plan).
+2026-09-15. Reconciled the phase table with the implementation notes below.
+The full KSS language and downstream migration remain incomplete.
 
 ## Phase Status
 
 | Phase | Area | State | Evidence |
 |---|---|---|---|
 | 1 | Style contract vocabulary | done | `StyleSheet`/`StylePack`/`StyleRule`/`StyleToken`/`StyleFacts`/`StyleData` in runtime; no public `Kss*` names |
-| 1 | Scanners (visual bases, paint leaks, facts bridges, no-glow, theme chrome) | pending | none exist; `scripts/` only has the pre-existing `check-*` tools |
-| 1 | No-style tests | pending | no `no_style`/`KRYON_STYLE` coverage in `Makefile` or `tests/` |
+| 1 | Scanners (visual bases, paint leaks, facts bridges, no-glow, theme chrome) | done, ratcheted | `scripts/check-style-gates.py`; five Makefile gates with classified allowlists |
+| 1 | No-style tests | done | `go/kryon/no_style_test.go`; covered widget families listed below |
 | 2 | Built-in catalog | done | `styles/kryon/{material,tk,vanilla,lightfield}.kss`; Material default; glow folded into lightfield (`a603fc44`) |
 | 2 | Canonical grouped token syntax | done | all four packs use `tokens { ... }` blocks |
 | 2 | Lightfield glow variant API | pending | glow folded into the catalog; explicit `@pack option` syntax not landed |
 | 2 | Makefile gates | done | `kss-parser-test`, `style-assets-test`, `style-builtins-test`, `go-style-builtins[-check]` targets exist |
-| 3 | Widget facts helpers | in progress | done: `runtime/toast.kry`, `runtime/table_view.kry` (`TableViewFactsFor`, `TableViewRoleFactsFor`); NavigationBar, PanedView handle, button generic path remain |
-| 4 | Zero visual base | pending | six nonzero bases remain (list below) |
+| 3 | Widget facts helpers | done | shared helpers cover the widget surface; see completed queue below |
+| 4 | Zero visual base | done | generic and widget resolve paths start from zero; structural allowances documented below |
 | 5 | Metrics/paint policy in `.kry` | partial | reorder, scroll/link/tab-bar release consumption, text input resolution migrated |
-| 6 | Parser cleanup | partial | canonical syntax shipped in packs; legacy `@token` prefix removal, source maps, formatter pending |
-| 7 | Runtime/backend parity | partial | Go TableView path now uses generated facts helpers; Go generic control path remains (`runtime.go:1747`) |
-| 8 | Tooling/inspector | pending | capture boards and inspector phases not verified |
-| 9 | Downstream | partial | 15 of 27 `examples/*.kry` attach `#style` |
+| 6 | Parser cleanup | partial | grouped tokens and legacy-syntax rejection exist; full `@theme`/`@env`, source maps, and formatter remain open |
+| 7 | Runtime/backend parity | partial | generated fixture parity and Go runtime tests pass; complete language/backend conformance is not established |
+| 8 | Tooling/inspector | partial | capture boards and preview style selection implemented; remaining inspector/authoring work is open |
+| 9 | Downstream | partial | Inbe updated to current upstream; Appearance style dropdown and color variations under verification; other apps remain to audit |
 | 10 | Legacy deletion | pending | theme getters, visual props, legacy syntax all still present |
 
 ## Remaining Direct Facts Construction (Phase 3 Queue)
@@ -92,7 +93,7 @@ Next commits, in order:
 3. [done 2026-09-14] PanedView handle facts helper (`tab_bar.c`, Go retained path, zero base).
 4. [done 2026-09-14] TextInput field defaults: `ui.c` sites resolve from zero base via `TextInputFactsFor`; `opacity: 1` moved into `TextField`/`TextArea` rules in all four packs.
 5. [done 2026-09-14] Button/generic control facts path: `ButtonRoleFactsFor` in `runtime/button.kry`, `button-policy-test` gate, pack coverage for every generic-path kind, and the zero-base flip with effective opacity in the resolve funnels. Full matrix green.
-6. Phase 4 visual bases (list below), one widget per commit, moving needed values into the built-in packs.
+6. [done 2026-09-14] Phase 4 visual bases removed, with structural allowances documented above.
 7. [done 2026-09-14] The five style scanners exist as gates: `scripts/check-style-gates.py` with Makefile targets `style-facts-bridge-check`, `paint-style-leak-check`, `no-glow-pack-check`, `no-theme-chrome-check`, `visual-props-check`, wired into the `test` gate. All are ratchets with classified allowlists. First catch: a hidden App base in `src/ui/ui_tree.c` (removed in the same commit). No-style widget-family tests added the same day: `go/kryon/no_style_test.go` covers button/text, text input/dropdown, checkbox/radio/selectable/toggle, list box/table view, navigation bar/modal, and image content survival - all chrome-free without a pack, content still flowing.
 
 Remaining follow-ups (not blocking): `render.go` contains renderer-side compat fallbacks for unstyled ops (default border width 1, flat material, one hardcoded fallback border color) - audit and route through packs or documented degradation per plan/style/05; redundant `opacity: 1;` pack lines cleaned during formatter work; preview style tooling landed 2026-09-14 (`kryon-preview capture-style` renders one app across material/tk/vanilla/lightfield/none into a comparison board, and `--style PACK` runs any preview command under a chosen pack) - live validation pending a downstream app host build against current kryon (inbe's host build still points at the old kryon path); style capture boards landed 2026-09-14 (`make style-capture-boards` renders `tests/style_capture_boards.c` into `build/.../style-boards/{material,tk,vanilla,lightfield,none}.png` with button states, tones x emphasis, class selector, text input, selection widgets, and dropdown - verified distinct per pack).
@@ -108,3 +109,19 @@ Hard rules while both agents share the working tree:
 - Never stage broadly: `git add` explicit paths only, then verify the staged set with `git diff --cached --stat` before committing.
 - Run `make generate-runtime` only when a styling change requires it, and only after checking `git status` for the other agent's in-flight edits.
 - The migration rule from file 04 applies: only migrate widgets whose `.kry` surface is already stable; skip widgets mid-conversion.
+
+## Color variations and Inbe (2026-09-15)
+
+Color-token variations are implemented through `RegisterStylePackVariant` in
+C and Go; web parsing accepts a color-token overlay. Variations preserve the
+base selectors, geometry, typefaces, and materials. This is a runtime color
+variation primitive, not completion of the planned `@theme`/`@env` grammar.
+Native and Go tests verify that recoloring does not mutate the base pack or
+lose its geometry/material; web token-overlay coverage verifies the same
+color substitution. Built-in control color literals now have named tokens.
+
+Inbe defaults to Material and exposes four styles in an Appearance dropdown.
+The startup card screen was removed at the user's request. Existing app color
+and light/dark preferences supply each style's color variation. The old theme
+storage/runtime remains migration work; do not mark phase 10 complete or call
+this zero legacy debt. No compatibility alias was added for these changes.

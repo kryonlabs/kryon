@@ -12,6 +12,7 @@ type styleParser struct {
 	pos    int
 	layer  int32
 	tokens styleTokens
+	colors []StyleColorToken
 }
 
 type styleTokens struct {
@@ -21,7 +22,11 @@ type styleTokens struct {
 }
 
 func ParseStyleSheet(source string) (string, []StyleRule, error) {
-	p := styleParser{source: source}
+	return parseStyleVariant(source, nil)
+}
+
+func parseStyleVariant(source string, colors []StyleColorToken) (string, []StyleRule, error) {
+	p := styleParser{source: source, colors: colors}
 	var pack string
 	var rules []StyleRule
 
@@ -226,6 +231,11 @@ func (p *styleParser) tokenGroup() error {
 			}
 			if p.tokens.colors == nil {
 				p.tokens.colors = map[string]uint32{}
+			}
+			for _, color := range p.colors {
+				if color.Name == name {
+					value = color.Color
+				}
 			}
 			p.tokens.colors[name] = value
 		case "length", "number":

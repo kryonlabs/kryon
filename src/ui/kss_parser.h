@@ -11,6 +11,11 @@ typedef struct KssParseResult {
     int rule_count;
 } KssParseResult;
 
+bool kss_parse_variant(const char *source, const StyleColorToken *colors,
+                       int color_count, StyleRule *rules, int rule_capacity,
+                       KssParseResult *result, char *diagnostic,
+                       size_t diagnostic_size);
+
 bool kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
                       KssParseResult *result, char *diagnostic,
                       size_t diagnostic_size);

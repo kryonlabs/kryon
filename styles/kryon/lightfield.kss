@@ -26,6 +26,8 @@ tokens {
     accent-hover-end: #c49fff;
     accent-ink: #171022;
     accent-border: #dbc4ff;
+    row: #171d27aa;
+    thumb-ink: #ffffff;
     transparent: #00000000;
   }
   length {
@@ -1399,7 +1401,7 @@ TableView[role=Header]:selected {
 }
 
 TableView[role=Row] {
-  background: #171d27aa;
+  background: row;
   foreground: text;
   border: transparent;
   radius: 0;
@@ -1896,7 +1898,7 @@ Toggle:disabled {
 ToggleThumb {
   background: surface;
   background-end: surface-end;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: border;
   focus: focus;
   radius: radius;
@@ -1909,7 +1911,7 @@ ToggleThumb {
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
-  foreground: #ffffff;
+  foreground: thumb-ink;
   border: accent-border;
   focus: accent;
   icon-size: 24;

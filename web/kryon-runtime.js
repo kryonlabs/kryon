@@ -3546,8 +3546,12 @@ function parseWebStyleConditionalGroups(text, tokens) {
   return { text: stripped, groups };
 }
 
-export function parseWebStyleSheet(source) {
+export function parseWebStyleSheet(source, colors = {}) {
   const parsedTokens = parseWebStyleTokens(stripKssComments(source));
+  for (const [name, color] of Object.entries(colors)) {
+    if (parsedTokens.tokens.colors.has(name))
+      parsedTokens.tokens.colors.set(name, parseKssValue(color));
+  }
   const parsedKeyframes = parseWebStyleKeyframes(parsedTokens.text, parsedTokens.tokens);
   const parsedGroups = parseWebStyleConditionalGroups(parsedKeyframes.text, parsedTokens.tokens);
   const text = parsedGroups.text;

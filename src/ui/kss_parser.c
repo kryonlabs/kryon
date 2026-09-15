@@ -32,6 +32,8 @@ typedef struct KssParser {
     int layer;
     KssToken tokens[KSS_TOKEN_MAX];
     int token_count;
+    const StyleColorToken *colors;
+    int color_count;
     char pack_id[64];
     char *diagnostic;
     size_t diagnostic_size;
@@ -695,6 +697,13 @@ kss_parse_token_group(KssParser *p)
         }
         if(!kss_expect(p, ';'))
             return kss_fail(p, "expected ';'");
+        if(kind == KSS_TOKEN_COLOR) {
+            for(int i = 0; i < p->color_count; i++) {
+                if(p->colors[i].name != NULL &&
+                   strcmp(p->colors[i].name, token.name) == 0)
+                    token.color = p->colors[i].color;
+            }
+        }
         if(!kss_add_token(p, token))
             return false;
     }
@@ -1001,9 +1010,10 @@ kss_parse_rule(KssParser *p)
 }
 
 bool
-kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
-                 KssParseResult *result, char *diagnostic,
-                 size_t diagnostic_size)
+kss_parse_variant(const char *source, const StyleColorToken *colors,
+                  int color_count, StyleRule *rules, int rule_capacity,
+                  KssParseResult *result, char *diagnostic,
+                  size_t diagnostic_size)
 {
     KssParser parser = {0};
 
@@ -1012,6 +1022,10 @@ kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
     if(source == NULL || rules == NULL || rule_capacity < 0)
         return false;
 
+    if(color_count < 0 || (color_count > 0 && colors == NULL))
+        return false;
+    parser.colors = colors;
+    parser.color_count = color_count;
     parser.source = source;
     parser.cursor = source;
     parser.rules = rules;
@@ -1049,4 +1063,13 @@ kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
         kss_copy_id(result->pack_id, sizeof(result->pack_id), parser.pack_id);
     }
     return true;
+}
+
+bool
+kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
+                 KssParseResult *result, char *diagnostic,
+                 size_t diagnostic_size)
+{
+    return kss_parse_variant(source, NULL, 0, rules, rule_capacity, result,
+                             diagnostic, diagnostic_size);
 }

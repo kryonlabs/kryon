@@ -500,3 +500,13 @@ assert.equal(field.style.paintOrder, "stroke fill markers");
 assert.equal(field.style.shapeOutside, "circle(50%)");
 assert.equal(field.style.shapeMargin, "8px");
 assert.equal(field.style.shapeImageThreshold, "0.4");
+
+const variantSource = `@pack base; tokens { color { accent: #112233; } }
+  Button { background: accent; radius: 9; material: glass; }
+  Button:hover { border: accent; }`;
+const variant = runtime.parseWebStyleSheet(variantSource, { accent: "#44aa88" });
+assert.equal(variant.rules[0].style.background, "#44aa88");
+assert.equal(variant.rules[0].style.radius, 9);
+assert.equal(variant.rules[0].style.material, "glass");
+assert.equal(variant.rules[1].style.border, "#44aa88");
+assert.equal(runtime.parseWebStyleSheet(variantSource).rules[0].style.background, "#112233");
