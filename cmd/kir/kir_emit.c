@@ -139,6 +139,12 @@ portable_type_path(const KirModule *module, const char *type, const TypePath *pa
 
     if(KirTargetType(type, KIR_C)) return 1;
     if(strchr(type, '*') != NULL) return 1;
+    {
+        char element[KIR_NAME_MAX];
+
+        if(KirArrayElementType(type, element, sizeof(element), NULL))
+            return portable_type_path(module, element, path);
+    }
     record = KirFindType(module, type, &owner);
     if(record == NULL)
         return 0;
@@ -187,7 +193,7 @@ supported_expression(const KirModule *module, const KirFunction *fn, int index)
         break;
     case KIR_EXPR_FIELD_INIT: break;
     case KIR_EXPR_INT: case KIR_EXPR_FLOAT: case KIR_EXPR_IDENT: case KIR_EXPR_STRING: break;
-    case KIR_EXPR_MEMBER: break;
+    case KIR_EXPR_MEMBER: case KIR_EXPR_INDEX: break;
     case KIR_EXPR_BINARY: case KIR_EXPR_CONDITIONAL: break;
     case KIR_EXPR_UNARY:
         if(!strcmp(e->op, "&") || !strcmp(e->op, "*")) return 0;
@@ -226,7 +232,8 @@ KirCanEmitBody(const KirModule *module, const KirFunction *fn)
         case KIR_STMT_DECL: if(!portable_type(module, st->type)) return 0; break;
         case KIR_STMT_ASSIGN:
             if(st->lhs_root < 0 || (fn->exprs[st->lhs_root].kind != KIR_EXPR_IDENT &&
-                fn->exprs[st->lhs_root].kind != KIR_EXPR_MEMBER)) return 0;
+                fn->exprs[st->lhs_root].kind != KIR_EXPR_MEMBER &&
+                fn->exprs[st->lhs_root].kind != KIR_EXPR_INDEX)) return 0;
             break;
         case KIR_STMT_IF: if(!strncmp(st->text, "guard", 5)) return 0; break;
         case KIR_STMT_BLOCK_OPEN: case KIR_STMT_BLOCK_CLOSE:
@@ -412,13 +419,35 @@ js_record_value(FILE *out, const KirModule *module, const char *type, const char
         size_t offset = 0;
         int count = 0;
         KirTypeField field;
+        int capacity = 0;
 
         while(KirTypeNextField(record, &offset, &field) == 1) {
             const char *field_type = canonical(field.type);
             char path[KIR_TEXT_MAX];
+            char element[KIR_NAME_MAX];
             fprintf(out, "%s%s: ", count++ ? ", " : "", field.name);
             if(source != NULL)
                 format(path, sizeof(path), "%s.%s", source, field.name);
+            if(KirArrayElementType(field_type, element, sizeof(element), &capacity)) {
+                /* Fixed-capacity array field: element-wise copies keep C and
+                 * Go value semantics; 'index' binds inside the callback. */
+                fprintf(out, "Array.from({length: %d}, (_, index) => ", capacity);
+                if(record_type(owner, canonical(element))) {
+                    if(source != NULL) {
+                        fprintf(out, "((record_source) => (");
+                        js_record_value(out, owner, canonical(element), "record_source");
+                        fprintf(out, "))(%s.%s[index])", source, field.name);
+                    } else {
+                        js_record_value(out, owner, canonical(element), NULL);
+                    }
+                } else if(source != NULL) {
+                    fprintf(out, "%s.%s[index]", source, field.name);
+                } else {
+                    fputs(zero_value(canonical(element), KIR_JS), out);
+                }
+                fputc(')', out);
+                continue;
+            }
             if(record_type(owner, field_type)) {
                 js_record_value(out, owner, field_type, source ? path : NULL);
             } else if(source != NULL) {
@@ -588,6 +617,16 @@ emit_destination(Emitter *e, int index, char *out, size_t size)
         if(e->target == KIR_GO) kir_go_field_ident(expr->name, field, sizeof(field));
         else kir_copy(field, sizeof(field), expr->name);
         format(out, size, "%s.%s", base, field);
+        return;
+    }
+    if(expr->kind == KIR_EXPR_INDEX) {
+        char base[KIR_TEXT_MAX], index[KIR_TEXT_MAX];
+
+        if(!strcmp(e->fn->exprs[expr->left].type, "string"))
+            fatal(expr, "string bytes are read-only");
+        emit_destination(e, expr->left, base, sizeof(base));
+        emit_expr(e, expr->right, "i32", index, sizeof(index));
+        format(out, size, "%s[%s]", base, index);
         return;
     }
     fatal(expr, "unsupported assignment destination");
@@ -1016,9 +1055,39 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             emit_destination(e, expr->left, a, sizeof(a));
         else
             emit_expr(e, expr->left, e->fn->exprs[expr->left].type, a, sizeof(a));
+        if(!strcmp(e->fn->exprs[expr->left].type, "string") &&
+           !strcmp(expr->name, "length")) {
+            if(e->target == KIR_GO)
+                format(result, sizeof(result), "int32(len(%s))", a);
+            else if(e->target == KIR_JS)
+                format(result, sizeof(result), "%s.length", a);
+            else
+                format(result, sizeof(result), "(int32_t)%s.length", a);
+            break;
+        }
         if(e->target == KIR_GO) kir_go_field_ident(expr->name, field, sizeof(field));
         else kir_copy(field, sizeof(field), expr->name);
         format(result, sizeof(result), "%s.%s", a, field);
+        break;
+    }
+    case KIR_EXPR_INDEX: {
+        const char *base_type = e->fn->exprs[expr->left].type;
+
+        if(member_path(e->fn, expr->left))
+            emit_destination(e, expr->left, a, sizeof(a));
+        else
+            emit_expr(e, expr->left, base_type, a, sizeof(a));
+        emit_expr(e, expr->right, "i32", b, sizeof(b));
+        if(!strcmp(base_type, "string")) {
+            if(e->target == KIR_JS)
+                format(result, sizeof(result), "%s.charCodeAt(%s)", a, b);
+            else if(e->target == KIR_GO)
+                format(result, sizeof(result), "%s[%s]", a, b);
+            else
+                format(result, sizeof(result), "(uint8_t)%s.data[%s]", a, b);
+        } else {
+            format(result, sizeof(result), "%s[%s]", a, b);
+        }
         break;
     }
     case KIR_EXPR_IDENT:

@@ -241,6 +241,43 @@ and cleanup fixtures through C, C++, Go, and JavaScript, including arithmetic
 traps and negative diagnostics. See [portable scalar programming](LANGUAGE_SCALARS.md)
 for the exact numeric contract and build commands.
 
+## Fixed arrays and string bytes
+
+Strict portable functions may read and write elements of fixed-capacity array
+record fields and read bytes of borrowed strings:
+
+```kry
+WindowBytes :: struct {
+    data: [8]u32
+    filled: i32
+}
+
+SumTextBytes :: (text: string) -> i32 #export {
+    total: i32 = 0
+    index: i32 = 0
+    while index < text.length {
+        total = total + (i32)text[index]
+        index = index + 1
+    }
+    return total
+}
+```
+
+Rules:
+
+- `[N]element` is valid only as a record field type. The element must itself be
+  a scalar or a portable record; nested array types are rejected.
+- `record.field[index]` reads and writes one element with value semantics.
+  Array-typed locals are not supported in strict functions; keep scratch state
+  in record fields.
+- `text[index]` reads one byte of a `string` as `u8`. String bytes and
+  `text.length` are read-only; assigning to them is a strict error.
+- Backends lower these identically: C uses array members and `String` views,
+  Go uses fixed arrays and native string indexing, JS routes reads through the
+  byte-aware `kryon.index` helper and copies array fields element-wise.
+  `tests/spec/spec_test.sh` executes the shared contract through Go and
+  JavaScript.
+
 `kryon fmt [--check] file.kry...` formats Kry source with stable indentation
 and simple spacing cleanup. `--check` exits non-zero when a file would change.
 

@@ -1,3 +1,4 @@
+import {registerTextEditor, connectTextEditor, bindTextEditorEvents} from "./text_dom.js";
 import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
@@ -408,7 +409,13 @@ export function widget(rt, name, args, state = null, meta = null) {
   if (name === "Disabled" && String(args || "").trim() === "end")
     return handleWidget(rt, name, args, state);
   rt.frame.push(item);
-  return handleWidget(rt, name, args, state);
+  const result = handleWidget(rt, name, args, state);
+  if ((name === "TextField" || name === "TextArea") && state) {
+    const props = parseTextInputProps(args, state, name === "TextArea");
+    if (props.textKey && props.cursorKey)
+      registerTextEditor(item, {rt, state, props});
+  }
+  return result;
 }
 
 function remapCompositePath(value, sourceRoot, targetRoot) {
@@ -2589,6 +2596,7 @@ function webNodeFromWidget(item, index) {
     enumerable: false,
     value: authoredTag
   });
+  connectTextEditor(item, node);
   node.styleFacts = webNodeStyleFacts(node);
   return node;
 }
@@ -5839,6 +5847,7 @@ function applyDocumentMetadata(metadata) {
 }
 
 function bindNodeEvents(el) {
+  bindTextEditorEvents(el);
   if (el.__kryClickBound)
     return;
   el.__kryClickBound = true;
@@ -8709,16 +8718,16 @@ function applyWebNode(el, docNode, rt) {
       docNode.inputType === "checkbox" || docNode.inputType === "radio"
         ? docNode.state.checked
         : false);
-    if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio")
+    if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio" && !el.__kryTextComposing)
       el.value = nativeValue;
     el.checked = !!docNode.state.checked;
     if ("indeterminate" in el)
       el.indeterminate = !!docNode.state.indeterminate;
   } else if (docNode.tag === "textarea") {
-    el.value = docNode.value;
+    if (!el.__kryTextComposing) el.value = docNode.value;
   } else if (docNode.tag === "fieldset") {
     syncWebFieldsetLegend(el, docNode);
-  } else {
+  } else if (!el.__kryOwnsChildren && el.textContent !== docNode.text) {
     el.textContent = docNode.text;
   }
 }
@@ -9302,6 +9311,8 @@ export function renderWebDocument(rt, target) {
   root.__kryElementsBySource = new Map();
   root.__kryDomObjectsBySource = new Map();
   root.__kryFormValues = new Map();
+  const parentPaths = new Set(frame.nodes.map(node => node.parentPath).filter(Boolean));
+  const previousChildren = new Map();
   for (const docNode of frame.nodes) {
     const identity = docNode.tag + ":" + (docNode.path || docNode.key);
     let el = children.get(identity);
@@ -9310,6 +9321,7 @@ export function renderWebDocument(rt, target) {
       el = document.createElement(docNode.tag);
       children.set(identity, el);
     }
+    el.__kryOwnsChildren = parentPaths.has(docNode.path);
     applyWebNode(el, docNode, rt);
     applyResolvedWebStyle(el, rt?.webStyleSheets ? resolveWebStyle(docNode, rt.webStyleSheets) : null);
     el.__kryMountRoot = root;
@@ -9361,7 +9373,10 @@ export function renderWebDocument(rt, target) {
     const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
       ? elementsByPath.get(docNode.parentPath)
       : root;
-    parent.appendChild(el);
+    const previous = previousChildren.get(parent);
+    const expected = previous ? previous.nextSibling : parent.firstChild;
+    if (el !== expected) parent.insertBefore(el, expected || null);
+    previousChildren.set(parent, el);
     live.add(identity);
     dispatchWebDOMLifecycle(root, existed ? "kry-update" : "kry-mount", frame,
       makeWebDOMObject(root, docNode, el, ref));

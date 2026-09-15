@@ -58,6 +58,42 @@ KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field)
     return 0;
 }
 
+int
+KirArrayElementType(const char *type, char *element, size_t element_size,
+                    int *capacity)
+{
+    const char *cursor;
+    const char *close;
+    size_t length;
+    long count = 0;
+    int digits = 0;
+
+    if(type == NULL || type[0] != '[')
+        return 0;
+    cursor = type + 1;
+    while(*cursor >= '0' && *cursor <= '9') {
+        count = count * 10 + (*cursor - '0');
+        if(count > 1048576)
+            return 0;
+        cursor++;
+        digits++;
+    }
+    if(digits == 0 || *cursor != ']')
+        return 0;
+    close = cursor;
+    length = strlen(close + 1);
+    if(length == 0)
+        return 0;
+    if(element != NULL) {
+        if(length >= element_size)
+            return 0;
+        memcpy(element, close + 1, length + 1);
+    }
+    if(capacity != NULL)
+        *capacity = (int)count;
+    return 1;
+}
+
 static int
 enum_has_member(const KirType *type, const char *name)
 {

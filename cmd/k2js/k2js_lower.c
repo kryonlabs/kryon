@@ -787,6 +787,77 @@ consume_group(const char *p, char *raw, size_t raw_size)
     return depth == 0 && *p != '\0' ? p + 1 : p;
 }
 
+/* Destination contexts translate assignment left sides; byte-aware index
+ * rewrites apply to values only, never to the assignment target itself. */
+static int tx_destination_context = 0;
+
+/* Find where the indexed primary begins in already-emitted translated text,
+ * so 'base[index]' can be rewritten as a byte-aware runtime index. */
+static size_t
+tx_index_base_start(const char *dst, size_t end)
+{
+    size_t i = end;
+
+    while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
+        i--;
+    for(;;) {
+        if(i == 0)
+            return i;
+        if(dst[i - 1] == '.') {
+            i--;
+            while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
+                i--;
+            if(i == 0 || !(isalnum((unsigned char)dst[i - 1]) ||
+                           dst[i - 1] == '_' || dst[i - 1] == '"'))
+                return i;
+            continue;
+        }
+        if(dst[i - 1] == ')' || dst[i - 1] == ']') {
+            char open = dst[i - 1] == ')' ? '(' : '[';
+            char close = dst[i - 1];
+            int nest = 0;
+            size_t j = i;
+
+            while(j > 0) {
+                j--;
+                if(dst[j] == close)
+                    nest++;
+                else if(dst[j] == open && --nest == 0)
+                    break;
+            }
+            if(nest != 0)
+                return i;
+            i = j;
+            while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
+                i--;
+            if(i == 0 || !(isalnum((unsigned char)dst[i - 1]) ||
+                           dst[i - 1] == '_' || dst[i - 1] == '.' ||
+                           dst[i - 1] == '"'))
+                return i;
+            continue;
+        }
+        if(isalnum((unsigned char)dst[i - 1]) || dst[i - 1] == '_') {
+            while(i > 0 && (isalnum((unsigned char)dst[i - 1]) ||
+                            dst[i - 1] == '_'))
+                i--;
+            while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
+                i--;
+            if(i > 0 && (dst[i - 1] == '.' || dst[i - 1] == ')' ||
+                         dst[i - 1] == ']' || dst[i - 1] == '"'))
+                continue;
+            return i;
+        }
+        if(dst[i - 1] == '"') {
+            size_t j = i - 1;
+
+            while(j > 0 && dst[j - 1] != '"')
+                j--;
+            return j > 0 ? j - 1 : 0;
+        }
+        return i;
+    }
+}
+
 static void
 tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 {
@@ -861,6 +932,25 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                               (kir_is_ident_char((unsigned char)*operand_end) ||
                                *operand_end == '.'))
                             operand_end++;
+                        /* Casts bind to the full indexed primary: include any
+                         * trailing '[...]' suffixes so byte-aware index
+                         * rewrites land inside the conversion. */
+                        while(*operand_end == '[') {
+                            const char *bracket = operand_end + 1;
+                            int depth = 1;
+
+                            while(*bracket != '\0' && depth > 0) {
+                                if(*bracket == '[')
+                                    depth++;
+                                else if(*bracket == ']')
+                                    depth--;
+                                if(*bracket != '\0')
+                                    bracket++;
+                            }
+                            if(depth != 0)
+                                break;
+                            operand_end = bracket;
+                        }
                         operand_length = (size_t)(operand_end - operand_start);
                         if(operand_length == 0 ||
                            operand_length >= sizeof(raw_operand))
@@ -910,6 +1000,38 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                !kir_is_ident_char((unsigned char)q[1]))
                 p = q + 1;
             continue;
+        }
+        if(*p == '[' && dn > 0 && !tx_destination_context) {
+            /* 'base[index]' after an emitted primary: route through the
+             * byte-aware runtime index so string bases yield byte numbers. */
+            size_t base_start = tx_index_base_start(dst, dn);
+
+            if(base_start < dn) {
+                char raw_index[K2JS_TEXT_MAX];
+                char evaluated_index[K2JS_TEXT_MAX];
+                char base[K2JS_TEXT_MAX];
+                const char *after = consume_group(p + 1, raw_index,
+                                                  sizeof(raw_index));
+
+                if(*(after - 1) == ']' && dn - base_start < sizeof(base)) {
+                    size_t base_length = dn - base_start;
+                    size_t trimmed = base_length;
+
+                    memcpy(base, dst + base_start, base_length);
+                    base[base_length] = '\0';
+                    while(trimmed > 0 &&
+                          (base[trimmed - 1] == ' ' || base[trimmed - 1] == '\t'))
+                        base[--trimmed] = '\0';
+                    tx_expr(m, raw_index, evaluated_index,
+                            sizeof(evaluated_index));
+                    dn = base_start;
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                                           "kryon.index(%s, %s)",
+                                           base, evaluated_index);
+                    p = after;
+                    continue;
+                }
+            }
         }
         if(*p == '&') {
             const char *q = p + 1;
@@ -1142,7 +1264,9 @@ emit_assign(FILE *f, const KirModule *m, const KirStmt *st,
         snprintf(rhs, sizeof(rhs), "%s", pos + strlen(op));
         kir_trim_in_place(lhs);
         kir_trim_in_place(rhs);
+        tx_destination_context = 1;
         tx_expr(m, lhs, out_lhs, sizeof(out_lhs));
+        tx_destination_context = 0;
         emit_indent(f, indent);
         fprintf(f, "%s %s ", out_lhs, op);
         if(strcmp(op, "=") == 0)
@@ -1713,14 +1837,64 @@ initializer_to_string(const KirModule *m, const char *value, char *out, size_t o
     return 1;
 }
 
+static int
+text_buffer_arguments(const KirModule *m, const char *args, char *out, size_t size)
+{
+    const char *property = strstr(args, ".text_size");
+    if(property == NULL)
+        return 0;
+    const char *value = kir_skip_ws(property + strlen(".text_size"));
+    if(*value != '=')
+        return 0;
+    value = kir_skip_ws(value + 1);
+    if(strncmp(value, "sizeof", 6) != 0)
+        return 0;
+    const char *name = kir_skip_ws(value + 6);
+    if(*name != '(')
+        return 0;
+    name = kir_skip_ws(name + 1);
+    const char *end = name;
+    while(isalnum((unsigned char)*end) || *end == '_')
+        end++;
+    const char *close = kir_skip_ws(end);
+    if(*close != ')')
+        return 0;
+    for(int i = 0; i < m->state_count; i++) {
+        const KirStateField *field = &m->state_fields[i];
+        if(strlen(field->name) != (size_t)(end - name) ||
+           strncmp(field->name, name, (size_t)(end - name)) != 0)
+            continue;
+        int capacity = 0;
+        int consumed = 0;
+        if(sscanf(field->type, " [%d] %n", &capacity, &consumed) != 1 ||
+           consumed == 0 || capacity <= 0 ||
+           strcmp(kir_skip_ws(field->type + consumed), "char") != 0)
+            return 0;
+        int length = snprintf(out, size, "%.*s%d%s", (int)(value - args), args,
+                              capacity, close + 1);
+        if(length < 0 || (size_t)length >= size) {
+            fprintf(stderr, "k2js: text input properties exceed output capacity\n");
+            exit(1);
+        }
+        return 1;
+    }
+    return 0;
+}
+
 static void
 emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const char *args)
 {
     if(strcmp(widget, "Text") == 0 || strcmp(widget, "Button") == 0 ||
        strcmp(widget, "Card") == 0)
         emit_initializer_value(f, m, args);
-    else
-        js_string(f, args);
+    else {
+        char resolved[K2JS_TEXT_MAX];
+        if((strcmp(widget, "TextField") == 0 || strcmp(widget, "TextArea") == 0) &&
+           text_buffer_arguments(m, args, resolved, sizeof(resolved)))
+            js_string(f, resolved);
+        else
+            js_string(f, args);
+    }
 }
 
 static int

@@ -337,6 +337,11 @@ typedef struct KirTypeField {
  * record syntax. Names/types are trimmed without truncating source tokens. */
 int KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field);
 
+/* Parse a fixed-capacity array type text "[N]element". Returns 1 with the
+ * element type copied out and the capacity stored, 0 for any other type. */
+int KirArrayElementType(const char *type, char *element, size_t element_size,
+                        int *capacity);
+
 typedef struct KirAppMeta {
     int has_app;
     char title[KIR_NAME_MAX];

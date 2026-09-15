@@ -13,6 +13,42 @@ app "Spec Contract" {
     fps 60
 }
 
+# Fixed-capacity array fields and borrowed string byte access are portable
+# strict expressions: every backend must lower them identically.
+
+ContractBytes :: struct {
+    data: [4]u32
+    filled: i32
+}
+
+ContractSumBytes :: (text: string) -> i32 #export {
+    total: i32 = 0
+    index: i32 = 0
+    while index < text.length {
+        total = total + (i32)text[index]
+        index = index + 1
+    }
+    return total
+}
+
+ContractFillBytes :: (bytes: ContractBytes, seed: u32) -> ContractBytes #export {
+    index: i32 = 0
+    while index < 4 {
+        bytes.data[index] = seed + (u32)index
+        index = index + 1
+    }
+    bytes.filled = 4
+    return bytes
+}
+
+ContractByteAt :: (bytes: ContractBytes, index: i32) -> u32 #export {
+    return bytes.data[index]
+}
+
+ContractBytesReady :: (bytes: ContractBytes) -> bool #export {
+    return bytes.filled == 4 && bytes.data[0] != bytes.data[3]
+}
+
 App :: () #ui {
     Screen root: {
         Background(GetThemeBackground())

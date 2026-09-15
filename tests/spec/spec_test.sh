@@ -31,7 +31,7 @@ grep -Fq 'expr binary text count + 1 name  op +' "$kir"
 
 "$k2c" --root "$root" -o "$work/c" "$root/$case_file"
 sh "$root/tests/check_clean_generated_output.sh" "$work/c"
-cc -fsyntax-only -I"$root/include" -I"$work/c" "$work/c/tests/spec/language_contract.c"
+cc -fsyntax-only -I"$root/include" -I"$work/c" -I"$build/generated/src" "$work/c/tests/spec/language_contract.c"
 
 "$k2go" --root "$root" -o "$work/go" "$root/$case_file"
 sh "$root/tests/check_clean_generated_output.sh" "$work/go"
@@ -55,6 +55,28 @@ mv "$work/go-check/language_contract.go.tmp" "$work/go-check/language_contract.g
     printf '%s\n' "replace github.com/waozixyz/kryon/go/kryon => $root/go/kryon"
 } > "$work/go-check/go.mod"
 cp "$root/go/kryon/go.sum" "$work/go-check/go.sum"
+cat > "$work/go-check/contract_test.go" << 'GOTEST'
+package krygen
+
+import "testing"
+
+func TestContractIndexingParity(t *testing.T) {
+	st := &LanguageContractState{}
+	if got := LanguageContract_ContractSumBytes(st, "AB"); got != 131 {
+		t.Fatalf("string byte sum = %d, want 131", got)
+	}
+	bytes := LanguageContract_ContractFillBytes(st, ContractBytes{}, 10)
+	if bytes.Filled != 4 || bytes.Data[0] != 10 || bytes.Data[3] != 13 {
+		t.Fatalf("array fill = %+v", bytes)
+	}
+	if got := LanguageContract_ContractByteAt(st, bytes, 2); got != 12 {
+		t.Fatalf("array byte at = %d, want 12", got)
+	}
+	if !LanguageContract_ContractBytesReady(st, bytes) {
+		t.Fatal("indexed comparisons disagreed across fields")
+	}
+}
+GOTEST
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./...)
 
 "$k2js" --root "$root" -o "$work/js" "$root/$case_file"
@@ -63,6 +85,22 @@ cp "$root"/web/*.js "$work/js/"
 printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
 if command -v node >/dev/null 2>&1; then
     node -e 'import(process.argv[1]).then((m) => { const s = m.frame(); if (!s || !Array.isArray(s.frame)) process.exit(1); })' "$work/js/tests/spec/language_contract.js"
+    node --input-type=module - "$work/js/tests/spec/language_contract.js" << 'JSCHECK'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+
+const [modulePath] = process.argv.slice(2);
+const m = await import(pathToFileURL(modulePath).href);
+const rt = null;
+assert.equal(m.LanguageContract_ContractSumBytes(rt, undefined, undefined, "AB"), 131);
+let bytes = { data: [0, 0, 0, 0], count: 0 };
+bytes = m.LanguageContract_ContractFillBytes(rt, undefined, undefined, bytes, 10);
+assert.equal(bytes.filled, 4);
+assert.equal(bytes.data[0], 10);
+assert.equal(bytes.data[3], 13);
+assert.equal(m.LanguageContract_ContractByteAt(rt, undefined, undefined, bytes, 2), 12);
+assert.equal(m.LanguageContract_ContractBytesReady(rt, undefined, undefined, bytes), true);
+JSCHECK
 fi
 
 "$k2b" --root "$root" -o "$work/krb" "$root/tests/spec/krb_contract.kry"

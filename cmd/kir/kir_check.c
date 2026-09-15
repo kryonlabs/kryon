@@ -207,6 +207,23 @@ assignable(Checker *c, int index)
            e->kind == KIR_EXPR_POINTER_MEMBER || (e->kind == KIR_EXPR_UNARY && !strcmp(e->op, "*"));
 }
 
+/* String bytes and the string length member are read-only views. */
+static int
+readonly_text_destination(const KirFunction *fn, int index)
+{
+    const KirExpr *e;
+    if(index < 0 || index >= fn->expr_count)
+        return 0;
+    e = &fn->exprs[index];
+    if(e->kind == KIR_EXPR_INDEX || e->kind == KIR_EXPR_MEMBER) {
+        if(fn->exprs[e->left].kind == KIR_EXPR_IDENT &&
+           !strcmp(fn->exprs[e->left].type, "string"))
+            return 1;
+        return readonly_text_destination(fn, e->left);
+    }
+    return 0;
+}
+
 static int check_function(Checker *c, KirFunction *fn);
 
 /* Function values require a slot context; ordinary names retain lexical lookup.
@@ -342,6 +359,12 @@ expression_type(Checker *c, int index)
     }
     case KIR_EXPR_MEMBER: {
         const KirType *record = KirFindType(c->module, left, NULL);
+        if(record == NULL && !strcmp(left, "string") &&
+           !strcmp(e->name, "length")) {
+            /* Byte length of a borrowed string value; read-only. */
+            type = "i32";
+            break;
+        }
         if(record != NULL && !record->is_enum) {
             size_t offset = 0;
             KirTypeField field;
@@ -353,6 +376,26 @@ expression_type(Checker *c, int index)
             }
         }
         if(!*member_type) error(c, e->span, "unknown record field", e->name);
+        type = member_type;
+        break;
+    }
+    case KIR_EXPR_INDEX: {
+        char element[KIR_NAME_MAX];
+
+        /* 'base[index]': a fixed-capacity array element, or a read-only
+         * byte of a borrowed string. Element types stay scalar so every
+         * backend lowers the same shape. */
+        if(!strcmp(left, "string")) {
+            if(!numeric(right))
+                error(c, e->span, "string index requires an integer operand", e->text);
+            kir_copy(element, sizeof(element), "u8");
+        } else if(!KirArrayElementType(left, element, sizeof(element), NULL)) {
+            error(c, e->span, "index requires a fixed array or string", e->text);
+            kir_copy(element, sizeof(element), "i32");
+        } else if(!numeric(right)) {
+            error(c, e->span, "array index requires an integer operand", e->text);
+        }
+        kir_copy(member_type, sizeof(member_type), element);
         type = member_type;
         break;
     }
@@ -919,6 +962,8 @@ check_function(Checker *c, KirFunction *fn)
                 if(st->expr_root < 0 || (strcmp(type, "integer") &&
                    key_type[0] != 'i' && key_type[0] != 'u'))
                     error(c, st->span, "instance key requires an integer", st->name);
+            } else if(KirArrayElementType(st->type, NULL, 0, NULL)) {
+                error(c, st->span, "fixed array locals are not supported in strict functions", st->name);
             } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
                 !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
             else if(!compatible(st->type, type)) error(c, st->span, "initializer type mismatch", st->name);
@@ -955,6 +1000,8 @@ check_function(Checker *c, KirFunction *fn)
             if(text_type(lhs) && strcmp(st->assignment_op, "="))
                 error(c, st->span, "string compound assignment is not supported", st->assignment_op);
             if(!assignable(c, st->lhs_root)) error(c, st->span, "assignment requires an assignable destination", "");
+            if(readonly_text_destination(c->fn, st->lhs_root))
+                error(c, st->span, "string bytes and length are read-only", "");
             if(!compatible(lhs, type)) error(c, st->span, "assignment type mismatch", st->text);
             check_borrowed_string(c, lhs, st->expr_root);
         } else if(st->kind == KIR_STMT_RETURN) {
