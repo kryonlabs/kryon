@@ -27,7 +27,7 @@ The full KSS language and downstream migration remain incomplete.
 | 6 | Parser cleanup | partial | grouped tokens and legacy-syntax rejection exist; full `@theme`/`@env`, source maps, and formatter remain open |
 | 7 | Runtime/backend parity | partial | generated fixture parity and Go runtime tests pass; complete language/backend conformance is not established |
 | 8 | Tooling/inspector | partial | capture boards and preview style selection implemented; remaining inspector/authoring work is open |
-| 9 | Downstream | partial | Inbe updated to current upstream; Appearance style dropdown and color variations under verification; other apps remain to audit |
+| 9 | Downstream | partial | Inbe updated to current upstream; Appearance style dropdown and color variations verified on isolated Linux desktop; other apps remain to audit |
 | 10 | Legacy deletion | pending | theme getters, visual props, legacy syntax all still present |
 
 ## Remaining Direct Facts Construction (Phase 3 Queue)
@@ -125,3 +125,10 @@ The startup card screen was removed at the user's request. Existing app color
 and light/dark preferences supply each style's color variation. The old theme
 storage/runtime remains migration work; do not mark phase 10 complete or call
 this zero legacy debt. No compatibility alias was added for these changes.
+
+Verification completed for Inbe commit `cb09108`: full app tests and vendor/API
+guards pass; isolated native screenshots cover fresh Material onboarding,
+all four style choices, Forest/light and Sunset/dark color variations,
+restart persistence, desktop Settings bounds/back navigation, and phone bottom
+navigation. Screenshots are under Inbe `build/verification/appearance/`.
+Android/Plan 9 packaging was updated but those platform builds were not run.
