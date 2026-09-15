@@ -1,0 +1,13 @@
+#import "kryon.h"
+app "Text buffer capacity" {
+    size 240 100
+}
+state {
+    value: [8] char = "aβ"
+    cursor: int = 1
+    byte: int = 0
+}
+capacity_frame :: () #ui {
+    byte = value[1]
+    TextField((TextFieldProps){.text = value, .text_size = sizeof(value), .cursor_position = &cursor, .focus_id = 35101})
+}

@@ -571,7 +571,14 @@ generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIB
 keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test
 	sh tests/keyboard_policy_test.sh $(BUILD_DIR)
 
-fast-test: keyboard-policy-test
+fast-test: keyboard-policy-test web-text-capacity-test
+
+.PHONY: web-text-capacity-test web-text-input-browser-test
+web-text-capacity-test: $(K2JS)
+	sh tests/web_text_capacity_test.sh $(K2JS)
+
+web-text-input-browser-test:
+	sh tests/web_text_input_browser_test.sh .
 
 .PHONY: widget-instance-test
 preflight test: widget-instance-test

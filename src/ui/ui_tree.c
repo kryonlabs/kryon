@@ -1451,8 +1451,10 @@ RouteInput(void)
         if(field->focused != NULL)
             *field->focused = state->focused;
         int keyboard_captured = ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node));
-        if((!state->focused || field->read_only || keyboard_captured) &&
-           ui_text_composition_cancel(state)) {
+        TextCompositionInputDecision composition_input =
+            TextCompositionInputDecisionFor(state->focused && !keyboard_captured,
+                                            field->read_only);
+        if(composition_input.cancel && ui_text_composition_cancel(state)) {
             ui_text_field_event(node,EVENT_COMPOSITION_CHANGED,GetTime());
             ui_tree_invalid |= INVALIDATE_PAINT;
         }

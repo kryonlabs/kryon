@@ -1,19 +1,15 @@
 # Remaining text editing work
 
-- Audit retained/immediate selection ownership and focus transitions for
-  decisions still implemented independently of `runtime/text_input.kry`.
-- Connect browser DOM input/composition events and selection presentation to
-  the shared editor path. Queued web input is covered; browser-native IME
-  candidate windows and actual DOM selection still need integration tests.
-- Finish web parity for composition presentation, wrapped-line geometry,
-  pointer selection and scrolling. The composition fixture now executes web
-  preedit, commit/cancel and read-only behavior; its full native scenario
-  also tests layout-dependent movement and selection.
-- Carry declared `.kry` buffer capacities into web props. The queued web host
-  enforces explicit numeric text sizes and codepoint limits, but `sizeof(buffer)`
-  is not yet evaluated in serialized widget props.
+- Extend matched composition-fixture execution to the remaining native
+  layout/pointer scenarios. Web logical editing and live Chromium visual-row,
+  pointer and composition tests now run, but are separate tests.
+- Verify native OS IME candidate windows and browser/platform combinations
+  beyond Chromium. The automated browser test exercises native composition
+  events and visible preedit, not the OS candidate window.
+- Extend web capacity lowering beyond fixed char arrays in module state where
+  maintained callers need local buffers or computed capacity expressions.
 
-Raw buffers, memory movement, clipboard IO, font measurement, UTF-8 traversal,
-and platform IME remain host services. `EditText` is the active native
-buffer-edit service. Do not create a new text widget or forwarding layer.
-See `docs/BOUNDARIES.md` for the shared policy/host split.
+Completed behavior, source ownership and verification commands live in
+`docs/TEXT_INPUT_BEHAVIOR.md`. Buffers, OS input, font measurement, UTF-8
+traversal and browser geometry remain host services. Keep editing decisions in
+`runtime/text_input.kry`; do not add a second editor or compatibility layer.

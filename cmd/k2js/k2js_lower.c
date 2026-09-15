@@ -836,9 +836,9 @@ tx_index_base_start(const char *dst, size_t end)
                 return i;
             continue;
         }
-        if(isalnum((unsigned char)dst[i - 1]) || dst[i - 1] == '_') {
+        if(isalnum((unsigned char)dst[i - 1]) || dst[i - 1] == '_' || dst[i - 1] == '$') {
             while(i > 0 && (isalnum((unsigned char)dst[i - 1]) ||
-                            dst[i - 1] == '_'))
+                            dst[i - 1] == '_' || dst[i - 1] == '$'))
                 i--;
             while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
                 i--;

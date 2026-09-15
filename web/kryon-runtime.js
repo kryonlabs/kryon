@@ -1,4 +1,4 @@
-import {registerTextEditor, connectTextEditor, bindTextEditorEvents} from "./text_dom.js";
+import {registerTextEditor, connectTextEditor, hasTextEditor, bindTextEditorEvents, refreshTextEditor, presentTextEditor} from "./text_dom.js";
 import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
@@ -412,6 +412,7 @@ export function widget(rt, name, args, state = null, meta = null) {
   const result = handleWidget(rt, name, args, state);
   if ((name === "TextField" || name === "TextArea") && state) {
     const props = parseTextInputProps(args, state, name === "TextArea");
+    props.disabled = isTruthyProp(args, "disabled") || !!state[propIdent(args, "disabled")] || rt.disabledStack.some(Boolean);
     if (props.textKey && props.cursorKey)
       registerTextEditor(item, {rt, state, props});
   }
@@ -488,9 +489,23 @@ export function expr(text) {
 
 /* Byte-aware value index shared with generated KSS/strict code: string bases
  * yield byte numbers, array bases index normally. */
-export function index(base, index) {
-  return typeof base === "string" ? base.charCodeAt(index) : base[index];
+const stringEncoder = new TextEncoder();
+const stringDecoder = new TextDecoder();
+let indexedString = null;
+let indexedBytes = null;
+
+function utf8StringBytes(value) {
+  if (value !== indexedString) {
+    indexedString = value;
+    indexedBytes = stringEncoder.encode(value);
+  }
+  return indexedBytes;
 }
+
+export function index(base, index) {
+  return typeof base === "string" ? utf8StringBytes(base)[index] : base[index];
+}
+
 
 export function struct(type, value) {
   return { type, value };
@@ -1132,7 +1147,7 @@ function parseTextInputProps(args, state, multiline) {
     cursorKey: propRef(args, "cursor_position"),
     focusID: propNumber(args, "focus_id", 0),
     maxCodepoints: propNumber(args, "max_codepoints", 4095),
-    secure: isTruthyProp(args, "secure"),
+    secure: isTruthyProp(args, "secure") || !!state?.[propIdent(args, "secure")],
     readOnly: isTruthyProp(args, "read_only") || !!state?.[propIdent(args, "read_only")],
     multiline,
     textSize: propNumber(args, "text_size", 2147483647) || 2147483647,
@@ -5971,7 +5986,7 @@ function bindNodeEvents(el) {
     const rt = el.__kryRuntime;
     if (!docNode)
       return;
-    if (rt?.QueueTap) {
+    if (rt?.QueueTap && !hasTextEditor(docNode)) {
       const x = docNode.bounds.x + Math.max(1, docNode.bounds.width) * 0.5;
       const y = docNode.bounds.y + Math.max(1, docNode.bounds.height) * 0.5;
       rt.QueueTap(x, y);
@@ -8372,6 +8387,7 @@ function syncWebFieldsetLegend(el, docNode) {
 
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
+  refreshTextEditor(el);
   el.__kryRuntime = rt;
   bindWebDOMObjectProperties(el);
   bindNodeEvents(el);
@@ -9380,6 +9396,9 @@ export function renderWebDocument(rt, target) {
     live.add(identity);
     dispatchWebDOMLifecycle(root, existed ? "kry-update" : "kry-mount", frame,
       makeWebDOMObject(root, docNode, el, ref));
+  }
+  for (const [identity, element] of children) {
+    if (live.has(identity)) presentTextEditor(element);
   }
   const stale = Array.from(children.entries()).filter(([identity]) => !live.has(identity));
   for (const [, el] of stale) {

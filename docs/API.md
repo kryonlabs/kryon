@@ -1371,6 +1371,13 @@ typedef struct {
 } TextInputProps;
 ```
 
+Web `TextField`/`TextArea` bindings update their `.kry` state through the same
+editing decisions as queued input. Cursor positions use UTF-8 byte offsets;
+the DOM adapter translates browser UTF-16 selections. Preedit remains provisional
+until composition commits, and blur cancels it. Redraw preserves the active DOM
+editor. Declared fixed char state-buffer sizes in `sizeof(buffer)` are emitted
+as numeric web capacities.
+
 #### `TextField`
 
 ```c
