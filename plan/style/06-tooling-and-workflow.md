@@ -1,5 +1,10 @@
 # Style tooling: remaining work
 
+- Route compiler, preview, inspector, formatter, hot reload, and release-style
+  compilation through the canonical `.kry` KSS implementation. Remove tool-local
+  parsing or token interpretation; generated files must have a reproducible
+  path back to their maintained `.kry` source.
+
 - Finish inspector provenance: active overlay/variant, matched and losing rules,
   per-field winner, token origin, source location, specificity/layer, resolved
   value, and backend degradation. Audit existing inspector output before adding

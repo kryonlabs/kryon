@@ -1,5 +1,13 @@
 # Style verification: remaining gaps
 
+- Add ownership/provenance checks proving that KSS parsing and semantic logic
+  come from maintained `.kry` source. Fail on handwritten parser, token, overlay,
+  variant, or cascade implementations in host languages. Classify minimal I/O
+  and rendering services explicitly; wrappers around old parsers do not pass.
+- Test the shared parser directly, then run its generated targets on identical
+  valid/invalid inputs and compare diagnostics and resolved results. Preserve
+  existing consumer behavior while deleting the independent implementations.
+
 - Map requirements to existing tests and record untested widget-role-state and
   backend combinations. Passing fixture subsets do not establish full coverage.
 - Extend parser/resolver parity for imports, overlays, options, provenance,

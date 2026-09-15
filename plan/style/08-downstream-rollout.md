@@ -1,5 +1,9 @@
 # Downstream styling: remaining work
 
+- Move app style registration and color-variation calls, including Inbe, onto
+  the generated KSS path after upstream consolidation. Verify there is no
+  app-local or vendored handwritten parser/compatibility layer.
+
 - Audit maintained Kryon examples and templates for explicit style attachment,
   bundled assets, and direct app-owned widget decoration. Migrate remaining
   callers and compile their generated output; do not rely on stale counts.
