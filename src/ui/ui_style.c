@@ -341,7 +341,7 @@ ui_unpack_style(StyleData value)
         .focus = GetColor(value.focus),
         .radius = value.radius,
         .border_width = value.border_width,
-        .opacity = value.opacity,
+        .opacity = StyleOpacityValue(value.fields, value.opacity),
         .padding_x = value.padding_x,
         .padding_y = value.padding_y,
         .gap = value.gap,

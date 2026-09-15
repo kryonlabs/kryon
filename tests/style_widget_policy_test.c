@@ -19,6 +19,8 @@
 #include "runtime/toggle.h"
 #include "runtime/toast.h"
 
+#include "../src/ui/ui_style_internal.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -58,6 +60,25 @@ check_float(const char *name, float got, float want)
 int
 main(void)
 {
+    StyleData opacity_style = {.fields = StyleBackground, .background = 0x202631ff};
+    Style unpacked = ui_unpack_style(opacity_style);
+    if(unpacked.opacity != 1.0f || (unpacked.fields & StyleOpacity) != 0) {
+        fprintf(stderr, "omitted surface opacity must be visible without declaring an override\n");
+        return 1;
+    }
+    opacity_style.fields |= StyleOpacity;
+    unpacked = ui_unpack_style(opacity_style);
+    if(unpacked.opacity != 0.0f) {
+        fprintf(stderr, "explicit zero surface opacity must remain transparent\n");
+        return 1;
+    }
+    opacity_style.opacity = 0.34f;
+    unpacked = ui_unpack_style(opacity_style);
+    if(unpacked.opacity != 0.34f) {
+        fprintf(stderr, "explicit scrim opacity must be preserved\n");
+        return 1;
+    }
+
     StyleFrame frame = test_style_frame(0x00000000, 0x111111ff,
                                         0x222222ff);
     CheckboxSpec checkbox = {

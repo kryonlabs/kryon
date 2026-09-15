@@ -2320,4 +2320,5 @@ must remain zero. Negative metrics follow the owning widget's policy. Page
 layout's structural zeros and caller font requests are not default widget chrome.
 For opacity, `StyleOpacityValue(fields, opacity)` resolves an absent declaration
 to one while preserving an explicit zero. Renderers must not reinterpret that
-explicit zero as a request for default paint.
+explicit zero as a request for default paint. Native style conversion applies
+this rule to composed surfaces too, including Material guide and modal panels.
