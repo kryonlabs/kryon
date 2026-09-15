@@ -166,6 +166,12 @@ word-boundary rule; Go applies generated navigation, deletion and composition
 decisions. Hosts traverse UTF-8 bytes to resolve the requested cursor movement.
 Native and Go event loops sample keys and apply those decisions; clipboard IO, buffer
 storage, focus registration and pointer-event queues remain host services.
-Generated JavaScript keyboard policy is checked by `make keyboard-policy-test`.
+The web queued editor uses generated text-input policy, with JavaScript limited
+to string storage, UTF-8 offset traversal, event routing and clipboard transport.
+Go and web defer input after backward Tab until the destination's next frame,
+discarding it if focus changes in between. Composition events do not transfer
+to the next field during Tab navigation.
+Generated JavaScript keyboard policy and queued editing behavior are checked
+by `make keyboard-policy-test`.
 This focused policy proof does not imply complete web block or IME parity; see
 `plan/canonical/README.md` for the remaining execution audit.

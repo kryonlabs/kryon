@@ -2479,6 +2479,8 @@ if command -v node >/dev/null 2>&1; then
     cp "$root"/web/*.js "$work/js/"
     printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
     cat > "$work/js_runner.mjs" <<'EOF'
+import assert from "node:assert/strict";
+import * as compositionMod from "./js/tests/parity/composition.js";
 import * as formMod from "./js/tests/parity/generated_form.js";
 import * as fieldsMod from "./js/tests/parity/fields.js";
 import * as focusMod from "./js/tests/parity/focus.js";
@@ -2494,6 +2496,32 @@ import * as selectionMod from "./js/tests/parity/selection_images.js";
 import * as kryon from "./js/kryon-runtime.js";
 
 const rt = kryon.createRuntime();
+const composition = compositionMod.createState();
+const drawComposition = () => compositionMod.frame(rt, composition);
+rt.SetFocus(26100);
+rt.SubmitTextComposition(2, "ni", 2, 0);
+drawComposition();
+assert.equal(composition.composition_text, "base");
+rt.SubmitTextComposition(3, "日本", 6, 0);
+drawComposition();
+assert.equal(composition.composition_text, "base日本");
+assert.equal(composition.composition_cursor, 10);
+rt.SubmitTextComposition(2, "ni", 2, 0);
+drawComposition();
+rt.SubmitTextComposition(4, "", 0, 0);
+drawComposition();
+assert.equal(composition.composition_text, "base日本");
+composition.composition_read_only = true;
+for (const id of [26100, 26101]) {
+  rt.SetFocus(id);
+  rt.QueueText("blocked");
+  rt.QueueKey(259);
+  rt.SubmitTextComposition(3, "blocked", 7, 0);
+  drawComposition();
+}
+assert.equal(composition.composition_text, "base日本");
+assert.equal(composition.composition_area, "area");
+rt.SetFocus(0);
 const form = formMod.createState();
 const fields = fieldsMod.createState();
 const focus = focusMod.createState();
@@ -2726,4 +2754,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composition.kry","tests/parity/composed_popup.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/composition.kry"]}'

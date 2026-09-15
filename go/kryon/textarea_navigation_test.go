@@ -208,3 +208,51 @@ func TestTextFieldEscapeCancelsComposition(t *testing.T) {
 		t.Fatalf("Escape did not cancel editing: focus=%d text=%q preedit=%v", r.Focus(), CString(text), r.preedit)
 	}
 }
+
+func TestTextFieldBackwardTabPreservesQueuedInput(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	first, second := make([]byte, 32), make([]byte, 32)
+	a, b := int32(0), int32(0)
+	draw := func() {
+		r.BeginFrame()
+		r.TextField(TextFieldProps{Text: first, CursorPosition: &a, FocusID: 32301})
+		r.TextField(TextFieldProps{Text: second, CursorPosition: &b, FocusID: 32302})
+		r.EndFrame()
+	}
+	r.SetFocus(32302)
+	draw()
+	r.QueueShiftKey(KeyTab)
+	r.QueueText("界")
+	draw()
+	draw()
+	if CString(first) != "界" || CString(second) != "" || a != 3 || r.Focus() != 32301 {
+		t.Fatalf("backward Tab routing: %q %q cursor=%d focus=%d", CString(first), CString(second), a, r.Focus())
+	}
+	draw()
+	if CString(first) != "界" {
+		t.Fatal("deferred input replayed")
+	}
+}
+
+func TestTextFieldHandoffDropsOnlyStaleInput(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	first, second := make([]byte, 32), make([]byte, 32)
+	a, b := int32(0), int32(0)
+	draw := func() {
+		r.BeginFrame()
+		r.TextField(TextFieldProps{Text: first, CursorPosition: &a, FocusID: 32311})
+		r.TextField(TextFieldProps{Text: second, CursorPosition: &b, FocusID: 32312})
+		r.EndFrame()
+	}
+	r.SetFocus(32312)
+	draw()
+	r.QueueShiftKey(KeyTab)
+	r.QueueText("stale")
+	draw()
+	r.SetFocus(32312)
+	r.QueueText("fresh")
+	draw()
+	if CString(first) != "" || CString(second) != "fresh" {
+		t.Fatalf("changed focus replayed or lost input: first=%q second=%q", CString(first), CString(second))
+	}
+}

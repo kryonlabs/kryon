@@ -607,6 +607,8 @@ type runtime struct {
 	autoFocusID       int32
 	clipboard         string
 	inputEvents       []inputEvent
+	textInputHandoff  int32
+	deferredTextCount int
 	compositionEvents []KryTextCompositionEvent
 	preedit           map[int32]KryTextCompositionEvent
 	taps              []tapEvent
@@ -1016,6 +1018,11 @@ func (r *runtime) BeginFrame() {
 	if len(r.popupInputScopes) != 0 {
 		panic("unclosed popup input scope at frame boundary")
 	}
+	if r.textInputHandoff != 0 && r.textInputHandoff != r.focusID {
+		r.inputEvents = r.inputEvents[min(r.deferredTextCount, len(r.inputEvents)):]
+	}
+	r.textInputHandoff = 0
+	r.deferredTextCount = 0
 	r.resetPaintLayers()
 	r.autoFocusID = 0x40000000
 	if r.dropdownsSeen == nil {
@@ -1082,7 +1089,7 @@ func (r *runtime) EndFrame() {
 	// A focused widget may be disabled, missing, or behind a popup. Route any
 	// unclaimed Tab after all eligible destinations have been declared.
 	for _, event := range r.inputEvents {
-		if event.key == KeyTab && !event.shortcut {
+		if r.textInputHandoff == 0 && event.key == KeyTab && !event.shortcut {
 			r.setFocus(r.nextFocus(r.focusID, event.shift))
 		}
 	}
@@ -1094,7 +1101,11 @@ func (r *runtime) EndFrame() {
 	r.mouseReleased = map[int32]bool{}
 	r.keyDown = map[int32]bool{}
 	r.chars = nil
-	r.inputEvents = nil
+	if r.textInputHandoff == 0 || r.textInputHandoff != r.focusID {
+		r.inputEvents = nil
+	} else {
+		r.deferredTextCount = len(r.inputEvents)
+	}
 	r.ClearTextComposition()
 	for id := range r.preedit {
 		_, registered := r.popupFocus[id]
@@ -7040,6 +7051,10 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		case KeyTab:
 			if !event.shortcut {
 				r.setFocus(r.nextFocus(focusID, event.shift))
+				if r.focusID != focusID {
+					r.textInputHandoff = r.focusID
+					r.ClearTextComposition()
+				}
 				sel = collapsedSelection(pos)
 			}
 		case KeyEscape:

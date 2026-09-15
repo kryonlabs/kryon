@@ -564,7 +564,7 @@ downstream-matrix-check:
 k2js-runtime-snapshot-test: $(K2JS)
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 
-generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS)
+generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS) web/text_input.js web/style_sheet.js
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
 .PHONY: keyboard-policy-test
@@ -1110,7 +1110,7 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
 RUNTIME_PROPS_H := $(patsubst runtime/%.kry,include/ui_%.generated.h,$(wildcard runtime/*_props.kry))
-generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js $(RUNTIME_PROPS_H)
+generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js web/text_input.js web/style_sheet.js $(RUNTIME_PROPS_H)
 	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
 
@@ -1124,6 +1124,11 @@ include/ui_%.generated.h: $(GENERATED_SRC_DIR)/runtime/%.h
 
 web/control_props.js: runtime/control_props.kry $(K2JS)
 	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/control_props.kry
+
+WEB_TEXT_RUNTIME = text_input control_props drawing_props style_sheet style surface
+web/text_input.js web/style_sheet.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) $(K2JS)
+	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o $(BUILD_DIR)/web-text $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME)))
+	cp $(BUILD_DIR)/web-text/text_input.js $(BUILD_DIR)/web-text/style_sheet.js web/
 
 web/instance.js: runtime/instance.kry $(K2JS)
 	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/instance.kry

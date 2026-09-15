@@ -1,3 +1,4 @@
+import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
 
@@ -282,6 +283,9 @@ export function createRuntime(options = {}) {
       focus: 0,
       clipboard: "",
       selections: new Map(),
+      preedit: new Map(),
+      textHandoff: 0,
+      deferredTextEvents: 0,
       dropdownOpen: null,
       focusOrder: [],
       lastFocusOrder: []
@@ -297,7 +301,14 @@ export function createRuntime(options = {}) {
   rt.SetSelection = (focusID, anchor, cursor) => {
     rt.input.selections.set(Number(focusID), { anchor: Number(anchor), cursor: Number(cursor) });
   };
-  rt.SetFocus = (id) => { rt.input.focus = Number(id); };
+  rt.SetFocus = (id) => {
+    if (rt.input.focus !== Number(id)) rt.input.preedit.clear();
+    rt.input.focus = Number(id);
+  };
+  rt.SubmitTextComposition = (phase, text, cursor, selectionLength) => {
+    rt.input.events.push({type: "composition", phase, text: String(text), cursor,
+      selectionLength, owner: rt.input.focus});
+  };
   rt.Focus = () => rt.input.focus;
   if (options.webStyleSheets !== undefined) {
     setWebStyleSheets(rt, options.webStyleSheets);
@@ -343,15 +354,27 @@ export function beginFrame(rt) {
     if (instances.size === 0)
       rt.instances.delete(type);
   }
-  if (rt.input)
+  if (rt.input) {
+    if (rt.input.textHandoff && rt.input.textHandoff !== rt.input.focus)
+      rt.input.events.splice(0, rt.input.deferredTextEvents);
+    rt.input.textHandoff = 0;
+    rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
+  }
   return rt;
 }
 
 export function endFrame(rt) {
   if (rt.input) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
-    rt.input.events = [];
+    if (!rt.input.textHandoff || rt.input.textHandoff !== rt.input.focus)
+      rt.input.events = [];
+    else
+      rt.input.deferredTextEvents = rt.input.events.length;
+    for (const id of rt.input.preedit.keys()) {
+      if (id !== rt.input.focus || !rt.input.focusOrder.includes(id))
+        rt.input.preedit.delete(id);
+    }
   }
   rt.instanceFrame++;
   return snapshot(rt);
@@ -454,6 +477,12 @@ export function statement(rt, text) {
 
 export function expr(text) {
   return { kind: "expr", text };
+}
+
+/* Byte-aware value index shared with generated KSS/strict code: string bases
+ * yield byte numbers, array bases index normally. */
+export function index(base, index) {
+  return typeof base === "string" ? base.charCodeAt(index) : base[index];
 }
 
 export function struct(type, value) {
@@ -1053,28 +1082,6 @@ function consumeFirstEvent(rt, predicate) {
   return null;
 }
 
-function textLength(text) {
-  return Array.from(String(text || "")).length;
-}
-
-function replaceRange(text, start, end, insert) {
-  const chars = Array.from(String(text || ""));
-  const a = Math.max(0, Math.min(chars.length, start));
-  const b = Math.max(a, Math.min(chars.length, end));
-  chars.splice(a, b - a, ...Array.from(String(insert)));
-  return chars.join("");
-}
-
-function selectionFor(rt, id, cursor) {
-  const selected = rt.input.selections.get(id);
-  if (!selected)
-    return { start: cursor, end: cursor };
-  return {
-    start: Math.min(selected.anchor, selected.cursor),
-    end: Math.max(selected.anchor, selected.cursor)
-  };
-}
-
 function moveFocus(rt, id, shift) {
   const order = rt.input.lastFocusOrder.length ? rt.input.lastFocusOrder : rt.input.focusOrder;
   const at = order.indexOf(id);
@@ -1086,51 +1093,30 @@ function moveFocus(rt, id, shift) {
   rt.input.focus = order[next];
 }
 
-function applyTextInput(rt, state, id, textKey, cursorKey, maxCodepoints, secure = false) {
-  if (!state || !textKey || !cursorKey || rt.input.focus !== id)
-    return;
-  for (;;) {
-    const event = consumeFirstEvent(rt, (ev) =>
-      ev.type === "text" || ev.type === "key" || ev.type === "shortcut");
+function applyTextInput(rt, state, props) {
+  if (!state || !props.textKey || !props.cursorKey)
+    return false;
+  let changed = false;
+  while (rt.input.focus === props.focusID) {
+    const event = consumeFirstEvent(rt, ev =>
+      ["text", "key", "shortcut", "composition"].includes(ev.type));
     if (!event)
       break;
-    let cursor = Number(state[cursorKey] || 0);
-    if (event.type === "text") {
-      const sel = selectionFor(rt, id, cursor);
-      const next = replaceRange(state[textKey], sel.start, sel.end, event.text);
-      state[textKey] = Array.from(next).slice(0, maxCodepoints).join("");
-      state[cursorKey] = Math.min(sel.start + textLength(event.text), textLength(state[textKey]));
-      rt.input.selections.delete(id);
-    } else if (event.type === "shortcut") {
-      if (Number(event.key) === KeyC) {
-        const sel = selectionFor(rt, id, cursor);
-        if (!secure)
-          rt.input.clipboard = Array.from(String(state[textKey] || "")).slice(sel.start, sel.end).join("");
+    if (event.type === "key" && Number(event.key) === KeyTab) {
+      moveFocus(rt, props.focusID, !!event.shift);
+      if (rt.input.focus !== props.focusID) {
+        rt.input.textHandoff = rt.input.focus;
+        rt.input.preedit.delete(props.focusID);
       }
-    } else if (Number(event.key) === KeyLeft) {
-      state[cursorKey] = Math.max(0, cursor - 1);
-      rt.input.selections.delete(id);
-    } else if (Number(event.key) === KeyRight) {
-      state[cursorKey] = Math.min(textLength(state[textKey]), cursor + 1);
-      rt.input.selections.delete(id);
-    } else if (Number(event.key) === KeyBackspace) {
-      const sel = selectionFor(rt, id, cursor);
-      if (sel.start !== sel.end) {
-        state[textKey] = replaceRange(state[textKey], sel.start, sel.end, "");
-        state[cursorKey] = sel.start;
-      } else if (cursor > 0) {
-        state[textKey] = replaceRange(state[textKey], cursor - 1, cursor, "");
-        state[cursorKey] = cursor - 1;
-      }
-      rt.input.selections.delete(id);
-    } else if (Number(event.key) === KeyTab) {
-      moveFocus(rt, id, !!event.shift);
-      rt.input.selections.delete(id);
+      rt.input.selections.delete(props.focusID);
+    } else {
+      changed = editTextEvent(rt.input, state, props, event) || changed;
     }
   }
+  return changed;
 }
 
-function parseTextInputProps(args) {
+function parseTextInputProps(args, state, multiline) {
   const bounds = parseBounds(args);
   const textKey = propIdent(args, "text");
   return {
@@ -1139,12 +1125,20 @@ function parseTextInputProps(args) {
     cursorKey: propRef(args, "cursor_position"),
     focusID: propNumber(args, "focus_id", 0),
     maxCodepoints: propNumber(args, "max_codepoints", 4095),
-    secure: /\.secure\s*=\s*true\b/.test(String(args || ""))
+    secure: isTruthyProp(args, "secure"),
+    readOnly: isTruthyProp(args, "read_only") || !!state?.[propIdent(args, "read_only")],
+    multiline,
+    textSize: propNumber(args, "text_size", 2147483647) || 2147483647,
+    pageRows: Math.max(1, Math.floor((bounds.height - 8) / 20)),
+    commitKey: propRef(args, "commit_pressed")
   };
 }
 
-function handleTextInput(rt, state, args) {
-  const props = parseTextInputProps(args);
+function handleTextInput(rt, state, args, multiline) {
+  const props = parseTextInputProps(args, state, multiline);
+  if (state && props.commitKey) state[props.commitKey] = false;
+  if (props.readOnly || rt.input.focus !== props.focusID)
+    rt.input.preedit.delete(props.focusID);
   if (props.focusID) {
     if (!rt.input.focusOrder.includes(props.focusID))
       rt.input.focusOrder.push(props.focusID);
@@ -1154,8 +1148,7 @@ function handleTextInput(rt, state, args) {
       if (state && props.cursorKey)
         state[props.cursorKey] = 0;
     }
-    applyTextInput(rt, state, props.focusID, props.textKey, props.cursorKey,
-                   props.maxCodepoints, props.secure);
+    return applyTextInput(rt, state, props);
   }
   return false;
 }
@@ -1436,7 +1429,7 @@ function handleWidget(rt, name, args, state) {
     return handlePopup(args);
   case "TextField":
   case "TextArea":
-    return handleTextInput(rt, state, args);
+    return handleTextInput(rt, state, args, name === "TextArea");
   case "Slider":
     return handleSlider(rt, state, args);
   case "Toggle":
