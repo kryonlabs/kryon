@@ -807,10 +807,14 @@ tx_index_base_start(const char *dst, size_t end)
             i--;
             while(i > 0 && (dst[i - 1] == ' ' || dst[i - 1] == '\t'))
                 i--;
-            if(i == 0 || !(isalnum((unsigned char)dst[i - 1]) ||
-                           dst[i - 1] == '_' || dst[i - 1] == '"'))
+            if(i == 0)
                 return i;
-            continue;
+            /* Member suffixes may follow computed bases: ')', ']' continue
+             * through their balanced-group branches. */
+            if(isalnum((unsigned char)dst[i - 1]) || dst[i - 1] == '_' ||
+               dst[i - 1] == '"' || dst[i - 1] == ')' || dst[i - 1] == ']')
+                continue;
+            return i;
         }
         if(dst[i - 1] == ')' || dst[i - 1] == ']') {
             char open = dst[i - 1] == ')' ? '(' : '[';

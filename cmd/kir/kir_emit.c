@@ -438,7 +438,9 @@ js_record_value(FILE *out, const KirModule *module, const char *type, const char
                         js_record_value(out, owner, canonical(element), "record_source");
                         fprintf(out, "))(%s.%s[index])", source, field.name);
                     } else {
+                        fputc('(', out);
                         js_record_value(out, owner, canonical(element), NULL);
+                        fputc(')', out);
                     }
                 } else if(source != NULL) {
                     fprintf(out, "%s.%s[index]", source, field.name);
@@ -1218,6 +1220,15 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
     default: fatal(expr,"unsupported structured expression");
     }
     if(e->target==KIR_JS && !strcmp(type,"f32")) {kir_copy(a,sizeof(a),result);format(result,sizeof(result),"Math.fround(%s)",a);}
+    {
+        /* Array-typed expressions are index bases, not values: no scalar
+         * temporary can hold them, so pass the access text through. */
+        char element[KIR_NAME_MAX];
+        if(KirArrayElementType(expr->type, element, sizeof(element), NULL)) {
+            kir_copy(out, size, result);
+            return;
+        }
+    }
     fresh(e,temp);declare(e,temp,type,result);kir_copy(out,size,temp);
 }
 

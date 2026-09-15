@@ -273,7 +273,7 @@ main(void)
     assert(!kss_parse_string("@theme dark; Button { background: #111111; }",
                              rules, 12, &result, diagnostic,
                              sizeof(diagnostic)));
-    assert(strstr(diagnostic, "unknown directive") != NULL);
+    assert(strstr(diagnostic, "expected '{'") != NULL);
     assert(!kss_parse_string("@layer legacy; Button { background: #111111; }",
                              rules, 12, &result, diagnostic,
                              sizeof(diagnostic)));

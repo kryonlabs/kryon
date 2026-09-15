@@ -1,0 +1,2376 @@
+#module "kss_parser"
+#import "style"
+#import "style_sheet"
+#import "control_props"
+
+# Host-provided borrowed substring view; backends slice their native strings.
+
+StringSlice :: (source: string, start: i32, length: i32) -> string #extern
+
+# KSS is the text style format; this module is the one shared implementation.
+# Backends lower it to C, Go, and JavaScript, so the grammar, environment
+# axes, theme overlays, imports, and provenance rules exist exactly once.
+# Hosts own I/O: they feed source text in and resolve import requests.
+
+KssTokenKind :: enum {
+    KssTokenColor = 0
+    KssTokenLength = 1
+    KssTokenDuration = 2
+    KssTokenMaterial = 3
+}
+
+KssOriginKind :: enum {
+    KssOriginPack = 0
+    KssOriginImport = 1
+    KssOriginTheme = 2
+    KssOriginEnvironment = 3
+    KssOriginVariant = 4
+}
+
+KssStatus :: enum {
+    KssStatusContinue = 0
+    KssStatusRule = 1
+    KssStatusNeedImport = 2
+    KssStatusDone = 3
+    KssStatusError = 4
+}
+
+KssContrast :: enum {
+    KssContrastNormal = 0
+    KssContrastHigh = 1
+}
+
+KssDensity :: enum {
+    KssDensityComfortable = 0
+    KssDensityCompact = 1
+    KssDensityTouch = 2
+}
+
+KssPointer :: enum {
+    KssPointerMouse = 0
+    KssPointerTouch = 1
+    KssPointerMixed = 2
+}
+
+KssPlatform :: enum {
+    KssPlatformDesktop = 0
+    KssPlatformAndroid = 1
+    KssPlatformWeb = 2
+    KssPlatformPlan9 = 3
+    KssPlatformTerminal = 4
+}
+
+KssTheme :: enum {
+    KssThemeNone = 0
+    KssThemeLight = 1
+    KssThemeDark = 2
+}
+
+
+KssEnvironment :: struct {
+    theme: i32
+    contrast: i32
+    density: i32
+    pointer: i32
+    platform: i32
+}
+
+KssDefaultEnvironment :: () -> KssEnvironment #export {
+    env: KssEnvironment
+    env.theme = (i32)KssThemeNone
+    env.contrast = (i32)KssContrastNormal
+    env.density = (i32)KssDensityComfortable
+    env.pointer = (i32)KssPointerMouse
+    env.platform = (i32)KssPlatformDesktop
+    return env
+}
+
+KssName :: struct {
+    bytes: [64]u8
+    length: i32
+}
+
+KssSourceFile :: struct {
+    name: [96]u8
+    length: i32
+}
+
+KssToken :: struct {
+    name: KssName
+    kind: i32
+    color: u32
+    number: f32
+    material: i32
+    origin: i32
+    file: i32
+    line: i32
+    column: i32
+}
+
+KssColorOverride :: struct {
+    name: string
+    color: u32
+}
+
+KssOrigin :: struct {
+    file: i32
+    line: i32
+    column: i32
+}
+
+KssImportFrame :: struct {
+    name: KssName
+    outer_source: string
+    outer_pos: i32
+    outer_line: i32
+    outer_column: i32
+    outer_file: i32
+}
+
+KssParser :: struct {
+    source: string
+    pos: i32
+    line: i32
+    column: i32
+    file: i32
+    files: [8]KssSourceFile
+    file_count: i32
+    imports: [8]KssImportFrame
+    import_depth: i32
+    tokens: [128]KssToken
+    token_count: i32
+    overrides: [16]KssColorOverride
+    override_count: i32
+    layer: i32
+    layer_names: [12]KssName
+    layer_count: i32
+    layer_declared: bool
+    pack: KssName
+    env: KssEnvironment
+    themes: [16]KssName
+    theme_count: i32
+    version_seen: bool
+    status: i32
+    rule: StyleRule
+    origin: KssOrigin
+    pending_import: KssName
+    in_env: bool
+    diagnostic: [256]u8
+    diagnostic_length: i32
+    rule_total: i32
+}
+
+KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #export {
+    p: KssParser
+    p.source = source
+    p.pos = 0
+    p.line = 1
+    p.column = 1
+    p.file = 0
+    p.files[0] = KssCopyFileName(path)
+    p.file_count = 1
+    p.import_depth = 0
+    p.token_count = 0
+    p.override_count = 0
+    p.layer = 0
+    p.layer_count = 4
+    p.layer_names[0] = KssMakeName("reset")
+    p.layer_names[1] = KssMakeName("components")
+    p.layer_names[2] = KssMakeName("app")
+    p.layer_names[3] = KssMakeName("overrides")
+    p.layer_declared = false
+    p.env = env
+    p.theme_count = 0
+    p.version_seen = false
+    p.status = KssStatusContinue
+    p.rule_total = 0
+    p.diagnostic_length = 0
+    return p
+}
+
+KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser #export {
+    if p.override_count < 16 {
+        p.overrides[p.override_count].name = name
+        p.overrides[p.override_count].color = color
+        p.override_count = p.override_count + 1
+    }
+    return p
+}
+
+# Byte helpers over the borrowed source view. Every advance keeps the
+# line/column provenance current so diagnostics and rule origins stay exact.
+
+KssAtEnd :: (p: KssParser) -> bool {
+    return p.pos >= p.source.length
+}
+
+KssPeek :: (p: KssParser, ahead: i32) -> u8 {
+    index: i32 = p.pos + ahead
+    if index < 0 || index >= p.source.length {
+        return 0
+    }
+    return p.source[index]
+}
+
+KssAdvance :: (p: KssParser, count: i32) -> KssParser {
+    step: i32 = 0
+    while step < count {
+        if p.pos < p.source.length {
+            if p.source[p.pos] == 10 {
+                p.line = p.line + 1
+                p.column = 1
+            } else {
+                p.column = p.column + 1
+            }
+            p.pos = p.pos + 1
+        }
+        step = step + 1
+    }
+    return p
+}
+
+KssIsSpace :: (byte: u8) -> bool {
+    return byte == 32 || byte == 9 || byte == 13 || byte == 10 || byte == 11 || byte == 12
+}
+
+KssIsDigit :: (byte: u8) -> bool {
+    return byte >= 48 && byte <= 57
+}
+
+KssIsHexDigit :: (byte: u8) -> bool {
+    return (byte >= 48 && byte <= 57) || (byte >= 97 && byte <= 102) ||
+        (byte >= 65 && byte <= 70)
+}
+
+KssIsAlpha :: (byte: u8) -> bool {
+    return (byte >= 97 && byte <= 122) || (byte >= 65 && byte <= 90)
+}
+
+KssIdentStart :: (byte: u8) -> bool {
+    return KssIsAlpha(byte) || byte == 95 || byte == 45
+}
+
+KssIdentChar :: (byte: u8) -> bool {
+    return KssIsAlpha(byte) || KssIsDigit(byte) || byte == 95 || byte == 45 ||
+        byte == 46
+}
+
+KssSelectorIdentChar :: (byte: u8) -> bool {
+    return KssIsAlpha(byte) || KssIsDigit(byte) || byte == 95 || byte == 45
+}
+
+KssLower :: (byte: u8) -> u8 {
+    if byte >= 65 && byte <= 90 {
+        return byte + 32
+    }
+    return byte
+}
+
+KssNameEquals :: (name: KssName, text: string) -> bool {
+    if name.length != text.length {
+        return false
+    }
+    index: i32 = 0
+    while index < name.length {
+        if KssLower(name.bytes[index]) != KssLower(text[index]) {
+            return false
+        }
+        index = index + 1
+    }
+    return true
+}
+
+KssNameEqualsName :: (a: KssName, b: KssName) -> bool {
+    if a.length != b.length {
+        return false
+    }
+    index: i32 = 0
+    while index < a.length {
+        if KssLower(a.bytes[index]) != KssLower(b.bytes[index]) {
+            return false
+        }
+        index = index + 1
+    }
+    return true
+}
+
+KssMakeName :: (text: string) -> KssName {
+    name: KssName
+    index: i32 = 0
+    while index < text.length && index < 64 {
+        name.bytes[index] = text[index]
+        index = index + 1
+    }
+    name.length = index
+    return name
+}
+
+KssCopyFileName :: (text: string) -> KssSourceFile {
+    file: KssSourceFile
+    index: i32 = 0
+    while index < text.length && index < 96 {
+        file.name[index] = text[index]
+        index = index + 1
+    }
+    file.length = index
+    return file
+}
+
+KssNameAppend :: (destination: KssName, byte: u8) -> KssName {
+    if destination.length < 64 {
+        destination.bytes[destination.length] = byte
+        destination.length = destination.length + 1
+    }
+    return destination
+}
+
+# Skip whitespace and // plus /* */ comments, keeping provenance current.
+
+KssSkipSpace :: (p: KssParser) -> KssParser {
+    while !KssAtEnd(p) {
+        byte: u8 = p.source[p.pos]
+        if KssIsSpace(byte) {
+            p = KssAdvance(p, 1)
+            continue
+        }
+        if byte == 47 && KssPeek(p, 1) == 47 {
+            while !KssAtEnd(p) && p.source[p.pos] != 10 {
+                p = KssAdvance(p, 1)
+            }
+            continue
+        }
+        if byte == 47 && KssPeek(p, 1) == 42 {
+            p = KssAdvance(p, 2)
+            while !KssAtEnd(p) {
+                if p.source[p.pos] == 42 && KssPeek(p, 1) == 47 {
+                    p = KssAdvance(p, 2)
+                    break
+                }
+                p = KssAdvance(p, 1)
+            }
+            continue
+        }
+        break
+    }
+    return p
+}
+
+KssNameResult :: struct {
+    parser: KssParser
+    name: KssName
+    ok: bool
+}
+
+KssExpectResult :: struct {
+    parser: KssParser
+    ok: bool
+}
+
+KssNumberResult :: struct {
+    parser: KssParser
+    value: f32
+    ok: bool
+}
+
+KssColorResult :: struct {
+    parser: KssParser
+    value: u32
+    ok: bool
+}
+
+KssReadName :: (p: KssParser) -> KssNameResult {
+    result: KssNameResult
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) || !KssIdentStart(p.source[p.pos]) {
+        result.parser = p
+        result.ok = false
+        return result
+    }
+    while !KssAtEnd(p) && KssIdentChar(p.source[p.pos]) {
+        result.name = KssNameAppend(result.name, p.source[p.pos])
+        p = KssAdvance(p, 1)
+    }
+    result.parser = p
+    result.ok = result.name.length > 0
+    return result
+}
+
+KssReadSelectorName :: (p: KssParser) -> KssNameResult {
+    result: KssNameResult
+    p = KssSkipSpace(p)
+    if !KssAtEnd(p) && p.source[p.pos] == 42 {
+        result.name = KssNameAppend(result.name, 42)
+        p = KssAdvance(p, 1)
+        result.parser = p
+        result.ok = true
+        return result
+    }
+    if KssAtEnd(p) || !KssIdentStart(p.source[p.pos]) {
+        result.parser = p
+        result.ok = false
+        return result
+    }
+    while !KssAtEnd(p) && KssSelectorIdentChar(p.source[p.pos]) {
+        result.name = KssNameAppend(result.name, p.source[p.pos])
+        p = KssAdvance(p, 1)
+    }
+    result.parser = p
+    result.ok = result.name.length > 0
+    return result
+}
+
+KssExpect :: (p: KssParser, byte: u8) -> KssExpectResult {
+    result: KssExpectResult
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) || p.source[p.pos] != byte {
+        result.parser = p
+        result.ok = false
+        return result
+    }
+    p = KssAdvance(p, 1)
+    result.parser = p
+    result.ok = true
+    return result
+}
+
+# Diagnostics carry the message plus the exact file, line, and column.
+
+KssDiagnosticAppend :: (p: KssParser, text: string) -> KssParser {
+    index: i32 = 0
+    while index < text.length && p.diagnostic_length < 255 {
+        p.diagnostic[p.diagnostic_length] = text[index]
+        p.diagnostic_length = p.diagnostic_length + 1
+        index = index + 1
+    }
+    return p
+}
+
+KssDiagnosticAppendName :: (p: KssParser, name: KssName) -> KssParser {
+    index: i32 = 0
+    while index < name.length && p.diagnostic_length < 255 {
+        p.diagnostic[p.diagnostic_length] = name.bytes[index]
+        p.diagnostic_length = p.diagnostic_length + 1
+        index = index + 1
+    }
+    return p
+}
+
+KssDiagnosticAppendInt :: (p: KssParser, value: i32) -> KssParser {
+    divisor: i32 = 1
+    remaining: i32 = value
+    if remaining < 0 {
+        p = KssDiagnosticAppend(p, "-")
+        remaining = -remaining
+    }
+    while remaining / (divisor * 10) > 0 && divisor < 1000000000 {
+        divisor = divisor * 10
+    }
+    while divisor > 0 {
+        digit: i32 = (remaining / divisor) % 10
+        if p.diagnostic_length < 255 {
+            p.diagnostic[p.diagnostic_length] = (u8)(48 + digit)
+            p.diagnostic_length = p.diagnostic_length + 1
+        }
+        divisor = divisor / 10
+    }
+    return p
+}
+
+KssDiagnosticAt :: (p: KssParser) -> KssParser {
+    p = KssDiagnosticAppend(p, " at ")
+    if p.file >= 0 && p.file < p.file_count && p.files[p.file].length > 0 {
+        index: i32 = 0
+        while index < p.files[p.file].length && p.diagnostic_length < 255 {
+            p.diagnostic[p.diagnostic_length] = p.files[p.file].name[index]
+            p.diagnostic_length = p.diagnostic_length + 1
+            index = index + 1
+        }
+        p = KssDiagnosticAppend(p, ":")
+    }
+    p = KssDiagnosticAppendInt(p, p.line)
+    p = KssDiagnosticAppend(p, ":")
+    p = KssDiagnosticAppendInt(p, p.column)
+    return p
+}
+
+KssFail :: (p: KssParser, message: string) -> KssParser {
+    p.diagnostic_length = 0
+    p = KssDiagnosticAppend(p, message)
+    p = KssDiagnosticAt(p)
+    p.status = (i32)KssStatusError
+    return p
+}
+
+KssFailName :: (p: KssParser, message: string, name: KssName) -> KssParser {
+    p.diagnostic_length = 0
+    p = KssDiagnosticAppend(p, message)
+    p = KssDiagnosticAppendName(p, name)
+    p = KssDiagnosticAt(p)
+    p.status = (i32)KssStatusError
+    return p
+}
+
+KssReadHexColor :: (p: KssParser) -> KssColorResult {
+    result: KssColorResult
+    value: u32 = 0
+    digits: i32 = 0
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) || p.source[p.pos] != 35 {
+        result.parser = p
+        return result
+    }
+    p = KssAdvance(p, 1)
+    while !KssAtEnd(p) && KssIsHexDigit(p.source[p.pos]) {
+        byte: u8 = p.source[p.pos]
+        digit: u32 = 0
+        if byte >= 48 && byte <= 57 {
+            digit = (u32)(byte - 48)
+        } else if byte >= 97 && byte <= 102 {
+            digit = (u32)(byte - 87)
+        } else {
+            digit = (u32)(byte - 55)
+        }
+        value = (value << (u32)4) | digit
+        digits = digits + 1
+        p = KssAdvance(p, 1)
+    }
+    if digits == 6 {
+        value = (value << (u32)8) | (u32)255
+    } else if digits != 8 {
+        result.parser = p
+        return result
+    }
+    result.parser = p
+    result.value = value
+    result.ok = true
+    return result
+}
+
+KssReadNumber :: (p: KssParser) -> KssNumberResult {
+    result: KssNumberResult
+    negative: bool = false
+    whole: u32 = 0
+    fraction: u32 = 0
+    fraction_digits: i32 = 0
+    exponent: i32 = 0
+    exponent_negative: bool = false
+    seen_digits: bool = false
+    power: f64 = 1.0
+    value64: f64 = 0.0
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) {
+        result.parser = p
+        return result
+    }
+    if p.source[p.pos] == 45 {
+        negative = true
+        p = KssAdvance(p, 1)
+    } else if p.source[p.pos] == 43 {
+        p = KssAdvance(p, 1)
+    }
+    while !KssAtEnd(p) && KssIsDigit(p.source[p.pos]) {
+        whole = whole * 10 + (u32)(p.source[p.pos] - 48)
+        seen_digits = true
+        p = KssAdvance(p, 1)
+    }
+    if !KssAtEnd(p) && p.source[p.pos] == 46 && !seen_digits {
+        result.parser = p
+        return result
+    }
+    if !KssAtEnd(p) && p.source[p.pos] == 46 {
+        p = KssAdvance(p, 1)
+        while !KssAtEnd(p) && KssIsDigit(p.source[p.pos]) {
+            if fraction_digits < 9 {
+                fraction = fraction * 10 + (u32)(p.source[p.pos] - 48)
+                fraction_digits = fraction_digits + 1
+            }
+            seen_digits = true
+            p = KssAdvance(p, 1)
+        }
+    }
+    if !seen_digits {
+        result.parser = p
+        return result
+    }
+    if !KssAtEnd(p) && (p.source[p.pos] == 101 || p.source[p.pos] == 69) {
+        p = KssAdvance(p, 1)
+        if !KssAtEnd(p) && p.source[p.pos] == 45 {
+            exponent_negative = true
+            p = KssAdvance(p, 1)
+        } else if !KssAtEnd(p) && p.source[p.pos] == 43 {
+            p = KssAdvance(p, 1)
+        }
+        while !KssAtEnd(p) && KssIsDigit(p.source[p.pos]) {
+            exponent = exponent * 10 + (i32)(p.source[p.pos] - 48)
+            p = KssAdvance(p, 1)
+        }
+    }
+    step: i32 = 0
+    while step < fraction_digits {
+        power = power * 10.0
+        step = step + 1
+    }
+    value64 = (f64)whole + (f64)fraction / power
+    step = 0
+    while step < exponent {
+        if exponent_negative {
+            value64 = value64 / 10.0
+        } else {
+            value64 = value64 * 10.0
+        }
+        step = step + 1
+    }
+    if negative {
+        value64 = -value64
+    }
+    result.parser = p
+    result.value = (f32)value64
+    result.ok = true
+    return result
+}
+
+KssReadDuration :: (p: KssParser) -> KssNumberResult {
+    result: KssNumberResult = KssReadNumber(p)
+    if !result.ok {
+        return result
+    }
+    unit: KssNameResult = KssReadName(result.parser)
+    if unit.ok && KssNameEquals(unit.name, "s") {
+        result.value = result.value * 1000.0
+    } else if unit.ok && !KssNameEquals(unit.name, "ms") {
+        result.ok = false
+    }
+    result.parser = unit.parser
+    return result
+}
+
+# Token table. Later entries shadow earlier ones; overlays update in place so
+# provenance always reflects the winning value. Variant color overrides are
+# applied on add, matching the highest precedence layer.
+
+KssFindToken :: (p: KssParser, name: KssName, kind: i32) -> i32 {
+    index: i32 = p.token_count - 1
+    while index >= 0 {
+        if p.tokens[index].kind == kind && KssNameEqualsName(p.tokens[index].name, name) {
+            return index
+        }
+        index = index - 1
+    }
+    return -1
+}
+
+KssApplyOverride :: (p: KssParser, index: i32) -> KssParser {
+    override: i32 = 0
+    while override < p.override_count {
+        if p.tokens[index].kind == (i32)KssTokenColor &&
+           p.overrides[override].name.length == p.tokens[index].name.length {
+            same: bool = true
+            byte_index: i32 = 0
+            while byte_index < p.tokens[index].name.length {
+                if KssLower((u8)p.overrides[override].name[byte_index]) !=
+                   KssLower(p.tokens[index].name.bytes[byte_index]) {
+                    same = false
+                }
+                byte_index = byte_index + 1
+            }
+            if same {
+                p.tokens[index].color = p.overrides[override].color
+                p.tokens[index].origin = (i32)KssOriginVariant
+                return p
+            }
+        }
+        override = override + 1
+    }
+    return p
+}
+
+KssAddToken :: (p: KssParser, token: KssToken) -> KssParser {
+    if p.token_count >= 128 {
+        return KssFail(p, "style token capacity exceeded")
+    }
+    p.tokens[p.token_count] = token
+    p.token_count = p.token_count + 1
+    p = KssApplyOverride(p, p.token_count - 1)
+    return p
+}
+
+# Update an existing token in place: theme overlays and matching environment
+# overlays win over base and imported values but keep a single entry.
+
+KssOverlayToken :: (p: KssParser, name: KssName, kind: i32, color: u32,
+    number: f32, material: i32, origin: i32) -> KssParser {
+    index: i32 = KssFindToken(p, name, kind)
+    if index < 0 {
+        return KssFailName(p, "unknown overlay token '", name)
+    }
+    if kind == (i32)KssTokenColor {
+        p.tokens[index].color = color
+    } else if kind == (i32)KssTokenMaterial {
+        p.tokens[index].material = material
+    } else {
+        p.tokens[index].number = number
+    }
+    p.tokens[index].origin = origin
+    p.tokens[index].file = p.file
+    p.tokens[index].line = p.line
+    p.tokens[index].column = p.column
+    p = KssApplyOverride(p, index)
+    return p
+}
+
+KssFindColorToken :: (p: KssParser, name: KssName) -> i32 {
+    return KssFindToken(p, name, (i32)KssTokenColor)
+}
+
+KssFindNumberToken :: (p: KssParser, name: KssName) -> i32 {
+    index: i32 = KssFindToken(p, name, (i32)KssTokenDuration)
+    if index >= 0 {
+        return index
+    }
+    return KssFindToken(p, name, (i32)KssTokenLength)
+}
+
+KssFindMaterialToken :: (p: KssParser, name: KssName) -> i32 {
+    return KssFindToken(p, name, (i32)KssTokenMaterial)
+}
+
+KssMaterialValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "lightfield") {
+        return (i32)MaterialLightfield
+    }
+    if KssNameEquals(name, "flat") {
+        return (i32)MaterialFlat
+    }
+    if KssNameEquals(name, "glass") {
+        return (i32)MaterialGlass
+    }
+    return -999999
+}
+
+# Stable class ids match StyleClassId in the C and Go pack registries.
+
+KssClassId :: (name: KssName) -> i32 {
+    hash: u32 = 2166136261
+    if name.length == 0 {
+        return 0
+    }
+    index: i32 = 0
+    while index < name.length {
+        hash = hash ^ (u32)name.bytes[index]
+        hash = hash * (u32)16777619
+        index = index + 1
+    }
+    hash = hash & (u32)2147483647
+    if hash == 0 {
+        return 1
+    }
+    return (i32)hash
+}
+
+KssKindValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "*") || KssNameEquals(name, "Any") {
+        return StyleKindAny()
+    }
+    if KssNameEquals(name, "App") {
+        return StyleKindApp()
+    }
+    if KssNameEquals(name, "Button") {
+        return StyleKindButton()
+    }
+    if KssNameEquals(name, "Text") {
+        return StyleKindText()
+    }
+    if KssNameEquals(name, "TextField") {
+        return StyleKindTextField()
+    }
+    if KssNameEquals(name, "TextArea") {
+        return StyleKindTextArea()
+    }
+    if KssNameEquals(name, "Surface") {
+        return StyleKindSurface()
+    }
+    if KssNameEquals(name, "Dropdown") {
+        return StyleKindDropdown()
+    }
+    if KssNameEquals(name, "Card") {
+        return StyleKindCard()
+    }
+    if KssNameEquals(name, "Slider") {
+        return StyleKindSlider()
+    }
+    if KssNameEquals(name, "SliderThumb") {
+        return StyleKindSliderThumb()
+    }
+    if KssNameEquals(name, "Toggle") {
+        return StyleKindToggle()
+    }
+    if KssNameEquals(name, "ToggleThumb") {
+        return StyleKindToggleThumb()
+    }
+    if KssNameEquals(name, "Scroll") {
+        return StyleKindScroll()
+    }
+    if KssNameEquals(name, "ScrollThumb") {
+        return StyleKindScrollThumb()
+    }
+    if KssNameEquals(name, "Checkbox") {
+        return StyleKindCheckbox()
+    }
+    if KssNameEquals(name, "Radio") {
+        return StyleKindRadio()
+    }
+    if KssNameEquals(name, "Progress") {
+        return StyleKindProgress()
+    }
+    if KssNameEquals(name, "Separator") {
+        return StyleKindSeparator()
+    }
+    if KssNameEquals(name, "NavigationBar") {
+        return StyleKindNavigationBar()
+    }
+    if KssNameEquals(name, "NavigationBarItem") {
+        return StyleKindNavigationBarItem()
+    }
+    if KssNameEquals(name, "Selectable") {
+        return StyleKindSelectable()
+    }
+    if KssNameEquals(name, "Fieldset") {
+        return StyleKindFieldset()
+    }
+    if KssNameEquals(name, "Plot") {
+        return StyleKindPlot()
+    }
+    if KssNameEquals(name, "PlotMark") {
+        return StyleKindPlotMark()
+    }
+    if KssNameEquals(name, "Link") {
+        return StyleKindLink()
+    }
+    if KssNameEquals(name, "TabBar") {
+        return StyleKindTabBar()
+    }
+    if KssNameEquals(name, "Tab") {
+        return StyleKindTab()
+    }
+    if KssNameEquals(name, "TabClose") {
+        return StyleKindTabClose()
+    }
+    if KssNameEquals(name, "SegmentedControl") {
+        return StyleKindSegmentedControl()
+    }
+    if KssNameEquals(name, "Segment") {
+        return StyleKindSegment()
+    }
+    if KssNameEquals(name, "Menu") {
+        return StyleKindMenu()
+    }
+    if KssNameEquals(name, "MenuItem") {
+        return StyleKindMenuItem()
+    }
+    if KssNameEquals(name, "MenuSeparator") {
+        return StyleKindMenuSeparator()
+    }
+    if KssNameEquals(name, "ListBox") {
+        return StyleKindListBox()
+    }
+    if KssNameEquals(name, "ListBoxItem") {
+        return StyleKindListBoxItem()
+    }
+    if KssNameEquals(name, "TreeView") {
+        return StyleKindTreeView()
+    }
+    if KssNameEquals(name, "TreeViewItem") {
+        return StyleKindTreeViewItem()
+    }
+    return KssKindValueMore(name)
+}
+
+KssKindValueMore :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "ListBoxMulti") {
+        return StyleKindListBoxMulti()
+    }
+    if KssNameEquals(name, "ListBoxMultiItem") {
+        return StyleKindListBoxMultiItem()
+    }
+    if KssNameEquals(name, "DragDropTarget") {
+        return StyleKindDragDropTarget()
+    }
+    if KssNameEquals(name, "Spinbox") {
+        return StyleKindSpinbox()
+    }
+    if KssNameEquals(name, "SpinboxValue") {
+        return StyleKindSpinboxValue()
+    }
+    if KssNameEquals(name, "ColorPicker") {
+        return StyleKindColorPicker()
+    }
+    if KssNameEquals(name, "ColorPickerSwatch") {
+        return StyleKindColorPickerSwatch()
+    }
+    if KssNameEquals(name, "PanedView") {
+        return StyleKindPanedView()
+    }
+    if KssNameEquals(name, "Toast") {
+        return StyleKindToast()
+    }
+    if KssNameEquals(name, "Collapsible") {
+        return StyleKindCollapsible()
+    }
+    if KssNameEquals(name, "TitleBar") {
+        return StyleKindTitleBar()
+    }
+    if KssNameEquals(name, "Toolbar") {
+        return StyleKindToolbar()
+    }
+    if KssNameEquals(name, "Modal") {
+        return StyleKindModal()
+    }
+    if KssNameEquals(name, "TableView") {
+        return StyleKindTableView()
+    }
+    if KssNameEquals(name, "Guide") {
+        return StyleKindGuide()
+    }
+    if KssNameEquals(name, "Image") {
+        return StyleKindImage()
+    }
+    if KssNameEquals(name, "Focus") {
+        return StyleKindFocus()
+    }
+    if KssNameEquals(name, "Popup") {
+        return StyleKindPopup()
+    }
+    if KssNameEquals(name, "Canvas") {
+        return StyleKindCanvas()
+    }
+    if KssNameEquals(name, "Drag") {
+        return StyleKindDrag()
+    }
+    if KssNameEquals(name, "DragValue") {
+        return StyleKindDragValue()
+    }
+    if KssNameEquals(name, "Heading") {
+        return StyleKindHeading()
+    }
+    if KssNameEquals(name, "ParagraphText") {
+        return StyleKindParagraphText()
+    }
+    if KssNameEquals(name, "Page") {
+        return StyleKindPage()
+    }
+    if KssNameEquals(name, "Section") {
+        return StyleKindSection()
+    }
+    if KssNameEquals(name, "Reorder") {
+        return StyleKindReorder()
+    }
+    return -999999
+}
+
+KssStateValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "any") {
+        return StyleStateAny()
+    }
+    if KssNameEquals(name, "normal") {
+        return (i32)ButtonStateNormal
+    }
+    if KssNameEquals(name, "hover") {
+        return (i32)ButtonStateHover
+    }
+    if KssNameEquals(name, "pressed") || KssNameEquals(name, "press") {
+        return (i32)ButtonStatePressed
+    }
+    if KssNameEquals(name, "focus") || KssNameEquals(name, "focused") {
+        return (i32)ButtonStateFocus
+    }
+    if KssNameEquals(name, "disabled") {
+        return (i32)ButtonStateDisabled
+    }
+    if KssNameEquals(name, "loading") {
+        return (i32)ButtonStateLoading
+    }
+    if KssNameEquals(name, "selected") {
+        return (i32)ButtonStateSelected
+    }
+    return -999999
+}
+
+KssToneValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "any") {
+        return StyleAny()
+    }
+    if KssNameEquals(name, "Neutral") {
+        return (i32)ButtonToneNeutral
+    }
+    if KssNameEquals(name, "Accent") {
+        return (i32)ButtonToneAccent
+    }
+    if KssNameEquals(name, "Danger") {
+        return (i32)ButtonToneDanger
+    }
+    if KssNameEquals(name, "Success") {
+        return (i32)ButtonToneSuccess
+    }
+    if KssNameEquals(name, "Warning") {
+        return (i32)ButtonToneWarning
+    }
+    return -999999
+}
+
+KssEmphasisValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "any") {
+        return StyleAny()
+    }
+    if KssNameEquals(name, "Filled") {
+        return (i32)ButtonEmphasisFilled
+    }
+    if KssNameEquals(name, "Soft") {
+        return (i32)ButtonEmphasisSoft
+    }
+    if KssNameEquals(name, "Outline") {
+        return (i32)ButtonEmphasisOutline
+    }
+    if KssNameEquals(name, "Ghost") {
+        return (i32)ButtonEmphasisGhost
+    }
+    if KssNameEquals(name, "Link") {
+        return (i32)ButtonEmphasisLink
+    }
+    return -999999
+}
+
+KssSizeValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "any") {
+        return StyleAny()
+    }
+    if KssNameEquals(name, "Medium") {
+        return (i32)ControlSizeMedium
+    }
+    if KssNameEquals(name, "Small") {
+        return (i32)ControlSizeSmall
+    }
+    if KssNameEquals(name, "Large") {
+        return (i32)ControlSizeLarge
+    }
+    return -999999
+}
+
+KssRoleValue :: (name: KssName) -> i32 {
+    if KssNameEquals(name, "Any") {
+        return StyleAny()
+    }
+    if KssNameEquals(name, "Bar") || KssNameEquals(name, "MenuBar") {
+        return 1
+    }
+    if KssNameEquals(name, "Popup") || KssNameEquals(name, "Panel") ||
+        KssNameEquals(name, "MenuPopup") {
+        return 2
+    }
+    if KssNameEquals(name, "Context") || KssNameEquals(name, "MenuContext") {
+        return 3
+    }
+    if KssNameEquals(name, "Track") {
+        return 4
+    }
+    if KssNameEquals(name, "Fill") {
+        return 5
+    }
+    if KssNameEquals(name, "Label") || KssNameEquals(name, "Text") {
+        return 6
+    }
+    if KssNameEquals(name, "Line") {
+        return 7
+    }
+    if KssNameEquals(name, "Bullet") {
+        return 8
+    }
+    if KssNameEquals(name, "Box") {
+        return 9
+    }
+    if KssNameEquals(name, "Mark") || KssNameEquals(name, "Check") {
+        return 10
+    }
+    if KssNameEquals(name, "Ring") {
+        return 11
+    }
+    if KssNameEquals(name, "Handle") {
+        return 12
+    }
+    if KssNameEquals(name, "Header") {
+        return 13
+    }
+    if KssNameEquals(name, "TreeHeader") {
+        return 14
+    }
+    if KssNameEquals(name, "Close") {
+        return 15
+    }
+    if KssNameEquals(name, "Title") {
+        return 16
+    }
+    if KssNameEquals(name, "Action") {
+        return 17
+    }
+    if KssNameEquals(name, "Divider") {
+        return 18
+    }
+    if KssNameEquals(name, "Scrim") {
+        return 19
+    }
+    if KssNameEquals(name, "Message") {
+        return 20
+    }
+    if KssNameEquals(name, "Row") {
+        return 21
+    }
+    if KssNameEquals(name, "Cell") {
+        return 22
+    }
+    if KssNameEquals(name, "Selection") || KssNameEquals(name, "Selected") {
+        return 23
+    }
+    if KssNameEquals(name, "Anchor") {
+        return 24
+    }
+    if KssNameEquals(name, "Placeholder") {
+        return 25
+    }
+    if KssNameEquals(name, "Option") {
+        return 26
+    }
+    if KssNameEquals(name, "Scrollbar") {
+        return 27
+    }
+    if KssNameEquals(name, "BottomBar") {
+        return 28
+    }
+    if KssNameEquals(name, "BottomAction") {
+        return 29
+    }
+    return -999999
+}
+
+# Selector: Kind[attr=value].class:state chains filling a StyleRule selector.
+
+KssRuleResult :: struct {
+    parser: KssParser
+    rule: StyleRule
+}
+
+KssApplyAttr :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
+    result: KssRuleResult
+    attribute: KssNameResult = KssReadName(p)
+    if !attribute.ok {
+        result.parser = KssFail(attribute.parser, "expected selector attribute")
+        return result
+    }
+    equals: KssExpectResult = KssExpect(attribute.parser, 61)
+    if !equals.ok {
+        result.parser = KssFail(equals.parser, "expected '=' in selector attribute")
+        return result
+    }
+    value: KssNameResult = KssReadName(equals.parser)
+    if !value.ok {
+        result.parser = KssFail(value.parser, "expected selector attribute value")
+        return result
+    }
+    close: KssExpectResult = KssExpect(value.parser, 93)
+    if !close.ok {
+        result.parser = KssFail(close.parser, "expected ']'")
+        return result
+    }
+    if KssNameEquals(attribute.name, "tone") {
+        mapped: i32 = KssToneValue(value.name)
+        if mapped == -999999 {
+            result.parser = KssFailName(close.parser, "unknown tone '", value.name)
+            return result
+        }
+        rule.selector.tone = mapped
+    } else if KssNameEquals(attribute.name, "emphasis") {
+        mapped: i32 = KssEmphasisValue(value.name)
+        if mapped == -999999 {
+            result.parser = KssFailName(close.parser, "unknown emphasis '", value.name)
+            return result
+        }
+        rule.selector.emphasis = mapped
+    } else if KssNameEquals(attribute.name, "size") {
+        mapped: i32 = KssSizeValue(value.name)
+        if mapped == -999999 {
+            result.parser = KssFailName(close.parser, "unknown size '", value.name)
+            return result
+        }
+        rule.selector.size = mapped
+    } else if KssNameEquals(attribute.name, "state") {
+        mapped: i32 = KssStateValue(value.name)
+        if mapped == -999999 {
+            result.parser = KssFailName(close.parser, "unknown state '", value.name)
+            return result
+        }
+        rule.selector.state = mapped
+    } else if KssNameEquals(attribute.name, "role") {
+        mapped: i32 = KssRoleValue(value.name)
+        if mapped == -999999 {
+            result.parser = KssFailName(close.parser, "unknown role '", value.name)
+            return result
+        }
+        rule.selector.role = mapped
+    } else if KssNameEquals(attribute.name, "class") {
+        rule.selector.class_name = KssClassId(value.name)
+    } else {
+        result.parser = KssFailName(close.parser, "unknown selector attribute '",
+            attribute.name)
+        return result
+    }
+    result.parser = close.parser
+    result.rule = rule
+    return result
+}
+
+KssParseSelector :: (p: KssParser) -> KssRuleResult {
+    result: KssRuleResult
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector()
+    rule.state = StyleStateAny()
+    kind: KssNameResult = KssReadSelectorName(p)
+    if !kind.ok {
+        result.parser = KssFail(kind.parser, "expected style selector")
+        return result
+    }
+    mapped: i32 = KssKindValue(kind.name)
+    if mapped == -999999 {
+        result.parser = KssFailName(kind.parser, "unknown style selector '",
+            kind.name)
+        return result
+    }
+    rule.selector.kind = mapped
+    p = kind.parser
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            result.parser = KssFail(p, "unterminated style rule")
+            return result
+        }
+        if p.source[p.pos] == 91 {
+            p = KssAdvance(p, 1)
+            attribute: KssRuleResult = KssApplyAttr(p, rule)
+            if attribute.parser.status == (i32)KssStatusError {
+                return attribute
+            }
+            p = attribute.parser
+            rule = attribute.rule
+            continue
+        }
+        if p.source[p.pos] == 46 {
+            p = KssAdvance(p, 1)
+            class_name: KssNameResult = KssReadSelectorName(p)
+            if !class_name.ok {
+                result.parser = KssFail(class_name.parser,
+                    "expected class name after '.'")
+                return result
+            }
+            rule.selector.class_name = KssClassId(class_name.name)
+            p = class_name.parser
+            continue
+        }
+        if p.source[p.pos] == 58 {
+            p = KssAdvance(p, 1)
+            state: KssNameResult = KssReadName(p)
+            if !state.ok {
+                result.parser = KssFail(state.parser, "expected state after ':'")
+                return result
+            }
+            state_mapped: i32 = KssStateValue(state.name)
+            if state_mapped == -999999 {
+                result.parser = KssFailName(state.parser, "unknown state '",
+                    state.name)
+                return result
+            }
+            rule.state = state_mapped
+            p = state.parser
+            continue
+        }
+        running = false
+    }
+    result.parser = p
+    result.rule = rule
+    return result
+}
+
+# Property declarations. Token references resolve immediately against the
+# final token table, so overlays applied earlier win as intended.
+
+KssReadColorValue :: (p: KssParser) -> KssColorResult {
+    hex: KssColorResult = KssReadHexColor(p)
+    if hex.ok {
+        return hex
+    }
+    reference: KssNameResult = KssReadName(hex.parser)
+    if reference.ok {
+        index: i32 = KssFindColorToken(reference.parser, reference.name)
+        if index >= 0 {
+            hex.value = reference.parser.tokens[index].color
+            hex.ok = true
+            hex.parser = reference.parser
+            return hex
+        }
+    }
+    hex.ok = false
+    hex.parser = hex.parser
+    return hex
+}
+
+KssReadNumberValue :: (p: KssParser) -> KssNumberResult {
+    literal: KssNumberResult = KssReadNumber(p)
+    if literal.ok {
+        return literal
+    }
+    reference: KssNameResult = KssReadName(literal.parser)
+    if reference.ok {
+        index: i32 = KssFindNumberToken(reference.parser, reference.name)
+        if index >= 0 {
+            literal.value = reference.parser.tokens[index].number
+            literal.ok = true
+            literal.parser = reference.parser
+            return literal
+        }
+    }
+    literal.ok = false
+    return literal
+}
+
+KssIntResult :: struct {
+    parser: KssParser
+    value: i32
+    ok: bool
+}
+
+KssReadMaterialValue :: (p: KssParser) -> KssIntResult {
+    result: KssIntResult
+    reference: KssNameResult = KssReadName(p)
+    if !reference.ok {
+        result.parser = KssFail(reference.parser, "expected material")
+        return result
+    }
+    mapped: i32 = KssMaterialValue(reference.name)
+    if mapped == -999999 {
+        index: i32 = KssFindMaterialToken(reference.parser, reference.name)
+        if index >= 0 {
+            mapped = reference.parser.tokens[index].material
+        }
+    }
+    if mapped == -999999 {
+        result.parser = KssFailName(reference.parser, "unknown material '",
+            reference.name)
+        return result
+    }
+    result.parser = reference.parser
+    result.value = mapped
+    result.ok = true
+    return result
+}
+
+# One declaration into the rule's StyleData. Field flags come from
+# control_props; every property stores presence explicitly.
+
+KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
+    result: KssRuleResult
+    name: KssNameResult = KssReadName(p)
+    if !name.ok {
+        result.parser = KssFail(name.parser, "expected property name")
+        return result
+    }
+    colon: KssExpectResult = KssExpect(name.parser, 58)
+    if !colon.ok {
+        result.parser = KssFail(colon.parser, "expected ':' after property")
+        return result
+    }
+    p = colon.parser
+
+    if KssNameEquals(name.name, "background") {
+        value: KssColorResult = KssReadColorValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected hex color")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleBackground
+        rule.style.background = value.value
+        p = value.parser
+    } else if KssNameEquals(name.name, "foreground") {
+        value: KssColorResult = KssReadColorValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected hex color")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleForeground
+        rule.style.foreground = value.value
+        p = value.parser
+    } else if KssNameEquals(name.name, "border") {
+        value: KssColorResult = KssReadColorValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected hex color")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleBorder
+        rule.style.border = value.value
+        p = value.parser
+    } else if KssNameEquals(name.name, "focus") {
+        value: KssColorResult = KssReadColorValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected hex color")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleFocus
+        rule.style.focus = value.value
+        p = value.parser
+    } else if KssNameEquals(name.name, "background-end") {
+        value: KssColorResult = KssReadColorValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected hex color")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleBackgroundEnd
+        rule.style.background_end = value.value
+        p = value.parser
+    } else {
+        return KssParseNumberProperty(p, rule, name.name)
+    }
+
+    semicolon: KssExpectResult = KssExpect(p, 59)
+    if !semicolon.ok {
+        result.parser = KssFail(semicolon.parser, "expected ';'")
+        return result
+    }
+    result.parser = semicolon.parser
+    result.rule = rule
+    return result
+}
+
+KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssRuleResult {
+    result: KssRuleResult
+    if KssNameEquals(name, "radius") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleRadius
+        rule.style.radius = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "border-width") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleBorderWidth
+        rule.style.border_width = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "opacity") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleOpacity
+        rule.style.opacity = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "padding-x") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StylePaddingX
+        rule.style.padding_x = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "padding-y") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StylePaddingY
+        rule.style.padding_y = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "gap") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleGap
+        rule.style.gap = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "font-size") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleFontSize
+        rule.style.font_size = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "letter-spacing") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleLetterSpacing
+        rule.style.letter_spacing = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "icon-size") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleIconSize
+        rule.style.icon_size = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "offset-x") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleContentOffset
+        rule.style.offset_x = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "offset-y") {
+        value: KssNumberResult = KssReadNumberValue(p)
+        if !value.ok {
+            result.parser = KssFail(value.parser, "expected number")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleContentOffset
+        rule.style.offset_y = value.value
+        p = value.parser
+    } else if KssNameEquals(name, "material") {
+        value: KssIntResult = KssReadMaterialValue(p)
+        if !value.ok {
+            result.parser = value.parser
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleMaterial
+        rule.style.material = (MaterialKind)value.value
+        p = value.parser
+    } else if KssNameEquals(name, "typeface") {
+        start: i32 = -1
+        length: i32 = 0
+        scan: KssParser = KssSkipSpace(p)
+        if !KssAtEnd(scan) && KssIdentStart(scan.source[scan.pos]) {
+            start = scan.pos
+            while !KssAtEnd(scan) && KssIdentChar(scan.source[scan.pos]) {
+                length = length + 1
+                scan = KssAdvance(scan, 1)
+            }
+        }
+        if start < 0 {
+            result.parser = KssFail(scan, "expected typeface name")
+            return result
+        }
+        rule.style.fields = rule.style.fields | (u32)StyleTypeface
+        rule.style.typeface = StringSlice(scan.source, start, length)
+        p = scan
+    } else {
+        result.parser = KssFailName(p, "unknown property '", name)
+        return result
+    }
+
+    semicolon: KssExpectResult = KssExpect(p, 59)
+    if !semicolon.ok {
+        result.parser = KssFail(semicolon.parser, "expected ';'")
+        return result
+    }
+    result.parser = semicolon.parser
+    result.rule = rule
+    return result
+}
+
+# Rules: selector, declaration block, layer and order bookkeeping.
+
+KssParseRule :: (p: KssParser) -> KssParser {
+    origin: KssOrigin
+    origin.file = p.file
+    origin.line = p.line
+    origin.column = p.column
+    selector: KssRuleResult = KssParseSelector(p)
+    if selector.parser.status == (i32)KssStatusError {
+        return selector.parser
+    }
+    p = selector.parser
+    open: KssExpectResult = KssExpect(p, 123)
+    if !open.ok {
+        return KssFail(open.parser, "expected '{'")
+    }
+    p = open.parser
+    rule: StyleRule = selector.rule
+    rule.layer = p.layer
+    rule.order = p.rule_total
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated style rule")
+        }
+        if p.source[p.pos] == 125 {
+            p = KssAdvance(p, 1)
+            running = false
+            continue
+        }
+        property: KssRuleResult = KssParseProperty(p, rule)
+        if property.parser.status == (i32)KssStatusError {
+            return property.parser
+        }
+        p = property.parser
+        rule = property.rule
+    }
+    p.rule = rule
+    p.origin = origin
+    p.rule_total = p.rule_total + 1
+    p.status = (i32)KssStatusRule
+    return p
+}
+
+# Environment axes are closed and typed. Blocks match the active environment
+# only; values are validated regardless of the match.
+
+KssEnvAxisValid :: (axis: KssName) -> bool {
+    return KssNameEquals(axis, "theme") || KssNameEquals(axis, "contrast") ||
+        KssNameEquals(axis, "density") || KssNameEquals(axis, "pointer") ||
+        KssNameEquals(axis, "platform")
+}
+
+KssEnvValueValid :: (axis: KssName, value: KssName) -> bool {
+    if KssNameEquals(axis, "theme") {
+        return KssNameEquals(value, "light") || KssNameEquals(value, "dark")
+    }
+    if KssNameEquals(axis, "contrast") {
+        return KssNameEquals(value, "normal") || KssNameEquals(value, "high")
+    }
+    if KssNameEquals(axis, "density") {
+        return KssNameEquals(value, "compact") ||
+            KssNameEquals(value, "comfortable") || KssNameEquals(value, "touch")
+    }
+    if KssNameEquals(axis, "pointer") {
+        return KssNameEquals(value, "mouse") || KssNameEquals(value, "touch") ||
+            KssNameEquals(value, "mixed")
+    }
+    return KssNameEquals(value, "desktop") || KssNameEquals(value, "android") ||
+        KssNameEquals(value, "web") || KssNameEquals(value, "plan9") ||
+        KssNameEquals(value, "terminal")
+}
+
+KssEnvMatches :: (p: KssParser, axis: KssName, value: KssName) -> bool {
+    if KssNameEquals(axis, "theme") {
+        if KssNameEquals(value, "light") {
+            return p.env.theme == (i32)KssThemeLight
+        }
+        return p.env.theme == (i32)KssThemeDark
+    }
+    if KssNameEquals(axis, "contrast") {
+        if KssNameEquals(value, "high") {
+            return p.env.contrast == (i32)KssContrastHigh
+        }
+        return p.env.contrast == (i32)KssContrastNormal
+    }
+    if KssNameEquals(axis, "density") {
+        if KssNameEquals(value, "compact") {
+            return p.env.density == (i32)KssDensityCompact
+        }
+        if KssNameEquals(value, "touch") {
+            return p.env.density == (i32)KssDensityTouch
+        }
+        return p.env.density == (i32)KssDensityComfortable
+    }
+    if KssNameEquals(axis, "pointer") {
+        if KssNameEquals(value, "touch") {
+            return p.env.pointer == (i32)KssPointerTouch
+        }
+        if KssNameEquals(value, "mixed") {
+            return p.env.pointer == (i32)KssPointerMixed
+        }
+        return p.env.pointer == (i32)KssPointerMouse
+    }
+    if KssNameEquals(value, "android") {
+        return p.env.platform == (i32)KssPlatformAndroid
+    }
+    if KssNameEquals(value, "web") {
+        return p.env.platform == (i32)KssPlatformWeb
+    }
+    if KssNameEquals(value, "plan9") {
+        return p.env.platform == (i32)KssPlatformPlan9
+    }
+    if KssNameEquals(value, "terminal") {
+        return p.env.platform == (i32)KssPlatformTerminal
+    }
+    return p.env.platform == (i32)KssPlatformDesktop
+}
+
+KssThemeActive :: (p: KssParser, name: KssName) -> bool {
+    if KssNameEquals(name, "light") {
+        return p.env.theme == (i32)KssThemeLight
+    }
+    if KssNameEquals(name, "dark") {
+        return p.env.theme == (i32)KssThemeDark
+    }
+    return false
+}
+
+# Skip the remainder of a block whose '{' is already consumed. Used for
+# non-matching environment overlays.
+
+KssSkipBlockRemainder :: (p: KssParser) -> KssParser {
+    depth: i32 = 1
+    while !KssAtEnd(p) && depth > 0 {
+        if p.source[p.pos] == 123 {
+            depth = depth + 1
+        } else if p.source[p.pos] == 125 {
+            depth = depth - 1
+        }
+        p = KssAdvance(p, 1)
+    }
+    if depth != 0 {
+        return KssFail(p, "unterminated block")
+    }
+    return p
+}
+
+# One 'name: value;' overlay entry. The existing token fixes the value type;
+# unknown names and value/type mismatches are errors.
+
+KssOverlayOutcome :: struct {
+    parser: KssParser
+    matched: bool
+}
+
+KssTryOverlayEntry :: (p: KssParser, origin_kind: i32) -> KssOverlayOutcome {
+    outcome: KssOverlayOutcome
+    name: KssNameResult = KssReadName(p)
+    if !name.ok {
+        outcome.parser = name.parser
+        return outcome
+    }
+    colon: KssExpectResult = KssExpect(name.parser, 58)
+    if !colon.ok {
+        outcome.parser = colon.parser
+        return outcome
+    }
+    token_index: i32 = -1
+    scan: i32 = name.parser.token_count - 1
+    while scan >= 0 {
+        if KssNameEqualsName(name.parser.tokens[scan].name, name.name) {
+            token_index = scan
+        }
+        scan = scan - 1
+    }
+    if token_index < 0 {
+        outcome.parser = colon.parser
+        return outcome
+    }
+    kind: i32 = name.parser.tokens[token_index].kind
+    if kind == (i32)KssTokenColor {
+        value: KssColorResult = KssReadHexColor(colon.parser)
+        if !value.ok {
+            outcome.parser = colon.parser
+            return outcome
+        }
+        semicolon: KssExpectResult = KssExpect(value.parser, 59)
+        if !semicolon.ok {
+            outcome.parser = colon.parser
+            return outcome
+        }
+        p = KssOverlayToken(semicolon.parser, name.name, kind, value.value,
+            0.0, 0, origin_kind)
+        if p.status == (i32)KssStatusError {
+            outcome.parser = p
+            return outcome
+        }
+        outcome.parser = p
+        outcome.matched = true
+        return outcome
+    }
+    if kind == (i32)KssTokenMaterial {
+        value: KssIntResult = KssReadMaterialValue(colon.parser)
+        if !value.ok {
+            outcome.parser = colon.parser
+            return outcome
+        }
+        semicolon: KssExpectResult = KssExpect(value.parser, 59)
+        if !semicolon.ok {
+            outcome.parser = colon.parser
+            return outcome
+        }
+        p = KssOverlayToken(semicolon.parser, name.name, kind, 0, 0.0,
+            value.value, origin_kind)
+        if p.status == (i32)KssStatusError {
+            outcome.parser = p
+            return outcome
+        }
+        outcome.parser = p
+        outcome.matched = true
+        return outcome
+    }
+    value: KssNumberResult = KssReadDuration(colon.parser)
+    if !value.ok {
+        value = KssReadNumber(colon.parser)
+    }
+    if !value.ok {
+        outcome.parser = colon.parser
+        return outcome
+    }
+    semicolon: KssExpectResult = KssExpect(value.parser, 59)
+    if !semicolon.ok {
+        outcome.parser = colon.parser
+        return outcome
+    }
+    p = KssOverlayToken(semicolon.parser, name.name, kind, 0, value.value,
+        0, origin_kind)
+    if p.status == (i32)KssStatusError {
+        outcome.parser = p
+        return outcome
+    }
+    outcome.parser = p
+    outcome.matched = true
+    return outcome
+}
+
+# '@theme name { entry... }': always validated, applied only when active.
+
+KssParseThemeBlock :: (p: KssParser, name: KssName) -> KssParser {
+    if p.theme_count >= 16 {
+        return KssFail(p, "style theme capacity exceeded")
+    }
+    p.themes[p.theme_count] = name
+    p.theme_count = p.theme_count + 1
+    open: KssExpectResult = KssExpect(p, 123)
+    if !open.ok {
+        return KssFail(open.parser, "expected '{' after @theme name")
+    }
+    p = open.parser
+    active: bool = KssThemeActive(p, name)
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated theme block")
+        }
+        if p.source[p.pos] == 125 {
+            p = KssAdvance(p, 1)
+            running = false
+            continue
+        }
+        if !active {
+            return KssSkipBlockRemainder(p)
+        }
+        entry: KssOverlayOutcome = KssTryOverlayEntry(p, (i32)KssOriginTheme)
+        if entry.parser.status == (i32)KssStatusError {
+            return entry.parser
+        }
+        if !entry.matched {
+            return KssFail(entry.parser, "expected theme overlay entry")
+        }
+        p = entry.parser
+    }
+    return p
+}
+
+# '@env axis(value) { rules and token overlays }'. Matching blocks yield each
+# rule to the host and resume inside the block on the next step; non-matching
+# blocks are validated by shape and skipped.
+
+KssParseEnvBlock :: (p: KssParser, axis: KssName, value: KssName) -> KssParser {
+    if !KssEnvValueValid(axis, value) {
+        return KssFailName(p, "unknown environment value '", value)
+    }
+    open: KssExpectResult = KssExpect(p, 123)
+    if !open.ok {
+        return KssFail(open.parser, "expected '{' after @env query")
+    }
+    p = open.parser
+    if !KssEnvMatches(p, axis, value) {
+        return KssSkipBlockRemainder(p)
+    }
+    p.in_env = true
+    return KssContinueEnvBlock(p)
+}
+
+KssContinueEnvBlock :: (p: KssParser) -> KssParser {
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated environment block")
+        }
+        if p.source[p.pos] == 125 {
+            p = KssAdvance(p, 1)
+            p.in_env = false
+            running = false
+            continue
+        }
+        saved: KssParser = p
+        entry: KssOverlayOutcome = KssTryOverlayEntry(p,
+            (i32)KssOriginEnvironment)
+        if entry.parser.status == (i32)KssStatusError {
+            return entry.parser
+        }
+        if entry.matched {
+            p = entry.parser
+            continue
+        }
+        p = KssParseRule(saved)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return p
+    }
+    return p
+}
+
+# 'tokens { group { name: value; ... } ... }'
+
+KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
+    group: KssNameResult = KssReadName(p)
+    if !group.ok {
+        return KssFail(group.parser, "expected token group")
+    }
+    kind: i32 = -1
+    if KssNameEquals(group.name, "color") {
+        kind = (i32)KssTokenColor
+    } else if KssNameEquals(group.name, "length") ||
+        KssNameEquals(group.name, "number") {
+        kind = (i32)KssTokenLength
+    } else if KssNameEquals(group.name, "duration") {
+        kind = (i32)KssTokenDuration
+    } else if KssNameEquals(group.name, "material") {
+        kind = (i32)KssTokenMaterial
+    } else {
+        return KssFailName(group.parser, "unknown token group '", group.name)
+    }
+    open: KssExpectResult = KssExpect(group.parser, 123)
+    if !open.ok {
+        return KssFail(open.parser, "expected '{' after token group")
+    }
+    p = open.parser
+    running: bool = true
+    while running {
+        token: KssToken
+        token.kind = kind
+        token.origin = origin_kind
+        token.file = p.file
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated token group")
+        }
+        if p.source[p.pos] == 125 {
+            p = KssAdvance(p, 1)
+            running = false
+            continue
+        }
+        token.line = p.line
+        token.column = p.column
+        name: KssNameResult = KssReadName(p)
+        if !name.ok {
+            return KssFail(name.parser, "expected token name")
+        }
+        token.name = name.name
+        colon: KssExpectResult = KssExpect(name.parser, 58)
+        if !colon.ok {
+            return KssFail(colon.parser, "expected ':' after token name")
+        }
+        if kind == (i32)KssTokenColor {
+            value: KssColorResult = KssReadHexColor(colon.parser)
+            if !value.ok {
+                return KssFail(value.parser, "expected token color")
+            }
+            token.color = value.value
+            p = value.parser
+        } else if kind == (i32)KssTokenMaterial {
+            value: KssIntResult = KssReadMaterialValue(colon.parser)
+            if !value.ok {
+                return value.parser
+            }
+            token.material = value.value
+            p = value.parser
+        } else if kind == (i32)KssTokenDuration {
+            value: KssNumberResult = KssReadDuration(colon.parser)
+            if !value.ok {
+                return KssFail(value.parser, "expected token duration")
+            }
+            token.number = value.value
+            p = value.parser
+        } else {
+            value: KssNumberResult = KssReadNumber(colon.parser)
+            if !value.ok {
+                return KssFail(value.parser, "expected token number")
+            }
+            token.number = value.value
+            p = value.parser
+        }
+        semicolon: KssExpectResult = KssExpect(p, 59)
+        if !semicolon.ok {
+            return KssFail(semicolon.parser, "expected ';'")
+        }
+        p = KssAddToken(semicolon.parser, token)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+    }
+    return p
+}
+
+KssParseTokensBlock :: (p: KssParser, origin_kind: i32) -> KssParser {
+    open: KssExpectResult = KssExpect(p, 123)
+    if !open.ok {
+        return KssFail(open.parser, "expected '{' after tokens")
+    }
+    p = open.parser
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated tokens block")
+        }
+        if p.source[p.pos] == 125 {
+            p = KssAdvance(p, 1)
+            running = false
+            continue
+        }
+        p = KssParseTokenGroup(p, origin_kind)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+    }
+    return p
+}
+
+# Directives: @pack, @version, @layer, @import, @theme, @env.
+
+KssParseLayerName :: (p: KssParser, name: KssName) -> KssParser {
+    index: i32 = 0
+    while index < p.layer_count {
+        if KssNameEqualsName(p.layer_names[index], name) {
+            p.layer = index
+            return p
+        }
+        index = index + 1
+    }
+    if !p.layer_declared {
+        if KssNameEquals(name, "reset") || KssNameEquals(name, "base") ||
+            KssNameEquals(name, "defaults") {
+            p.layer = 0
+            return p
+        }
+        if KssNameEquals(name, "components") || KssNameEquals(name, "widgets") {
+            p.layer = 1
+            return p
+        }
+        if KssNameEquals(name, "app") {
+            p.layer = 2
+            return p
+        }
+        if KssNameEquals(name, "overrides") {
+            p.layer = 3
+            return p
+        }
+    }
+    return KssFailName(p, "unknown layer '", name)
+}
+
+KssParseLayerDeclaration :: (p: KssParser) -> KssParser {
+    if p.layer_declared {
+        return KssFail(p, "layer order declared twice")
+    }
+    p.layer_count = 0
+    p.layer = 0
+    running: bool = true
+    while running {
+        name: KssNameResult = KssReadName(p)
+        if !name.ok {
+            return KssFail(name.parser, "expected layer name")
+        }
+        if p.layer_count >= 12 {
+            return KssFail(p, "layer capacity exceeded")
+        }
+        p.layer_names[p.layer_count] = name.name
+        p.layer_count = p.layer_count + 1
+        p = name.parser
+        p = KssSkipSpace(p)
+        if !KssAtEnd(p) && p.source[p.pos] == 44 {
+            p = KssAdvance(p, 1)
+            continue
+        }
+        running = false
+    }
+    p.layer_declared = true
+    return p
+}
+
+KssReadImportTarget :: (p: KssParser) -> KssNameResult {
+    result: KssNameResult
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) {
+        result.parser = p
+        return result
+    }
+    if p.source[p.pos] == 60 {
+        p = KssAdvance(p, 1)
+        while !KssAtEnd(p) && p.source[p.pos] != 62 {
+            result.name = KssNameAppend(result.name, p.source[p.pos])
+            p = KssAdvance(p, 1)
+        }
+        if KssAtEnd(p) {
+            result.parser = p
+            return result
+        }
+        p = KssAdvance(p, 1)
+        result.parser = p
+        result.ok = result.name.length > 0
+        return result
+    }
+    if p.source[p.pos] == 34 {
+        p = KssAdvance(p, 1)
+        while !KssAtEnd(p) && p.source[p.pos] != 34 {
+            result.name = KssNameAppend(result.name, p.source[p.pos])
+            p = KssAdvance(p, 1)
+        }
+        if KssAtEnd(p) {
+            result.parser = p
+            return result
+        }
+        p = KssAdvance(p, 1)
+        result.parser = p
+        result.ok = result.name.length > 0
+        return result
+    }
+    result.parser = p
+    return result
+}
+
+KssParseLayerList :: (p: KssParser) -> KssParser {
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) {
+        return KssFail(p, "expected layer name")
+    }
+    first: KssNameResult = KssReadName(p)
+    if !first.ok {
+        return KssFail(first.parser, "expected layer name")
+    }
+    p = first.parser
+    p = KssSkipSpace(p)
+    if !KssAtEnd(p) && p.source[p.pos] == 44 {
+        p = KssAdvance(p, 1)
+        p = KssParseLayerDeclaration(p)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+    } else {
+        p = KssParseLayerName(p, first.name)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+    }
+    semicolon: KssExpectResult = KssExpect(p, 59)
+    if !semicolon.ok {
+        return KssFail(semicolon.parser, "expected ';'")
+    }
+    return semicolon.parser
+}
+
+KssParseDirective :: (p: KssParser) -> KssParser {
+    p = KssAdvance(p, 1)
+    keyword: KssNameResult = KssReadName(p)
+    if !keyword.ok {
+        return KssFail(keyword.parser, "expected directive name")
+    }
+
+    if KssNameEquals(keyword.name, "pack") {
+        value: KssNameResult = KssReadName(keyword.parser)
+        if !value.ok {
+            return KssFail(value.parser, "expected pack id")
+        }
+        p = value.parser
+        if p.import_depth > 0 {
+            p = KssSkipSpace(p)
+            if !KssAtEnd(p) && p.source[p.pos] == 59 {
+                p = KssAdvance(p, 1)
+            }
+            return p
+        }
+        p.pack = value.name
+        semicolon: KssExpectResult = KssExpect(p, 59)
+        if !semicolon.ok {
+            return KssFail(semicolon.parser, "expected ';'")
+        }
+        return semicolon.parser
+    }
+    if KssNameEquals(keyword.name, "version") {
+        value: KssNumberResult = KssReadNumber(keyword.parser)
+        if !value.ok {
+            return KssFail(value.parser, "expected version number")
+        }
+        if (i32)value.value != 1 {
+            return KssFail(value.parser, "unsupported style sheet version")
+        }
+        if p.version_seen {
+            return KssFail(value.parser, "version declared twice")
+        }
+        p.version_seen = true
+        semicolon: KssExpectResult = KssExpect(value.parser, 59)
+        if !semicolon.ok {
+            return KssFail(semicolon.parser, "expected ';'")
+        }
+        return semicolon.parser
+    }
+    if KssNameEquals(keyword.name, "layer") {
+        return KssParseLayerList(keyword.parser)
+    }
+    if KssNameEquals(keyword.name, "import") {
+        target: KssNameResult = KssReadImportTarget(keyword.parser)
+        if !target.ok {
+            return KssFail(target.parser, "expected import target")
+        }
+        p = target.parser
+        semicolon: KssExpectResult = KssExpect(p, 59)
+        if !semicolon.ok {
+            return KssFail(semicolon.parser, "expected ';'")
+        }
+        p = semicolon.parser
+        p.pending_import = target.name
+        p.status = (i32)KssStatusNeedImport
+        return p
+    }
+    if KssNameEquals(keyword.name, "theme") {
+        value: KssNameResult = KssReadName(keyword.parser)
+        if !value.ok {
+            return KssFail(value.parser, "expected theme name")
+        }
+        return KssParseThemeBlock(value.parser, value.name)
+    }
+    if KssNameEquals(keyword.name, "env") {
+        axis: KssNameResult = KssReadName(keyword.parser)
+        if !axis.ok {
+            return KssFail(axis.parser, "expected environment axis")
+        }
+        if !KssEnvAxisValid(axis.name) {
+            return KssFailName(axis.parser, "unknown environment axis '",
+                axis.name)
+        }
+        open: KssExpectResult = KssExpect(axis.parser, 40)
+        if !open.ok {
+            return KssFail(open.parser, "expected '(' after @env axis")
+        }
+        value: KssNameResult = KssReadName(open.parser)
+        if !value.ok {
+            return KssFail(value.parser, "expected environment value")
+        }
+        close: KssExpectResult = KssExpect(value.parser, 41)
+        if !close.ok {
+            return KssFail(close.parser, "expected ')'")
+        }
+        return KssParseEnvBlock(close.parser, axis.name, value.name)
+    }
+    return KssFailName(keyword.parser, "unknown directive '@", keyword.name)
+}
+
+# Import resolution. The host supplies sources; the parser tracks ordering,
+# cycles, and per-file provenance.
+
+KssImportNameOnStack :: (p: KssParser, name: KssName) -> bool {
+    index: i32 = 0
+    while index < p.import_depth {
+        if KssNameEqualsName(p.imports[index].name, name) {
+            return true
+        }
+        index = index + 1
+    }
+    return false
+}
+
+KssProvideImport :: (p: KssParser, source: string, name: string) -> KssParser #export {
+    import_name: KssName = KssMakeName(name)
+    if KssImportNameOnStack(p, import_name) {
+        return KssFailName(p, "@import cycle: ", import_name)
+    }
+    if p.import_depth >= 8 || p.file_count >= 8 {
+        return KssFail(p, "style import depth exceeded")
+    }
+    p.imports[p.import_depth].name = import_name
+    p.imports[p.import_depth].outer_source = p.source
+    p.imports[p.import_depth].outer_pos = p.pos
+    p.imports[p.import_depth].outer_line = p.line
+    p.imports[p.import_depth].outer_column = p.column
+    p.imports[p.import_depth].outer_file = p.file
+    p.import_depth = p.import_depth + 1
+    p.files[p.file_count] = KssCopyFileName(name)
+    p.file = p.file_count
+    p.file_count = p.file_count + 1
+    p.source = source
+    p.pos = 0
+    p.line = 1
+    p.column = 1
+    p.status = (i32)KssStatusContinue
+    return p
+}
+
+KssFailImport :: (p: KssParser) -> KssParser #export {
+    return KssFailName(p, "missing import: ", p.pending_import)
+}
+
+KssPopImport :: (p: KssParser) -> KssParser {
+    if p.import_depth <= 0 {
+        return p
+    }
+    p.import_depth = p.import_depth - 1
+    p.source = p.imports[p.import_depth].outer_source
+    p.pos = p.imports[p.import_depth].outer_pos
+    p.line = p.imports[p.import_depth].outer_line
+    p.column = p.imports[p.import_depth].outer_column
+    p.file = p.imports[p.import_depth].outer_file
+    return p
+}
+
+# One parse step. Statuses: Rule (collect p.rule), NeedImport (feed via
+# KssProvideImport/KssFailImport), Done, Error (read p.diagnostic).
+
+KssStep :: (p: KssParser) -> KssParser #export {
+    if p.status == (i32)KssStatusError || p.status == (i32)KssStatusDone {
+        return p
+    }
+    if p.in_env {
+        p.status = (i32)KssStatusContinue
+        p = KssContinueEnvBlock(p)
+        if p.status == (i32)KssStatusRule ||
+           p.status == (i32)KssStatusError {
+            return p
+        }
+    }
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) {
+        if p.import_depth > 0 {
+            p = KssPopImport(p)
+            p.status = (i32)KssStatusContinue
+            return p
+        }
+        p.status = (i32)KssStatusDone
+        return p
+    }
+    if p.source[p.pos] == 64 {
+        p = KssParseDirective(p)
+        if p.status == (i32)KssStatusNeedImport ||
+           p.status == (i32)KssStatusError ||
+           p.status == (i32)KssStatusRule {
+            return p
+        }
+        p.status = (i32)KssStatusContinue
+        return p
+    }
+    probe: KssNameResult = KssReadName(p)
+    if probe.ok && KssNameEquals(probe.name, "tokens") {
+        return KssParseTokensBlock(probe.parser, (i32)KssOriginPack)
+    }
+    return KssParseRule(p)
+}
+

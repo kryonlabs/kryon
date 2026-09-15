@@ -2270,6 +2270,44 @@ object as the second argument to `parseWebStyleSheet(source, colors)` and instal
 the returned sheet. Built-in packs expose their control colors as tokens;
 applications own mapping their theme palette to those tokens.
 
+### KSS language model
+
+The KSS grammar exists once in `runtime/kss_parser.kry` and is lowered to the
+C, Go, and JavaScript runtimes by the shared transpilers. Hosts feed source
+text and resolve imports; they never reimplement parsing:
+
+- `@pack`, `@version 1`, `tokens { color|length|number|duration|material }`
+  blocks, selectors (`Kind[attr=value].class:state`), and the closed property
+  set behave as before, with diagnostics carrying file, line, and column.
+- `@theme name { token: value; }` overlays existing tokens. The active theme
+  (light, dark, or none) is part of the parse environment; overlay entries are
+  validated even when their theme is inactive.
+- `@env axis(value) { rules and token overlays }` guards rules and token
+  overrides with closed, typed axes: `theme(light|dark)`,
+  `contrast(normal|high)`, `density(compact|comfortable|touch)`,
+  `pointer(mouse|touch|mixed)`, and
+  `platform(desktop|android|web|plan9|terminal)`. Non-matching blocks are
+  skipped; matching blocks contribute rules in document order.
+- `@import <id>;` and `@import "file";` request sources by module id or path.
+  Hosts resolve them (`RegisterStyleModule` feeds `@import <id>;` in C and Go);
+  the parser tracks deterministic depth-first order, import cycles, and
+  per-file provenance.
+- `@layer name;` selects a layer; `@layer a, b, c;` declares a total order for
+  the remainder of the sheet. Built-in aliases (`reset`/`base`/`defaults`,
+  `components`/`widgets`, `app`, `overrides`) keep their indices until a sheet
+  declares its own order.
+- Precedence for token values is imported tokens, then pack tokens, then the
+  active `@theme` overlay, then matching `@env` overrides, then programmatic
+  variant color substitution; scoped rules always resolve against the final
+  table.
+
+C hosts include `runtime/kss_parser.h` and drive `KssBegin`/`KssStep`
+(`KssStatusRule` yields a rule, `KssStatusNeedImport` expects
+`KssProvideImport` or `KssFailImport`); `kss_parse_string` and
+`kss_parse_variant` remain as shims over that loop. Go hosts call
+`ParseStyleSheet`, and `runtime/kss_parser.kry`'s generated module is the
+single grammar implementation for every backend.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

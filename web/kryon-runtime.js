@@ -506,6 +506,11 @@ export function index(base, index) {
   return typeof base === "string" ? utf8StringBytes(base)[index] : base[index];
 }
 
+/* Borrowed substring view shared with generated strict code. */
+export function StringSlice(source, start, length) {
+  const bytes = utf8StringBytes(String(source ?? ""));
+  return stringDecoder.decode(bytes.subarray(start, start + length));
+}
 
 export function struct(type, value) {
   return { type, value };

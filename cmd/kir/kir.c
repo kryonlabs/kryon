@@ -71,15 +71,26 @@ KirArrayElementType(const char *type, char *element, size_t element_size,
     if(type == NULL || type[0] != '[')
         return 0;
     cursor = type + 1;
-    while(*cursor >= '0' && *cursor <= '9') {
-        count = count * 10 + (*cursor - '0');
-        if(count > 1048576)
+    if(*cursor >= '0' && *cursor <= '9') {
+        while(*cursor >= '0' && *cursor <= '9') {
+            count = count * 10 + (*cursor - '0');
+            if(count > 1048576)
+                return 0;
+            cursor++;
+            digits++;
+        }
+        if(digits == 0 || *cursor != ']')
             return 0;
-        cursor++;
-        digits++;
+    } else {
+        /* Symbolic capacity: a named module constant. The bound value is
+         * resolved by the backend emitters; only the element type matters
+         * here. */
+        while(isalnum((unsigned char)*cursor) || *cursor == '_')
+            cursor++;
+        if(*cursor != ']')
+            return 0;
+        count = -1;
     }
-    if(digits == 0 || *cursor != ']')
-        return 0;
     close = cursor;
     length = strlen(close + 1);
     if(length == 0)

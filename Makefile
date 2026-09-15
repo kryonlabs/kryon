@@ -616,12 +616,12 @@ style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_pack_registry_test.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-registry-test
 	$(BUILD_DIR)/style-pack-registry-test
 
-style-picker-test: $(EMBED_ASSETS_C) include/ui_style_picker_props.generated.h $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_picker_props.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c include/ui_style_sheet.h include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
+style-picker-test: $(EMBED_ASSETS_C) include/ui_style_picker_props.generated.h $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_picker_props.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c include/ui_style_sheet.h include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
 	$(BUILD_DIR)/style-picker-test
 
-kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
+kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
 	$(BUILD_DIR)/kss-parser-test
 
 style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded_assets.c include/embedded_assets.h
@@ -629,7 +629,7 @@ style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded
 	$(BUILD_DIR)/style-assets-test
 
 style-builtins-test: $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_builtin_packs.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h include/embedded_assets.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_builtin_packs_test.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-builtins-test
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_builtin_packs_test.c src/ui/style_builtin_packs.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-builtins-test
 	$(BUILD_DIR)/style-builtins-test
 
 STYLE_GATES = style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check
@@ -645,7 +645,7 @@ go-style-builtins-check: scripts/generate-go-style-builtins.py go/kryon/style_bu
 	python3 scripts/generate-go-style-builtins.py --check
 
 style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_pack_source.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
 	$(BUILD_DIR)/style-pack-source-test
 
 app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
@@ -1731,6 +1731,8 @@ icons-import-mingcute: scripts/import-mingcute-icons.py
 
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
+
+$(BUILD_DIR)/ui/kss_parser.o: $(GENERATED_SRC_DIR)/runtime/kss_parser.h
 
 $(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h include/ui_node_registry_props.generated.h $(GENERATED_SRC_DIR)/runtime/widget_kind.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)

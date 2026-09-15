@@ -11,6 +11,11 @@ typedef struct KssParseResult {
     int rule_count;
 } KssParseResult;
 
+/* Importable in-memory KSS sources for '@import <id>;'. */
+bool RegisterStyleModule(const char *id, const char *source);
+void ClearStyleModules(void);
+int GetStyleModuleCount(void);
+
 bool kss_parse_variant(const char *source, const StyleColorToken *colors,
                        int color_count, StyleRule *rules, int rule_capacity,
                        KssParseResult *result, char *diagnostic,
