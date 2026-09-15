@@ -139,58 +139,17 @@ ui_text_codepoint_at(const char *text, int offset)
 }
 
 static int
-ui_text_is_blank(int codepoint)
-{
-    return codepoint == ' ' || codepoint == '\t' || codepoint == 0x3000;
-}
-
-static int
-ui_text_is_separator(int codepoint)
-{
-    switch(codepoint) {
-    case ',': case 0x3001:
-    case '.': case 0x3002:
-    case ';': case 0xff1b:
-    case '(': case 0xff08:
-    case ')': case 0xff09:
-    case '{': case 0xff5b:
-    case '}': case 0xff5d:
-    case '[': case 0x300c:
-    case ']': case 0x300d:
-    case '|': case 0xff5c:
-    case '!': case 0xff01:
-    case '\\': case 0xffe5:
-    case '/': case 0x30fb: case 0xff0f:
-    case '\n': case '\r':
-        return 1;
-    default:
-        return 0;
-    }
-}
-
-static int
 ui_text_is_word_boundary(const char *text, int offset)
 {
     int previous_offset;
     int previous;
     int current;
-    int previous_blank;
-    int previous_separator;
-    int current_blank;
-    int current_separator;
-
     if(text == NULL || offset <= 0)
         return 0;
     previous_offset = ui_utf8_prev_offset(text, offset);
     previous = ui_text_codepoint_at(text, previous_offset);
     current = ui_text_codepoint_at(text, offset);
-    previous_blank = ui_text_is_blank(previous);
-    previous_separator = ui_text_is_separator(previous);
-    current_blank = ui_text_is_blank(current);
-    current_separator = ui_text_is_separator(current);
-    return ((previous_blank || previous_separator) &&
-            !(current_separator || current_blank)) ||
-           (current_separator && !previous_separator);
+    return TextWordBoundaryFor(previous, current);
 }
 
 int

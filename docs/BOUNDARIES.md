@@ -159,8 +159,12 @@ Button frames and materials; they must not add independent dropdown theme paths.
 ## Keyboard and release policy
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
-and text shortcut/edit-command decisions belong to `runtime/*.kry`. Native and
-Go event loops sample keys and apply those decisions; clipboard IO, buffer
+and text shortcut/edit-command decisions belong to `runtime/*.kry`.
+`runtime/text_input.kry` also owns navigation and deletion intent, word-boundary
+classification, and composition phase/range decisions. C and Go use the generated
+word-boundary rule; Go applies generated navigation, deletion and composition
+decisions. Hosts traverse UTF-8 bytes to resolve the requested cursor movement.
+Native and Go event loops sample keys and apply those decisions; clipboard IO, buffer
 storage, focus registration and pointer-event queues remain host services.
 Generated JavaScript keyboard policy is checked by `make keyboard-policy-test`.
 This focused policy proof does not imply complete web block or IME parity; see

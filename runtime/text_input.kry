@@ -1523,3 +1523,34 @@ TextInsertDecisionFor :: (codepoint: i32, encoded_len: i32,
     decision.accept = true
     return decision
 }
+
+TextWordBlank :: (codepoint: i32) -> bool {
+    return codepoint == 32 || codepoint == 9 || codepoint == 0x3000
+}
+
+TextWordSeparator :: (codepoint: i32) -> bool {
+    return codepoint == 44 || codepoint == 0x3001 ||
+        codepoint == 46 || codepoint == 0x3002 ||
+        codepoint == 59 || codepoint == 0xff1b ||
+        codepoint == 40 || codepoint == 0xff08 ||
+        codepoint == 41 || codepoint == 0xff09 ||
+        codepoint == 123 || codepoint == 0xff5b ||
+        codepoint == 125 || codepoint == 0xff5d ||
+        codepoint == 91 || codepoint == 0x300c ||
+        codepoint == 93 || codepoint == 0x300d ||
+        codepoint == 124 || codepoint == 0xff5c ||
+        codepoint == 33 || codepoint == 0xff01 ||
+        codepoint == 92 || codepoint == 0xffe5 ||
+        codepoint == 47 || codepoint == 0x30fb || codepoint == 0xff0f ||
+        codepoint == 10 || codepoint == 13
+}
+
+TextWordBoundaryFor :: (previous: i32, current: i32) -> bool #export {
+    previous_blank := TextWordBlank(previous)
+    previous_separator := TextWordSeparator(previous)
+    current_blank := TextWordBlank(current)
+    current_separator := TextWordSeparator(current)
+    return ((previous_blank || previous_separator) &&
+        !(current_separator || current_blank)) ||
+        (current_separator && !previous_separator)
+}

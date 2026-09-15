@@ -82,18 +82,17 @@ func makeTextCompositionView(text string, selectionStart, selectionEnd int, pree
 	}
 	selectionStart = clampCursor(text, selectionStart)
 	selectionEnd = clampCursor(text, selectionEnd)
-	if selectionStart > selectionEnd {
-		selectionStart, selectionEnd = selectionEnd, selectionStart
-	}
 	preeditCursor := clampCursor(preedit.Text, int(preedit.Cursor))
 	preeditSelectionEnd := clampCursor(preedit.Text, preeditCursor+int(preedit.SelectionLength))
+	view := TextInput_TextCompositionViewRangeFor(int32(selectionStart), int32(selectionEnd),
+		int32(len(preedit.Text)), int32(preeditCursor), int32(preeditSelectionEnd))
 	return textCompositionView{
-		text:             text[:selectionStart] + preedit.Text + text[selectionEnd:],
-		cursor:           selectionStart + preeditCursor,
-		selectionStart:   selectionStart + preeditCursor,
-		selectionEnd:     selectionStart + preeditSelectionEnd,
-		compositionStart: selectionStart,
-		compositionEnd:   selectionStart + len(preedit.Text),
+		text:             text[:view.ReplaceStart] + preedit.Text + text[view.ReplaceEnd:],
+		cursor:           int(view.Cursor),
+		selectionStart:   int(view.SelectionStart),
+		selectionEnd:     int(view.SelectionEnd),
+		compositionStart: int(view.CompositionStart),
+		compositionEnd:   int(view.CompositionEnd),
 	}, true
 }
 
@@ -101,13 +100,14 @@ func (r *runtime) editComposition(id int32, text string, pos int, sel selection,
 	changed := false
 	var event KryTextCompositionEvent
 	for r.PollTextComposition(&event) != 0 {
-		switch event.Phase {
-		case KRY_TEXT_COMPOSITION_START, KRY_TEXT_COMPOSITION_UPDATE:
+		phase := TextInput_TextCompositionPhaseDecisionFor(int32(event.Phase))
+		switch {
+		case phase.StorePreedit:
 			if r.preedit == nil {
 				r.preedit = make(map[int32]KryTextCompositionEvent)
 			}
 			r.preedit[id] = event
-		case KRY_TEXT_COMPOSITION_COMMIT:
+		case phase.Commit:
 			var inserted bool
 			text, pos, inserted = insertText(text, pos, sel, event.Text, limit)
 			if inserted {
@@ -115,7 +115,7 @@ func (r *runtime) editComposition(id int32, text string, pos int, sel selection,
 				sel = collapsedSelection(pos)
 			}
 			delete(r.preedit, id)
-		case KRY_TEXT_COMPOSITION_CANCEL:
+		case phase.Cancel:
 			delete(r.preedit, id)
 		}
 	}

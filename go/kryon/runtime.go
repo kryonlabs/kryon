@@ -6937,7 +6937,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		sel = collapsedSelection(pos)
 	}
 	changed := false
-	for _, event := range r.inputEvents {
+	for len(r.inputEvents) > 0 && r.focusID == focusID {
+		event := r.inputEvents[0]
+		r.inputEvents = r.inputEvents[1:]
 		if event.text != "" {
 			if options.readOnly {
 				continue
@@ -6972,6 +6974,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 					!options.readOnly, !options.readOnly)
 				if decision.SelectAll {
 					sel = selectAllSelection(len(text))
+					pos = sel.Cursor
 				}
 				if decision.CopySelection {
 					start, end := selectionRange(sel)
@@ -6994,101 +6997,68 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 				}
 				continue
 			}
-			switch event.key {
-			case KeyHome:
-				pos, sel = textMoveSelection(sel, pos, 0, textSelection)
-			case KeyEnd:
-				pos, sel = textMoveSelection(sel, pos, len(text), textSelection)
-			case KeyLeft:
-				target := 0
-				if !options.secure {
-					target = textWordLeft(text, pos)
-				}
-				if !textSelection && sel.Anchor != sel.Cursor {
-					target, _ = selectionRange(sel)
-				}
-				pos, sel = textMoveSelection(sel, pos, target, textSelection)
-			case KeyRight:
-				target := len(text)
-				if !options.secure {
-					target = textWordRight(text, pos)
-				}
-				if !textSelection && sel.Anchor != sel.Cursor {
-					_, target = selectionRange(sel)
-				}
-				pos, sel = textMoveSelection(sel, pos, target, textSelection)
-			case KeyBackspace, KeyDelete:
-				if options.readOnly {
-					continue
-				}
-				var deleted bool
-				text, pos, sel, deleted = textDeleteKey(
-					text, pos, sel, event.key, true, options.secure,
-				)
-				changed = changed || deleted
+		}
+		key := TextInput_TextNavigationKeyFor(options.multiline,
+			event.key == KeyLeft, event.key == KeyRight,
+			event.key == KeyHome, event.key == KeyEnd,
+			event.key == KeyUp, event.key == KeyDown,
+			event.key == KeyPageUp, event.key == KeyPageDown)
+		navigation := TextInput_TextNavigationDecisionFor(key, options.multiline,
+			textSelection, event.shortcut, options.secure, sel.Anchor != sel.Cursor)
+		if navigation.Consumed {
+			target := pos
+			switch {
+			case navigation.CollapseSelectionStart:
+				target, _ = selectionRange(sel)
+			case navigation.CollapseSelectionEnd:
+				_, target = selectionRange(sel)
+			case navigation.DocumentEdge < 0:
+				target = 0
+			case navigation.DocumentEdge > 0:
+				target = len(text)
+			case navigation.LineEdge < 0:
+				target = textLineStart(text, pos)
+			case navigation.LineEdge > 0:
+				target = textLineEnd(text, pos)
+			case navigation.WordDirection < 0:
+				target = textWordLeft(text, pos)
+			case navigation.WordDirection > 0:
+				target = textWordRight(text, pos)
+			case navigation.CharDirection < 0:
+				target = prevRune(text, pos)
+			case navigation.CharDirection > 0:
+				target = nextRune(text, pos)
+			case navigation.VerticalDirection != 0:
+				target = textMoveVertical(text, pos, int(navigation.VerticalDirection), 1)
+			case navigation.PageDirection != 0:
+				target = textMoveVertical(text, pos, int(navigation.PageDirection), options.pageRows)
 			}
+			pos, sel = textMoveSelection(sel, pos, target, navigation.ExtendSelection)
 			continue
 		}
 		switch event.key {
 		case KeyTab:
-			r.setFocus(r.nextFocus(focusID, event.shift))
-			sel = collapsedSelection(pos)
-		case KeyLeft:
-			target := prevRune(text, pos)
-			if !textSelection && sel.Anchor != sel.Cursor {
-				target, _ = selectionRange(sel)
+			if !event.shortcut {
+				r.setFocus(r.nextFocus(focusID, event.shift))
+				sel = collapsedSelection(pos)
 			}
-			pos, sel = textMoveSelection(sel, pos, target, textSelection)
-		case KeyRight:
-			target := nextRune(text, pos)
-			if !textSelection && sel.Anchor != sel.Cursor {
-				_, target = selectionRange(sel)
+		case KeyEscape:
+			if TextInput_TextEscapeShouldBlur(r.focusID == focusID, true, true) {
+				r.setFocus(0)
 			}
-			pos, sel = textMoveSelection(sel, pos, target, textSelection)
-		case KeyHome:
-			target := 0
-			if options.multiline {
-				target = textLineStart(text, pos)
+		case KeyBackspace, KeyDelete:
+			if TextInput_TextDeleteShortcutShouldRun(options.readOnly,
+				event.key == KeyBackspace, event.key == KeyDelete, 0) {
+				var deleted bool
+				text, pos, sel, deleted = textDeleteKey(text, pos, sel, event.key,
+					event.shortcut, options.secure)
+				changed = changed || deleted
 			}
-			pos, sel = textMoveSelection(sel, pos, target, textSelection)
-		case KeyEnd:
-			target := len(text)
-			if options.multiline {
-				target = textLineEnd(text, pos)
-			}
-			pos, sel = textMoveSelection(sel, pos, target, textSelection)
-		case KeyUp, KeyDown, KeyPageUp, KeyPageDown:
-			if options.multiline {
-				direction, rows := -1, 1
-				if event.key == KeyDown || event.key == KeyPageDown {
-					direction = 1
-				}
-				if event.key == KeyPageUp || event.key == KeyPageDown {
-					rows = max(1, options.pageRows)
-				}
-				target := textMoveVertical(text, pos, direction, rows)
-				pos, sel = textMoveSelection(sel, pos, target, textSelection)
-			}
-		case KeyBackspace:
-			if options.readOnly {
-				continue
-			}
-			var deleted bool
-			text, pos, sel, deleted = textDeleteKey(
-				text, pos, sel, KeyBackspace, false, options.secure,
-			)
-			changed = changed || deleted
-		case KeyDelete:
-			if options.readOnly {
-				continue
-			}
-			var deleted bool
-			text, pos, sel, deleted = textDeleteKey(
-				text, pos, sel, KeyDelete, false, options.secure,
-			)
-			changed = changed || deleted
 		case KeyEnter:
-			if options.multiline && !options.readOnly {
+			if !TextInput_TextNativeEditShouldRun(options.readOnly, event.shortcut) {
+				continue
+			}
+			if options.multiline {
 				var inserted bool
 				text, pos, inserted = insertText(text, pos, sel, "\n", textLimit(buf, options.maxCodepoints))
 				changed = changed || inserted
@@ -7098,13 +7068,15 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			}
 		}
 	}
-	if len(r.inputEvents) > 0 {
-		r.inputEvents = nil
-	}
 	var composed bool
-	if options.readOnly {
+	composition := TextInput_TextCompositionInputDecisionFor(r.focusID == focusID, options.readOnly)
+	if composition.Cancel {
+		delete(r.preedit, focusID)
+	}
+	if composition.DrainEvents {
 		r.ClearTextComposition()
-	} else {
+	}
+	if composition.AcceptEvents {
 		text, pos, sel, composed = r.editComposition(focusID, text, pos, sel, textLimit(buf, options.maxCodepoints))
 	}
 	changed = changed || composed
@@ -7507,35 +7479,13 @@ func textCodepointAt(text string, pos int) rune {
 	return codepoint
 }
 
-func textIsBlank(codepoint rune) bool {
-	return codepoint == ' ' || codepoint == '\t' || codepoint == '\u3000'
-}
-
-func textIsSeparator(codepoint rune) bool {
-	switch codepoint {
-	case ',', '\u3001', '.', '\u3002', ';', '\uff1b',
-		'(', '\uff08', ')', '\uff09', '{', '\uff5b', '}', '\uff5d',
-		'[', '\u300c', ']', '\u300d', '|', '\uff5c', '!', '\uff01',
-		'\\', '\uffe5', '/', '\u30fb', '\uff0f', '\n', '\r':
-		return true
-	default:
-		return false
-	}
-}
-
 func textIsWordBoundary(text string, pos int) bool {
 	if pos <= 0 {
 		return false
 	}
 	previous := textCodepointAt(text, prevRune(text, pos))
 	current := textCodepointAt(text, pos)
-	previousBlank := textIsBlank(previous)
-	previousSeparator := textIsSeparator(previous)
-	currentBlank := textIsBlank(current)
-	currentSeparator := textIsSeparator(current)
-	return ((previousBlank || previousSeparator) &&
-		!(currentSeparator || currentBlank)) ||
-		(currentSeparator && !previousSeparator)
+	return TextInput_TextWordBoundaryFor(int32(previous), int32(current))
 }
 
 func textWordLeft(text string, pos int) int {
@@ -7563,28 +7513,31 @@ func textDeleteKey(
 	secure bool,
 ) (string, int, selection, bool) {
 	start, end := selectionRange(current)
+	action := TextInput_TextDeleteNone()
+	if key == KeyBackspace {
+		action = TextInput_TextDeleteBackspace()
+	} else if key == KeyDelete {
+		action = TextInput_TextDeleteForward()
+	}
+	decision := TextInput_TextDeleteDecisionFor(action, word, secure, start != end)
+	if !decision.Consumed {
+		return text, pos, current, false
+	}
 	if start == end {
-		switch key {
-		case KeyBackspace:
-			if word && secure {
-				start = 0
-			} else if word {
-				start = textWordLeft(text, pos)
-			} else {
-				start = prevRune(text, pos)
-			}
-			end = pos
-		case KeyDelete:
-			start = pos
-			if word && secure {
-				end = len(text)
-			} else if word {
-				end = textWordRight(text, pos)
-			} else {
-				end = nextRune(text, pos)
-			}
-		default:
-			return text, pos, current, false
+		start, end = pos, pos
+		switch {
+		case decision.DocumentEdge < 0:
+			start = 0
+		case decision.DocumentEdge > 0:
+			end = len(text)
+		case decision.WordDirection < 0:
+			start = textWordLeft(text, pos)
+		case decision.WordDirection > 0:
+			end = textWordRight(text, pos)
+		case decision.CharDirection < 0:
+			start = prevRune(text, pos)
+		case decision.CharDirection > 0:
+			end = nextRune(text, pos)
 		}
 	}
 	if end <= start {

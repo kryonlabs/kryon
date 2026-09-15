@@ -42,3 +42,12 @@ for (let mask = 0; mask < 16; mask++) {
   }
 }
 console.log("generated JavaScript keyboard policy passed");
+
+for (const [previous, current, boundary] of [
+  ["a", ".", true], [".", "b", true], [".", "!", false],
+  ["a", " ", false], ["　", "界", true], ["界", "。", true],
+  ["界", "β", false],
+]) {
+  assert.equal(text.TextInput_TextWordBoundaryFor(null, undefined, undefined,
+    previous.codePointAt(0), current.codePointAt(0)), boundary);
+}

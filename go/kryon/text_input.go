@@ -3650,3 +3650,271 @@ func TextInput_TextInsertDecisionFor(codepoint int32, encoded_len int32, text_le
 	var value_52 TextInsertDecision = decision
 	return value_52
 }
+
+func TextInput_TextWordBlank(codepoint int32) bool {
+	var value_0 int32 = codepoint
+	var value_1 int32 = 32
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = codepoint
+		var value_5 int32 = 9
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = codepoint
+		var value_9 int32 = 12288
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	return value_7
+}
+
+func TextInput_TextWordSeparator(codepoint int32) bool {
+	var value_0 int32 = codepoint
+	var value_1 int32 = 44
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = codepoint
+		var value_5 int32 = 12289
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = codepoint
+		var value_9 int32 = 46
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 int32 = codepoint
+		var value_13 int32 = 12290
+		var value_14 bool = value_12 == value_13
+		value_11 = value_14
+	}
+	var value_15 bool = value_11
+	if !value_15 {
+		var value_16 int32 = codepoint
+		var value_17 int32 = 59
+		var value_18 bool = value_16 == value_17
+		value_15 = value_18
+	}
+	var value_19 bool = value_15
+	if !value_19 {
+		var value_20 int32 = codepoint
+		var value_21 int32 = 65307
+		var value_22 bool = value_20 == value_21
+		value_19 = value_22
+	}
+	var value_23 bool = value_19
+	if !value_23 {
+		var value_24 int32 = codepoint
+		var value_25 int32 = 40
+		var value_26 bool = value_24 == value_25
+		value_23 = value_26
+	}
+	var value_27 bool = value_23
+	if !value_27 {
+		var value_28 int32 = codepoint
+		var value_29 int32 = 65288
+		var value_30 bool = value_28 == value_29
+		value_27 = value_30
+	}
+	var value_31 bool = value_27
+	if !value_31 {
+		var value_32 int32 = codepoint
+		var value_33 int32 = 41
+		var value_34 bool = value_32 == value_33
+		value_31 = value_34
+	}
+	var value_35 bool = value_31
+	if !value_35 {
+		var value_36 int32 = codepoint
+		var value_37 int32 = 65289
+		var value_38 bool = value_36 == value_37
+		value_35 = value_38
+	}
+	var value_39 bool = value_35
+	if !value_39 {
+		var value_40 int32 = codepoint
+		var value_41 int32 = 123
+		var value_42 bool = value_40 == value_41
+		value_39 = value_42
+	}
+	var value_43 bool = value_39
+	if !value_43 {
+		var value_44 int32 = codepoint
+		var value_45 int32 = 65371
+		var value_46 bool = value_44 == value_45
+		value_43 = value_46
+	}
+	var value_47 bool = value_43
+	if !value_47 {
+		var value_48 int32 = codepoint
+		var value_49 int32 = 125
+		var value_50 bool = value_48 == value_49
+		value_47 = value_50
+	}
+	var value_51 bool = value_47
+	if !value_51 {
+		var value_52 int32 = codepoint
+		var value_53 int32 = 65373
+		var value_54 bool = value_52 == value_53
+		value_51 = value_54
+	}
+	var value_55 bool = value_51
+	if !value_55 {
+		var value_56 int32 = codepoint
+		var value_57 int32 = 91
+		var value_58 bool = value_56 == value_57
+		value_55 = value_58
+	}
+	var value_59 bool = value_55
+	if !value_59 {
+		var value_60 int32 = codepoint
+		var value_61 int32 = 12300
+		var value_62 bool = value_60 == value_61
+		value_59 = value_62
+	}
+	var value_63 bool = value_59
+	if !value_63 {
+		var value_64 int32 = codepoint
+		var value_65 int32 = 93
+		var value_66 bool = value_64 == value_65
+		value_63 = value_66
+	}
+	var value_67 bool = value_63
+	if !value_67 {
+		var value_68 int32 = codepoint
+		var value_69 int32 = 12301
+		var value_70 bool = value_68 == value_69
+		value_67 = value_70
+	}
+	var value_71 bool = value_67
+	if !value_71 {
+		var value_72 int32 = codepoint
+		var value_73 int32 = 124
+		var value_74 bool = value_72 == value_73
+		value_71 = value_74
+	}
+	var value_75 bool = value_71
+	if !value_75 {
+		var value_76 int32 = codepoint
+		var value_77 int32 = 65372
+		var value_78 bool = value_76 == value_77
+		value_75 = value_78
+	}
+	var value_79 bool = value_75
+	if !value_79 {
+		var value_80 int32 = codepoint
+		var value_81 int32 = 33
+		var value_82 bool = value_80 == value_81
+		value_79 = value_82
+	}
+	var value_83 bool = value_79
+	if !value_83 {
+		var value_84 int32 = codepoint
+		var value_85 int32 = 65281
+		var value_86 bool = value_84 == value_85
+		value_83 = value_86
+	}
+	var value_87 bool = value_83
+	if !value_87 {
+		var value_88 int32 = codepoint
+		var value_89 int32 = 92
+		var value_90 bool = value_88 == value_89
+		value_87 = value_90
+	}
+	var value_91 bool = value_87
+	if !value_91 {
+		var value_92 int32 = codepoint
+		var value_93 int32 = 65509
+		var value_94 bool = value_92 == value_93
+		value_91 = value_94
+	}
+	var value_95 bool = value_91
+	if !value_95 {
+		var value_96 int32 = codepoint
+		var value_97 int32 = 47
+		var value_98 bool = value_96 == value_97
+		value_95 = value_98
+	}
+	var value_99 bool = value_95
+	if !value_99 {
+		var value_100 int32 = codepoint
+		var value_101 int32 = 12539
+		var value_102 bool = value_100 == value_101
+		value_99 = value_102
+	}
+	var value_103 bool = value_99
+	if !value_103 {
+		var value_104 int32 = codepoint
+		var value_105 int32 = 65295
+		var value_106 bool = value_104 == value_105
+		value_103 = value_106
+	}
+	var value_107 bool = value_103
+	if !value_107 {
+		var value_108 int32 = codepoint
+		var value_109 int32 = 10
+		var value_110 bool = value_108 == value_109
+		value_107 = value_110
+	}
+	var value_111 bool = value_107
+	if !value_111 {
+		var value_112 int32 = codepoint
+		var value_113 int32 = 13
+		var value_114 bool = value_112 == value_113
+		value_111 = value_114
+	}
+	return value_111
+}
+
+func TextInput_TextWordBoundaryFor(previous int32, current int32) bool {
+	var value_0 int32 = previous
+	var value_1 bool = TextInput_TextWordBlank(value_0)
+	var previous_blank bool = value_1
+	var value_2 int32 = previous
+	var value_3 bool = TextInput_TextWordSeparator(value_2)
+	var previous_separator bool = value_3
+	var value_4 int32 = current
+	var value_5 bool = TextInput_TextWordBlank(value_4)
+	var current_blank bool = value_5
+	var value_6 int32 = current
+	var value_7 bool = TextInput_TextWordSeparator(value_6)
+	var current_separator bool = value_7
+	var value_8 bool = previous_blank
+	var value_9 bool = value_8
+	if !value_9 {
+		var value_10 bool = previous_separator
+		value_9 = value_10
+	}
+	var value_11 bool = value_9
+	if value_11 {
+		var value_12 bool = current_separator
+		var value_13 bool = value_12
+		if !value_13 {
+			var value_14 bool = current_blank
+			value_13 = value_14
+		}
+		var value_15 bool = !value_13
+		value_11 = value_15
+	}
+	var value_16 bool = value_11
+	if !value_16 {
+		var value_17 bool = current_separator
+		var value_18 bool = value_17
+		if value_18 {
+			var value_19 bool = previous_separator
+			var value_20 bool = !value_19
+			value_18 = value_20
+		}
+		value_16 = value_18
+	}
+	return value_16
+}

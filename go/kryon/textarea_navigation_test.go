@@ -132,3 +132,79 @@ func TestTextFieldWordNavigationAndDeletion(t *testing.T) {
 		t.Fatalf("secure Ctrl+Backspace = %q cursor %d, want empty at 0", got, cursor)
 	}
 }
+
+func TestTextFieldQueuedInputAfterTab(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	first, second := make([]byte, 32), make([]byte, 32)
+	firstCursor, secondCursor := int32(0), int32(0)
+	draw := func() {
+		r.BeginFrame()
+		r.TextField(TextFieldProps{Text: first, CursorPosition: &firstCursor, FocusID: 32201})
+		r.TextField(TextFieldProps{Text: second, CursorPosition: &secondCursor, FocusID: 32202})
+		r.EndFrame()
+	}
+	r.SetFocus(32201)
+	draw()
+	r.QueueText("α")
+	r.QueueKey(KeyTab)
+	r.QueueText("β")
+	draw()
+	if CString(first) != "α" || CString(second) != "β" || r.Focus() != 32202 {
+		t.Fatalf("Tab input routing: first=%q second=%q focus=%d", CString(first), CString(second), r.Focus())
+	}
+}
+
+func TestTextFieldSelectAllThenExtendUnicode(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	text := make([]byte, 32)
+	copy(text, "a界β")
+	cursor := int32(1)
+	r.SetFocus(32203)
+	r.QueueShortcut(KeyA)
+	r.QueueShiftKey(KeyLeft)
+	r.BeginFrame()
+	r.TextField(TextFieldProps{Text: text, CursorPosition: &cursor, FocusID: 32203})
+	r.EndFrame()
+	if cursor != int32(len("a界")) || r.selection[32203].Anchor != 0 {
+		t.Fatalf("selection after Ctrl+A, Shift+Left: cursor=%d selection=%+v", cursor, r.selection[32203])
+	}
+}
+
+func TestTextFieldReadOnlyEnterDoesNotCommit(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	text := make([]byte, 16)
+	copy(text, "base")
+	cursor := int32(4)
+	commit := false
+	r.SetFocus(32204)
+	r.QueueKey(KeyEnter)
+	r.BeginFrame()
+	r.TextField(TextFieldProps{Text: text, CursorPosition: &cursor, FocusID: 32204,
+		ReadOnly: true, CommitPressed: &commit})
+	r.EndFrame()
+	if commit || CString(text) != "base" {
+		t.Fatalf("read-only Enter: commit=%v text=%q", commit, CString(text))
+	}
+}
+
+func TestTextFieldEscapeCancelsComposition(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	text := make([]byte, 32)
+	copy(text, "base")
+	cursor := int32(4)
+	draw := func() {
+		r.BeginFrame()
+		r.TextField(TextFieldProps{Text: text, CursorPosition: &cursor, FocusID: 32205})
+		r.EndFrame()
+	}
+	r.SetFocus(32205)
+	r.SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, "ni", 2, 0)
+	draw()
+	r.QueueKey(KeyEscape)
+	r.QueueText("blocked")
+	r.SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT, "你", 3, 0)
+	draw()
+	if r.Focus() != 0 || CString(text) != "base" || len(r.preedit) != 0 {
+		t.Fatalf("Escape did not cancel editing: focus=%d text=%q preedit=%v", r.Focus(), CString(text), r.preedit)
+	}
+}

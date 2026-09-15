@@ -863,5 +863,12 @@ main(void)
     assert(repeat.count == 0);
     assert(repeat.next_repeat_at == 10.05);
 
+    assert(TextWordBoundaryFor('a', '.') == 1);
+    assert(TextWordBoundaryFor('.', 'b') == 1);
+    assert(TextWordBoundaryFor('.', '!') == 0);
+    assert(TextWordBoundaryFor('a', ' ') == 0);
+    assert(TextWordBoundaryFor(0x3000, 0x754c) == 1);
+    assert(TextWordBoundaryFor(0x754c, 0x3002) == 1);
+    assert(TextWordBoundaryFor(0x754c, 0x03b2) == 0);
     return 0;
 }
