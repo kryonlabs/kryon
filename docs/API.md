@@ -793,6 +793,11 @@ const IconAsset *GetIconAssetByName(const char *name);
 Use the canonical `Icon(...)` widget to draw icons in UI code.
 
 Kryon's checked-in `icons/` directory is the finished spritesheet package.
+Each manifest icon has a permanent numeric `id`; append new IDs after the
+highest existing ID and never renumber existing icons. The embedding script
+validates IDs and preserves them in `IconType`, including name lookup order.
+The profile catalog includes cat, sea turtle, and crescent moon artwork with
+separate stable sync IDs. Applications choose which catalog entries to offer.
 Regular UI entries—including workbook controls—use the rounded MingCute Core
 family and are packed into the monochrome `icons/ui.png`. The manifest
 records each upstream SVG mapping and revision. There are no prebuilt flat-color

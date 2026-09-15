@@ -35,7 +35,10 @@ static const IconType ui_profile_image_icons[] = {
     ICON_PFP_TREE1,
     ICON_PFP_TREE2,
     ICON_PFP_TREE3,
-    ICON_PFP_TREE4
+    ICON_PFP_TREE4,
+    ICON_PFP_CAT,
+    ICON_PFP_TURTLE,
+    ICON_PFP_MOON
 };
 
 static const int ui_profile_image_sync_ids[] = {
@@ -63,7 +66,10 @@ static const int ui_profile_image_sync_ids[] = {
     SYNC_PROFILE_ICON_TREE1,
     SYNC_PROFILE_ICON_TREE2,
     SYNC_PROFILE_ICON_TREE3,
-    SYNC_PROFILE_ICON_TREE4
+    SYNC_PROFILE_ICON_TREE4,
+    SYNC_PROFILE_ICON_CAT,
+    SYNC_PROFILE_ICON_TURTLE,
+    SYNC_PROFILE_ICON_MOON
 };
 
 static const char *ui_profile_image_names[] = {
@@ -91,7 +97,10 @@ static const char *ui_profile_image_names[] = {
     "pfp_tree1",
     "pfp_tree2",
     "pfp_tree3",
-    "pfp_tree4"
+    "pfp_tree4",
+    "pfp_cat",
+    "pfp_turtle",
+    "pfp_moon"
 };
 
 int

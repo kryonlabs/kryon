@@ -16,7 +16,8 @@
       "x": 0,
       "y": 0,
       "width": 64,
-      "height": 64
+      "height": 64,
+      "id": 36
     },
     {
       "index": 1,
@@ -24,7 +25,8 @@
       "x": 64,
       "y": 0,
       "width": 64,
-      "height": 64
+      "height": 64,
+      "id": 37
     },
     {
       "index": 2,
@@ -32,7 +34,8 @@
       "x": 128,
       "y": 0,
       "width": 64,
-      "height": 64
+      "height": 64,
+      "id": 38
     }
   ],
   "style": "full-color",
