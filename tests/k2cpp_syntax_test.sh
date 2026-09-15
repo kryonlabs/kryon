@@ -343,9 +343,9 @@ mkdir -p "$work/composed"
 sh "$root/tests/check_clean_generated_output.sh" "$work/composed"
 popup_cpp="$work/composed/tests/parity/composed_popup.cpp"
 grep -Fq 'PopupScope(([&]() { PopupProps record_value_0{};' "$popup_cpp"
-grep -Fq 'context_open = 0;' "$popup_cpp"
-grep -Fq 'popup_content_open = 0;' "$popup_cpp"
-grep -Fq 'popup_open = 0;' "$popup_cpp"
+grep -Fq 'context_open = false;' "$popup_cpp"
+grep -Fq 'popup_content_open = false;' "$popup_cpp"
+grep -Fq 'popup_open = false;' "$popup_cpp"
 grep -Fq 'PopupEndScope();' "$popup_cpp"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
     -I"$generated_include" -I"$internal_include" -I"$work/composed" \
@@ -457,5 +457,15 @@ int main() { return check(); }
 EOF
 c++ -std=c++17 -I"$root/include" -I"$generated_include" -I"$internal_include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
 "$work/records/check"
+
+# Runtime-only modules must get array indexing support without kryon.h.
+cat > "$work/src/indexing.kry" <<'EOF'
+IndexValue :: (index: int) -> int {
+    values: [2] int = {4, 8}
+    return values[index]
+}
+EOF
+"$k2cpp" --no-main --root "$work" -o "$work/indexing" "$work/src/indexing.kry"
+c++ -fsyntax-only -std=c++17 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$work/indexing" "$work/indexing/src/indexing.cpp"
 
 echo "k2cpp ok"

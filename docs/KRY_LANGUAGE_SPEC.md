@@ -278,7 +278,8 @@ Rules:
   `tests/spec/spec_test.sh` executes the shared contract through Go and
   JavaScript.
 - C/C++ output lowers `record.field[index]` and `text[index]` through the
-  `KRYON_INDEX` macro. Builds that define `KRYON_BOUNDS_CHECK` trap on
+  `KRYON_INDEX` macro. Generated headers include `kry_bounds.h` directly,
+  so indexing works without importing the UI umbrella header. Builds that define `KRYON_BOUNDS_CHECK` trap on
   out-of-range indexes with a diagnostic naming the array; release builds
   compile to plain indexing. Go and JS always bounds-check natively.
 

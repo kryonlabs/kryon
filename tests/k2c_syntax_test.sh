@@ -412,4 +412,14 @@ EOF
 
 "$k2c" --root "$work" -o "$work/out" "$work/src/tolerant_enums.kry" "$work/src/tolerant_panel.kry"
 
+# Runtime-only modules must get array indexing support without kryon.h.
+cat > "$work/src/indexing.kry" <<'EOF'
+IndexValue :: (index: int) -> int {
+    values: [2] int = {4, 8}
+    return values[index]
+}
+EOF
+"$k2c" --no-main --root "$work" -o "$work/indexing" "$work/src/indexing.kry"
+cc -fsyntax-only -std=c99 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$work/indexing" "$work/indexing/src/indexing.c"
+
 echo "k2c ok"
