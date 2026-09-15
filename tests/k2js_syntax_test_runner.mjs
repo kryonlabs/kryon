@@ -2063,21 +2063,6 @@ function fakeDocument() {
         child.parentNode = this;
         this.children.push(child);
       },
-      insertBefore(child, reference) {
-        if (child === reference)
-          return child;
-        if (reference == null) {
-          this.appendChild(child);
-          return child;
-        }
-        if (!this.children.includes(reference))
-          throw new Error("Reference is not a child");
-        if (child.parentNode)
-          child.parentNode.removeChild(child);
-        this.children.splice(this.children.indexOf(reference), 0, child);
-        child.parentNode = this;
-        return child;
-      },
       removeChild(child) {
         const index = this.children.indexOf(child);
         if (index >= 0)
