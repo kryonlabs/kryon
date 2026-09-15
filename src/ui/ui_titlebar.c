@@ -57,6 +57,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
 
     button.bounds = bounds;
     button.icon = return_icon;
+    button.icon_type = return_icon.id != 0 ? ICON_NONE : ICON_LEFT;
     button.icon_size = metrics.leading_icon_size;
     button.icon_padding = metrics.leading_padding;
     Style normal = ui_unpack_style(ui_control_style_frame_role_kind(

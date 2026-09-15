@@ -632,8 +632,12 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
         offset = *scroll_offset;
     }
     PushInputClip(bounds);
-    if(IsWindowReady())
-        BeginClip((int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height);
+    if(IsWindowReady()) {
+        Rectangle screen = ScrollScreenBoundsFor(bounds, g_ui_camera.offset,
+                                                 g_ui_camera.zoom);
+        BeginClip((int)screen.x, (int)screen.y,
+                  (int)screen.width, (int)screen.height);
+    }
     g_scroll_scope_depth++;
     content.y -= offset;
     content.height = content_height > 0 ? (float)content_height : 0;

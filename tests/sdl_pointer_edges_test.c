@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "kry_input.h"
+#include "../src/ui/ui_internal.h"
 #include <SDL.h>
 #include <assert.h>
 #include <stdio.h>
@@ -70,6 +71,21 @@ main(void)
     frame();
     assert(!IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
     assert(!IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
+
+    BeginInterfaceFrame(220, 220, 1.0f);
+    Camera2D camera = GetDefaultCamera();
+    camera.offset = (Vector2){100, 40};
+    camera.zoom = 1.5f;
+    SetFrameCamera(camera);
+    (void)ScrollScope((Rectangle){10, 10, 100, 60}, 200, NULL);
+    Rectangle clip = GetClipEffective((Rectangle){0, 0, 640, 480});
+    assert((int)clip.x == 115);
+    assert((int)clip.y == 55);
+    assert((int)clip.width == 150);
+    assert((int)clip.height == 90);
+    assert(InputCapturesClick((Vector2){20, 90}));
+    ScrollEndScope();
+    EndInterfaceFrame();
     CloseWindow();
     puts("SDL pointer edge tests passed");
     return 0;

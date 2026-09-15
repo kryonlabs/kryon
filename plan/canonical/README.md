@@ -110,3 +110,13 @@ Native SDL applications must compile the shared input frontend with
 actual downstream executable with quick taps, not only the core test binary.
 Run `make sdl-pointer-test` for the SDL edge regression. Dropdown pack metrics
 also keep their disclosure arrows inside the trigger bounds.
+
+The Inbe virtual-desktop check also found two independent integration issues:
+its inner draw callback ended the frame a second time, consuming input before
+its next update; and native scroll paint clipping ignored the camera offset.
+Inbe now lets its host own the frame boundary. Scroll scopes transform their
+paint clip to screen coordinates, with offset/zoom regression coverage.
+TitleBar leading actions supply the standard back arrow when no texture is
+provided, matching the native and Go surfaces without an app wrapper.
+The isolated Inbe checks cover 5 ms taps, all four inert style previews,
+onboarding, phone bottom navigation, list editing, and persisted state.

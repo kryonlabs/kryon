@@ -4923,7 +4923,14 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	r.record(styleFrameRectOp(layout.Bounds, Rectangle{}, surfaceFrame))
 	clicked := int32(0)
 	if props.HasLeadingAction {
+		iconType := int32(IconLeft)
+		if props.LeadingIcon.ID != 0 {
+			iconType = int32(IconNone)
+		}
 		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{
+			Icon:      props.LeadingIcon,
+			IconType:  iconType,
+			IconOnly:  true,
 			Bounds:    layout.LeadingBounds,
 			Disabled:  r.contentDisabled(),
 			ClassName: props.ClassName,

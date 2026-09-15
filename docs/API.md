@@ -2243,3 +2243,6 @@ Input capture scopes use `PushInputCapture(bounds, allow_inside)` and
 preview, push a capture with `allow_inside = 0`, disable keyboard input with
 `SetKeyboardInputEnabled(0)`, draw controls without focus IDs, then pop and
 restore the previous keyboard setting. Outer captures remain in effect.
+
+A `TitleBar` with `has_leading_action` uses a back arrow when no explicit
+leading texture is supplied. Applications need no private back-icon texture.

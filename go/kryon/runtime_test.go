@@ -349,6 +349,9 @@ TitleBar[role=Action] { background: button; foreground: button-ink; border: rule
 			}
 		case op.Kind == FrameOpButton:
 			sawLeading = true
+			if op.Button.Props.IconType != int32(IconLeft) {
+				t.Fatalf("title bar default back icon = %d", op.Button.Props.IconType)
+			}
 			style := unpackStyle(op.Button.Appearance.Value)
 			if style.Background != (Color{R: 0x28, G: 0x38, B: 0x4c, A: 0xff}) || style.Foreground != (Color{R: 0xdb, G: 0xe8, B: 0xff, A: 0xff}) || style.Border != (Color{R: 0x50, G: 0x61, B: 0x72, A: 0xff}) {
 				t.Fatalf("title bar leading style op = %+v", op)
