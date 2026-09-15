@@ -1173,7 +1173,22 @@ export function webSourceRef(sourcePath: string, sourceLine: number, sourceColum
 export function webSourceRangeRef(sourcePath: string, sourceLine: number,
   sourceColumn: number, sourceEndLine: number, sourceEndColumn: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
-export function parseWebStyleSheet(source: string): WebStyleSheet;
+export interface WebStyleEnvironment {
+  theme?: string;
+  contrast?: string;
+  density?: string;
+  pointer?: string;
+  platform?: string;
+}
+
+export function defaultWebStyleEnvironment(): Required<WebStyleEnvironment>;
+export function registerWebStyleModule(id: string, source: string): boolean;
+export function clearWebStyleModules(): void;
+export function parseWebStyleSheet(
+  source: string,
+  colors?: Record<string, string>,
+  environment?: WebStyleEnvironment
+): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
 export function traceWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): WebStyleTrace;
 export function webStyleSelectorToCSS(selector: WebStyleSelector | Partial<WebStyleSelector>): string;

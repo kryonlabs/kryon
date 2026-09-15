@@ -4,6 +4,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "kry_bounds.h"
 
 #ifndef KIR_STRING_VALUE_DEFINED
 #define KIR_STRING_VALUE_DEFINED

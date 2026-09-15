@@ -2298,9 +2298,9 @@ text and resolve imports; they never reimplement parsing:
   `platform(desktop|android|web|plan9|terminal)`. Non-matching blocks are
   skipped; matching blocks contribute rules in document order.
 - `@import <id>;` and `@import "file";` request sources by module id or path.
-  Hosts resolve them (`RegisterStyleModule` feeds `@import <id>;` in C and Go);
-  the parser tracks deterministic depth-first order, import cycles, and
-  per-file provenance.
+  Hosts resolve them (`RegisterStyleModule` feeds `@import <id>;` in C and Go;
+  `registerWebStyleModule` on the web); the parser tracks deterministic
+  depth-first order, import cycles, and per-file provenance.
 - `@layer name;` selects a layer; `@layer a, b, c;` declares a total order for
   the remainder of the sheet. Built-in aliases (`reset`/`base`/`defaults`,
   `components`/`widgets`, `app`, `overrides`) keep their indices until a sheet
@@ -2316,6 +2316,13 @@ C hosts include `runtime/kss_parser.h` and drive `KssBegin`/`KssStep`
 `kss_parse_variant` remain as shims over that loop. Go hosts call
 `ParseStyleSheet`, and `runtime/kss_parser.kry`'s generated module is the
 single grammar implementation for every backend.
+
+The web runtime is included: `parseWebStyleSheet(source, colors, environment)`
+runs the generated module in declarative mode, where selectors, declaration
+values, `@keyframes`, and `@media`/`@supports`/`@container` groups are lexed
+as spans by the shared grammar and only interpreted as CSS by the web layer.
+Theme overlays, environment blocks, imports, layers, and provenance behave
+identically to the native runtimes; the hand-written web KSS parser is gone.
 
 ### Style field presence and structural metrics
 

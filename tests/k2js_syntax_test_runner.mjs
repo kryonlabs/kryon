@@ -1017,11 +1017,11 @@ for (const legacyAlias of [
     /unknown KSS property/);
 }
 assert.throws(() => runtime.parseWebStyleSheet("@theme dark; Button { background: #111111; }"),
-  /unknown KSS directive @theme/);
+  /expected '\{' after @theme name/);
 assert.throws(() => runtime.parseWebStyleSheet("@layer legacy; Button { background: #111111; }"),
-  /unknown KSS layer legacy/);
+  /unknown layer 'legacy/);
 assert.throws(() => runtime.parseWebStyleSheet("tokens { colors { face: #111111; } } Button { background: #111111; }"),
-  /unknown KSS token group colors/);
+  /unknown token group 'colors/);
 runtime.setWebStyleSheets(rt, webStyleSheet);
 assert.equal(generated.Valid_ApplyPreviewMode(rt, state, host, 1), 2);
 assert.equal(runtime.GetTheme().mode, 1);

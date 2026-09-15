@@ -115,6 +115,32 @@ type KssOrigin struct {
 	Column int32
 }
 
+type KssRuleSpan struct {
+	File           int32
+	SelectorStart  int32
+	SelectorLength int32
+	BodyStart      int32
+	BodyLength     int32
+	Group          int32
+}
+
+type KssDeclaration struct {
+	Rule        int32
+	NameStart   int32
+	NameLength  int32
+	ValueStart  int32
+	ValueLength int32
+}
+
+type KssForeignBlock struct {
+	Name        KssName
+	QueryStart  int32
+	QueryLength int32
+	BodyStart   int32
+	BodyLength  int32
+	File        int32
+}
+
 type KssImportFrame struct {
 	Name        KssName
 	OuterSource string
@@ -150,8 +176,15 @@ type KssParser struct {
 	Status           int32
 	Rule             StyleRule
 	Origin           KssOrigin
+	RuleSpan         KssRuleSpan
 	PendingImport    KssName
 	InEnv            bool
+	ResumeGroup      int32
+	Declarative      bool
+	Declarations     [1024]KssDeclaration
+	DeclarationCount int32
+	Foreign          [16]KssForeignBlock
+	ForeignCount     int32
 	Diagnostic       [256]uint8
 	DiagnosticLength int32
 	RuleTotal        int32
@@ -273,10 +306,30 @@ func KssParser_KssBegin(source string, path string, env KssEnvironment) KssParse
 	p.Status = value_30
 	var value_31 int32 = 0
 	p.RuleTotal = value_31
-	var value_32 int32 = 0
-	p.DiagnosticLength = value_32
-	var value_33 KssParser = p
-	return value_33
+	var value_32 bool = false
+	p.Declarative = value_32
+	var value_33 int32 = 0
+	p.DeclarationCount = value_33
+	var value_34 int32 = 0
+	p.ForeignCount = value_34
+	var value_35 int32 = -1
+	p.ResumeGroup = value_35
+	var value_36 int32 = 0
+	p.DiagnosticLength = value_36
+	var value_37 KssParser = p
+	return value_37
+}
+
+func KssParser_KssBeginDeclarative(source string, path string, env KssEnvironment) KssParser {
+	var value_0 string = source
+	var value_1 string = path
+	var value_2 KssEnvironment = env
+	var value_3 KssParser = KssParser_KssBegin(value_0, value_1, value_2)
+	var p KssParser = value_3
+	var value_4 bool = true
+	p.Declarative = value_4
+	var value_5 KssParser = p
+	return value_5
 }
 
 func KssParser_KssAddColorOverride(p KssParser, name string, color uint32) KssParser {
@@ -1115,10 +1168,10 @@ func KssParser_KssDiagnosticAppendName(p KssParser, name KssName) KssParser {
 }
 
 func KssParser_KssDiagnosticAppendInt(p KssParser, value int32) KssParser {
-	var value_0 int32 = 1
-	var divisor int32 = value_0
-	var value_1 int32 = value
-	var remaining int32 = value_1
+	var value_0 int32 = value
+	var remaining int32 = value_0
+	var value_1 int32 = 1
+	var digits int32 = value_1
 	var value_2 int32 = remaining
 	var value_3 int32 = 0
 	var value_4 bool = value_2 < value_3
@@ -1131,64 +1184,98 @@ func KssParser_KssDiagnosticAppendInt(p KssParser, value int32) KssParser {
 		var value_9 int32 = int32(number_runtime_bits(uint64(0), uint64(value_8), 32, true, 2))
 		remaining = value_9
 	}
+	var value_10 int32 = 10
+	var probe int32 = value_10
 	for {
-		var value_10 int32 = remaining
-		var value_11 int32 = divisor
-		var value_12 int32 = 10
-		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 3))
-		var value_14 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, true, 4))
-		var value_15 int32 = 0
-		var value_16 bool = value_14 > value_15
-		var value_17 bool = value_16
-		if value_17 {
-			var value_18 int32 = divisor
-			var value_19 int32 = 1000000000
-			var value_20 bool = value_18 < value_19
-			value_17 = value_20
+		var value_11 int32 = probe
+		var value_12 int32 = remaining
+		var value_13 bool = value_11 <= value_12
+		var value_14 bool = value_13
+		if value_14 {
+			var value_15 int32 = digits
+			var value_16 int32 = 10
+			var value_17 bool = value_15 < value_16
+			value_14 = value_17
 		}
-		if !value_17 {
+		if !value_14 {
 			break
 		}
-		var value_21 int32 = divisor
-		var value_22 int32 = 10
-		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 3))
-		divisor = value_23
+		var value_18 int32 = probe
+		var value_19 int32 = 10
+		var value_20 int32 = int32(number_runtime_bits(uint64(value_18), uint64(value_19), 32, true, 3))
+		probe = value_20
+		var value_21 int32 = digits
+		var value_22 int32 = 1
+		var value_23 int32 = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
+		digits = value_23
 	}
 	for {
-		var value_24 int32 = divisor
+		var value_24 int32 = digits
 		var value_25 int32 = 0
 		var value_26 bool = value_24 > value_25
 		if !value_26 {
 			break
 		}
-		var value_27 int32 = remaining
-		var value_28 int32 = divisor
-		var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 4))
-		var value_30 int32 = 10
-		var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 5))
-		var digit int32 = value_31
-		var value_32 int32 = p.DiagnosticLength
-		var value_33 int32 = 255
-		var value_34 bool = value_32 < value_33
-		if value_34 {
-			var value_35 int32 = p.DiagnosticLength
-			var value_36 int32 = 48
-			var value_37 int32 = digit
-			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 1))
-			var value_39 uint8 = uint8(number_runtime_bits(uint64(value_38), uint64(0), 8, false, 0))
-			p.Diagnostic[value_35] = value_39
-			var value_40 int32 = p.DiagnosticLength
-			var value_41 int32 = 1
-			var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 1))
-			p.DiagnosticLength = value_42
+		var value_27 int32 = 1
+		var power int32 = value_27
+		var value_28 int32 = 1
+		var step int32 = value_28
+		for {
+			var value_29 int32 = step
+			var value_30 int32 = digits
+			var value_31 bool = value_29 < value_30
+			if !value_31 {
+				break
+			}
+			var value_32 int32 = power
+			var value_33 int32 = 10
+			var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 3))
+			power = value_34
+			var value_35 int32 = step
+			var value_36 int32 = 1
+			var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 1))
+			step = value_37
 		}
-		var value_43 int32 = divisor
-		var value_44 int32 = 10
-		var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 4))
-		divisor = value_45
+		var value_38 int32 = 0
+		var digit int32 = value_38
+		for {
+			var value_39 int32 = remaining
+			var value_40 int32 = power
+			var value_41 bool = value_39 >= value_40
+			if !value_41 {
+				break
+			}
+			var value_42 int32 = remaining
+			var value_43 int32 = power
+			var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 2))
+			remaining = value_44
+			var value_45 int32 = digit
+			var value_46 int32 = 1
+			var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 1))
+			digit = value_47
+		}
+		var value_48 int32 = p.DiagnosticLength
+		var value_49 int32 = 255
+		var value_50 bool = value_48 < value_49
+		if value_50 {
+			var value_51 int32 = p.DiagnosticLength
+			var value_52 int32 = 48
+			var value_53 int32 = digit
+			var value_54 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_53), 32, true, 1))
+			var value_55 uint8 = uint8(number_runtime_bits(uint64(value_54), uint64(0), 8, false, 0))
+			p.Diagnostic[value_51] = value_55
+			var value_56 int32 = p.DiagnosticLength
+			var value_57 int32 = 1
+			var value_58 int32 = int32(number_runtime_bits(uint64(value_56), uint64(value_57), 32, true, 1))
+			p.DiagnosticLength = value_58
+		}
+		var value_59 int32 = digits
+		var value_60 int32 = 1
+		var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
+		digits = value_61
 	}
-	var value_46 KssParser = p
-	return value_46
+	var value_62 KssParser = p
+	return value_62
 }
 
 func KssParser_KssDiagnosticAt(p KssParser) KssParser {
@@ -1780,50 +1867,299 @@ func KssParser_KssReadNumber(p KssParser) KssNumberResult {
 }
 
 func KssParser_KssReadDuration(p KssParser) KssNumberResult {
-	var value_0 KssParser = p
-	var value_1 KssNumberResult = KssParser_KssReadNumber(value_0)
-	var result KssNumberResult = value_1
-	var value_2 bool = result.Ok
-	var value_3 bool = !value_2
-	if value_3 {
-		var value_4 KssNumberResult = result
-		return value_4
+	var result KssNumberResult = KssNumberResult{}
+	var value_0 bool = false
+	var negative bool = value_0
+	var value_1 uint32 = 0
+	var whole uint32 = value_1
+	var value_2 uint32 = 0
+	var fraction uint32 = value_2
+	var value_3 int32 = 0
+	var fraction_digits int32 = value_3
+	var value_4 bool = false
+	var seen_digits bool = value_4
+	var value_5 bool = false
+	var seconds bool = value_5
+	var value_6 KssParser = p
+	var value_7 KssParser = KssParser_KssSkipSpace(value_6)
+	p = value_7
+	var value_8 KssParser = p
+	var value_9 bool = KssParser_KssAtEnd(value_8)
+	if value_9 {
+		var value_10 KssParser = p
+		result.Parser = value_10
+		var value_11 KssNumberResult = result
+		return value_11
 	}
-	var value_5 KssParser = result.Parser
-	var value_6 KssNameResult = KssParser_KssReadName(value_5)
-	var unit KssNameResult = value_6
-	var value_7 bool = unit.Ok
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 KssName = unit.Name
-		var value_10 string = "s"
-		var value_11 bool = KssParser_KssNameEquals(value_9, value_10)
-		value_8 = value_11
-	}
-	if value_8 {
-		var value_12 float32 = result.Value
-		var value_13 float32 = 1000.0
-		var value_14 float32 = value_12 * value_13
-		result.Value = value_14
+	var value_12 int32 = p.Pos
+	var value_13 uint8 = p.Source[value_12]
+	var value_14 uint8 = 45
+	var value_15 bool = value_13 == value_14
+	if value_15 {
+		var value_16 bool = true
+		negative = value_16
+		var value_17 KssParser = p
+		var value_18 int32 = 1
+		var value_19 KssParser = KssParser_KssAdvance(value_17, value_18)
+		p = value_19
 	} else {
-		var value_15 bool = unit.Ok
-		var value_16 bool = value_15
-		if value_16 {
-			var value_17 KssName = unit.Name
-			var value_18 string = "ms"
-			var value_19 bool = KssParser_KssNameEquals(value_17, value_18)
-			var value_20 bool = !value_19
-			value_16 = value_20
-		}
-		if value_16 {
-			var value_21 bool = false
-			result.Ok = value_21
+		var value_20 int32 = p.Pos
+		var value_21 uint8 = p.Source[value_20]
+		var value_22 uint8 = 43
+		var value_23 bool = value_21 == value_22
+		if value_23 {
+			var value_24 KssParser = p
+			var value_25 int32 = 1
+			var value_26 KssParser = KssParser_KssAdvance(value_24, value_25)
+			p = value_26
 		}
 	}
-	var value_22 KssParser = unit.Parser
-	result.Parser = value_22
-	var value_23 KssNumberResult = result
-	return value_23
+	for {
+		var value_27 KssParser = p
+		var value_28 bool = KssParser_KssAtEnd(value_27)
+		var value_29 bool = !value_28
+		var value_30 bool = value_29
+		if value_30 {
+			var value_31 int32 = p.Pos
+			var value_32 uint8 = p.Source[value_31]
+			var value_33 bool = KssParser_KssIsDigit(value_32)
+			value_30 = value_33
+		}
+		if !value_30 {
+			break
+		}
+		var value_34 uint32 = whole
+		var value_35 uint32 = 10
+		var value_36 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, false, 3))
+		var value_37 int32 = p.Pos
+		var value_38 uint8 = p.Source[value_37]
+		var value_39 uint8 = 48
+		var value_40 uint8 = uint8(number_runtime_bits(uint64(value_38), uint64(value_39), 8, false, 2))
+		var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
+		var value_42 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(value_41), 32, false, 1))
+		whole = value_42
+		var value_43 bool = true
+		seen_digits = value_43
+		var value_44 KssParser = p
+		var value_45 int32 = 1
+		var value_46 KssParser = KssParser_KssAdvance(value_44, value_45)
+		p = value_46
+	}
+	var value_47 KssParser = p
+	var value_48 bool = KssParser_KssAtEnd(value_47)
+	var value_49 bool = !value_48
+	var value_50 bool = value_49
+	if value_50 {
+		var value_51 int32 = p.Pos
+		var value_52 uint8 = p.Source[value_51]
+		var value_53 uint8 = 46
+		var value_54 bool = value_52 == value_53
+		value_50 = value_54
+	}
+	if value_50 {
+		var value_55 KssParser = p
+		var value_56 int32 = 1
+		var value_57 KssParser = KssParser_KssAdvance(value_55, value_56)
+		p = value_57
+		for {
+			var value_58 KssParser = p
+			var value_59 bool = KssParser_KssAtEnd(value_58)
+			var value_60 bool = !value_59
+			var value_61 bool = value_60
+			if value_61 {
+				var value_62 int32 = p.Pos
+				var value_63 uint8 = p.Source[value_62]
+				var value_64 bool = KssParser_KssIsDigit(value_63)
+				value_61 = value_64
+			}
+			if !value_61 {
+				break
+			}
+			var value_65 int32 = fraction_digits
+			var value_66 int32 = 9
+			var value_67 bool = value_65 < value_66
+			if value_67 {
+				var value_68 uint32 = fraction
+				var value_69 uint32 = 10
+				var value_70 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(value_69), 32, false, 3))
+				var value_71 int32 = p.Pos
+				var value_72 uint8 = p.Source[value_71]
+				var value_73 uint8 = 48
+				var value_74 uint8 = uint8(number_runtime_bits(uint64(value_72), uint64(value_73), 8, false, 2))
+				var value_75 uint32 = uint32(number_runtime_bits(uint64(value_74), uint64(0), 32, false, 0))
+				var value_76 uint32 = uint32(number_runtime_bits(uint64(value_70), uint64(value_75), 32, false, 1))
+				fraction = value_76
+				var value_77 int32 = fraction_digits
+				var value_78 int32 = 1
+				var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 1))
+				fraction_digits = value_79
+			}
+			var value_80 bool = true
+			seen_digits = value_80
+			var value_81 KssParser = p
+			var value_82 int32 = 1
+			var value_83 KssParser = KssParser_KssAdvance(value_81, value_82)
+			p = value_83
+		}
+	}
+	var value_84 bool = seen_digits
+	var value_85 bool = !value_84
+	if value_85 {
+		var value_86 KssParser = p
+		result.Parser = value_86
+		var value_87 KssNumberResult = result
+		return value_87
+	}
+	var value_88 KssParser = p
+	var value_89 KssNameResult = KssParser_KssReadName(value_88)
+	var unit KssNameResult = value_89
+	var value_90 bool = unit.Ok
+	var value_91 bool = value_90
+	if value_91 {
+		var value_92 KssName = unit.Name
+		var value_93 string = "ms"
+		var value_94 bool = KssParser_KssNameEquals(value_92, value_93)
+		value_91 = value_94
+	}
+	if value_91 {
+		var value_95 bool = false
+		seconds = value_95
+	} else {
+		var value_96 bool = unit.Ok
+		var value_97 bool = value_96
+		if value_97 {
+			var value_98 KssName = unit.Name
+			var value_99 string = "s"
+			var value_100 bool = KssParser_KssNameEquals(value_98, value_99)
+			value_97 = value_100
+		}
+		if value_97 {
+			var value_101 bool = true
+			seconds = value_101
+		} else {
+			var value_102 bool = unit.Ok
+			if value_102 {
+				var value_103 KssParser = unit.Parser
+				result.Parser = value_103
+				var value_104 KssNumberResult = result
+				return value_104
+			} else {
+				var value_105 KssParser = p
+				result.Parser = value_105
+				var value_106 KssNumberResult = result
+				return value_106
+			}
+		}
+	}
+	var value_107 float64 = 0.0
+	var value float64 = value_107
+	var value_108 uint32 = whole
+	var scaled uint32 = value_108
+	var value_109 int32 = fraction_digits
+	var shift int32 = value_109
+	for {
+		var value_110 int32 = shift
+		var value_111 int32 = 0
+		var value_112 bool = value_110 > value_111
+		if !value_112 {
+			break
+		}
+		var value_113 uint32 = scaled
+		var value_114 uint32 = 10
+		var value_115 uint32 = uint32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, false, 3))
+		scaled = value_115
+		var value_116 int32 = shift
+		var value_117 int32 = 1
+		var value_118 int32 = int32(number_runtime_bits(uint64(value_116), uint64(value_117), 32, true, 2))
+		shift = value_118
+	}
+	var value_119 uint32 = scaled
+	var value_120 uint32 = fraction
+	var value_121 uint32 = uint32(number_runtime_bits(uint64(value_119), uint64(value_120), 32, false, 1))
+	scaled = value_121
+	var value_122 bool = seconds
+	if value_122 {
+		var value_123 uint32 = scaled
+		var value_124 float64 = float64(value_123)
+		value = value_124
+		var value_125 int32 = 0
+		var step int32 = value_125
+		for {
+			var value_126 int32 = step
+			var value_127 int32 = 3
+			var value_128 int32 = fraction_digits
+			var value_129 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_128), 32, true, 2))
+			var value_130 bool = value_126 < value_129
+			if !value_130 {
+				break
+			}
+			var value_131 float64 = value
+			var value_132 float64 = 10.0
+			var value_133 float64 = value_131 * value_132
+			value = value_133
+			var value_134 int32 = step
+			var value_135 int32 = 1
+			var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 1))
+			step = value_136
+		}
+		var value_137 int32 = 0
+		step = value_137
+		for {
+			var value_138 int32 = step
+			var value_139 int32 = fraction_digits
+			var value_140 int32 = 3
+			var value_141 int32 = int32(number_runtime_bits(uint64(value_139), uint64(value_140), 32, true, 2))
+			var value_142 bool = value_138 < value_141
+			if !value_142 {
+				break
+			}
+			var value_143 float64 = value
+			var value_144 float64 = 10.0
+			var value_145 float64 = value_143 / value_144
+			value = value_145
+			var value_146 int32 = step
+			var value_147 int32 = 1
+			var value_148 int32 = int32(number_runtime_bits(uint64(value_146), uint64(value_147), 32, true, 1))
+			step = value_148
+		}
+	} else {
+		var value_149 uint32 = scaled
+		var value_150 float64 = float64(value_149)
+		value = value_150
+		var value_151 int32 = 0
+		var step int32 = value_151
+		for {
+			var value_152 int32 = step
+			var value_153 int32 = fraction_digits
+			var value_154 bool = value_152 < value_153
+			if !value_154 {
+				break
+			}
+			var value_155 float64 = value
+			var value_156 float64 = 10.0
+			var value_157 float64 = value_155 / value_156
+			value = value_157
+			var value_158 int32 = step
+			var value_159 int32 = 1
+			var value_160 int32 = int32(number_runtime_bits(uint64(value_158), uint64(value_159), 32, true, 1))
+			step = value_160
+		}
+	}
+	var value_161 bool = negative
+	if value_161 {
+		var value_162 float64 = value
+		var value_163 float64 = -value_162
+		value = value_163
+	}
+	var value_164 KssParser = unit.Parser
+	result.Parser = value_164
+	var value_165 float64 = value
+	var value_166 float32 = float32(value_165)
+	result.Value = value_166
+	var value_167 bool = true
+	result.Ok = value_167
+	var value_168 KssNumberResult = result
+	return value_168
 }
 
 func KssParser_KssFindToken(p KssParser, name KssName, kind int32) int32 {
@@ -3479,6 +3815,469 @@ func KssParser_KssParseSelector(p KssParser) KssRuleResult {
 	return value_97
 }
 
+func KssParser_KssCaptureDeclaration(p KssParser, rule StyleRule, name KssName, name_start int32, name_end int32) KssRuleResult {
+	var result KssRuleResult = KssRuleResult{}
+	var value_0 int32 = p.DeclarationCount
+	var value_1 int32 = 1024
+	var value_2 bool = value_0 >= value_1
+	if value_2 {
+		var value_3 KssParser = p
+		var value_4 string = "declaration capacity exceeded"
+		var value_5 KssParser = KssParser_KssFail(value_3, value_4)
+		result.Parser = value_5
+		var value_6 KssRuleResult = result
+		return value_6
+	}
+	var entry KssDeclaration = KssDeclaration{}
+	var value_7 int32 = p.RuleTotal
+	entry.Rule = value_7
+	var value_8 int32 = name_start
+	entry.NameStart = value_8
+	var value_9 int32 = name_end
+	var value_10 int32 = name_start
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 2))
+	entry.NameLength = value_11
+	var value_12 KssParser = p
+	var value_13 KssParser = KssParser_KssSkipSpace(value_12)
+	p = value_13
+	var value_14 int32 = p.Pos
+	entry.ValueStart = value_14
+	var value_15 bool = true
+	var running bool = value_15
+	for {
+		var value_16 bool = running
+		if !value_16 {
+			break
+		}
+		var value_17 KssParser = p
+		var value_18 bool = KssParser_KssAtEnd(value_17)
+		if value_18 {
+			var value_19 KssParser = p
+			var value_20 string = "expected ';'"
+			var value_21 KssParser = KssParser_KssFail(value_19, value_20)
+			result.Parser = value_21
+			var value_22 KssRuleResult = result
+			return value_22
+		}
+		var value_23 int32 = p.Pos
+		var value_24 uint8 = p.Source[value_23]
+		var value_25 uint8 = 59
+		var value_26 bool = value_24 == value_25
+		var value_27 bool = value_26
+		if !value_27 {
+			var value_28 int32 = p.Pos
+			var value_29 uint8 = p.Source[value_28]
+			var value_30 uint8 = 125
+			var value_31 bool = value_29 == value_30
+			value_27 = value_31
+		}
+		if value_27 {
+			var value_32 bool = false
+			running = value_32
+			continue
+		}
+		var value_33 KssParser = p
+		var value_34 int32 = 1
+		var value_35 KssParser = KssParser_KssAdvance(value_33, value_34)
+		p = value_35
+	}
+	var value_36 int32 = p.Pos
+	var value_37 int32 = entry.ValueStart
+	var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
+	entry.ValueLength = value_38
+	for {
+		var value_39 int32 = entry.ValueLength
+		var value_40 int32 = 0
+		var value_41 bool = value_39 > value_40
+		if !value_41 {
+			break
+		}
+		var value_42 int32 = entry.ValueStart
+		var value_43 int32 = entry.ValueLength
+		var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 1))
+		var value_45 int32 = 1
+		var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 2))
+		var value_47 uint8 = p.Source[value_46]
+		var byte uint8 = value_47
+		var value_48 uint8 = byte
+		var value_49 bool = KssParser_KssIsSpace(value_48)
+		var value_50 bool = !value_49
+		if value_50 {
+			break
+		}
+		var value_51 int32 = entry.ValueLength
+		var value_52 int32 = 1
+		var value_53 int32 = int32(number_runtime_bits(uint64(value_51), uint64(value_52), 32, true, 2))
+		entry.ValueLength = value_53
+	}
+	var value_54 int32 = entry.ValueLength
+	var value_55 int32 = 0
+	var value_56 bool = value_54 <= value_55
+	if value_56 {
+		var value_57 KssParser = p
+		var value_58 string = "expected declaration value after '"
+		var value_59 KssName = name
+		var value_60 KssParser = KssParser_KssFailName(value_57, value_58, value_59)
+		result.Parser = value_60
+		var value_61 KssRuleResult = result
+		return value_61
+	}
+	var value_62 int32 = p.Pos
+	var value_63 uint8 = p.Source[value_62]
+	var value_64 uint8 = 59
+	var value_65 bool = value_63 == value_64
+	if value_65 {
+		var value_66 KssParser = p
+		var value_67 int32 = 1
+		var value_68 KssParser = KssParser_KssAdvance(value_66, value_67)
+		p = value_68
+	}
+	var value_69 int32 = p.DeclarationCount
+	var value_70 KssDeclaration = entry
+	p.Declarations[value_69] = value_70
+	var value_71 int32 = p.DeclarationCount
+	var value_72 int32 = 1
+	var value_73 int32 = int32(number_runtime_bits(uint64(value_71), uint64(value_72), 32, true, 1))
+	p.DeclarationCount = value_73
+	var value_74 KssParser = p
+	result.Parser = value_74
+	var value_75 StyleRule = rule
+	result.Rule = value_75
+	var value_76 KssRuleResult = result
+	return value_76
+}
+
+func KssParser_KssCaptureForeign(p KssParser, name KssName) KssParser {
+	var value_0 int32 = p.ForeignCount
+	var value_1 int32 = 16
+	var value_2 bool = value_0 >= value_1
+	if value_2 {
+		var value_3 KssParser = p
+		var value_4 string = "foreign block capacity exceeded"
+		var value_5 KssParser = KssParser_KssFail(value_3, value_4)
+		return value_5
+	}
+	var value_6 KssParser = p
+	var value_7 KssParser = KssParser_KssSkipSpace(value_6)
+	p = value_7
+	var value_8 int32 = p.Pos
+	var query_start int32 = value_8
+	for {
+		var value_9 KssParser = p
+		var value_10 bool = KssParser_KssAtEnd(value_9)
+		var value_11 bool = !value_10
+		var value_12 bool = value_11
+		if value_12 {
+			var value_13 int32 = p.Pos
+			var value_14 uint8 = p.Source[value_13]
+			var value_15 uint8 = 123
+			var value_16 bool = value_14 != value_15
+			value_12 = value_16
+		}
+		if !value_12 {
+			break
+		}
+		var value_17 int32 = p.Pos
+		var value_18 uint8 = p.Source[value_17]
+		var value_19 uint8 = 59
+		var value_20 bool = value_18 == value_19
+		var value_21 bool = value_20
+		if !value_21 {
+			var value_22 int32 = p.Pos
+			var value_23 uint8 = p.Source[value_22]
+			var value_24 uint8 = 125
+			var value_25 bool = value_23 == value_24
+			value_21 = value_25
+		}
+		if value_21 {
+			var value_26 KssParser = p
+			var value_27 string = "unknown directive '@"
+			var value_28 KssName = name
+			var value_29 KssParser = KssParser_KssFailName(value_26, value_27, value_28)
+			return value_29
+		}
+		var value_30 KssParser = p
+		var value_31 int32 = 1
+		var value_32 KssParser = KssParser_KssAdvance(value_30, value_31)
+		p = value_32
+	}
+	var value_33 KssParser = p
+	var value_34 bool = KssParser_KssAtEnd(value_33)
+	if value_34 {
+		var value_35 KssParser = p
+		var value_36 string = "expected '{' after block name"
+		var value_37 KssParser = KssParser_KssFail(value_35, value_36)
+		return value_37
+	}
+	var entry KssForeignBlock = KssForeignBlock{}
+	var value_38 KssName = name
+	entry.Name = value_38
+	var value_39 int32 = query_start
+	entry.QueryStart = value_39
+	var value_40 int32 = p.Pos
+	var value_41 int32 = query_start
+	var value_42 int32 = int32(number_runtime_bits(uint64(value_40), uint64(value_41), 32, true, 2))
+	entry.QueryLength = value_42
+	for {
+		var value_43 int32 = entry.QueryLength
+		var value_44 int32 = 0
+		var value_45 bool = value_43 > value_44
+		if !value_45 {
+			break
+		}
+		var value_46 int32 = entry.QueryStart
+		var value_47 int32 = entry.QueryLength
+		var value_48 int32 = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 1))
+		var value_49 int32 = 1
+		var value_50 int32 = int32(number_runtime_bits(uint64(value_48), uint64(value_49), 32, true, 2))
+		var value_51 uint8 = p.Source[value_50]
+		var byte uint8 = value_51
+		var value_52 uint8 = byte
+		var value_53 bool = KssParser_KssIsSpace(value_52)
+		var value_54 bool = !value_53
+		if value_54 {
+			break
+		}
+		var value_55 int32 = entry.QueryLength
+		var value_56 int32 = 1
+		var value_57 int32 = int32(number_runtime_bits(uint64(value_55), uint64(value_56), 32, true, 2))
+		entry.QueryLength = value_57
+	}
+	var value_58 int32 = 0
+	entry.BodyStart = value_58
+	var value_59 int32 = 0
+	entry.BodyLength = value_59
+	var value_60 int32 = p.File
+	entry.File = value_60
+	var value_61 KssParser = p
+	var value_62 int32 = 1
+	var value_63 KssParser = KssParser_KssAdvance(value_61, value_62)
+	p = value_63
+	var value_64 int32 = p.Pos
+	entry.BodyStart = value_64
+	var value_65 int32 = p.ForeignCount
+	var value_66 KssForeignBlock = entry
+	p.Foreign[value_65] = value_66
+	var value_67 int32 = p.ForeignCount
+	var value_68 int32 = 1
+	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 1))
+	p.ForeignCount = value_69
+	var value_70 KssParser = p
+	var value_71 KssParser = KssParser_KssSkipBlockRemainder(value_70)
+	p = value_71
+	var value_72 int32 = p.Status
+	var value_73 int32 = KssStatusError
+	var value_74 int32 = int32(number_runtime_bits(uint64(value_73), uint64(0), 32, true, 0))
+	var value_75 bool = value_72 == value_74
+	if value_75 {
+		var value_76 KssParser = p
+		return value_76
+	}
+	var value_77 int32 = p.ForeignCount
+	var value_78 int32 = 1
+	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 2))
+	var value_80 int32 = p.Pos
+	var value_81 int32 = 1
+	var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 2))
+	var value_83 int32 = p.ForeignCount
+	var value_84 int32 = 1
+	var value_85 int32 = int32(number_runtime_bits(uint64(value_83), uint64(value_84), 32, true, 2))
+	var value_86 KssForeignBlock = p.Foreign[value_85]
+	var value_87 int32 = value_86.BodyStart
+	var value_88 int32 = int32(number_runtime_bits(uint64(value_82), uint64(value_87), 32, true, 2))
+	p.Foreign[value_79].BodyLength = value_88
+	var value_89 KssParser = p
+	return value_89
+}
+
+func KssParser_KssIsGroupName(name KssName) bool {
+	var value_0 KssName = name
+	var value_1 string = "media"
+	var value_2 bool = KssParser_KssNameEquals(value_0, value_1)
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 KssName = name
+		var value_5 string = "supports"
+		var value_6 bool = KssParser_KssNameEquals(value_4, value_5)
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 KssName = name
+		var value_9 string = "container"
+		var value_10 bool = KssParser_KssNameEquals(value_8, value_9)
+		value_7 = value_10
+	}
+	return value_7
+}
+
+func (instance_host_0 *runtime) KssParser_KssParseGroupBlock(p KssParser, name KssName) KssParser {
+	var value_0 int32 = p.ForeignCount
+	var value_1 int32 = 16
+	var value_2 bool = value_0 >= value_1
+	if value_2 {
+		var value_3 KssParser = p
+		var value_4 string = "foreign block capacity exceeded"
+		var value_5 KssParser = KssParser_KssFail(value_3, value_4)
+		return value_5
+	}
+	var value_6 KssParser = p
+	var value_7 KssParser = KssParser_KssSkipSpace(value_6)
+	p = value_7
+	var value_8 int32 = p.Pos
+	var query_start int32 = value_8
+	for {
+		var value_9 KssParser = p
+		var value_10 bool = KssParser_KssAtEnd(value_9)
+		var value_11 bool = !value_10
+		var value_12 bool = value_11
+		if value_12 {
+			var value_13 int32 = p.Pos
+			var value_14 uint8 = p.Source[value_13]
+			var value_15 uint8 = 123
+			var value_16 bool = value_14 != value_15
+			value_12 = value_16
+		}
+		if !value_12 {
+			break
+		}
+		var value_17 KssParser = p
+		var value_18 int32 = 1
+		var value_19 KssParser = KssParser_KssAdvance(value_17, value_18)
+		p = value_19
+	}
+	var value_20 KssParser = p
+	var value_21 bool = KssParser_KssAtEnd(value_20)
+	if value_21 {
+		var value_22 KssParser = p
+		var value_23 string = "expected '{' after group query"
+		var value_24 KssParser = KssParser_KssFail(value_22, value_23)
+		return value_24
+	}
+	var entry KssForeignBlock = KssForeignBlock{}
+	var value_25 KssName = name
+	entry.Name = value_25
+	var value_26 int32 = query_start
+	entry.QueryStart = value_26
+	var value_27 int32 = p.Pos
+	var value_28 int32 = query_start
+	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
+	entry.QueryLength = value_29
+	for {
+		var value_30 int32 = entry.QueryLength
+		var value_31 int32 = 0
+		var value_32 bool = value_30 > value_31
+		if !value_32 {
+			break
+		}
+		var value_33 int32 = entry.QueryStart
+		var value_34 int32 = entry.QueryLength
+		var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
+		var value_36 int32 = 1
+		var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 2))
+		var value_38 uint8 = p.Source[value_37]
+		var byte uint8 = value_38
+		var value_39 uint8 = byte
+		var value_40 bool = KssParser_KssIsSpace(value_39)
+		var value_41 bool = !value_40
+		if value_41 {
+			break
+		}
+		var value_42 int32 = entry.QueryLength
+		var value_43 int32 = 1
+		var value_44 int32 = int32(number_runtime_bits(uint64(value_42), uint64(value_43), 32, true, 2))
+		entry.QueryLength = value_44
+	}
+	var value_45 int32 = 0
+	entry.BodyStart = value_45
+	var value_46 int32 = 0
+	entry.BodyLength = value_46
+	var value_47 int32 = p.File
+	entry.File = value_47
+	var value_48 int32 = p.ForeignCount
+	var group int32 = value_48
+	var value_49 int32 = p.ForeignCount
+	var value_50 KssForeignBlock = entry
+	p.Foreign[value_49] = value_50
+	var value_51 int32 = p.ForeignCount
+	var value_52 int32 = 1
+	var value_53 int32 = int32(number_runtime_bits(uint64(value_51), uint64(value_52), 32, true, 1))
+	p.ForeignCount = value_53
+	var value_54 KssParser = p
+	var value_55 int32 = 1
+	var value_56 KssParser = KssParser_KssAdvance(value_54, value_55)
+	p = value_56
+	var value_57 int32 = group
+	var value_58 int32 = p.Pos
+	p.Foreign[value_57].BodyStart = value_58
+	var value_59 int32 = group
+	p.ResumeGroup = value_59
+	var value_60 KssParser = p
+	var value_61 KssParser = instance_host_0.KssParser_KssContinueGroupBlock(value_60)
+	return value_61
+}
+
+func (instance_host_0 *runtime) KssParser_KssContinueGroupBlock(p KssParser) KssParser {
+	var value_0 bool = true
+	var running bool = value_0
+	for {
+		var value_1 bool = running
+		if !value_1 {
+			break
+		}
+		var value_2 KssParser = p
+		var value_3 KssParser = KssParser_KssSkipSpace(value_2)
+		p = value_3
+		var value_4 KssParser = p
+		var value_5 bool = KssParser_KssAtEnd(value_4)
+		if value_5 {
+			var value_6 KssParser = p
+			var value_7 string = "unterminated group block"
+			var value_8 KssParser = KssParser_KssFail(value_6, value_7)
+			return value_8
+		}
+		var value_9 int32 = p.Pos
+		var value_10 uint8 = p.Source[value_9]
+		var value_11 uint8 = 125
+		var value_12 bool = value_10 == value_11
+		if value_12 {
+			var value_13 int32 = p.ResumeGroup
+			var value_14 int32 = p.Pos
+			var value_15 int32 = p.ResumeGroup
+			var value_16 KssForeignBlock = p.Foreign[value_15]
+			var value_17 int32 = value_16.BodyStart
+			var value_18 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_17), 32, true, 2))
+			p.Foreign[value_13].BodyLength = value_18
+			var value_19 KssParser = p
+			var value_20 int32 = 1
+			var value_21 KssParser = KssParser_KssAdvance(value_19, value_20)
+			p = value_21
+			var value_22 int32 = -1
+			p.ResumeGroup = value_22
+			var value_23 bool = false
+			running = value_23
+			continue
+		}
+		var value_24 KssParser = p
+		var value_25 KssParser = instance_host_0.KssParser_KssParseRule(value_24)
+		p = value_25
+		var value_26 int32 = p.Status
+		var value_27 int32 = KssStatusError
+		var value_28 int32 = int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0))
+		var value_29 bool = value_26 == value_28
+		if value_29 {
+			var value_30 KssParser = p
+			return value_30
+		}
+		var value_31 int32 = p.ResumeGroup
+		p.RuleSpan.Group = value_31
+		var value_32 KssParser = p
+		return value_32
+	}
+	var value_33 KssParser = p
+	return value_33
+}
+
 func KssParser_KssReadColorValue(p KssParser) KssColorResult {
 	var value_0 KssParser = p
 	var value_1 KssColorResult = KssParser_KssReadHexColor(value_0)
@@ -3622,199 +4421,216 @@ func KssParser_KssReadMaterialValue(p KssParser) KssIntResult {
 func (instance_host_0 *runtime) KssParser_KssParseProperty(p KssParser, rule StyleRule) KssRuleResult {
 	var result KssRuleResult = KssRuleResult{}
 	var value_0 KssParser = p
-	var value_1 KssNameResult = KssParser_KssReadName(value_0)
-	var name KssNameResult = value_1
-	var value_2 bool = name.Ok
-	var value_3 bool = !value_2
-	if value_3 {
-		var value_4 KssParser = name.Parser
-		var value_5 string = "expected property name"
-		var value_6 KssParser = KssParser_KssFail(value_4, value_5)
-		result.Parser = value_6
-		var value_7 KssRuleResult = result
-		return value_7
+	var value_1 KssParser = KssParser_KssSkipSpace(value_0)
+	p = value_1
+	var value_2 int32 = p.Pos
+	var name_start int32 = value_2
+	var value_3 KssParser = p
+	var value_4 KssNameResult = KssParser_KssReadName(value_3)
+	var name KssNameResult = value_4
+	var value_5 bool = name.Ok
+	var value_6 bool = !value_5
+	if value_6 {
+		var value_7 KssParser = name.Parser
+		var value_8 string = "expected property name"
+		var value_9 KssParser = KssParser_KssFail(value_7, value_8)
+		result.Parser = value_9
+		var value_10 KssRuleResult = result
+		return value_10
 	}
-	var value_8 KssParser = name.Parser
-	var value_9 uint8 = 58
-	var value_10 KssExpectResult = KssParser_KssExpect(value_8, value_9)
-	var colon KssExpectResult = value_10
-	var value_11 bool = colon.Ok
-	var value_12 bool = !value_11
-	if value_12 {
-		var value_13 KssParser = colon.Parser
-		var value_14 string = "expected ':' after property"
-		var value_15 KssParser = KssParser_KssFail(value_13, value_14)
-		result.Parser = value_15
-		var value_16 KssRuleResult = result
-		return value_16
+	var value_11 KssParser = name.Parser
+	var value_12 uint8 = 58
+	var value_13 KssExpectResult = KssParser_KssExpect(value_11, value_12)
+	var colon KssExpectResult = value_13
+	var value_14 bool = colon.Ok
+	var value_15 bool = !value_14
+	if value_15 {
+		var value_16 KssParser = colon.Parser
+		var value_17 string = "expected ':' after property"
+		var value_18 KssParser = KssParser_KssFail(value_16, value_17)
+		result.Parser = value_18
+		var value_19 KssRuleResult = result
+		return value_19
 	}
-	var value_17 KssParser = colon.Parser
-	p = value_17
-	var value_18 KssName = name.Name
-	var value_19 string = "background"
-	var value_20 bool = KssParser_KssNameEquals(value_18, value_19)
-	if value_20 {
-		var value_21 KssParser = p
-		var value_22 KssColorResult = KssParser_KssReadColorValue(value_21)
-		var value KssColorResult = value_22
-		var value_23 bool = value.Ok
-		var value_24 bool = !value_23
-		if value_24 {
-			var value_25 KssParser = value.Parser
-			var value_26 string = "expected hex color"
-			var value_27 KssParser = KssParser_KssFail(value_25, value_26)
-			result.Parser = value_27
-			var value_28 KssRuleResult = result
-			return value_28
+	var value_20 KssParser = colon.Parser
+	p = value_20
+	var value_21 bool = p.Declarative
+	if value_21 {
+		var value_22 KssParser = p
+		var value_23 StyleRule = rule
+		var value_24 KssName = name.Name
+		var value_25 int32 = name_start
+		var value_26 int32 = name_start
+		var value_27 int32 = name.Name.Length
+		var value_28 int32 = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
+		var value_29 KssRuleResult = KssParser_KssCaptureDeclaration(value_22, value_23, value_24, value_25, value_28)
+		return value_29
+	}
+	var value_30 KssName = name.Name
+	var value_31 string = "background"
+	var value_32 bool = KssParser_KssNameEquals(value_30, value_31)
+	if value_32 {
+		var value_33 KssParser = p
+		var value_34 KssColorResult = KssParser_KssReadColorValue(value_33)
+		var value KssColorResult = value_34
+		var value_35 bool = value.Ok
+		var value_36 bool = !value_35
+		if value_36 {
+			var value_37 KssParser = value.Parser
+			var value_38 string = "expected hex color"
+			var value_39 KssParser = KssParser_KssFail(value_37, value_38)
+			result.Parser = value_39
+			var value_40 KssRuleResult = result
+			return value_40
 		}
-		var value_29 uint32 = rule.Style.Fields
-		var value_30 int32 = int32(StyleBackground)
-		var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 9))
-		rule.Style.Fields = value_32
-		var value_33 uint32 = value.Value
-		rule.Style.Background = value_33
-		var value_34 KssParser = value.Parser
-		p = value_34
+		var value_41 uint32 = rule.Style.Fields
+		var value_42 int32 = int32(StyleBackground)
+		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
+		var value_44 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(value_43), 32, false, 9))
+		rule.Style.Fields = value_44
+		var value_45 uint32 = value.Value
+		rule.Style.Background = value_45
+		var value_46 KssParser = value.Parser
+		p = value_46
 	} else {
-		var value_35 KssName = name.Name
-		var value_36 string = "foreground"
-		var value_37 bool = KssParser_KssNameEquals(value_35, value_36)
-		if value_37 {
-			var value_38 KssParser = p
-			var value_39 KssColorResult = KssParser_KssReadColorValue(value_38)
-			var value KssColorResult = value_39
-			var value_40 bool = value.Ok
-			var value_41 bool = !value_40
-			if value_41 {
-				var value_42 KssParser = value.Parser
-				var value_43 string = "expected hex color"
-				var value_44 KssParser = KssParser_KssFail(value_42, value_43)
-				result.Parser = value_44
-				var value_45 KssRuleResult = result
-				return value_45
+		var value_47 KssName = name.Name
+		var value_48 string = "foreground"
+		var value_49 bool = KssParser_KssNameEquals(value_47, value_48)
+		if value_49 {
+			var value_50 KssParser = p
+			var value_51 KssColorResult = KssParser_KssReadColorValue(value_50)
+			var value KssColorResult = value_51
+			var value_52 bool = value.Ok
+			var value_53 bool = !value_52
+			if value_53 {
+				var value_54 KssParser = value.Parser
+				var value_55 string = "expected hex color"
+				var value_56 KssParser = KssParser_KssFail(value_54, value_55)
+				result.Parser = value_56
+				var value_57 KssRuleResult = result
+				return value_57
 			}
-			var value_46 uint32 = rule.Style.Fields
-			var value_47 int32 = int32(StyleForeground)
-			var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
-			var value_49 uint32 = uint32(number_runtime_bits(uint64(value_46), uint64(value_48), 32, false, 9))
-			rule.Style.Fields = value_49
-			var value_50 uint32 = value.Value
-			rule.Style.Foreground = value_50
-			var value_51 KssParser = value.Parser
-			p = value_51
+			var value_58 uint32 = rule.Style.Fields
+			var value_59 int32 = int32(StyleForeground)
+			var value_60 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(0), 32, false, 0))
+			var value_61 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(value_60), 32, false, 9))
+			rule.Style.Fields = value_61
+			var value_62 uint32 = value.Value
+			rule.Style.Foreground = value_62
+			var value_63 KssParser = value.Parser
+			p = value_63
 		} else {
-			var value_52 KssName = name.Name
-			var value_53 string = "border"
-			var value_54 bool = KssParser_KssNameEquals(value_52, value_53)
-			if value_54 {
-				var value_55 KssParser = p
-				var value_56 KssColorResult = KssParser_KssReadColorValue(value_55)
-				var value KssColorResult = value_56
-				var value_57 bool = value.Ok
-				var value_58 bool = !value_57
-				if value_58 {
-					var value_59 KssParser = value.Parser
-					var value_60 string = "expected hex color"
-					var value_61 KssParser = KssParser_KssFail(value_59, value_60)
-					result.Parser = value_61
-					var value_62 KssRuleResult = result
-					return value_62
+			var value_64 KssName = name.Name
+			var value_65 string = "border"
+			var value_66 bool = KssParser_KssNameEquals(value_64, value_65)
+			if value_66 {
+				var value_67 KssParser = p
+				var value_68 KssColorResult = KssParser_KssReadColorValue(value_67)
+				var value KssColorResult = value_68
+				var value_69 bool = value.Ok
+				var value_70 bool = !value_69
+				if value_70 {
+					var value_71 KssParser = value.Parser
+					var value_72 string = "expected hex color"
+					var value_73 KssParser = KssParser_KssFail(value_71, value_72)
+					result.Parser = value_73
+					var value_74 KssRuleResult = result
+					return value_74
 				}
-				var value_63 uint32 = rule.Style.Fields
-				var value_64 int32 = int32(StyleBorder)
-				var value_65 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(0), 32, false, 0))
-				var value_66 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(value_65), 32, false, 9))
-				rule.Style.Fields = value_66
-				var value_67 uint32 = value.Value
-				rule.Style.Border = value_67
-				var value_68 KssParser = value.Parser
-				p = value_68
+				var value_75 uint32 = rule.Style.Fields
+				var value_76 int32 = int32(StyleBorder)
+				var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
+				var value_78 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(value_77), 32, false, 9))
+				rule.Style.Fields = value_78
+				var value_79 uint32 = value.Value
+				rule.Style.Border = value_79
+				var value_80 KssParser = value.Parser
+				p = value_80
 			} else {
-				var value_69 KssName = name.Name
-				var value_70 string = "focus"
-				var value_71 bool = KssParser_KssNameEquals(value_69, value_70)
-				if value_71 {
-					var value_72 KssParser = p
-					var value_73 KssColorResult = KssParser_KssReadColorValue(value_72)
-					var value KssColorResult = value_73
-					var value_74 bool = value.Ok
-					var value_75 bool = !value_74
-					if value_75 {
-						var value_76 KssParser = value.Parser
-						var value_77 string = "expected hex color"
-						var value_78 KssParser = KssParser_KssFail(value_76, value_77)
-						result.Parser = value_78
-						var value_79 KssRuleResult = result
-						return value_79
+				var value_81 KssName = name.Name
+				var value_82 string = "focus"
+				var value_83 bool = KssParser_KssNameEquals(value_81, value_82)
+				if value_83 {
+					var value_84 KssParser = p
+					var value_85 KssColorResult = KssParser_KssReadColorValue(value_84)
+					var value KssColorResult = value_85
+					var value_86 bool = value.Ok
+					var value_87 bool = !value_86
+					if value_87 {
+						var value_88 KssParser = value.Parser
+						var value_89 string = "expected hex color"
+						var value_90 KssParser = KssParser_KssFail(value_88, value_89)
+						result.Parser = value_90
+						var value_91 KssRuleResult = result
+						return value_91
 					}
-					var value_80 uint32 = rule.Style.Fields
-					var value_81 int32 = int32(StyleFocus)
-					var value_82 uint32 = uint32(number_runtime_bits(uint64(value_81), uint64(0), 32, false, 0))
-					var value_83 uint32 = uint32(number_runtime_bits(uint64(value_80), uint64(value_82), 32, false, 9))
-					rule.Style.Fields = value_83
-					var value_84 uint32 = value.Value
-					rule.Style.Focus = value_84
-					var value_85 KssParser = value.Parser
-					p = value_85
+					var value_92 uint32 = rule.Style.Fields
+					var value_93 int32 = int32(StyleFocus)
+					var value_94 uint32 = uint32(number_runtime_bits(uint64(value_93), uint64(0), 32, false, 0))
+					var value_95 uint32 = uint32(number_runtime_bits(uint64(value_92), uint64(value_94), 32, false, 9))
+					rule.Style.Fields = value_95
+					var value_96 uint32 = value.Value
+					rule.Style.Focus = value_96
+					var value_97 KssParser = value.Parser
+					p = value_97
 				} else {
-					var value_86 KssName = name.Name
-					var value_87 string = "background-end"
-					var value_88 bool = KssParser_KssNameEquals(value_86, value_87)
-					if value_88 {
-						var value_89 KssParser = p
-						var value_90 KssColorResult = KssParser_KssReadColorValue(value_89)
-						var value KssColorResult = value_90
-						var value_91 bool = value.Ok
-						var value_92 bool = !value_91
-						if value_92 {
-							var value_93 KssParser = value.Parser
-							var value_94 string = "expected hex color"
-							var value_95 KssParser = KssParser_KssFail(value_93, value_94)
-							result.Parser = value_95
-							var value_96 KssRuleResult = result
-							return value_96
+					var value_98 KssName = name.Name
+					var value_99 string = "background-end"
+					var value_100 bool = KssParser_KssNameEquals(value_98, value_99)
+					if value_100 {
+						var value_101 KssParser = p
+						var value_102 KssColorResult = KssParser_KssReadColorValue(value_101)
+						var value KssColorResult = value_102
+						var value_103 bool = value.Ok
+						var value_104 bool = !value_103
+						if value_104 {
+							var value_105 KssParser = value.Parser
+							var value_106 string = "expected hex color"
+							var value_107 KssParser = KssParser_KssFail(value_105, value_106)
+							result.Parser = value_107
+							var value_108 KssRuleResult = result
+							return value_108
 						}
-						var value_97 uint32 = rule.Style.Fields
-						var value_98 int32 = int32(StyleBackgroundEnd)
-						var value_99 uint32 = uint32(number_runtime_bits(uint64(value_98), uint64(0), 32, false, 0))
-						var value_100 uint32 = uint32(number_runtime_bits(uint64(value_97), uint64(value_99), 32, false, 9))
-						rule.Style.Fields = value_100
-						var value_101 uint32 = value.Value
-						rule.Style.BackgroundEnd = value_101
-						var value_102 KssParser = value.Parser
-						p = value_102
+						var value_109 uint32 = rule.Style.Fields
+						var value_110 int32 = int32(StyleBackgroundEnd)
+						var value_111 uint32 = uint32(number_runtime_bits(uint64(value_110), uint64(0), 32, false, 0))
+						var value_112 uint32 = uint32(number_runtime_bits(uint64(value_109), uint64(value_111), 32, false, 9))
+						rule.Style.Fields = value_112
+						var value_113 uint32 = value.Value
+						rule.Style.BackgroundEnd = value_113
+						var value_114 KssParser = value.Parser
+						p = value_114
 					} else {
-						var value_103 KssParser = p
-						var value_104 StyleRule = rule
-						var value_105 KssName = name.Name
-						var value_106 KssRuleResult = instance_host_0.KssParser_KssParseNumberProperty(value_103, value_104, value_105)
-						return value_106
+						var value_115 KssParser = p
+						var value_116 StyleRule = rule
+						var value_117 KssName = name.Name
+						var value_118 KssRuleResult = instance_host_0.KssParser_KssParseNumberProperty(value_115, value_116, value_117)
+						return value_118
 					}
 				}
 			}
 		}
 	}
-	var value_107 KssParser = p
-	var value_108 uint8 = 59
-	var value_109 KssExpectResult = KssParser_KssExpect(value_107, value_108)
-	var semicolon KssExpectResult = value_109
-	var value_110 bool = semicolon.Ok
-	var value_111 bool = !value_110
-	if value_111 {
-		var value_112 KssParser = semicolon.Parser
-		var value_113 string = "expected ';'"
-		var value_114 KssParser = KssParser_KssFail(value_112, value_113)
-		result.Parser = value_114
-		var value_115 KssRuleResult = result
-		return value_115
+	var value_119 KssParser = p
+	var value_120 uint8 = 59
+	var value_121 KssExpectResult = KssParser_KssExpect(value_119, value_120)
+	var semicolon KssExpectResult = value_121
+	var value_122 bool = semicolon.Ok
+	var value_123 bool = !value_122
+	if value_123 {
+		var value_124 KssParser = semicolon.Parser
+		var value_125 string = "expected ';'"
+		var value_126 KssParser = KssParser_KssFail(value_124, value_125)
+		result.Parser = value_126
+		var value_127 KssRuleResult = result
+		return value_127
 	}
-	var value_116 KssParser = semicolon.Parser
-	result.Parser = value_116
-	var value_117 StyleRule = rule
-	result.Rule = value_117
-	var value_118 KssRuleResult = result
-	return value_118
+	var value_128 KssParser = semicolon.Parser
+	result.Parser = value_128
+	var value_129 StyleRule = rule
+	result.Rule = value_129
+	var value_130 KssRuleResult = result
+	return value_130
 }
 
 func (instance_host_0 *runtime) KssParser_KssParseNumberProperty(p KssParser, rule StyleRule, name KssName) KssRuleResult {
@@ -4264,100 +5080,271 @@ func (instance_host_0 *runtime) KssParser_KssParseRule(p KssParser) KssParser {
 	origin.Line = value_1
 	var value_2 int32 = p.Column
 	origin.Column = value_2
-	var value_3 KssParser = p
-	var value_4 KssRuleResult = KssParser_KssParseSelector(value_3)
-	var selector KssRuleResult = value_4
-	var value_5 int32 = selector.Parser.Status
-	var value_6 int32 = KssStatusError
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0))
-	var value_8 bool = value_5 == value_7
+	var span KssRuleSpan = KssRuleSpan{}
+	var value_3 int32 = p.File
+	span.File = value_3
+	var value_4 int32 = -1
+	span.Group = value_4
+	var selector KssRuleResult = KssRuleResult{}
+	var value_5 KssParser = p
+	var value_6 KssParser = KssParser_KssSkipSpace(value_5)
+	p = value_6
+	var value_7 int32 = p.Pos
+	var selector_start int32 = value_7
+	var value_8 bool = p.Declarative
 	if value_8 {
-		var value_9 KssParser = selector.Parser
-		return value_9
+		var value_9 int32 = 0
+		var bracket int32 = value_9
+		var value_10 int32 = 0
+		var paren int32 = value_10
+		var value_11 uint8 = 0
+		var quote uint8 = value_11
+		var value_12 bool = true
+		var running bool = value_12
+		for {
+			var value_13 bool = running
+			if !value_13 {
+				break
+			}
+			var value_14 KssParser = p
+			var value_15 bool = KssParser_KssAtEnd(value_14)
+			if value_15 {
+				var value_16 KssParser = p
+				var value_17 string = "expected '{'"
+				var value_18 KssParser = KssParser_KssFail(value_16, value_17)
+				return value_18
+			}
+			var value_19 int32 = p.Pos
+			var value_20 uint8 = p.Source[value_19]
+			var byte uint8 = value_20
+			var value_21 uint8 = quote
+			var value_22 uint8 = 0
+			var value_23 bool = value_21 != value_22
+			if value_23 {
+				var value_24 uint8 = byte
+				var value_25 uint8 = quote
+				var value_26 bool = value_24 == value_25
+				if value_26 {
+					var value_27 uint8 = 0
+					quote = value_27
+				}
+			} else {
+				var value_28 uint8 = byte
+				var value_29 uint8 = 34
+				var value_30 bool = value_28 == value_29
+				var value_31 bool = value_30
+				if !value_31 {
+					var value_32 uint8 = byte
+					var value_33 uint8 = 39
+					var value_34 bool = value_32 == value_33
+					value_31 = value_34
+				}
+				if value_31 {
+					var value_35 uint8 = byte
+					quote = value_35
+				} else {
+					var value_36 uint8 = byte
+					var value_37 uint8 = 91
+					var value_38 bool = value_36 == value_37
+					if value_38 {
+						var value_39 int32 = bracket
+						var value_40 int32 = 1
+						var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
+						bracket = value_41
+					} else {
+						var value_42 uint8 = byte
+						var value_43 uint8 = 93
+						var value_44 bool = value_42 == value_43
+						var value_45 bool = value_44
+						if value_45 {
+							var value_46 int32 = bracket
+							var value_47 int32 = 0
+							var value_48 bool = value_46 > value_47
+							value_45 = value_48
+						}
+						if value_45 {
+							var value_49 int32 = bracket
+							var value_50 int32 = 1
+							var value_51 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 2))
+							bracket = value_51
+						} else {
+							var value_52 uint8 = byte
+							var value_53 uint8 = 40
+							var value_54 bool = value_52 == value_53
+							if value_54 {
+								var value_55 int32 = paren
+								var value_56 int32 = 1
+								var value_57 int32 = int32(number_runtime_bits(uint64(value_55), uint64(value_56), 32, true, 1))
+								paren = value_57
+							} else {
+								var value_58 uint8 = byte
+								var value_59 uint8 = 41
+								var value_60 bool = value_58 == value_59
+								var value_61 bool = value_60
+								if value_61 {
+									var value_62 int32 = paren
+									var value_63 int32 = 0
+									var value_64 bool = value_62 > value_63
+									value_61 = value_64
+								}
+								if value_61 {
+									var value_65 int32 = paren
+									var value_66 int32 = 1
+									var value_67 int32 = int32(number_runtime_bits(uint64(value_65), uint64(value_66), 32, true, 2))
+									paren = value_67
+								} else {
+									var value_68 uint8 = byte
+									var value_69 uint8 = 123
+									var value_70 bool = value_68 == value_69
+									var value_71 bool = value_70
+									if value_71 {
+										var value_72 int32 = bracket
+										var value_73 int32 = 0
+										var value_74 bool = value_72 == value_73
+										value_71 = value_74
+									}
+									var value_75 bool = value_71
+									if value_75 {
+										var value_76 int32 = paren
+										var value_77 int32 = 0
+										var value_78 bool = value_76 == value_77
+										value_75 = value_78
+									}
+									if value_75 {
+										var value_79 bool = false
+										running = value_79
+										continue
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			var value_80 KssParser = p
+			var value_81 int32 = 1
+			var value_82 KssParser = KssParser_KssAdvance(value_80, value_81)
+			p = value_82
+		}
+	} else {
+		var value_83 KssParser = p
+		var value_84 KssRuleResult = KssParser_KssParseSelector(value_83)
+		selector = value_84
+		var value_85 int32 = selector.Parser.Status
+		var value_86 int32 = KssStatusError
+		var value_87 int32 = int32(number_runtime_bits(uint64(value_86), uint64(0), 32, true, 0))
+		var value_88 bool = value_85 == value_87
+		if value_88 {
+			var value_89 KssParser = selector.Parser
+			return value_89
+		}
+		var value_90 KssParser = selector.Parser
+		p = value_90
+		var value_91 KssParser = p
+		var value_92 KssParser = KssParser_KssSkipSpace(value_91)
+		p = value_92
+		var value_93 KssParser = p
+		var value_94 bool = KssParser_KssAtEnd(value_93)
+		var value_95 bool = value_94
+		if !value_95 {
+			var value_96 int32 = p.Pos
+			var value_97 uint8 = p.Source[value_96]
+			var value_98 uint8 = 123
+			var value_99 bool = value_97 != value_98
+			value_95 = value_99
+		}
+		if value_95 {
+			var value_100 KssParser = p
+			var value_101 string = "expected '{'"
+			var value_102 KssParser = KssParser_KssFail(value_100, value_101)
+			return value_102
+		}
 	}
-	var value_10 KssParser = selector.Parser
-	p = value_10
-	var value_11 KssParser = p
-	var value_12 uint8 = 123
-	var value_13 KssExpectResult = KssParser_KssExpect(value_11, value_12)
-	var open KssExpectResult = value_13
-	var value_14 bool = open.Ok
-	var value_15 bool = !value_14
-	if value_15 {
-		var value_16 KssParser = open.Parser
-		var value_17 string = "expected '{'"
-		var value_18 KssParser = KssParser_KssFail(value_16, value_17)
-		return value_18
-	}
-	var value_19 KssParser = open.Parser
-	p = value_19
-	var value_20 StyleRule = selector.Rule
-	var rule StyleRule = value_20
-	var value_21 int32 = p.Layer
-	rule.Layer = value_21
-	var value_22 int32 = p.RuleTotal
-	rule.Order = value_22
-	var value_23 bool = true
-	var running bool = value_23
+	var value_103 int32 = selector_start
+	span.SelectorStart = value_103
+	var value_104 int32 = p.Pos
+	var value_105 int32 = selector_start
+	var value_106 int32 = int32(number_runtime_bits(uint64(value_104), uint64(value_105), 32, true, 2))
+	span.SelectorLength = value_106
+	var value_107 KssParser = p
+	var value_108 int32 = 1
+	var value_109 KssParser = KssParser_KssAdvance(value_107, value_108)
+	p = value_109
+	var value_110 int32 = p.Pos
+	span.BodyStart = value_110
+	var value_111 StyleRule = selector.Rule
+	var rule StyleRule = value_111
+	var value_112 int32 = p.Layer
+	rule.Layer = value_112
+	var value_113 int32 = p.RuleTotal
+	rule.Order = value_113
+	var value_114 bool = true
+	var running bool = value_114
 	for {
-		var value_24 bool = running
-		if !value_24 {
+		var value_115 bool = running
+		if !value_115 {
 			break
 		}
-		var value_25 KssParser = p
-		var value_26 KssParser = KssParser_KssSkipSpace(value_25)
-		p = value_26
-		var value_27 KssParser = p
-		var value_28 bool = KssParser_KssAtEnd(value_27)
-		if value_28 {
-			var value_29 KssParser = p
-			var value_30 string = "unterminated style rule"
-			var value_31 KssParser = KssParser_KssFail(value_29, value_30)
-			return value_31
+		var value_116 KssParser = p
+		var value_117 KssParser = KssParser_KssSkipSpace(value_116)
+		p = value_117
+		var value_118 KssParser = p
+		var value_119 bool = KssParser_KssAtEnd(value_118)
+		if value_119 {
+			var value_120 KssParser = p
+			var value_121 string = "unterminated style rule"
+			var value_122 KssParser = KssParser_KssFail(value_120, value_121)
+			return value_122
 		}
-		var value_32 int32 = p.Pos
-		var value_33 uint8 = p.Source[value_32]
-		var value_34 uint8 = 125
-		var value_35 bool = value_33 == value_34
-		if value_35 {
-			var value_36 KssParser = p
-			var value_37 int32 = 1
-			var value_38 KssParser = KssParser_KssAdvance(value_36, value_37)
-			p = value_38
-			var value_39 bool = false
-			running = value_39
+		var value_123 int32 = p.Pos
+		var value_124 uint8 = p.Source[value_123]
+		var value_125 uint8 = 125
+		var value_126 bool = value_124 == value_125
+		if value_126 {
+			var value_127 int32 = p.Pos
+			var value_128 int32 = span.BodyStart
+			var value_129 int32 = int32(number_runtime_bits(uint64(value_127), uint64(value_128), 32, true, 2))
+			span.BodyLength = value_129
+			var value_130 KssParser = p
+			var value_131 int32 = 1
+			var value_132 KssParser = KssParser_KssAdvance(value_130, value_131)
+			p = value_132
+			var value_133 bool = false
+			running = value_133
 			continue
 		}
-		var value_40 KssParser = p
-		var value_41 StyleRule = rule
-		var value_42 KssRuleResult = instance_host_0.KssParser_KssParseProperty(value_40, value_41)
-		var property KssRuleResult = value_42
-		var value_43 int32 = property.Parser.Status
-		var value_44 int32 = KssStatusError
-		var value_45 int32 = int32(number_runtime_bits(uint64(value_44), uint64(0), 32, true, 0))
-		var value_46 bool = value_43 == value_45
-		if value_46 {
-			var value_47 KssParser = property.Parser
-			return value_47
+		var value_134 KssParser = p
+		var value_135 StyleRule = rule
+		var value_136 KssRuleResult = instance_host_0.KssParser_KssParseProperty(value_134, value_135)
+		var property KssRuleResult = value_136
+		var value_137 int32 = property.Parser.Status
+		var value_138 int32 = KssStatusError
+		var value_139 int32 = int32(number_runtime_bits(uint64(value_138), uint64(0), 32, true, 0))
+		var value_140 bool = value_137 == value_139
+		if value_140 {
+			var value_141 KssParser = property.Parser
+			return value_141
 		}
-		var value_48 KssParser = property.Parser
-		p = value_48
-		var value_49 StyleRule = property.Rule
-		rule = value_49
+		var value_142 KssParser = property.Parser
+		p = value_142
+		var value_143 StyleRule = property.Rule
+		rule = value_143
 	}
-	var value_50 StyleRule = rule
-	p.Rule = value_50
-	var value_51 KssOrigin = origin
-	p.Origin = value_51
-	var value_52 int32 = p.RuleTotal
-	var value_53 int32 = 1
-	var value_54 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_53), 32, true, 1))
-	p.RuleTotal = value_54
-	var value_55 int32 = KssStatusRule
-	var value_56 int32 = int32(number_runtime_bits(uint64(value_55), uint64(0), 32, true, 0))
-	p.Status = value_56
-	var value_57 KssParser = p
-	return value_57
+	var value_144 StyleRule = rule
+	p.Rule = value_144
+	var value_145 KssOrigin = origin
+	p.Origin = value_145
+	var value_146 KssRuleSpan = span
+	p.RuleSpan = value_146
+	var value_147 int32 = p.RuleTotal
+	var value_148 int32 = 1
+	var value_149 int32 = int32(number_runtime_bits(uint64(value_147), uint64(value_148), 32, true, 1))
+	p.RuleTotal = value_149
+	var value_150 int32 = KssStatusRule
+	var value_151 int32 = int32(number_runtime_bits(uint64(value_150), uint64(0), 32, true, 0))
+	p.Status = value_151
+	var value_152 KssParser = p
+	return value_152
 }
 
 func KssParser_KssEnvAxisValid(axis KssName) bool {
@@ -6142,11 +7129,26 @@ func (instance_host_0 *runtime) KssParser_KssParseDirective(p KssParser) KssPars
 		var value_164 KssParser = instance_host_0.KssParser_KssParseEnvBlock(value_161, value_162, value_163)
 		return value_164
 	}
-	var value_165 KssParser = keyword.Parser
-	var value_166 string = "unknown directive '@"
-	var value_167 KssName = keyword.Name
-	var value_168 KssParser = KssParser_KssFailName(value_165, value_166, value_167)
-	return value_168
+	var value_165 bool = p.Declarative
+	if value_165 {
+		var value_166 KssName = keyword.Name
+		var value_167 bool = KssParser_KssIsGroupName(value_166)
+		if value_167 {
+			var value_168 KssParser = keyword.Parser
+			var value_169 KssName = keyword.Name
+			var value_170 KssParser = instance_host_0.KssParser_KssParseGroupBlock(value_168, value_169)
+			return value_170
+		}
+		var value_171 KssParser = keyword.Parser
+		var value_172 KssName = keyword.Name
+		var value_173 KssParser = KssParser_KssCaptureForeign(value_171, value_172)
+		return value_173
+	}
+	var value_174 KssParser = keyword.Parser
+	var value_175 string = "unknown directive '@"
+	var value_176 KssName = keyword.Name
+	var value_177 KssParser = KssParser_KssFailName(value_174, value_175, value_176)
+	return value_177
 }
 
 func KssParser_KssImportNameOnStack(p KssParser, name KssName) bool {
@@ -6315,113 +7317,140 @@ func (instance_host_0 *runtime) KssParser_KssStep(p KssParser) KssParser {
 		var value_9 KssParser = p
 		return value_9
 	}
-	var value_10 bool = p.InEnv
-	if value_10 {
-		var value_11 int32 = KssStatusContinue
-		var value_12 int32 = int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0))
-		p.Status = value_12
-		var value_13 KssParser = p
-		var value_14 KssParser = instance_host_0.KssParser_KssContinueEnvBlock(value_13)
-		p = value_14
-		var value_15 int32 = p.Status
-		var value_16 int32 = KssStatusRule
-		var value_17 int32 = int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0))
-		var value_18 bool = value_15 == value_17
-		var value_19 bool = value_18
-		if !value_19 {
-			var value_20 int32 = p.Status
-			var value_21 int32 = KssStatusError
-			var value_22 int32 = int32(number_runtime_bits(uint64(value_21), uint64(0), 32, true, 0))
-			var value_23 bool = value_20 == value_22
-			value_19 = value_23
+	var value_10 int32 = p.ResumeGroup
+	var value_11 int32 = 0
+	var value_12 bool = value_10 >= value_11
+	if value_12 {
+		var value_13 int32 = KssStatusContinue
+		var value_14 int32 = int32(number_runtime_bits(uint64(value_13), uint64(0), 32, true, 0))
+		p.Status = value_14
+		var value_15 KssParser = p
+		var value_16 KssParser = instance_host_0.KssParser_KssContinueGroupBlock(value_15)
+		p = value_16
+		var value_17 int32 = p.Status
+		var value_18 int32 = KssStatusRule
+		var value_19 int32 = int32(number_runtime_bits(uint64(value_18), uint64(0), 32, true, 0))
+		var value_20 bool = value_17 == value_19
+		var value_21 bool = value_20
+		if !value_21 {
+			var value_22 int32 = p.Status
+			var value_23 int32 = KssStatusError
+			var value_24 int32 = int32(number_runtime_bits(uint64(value_23), uint64(0), 32, true, 0))
+			var value_25 bool = value_22 == value_24
+			value_21 = value_25
 		}
-		if value_19 {
-			var value_24 KssParser = p
-			return value_24
+		if value_21 {
+			var value_26 KssParser = p
+			return value_26
 		}
 	}
-	var value_25 KssParser = p
-	var value_26 KssParser = KssParser_KssSkipSpace(value_25)
-	p = value_26
-	var value_27 KssParser = p
-	var value_28 bool = KssParser_KssAtEnd(value_27)
-	if value_28 {
-		var value_29 int32 = p.ImportDepth
-		var value_30 int32 = 0
-		var value_31 bool = value_29 > value_30
-		if value_31 {
-			var value_32 KssParser = p
-			var value_33 KssParser = KssParser_KssPopImport(value_32)
-			p = value_33
-			var value_34 int32 = KssStatusContinue
-			var value_35 int32 = int32(number_runtime_bits(uint64(value_34), uint64(0), 32, true, 0))
-			p.Status = value_35
-			var value_36 KssParser = p
-			return value_36
+	var value_27 bool = p.InEnv
+	if value_27 {
+		var value_28 int32 = KssStatusContinue
+		var value_29 int32 = int32(number_runtime_bits(uint64(value_28), uint64(0), 32, true, 0))
+		p.Status = value_29
+		var value_30 KssParser = p
+		var value_31 KssParser = instance_host_0.KssParser_KssContinueEnvBlock(value_30)
+		p = value_31
+		var value_32 int32 = p.Status
+		var value_33 int32 = KssStatusRule
+		var value_34 int32 = int32(number_runtime_bits(uint64(value_33), uint64(0), 32, true, 0))
+		var value_35 bool = value_32 == value_34
+		var value_36 bool = value_35
+		if !value_36 {
+			var value_37 int32 = p.Status
+			var value_38 int32 = KssStatusError
+			var value_39 int32 = int32(number_runtime_bits(uint64(value_38), uint64(0), 32, true, 0))
+			var value_40 bool = value_37 == value_39
+			value_36 = value_40
 		}
-		var value_37 int32 = KssStatusDone
-		var value_38 int32 = int32(number_runtime_bits(uint64(value_37), uint64(0), 32, true, 0))
-		p.Status = value_38
-		var value_39 KssParser = p
-		return value_39
-	}
-	var value_40 int32 = p.Pos
-	var value_41 uint8 = p.Source[value_40]
-	var value_42 uint8 = 64
-	var value_43 bool = value_41 == value_42
-	if value_43 {
-		var value_44 KssParser = p
-		var value_45 KssParser = instance_host_0.KssParser_KssParseDirective(value_44)
-		p = value_45
-		var value_46 int32 = p.Status
-		var value_47 int32 = KssStatusNeedImport
-		var value_48 int32 = int32(number_runtime_bits(uint64(value_47), uint64(0), 32, true, 0))
-		var value_49 bool = value_46 == value_48
-		var value_50 bool = value_49
-		if !value_50 {
-			var value_51 int32 = p.Status
-			var value_52 int32 = KssStatusError
-			var value_53 int32 = int32(number_runtime_bits(uint64(value_52), uint64(0), 32, true, 0))
-			var value_54 bool = value_51 == value_53
-			value_50 = value_54
+		if value_36 {
+			var value_41 KssParser = p
+			return value_41
 		}
-		var value_55 bool = value_50
-		if !value_55 {
-			var value_56 int32 = p.Status
-			var value_57 int32 = KssStatusRule
-			var value_58 int32 = int32(number_runtime_bits(uint64(value_57), uint64(0), 32, true, 0))
-			var value_59 bool = value_56 == value_58
-			value_55 = value_59
+	}
+	var value_42 KssParser = p
+	var value_43 KssParser = KssParser_KssSkipSpace(value_42)
+	p = value_43
+	var value_44 KssParser = p
+	var value_45 bool = KssParser_KssAtEnd(value_44)
+	if value_45 {
+		var value_46 int32 = p.ImportDepth
+		var value_47 int32 = 0
+		var value_48 bool = value_46 > value_47
+		if value_48 {
+			var value_49 KssParser = p
+			var value_50 KssParser = KssParser_KssPopImport(value_49)
+			p = value_50
+			var value_51 int32 = KssStatusContinue
+			var value_52 int32 = int32(number_runtime_bits(uint64(value_51), uint64(0), 32, true, 0))
+			p.Status = value_52
+			var value_53 KssParser = p
+			return value_53
 		}
-		if value_55 {
-			var value_60 KssParser = p
-			return value_60
+		var value_54 int32 = KssStatusDone
+		var value_55 int32 = int32(number_runtime_bits(uint64(value_54), uint64(0), 32, true, 0))
+		p.Status = value_55
+		var value_56 KssParser = p
+		return value_56
+	}
+	var value_57 int32 = p.Pos
+	var value_58 uint8 = p.Source[value_57]
+	var value_59 uint8 = 64
+	var value_60 bool = value_58 == value_59
+	if value_60 {
+		var value_61 KssParser = p
+		var value_62 KssParser = instance_host_0.KssParser_KssParseDirective(value_61)
+		p = value_62
+		var value_63 int32 = p.Status
+		var value_64 int32 = KssStatusNeedImport
+		var value_65 int32 = int32(number_runtime_bits(uint64(value_64), uint64(0), 32, true, 0))
+		var value_66 bool = value_63 == value_65
+		var value_67 bool = value_66
+		if !value_67 {
+			var value_68 int32 = p.Status
+			var value_69 int32 = KssStatusError
+			var value_70 int32 = int32(number_runtime_bits(uint64(value_69), uint64(0), 32, true, 0))
+			var value_71 bool = value_68 == value_70
+			value_67 = value_71
 		}
-		var value_61 int32 = KssStatusContinue
-		var value_62 int32 = int32(number_runtime_bits(uint64(value_61), uint64(0), 32, true, 0))
-		p.Status = value_62
-		var value_63 KssParser = p
-		return value_63
+		var value_72 bool = value_67
+		if !value_72 {
+			var value_73 int32 = p.Status
+			var value_74 int32 = KssStatusRule
+			var value_75 int32 = int32(number_runtime_bits(uint64(value_74), uint64(0), 32, true, 0))
+			var value_76 bool = value_73 == value_75
+			value_72 = value_76
+		}
+		if value_72 {
+			var value_77 KssParser = p
+			return value_77
+		}
+		var value_78 int32 = KssStatusContinue
+		var value_79 int32 = int32(number_runtime_bits(uint64(value_78), uint64(0), 32, true, 0))
+		p.Status = value_79
+		var value_80 KssParser = p
+		return value_80
 	}
-	var value_64 KssParser = p
-	var value_65 KssNameResult = KssParser_KssReadName(value_64)
-	var probe KssNameResult = value_65
-	var value_66 bool = probe.Ok
-	var value_67 bool = value_66
-	if value_67 {
-		var value_68 KssName = probe.Name
-		var value_69 string = "tokens"
-		var value_70 bool = KssParser_KssNameEquals(value_68, value_69)
-		value_67 = value_70
+	var value_81 KssParser = p
+	var value_82 KssNameResult = KssParser_KssReadName(value_81)
+	var probe KssNameResult = value_82
+	var value_83 bool = probe.Ok
+	var value_84 bool = value_83
+	if value_84 {
+		var value_85 KssName = probe.Name
+		var value_86 string = "tokens"
+		var value_87 bool = KssParser_KssNameEquals(value_85, value_86)
+		value_84 = value_87
 	}
-	if value_67 {
-		var value_71 KssParser = probe.Parser
-		var value_72 int32 = KssOriginKindKssOriginPack
-		var value_73 int32 = int32(number_runtime_bits(uint64(value_72), uint64(0), 32, true, 0))
-		var value_74 KssParser = KssParser_KssParseTokensBlock(value_71, value_73)
-		return value_74
+	if value_84 {
+		var value_88 KssParser = probe.Parser
+		var value_89 int32 = KssOriginKindKssOriginPack
+		var value_90 int32 = int32(number_runtime_bits(uint64(value_89), uint64(0), 32, true, 0))
+		var value_91 KssParser = KssParser_KssParseTokensBlock(value_88, value_90)
+		return value_91
 	}
-	var value_75 KssParser = p
-	var value_76 KssParser = instance_host_0.KssParser_KssParseRule(value_75)
-	return value_76
+	var value_92 KssParser = p
+	var value_93 KssParser = instance_host_0.KssParser_KssParseRule(value_92)
+	return value_93
 }

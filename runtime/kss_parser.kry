@@ -118,6 +118,40 @@ KssOrigin :: struct {
     column: i32
 }
 
+# Source spans let hosts map typed rules back to their original text (the web
+# CSS layer builds selectors and declarations from these byte ranges).
+
+KssRuleSpan :: struct {
+    file: i32
+    selector_start: i32
+    selector_length: i32
+    body_start: i32
+    body_length: i32
+    group: i32
+}
+
+# Declarative hosts (the web CSS mapping) consume raw declaration text and
+# foreign blocks instead of the closed property vocabulary. Structure lexing
+# stays here; only value interpretation lives in the host. Entries are spans
+# into the owning rule's source unit.
+
+KssDeclaration :: struct {
+    rule: i32
+    name_start: i32
+    name_length: i32
+    value_start: i32
+    value_length: i32
+}
+
+KssForeignBlock :: struct {
+    name: KssName
+    query_start: i32
+    query_length: i32
+    body_start: i32
+    body_length: i32
+    file: i32
+}
+
 KssImportFrame :: struct {
     name: KssName
     outer_source: string
@@ -153,8 +187,15 @@ KssParser :: struct {
     status: i32
     rule: StyleRule
     origin: KssOrigin
+    rule_span: KssRuleSpan
     pending_import: KssName
     in_env: bool
+    resume_group: i32
+    declarative: bool
+    declarations: [1024]KssDeclaration
+    declaration_count: i32
+    foreign: [16]KssForeignBlock
+    foreign_count: i32
     diagnostic: [256]u8
     diagnostic_length: i32
     rule_total: i32
@@ -184,7 +225,20 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #ex
     p.version_seen = false
     p.status = KssStatusContinue
     p.rule_total = 0
+    p.declarative = false
+    p.declaration_count = 0
+    p.foreign_count = 0
+    p.resume_group = -1
     p.diagnostic_length = 0
+    return p
+}
+
+# Declarative hosts consume raw declarations and foreign blocks instead of the
+# closed property vocabulary; grammar and structure stay identical.
+
+KssBeginDeclarative :: (source: string, path: string, env: KssEnvironment) -> KssParser #export {
+    p: KssParser = KssBegin(source, path, env)
+    p.declarative = true
     return p
 }
 
@@ -456,22 +510,34 @@ KssDiagnosticAppendName :: (p: KssParser, name: KssName) -> KssParser {
 }
 
 KssDiagnosticAppendInt :: (p: KssParser, value: i32) -> KssParser {
-    divisor: i32 = 1
     remaining: i32 = value
+    digits: i32 = 1
     if remaining < 0 {
         p = KssDiagnosticAppend(p, "-")
         remaining = -remaining
     }
-    while remaining / (divisor * 10) > 0 && divisor < 1000000000 {
-        divisor = divisor * 10
+    probe: i32 = 10
+    while probe <= remaining && digits < 10 {
+        probe = probe * 10
+        digits = digits + 1
     }
-    while divisor > 0 {
-        digit: i32 = (remaining / divisor) % 10
+    while digits > 0 {
+        power: i32 = 1
+        step: i32 = 1
+        while step < digits {
+            power = power * 10
+            step = step + 1
+        }
+        digit: i32 = 0
+        while remaining >= power {
+            remaining = remaining - power
+            digit = digit + 1
+        }
         if p.diagnostic_length < 255 {
             p.diagnostic[p.diagnostic_length] = (u8)(48 + digit)
             p.diagnostic_length = p.diagnostic_length + 1
         }
-        divisor = divisor / 10
+        digits = digits - 1
     }
     return p
 }
@@ -629,18 +695,95 @@ KssReadNumber :: (p: KssParser) -> KssNumberResult {
     return result
 }
 
+# Durations convert to milliseconds with exact decimal shifting so '0.14s'
+# yields exactly 140 instead of a float rounding artifact.
+
 KssReadDuration :: (p: KssParser) -> KssNumberResult {
-    result: KssNumberResult = KssReadNumber(p)
-    if !result.ok {
+    result: KssNumberResult
+    negative: bool = false
+    whole: u32 = 0
+    fraction: u32 = 0
+    fraction_digits: i32 = 0
+    seen_digits: bool = false
+    seconds: bool = false
+    p = KssSkipSpace(p)
+    if KssAtEnd(p) {
+        result.parser = p
         return result
     }
-    unit: KssNameResult = KssReadName(result.parser)
-    if unit.ok && KssNameEquals(unit.name, "s") {
-        result.value = result.value * 1000.0
-    } else if unit.ok && !KssNameEquals(unit.name, "ms") {
-        result.ok = false
+    if p.source[p.pos] == 45 {
+        negative = true
+        p = KssAdvance(p, 1)
+    } else if p.source[p.pos] == 43 {
+        p = KssAdvance(p, 1)
+    }
+    while !KssAtEnd(p) && KssIsDigit(p.source[p.pos]) {
+        whole = whole * 10 + (u32)(p.source[p.pos] - 48)
+        seen_digits = true
+        p = KssAdvance(p, 1)
+    }
+    if !KssAtEnd(p) && p.source[p.pos] == 46 {
+        p = KssAdvance(p, 1)
+        while !KssAtEnd(p) && KssIsDigit(p.source[p.pos]) {
+            if fraction_digits < 9 {
+                fraction = fraction * 10 + (u32)(p.source[p.pos] - 48)
+                fraction_digits = fraction_digits + 1
+            }
+            seen_digits = true
+            p = KssAdvance(p, 1)
+        }
+    }
+    if !seen_digits {
+        result.parser = p
+        return result
+    }
+    unit: KssNameResult = KssReadName(p)
+    if unit.ok && KssNameEquals(unit.name, "ms") {
+        seconds = false
+    } else if unit.ok && KssNameEquals(unit.name, "s") {
+        seconds = true
+    } else if unit.ok {
+        result.parser = unit.parser
+        return result
+    } else {
+        result.parser = p
+        return result
+    }
+
+    value: f64 = 0.0
+    scaled: u32 = whole
+    shift: i32 = fraction_digits
+    while shift > 0 {
+        scaled = scaled * 10
+        shift = shift - 1
+    }
+    scaled = scaled + fraction
+    if seconds {
+        value = (f64)scaled
+        step: i32 = 0
+        while step < 3 - fraction_digits {
+            value = value * 10.0
+            step = step + 1
+        }
+        step = 0
+        while step < fraction_digits - 3 {
+            value = value / 10.0
+            step = step + 1
+        }
+    } else {
+        value = (f64)scaled
+        step: i32 = 0
+        while step < fraction_digits {
+            value = value / 10.0
+            step = step + 1
+        }
+    }
+    if negative {
+        value = -value
     }
     result.parser = unit.parser
+    result.value = (f32)value
+    result.ok = true
     return result
 }
 
@@ -1298,7 +1441,167 @@ KssParseSelector :: (p: KssParser) -> KssRuleResult {
 }
 
 # Property declarations. Token references resolve immediately against the
-# final token table, so overlays applied earlier win as intended.
+# final token table, so overlays applied earlier win as intended. Declarative
+# hosts capture every declaration as raw text instead.
+
+KssCaptureDeclaration :: (p: KssParser, rule: StyleRule, name: KssName,
+    name_start: i32, name_end: i32) -> KssRuleResult {
+    result: KssRuleResult
+    if p.declaration_count >= 1024 {
+        result.parser = KssFail(p, "declaration capacity exceeded")
+        return result
+    }
+    entry: KssDeclaration
+    entry.rule = p.rule_total
+    entry.name_start = name_start
+    entry.name_length = name_end - name_start
+    p = KssSkipSpace(p)
+    entry.value_start = p.pos
+    running: bool = true
+    while running {
+        if KssAtEnd(p) {
+            result.parser = KssFail(p, "expected ';'")
+            return result
+        }
+        if p.source[p.pos] == 59 || p.source[p.pos] == 125 {
+            running = false
+            continue
+        }
+        p = KssAdvance(p, 1)
+    }
+    entry.value_length = p.pos - entry.value_start
+    while entry.value_length > 0 {
+        byte: u8 = p.source[entry.value_start + entry.value_length - 1]
+        if !KssIsSpace(byte) {
+            break
+        }
+        entry.value_length = entry.value_length - 1
+    }
+    if entry.value_length <= 0 {
+        result.parser = KssFailName(p, "expected declaration value after '", name)
+        return result
+    }
+    if p.source[p.pos] == 59 {
+        p = KssAdvance(p, 1)
+    }
+    p.declarations[p.declaration_count] = entry
+    p.declaration_count = p.declaration_count + 1
+    result.parser = p
+    result.rule = rule
+    return result
+}
+
+# Foreign '@name { ... }' blocks are structure-lexed here; hosts interpret
+# them (the web CSS mapping reads @keyframes and conditional groups).
+
+KssCaptureForeign :: (p: KssParser, name: KssName) -> KssParser {
+    if p.foreign_count >= 16 {
+        return KssFail(p, "foreign block capacity exceeded")
+    }
+    p = KssSkipSpace(p)
+    query_start: i32 = p.pos
+    while !KssAtEnd(p) && p.source[p.pos] != 123 {
+        if p.source[p.pos] == 59 || p.source[p.pos] == 125 {
+            return KssFailName(p, "unknown directive '@", name)
+        }
+        p = KssAdvance(p, 1)
+    }
+    if KssAtEnd(p) {
+        return KssFail(p, "expected '{' after block name")
+    }
+    entry: KssForeignBlock
+    entry.name = name
+    entry.query_start = query_start
+    entry.query_length = p.pos - query_start
+    while entry.query_length > 0 {
+        byte: u8 = p.source[entry.query_start + entry.query_length - 1]
+        if !KssIsSpace(byte) {
+            break
+        }
+        entry.query_length = entry.query_length - 1
+    }
+    entry.body_start = 0
+    entry.body_length = 0
+    entry.file = p.file
+    p = KssAdvance(p, 1)
+    entry.body_start = p.pos
+    p.foreign[p.foreign_count] = entry
+    p.foreign_count = p.foreign_count + 1
+    p = KssSkipBlockRemainder(p)
+    if p.status == (i32)KssStatusError {
+        return p
+    }
+    p.foreign[p.foreign_count - 1].body_length = p.pos - 1 - p.foreign[p.foreign_count - 1].body_start
+    return p
+}
+
+# Conditional groups ('@media (query) { rules }' and friends) contain rules;
+# declarative hosts get them lexed here with per-rule group tags. The query
+# text stays opaque to the grammar.
+
+KssIsGroupName :: (name: KssName) -> bool {
+    return KssNameEquals(name, "media") || KssNameEquals(name, "supports") ||
+        KssNameEquals(name, "container")
+}
+
+KssParseGroupBlock :: (p: KssParser, name: KssName) -> KssParser {
+    if p.foreign_count >= 16 {
+        return KssFail(p, "foreign block capacity exceeded")
+    }
+    p = KssSkipSpace(p)
+    query_start: i32 = p.pos
+    while !KssAtEnd(p) && p.source[p.pos] != 123 {
+        p = KssAdvance(p, 1)
+    }
+    if KssAtEnd(p) {
+        return KssFail(p, "expected '{' after group query")
+    }
+    entry: KssForeignBlock
+    entry.name = name
+    entry.query_start = query_start
+    entry.query_length = p.pos - query_start
+    while entry.query_length > 0 {
+        byte: u8 = p.source[entry.query_start + entry.query_length - 1]
+        if !KssIsSpace(byte) {
+            break
+        }
+        entry.query_length = entry.query_length - 1
+    }
+    entry.body_start = 0
+    entry.body_length = 0
+    entry.file = p.file
+    group: i32 = p.foreign_count
+    p.foreign[p.foreign_count] = entry
+    p.foreign_count = p.foreign_count + 1
+    p = KssAdvance(p, 1)
+    p.foreign[group].body_start = p.pos
+    p.resume_group = group
+    return KssContinueGroupBlock(p)
+}
+
+KssContinueGroupBlock :: (p: KssParser) -> KssParser {
+    running: bool = true
+    while running {
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) {
+            return KssFail(p, "unterminated group block")
+        }
+        if p.source[p.pos] == 125 {
+            p.foreign[p.resume_group].body_length = p.pos - p.foreign[p.resume_group].body_start
+            p = KssAdvance(p, 1)
+            p.resume_group = -1
+            running = false
+            continue
+        }
+        p = KssParseRule(p)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        p.rule_span.group = p.resume_group
+        return p
+    }
+    return p
+}
 
 KssReadColorValue :: (p: KssParser) -> KssColorResult {
     hex: KssColorResult = KssReadHexColor(p)
@@ -1375,6 +1678,8 @@ KssReadMaterialValue :: (p: KssParser) -> KssIntResult {
 
 KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
     result: KssRuleResult
+    p = KssSkipSpace(p)
+    name_start: i32 = p.pos
     name: KssNameResult = KssReadName(p)
     if !name.ok {
         result.parser = KssFail(name.parser, "expected property name")
@@ -1386,6 +1691,11 @@ KssParseProperty :: (p: KssParser, rule: StyleRule) -> KssRuleResult {
         return result
     }
     p = colon.parser
+
+    if p.declarative {
+        return KssCaptureDeclaration(p, rule, name.name, name_start,
+            name_start + name.name.length)
+    }
 
     if KssNameEquals(name.name, "background") {
         value: KssColorResult = KssReadColorValue(p)
@@ -1589,23 +1899,66 @@ KssParseNumberProperty :: (p: KssParser, rule: StyleRule, name: KssName) -> KssR
     return result
 }
 
-# Rules: selector, declaration block, layer and order bookkeeping.
+# Rules: selector, declaration block, layer and order bookkeeping. Strict
+# mode parses the typed selector grammar; declarative mode records the
+# selector as a raw span for hosts with their own selector vocabulary.
 
 KssParseRule :: (p: KssParser) -> KssParser {
     origin: KssOrigin
     origin.file = p.file
     origin.line = p.line
     origin.column = p.column
-    selector: KssRuleResult = KssParseSelector(p)
-    if selector.parser.status == (i32)KssStatusError {
-        return selector.parser
+    span: KssRuleSpan
+    span.file = p.file
+    span.group = -1
+    selector: KssRuleResult
+    p = KssSkipSpace(p)
+    selector_start: i32 = p.pos
+    if p.declarative {
+        bracket: i32 = 0
+        paren: i32 = 0
+        quote: u8 = 0
+        running: bool = true
+        while running {
+            if KssAtEnd(p) {
+                return KssFail(p, "expected '{'")
+            }
+            byte: u8 = p.source[p.pos]
+            if quote != 0 {
+                if byte == quote {
+                    quote = 0
+                }
+            } else if byte == 34 || byte == 39 {
+                quote = byte
+            } else if byte == 91 {
+                bracket = bracket + 1
+            } else if byte == 93 && bracket > 0 {
+                bracket = bracket - 1
+            } else if byte == 40 {
+                paren = paren + 1
+            } else if byte == 41 && paren > 0 {
+                paren = paren - 1
+            } else if byte == 123 && bracket == 0 && paren == 0 {
+                running = false
+                continue
+            }
+            p = KssAdvance(p, 1)
+        }
+    } else {
+        selector = KssParseSelector(p)
+        if selector.parser.status == (i32)KssStatusError {
+            return selector.parser
+        }
+        p = selector.parser
+        p = KssSkipSpace(p)
+        if KssAtEnd(p) || p.source[p.pos] != 123 {
+            return KssFail(p, "expected '{'")
+        }
     }
-    p = selector.parser
-    open: KssExpectResult = KssExpect(p, 123)
-    if !open.ok {
-        return KssFail(open.parser, "expected '{'")
-    }
-    p = open.parser
+    span.selector_start = selector_start
+    span.selector_length = p.pos - selector_start
+    p = KssAdvance(p, 1)
+    span.body_start = p.pos
     rule: StyleRule = selector.rule
     rule.layer = p.layer
     rule.order = p.rule_total
@@ -1616,6 +1969,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
             return KssFail(p, "unterminated style rule")
         }
         if p.source[p.pos] == 125 {
+            span.body_length = p.pos - span.body_start
             p = KssAdvance(p, 1)
             running = false
             continue
@@ -1629,6 +1983,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
     }
     p.rule = rule
     p.origin = origin
+    p.rule_span = span
     p.rule_total = p.rule_total + 1
     p.status = (i32)KssStatusRule
     return p
@@ -2272,6 +2627,12 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         }
         return KssParseEnvBlock(close.parser, axis.name, value.name)
     }
+    if p.declarative {
+        if KssIsGroupName(keyword.name) {
+            return KssParseGroupBlock(keyword.parser, keyword.name)
+        }
+        return KssCaptureForeign(keyword.parser, keyword.name)
+    }
     return KssFailName(keyword.parser, "unknown directive '@", keyword.name)
 }
 
@@ -2338,6 +2699,14 @@ KssPopImport :: (p: KssParser) -> KssParser {
 KssStep :: (p: KssParser) -> KssParser #export {
     if p.status == (i32)KssStatusError || p.status == (i32)KssStatusDone {
         return p
+    }
+    if p.resume_group >= 0 {
+        p.status = (i32)KssStatusContinue
+        p = KssContinueGroupBlock(p)
+        if p.status == (i32)KssStatusRule ||
+           p.status == (i32)KssStatusError {
+            return p
+        }
     }
     if p.in_env {
         p.status = (i32)KssStatusContinue

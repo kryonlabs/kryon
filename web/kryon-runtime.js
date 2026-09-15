@@ -2,6 +2,7 @@ import {registerTextEditor, connectTextEditor, hasTextEditor, bindTextEditorEven
 import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
+import * as webKssModule from "./kss_parser.js";
 
 export const Text8 = 8;
 export const Text12 = 12;
@@ -3436,164 +3437,226 @@ function findMatchingBrace(text, open) {
   return -1;
 }
 
-function parseWebStyleTokens(text) {
-  const tokens = emptyWebStyleTokens();
-  let stripped = "";
-  let cursor = 0;
-  const tokenPattern = /\btokens\s*\{/g;
-  for (let match; (match = tokenPattern.exec(text));) {
-    const open = tokenPattern.lastIndex - 1;
-    const close = findMatchingBrace(text, open);
-    if (close < 0)
-      break;
-    stripped += text.slice(cursor, match.index);
-    const body = text.slice(open + 1, close);
-    const groupPattern = /([A-Za-z_][\w-]*)\s*\{([^{}]*)\}/g;
-    for (let group; (group = groupPattern.exec(body));) {
-      const kind = group[1].toLowerCase();
-      const target = kind === "color" ? tokens.colors :
-        (kind === "length" || kind === "number" || kind === "duration") ? tokens.lengths :
-        kind === "material" ? tokens.materials : null;
-      if (!target)
-        throw new Error(`unknown KSS token group ${group[1]}`);
-      for (const part of group[2].split(";")) {
-        const colon = part.indexOf(":");
-        if (colon < 0)
-          continue;
-        const name = part.slice(0, colon).trim();
-        if (!name)
-          continue;
-        target.set(name, kind === "duration"
-          ? parseKssDurationValue(part.slice(colon + 1))
-          : parseKssValue(part.slice(colon + 1)));
-      }
-    }
-    cursor = close + 1;
-    tokenPattern.lastIndex = close + 1;
-  }
-  stripped += text.slice(cursor);
-  return { text: stripped, tokens };
+// The KSS grammar lives once in runtime/kss_parser.kry; this layer only maps
+// its typed output (rules, spans, declarations, tokens, foreign blocks) onto
+// CSS selectors, values, keyframes, and conditional groups.
+
+const webStyleModules = new Map();
+
+export function registerWebStyleModule(id, source) {
+  if (!id || typeof source !== "string" || source === "")
+    return false;
+  webStyleModules.set(id, source);
+  return true;
 }
 
-function parseWebStyleKeyframes(text, tokens) {
-  const keyframes = [];
-  let stripped = "";
-  let cursor = 0;
-  const keyframePattern = /@keyframes\s+([A-Za-z_][\w-]*)\s*\{/g;
-  for (let match; (match = keyframePattern.exec(text));) {
-    const open = keyframePattern.lastIndex - 1;
-    const close = findMatchingBrace(text, open);
-    if (close < 0)
-      break;
-    stripped += text.slice(cursor, match.index);
-    const body = text.slice(open + 1, close);
-    const frames = [];
-    const framePattern = /([^{}]+)\{([^{}]*)\}/g;
-    for (let frame; (frame = framePattern.exec(body));) {
-      const selector = splitSelectorList(frame[1]).join(", ");
-      if (!selector)
-        continue;
-      frames.push({
-        selector,
-        style: parseKssDeclarations(frame[2], tokens)
-      });
-    }
-    keyframes.push({ name: match[1], frames });
-    cursor = close + 1;
-    keyframePattern.lastIndex = close + 1;
-  }
-  stripped += text.slice(cursor);
-  return { text: stripped, keyframes };
+export function clearWebStyleModules() {
+  webStyleModules.clear();
 }
 
-function parseWebStyleRuleItems(text, tokens, initialLayer = 0) {
+export function defaultWebStyleEnvironment() {
+  return {
+    theme: "", contrast: "normal", density: "comfortable",
+    pointer: "mouse", platform: "web"
+  };
+}
+
+function webKssEnvironment(environment) {
+  const env = { ...defaultWebStyleEnvironment(), ...(environment || {}) };
+  const theme = env.theme === "light" ? webKssModule.KssThemeLight :
+    env.theme === "dark" ? webKssModule.KssThemeDark : webKssModule.KssThemeNone;
+  const contrast = env.contrast === "high" ?
+    webKssModule.KssContrastHigh : webKssModule.KssContrastNormal;
+  const density = env.density === "compact" ? webKssModule.KssDensityCompact :
+    env.density === "touch" ? webKssModule.KssDensityTouch :
+      webKssModule.KssDensityComfortable;
+  const pointer = env.pointer === "touch" ? webKssModule.KssPointerTouch :
+    env.pointer === "mixed" ? webKssModule.KssPointerMixed :
+      webKssModule.KssPointerMouse;
+  const platform = env.platform === "android" ? webKssModule.KssPlatformAndroid :
+    env.platform === "plan9" ? webKssModule.KssPlatformPlan9 :
+      env.platform === "terminal" ? webKssModule.KssPlatformTerminal :
+        env.platform === "desktop" ? webKssModule.KssPlatformDesktop :
+          webKssModule.KssPlatformWeb;
+  return { theme, contrast, density, pointer, platform };
+}
+
+let webKssHostInstalled = false;
+
+function webKssStep(p) {
+  if (!webKssHostInstalled) {
+    webKssModule.setHost({ StringSlice });
+    webKssHostInstalled = true;
+  }
+  return webKssModule.KssParser_KssStep(null, undefined, undefined, p);
+}
+
+function webKssNameText(name) {
+  if (!name || name.length <= 0)
+    return "";
+  return String.fromCharCode(...name.bytes.slice(0, name.length));
+}
+
+function webKssDiagnostic(p) {
+  const text = String.fromCharCode(...p.diagnostic.slice(0, p.diagnostic_length));
+  return text || "style sheet did not complete";
+}
+
+function webCssColor(color) {
+  const value = color >>> 0;
+  const text = value.toString(16).padStart(8, "0");
+  if (text.endsWith("ff"))
+    return "#" + text.slice(0, 6);
+  return "#" + text;
+}
+
+function webMaterialName(material) {
+  if (material === 0)
+    return "Lightfield";
+  if (material === 2)
+    return "Glass";
+  return "Flat";
+}
+
+function runWebKssParser(source, environment) {
+  let p = webKssModule.KssParser_KssBeginDeclarative(null, undefined, undefined,
+    source, "", webKssEnvironment(environment));
+  const unitSources = [source];
   const rules = [];
-  let layer = initialLayer;
-  const itemPattern = /@([A-Za-z_][\w-]*)\s+([^;{}]+);|([^@{}]+)\{([^{}]*)\}/g;
-  for (let match; (match = itemPattern.exec(text));) {
-    if (match[1]) {
-      const name = match[1].toLowerCase();
-      const value = match[2].trim();
-      if (name === "layer") {
-        const nextLayer = webStyleLayers[value.toLowerCase()];
-        if (nextLayer === undefined)
-          throw new Error(`unknown KSS layer ${value}`);
-        layer = nextLayer;
-      } else {
-        throw new Error(`unknown KSS directive @${match[1]}`);
-      }
+  for (;;) {
+    if (p.status === webKssModule.KssStatusRule) {
+      rules.push({
+        rule: p.rule,
+        span: { ...p.rule_span },
+        source: unitSources[p.rule_span.file] ?? source
+      });
+      p.status = webKssModule.KssStatusContinue;
       continue;
     }
-    for (const selectorText of splitSelectorList(match[3])) {
-      if (!selectorText.trim())
-        continue;
-      const selector = parseSelector(selectorText);
-      const order = rules.length;
-      rules.push({
-        selector,
-        style: parseKssDeclarations(match[4], tokens),
-        layer,
-        order,
-        score: layer * 1000000 + selector.specificity * 1000 + order
-      });
-    }
-  }
-  return rules;
-}
-
-function parseWebStyleConditionalGroups(text, tokens) {
-  const groups = [];
-  let stripped = "";
-  let cursor = 0;
-  const conditionalPattern = /@(media|supports|container)\s+([^{}]+)\{/g;
-  for (let match; (match = conditionalPattern.exec(text));) {
-    const open = conditionalPattern.lastIndex - 1;
-    const close = findMatchingBrace(text, open);
-    if (close < 0)
+    if (p.status !== webKssModule.KssStatusContinue)
       break;
-    stripped += text.slice(cursor, match.index);
-    const query = match[2].trim();
-    if (query) {
-      groups.push({
-        kind: match[1].toLowerCase(),
-        query,
-        rules: parseWebStyleRuleItems(text.slice(open + 1, close), tokens)
-      });
+    p = webKssStep(p);
+    if (p.status === webKssModule.KssStatusNeedImport) {
+      const name = webKssNameText(p.pending_import);
+      const module = webStyleModules.get(name);
+      if (module !== undefined) {
+        p = webKssModule.KssParser_KssProvideImport(null, undefined, undefined, p, module, name);
+        unitSources[p.file] = module;
+      } else {
+        p = webKssModule.KssParser_KssFailImport(null, undefined, undefined, p);
+      }
     }
-    cursor = close + 1;
-    conditionalPattern.lastIndex = close + 1;
   }
-  stripped += text.slice(cursor);
-  return { text: stripped, groups };
+  if (p.status !== webKssModule.KssStatusDone)
+    throw new Error(webKssDiagnostic(p));
+  return { parser: p, rules, unitSources };
 }
 
-export function parseWebStyleSheet(source, colors = {}) {
-  const parsedTokens = parseWebStyleTokens(stripKssComments(source));
-  for (const [name, color] of Object.entries(colors)) {
-    if (parsedTokens.tokens.colors.has(name))
-      parsedTokens.tokens.colors.set(name, parseKssValue(color));
+function webTokensFromParser(p) {
+  const tokens = emptyWebStyleTokens();
+  for (let i = 0; i < p.token_count; i++) {
+    const token = p.tokens[i];
+    const name = webKssNameText(token.name);
+    if (!name)
+      continue;
+    if (token.kind === webKssModule.KssTokenColor)
+      tokens.colors.set(name, webCssColor(token.color));
+    else if (token.kind === webKssModule.KssTokenMaterial)
+      tokens.materials.set(name, webMaterialName(token.material));
+    else
+      tokens.lengths.set(name, token.number);
   }
-  const parsedKeyframes = parseWebStyleKeyframes(parsedTokens.text, parsedTokens.tokens);
-  const parsedGroups = parseWebStyleConditionalGroups(parsedKeyframes.text, parsedTokens.tokens);
-  const text = parsedGroups.text;
-  const tokens = parsedTokens.tokens;
-  let pack = "";
-  const rules = parseWebStyleRuleItems(text.replace(/@pack\s+([^;{}]+);/g, (_all, value) => {
-    pack = value.trim();
-    return "";
-  }), tokens);
-  const directivePattern = /@([A-Za-z_][\w-]*)\s+([^;{}]+);/g;
-  for (let match; (match = directivePattern.exec(text));) {
-    const name = match[1].toLowerCase();
-    if (name !== "pack" && name !== "layer")
-      throw new Error(`unknown KSS directive @${match[1]}`);
+  return tokens;
+}
+
+function webKeyframesFromBody(body, tokens) {
+  const frames = [];
+  const framePattern = /([^{}]+)\{([^{}]*)\}/g;
+  for (let frame; (frame = framePattern.exec(body));) {
+    const selector = splitSelectorList(frame[1]).join(", ");
+    if (!selector)
+      continue;
+    frames.push({ selector, style: parseKssDeclarations(frame[2], tokens) });
   }
-  return {
-    pack,
-    rules,
-    keyframes: parsedKeyframes.keyframes,
-    groups: parsedGroups.groups
-  };
+  return frames;
+}
+
+function webDeclarationsForRule(item, p, tokens) {
+  const style = {};
+  for (let i = 0; i < p.declaration_count; i++) {
+    const entry = p.declarations[i];
+    if (entry.rule !== item.rule.order)
+      continue;
+    const name = item.source.slice(entry.name_start, entry.name_start + entry.name_length);
+    const value = item.source.slice(entry.value_start, entry.value_start + entry.value_length);
+    style[name] = parseKssDeclarationValue(name, value, tokens);
+  }
+  return style;
+}
+
+function webRulesFromItem(item, p, tokens) {
+  const mapped = [];
+  const selectorText = item.source.slice(
+    item.span.selector_start, item.span.selector_start + item.span.selector_length
+  ).trim();
+  const style = webDeclarationsForRule(item, p, tokens);
+  for (const part of splitSelectorList(selectorText)) {
+    if (!part.trim())
+      continue;
+    const selector = parseSelector(part);
+    mapped.push({ selector, style, layer: item.rule.layer });
+  }
+  return mapped;
+}
+
+export function parseWebStyleSheet(source, colors = {}, environment = defaultWebStyleEnvironment()) {
+  const run = runWebKssParser(stripKssComments(String(source ?? "")), environment);
+  const p = run.parser;
+  const unitSources = run.unitSources;
+  const tokens = webTokensFromParser(p);
+  for (const [name, color] of Object.entries(colors || {})) {
+    if (tokens.colors.has(name))
+      tokens.colors.set(name, parseKssValue(color));
+  }
+
+  const rules = [];
+  const groups = [];
+  const keyframes = [];
+  const groupNames = ["media", "supports", "container"];
+  const foreignToGroup = [];
+
+  for (let i = 0; i < p.foreign_count; i++) {
+    const foreign = p.foreign[i];
+    const unit = unitSources[foreign.file] ?? "";
+    const name = webKssNameText(foreign.name).toLowerCase();
+    const query = unit.slice(foreign.query_start, foreign.query_start + foreign.query_length).trim();
+    const body = unit.slice(foreign.body_start, foreign.body_start + foreign.body_length);
+    if (name === "keyframes") {
+      keyframes.push({ name: query, frames: webKeyframesFromBody(body, tokens) });
+      foreignToGroup.push(-1);
+    } else if (groupNames.includes(name) && query) {
+      groups.push({ kind: name, query, rules: [] });
+      foreignToGroup.push(groups.length - 1);
+    } else {
+      foreignToGroup.push(-1);
+    }
+  }
+
+  for (const item of run.rules) {
+    const mapped = webRulesFromItem(item, p, tokens);
+    const groupIndex = item.span.group >= 0 ? foreignToGroup[item.span.group] : -1;
+    const target = groupIndex >= 0 ? groups[groupIndex].rules : rules;
+    for (const mappedRule of mapped) {
+      const order = target.length;
+      target.push({
+        ...mappedRule,
+        order,
+        score: mappedRule.layer * 1000000 + mappedRule.selector.specificity * 1000 + order
+      });
+    }
+  }
+
+  return { pack: webKssNameText(p.pack), rules, keyframes, groups };
 }
 
 function cssEscapeString(value) {

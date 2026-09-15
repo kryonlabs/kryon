@@ -22,9 +22,10 @@ Remaining:
   Audit nested token groups, font and line metrics, transition properties,
   deterministic color functions, and explicit-zero behavior. Record unsupported
   features per runtime before adding them; do not add spelling aliases.
-- Wire the web runtime's KSS-to-CSS layer through the generated
-  `kss_parser` module so theme/env/import decisions stop being re-derived in
-  `web/kryon-runtime.js`; today only the shared byte helpers are generated.
+- Done since: the web runtime's KSS-to-CSS layer runs the generated
+  `kss_parser` module in declarative mode (raw selector/declaration spans,
+  foreign blocks); theme/env/import decisions are no longer re-derived in
+  `web/kryon-runtime.js`.
 - Implement typed pack-option/variant metadata and selector resolution for
   Lightfield's glow treatment. Runtime color-token substitution does not supply
   the planned pack-option grammar.

@@ -922,6 +922,7 @@ k2go-syntax-test: $(K2GO)
 k2js-syntax-test: $(K2JS)
 	sh tests/k2js_syntax_test.sh $(K2JS)
 	node tests/web_kss_control_style_test.mjs web/kryon-runtime.js
+	node tests/web_kss_strict_test.mjs web/kryon-runtime.js
 	$(MAKE) web-dom-browser-test
 
 web-dom-browser-test:
@@ -1133,9 +1134,9 @@ web/control_props.js: runtime/control_props.kry $(K2JS)
 	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/control_props.kry
 
 WEB_TEXT_RUNTIME = text_input control_props drawing_props style_sheet style surface
-web/text_input.js web/style_sheet.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) $(K2JS)
-	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o $(BUILD_DIR)/web-text $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME)))
-	cp $(BUILD_DIR)/web-text/text_input.js $(BUILD_DIR)/web-text/style_sheet.js web/
+web/text_input.js web/style_sheet.js web/kss_parser.js web/style.js web/surface.js web/control_props.js web/drawing_props.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry $(K2JS)
+	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o $(BUILD_DIR)/web-text $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry
+	cp $(BUILD_DIR)/web-text/text_input.js $(BUILD_DIR)/web-text/style_sheet.js $(BUILD_DIR)/web-text/kss_parser.js $(BUILD_DIR)/web-text/style.js $(BUILD_DIR)/web-text/surface.js $(BUILD_DIR)/web-text/control_props.js $(BUILD_DIR)/web-text/drawing_props.js web/
 
 web/instance.js: runtime/instance.kry $(K2JS)
 	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/instance.kry
