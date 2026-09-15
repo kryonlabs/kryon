@@ -867,6 +867,10 @@ Color GetThemeLink(void);
 
 #### Theme Metrics
 
+The shipped KSS style packs are Material (the default), TK, and Lightfield.
+Style selection belongs in the Appearance dropdown. Color variations use theme
+overlays within the selected pack.
+
 Visual style selection belongs to KSS style packs. Theme metrics are the shared
 layout defaults used by the active pack and by low-level drawing code.
 

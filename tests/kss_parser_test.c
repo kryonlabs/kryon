@@ -285,7 +285,6 @@ main(void)
 
     assert_pack_parses("styles/kryon/material.kss", "material");
     assert_pack_parses("styles/kryon/tk.kss", "tk");
-    assert_pack_parses("styles/kryon/vanilla.kss", "vanilla");
     assert_pack_parses("styles/kryon/lightfield.kss", "lightfield");
 
     return 0;

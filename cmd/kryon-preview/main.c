@@ -43,7 +43,7 @@ usage(void)
             "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n"
             "\n"
             "  --style PACK   run one command with a built-in style pack (material, tk,\n"
-            "                 vanilla, lightfield) or 'none' for no-style mode\n");
+            "                 lightfield) or 'none' for no-style mode\n");
 }
 
 static const char *
@@ -321,7 +321,7 @@ run_capture(const PreviewOptions *opt)
 }
 
 static const char *const kp_style_packs[] = {
-    "material", "tk", "vanilla", "lightfield", "none",
+    "material", "tk", "lightfield", "none",
 };
 
 static void png_name(char *dst, size_t dst_size, const char *rel);

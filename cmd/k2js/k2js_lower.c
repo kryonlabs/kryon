@@ -133,7 +133,6 @@ style_is_builtin(const char *target)
 {
     return strcmp(target, "material") == 0 ||
            strcmp(target, "tk") == 0 ||
-           strcmp(target, "vanilla") == 0 ||
            strcmp(target, "glow") == 0 ||
            strcmp(target, "lightfield") == 0;
 }

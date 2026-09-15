@@ -97,8 +97,8 @@ The root cross-module Go command was replaced with the real module test target.
   do not leak into the app.
 - Input capture scopes can be popped without clearing outer captures; native
   UI regression covers nested inert previews.
-- All four built-in packs give selected buttons a visible border. Built-in pack
-  coverage and style-picker tests cover the four supported choices.
+- All three built-in packs give selected buttons a visible border. Built-in pack
+  coverage and style-picker tests cover the three supported choices.
 - Downstream startup must bundle the KSS assets and explicitly select its pack.
   A successful native build alone does not prove controls are styled or clickable.
 
@@ -118,5 +118,5 @@ Inbe now lets its host own the frame boundary. Scroll scopes transform their
 paint clip to screen coordinates, with offset/zoom regression coverage.
 TitleBar leading actions supply the standard back arrow when no texture is
 provided, matching the native and Go surfaces without an app wrapper.
-The isolated Inbe checks cover 5 ms taps, all four inert style previews,
+The isolated Inbe checks cover 5 ms taps,
 onboarding, phone bottom navigation, list editing, and persisted state.

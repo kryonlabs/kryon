@@ -194,8 +194,7 @@ between them, and no visual fallback hidden inside widgets.
 - Remove every raw visual value from app-facing widget props.
 - Remove visual defaults from widget implementations.
 - Make style sheets the only app-facing visual styling system.
-- Convert the current vanilla/default Kryon styling, including the glow and
-  Lightfield treatments, into ordinary shipped style packs.
+- Ship Material as the default style, with TK and Lightfield as optional packs.
 - Let apps import several style packs and switch between them at runtime with
   a standard style picker/dropdown.
 - Keep `.kry` structural and readable.
@@ -275,8 +274,6 @@ Kryon can ship optional packs:
 | `<reset>` | minimum readable/debug affordances and normalized inherited tokens |
 | `<material>` | default attached app pack: clean Material-like controls, restrained surfaces, flat/cheap paint |
 | `<tk>` | toolkit-native pack for dense desktop utilities and easy picker previews |
-| `<vanilla>` | the current default Kryon styling expressed as a style pack |
-| `<classic>` | preserved original Kryon look as an explicit pack |
 | `<lightfield>` | premium Lightfield/Button/Dropdown visual language, including glow-capable treatment, opt-in because it is more performance intensive |
 | `<high-contrast>` | accessibility-oriented overlay or full pack |
 | `<terminal>` | termi-focused mapping for cell backends |
@@ -288,9 +285,9 @@ embedded `.kss` pack sources only when needed and preserves any active app
 selection. If nothing is active, Material becomes active.
 
 For host code that wants to force the shipped catalog back to its baseline,
-`RegisterBuiltInStylePacks()` loads Material, TK, Vanilla, and Lightfield
+`RegisterBuiltInStylePacks()` loads Material, TK, and Lightfield
 as ordinary `StylePack` values and selects Material. Apps can immediately
-switch to TK, Vanilla, Lightfield, or a product pack through
+switch to TK, Lightfield, or a product pack through
 `StylePicker`; the picker lazily ensures the built-in catalog when the registry
 is empty. Lightfield must never be the automatic default: it is beautiful, but
 its translucent layered treatment is a premium opt-in rendering path, not the
@@ -314,8 +311,8 @@ TK should be equally real, not a placeholder: compact spacing, square-ish
 controls, light desktop colors, hard borders, and dense utility ergonomics so
 an app can preview and choose it immediately.
 
-Vanilla preserves Kryon's current default visual personality as an explicit
-stylesheet. Lightfield remains the premium family for translucent depth,
+Material is the default stylesheet. Lightfield remains the premium family for
+translucent depth,
 many-layer controls, and glow-capable treatments, opt-in because it costs more
 to render. Glow is not a separate stylesheet in the shipped catalog; it belongs
 inside Lightfield as a selectable treatment once pack-level variants land.
@@ -380,7 +377,6 @@ app state or host preferences:
 ```kry
 #style <material> as material
 #style <tk> as tk
-#style <vanilla> as vanilla
 #style <lightfield> as lightfield
 #style "brand.kss" as brand
 
@@ -388,7 +384,7 @@ App {
     SettingsPanel {
         StylePicker theme_style {
             value = active_style
-            options = [material, tk, vanilla, lightfield, brand]
+            options = [material, tk, lightfield, brand]
         }
     }
 
@@ -430,17 +426,16 @@ Switching packs:
 - can persist through the existing settings/storage layer.
 
 Pack choice is independent from light/dark theme choice. A user can choose
-`lightfield` plus dark, `vanilla` plus light, or a brand pack plus high contrast.
+`lightfield` plus dark, `material` plus light, or a brand pack plus high contrast.
 The active visual state is:
 
 ```text
 style pack + theme overlay + environment overlay + scoped rules
 ```
 
-This is important culturally for Kryon: today's default look should survive as
-`<vanilla>`, and the premium glow-rich direction should survive inside
-`<lightfield>`, but both must be selectable styling, not invisible assumptions
-baked into every widget.
+Material supplies the default look. TK and Lightfield are selectable alternatives.
+Color variations belong to theme overlays within each style; widget behavior
+remains shared and does not contain hidden styling defaults.
 
 ### Naming rule
 
@@ -1086,11 +1081,9 @@ Unsupported visual properties degrade; they do not fork style resolution.
 - Add `<reset>` for zero-opinion readability/debug affordances.
 - Add `<material>` as the default template-attached app pack.
 - Add `<tk>` as the dense toolkit-native picker option.
-- Convert today's actual default/vanilla styling into `<vanilla>`.
 - Move the current approved Lightfield/Button/Dropdown look into
   `<lightfield>` as an opt-in premium pack, with glow as a Lightfield
   treatment rather than a separate stylesheet.
-- Preserve the original beveled look as `<classic>`.
 - Make examples attach a pack explicitly.
 - Add `StylePicker` as the standard dropdown-style control for choosing among
   registered packs.
@@ -1132,9 +1125,8 @@ Unsupported visual properties degrade; they do not fork style resolution.
   `<material>` only when no pack is active.
 - Project templates explicitly include `<material>` so generated source
   still shows the baseline style choice.
-- Existing Kryon visual personality remains available through explicit
-  `<vanilla>`, `<tk>`, and `<lightfield>`
-  imports.
+- Alternative styles remain available through explicit `<tk>` and
+  `<lightfield>` imports.
 - `KRYON_STYLE=none` becomes a required test mode for behavior/layout.
 - Leak scanners flip to zero exemptions.
 
@@ -1163,8 +1155,7 @@ The plan is complete when:
 - every app-facing widget can render in `KRYON_STYLE=none`;
 - legacy theme files, theme import/export, and theme-style compatibility modes
   are gone from the app-facing styling surface;
-- `<material>`, `<vanilla>`, `<tk>`,
-  `<classic>`, and
+- `<material>`, `<tk>`, and
   `<lightfield>` are ordinary style packs, not hidden runtime modes;
 - apps can register multiple packs and expose a `StylePicker` dropdown to
   switch between them quickly;

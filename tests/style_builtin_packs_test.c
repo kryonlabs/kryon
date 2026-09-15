@@ -280,7 +280,6 @@ main(void)
     const char *pack_ids[] = {
         "material",
         "tk",
-        "vanilla",
         "lightfield",
     };
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -296,11 +295,10 @@ main(void)
 
     ClearStylePacks();
     assert(RegisterBuiltInStylePacks());
-    assert(GetStylePackCount() >= 4);
+    assert(GetStylePackCount() == 3);
     assert(strcmp(GetActiveStylePackId(), "material") == 0);
     assert(FindStylePack("material") != NULL);
     assert(FindStylePack("tk") != NULL);
-    assert(FindStylePack("vanilla") != NULL);
     assert(FindStylePack("lightfield") != NULL);
     assert(FindStylePack("glow") == NULL);
 
@@ -348,11 +346,6 @@ main(void)
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0x2f6bffffu);
     assert(resolved.radius == 3.0f);
-
-    assert(SetActiveStylePack("vanilla"));
-    resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
-    assert(resolved.background == 0x245be0ffu);
-    assert(resolved.material == MaterialFlat);
 
     assert(SetActiveStylePack("lightfield"));
     resolved = ResolveActiveStyle(base, field, ButtonStateNormal);

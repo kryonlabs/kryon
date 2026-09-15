@@ -43,7 +43,7 @@ main(void)
     assert(picker_state.selected_index == -1);
     assert(!StylePicker((StylePickerProps){.id = 41}));
     assert(dropdown_calls == 1);
-    assert(captured_dropdown.option_count == 4);
+    assert(captured_dropdown.option_count == 3);
     assert(captured_dropdown.options != NULL);
     assert(strcmp(captured_dropdown.options[0], "Material") == 0);
     assert(GetActiveStylePack() != NULL);
@@ -52,8 +52,8 @@ main(void)
     ClearStylePacks();
 
     assert(RegisterStylePack((StylePack){
-        .id = "vanilla",
-        .label = "Vanilla",
+        .id = "first",
+        .label = "First",
         .description = "Default look",
         .sheet = &sheet,
     }));
@@ -75,10 +75,10 @@ main(void)
     assert(captured_dropdown.id == 42);
     assert(captured_dropdown.option_count == 2);
     assert(captured_dropdown.options != NULL);
-    assert(strcmp(captured_dropdown.options[0], "Vanilla") == 0);
+    assert(strcmp(captured_dropdown.options[0], "First") == 0);
     assert(strcmp(captured_dropdown.options[1], "Glow") == 0);
     assert(GetActiveStylePack() != NULL);
-    assert(strcmp(GetActiveStylePack()->id, "vanilla") == 0);
+    assert(strcmp(GetActiveStylePack()->id, "first") == 0);
 
     dropdown_changed = 1;
     dropdown_next_index = 1;

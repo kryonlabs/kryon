@@ -17,13 +17,13 @@ background_rule(int kind, unsigned int color)
 int
 main(void)
 {
-    StyleRule vanilla_rules[1] = {
+    StyleRule first_rules[1] = {
         background_rule(StyleKindButton(), 0x111111ffu),
     };
     StyleRule glow_rules[1] = {
         background_rule(StyleKindButton(), 0x222222ffu),
     };
-    StyleSheet vanilla_sheet = {.rules = vanilla_rules, .rule_count = 1};
+    StyleSheet first_sheet = {.rules = first_rules, .rule_count = 1};
     StyleSheet glow_sheet = {.rules = glow_rules, .rule_count = 1};
     StylePackOption options[4] = {0};
     StyleFacts button_facts = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -48,14 +48,14 @@ main(void)
     assert(StylePackVersion() == version);
 
     assert(RegisterStylePack((StylePack){
-        .id = "vanilla",
-        .label = "Vanilla",
+        .id = "first",
+        .label = "First",
         .description = "Current default Kryon look",
-        .sheet = &vanilla_sheet,
+        .sheet = &first_sheet,
     }));
     assert(GetStylePackCount() == 1);
     assert(GetActiveStylePack() != NULL);
-    assert(GetActiveStylePack()->sheet == &vanilla_sheet);
+    assert(GetActiveStylePack()->sheet == &first_sheet);
     assert(GetActiveStylePackId() != NULL);
     assert(StylePackVersion() == version + 1);
     resolved = ResolveActiveStyle(base, button_facts, ButtonStateNormal);
@@ -72,7 +72,7 @@ main(void)
     }));
     assert(GetStylePackCount() == 2);
     assert(FindStylePack("glow")->sheet == &glow_sheet);
-    assert(GetActiveStylePack()->sheet == &vanilla_sheet);
+    assert(GetActiveStylePack()->sheet == &first_sheet);
 
     version = StylePackVersion();
     assert(SetActiveStylePack("glow"));
@@ -93,10 +93,10 @@ main(void)
         .id = "glow",
         .label = "Glow Updated",
         .description = "Replacement",
-        .sheet = &vanilla_sheet,
+        .sheet = &first_sheet,
     }));
     assert(GetStylePackCount() == 2);
-    assert(GetActiveStylePack()->sheet == &vanilla_sheet);
+    assert(GetActiveStylePack()->sheet == &first_sheet);
     assert(GetActiveStylePack()->label[5] == 'U');
     resolved = ResolveStyle(&glow_sheet, base, button_facts,
                             ButtonStateNormal);

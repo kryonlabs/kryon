@@ -64,7 +64,7 @@ func TestStylePackRegistryInGo(t *testing.T) {
 	button := StyleSheet_StyleDefaultSelector()
 	button.Kind = StyleSheet_StyleKindButton()
 
-	vanilla := []StyleRule{{
+	first := []StyleRule{{
 		Selector: button,
 		State:    StyleSheet_StyleStateAny(),
 		Style: StyleData{
@@ -98,14 +98,14 @@ func TestStylePackRegistryInGo(t *testing.T) {
 	if StylePackVersion() != version {
 		t.Fatal("failed registration changed version")
 	}
-	if !RegisterStylePack(StylePack{ID: "vanilla", Label: "Vanilla", Sheet: vanilla}) {
-		t.Fatal("vanilla pack did not register")
+	if !RegisterStylePack(StylePack{ID: "first", Label: "First", Sheet: first}) {
+		t.Fatal("first pack did not register")
 	}
-	if GetActiveStylePackID() != "vanilla" {
+	if GetActiveStylePackID() != "first" {
 		t.Fatalf("first pack was not active: %q", GetActiveStylePackID())
 	}
 	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
-		t.Fatalf("vanilla did not resolve: 0x%08x", resolved.Background)
+		t.Fatalf("first did not resolve: 0x%08x", resolved.Background)
 	}
 	if !RegisterStylePack(StylePack{ID: "second", Label: "Second", Sheet: second}) {
 		t.Fatal("second pack did not register")
@@ -120,7 +120,7 @@ func TestStylePackRegistryInGo(t *testing.T) {
 	if len(options) != 2 || options[0].Active || !options[1].Active {
 		t.Fatalf("bad options: %#v", options)
 	}
-	if !RegisterStylePack(StylePack{ID: "second", Label: "Second Updated", Sheet: vanilla}) {
+	if !RegisterStylePack(StylePack{ID: "second", Label: "Second Updated", Sheet: first}) {
 		t.Fatal("replacement second pack did not register")
 	}
 	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
@@ -643,7 +643,6 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	packIDs := []string{
 		"material",
 		"tk",
-		"vanilla",
 		"lightfield",
 	}
 
@@ -654,7 +653,6 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
 	if FindStylePack("tk") == nil ||
-		FindStylePack("vanilla") == nil ||
 		FindStylePack("lightfield") == nil {
 		t.Fatalf("missing built-ins: %#v", GetStylePackOptions())
 	}
@@ -698,13 +696,6 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	if resolved.Background != 0xd5bbffff || resolved.Material != MaterialFlat {
 		t.Fatalf("material did not resolve: %#v", resolved)
 	}
-	if !SetActiveStylePack("vanilla") {
-		t.Fatal("vanilla did not activate")
-	}
-	resolved = ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
-	if resolved.Background != 0x245be0ff || resolved.Material != MaterialFlat {
-		t.Fatalf("vanilla did not resolve: %#v", resolved)
-	}
 	if !SetActiveStylePack("lightfield") {
 		t.Fatal("lightfield did not activate")
 	}
@@ -744,7 +735,7 @@ func TestEnsureBuiltInStylePacksInGo(t *testing.T) {
 	if GetActiveStylePackID() != "material" {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
-	if len(GetStylePackOptions()) < 4 {
+	if len(GetStylePackOptions()) != 3 {
 		t.Fatalf("missing built-in options: %#v", GetStylePackOptions())
 	}
 	if !SetActiveStylePack("lightfield") {

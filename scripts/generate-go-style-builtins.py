@@ -8,8 +8,6 @@ PACKS = [
      "Clean Material-like controls with flat paint", "styles/kryon/material.kss"),
     ("tk", "tk", "TK",
      "Dense toolkit controls for desktop utilities", "styles/kryon/tk.kss"),
-    ("vanilla", "vanilla", "Vanilla",
-     "Current Kryon default controls as an explicit pack", "styles/kryon/vanilla.kss"),
     ("lightfield", "lightfield", "Lightfield",
      "Premium translucent controls with glow-capable treatment", "styles/kryon/lightfield.kss"),
 ]
