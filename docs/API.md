@@ -2262,3 +2262,13 @@ Go accepts `[]StyleColorToken` without a count. Web callers pass a color-token
 object as the second argument to `parseWebStyleSheet(source, colors)` and install
 the returned sheet. Built-in packs expose their control colors as tokens;
 applications own mapping their theme palette to those tokens.
+
+### Style field presence and structural metrics
+
+Widgets resolve product appearance from style rules with no hidden visual base.
+A missing structural metric may use a documented layout fallback; explicit zero
+must remain zero. Negative metrics follow the owning widget's policy. Page
+layout's structural zeros and caller font requests are not default widget chrome.
+For opacity, `StyleOpacityValue(fields, opacity)` resolves an absent declaration
+to one while preserving an explicit zero. Renderers must not reinterpret that
+explicit zero as a request for default paint.

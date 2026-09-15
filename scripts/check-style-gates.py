@@ -88,7 +88,7 @@ def paint_style_leak_check():
 
 
 BASE_ALLOWLIST = {
-    # Documented structural allowances (metrics contract, plan/style/01).
+    # Documented structural allowances (metrics contract in docs/API.md).
     "src/ui/ui_page.c": 2,
 }
 GO_BASE_ALLOWLIST = {
