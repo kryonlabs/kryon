@@ -37,6 +37,20 @@
 - Implement the KSS formatter with stable output, comment preservation, and
   semantic round-trip tests. Review redundant opacity declarations only after
   proving their removal preserves cascade/state resets.
+  Status: `runtime/kss_formatter.kry` implements the formatter once for all
+  backends. The shared parser now records structural block spans (tokens,
+  theme, env, variant, directives, with rules and foreign blocks already
+  spanned), and the formatter re-layouts from those spans: construct text is
+  copied verbatim per line (semantic identity by construction), indentation
+  follows brace depth, top-level constructs get one blank line between them,
+  and comments - inside constructs or between them - survive. Hosts assemble
+  segment output (C `kss_format_string`, Go/web stitch `KssFormat` segments).
+  Idempotence and parse-equivalence are asserted in C (`kss-formatter-test`,
+  also wired into `make test`), Go (`TestKssFormatterRoundTrip`), and the web
+  strict suite. The k2go cross-module enum reference bug this surfaced
+  (double-prefixing members that already carry the enum name) is fixed.
+  Still open: a CLI entry point and declaration re-flow (joining/splitting
+  one-line rule bodies).
 - Verify live KSS reload in a real app host, including invalid-source recovery.
   Extend preview controls for theme overlays and pack options as their grammar
   becomes available.

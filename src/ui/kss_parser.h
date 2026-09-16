@@ -34,6 +34,12 @@ bool kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
                       KssParseResult *result, char *diagnostic,
                       size_t diagnostic_size);
 
+/* Format KSS source through the shared formatter: stable re-layout with
+ * verbatim construct text and preserved comments. Returns the formatted
+ * length (out holds a NUL-terminated string), or -1 with diagnostic set. */
+int kss_format_string(const char *source, char *out, size_t out_size,
+                      char *diagnostic, size_t diagnostic_size);
+
 /* Parse with a declared pack variant active ('@variant name ...' blocks yield
  * rules and overlays); variant may be NULL or empty for the base sheet. */
 bool kss_parse_with_variant(const char *source, const char *variant,

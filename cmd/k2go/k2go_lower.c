@@ -2131,10 +2131,19 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     char prefix[K2GO_NAME_MAX] = "";
                     char member[K2GO_NAME_MAX];
                     kir_copy(member, sizeof(member), ident);
-                    if(strcmp(type->name, "#enum") != 0 && KirFindRuntimeType(type->name, NULL) == NULL)
+                    if(strcmp(type->name, "#enum") != 0 && KirFindRuntimeType(type->name, NULL) == NULL) {
                         kir_camel_ident(type->name, prefix, sizeof(prefix));
-                    else
+                        /* The definition side (parse_enum) keeps members that
+                         * already carry the enum prefix flat; mirror that
+                         * here so references match the emitted constants. */
+                        if(!(prefix[0] != '\0' &&
+                             strncmp(member, prefix, strlen(prefix)) == 0))
+                            kir_camel_ident(type->name, prefix, sizeof(prefix));
+                        else
+                            prefix[0] = '\0';
+                    } else {
                         kir_camel_ident(ident, member, sizeof(member));
+                    }
                     dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s", prefix, member);
                     p = q;
                     continue;

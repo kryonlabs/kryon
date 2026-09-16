@@ -1,3 +1,4 @@
+#include "runtime/kss_formatter.h"
 #include "kss_parser.h"
 
 #include "runtime/kss_parser.h"
@@ -228,4 +229,55 @@ kss_parse_with_variant(const char *source, const char *variant,
         return false;
     return kss_collect(source, NULL, 0, variant, rules, rule_capacity,
                        result, diagnostic, diagnostic_size);
+}
+
+int
+kss_format_string(const char *source, char *out, size_t out_size,
+                  char *diagnostic, size_t diagnostic_size)
+{
+    KssFormatResult result;
+    size_t length = 0;
+
+    if(source == NULL || out == NULL || out_size == 0)
+        return -1;
+    if(diagnostic != NULL && diagnostic_size > 0)
+        diagnostic[0] = '\0';
+    result = KssFormat(StringView(source, strlen(source)));
+    if(!result.ok) {
+        int count = result.diagnostic_length;
+        if(diagnostic != NULL && diagnostic_size > 0) {
+            if(count >= (int)diagnostic_size)
+                count = (int)diagnostic_size - 1;
+            if(count < 0)
+                count = 0;
+            memcpy(diagnostic, result.diagnostic, (size_t)count);
+            diagnostic[count] = '\0';
+        }
+        return -1;
+    }
+    for(int i = 0; i < result.count; i++) {
+        const KssFormatSegment *segment = &result.segments[i];
+        size_t need;
+
+        if(segment->kind == 0)
+            need = (size_t)segment->length;
+        else if(segment->kind == 1)
+            need = 1;
+        else
+            need = 1 + (size_t)segment->length;
+        if(length + need + 1 > out_size)
+            return -1;
+        if(segment->kind == 0) {
+            memcpy(out + length, source + segment->start, (size_t)segment->length);
+            length += (size_t)segment->length;
+        } else if(segment->kind == 1) {
+            out[length++] = (char)segment->atom;
+        } else {
+            out[length++] = '\n';
+            for(int space = 0; space < segment->length; space++)
+                out[length++] = ' ';
+        }
+    }
+    out[length] = '\0';
+    return (int)length;
 }

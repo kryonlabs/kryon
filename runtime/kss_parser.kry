@@ -137,6 +137,7 @@ KssRuleSpan :: struct {
     body_start: i32
     body_length: i32
     group: i32
+    end: i32
 }
 
 # Declarative hosts (the web CSS mapping) consume raw declaration text and
@@ -175,6 +176,16 @@ KssVariantDecl :: struct {
     label: KssName
 }
 
+# Structural block spans: every top-level construct records the source range
+# it occupies so tooling (the KSS formatter) can re-layout without re-parsing
+# in the host. Kinds: 1 tokens, 2 theme, 3 env, 4 variant, 5 directive.
+
+KssBlockSpan :: struct {
+    kind: i32
+    start: i32
+    length: i32
+}
+
 KssParser :: struct {
     cursor: KssCursor
     files: [8]KssSourceFile
@@ -204,6 +215,8 @@ KssParser :: struct {
     variant_count: i32
     in_variant: bool
     variant_label: KssName
+    blocks: [32]KssBlockSpan
+    block_count: i32
     resume_group: i32
     declarative: bool
     declarations: [1024]KssDeclaration
@@ -244,6 +257,7 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #ex
     p.foreign_count = 0
     p.resume_group = -1
     p.variant_count = 0
+    p.block_count = 0
     p.diagnostic_length = 0
     return p
 }
@@ -2107,6 +2121,7 @@ KssParseRule :: (p: KssParser) -> KssParser {
             span.body_length = p.cursor.pos - span.body_start
             c = KssAdvance(c, 1)
             p.cursor = c
+            span.end = c.pos
             running = false
             continue
         }
@@ -2479,6 +2494,17 @@ KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
     return result
 }
 
+KssRecordBlock :: (p: KssParser, kind: i32, start: i32, end_pos: i32) -> KssParser {
+    if p.block_count >= 32 {
+        return KssFail(p, "style block capacity exceeded")
+    }
+    p.blocks[p.block_count].kind = kind
+    p.blocks[p.block_count].start = start
+    p.blocks[p.block_count].length = end_pos - start
+    p.block_count = p.block_count + 1
+    return p
+}
+
 KssSetVariant :: (p: KssParser, name: KssName) -> KssParser #export {
     p.env.variant = name
     return p
@@ -2797,7 +2823,8 @@ KssReadImportTarget :: (p: KssParser) -> KssNameResult {
     return result
 }
 
-KssParseLayerList :: (p: KssParser) -> KssParser {
+KssParseLayerList :: (p: KssParser, block_start: i32) -> KssParser {
+    layer_start: i32 = block_start
     c: KssCursor = KssSkipSpace(p.cursor)
     p.cursor = c
     if KssAtEnd(c) {
@@ -2833,11 +2860,12 @@ KssParseLayerList :: (p: KssParser) -> KssParser {
         return KssFail(p, "expected ';'")
     }
     p.cursor = semicolon.parser
-    return p
+    return KssRecordBlock(p, 5, layer_start, p.cursor.pos)
 }
 
 KssParseDirective :: (p: KssParser) -> KssParser {
     c: KssCursor = p.cursor
+    directive_start: i32 = p.cursor.pos
     c = KssAdvance(c, 1)
     p.cursor = c
     keyword: KssNameResult = KssReadName(c)
@@ -2870,7 +2898,7 @@ KssParseDirective :: (p: KssParser) -> KssParser {
             return KssFail(p, "expected ';'")
         }
         p.cursor = semicolon.parser
-        return p
+        return KssRecordBlock(p, 5, directive_start, p.cursor.pos)
     }
     if KssNameEquals(keyword.name, "version") {
         value: KssNumberResult = KssReadNumber(keyword.parser)
@@ -2893,11 +2921,11 @@ KssParseDirective :: (p: KssParser) -> KssParser {
             return KssFail(p, "expected ';'")
         }
         p.cursor = semicolon.parser
-        return p
+        return KssRecordBlock(p, 5, directive_start, p.cursor.pos)
     }
     if KssNameEquals(keyword.name, "layer") {
         p.cursor = keyword.parser
-        return KssParseLayerList(p)
+        return KssParseLayerList(p, directive_start)
     }
     if KssNameEquals(keyword.name, "import") {
         p.cursor = keyword.parser
@@ -2932,7 +2960,11 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         }
         p.variant_label = label.name
         p.cursor = label.parser
-        return KssParseVariantBlock(p, name.name)
+        p = KssParseVariantBlock(p, name.name)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return KssRecordBlock(p, 4, directive_start, p.cursor.pos)
     }
     if KssNameEquals(keyword.name, "theme") {
         value: KssNameResult = KssReadName(keyword.parser)
@@ -2941,7 +2973,11 @@ KssParseDirective :: (p: KssParser) -> KssParser {
             return KssFail(p, "expected theme name")
         }
         p.cursor = value.parser
-        return KssParseThemeBlock(p, value.name)
+        p = KssParseThemeBlock(p, value.name)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return KssRecordBlock(p, 2, directive_start, p.cursor.pos)
     }
     if KssNameEquals(keyword.name, "env") {
         axis: KssNameResult = KssReadName(keyword.parser)
@@ -2970,7 +3006,11 @@ KssParseDirective :: (p: KssParser) -> KssParser {
             return KssFail(p, "expected ')'")
         }
         p.cursor = close.parser
-        return KssParseEnvBlock(p, axis.name, value.name)
+        p = KssParseEnvBlock(p, axis.name, value.name)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return KssRecordBlock(p, 3, directive_start, p.cursor.pos)
     }
     if p.declarative {
         if KssIsGroupName(keyword.name) {
@@ -3097,10 +3137,15 @@ KssStep :: (p: KssParser) -> KssParser #export {
         p.status = (i32)KssStatusContinue
         return p
     }
+    tokens_start: i32 = c.pos
     probe: KssNameResult = KssReadName(c)
     if probe.ok && KssNameEquals(probe.name, "tokens") {
         p.cursor = probe.parser
-        return KssParseTokensBlock(p, (i32)KssOriginPack)
+        p = KssParseTokensBlock(p, (i32)KssOriginPack)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return KssRecordBlock(p, 1, tokens_start, p.cursor.pos)
     }
     return KssParseRule(p)
 }

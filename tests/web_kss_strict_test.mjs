@@ -151,5 +151,40 @@ assert.throws(() => runtime.parseWebStyleSheet(
   runtime.clearWebStyleModules();
 }
 
+// KSS formatter: same module as C and Go; segments assemble in the host.
+{
+  const { readFileSync } = await import("node:fs");
+  const kfm = await import("../web/kss_formatter.js");
+  kfm.setHost({ StringSlice: (source, start, length) => String(source).slice(start, start + length) });
+  const assemble = (source, result) => {
+    let out = "";
+    for (let i = 0; i < result.count; i++) {
+      const segment = result.segments[i];
+      if (segment.kind === 0)
+        out += source.slice(segment.start, segment.start + segment.length);
+      else if (segment.kind === 1)
+        out += String.fromCharCode(segment.atom);
+      else
+        out += "\n" + " ".repeat(segment.length);
+    }
+    return out;
+  };
+  const ugly = "@pack fmt.web;\n      tokens {\n   color { accent: #112233; }\n}\n\n\n" +
+    "// keep me\nButton {\n    background: accent;\n  radius: 0;\n}";
+  const first = kfm.KssFormatter_KssFormat(null, undefined, undefined, ugly);
+  assert.equal(first.ok, true);
+  const once = assemble(ugly, first);
+  assert.ok(once.includes("// keep me"));
+  const second = kfm.KssFormatter_KssFormat(null, undefined, undefined, once);
+  assert.equal(second.ok, true);
+  const twice = assemble(once, second);
+  assert.equal(once, twice);
+  const before = runtime.parseWebStyleSheet(ugly);
+  const after = runtime.parseWebStyleSheet(once);
+  assert.equal(after.rules.length, before.rules.length);
+  assert.equal(after.rules[0].style.background, before.rules[0].style.background);
+  assert.equal(after.rules[0].style.radius, before.rules[0].style.radius);
+}
+
 runtime.clearWebStyleModules();
 console.log("web kss strict ok");

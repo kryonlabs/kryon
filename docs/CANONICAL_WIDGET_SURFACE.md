@@ -119,6 +119,7 @@ surface review:
 | `runtime/spinbox_props.kry` | Spinbox props | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement, sizing, wheel, content-drag decision, thumb drag offset, scrollbar drag/release decision, and ensure-visible policy | `.kry canonical` |
 | `runtime/scroll_props.kry` | Scroll props | `.kry canonical` |
+| `runtime/kss_formatter.kry` | The KSS formatter: stable re-layout from parser-verified construct spans with comment preservation | `.kry canonical` |
 | `runtime/kss_parser.kry` | The KSS parser: tokens, theme/env overlays, imports, layers, provenance, and diagnostics shared by all backends | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
 | `runtime/style_picker_props.kry` | StylePicker props and option/selection/dropdown state policy | `.kry canonical` |

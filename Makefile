@@ -620,12 +620,16 @@ style-picker-test: $(EMBED_ASSETS_C) include/ui_style_picker_props.generated.h $
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_picker_props.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
 	$(BUILD_DIR)/style-picker-test
 
-kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
+kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
 	$(BUILD_DIR)/kss-parser-test
 
-kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
+kss-formatter-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/kss_formatter_test.c
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_formatter_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-formatter-test
+	$(BUILD_DIR)/kss-formatter-test
+
+kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
 	$(BUILD_DIR)/kss-matched-test
 
 style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded_assets.c include/embedded_assets.h
@@ -649,7 +653,7 @@ go-style-builtins-check: scripts/generate-go-style-builtins.py go/kryon/style_bu
 	python3 scripts/generate-go-style-builtins.py --check
 
 style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_pack_source.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
 	$(BUILD_DIR)/style-pack-source-test
 
 app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
@@ -954,6 +958,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(MAKE) style-picker-test
 	$(MAKE) kss-parser-test
 	$(MAKE) kss-matched-test
+	$(MAKE) kss-formatter-test
 	$(MAKE) style-assets-test
 	$(MAKE) style-builtins-test
 	$(MAKE) go-style-builtins-check
@@ -1142,9 +1147,9 @@ include/ui_%.generated.h: $(GENERATED_SRC_DIR)/runtime/%.h
 	cp $< $@
 
 WEB_TEXT_RUNTIME = text_input control_props drawing_props style_sheet style surface
-web/text_input.js web/style_sheet.js web/kss_parser.js web/style.js web/surface.js web/control_props.js web/drawing_props.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry $(K2JS)
-	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o $(BUILD_DIR)/web-text $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry
-	cp $(BUILD_DIR)/web-text/text_input.js $(BUILD_DIR)/web-text/style_sheet.js $(BUILD_DIR)/web-text/kss_parser.js $(BUILD_DIR)/web-text/style.js $(BUILD_DIR)/web-text/surface.js $(BUILD_DIR)/web-text/control_props.js $(BUILD_DIR)/web-text/drawing_props.js web/
+web/text_input.js web/style_sheet.js web/kss_parser.js web/kss_formatter.js web/style.js web/surface.js web/control_props.js web/drawing_props.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry runtime/kss_formatter.kry $(K2JS)
+	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o $(BUILD_DIR)/web-text $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry runtime/kss_formatter.kry
+	cp $(BUILD_DIR)/web-text/text_input.js $(BUILD_DIR)/web-text/style_sheet.js $(BUILD_DIR)/web-text/kss_parser.js $(BUILD_DIR)/web-text/kss_formatter.js $(BUILD_DIR)/web-text/style.js $(BUILD_DIR)/web-text/surface.js $(BUILD_DIR)/web-text/control_props.js $(BUILD_DIR)/web-text/drawing_props.js web/
 
 web/instance.js: runtime/instance.kry $(K2JS)
 	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/instance.kry
