@@ -2318,8 +2318,11 @@ text and resolve imports; they never reimplement parsing:
   `KssSetVariant`; Go: `KssParser_KssSetVariant`; web: the environment's
   `variant` field). An active variant contributes rules in document order and
   applies token overlays with the variant origin. As with `@theme` and `@env`,
-  overlays take effect from their position onward: declare variant overlays
-  before the rules that reference their tokens.
+  blocks take effect from their position onward: declare variant overlays
+  before the rules that reference their tokens, and declare variant rule
+  blocks after the same-layer base rules they override. A sheet may repeat a
+  variant declaration to split overlay and rule blocks this way, as the
+  matched fixture does.
   `RegisterStylePackSource` registers each declared variant as a selectable
   pack under `<pack>.<variant>` carrying the declared label; activating it
   re-parses the source with that variant so base and variant rules resolve

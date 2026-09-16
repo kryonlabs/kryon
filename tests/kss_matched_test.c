@@ -128,7 +128,7 @@ test_matched_fixture(void)
     assert(button->style.material == MaterialFlat);
     assert(StringEqual(button->style.typeface, StringView("semibold", 8)));
     assert(collected.origins[2].file == 0);
-    assert(collected.origins[2].line == 27);
+    assert(collected.origins[2].line == 26);
 
     pressed = &collected.rules[3];
     assert(pressed->state == ButtonStatePressed);
@@ -144,7 +144,7 @@ test_matched_fixture(void)
     assert(RegisterStyleModule("matched-module", module));
     assert(kss_parse_with_variant(source, NULL, rules, 64, &result,
                                   diagnostic, sizeof(diagnostic)));
-    assert(result.variant_count == 1);
+    assert(result.variant_count == 2);
     assert(strcmp(result.variants[0].name, "glow") == 0);
     assert(strcmp(result.variants[0].label, "Glow") == 0);
     /* Default environment: no theme, no contrast overlay, so the sheet
@@ -157,11 +157,49 @@ test_matched_fixture(void)
      * variant sorts above theme), and the variant rule lands after the
      * environment rule and before the pack layer. */
     assert(glow.count == 6);
-    assert(glow.rules[2].style.letter_spacing == 9.0f);
-    assert(glow.rules[2].layer == 0);
-    assert(glow.rules[3].style.background == 0x00ff00ffu);
-    assert(glow.rules[3].style.letter_spacing == 2.0f);
+    assert(glow.rules[2].style.background == 0x00ff00ffu);
+    assert(glow.rules[2].style.letter_spacing == 2.0f);
+    assert(glow.rules[3].style.letter_spacing == 9.0f);
+    assert(glow.rules[3].layer == 1);
     assert(glow.rules[5].style.background == 0x00000000u);
+
+    /* Resolution parity anchor: the shared cascade must produce the same
+     * winners the Go suite asserts from this fixture. */
+    {
+        StyleSheet sheet;
+        StyleFacts facts;
+        StyleData value;
+
+        sheet.rules = collected.rules;
+        sheet.rule_count = collected.count;
+        facts = StyleDefaultFacts(StyleKindButton());
+        value = ResolveStyle(&sheet, (StyleData){0}, facts, ButtonStateNormal);
+        assert(value.background == 0xffcc00ffu);
+        assert(value.foreground == 0xf0f0f0ffu);
+        assert(value.border == 0x445566ffu);
+        assert(value.radius == 0.0f);
+        assert((value.fields & (uint32_t)StyleRadius) != 0u);
+        assert(value.padding_y == 80.0f);
+        assert(value.border_width == 2.0f);
+        assert(value.letter_spacing == 2.0f);
+        assert(value.material == MaterialFlat);
+        assert(StringEqual(value.typeface, StringView("semibold", 8)));
+        value = ResolveStyle(&sheet, (StyleData){0}, facts, ButtonStatePressed);
+        assert(value.background == 0x304050ffu);
+        facts.class_name = StyleClassId("quiet");
+        value = ResolveStyle(&sheet, (StyleData){0}, facts, ButtonStateNormal);
+        assert(value.background == 0x00000000u);
+        assert(value.foreground == 0x000000ffu);
+        assert(value.border == 0xffffffffu);
+        /* The glow variant rule wins over the same-layer base rule because
+         * it is declared after it. */
+        sheet.rules = glow.rules;
+        sheet.rule_count = glow.count;
+        facts = StyleDefaultFacts(StyleKindButton());
+        value = ResolveStyle(&sheet, (StyleData){0}, facts, ButtonStateNormal);
+        assert(value.letter_spacing == 9.0f);
+        assert(value.background == 0x00ff00ffu);
+    }
 
     free(source);
     free(module);

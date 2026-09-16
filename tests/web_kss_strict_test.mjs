@@ -115,8 +115,8 @@ assert.throws(() => runtime.parseWebStyleSheet(
     theme: "dark", contrast: "high", variant: "glow"
   });
   assert.equal(glowSheet.rules.length, 6);
-  assert.equal(glowSheet.rules[2].style["letter-spacing"], 9);
-  assert.equal(glowSheet.rules[3].style.background, "#00ff00");
+  assert.equal(glowSheet.rules[2].style.background, "#00ff00");
+  assert.equal(glowSheet.rules[3].style["letter-spacing"], 9);
   assert.equal(glowSheet.rules[5].style.background, "transparent");
 
   // Inspector provenance: sheets report the active environment, declared

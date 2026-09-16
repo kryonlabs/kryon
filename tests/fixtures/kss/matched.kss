@@ -21,7 +21,6 @@ tokens {
 }
 @variant glow "Glow" {
   accent: #00ff00;
-  Button { letter-spacing: 9; }
 }
 @layer components;
 Button {
@@ -33,6 +32,9 @@ Button {
   letter-spacing: 2;
   material: chrome;
   typeface: semibold;
+}
+@variant glow "Glow" {
+  Button { letter-spacing: 9; }
 }
 Button:pressed { background: #304050; }
 Button.quiet { background: transparent; foreground: black; border: white; }

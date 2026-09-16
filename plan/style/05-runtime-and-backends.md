@@ -28,7 +28,14 @@
   statement-local value chains and avoiding zero-built parser-embedding result
   structs per declaration.
 - Establish a style conformance matrix for C, Go, JS, KRB, DOM, canvas, libdraw,
-  termi, and null/test paths. Verify shared generated execution as well as the same field winners, role/state/class
+  termi, and null/test paths. (Resolution parity anchor: the matched fixture
+  now drives the shared cascade in C (`ResolveStyle`) and Go (`ResolveStyle`)
+  with identical winner assertions - base state including the dark-theme
+  overlay winner, an imported token, explicit zero with presence, an `@env`
+  axis field, the pressed state, class matching, and an active `@variant`
+  rule plus overlay. The web leg asserts the same winners through the CSS
+  mapping. KRB and the renderer backends consume the same generated C
+  resolver by construction.) Verify shared generated execution as well as the same field winners, role/state/class
   matching, pack loading, and no-style content behavior on supported paths.
 - Implement or verify explicit material/effect degradation on constrained
   backends. Report unsupported effects without changing resolved colors or

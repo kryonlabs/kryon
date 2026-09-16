@@ -103,7 +103,7 @@ func TestKssMatchedFixture(t *testing.T) {
 	if button.Style.Typeface != "semibold" {
 		t.Fatalf("typeface = %q", button.Style.Typeface)
 	}
-	if collected.origins[2].File != 0 || collected.origins[2].Line != 27 {
+	if collected.origins[2].File != 0 || collected.origins[2].Line != 26 {
 		t.Fatalf("button origin = %+v, want file 0 line 23", collected.origins[2])
 	}
 	pressed := collected.rules[3]
@@ -121,20 +121,50 @@ func TestKssMatchedFixture(t *testing.T) {
 	if len(glow.rules) != 6 {
 		t.Fatalf("glow rules = %d, want 6", len(glow.rules))
 	}
-	if glow.rules[2].Style.LetterSpacing != 9 || glow.rules[2].Layer != 0 {
-		t.Fatalf("variant rule mismatch: %+v", glow.rules[2])
+	if glow.rules[2].Style.Background != 0x00ff00ff ||
+		glow.rules[2].Style.LetterSpacing != 2 {
+		t.Fatalf("variant overlay mismatch: %+v", glow.rules[2].Style)
 	}
-	if glow.rules[3].Style.Background != 0x00ff00ff ||
-		glow.rules[3].Style.LetterSpacing != 2 {
-		t.Fatalf("variant overlay mismatch: %+v", glow.rules[3].Style)
+	if glow.rules[3].Style.LetterSpacing != 9 || glow.rules[3].Layer != 1 {
+		t.Fatalf("variant rule mismatch: %+v", glow.rules[3])
 	}
 	if glow.rules[5].Style.Background != 0x00000000 {
 		t.Fatalf("variant tail rule mismatch: %+v", glow.rules[5].Style)
 	}
-	if glow.parser.VariantCount != 1 ||
+	if glow.parser.VariantCount != 2 ||
 		kssNameText(glow.parser.Variants[0].Name) != "glow" ||
 		kssNameText(glow.parser.Variants[0].Label) != "Glow" {
 		t.Fatalf("variant declaration mismatch: %d", glow.parser.VariantCount)
+	}
+
+	/* Resolution parity anchor: identical winners to the C suite. */
+	resolve := func(rules []StyleRule, className string, state int32) StyleData {
+		facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
+		if className != "" {
+			facts.ClassName = StyleClassID(className)
+		}
+		return ResolveStyle(rules, StyleData{}, facts, state)
+	}
+	resBase := resolve(collected.rules, "", int32(ButtonStateNormal))
+	if resBase.Background != 0xffcc00ff || resBase.Foreground != 0xf0f0f0ff ||
+		resBase.Border != 0x445566ff || resBase.Radius != 0 ||
+		resBase.Fields&uint32(StyleRadius) == 0 || resBase.PaddingY != 80 ||
+		resBase.BorderWidth != 2 || resBase.LetterSpacing != 2 ||
+		resBase.Material != MaterialFlat || resBase.Typeface != "semibold" {
+		t.Fatalf("base resolution mismatch: %+v", resBase)
+	}
+	resPressed := resolve(collected.rules, "", int32(ButtonStatePressed))
+	if resPressed.Background != 0x304050ff {
+		t.Fatalf("pressed resolution mismatch: %+v", resPressed)
+	}
+	resQuiet := resolve(collected.rules, "quiet", int32(ButtonStateNormal))
+	if resQuiet.Background != 0x00000000 || resQuiet.Foreground != 0x000000ff ||
+		resQuiet.Border != 0xffffffff {
+		t.Fatalf("quiet resolution mismatch: %+v", resQuiet)
+	}
+	resGlow := resolve(glow.rules, "", int32(ButtonStateNormal))
+	if resGlow.LetterSpacing != 9 || resGlow.Background != 0x00ff00ff {
+		t.Fatalf("glow resolution mismatch: %+v", resGlow)
 	}
 }
 
