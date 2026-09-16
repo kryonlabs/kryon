@@ -1,0 +1,6 @@
+@pack matched.module;
+tokens {
+  color { shared-ink: #f0f0f0; }
+  length { shared-pad: 7; }
+}
+Surface { padding-x: shared-pad; }

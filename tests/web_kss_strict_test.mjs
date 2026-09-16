@@ -76,5 +76,54 @@ assert.throws(() => runtime.parseWebStyleSheet(
   "@nonsense x; Button { color: #fff; }"),
   /unknown directive/);
 
+
+// Shared fixture: the same matched.kss drives the C, Go, and web suites;
+// winners must agree across all three runtimes.
+{
+  const { readFileSync } = await import("node:fs");
+  const fixture = readFileSync(new URL("./fixtures/kss/matched.kss", import.meta.url), "utf8");
+  const moduleSource = readFileSync(new URL("./fixtures/kss/matched_module.kss", import.meta.url), "utf8");
+  runtime.clearWebStyleModules();
+  runtime.registerWebStyleModule("matched-module", moduleSource);
+  const sheet = runtime.parseWebStyleSheet(fixture, {}, {
+    ...runtime.defaultWebStyleEnvironment(),
+    theme: "dark", contrast: "high"
+  });
+  assert.equal(sheet.pack, "matched.demo");
+  assert.equal(sheet.rules.length, 4);
+  assert.equal(sheet.rules[0].selector.kind, "Surface");
+  assert.equal(sheet.rules[0].style["padding-x"], 7);
+  assert.equal(sheet.rules[1].style["border-width"], 2);
+  const button = sheet.rules[2];
+  assert.equal(button.style.background, "#ffcc00");
+  assert.equal(button.style.foreground, "#f0f0f0");
+  assert.equal(button.style.border, "#445566");
+  assert.equal(button.style.radius, 0);
+  assert.equal(button.style["padding-y"], 80);
+  assert.equal(button.style["letter-spacing"], 2);
+  assert.equal(button.style.material, "Flat");
+  assert.equal(button.style.typeface, "semibold");
+  assert.equal(sheet.rules[3].style.background, "#304050");
+
+  // Invalid-input sweep: truncations and deterministic mutations must never
+  // crash the generated module.
+  let seed = 0x5eed1234;
+  const next = () => (seed = (seed * 1103515245 + 12345) >>> 0);
+  for (let cut = 0; cut <= fixture.length; cut++) {
+    try { runtime.parseWebStyleSheet(fixture.slice(0, cut)); } catch { /* diagnosed */ }
+  }
+  const mutated = Buffer.from(fixture, "utf8");
+  for (let iteration = 0; iteration < 500; iteration++) {
+    mutated.fill(0);
+    mutated.write(fixture, 0);
+    for (let flip = 0; flip < 3; flip++) {
+      const index = (next() >> 8) % mutated.length;
+      mutated[index] = next() & 0xff;
+    }
+    try { runtime.parseWebStyleSheet(mutated.toString("latin1")); } catch { /* diagnosed */ }
+  }
+  runtime.clearWebStyleModules();
+}
+
 runtime.clearWebStyleModules();
 console.log("web kss strict ok");

@@ -624,6 +624,10 @@ kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
 	$(BUILD_DIR)/kss-parser-test
 
+kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
+	$(BUILD_DIR)/kss-matched-test
+
 style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded_assets.c include/embedded_assets.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude tests/style_assets_test.c src/core/embedded_assets.c $(EMBED_ASSETS_C) -o $(BUILD_DIR)/style-assets-test
 	$(BUILD_DIR)/style-assets-test
@@ -949,6 +953,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(MAKE) style-pack-registry-test
 	$(MAKE) style-picker-test
 	$(MAKE) kss-parser-test
+	$(MAKE) kss-matched-test
 	$(MAKE) style-assets-test
 	$(MAKE) style-builtins-test
 	$(MAKE) go-style-builtins-check
@@ -1129,9 +1134,6 @@ runtime-declarations-check: $(K2C) $(K2GO) $(K2JS) $(ICON_TYPES_H)
 
 include/ui_%.generated.h: $(GENERATED_SRC_DIR)/runtime/%.h
 	cp $< $@
-
-web/control_props.js: runtime/control_props.kry $(K2JS)
-	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/control_props.kry
 
 WEB_TEXT_RUNTIME = text_input control_props drawing_props style_sheet style surface
 web/text_input.js web/style_sheet.js web/kss_parser.js web/style.js web/surface.js web/control_props.js web/drawing_props.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry $(K2JS)

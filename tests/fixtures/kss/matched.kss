@@ -1,0 +1,33 @@
+@version 1;
+@pack matched.demo;
+@import <matched-module>;
+tokens {
+  color {
+    accent: #112233;
+    surface: #445566;
+  }
+  length { pad: 12; zero: 0; }
+  duration { fast: 80ms; slow: 0.14s; }
+  material { chrome: Flat; }
+}
+@theme dark {
+  accent: #ffcc00;
+}
+@env contrast(high) {
+  Button { border-width: 2; }
+}
+@env density(compact) {
+  Button { padding-y: 4; }
+}
+@layer components;
+Button {
+  background: accent;
+  foreground: shared-ink;
+  border: surface;
+  radius: zero;
+  padding-y: fast;
+  letter-spacing: 2;
+  material: chrome;
+  typeface: semibold;
+}
+Button:pressed { background: #304050; }
