@@ -455,14 +455,14 @@ export function StyleSheet_StyleDefaultFacts($rt, $state = moduleState, $host = 
   $rt = $rt || kryon.createRuntime();
   let facts = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
   facts.kind = kryon.copyValue(kind);
-  facts.role = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.tone = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.emphasis = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.size = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.state = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.validation = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.orientation = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  facts.placement = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
+  facts.role = StyleSheet_StyleAny($rt, $state, $host);
+  facts.tone = StyleSheet_StyleAny($rt, $state, $host);
+  facts.emphasis = StyleSheet_StyleAny($rt, $state, $host);
+  facts.size = StyleSheet_StyleAny($rt, $state, $host);
+  facts.state = StyleSheet_StyleAny($rt, $state, $host);
+  facts.validation = StyleSheet_StyleAny($rt, $state, $host);
+  facts.orientation = StyleSheet_StyleAny($rt, $state, $host);
+  facts.placement = StyleSheet_StyleAny($rt, $state, $host);
   return facts;
   return kryon.snapshot($rt);
 }
@@ -470,7 +470,7 @@ export function StyleSheet_StyleDefaultFacts($rt, $state = moduleState, $host = 
 export function StyleSheet_StyleControlFacts($rt, $state = moduleState, $host = moduleHost, kind, name, class_name, tone, emphasis, size, state) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let facts = kryon.copyValue(StyleSheet_StyleDefaultFacts($rt, $state, $host, kind));
+  let facts = StyleSheet_StyleDefaultFacts($rt, $state, $host, kind);
   facts.name = kryon.copyValue(name);
   facts.class_name = kryon.copyValue(class_name);
   facts.tone = kryon.copyValue(tone);
@@ -484,7 +484,7 @@ export function StyleSheet_StyleControlFacts($rt, $state = moduleState, $host = 
 export function StyleSheet_StyleControlRoleFacts($rt, $state = moduleState, $host = moduleHost, kind, name, class_name, role, tone, emphasis, size, state) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let facts = kryon.copyValue(StyleSheet_StyleControlFacts($rt, $state, $host, kind, name, class_name, tone, emphasis, size, state));
+  let facts = StyleSheet_StyleControlFacts($rt, $state, $host, kind, name, class_name, tone, emphasis, size, state);
   facts.role = kryon.copyValue(role);
   return facts;
   return kryon.snapshot($rt);
@@ -493,7 +493,7 @@ export function StyleSheet_StyleControlRoleFacts($rt, $state = moduleState, $hos
 export function StyleSheet_StyleTextFacts($rt, $state = moduleState, $host = moduleHost, name, class_name, role, state) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let facts = kryon.copyValue(StyleSheet_StyleDefaultFacts($rt, $state, $host, StyleSheet_StyleKindText($rt, $state, $host)));
+  let facts = StyleSheet_StyleDefaultFacts($rt, $state, $host, StyleSheet_StyleKindText($rt, $state, $host));
   facts.name = kryon.copyValue(name);
   facts.class_name = kryon.copyValue(class_name);
   facts.role = kryon.copyValue(role);
@@ -506,15 +506,15 @@ export function StyleSheet_StyleDefaultSelector($rt, $state = moduleState, $host
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
   let selector = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
-  selector.kind = kryon.copyValue(StyleSheet_StyleKindAny($rt, $state, $host));
-  selector.role = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.tone = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.emphasis = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.size = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.state = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.validation = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.orientation = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
-  selector.placement = kryon.copyValue(StyleSheet_StyleAny($rt, $state, $host));
+  selector.kind = StyleSheet_StyleKindAny($rt, $state, $host);
+  selector.role = StyleSheet_StyleAny($rt, $state, $host);
+  selector.tone = StyleSheet_StyleAny($rt, $state, $host);
+  selector.emphasis = StyleSheet_StyleAny($rt, $state, $host);
+  selector.size = StyleSheet_StyleAny($rt, $state, $host);
+  selector.state = StyleSheet_StyleAny($rt, $state, $host);
+  selector.validation = StyleSheet_StyleAny($rt, $state, $host);
+  selector.orientation = StyleSheet_StyleAny($rt, $state, $host);
+  selector.placement = StyleSheet_StyleAny($rt, $state, $host);
   return selector;
   return kryon.snapshot($rt);
 }
@@ -530,8 +530,8 @@ export function StyleSheet_StyleMatchesOptional($rt, $state = moduleState, $host
 
 export function StyleSheet_StyleSelectorMatches($rt, $state = moduleState, $host = moduleHost, selector, facts) {
   $state = $state || moduleState;
-  selector = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(selector);
-  facts = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(facts);
+  /* pass-by-reference: StyleSelector is same-module */
+  /* pass-by-reference: StyleFacts is same-module */
   $rt = $rt || kryon.createRuntime();
   if (selector.kind != StyleSheet_StyleKindAny($rt, $state, $host) && selector.kind != facts.kind) {
     return false;
@@ -571,7 +571,7 @@ export function StyleSheet_StyleSelectorMatches($rt, $state = moduleState, $host
 
 export function StyleSheet_StyleSelectorSpecificity($rt, $state = moduleState, $host = moduleHost, selector) {
   $state = $state || moduleState;
-  selector = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(selector);
+  /* pass-by-reference: StyleSelector is same-module */
   $rt = $rt || kryon.createRuntime();
   let score = kryon.copyValue(0);
   if (selector.kind != StyleSheet_StyleKindAny($rt, $state, $host)) {
@@ -612,7 +612,7 @@ export function StyleSheet_StyleSelectorSpecificity($rt, $state = moduleState, $
 
 export function StyleSheet_StyleRuleScore($rt, $state = moduleState, $host = moduleHost, rule) {
   $state = $state || moduleState;
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
+  /* pass-by-reference: StyleRule is same-module */
   $rt = $rt || kryon.createRuntime();
   return rule.layer * 1000000 + StyleSheet_StyleSelectorSpecificity($rt, $state, $host, rule.selector) * 1000 + rule.order;
 }
@@ -631,8 +631,8 @@ export function StyleSheet_StyleRuleMatchesState($rt, $state = moduleState, $hos
 
 export function StyleSheet_StyleRuleMatches($rt, $state = moduleState, $host = moduleHost, rule, facts, active_state) {
   $state = $state || moduleState;
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
-  facts = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(facts);
+  /* pass-by-reference: StyleRule is same-module */
+  /* pass-by-reference: StyleFacts is same-module */
   $rt = $rt || kryon.createRuntime();
   if (!StyleSheet_StyleRuleMatchesState($rt, $state, $host, rule.state, active_state)) {
     return false;
@@ -648,7 +648,6 @@ export function StyleSheet_StyleWins($rt, $state = moduleState, $host = moduleHo
 
 export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = moduleHost, base) {
   $state = $state || moduleState;
-  base = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(base);
   $rt = $rt || kryon.createRuntime();
   let cascade = {result: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, background_score: 0, foreground_score: 0, border_score: 0, focus_score: 0, radius_score: 0, border_width_score: 0, opacity_score: 0, padding_x_score: 0, padding_y_score: 0, gap_score: 0, font_size_score: 0, icon_size_score: 0, content_offset_score: 0, background_end_score: 0, material_score: 0, typeface_score: 0, letter_spacing_score: 0};
   cascade.result = kryon.copyValue(base);
@@ -658,14 +657,14 @@ export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = 
 
 export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = moduleHost, cascade, rule, facts, active_state) {
   $state = $state || moduleState;
-  cascade = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(cascade);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
-  facts = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(facts);
+  /* pass-by-reference: StyleCascade is same-module */
+  /* pass-by-reference: StyleRule is same-module */
+  /* pass-by-reference: StyleFacts is same-module */
   $rt = $rt || kryon.createRuntime();
   if (!StyleSheet_StyleRuleMatches($rt, $state, $host, rule, facts, active_state)) {
     return cascade;
   }
-  let score = kryon.copyValue(StyleSheet_StyleRuleScore($rt, $state, $host, rule));
+  let score = StyleSheet_StyleRuleScore($rt, $state, $host, rule);
   let style = kryon.copyValue(rule.style);
   if ((style.fields & Math.trunc(Number($enum0.StyleBackground))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.background_score)) {
     cascade.result.background = kryon.copyValue(style.background);
@@ -759,7 +758,7 @@ export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = mod
 
 export function StyleSheet_FinishStyleCascade($rt, $state = moduleState, $host = moduleHost, cascade) {
   $state = $state || moduleState;
-  cascade = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(cascade);
+  /* pass-by-reference: StyleCascade is same-module */
   $rt = $rt || kryon.createRuntime();
   return cascade.result;
   return kryon.snapshot($rt);
@@ -767,12 +766,11 @@ export function StyleSheet_FinishStyleCascade($rt, $state = moduleState, $host =
 
 export function StyleSheet_ResolveStyleRule($rt, $state = moduleState, $host = moduleHost, base, facts, rule, active_state) {
   $state = $state || moduleState;
-  base = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(base);
-  facts = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(facts);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
+  /* pass-by-reference: StyleFacts is same-module */
+  /* pass-by-reference: StyleRule is same-module */
   $rt = $rt || kryon.createRuntime();
-  let cascade = kryon.copyValue(StyleSheet_BeginStyleCascade($rt, $state, $host, base));
-  cascade = kryon.copyValue(StyleSheet_ApplyStyleRule($rt, $state, $host, cascade, rule, facts, active_state));
+  let cascade = StyleSheet_BeginStyleCascade($rt, $state, $host, base);
+  cascade = StyleSheet_ApplyStyleRule($rt, $state, $host, cascade, rule, facts, active_state);
   return StyleSheet_FinishStyleCascade($rt, $state, $host, cascade);
   return kryon.snapshot($rt);
 }

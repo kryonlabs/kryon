@@ -17,7 +17,7 @@ parsers are gone.
 
 | Order | Remaining area | Task document |
 |---|---|---|
-| 1 | Value-set reconciliation, web delegation, pack options, fuzz fixtures | [KSS language](02-kss-language.md) |
+| 1 | Value-set reconciliation, pack options (fuzz fixtures, web delegation, hot-cursor split: done) | [KSS language](02-kss-language.md) |
 | 2 | Residual widget metrics and paint policy | [Widget migration](04-widget-migration.md) |
 | 3 | Renderer fallbacks and full backend style parity | [Runtime and backends](05-runtime-and-backends.md) |
 | 4 | Inspector, formatter, hot reload, compiled release styles | [Tooling](06-tooling-and-workflow.md) |

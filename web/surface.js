@@ -93,11 +93,11 @@ export function Surface_LoadingRing($rt, $state = moduleState, $host = moduleHos
     ring.end_angle = kryon.copyValue(angle + 270.0);
   }
   ring.color = kryon.copyValue(color);
-  ring.track_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, color, 0.22));
+  ring.track_color = Surface_Opacity($rt, $state, $host, color, 0.22);
   let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (color & Math.trunc(Number(255))));
   ring.tip_color = kryon.copyValue(white);
   if (light_surroundings) {
-    ring.tip_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, color, white, 0.88));
+    ring.tip_color = Surface_GradientColor($rt, $state, $host, color, white, 0.88);
   }
   ring.trail_opacity = kryon.copyValue(0.55);
   if (!light_surroundings) {
@@ -110,7 +110,7 @@ export function Surface_LoadingRing($rt, $state = moduleState, $host = moduleHos
 
 export function Surface_LoadingArcColor($rt, $state = moduleState, $host = moduleHost, ring, x, y) {
   $state = $state || moduleState;
-  ring = ((record_source) => ({x: record_source.x, y: record_source.y, inner_radius: record_source.inner_radius, outer_radius: record_source.outer_radius, start_angle: record_source.start_angle, end_angle: record_source.end_angle, color: record_source.color, track_color: record_source.track_color, tip_color: record_source.tip_color, trail_opacity: record_source.trail_opacity, glow_blur: record_source.glow_blur}))(ring);
+  /* pass-by-reference: LoadingRingSpec is same-module */
   $rt = $rt || kryon.createRuntime();
   let radius = kryon.copyValue((ring.inner_radius + ring.outer_radius) * 0.5);
   let tip_x = kryon.copyValue(radius * Surface_SinDegrees($rt, $state, $host, ring.end_angle + 90.0));
@@ -119,7 +119,7 @@ export function Surface_LoadingArcColor($rt, $state = moduleState, $host = modul
   let dy = kryon.copyValue(y - tip_y);
   let near_tip = kryon.copyValue(0.0);
   if (radius > 0.0) {
-    near_tip = kryon.copyValue(Surface_Unit($rt, $state, $host, 1.0 - (dx * dx + dy * dy) / (radius * radius * 3.5)));
+    near_tip = Surface_Unit($rt, $state, $host, 1.0 - (dx * dx + dy * dy) / (radius * radius * 3.5));
   }
   near_tip *= near_tip;
   return ((Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, ring.color, ring.tip_color, near_tip * 0.75), ring.trail_opacity + (1.0 - ring.trail_opacity) * near_tip)) >>> 0);
@@ -127,7 +127,7 @@ export function Surface_LoadingArcColor($rt, $state = moduleState, $host = modul
 
 export function Surface_LoadingTipCoverage($rt, $state = moduleState, $host = moduleHost, ring, x, y) {
   $state = $state || moduleState;
-  ring = ((record_source) => ({x: record_source.x, y: record_source.y, inner_radius: record_source.inner_radius, outer_radius: record_source.outer_radius, start_angle: record_source.start_angle, end_angle: record_source.end_angle, color: record_source.color, track_color: record_source.track_color, tip_color: record_source.tip_color, trail_opacity: record_source.trail_opacity, glow_blur: record_source.glow_blur}))(ring);
+  /* pass-by-reference: LoadingRingSpec is same-module */
   $rt = $rt || kryon.createRuntime();
   let radius = kryon.copyValue((ring.inner_radius + ring.outer_radius) * 0.5);
   let tip_radius = kryon.copyValue((ring.outer_radius - ring.inner_radius) * 0.625);
@@ -138,7 +138,7 @@ export function Surface_LoadingTipCoverage($rt, $state = moduleState, $host = mo
 
 export function Surface_LoadingPaintRadius($rt, $state = moduleState, $host = moduleHost, ring) {
   $state = $state || moduleState;
-  ring = ((record_source) => ({x: record_source.x, y: record_source.y, inner_radius: record_source.inner_radius, outer_radius: record_source.outer_radius, start_angle: record_source.start_angle, end_angle: record_source.end_angle, color: record_source.color, track_color: record_source.track_color, tip_color: record_source.tip_color, trail_opacity: record_source.trail_opacity, glow_blur: record_source.glow_blur}))(ring);
+  /* pass-by-reference: LoadingRingSpec is same-module */
   $rt = $rt || kryon.createRuntime();
   let extension = kryon.copyValue((ring.outer_radius - ring.inner_radius) * 0.125);
   if (ring.glow_blur > extension) {
@@ -149,20 +149,20 @@ export function Surface_LoadingPaintRadius($rt, $state = moduleState, $host = mo
 
 export function Surface_LoadingSample($rt, $state = moduleState, $host = moduleHost, ring, x, y) {
   $state = $state || moduleState;
-  ring = ((record_source) => ({x: record_source.x, y: record_source.y, inner_radius: record_source.inner_radius, outer_radius: record_source.outer_radius, start_angle: record_source.start_angle, end_angle: record_source.end_angle, color: record_source.color, track_color: record_source.track_color, tip_color: record_source.tip_color, trail_opacity: record_source.trail_opacity, glow_blur: record_source.glow_blur}))(ring);
+  /* pass-by-reference: LoadingRingSpec is same-module */
   $rt = $rt || kryon.createRuntime();
   let sample = {glow: 0, track: 0, arc: 0, tip: 0};
   if (ring.glow_blur > 0.0) {
-    let glow = kryon.copyValue(Surface_BlurStrokeCoverage($rt, $state, $host, x + ring.outer_radius, y + ring.outer_radius, ring.outer_radius * 2.0, ring.outer_radius * 2.0, ring.outer_radius, ring.outer_radius - ring.inner_radius, ring.glow_blur));
+    let glow = Surface_BlurStrokeCoverage($rt, $state, $host, x + ring.outer_radius, y + ring.outer_radius, ring.outer_radius * 2.0, ring.outer_radius * 2.0, ring.outer_radius, ring.outer_radius - ring.inner_radius, ring.glow_blur);
     glow *= Surface_ArcCoverage($rt, $state, $host, x, y, ring.inner_radius, ring.outer_radius + ring.glow_blur, ring.start_angle, ring.end_angle);
-    sample.glow = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_LoadingArcColor($rt, $state, $host, ring, x + 0.5, y + 0.5), glow * 0.35));
+    sample.glow = Surface_Opacity($rt, $state, $host, Surface_LoadingArcColor($rt, $state, $host, ring, x + 0.5, y + 0.5), glow * 0.35);
   }
-  let track = kryon.copyValue(Surface_ArcCoverage($rt, $state, $host, x, y, ring.inner_radius, ring.outer_radius, 0.0, 360.0));
-  let arc = kryon.copyValue(Surface_ArcCoverage($rt, $state, $host, x, y, ring.inner_radius, ring.outer_radius, ring.start_angle, ring.end_angle));
-  let tip = kryon.copyValue(Surface_LoadingTipCoverage($rt, $state, $host, ring, x, y));
-  sample.track = kryon.copyValue(Surface_Opacity($rt, $state, $host, ring.track_color, track));
-  sample.arc = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_LoadingArcColor($rt, $state, $host, ring, x + 0.5, y + 0.5), arc));
-  sample.tip = kryon.copyValue(Surface_Opacity($rt, $state, $host, ring.tip_color, tip));
+  let track = Surface_ArcCoverage($rt, $state, $host, x, y, ring.inner_radius, ring.outer_radius, 0.0, 360.0);
+  let arc = Surface_ArcCoverage($rt, $state, $host, x, y, ring.inner_radius, ring.outer_radius, ring.start_angle, ring.end_angle);
+  let tip = Surface_LoadingTipCoverage($rt, $state, $host, ring, x, y);
+  sample.track = Surface_Opacity($rt, $state, $host, ring.track_color, track);
+  sample.arc = Surface_Opacity($rt, $state, $host, Surface_LoadingArcColor($rt, $state, $host, ring, x + 0.5, y + 0.5), arc);
+  sample.tip = Surface_Opacity($rt, $state, $host, ring.tip_color, tip);
   return sample;
   return kryon.snapshot($rt);
 }
@@ -197,10 +197,10 @@ export function Surface_ArcCoverage($rt, $state = moduleState, $host = moduleHos
   if (inner < 0.0) {
     inner = kryon.copyValue(0.0);
   }
-  let sx = kryon.copyValue(Surface_SinDegrees($rt, $state, $host, start + 90.0));
-  let sy = kryon.copyValue(Surface_SinDegrees($rt, $state, $host, start));
-  let ex = kryon.copyValue(Surface_SinDegrees($rt, $state, $host, end + 90.0));
-  let ey = kryon.copyValue(Surface_SinDegrees($rt, $state, $host, end));
+  let sx = Surface_SinDegrees($rt, $state, $host, start + 90.0);
+  let sy = Surface_SinDegrees($rt, $state, $host, start);
+  let ex = Surface_SinDegrees($rt, $state, $host, end + 90.0);
+  let ey = Surface_SinDegrees($rt, $state, $host, end);
   let coverage = kryon.copyValue(0.0);
   let row = kryon.copyValue(0);
   while (row < 4) {
@@ -230,7 +230,7 @@ export function Surface_ArcCoverage($rt, $state = moduleState, $host = moduleHos
 
 export function Surface_AdvanceMotion($rt, $state = moduleState, $host = moduleHost, track, target, delta_ms, duration_ms, immediate) {
   $state = $state || moduleState;
-  track = ((record_source) => ({value: record_source.value, origin: record_source.origin, target: record_source.target, elapsed_ms: record_source.elapsed_ms}))(track);
+  /* pass-by-reference: MotionTrack is same-module */
   $rt = $rt || kryon.createRuntime();
   if (immediate || duration_ms <= 0.0) {
     track.value = kryon.copyValue(target);
@@ -250,21 +250,21 @@ export function Surface_AdvanceMotion($rt, $state = moduleState, $host = moduleH
   if (track.elapsed_ms > duration_ms) {
     track.elapsed_ms = kryon.copyValue(duration_ms);
   }
-  track.value = kryon.copyValue(Surface_Transition($rt, $state, $host, track.origin, track.target, track.elapsed_ms, duration_ms));
+  track.value = Surface_Transition($rt, $state, $host, track.origin, track.target, track.elapsed_ms, duration_ms);
   return track;
   return kryon.snapshot($rt);
 }
 
 export function Surface_MotionActive($rt, $state = moduleState, $host = moduleHost, track) {
   $state = $state || moduleState;
-  track = ((record_source) => ({value: record_source.value, origin: record_source.origin, target: record_source.target, elapsed_ms: record_source.elapsed_ms}))(track);
+  /* pass-by-reference: MotionTrack is same-module */
   $rt = $rt || kryon.createRuntime();
   return track.value != track.target;
 }
 
 export function Surface_AdvanceInteraction($rt, $state = moduleState, $host = moduleHost, track, channel, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms) {
   $state = $state || moduleState;
-  track = ((record_source) => ({value: record_source.value, origin: record_source.origin, target: record_source.target, elapsed_ms: record_source.elapsed_ms}))(track);
+  /* pass-by-reference: MotionTrack is same-module */
   $rt = $rt || kryon.createRuntime();
   let active = kryon.copyValue(hovered);
   let duration = kryon.copyValue(normal_ms);
@@ -289,11 +289,11 @@ export function Surface_AdvanceInteraction($rt, $state = moduleState, $host = mo
 
 export function Surface_AdvanceInteractionMotion($rt, $state = moduleState, $host = moduleHost, motion, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms) {
   $state = $state || moduleState;
-  motion = ((record_source) => ({hover: {value: record_source.hover.value, origin: record_source.hover.origin, target: record_source.hover.target, elapsed_ms: record_source.hover.elapsed_ms}, press: {value: record_source.press.value, origin: record_source.press.origin, target: record_source.press.target, elapsed_ms: record_source.press.elapsed_ms}, focus: {value: record_source.focus.value, origin: record_source.focus.origin, target: record_source.focus.target, elapsed_ms: record_source.focus.elapsed_ms}, active: record_source.active}))(motion);
+  /* pass-by-reference: InteractionMotion is same-module */
   $rt = $rt || kryon.createRuntime();
-  motion.hover = kryon.copyValue(Surface_AdvanceInteraction($rt, $state, $host, motion.hover, 0, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms));
-  motion.press = kryon.copyValue(Surface_AdvanceInteraction($rt, $state, $host, motion.press, 1, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms));
-  motion.focus = kryon.copyValue(Surface_AdvanceInteraction($rt, $state, $host, motion.focus, 2, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms));
+  motion.hover = Surface_AdvanceInteraction($rt, $state, $host, motion.hover, 0, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms);
+  motion.press = Surface_AdvanceInteraction($rt, $state, $host, motion.press, 1, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms);
+  motion.focus = Surface_AdvanceInteraction($rt, $state, $host, motion.focus, 2, hovered, pressed, focused, enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms);
   motion.active = kryon.copyValue(Surface_MotionActive($rt, $state, $host, motion.hover) || Surface_MotionActive($rt, $state, $host, motion.press) || Surface_MotionActive($rt, $state, $host, motion.focus));
   return motion;
   return kryon.snapshot($rt);
@@ -301,13 +301,13 @@ export function Surface_AdvanceInteractionMotion($rt, $state = moduleState, $hos
 
 export function Surface_SampleColor($rt, $state = moduleState, $host = moduleHost, layer, position) {
   $state = $state || moduleState;
-  layer = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height, radius: record_source.radius, stroke: record_source.stroke, blur: record_source.blur, inner_blur: record_source.inner_blur, outside_only: record_source.outside_only, is_face: record_source.is_face, color: record_source.color, end_color: record_source.end_color, gradient: record_source.gradient, gradient_bias: record_source.gradient_bias}))(layer);
+  /* pass-by-reference: SurfaceLayer is same-module */
   $rt = $rt || kryon.createRuntime();
   if (!layer.gradient) {
     return ((layer.color) >>> 0);
   }
   if (layer.gradient_bias > 0.0) {
-    position = kryon.copyValue(Surface_Unit($rt, $state, $host, position));
+    position = Surface_Unit($rt, $state, $host, position);
     position += Surface_Unit($rt, $state, $host, layer.gradient_bias) * position * (position - 1.0);
   }
   return ((Surface_GradientColor($rt, $state, $host, layer.color, layer.end_color, position)) >>> 0);
@@ -335,10 +335,10 @@ export function Surface_FillState($rt, $state = moduleState, $host = moduleHost,
 
 export function Surface_FillTransition($rt, $state = moduleState, $host = moduleHost, normal, hover, press, focus, h, p, f) {
   $state = $state || moduleState;
-  normal = ((record_source) => ({normal: record_source.normal, hover: record_source.hover, press: record_source.press, focus: record_source.focus, normal_start: record_source.normal_start, normal_end: record_source.normal_end, hover_start: record_source.hover_start, hover_end: record_source.hover_end, press_start: record_source.press_start, press_end: record_source.press_end, focus_start: record_source.focus_start, focus_end: record_source.focus_end, hover_amount: record_source.hover_amount, press_amount: record_source.press_amount, focus_amount: record_source.focus_amount}))(normal);
-  hover = ((record_source) => ({normal: record_source.normal, hover: record_source.hover, press: record_source.press, focus: record_source.focus, normal_start: record_source.normal_start, normal_end: record_source.normal_end, hover_start: record_source.hover_start, hover_end: record_source.hover_end, press_start: record_source.press_start, press_end: record_source.press_end, focus_start: record_source.focus_start, focus_end: record_source.focus_end, hover_amount: record_source.hover_amount, press_amount: record_source.press_amount, focus_amount: record_source.focus_amount}))(hover);
-  press = ((record_source) => ({normal: record_source.normal, hover: record_source.hover, press: record_source.press, focus: record_source.focus, normal_start: record_source.normal_start, normal_end: record_source.normal_end, hover_start: record_source.hover_start, hover_end: record_source.hover_end, press_start: record_source.press_start, press_end: record_source.press_end, focus_start: record_source.focus_start, focus_end: record_source.focus_end, hover_amount: record_source.hover_amount, press_amount: record_source.press_amount, focus_amount: record_source.focus_amount}))(press);
-  focus = ((record_source) => ({normal: record_source.normal, hover: record_source.hover, press: record_source.press, focus: record_source.focus, normal_start: record_source.normal_start, normal_end: record_source.normal_end, hover_start: record_source.hover_start, hover_end: record_source.hover_end, press_start: record_source.press_start, press_end: record_source.press_end, focus_start: record_source.focus_start, focus_end: record_source.focus_end, hover_amount: record_source.hover_amount, press_amount: record_source.press_amount, focus_amount: record_source.focus_amount}))(focus);
+  /* pass-by-reference: FillStates is same-module */
+  /* pass-by-reference: FillStates is same-module */
+  /* pass-by-reference: FillStates is same-module */
+  /* pass-by-reference: FillStates is same-module */
   $rt = $rt || kryon.createRuntime();
   normal.hover = kryon.copyValue(hover.normal);
   normal.press = kryon.copyValue(press.normal);
@@ -367,8 +367,8 @@ export function Surface_FillBias($rt, $state = moduleState, $host = moduleHost, 
 
 export function Surface_ApplyFillStates($rt, $state = moduleState, $host = moduleHost, layer, states, opacity) {
   $state = $state || moduleState;
-  layer = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height, radius: record_source.radius, stroke: record_source.stroke, blur: record_source.blur, inner_blur: record_source.inner_blur, outside_only: record_source.outside_only, is_face: record_source.is_face, color: record_source.color, end_color: record_source.end_color, gradient: record_source.gradient, gradient_bias: record_source.gradient_bias}))(layer);
-  states = ((record_source) => ({normal: record_source.normal, hover: record_source.hover, press: record_source.press, focus: record_source.focus, normal_start: record_source.normal_start, normal_end: record_source.normal_end, hover_start: record_source.hover_start, hover_end: record_source.hover_end, press_start: record_source.press_start, press_end: record_source.press_end, focus_start: record_source.focus_start, focus_end: record_source.focus_end, hover_amount: record_source.hover_amount, press_amount: record_source.press_amount, focus_amount: record_source.focus_amount}))(states);
+  /* pass-by-reference: SurfaceLayer is same-module */
+  /* pass-by-reference: FillStates is same-module */
   $rt = $rt || kryon.createRuntime();
   if (!states.normal && !states.hover && !states.press && !states.focus) {
     return layer;
@@ -377,10 +377,10 @@ export function Surface_ApplyFillStates($rt, $state = moduleState, $host = modul
   if (layer.gradient) {
     end = kryon.copyValue(layer.end_color);
   }
-  layer.end_color = kryon.copyValue(Surface_InteractionColor($rt, $state, $host, Surface_FillEndpoint($rt, $state, $host, end, states.normal, states.normal_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.hover, states.hover_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.press, states.press_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.focus, states.focus_end, opacity), states.hover_amount, states.press_amount, states.focus_amount));
-  layer.color = kryon.copyValue(Surface_InteractionColor($rt, $state, $host, Surface_FillEndpoint($rt, $state, $host, layer.color, states.normal, states.normal_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.hover, states.hover_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.press, states.press_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.focus, states.focus_start, opacity), states.hover_amount, states.press_amount, states.focus_amount));
+  layer.end_color = Surface_InteractionColor($rt, $state, $host, Surface_FillEndpoint($rt, $state, $host, end, states.normal, states.normal_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.hover, states.hover_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.press, states.press_end, opacity), Surface_FillEndpoint($rt, $state, $host, end, states.focus, states.focus_end, opacity), states.hover_amount, states.press_amount, states.focus_amount);
+  layer.color = Surface_InteractionColor($rt, $state, $host, Surface_FillEndpoint($rt, $state, $host, layer.color, states.normal, states.normal_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.hover, states.hover_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.press, states.press_start, opacity), Surface_FillEndpoint($rt, $state, $host, layer.color, states.focus, states.focus_start, opacity), states.hover_amount, states.press_amount, states.focus_amount);
   layer.gradient = kryon.copyValue(true);
-  layer.gradient_bias = kryon.copyValue(Surface_InteractionValue($rt, $state, $host, Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.normal), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.hover), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.press), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.focus), states.hover_amount, states.press_amount, states.focus_amount));
+  layer.gradient_bias = Surface_InteractionValue($rt, $state, $host, Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.normal), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.hover), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.press), Surface_FillBias($rt, $state, $host, layer.gradient_bias, states.focus), states.hover_amount, states.press_amount, states.focus_amount);
   return layer;
   return kryon.snapshot($rt);
 }
@@ -393,10 +393,10 @@ export function Surface_FlatLayer($rt, $state = moduleState, $host = moduleHost,
   layer.height = kryon.copyValue(height);
   layer.radius = kryon.copyValue(radius);
   if (index == 0) {
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, background, opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, background, opacity);
   }
   if (index == 1 && border_width > 0.0) {
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, border, opacity);
     layer.stroke = kryon.copyValue(border_width);
   }
   return layer;
@@ -405,11 +405,11 @@ export function Surface_FlatLayer($rt, $state = moduleState, $host = moduleHost,
 
 export function Surface_FillGradient($rt, $state = moduleState, $host = moduleHost, layer, enabled, start, end, opacity) {
   $state = $state || moduleState;
-  layer = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height, radius: record_source.radius, stroke: record_source.stroke, blur: record_source.blur, inner_blur: record_source.inner_blur, outside_only: record_source.outside_only, is_face: record_source.is_face, color: record_source.color, end_color: record_source.end_color, gradient: record_source.gradient, gradient_bias: record_source.gradient_bias}))(layer);
+  /* pass-by-reference: SurfaceLayer is same-module */
   $rt = $rt || kryon.createRuntime();
   if (enabled) {
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, start, opacity));
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, end, opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, start, opacity);
+    layer.end_color = Surface_Opacity($rt, $state, $host, end, opacity);
     layer.gradient = kryon.copyValue(true);
     layer.gradient_bias = kryon.copyValue(0.0);
   }
@@ -476,7 +476,7 @@ export function Surface_RoundedCoverage($rt, $state = moduleState, $host = modul
 export function Surface_LayerCoverage($rt, $state = moduleState, $host = moduleHost, x, y, width, height, radius, stroke) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let coverage = kryon.copyValue(Surface_RoundedCoverage($rt, $state, $host, x, y, width, height, radius));
+  let coverage = Surface_RoundedCoverage($rt, $state, $host, x, y, width, height, radius);
   if (stroke > 0.0) {
     coverage -= Surface_RoundedCoverage($rt, $state, $host, x - stroke, y - stroke, width - 2.0 * stroke, height - 2.0 * stroke, radius - stroke);
   }
@@ -569,7 +569,7 @@ export function Surface_InnerBlurCoverage($rt, $state = moduleState, $host = mod
   if (width <= 0.0 || height <= 0.0 || blur <= 0.0) {
     return 0.0;
   }
-  let coverage = kryon.copyValue(Surface_RoundedCoverage($rt, $state, $host, x, y, width, height, radius));
+  let coverage = Surface_RoundedCoverage($rt, $state, $host, x, y, width, height, radius);
   if (coverage <= 0.0) {
     return 0.0;
   }
@@ -594,7 +594,7 @@ export function Surface_BlurStrokeCoverage($rt, $state = moduleState, $host = mo
 
 export function Surface_SampleCoverage($rt, $state = moduleState, $host = moduleHost, layer, x, y, scale) {
   $state = $state || moduleState;
-  layer = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height, radius: record_source.radius, stroke: record_source.stroke, blur: record_source.blur, inner_blur: record_source.inner_blur, outside_only: record_source.outside_only, is_face: record_source.is_face, color: record_source.color, end_color: record_source.end_color, gradient: record_source.gradient, gradient_bias: record_source.gradient_bias}))(layer);
+  /* pass-by-reference: SurfaceLayer is same-module */
   $rt = $rt || kryon.createRuntime();
   let width = kryon.copyValue(layer.width * scale);
   let height = kryon.copyValue(layer.height * scale);
@@ -603,13 +603,13 @@ export function Surface_SampleCoverage($rt, $state = moduleState, $host = module
   let blur = kryon.copyValue(layer.blur * scale);
   let coverage = kryon.copyValue(0.0);
   if (blur > 0.0 && stroke > 0.0) {
-    coverage = kryon.copyValue(Surface_BlurStrokeCoverage($rt, $state, $host, x, y, width, height, radius, stroke, blur));
+    coverage = Surface_BlurStrokeCoverage($rt, $state, $host, x, y, width, height, radius, stroke, blur);
   } else if (blur > 0.0) {
-    coverage = kryon.copyValue(Surface_BlurCoverage($rt, $state, $host, x, y, width, height, radius, blur));
+    coverage = Surface_BlurCoverage($rt, $state, $host, x, y, width, height, radius, blur);
   } else if (layer.inner_blur > 0.0) {
-    coverage = kryon.copyValue(Surface_InnerBlurCoverage($rt, $state, $host, x, y, width, height, radius, layer.inner_blur * scale));
+    coverage = Surface_InnerBlurCoverage($rt, $state, $host, x, y, width, height, radius, layer.inner_blur * scale);
   } else {
-    coverage = kryon.copyValue(Surface_LayerCoverage($rt, $state, $host, x, y, width, height, radius, stroke));
+    coverage = Surface_LayerCoverage($rt, $state, $host, x, y, width, height, radius, stroke);
   }
   if (layer.outside_only) {
     coverage *= 1.0 - Surface_RoundedCoverage($rt, $state, $host, x, y, width, height, radius);
@@ -620,7 +620,7 @@ export function Surface_SampleCoverage($rt, $state = moduleState, $host = module
 export function Surface_GradientColor($rt, $state = moduleState, $host = moduleHost, top, bottom, position) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let t = kryon.copyValue(Surface_Unit($rt, $state, $host, position));
+  let t = Surface_Unit($rt, $state, $host, position);
   let result = kryon.copyValue(Math.trunc(Number(0)));
   let shift = kryon.copyValue(Math.trunc(Number(0)));
   while (shift <= Math.trunc(Number(24))) {
@@ -640,7 +640,7 @@ export function Surface_StrokeContains($rt, $state = moduleState, $host = module
   let length_squared = kryon.copyValue(dx * dx + dy * dy);
   let position = kryon.copyValue(0.0);
   if (length_squared > 0.0) {
-    position = kryon.copyValue(Surface_Unit($rt, $state, $host, ((x - ax) * dx + (y - ay) * dy) / length_squared));
+    position = Surface_Unit($rt, $state, $host, ((x - ax) * dx + (y - ay) * dy) / length_squared);
   }
   dx = kryon.copyValue(x - ax - position * dx);
   dy = kryon.copyValue(y - ay - position * dy);
@@ -689,14 +689,14 @@ export function Surface_MixValue($rt, $state = moduleState, $host = moduleHost, 
 export function Surface_InteractionValue($rt, $state = moduleState, $host = moduleHost, normal, hover, press, focus, hover_amount, press_amount, focus_amount) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let resting = kryon.copyValue(Surface_MixValue($rt, $state, $host, normal, focus, focus_amount));
+  let resting = Surface_MixValue($rt, $state, $host, normal, focus, focus_amount);
   return Surface_MixValue($rt, $state, $host, Surface_MixValue($rt, $state, $host, resting, hover, hover_amount), press, press_amount);
 }
 
 export function Surface_InteractionColor($rt, $state = moduleState, $host = moduleHost, normal, hover, press, focus, hover_amount, press_amount, focus_amount) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let resting = kryon.copyValue(Surface_GradientColor($rt, $state, $host, normal, focus, focus_amount));
+  let resting = Surface_GradientColor($rt, $state, $host, normal, focus, focus_amount);
   return ((Surface_GradientColor($rt, $state, $host, Surface_GradientColor($rt, $state, $host, resting, hover, hover_amount), press, press_amount)) >>> 0);
 }
 
@@ -870,7 +870,7 @@ export function Surface_Transition($rt, $state = moduleState, $host = moduleHost
   if (duration_ms <= 0.0) {
     return to;
   }
-  let t = kryon.copyValue(Surface_Unit($rt, $state, $host, elapsed_ms / duration_ms));
+  let t = Surface_Unit($rt, $state, $host, elapsed_ms / duration_ms);
   let remaining = kryon.copyValue(1.0 - t);
   return from + (to - from) * (1.0 - remaining * remaining * remaining);
 }
@@ -886,7 +886,6 @@ export function Surface_FaceOffset($rt, $state = moduleState, $host = moduleHost
 
 export function Surface_MaterialLayerCount($rt, $state = moduleState, $host = moduleHost, material) {
   $state = $state || moduleState;
-  material = kryon.copyValue(material);
   $rt = $rt || kryon.createRuntime();
   if (material == Math.trunc(Number($enum0.MaterialFlat))) {
     return 3;
@@ -902,7 +901,7 @@ export function Surface_SegmentCoverage($rt, $state = moduleState, $host = modul
   $rt = $rt || kryon.createRuntime();
   let coverage = kryon.copyValue(1.0);
   if (segment_x > 0.0) {
-    coverage = kryon.copyValue(Surface_Unit($rt, $state, $host, pixel_x + 1.0 - segment_x));
+    coverage = Surface_Unit($rt, $state, $host, pixel_x + 1.0 - segment_x);
   }
   if (segment_x + segment_width < surface_width) {
     coverage *= Surface_Unit($rt, $state, $host, segment_x + segment_width - pixel_x);
@@ -912,7 +911,6 @@ export function Surface_SegmentCoverage($rt, $state = moduleState, $host = modul
 
 export function Surface_MaterialOffset($rt, $state = moduleState, $host = moduleHost, material, hover, press, disabled) {
   $state = $state || moduleState;
-  material = kryon.copyValue(material);
   $rt = $rt || kryon.createRuntime();
   if (material == Math.trunc(Number($enum0.MaterialFlat)) || material == Math.trunc(Number($enum0.MaterialGlass))) {
     return 0.0;
@@ -922,7 +920,6 @@ export function Surface_MaterialOffset($rt, $state = moduleState, $host = module
 
 export function Surface_MaterialLayer($rt, $state = moduleState, $host = moduleHost, material, index, width, height, radius, border_width, background, border, light, focus_color, hover, press, focused, disabled, opacity, ambient) {
   $state = $state || moduleState;
-  material = kryon.copyValue(material);
   $rt = $rt || kryon.createRuntime();
   if (material == Math.trunc(Number($enum0.MaterialGlass))) {
     return Surface_GlassLayer($rt, $state, $host, index, width, height, radius, border_width, background, border, focus_color, hover, press, focused, disabled, opacity, ambient);
@@ -932,11 +929,11 @@ export function Surface_MaterialLayer($rt, $state = moduleState, $host = moduleH
   }
   let layer = {x: 0, y: 0, width: 0, height: 0, radius: 0, stroke: 0, blur: 0, inner_blur: 0, outside_only: false, is_face: false, color: 0, end_color: 0, gradient: false, gradient_bias: 0};
   if (index == Math.trunc(Number(0)) || index == Math.trunc(Number(1))) {
-    layer = kryon.copyValue(Surface_FlatLayer($rt, $state, $host, index, width, height, radius, border_width, background, border, opacity));
+    layer = Surface_FlatLayer($rt, $state, $host, index, width, height, radius, border_width, background, border, opacity);
     layer.is_face = kryon.copyValue(index == Math.trunc(Number(0)));
   }
   if (index == Math.trunc(Number(2)) && !disabled) {
-    layer = kryon.copyValue(Surface_FlatLayer($rt, $state, $host, 1, width, height, radius, 1.0, background, focus_color, opacity * Surface_Unit($rt, $state, $host, focused)));
+    layer = Surface_FlatLayer($rt, $state, $host, 1, width, height, radius, 1.0, background, focus_color, opacity * Surface_Unit($rt, $state, $host, focused));
   }
   return layer;
   return kryon.snapshot($rt);
@@ -950,9 +947,9 @@ export function Surface_GlassLayer($rt, $state = moduleState, $host = moduleHost
   layer.height = kryon.copyValue(height);
   layer.radius = kryon.copyValue(radius);
   let light = kryon.copyValue(((ambient >> Math.trunc(Number(24))) & Math.trunc(Number(255))) + ((ambient >> Math.trunc(Number(16))) & Math.trunc(Number(255))) + ((ambient >> Math.trunc(Number(8))) & Math.trunc(Number(255))) > Math.trunc(Number(450)));
-  let h = kryon.copyValue(Surface_Unit($rt, $state, $host, hover));
-  let p = kryon.copyValue(Surface_Unit($rt, $state, $host, press));
-  let f = kryon.copyValue(Surface_Unit($rt, $state, $host, focused));
+  let h = Surface_Unit($rt, $state, $host, hover);
+  let p = Surface_Unit($rt, $state, $host, press);
+  let f = Surface_Unit($rt, $state, $host, focused);
   if (disabled) {
     h = kryon.copyValue(0.0);
     p = kryon.copyValue(0.0);
@@ -963,54 +960,54 @@ export function Surface_GlassLayer($rt, $state = moduleState, $host = moduleHost
     layer.blur = kryon.copyValue(12.0);
     let shadow = kryon.copyValue(Math.trunc(Number(24)));
     if (light) {
-      shadow = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, ambient, border, 0.65), 0.20));
+      shadow = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, ambient, border, 0.65), 0.20);
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, shadow, opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, shadow, opacity);
     if (disabled) {
       layer.color = kryon.copyValue(Math.trunc(Number(0)));
     }
   }
   if (index == Math.trunc(Number(1))) {
     layer.blur = kryon.copyValue(5.0 + h * 3.0);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, (0.12 + 0.30 * h) * (1.0 - p) * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, border, (0.12 + 0.30 * h) * (1.0 - p) * opacity);
     if (disabled) {
       layer.color = kryon.copyValue(Math.trunc(Number(0)));
     }
   }
   if (index == Math.trunc(Number(2))) {
     layer.is_face = kryon.copyValue(true);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, background, opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, background, opacity);
   }
   if (index == Math.trunc(Number(3))) {
     layer.stroke = kryon.copyValue(border_width);
     layer.gradient = kryon.copyValue(true);
     let white = kryon.copyValue((~Math.trunc(Number(0))));
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, white, 0.34), opacity));
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, 0.72 * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, white, 0.34), opacity);
+    layer.end_color = Surface_Opacity($rt, $state, $host, border, 0.72 * opacity);
     if (light) {
-      layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, opacity));
+      layer.color = Surface_Opacity($rt, $state, $host, border, opacity);
     }
   }
   if (index == Math.trunc(Number(4)) && !light && !disabled) {
     layer.stroke = kryon.copyValue(1.0);
     layer.inner_blur = kryon.copyValue(9.0);
     layer.gradient = kryon.copyValue(true);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, 0.16 * opacity));
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, border, 0.54 * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, border, 0.16 * opacity);
+    layer.end_color = Surface_Opacity($rt, $state, $host, border, 0.54 * opacity);
   }
   if (index == Math.trunc(Number(5)) && !disabled) {
     layer.stroke = kryon.copyValue(1.0);
     layer.blur = kryon.copyValue(4.0);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, focus, f * 0.85 * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, focus, f * 0.85 * opacity);
   }
   if (index == Math.trunc(Number(6)) && !disabled) {
     layer.stroke = kryon.copyValue(1.5);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, focus, f * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, focus, f * opacity);
   }
   if (index == Math.trunc(Number(7)) && !light && !disabled) {
     layer.stroke = kryon.copyValue(1.0);
     layer.inner_blur = kryon.copyValue(2.0);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, (~Math.trunc(Number(0))), f * 0.8 * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, (~Math.trunc(Number(0))), f * 0.8 * opacity);
   }
   return layer;
   return kryon.snapshot($rt);
@@ -1018,15 +1015,15 @@ export function Surface_GlassLayer($rt, $state = moduleState, $host = moduleHost
 
 export function Surface_FinishLightfieldLayer($rt, $state = moduleState, $host = moduleHost, layer, index, background, opacity) {
   $state = $state || moduleState;
-  layer = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height, radius: record_source.radius, stroke: record_source.stroke, blur: record_source.blur, inner_blur: record_source.inner_blur, outside_only: record_source.outside_only, is_face: record_source.is_face, color: record_source.color, end_color: record_source.end_color, gradient: record_source.gradient, gradient_bias: record_source.gradient_bias}))(layer);
+  /* pass-by-reference: SurfaceLayer is same-module */
   $rt = $rt || kryon.createRuntime();
   if (index == Math.trunc(Number(0)) || index == Math.trunc(Number(1)) || index == Math.trunc(Number(4))) {
     let face_opacity = kryon.copyValue((background & Math.trunc(Number(255))) / 255.0);
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, layer.color, face_opacity));
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, layer.end_color, face_opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, layer.color, face_opacity);
+    layer.end_color = Surface_Opacity($rt, $state, $host, layer.end_color, face_opacity);
   }
-  layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, layer.color, opacity));
-  layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, layer.end_color, opacity));
+  layer.color = Surface_Opacity($rt, $state, $host, layer.color, opacity);
+  layer.end_color = Surface_Opacity($rt, $state, $host, layer.end_color, opacity);
   return layer;
   return kryon.snapshot($rt);
 }
@@ -1039,7 +1036,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
   }
   let layer = {x: 0, y: 0, width: 0, height: 0, radius: 0, stroke: 0, blur: 0, inner_blur: 0, outside_only: false, is_face: false, color: 0, end_color: 0, gradient: false, gradient_bias: 0};
   layer.x = kryon.copyValue(0.0);
-  layer.y = kryon.copyValue(Surface_FaceOffset($rt, $state, $host, hover, press, disabled));
+  layer.y = Surface_FaceOffset($rt, $state, $host, hover, press, disabled);
   layer.width = kryon.copyValue(width);
   layer.height = kryon.copyValue(height);
   layer.radius = kryon.copyValue(radius);
@@ -1047,15 +1044,15 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
   layer.color = kryon.copyValue(Math.trunc(Number(0)));
   layer.end_color = kryon.copyValue(Math.trunc(Number(0)));
   layer.gradient = kryon.copyValue(false);
-  let h = kryon.copyValue(Surface_Unit($rt, $state, $host, hover));
-  let p = kryon.copyValue(Surface_Unit($rt, $state, $host, press));
+  let h = Surface_Unit($rt, $state, $host, hover);
+  let p = Surface_Unit($rt, $state, $host, press);
   let ambient_brightness = kryon.copyValue(((ambient >> Math.trunc(Number(24))) & Math.trunc(Number(255))) + ((ambient >> Math.trunc(Number(16))) & Math.trunc(Number(255))) + ((ambient >> Math.trunc(Number(8))) & Math.trunc(Number(255))));
   let light_surroundings = kryon.copyValue(ambient_brightness > Math.trunc(Number(450)));
   let broad = kryon.copyValue(0.0);
   if (height > 0.0) {
-    broad = kryon.copyValue(Surface_Unit($rt, $state, $host, (width / height - 4.0) / 12.0));
+    broad = Surface_Unit($rt, $state, $host, (width / height - 4.0) / 12.0);
   }
-  let tall = kryon.copyValue(Surface_Unit($rt, $state, $host, (height - 32.0) / 16.0));
+  let tall = Surface_Unit($rt, $state, $host, (height - 32.0) / 16.0);
   if (disabled) {
     h = kryon.copyValue(0.0);
     p = kryon.copyValue(0.0);
@@ -1074,7 +1071,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     if (disabled) {
       strength = kryon.copyValue(0.0);
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, light, strength * opacity));
+    layer.color = Surface_Opacity($rt, $state, $host, light, strength * opacity);
     return layer;
   }
   index -= Math.trunc(Number(1));
@@ -1110,7 +1107,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     }
     let alpha = kryon.copyValue(34.0 + 90.0 * h - 26.0 * p);
     if (!light_surroundings && !disabled && (border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
-      let raised = kryon.copyValue(Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0));
+      let raised = Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0);
       raised *= raised * (1.0 - p);
       alpha += 70.0 * raised;
       layer.blur += 3.0 * raised;
@@ -1122,7 +1119,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     if (light_surroundings) {
       layer.y = kryon.copyValue(Surface_FaceOffset($rt, $state, $host, hover, press, disabled) + 1.0);
       layer.blur = kryon.copyValue(8.0 + 4.0 * Surface_Unit($rt, $state, $host, h + focused));
-      let raised = kryon.copyValue(Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0));
+      let raised = Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0);
       alpha = kryon.copyValue((110.0 + 40.0 * raised - 10.0 * h - 40.0 * Surface_Unit($rt, $state, $host, focused)) * (1.0 - 0.85 * p) * (1.0 - 0.85 * broad));
       if ((border & Math.trunc(Number(255))) == Math.trunc(Number(0))) {
         alpha *= 0.30;
@@ -1130,12 +1127,12 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       if (disabled) {
         alpha = kryon.copyValue(8.0);
       }
-      rim_light = kryon.copyValue(Surface_DepthColor($rt, $state, $host, light, 0.65 - 0.30 * Surface_Unit($rt, $state, $host, h + focused)));
+      rim_light = Surface_DepthColor($rt, $state, $host, light, 0.65 - 0.30 * Surface_Unit($rt, $state, $host, h + focused));
     }
     layer.color = kryon.copyValue(((rim_light >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | Math.trunc(Number(alpha)));
     if (light_surroundings) {
       layer.end_color = kryon.copyValue(layer.color);
-      layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, layer.color, 0.0));
+      layer.color = Surface_Opacity($rt, $state, $host, layer.color, 0.0);
       layer.gradient = kryon.copyValue(true);
     }
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
@@ -1148,11 +1145,11 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     }
     if (!light_surroundings) {
       if (!disabled) {
-        let reflected = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, focus_color, broad * 0.11 * (1.0 - Surface_ColorChroma($rt, $state, $host, background) / 255.0) * (1.0 - p) * (1.0 - Surface_Unit($rt, $state, $host, focused)) * (focus_color & Math.trunc(Number(255))) / 255.0));
+        let reflected = Surface_GradientColor($rt, $state, $host, background, focus_color, broad * 0.11 * (1.0 - Surface_ColorChroma($rt, $state, $host, background) / 255.0) * (1.0 - p) * (1.0 - Surface_Unit($rt, $state, $host, focused)) * (focus_color & Math.trunc(Number(255))) / 255.0);
         background = kryon.copyValue(((reflected >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
       }
       if ((border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
-        background = kryon.copyValue(Surface_DepthColor($rt, $state, $host, background, 0.30 * focus_depth));
+        background = Surface_DepthColor($rt, $state, $host, background, 0.30 * focus_depth);
       }
     }
     let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
@@ -1160,12 +1157,12 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     let highlight = kryon.copyValue(0.38 - h * 0.06);
     if (light_surroundings) {
       highlight = kryon.copyValue(0.50 - h * 0.40);
-      let saturation = kryon.copyValue(Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, background) - 128.0) / 64.0));
+      let saturation = Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, background) - 128.0) / 64.0);
       highlight -= 0.50 * broad * saturation * (1.0 - h);
     }
-    let face_light = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, white, 0.30));
+    let face_light = Surface_GradientColor($rt, $state, $host, background, white, 0.30);
     if (!light_surroundings) {
-      face_light = kryon.copyValue(Surface_GradientColor($rt, $state, $host, light, white, 0.06));
+      face_light = Surface_GradientColor($rt, $state, $host, light, white, 0.06);
       face_light = kryon.copyValue(((face_light >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
     }
     let shade = kryon.copyValue(0.12 + p * 0.22);
@@ -1179,7 +1176,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       if (light_surroundings && (border & Math.trunc(Number(255))) == Math.trunc(Number(0))) {
         tint -= 0.10 * p;
       }
-      black = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, light, tint));
+      black = Surface_GradientColor($rt, $state, $host, background, light, tint);
       black = kryon.copyValue(((black >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
       shade = kryon.copyValue(0.22 + p * 0.10);
     }
@@ -1187,31 +1184,31 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       highlight = kryon.copyValue(0.02);
       shade = kryon.copyValue(0.02);
     }
-    layer.color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, face_light, highlight * (1.0 - p)));
+    layer.color = Surface_GradientColor($rt, $state, $host, background, face_light, highlight * (1.0 - p));
     let depth = kryon.copyValue(0.48);
     if (light_surroundings) {
       depth = kryon.copyValue(0.35 + 0.13 * broad);
     }
-    layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, Surface_DepthColor($rt, $state, $host, background, depth + p * 0.24), black, p * 0.18));
+    layer.end_color = Surface_GradientColor($rt, $state, $host, Surface_DepthColor($rt, $state, $host, background, depth + p * 0.24), black, p * 0.18);
     if (!light_surroundings && !disabled) {
-      layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, layer.end_color, face_light, h * 0.65 * Surface_Unit($rt, $state, $host, (brightness - 90.0) / 80.0) * (1.0 - p)));
+      layer.end_color = Surface_GradientColor($rt, $state, $host, layer.end_color, face_light, h * 0.65 * Surface_Unit($rt, $state, $host, (brightness - 90.0) / 80.0) * (1.0 - p));
       layer.gradient_bias = kryon.copyValue(h * (1.0 - p));
     }
     if (brightness > Math.trunc(Number(600)) || disabled) {
-      layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, black, shade));
+      layer.end_color = Surface_GradientColor($rt, $state, $host, background, black, shade);
     }
     if (disabled && !light_surroundings && Surface_ColorChroma($rt, $state, $host, background) > Math.trunc(Number(64)) && ((background >> Math.trunc(Number(8))) & Math.trunc(Number(255))) > ((background >> Math.trunc(Number(24))) & Math.trunc(Number(255))) && ((background >> Math.trunc(Number(8))) & Math.trunc(Number(255))) > ((background >> Math.trunc(Number(16))) & Math.trunc(Number(255)))) {
-      layer.color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, black, 0.15));
-      layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, background, light, 0.30));
+      layer.color = Surface_GradientColor($rt, $state, $host, background, black, 0.15);
+      layer.end_color = Surface_GradientColor($rt, $state, $host, background, light, 0.30);
       layer.end_color = kryon.copyValue(((layer.end_color >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
     }
     if (light_surroundings && !disabled) {
-      layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, layer.end_color, Surface_GradientColor($rt, $state, $host, background, white, 0.12), h * (1.0 - p)));
+      layer.end_color = Surface_GradientColor($rt, $state, $host, layer.end_color, Surface_GradientColor($rt, $state, $host, background, white, 0.12), h * (1.0 - p));
       if (brightness > Math.trunc(Number(600))) {
-        let middle = kryon.copyValue(Surface_GradientColor($rt, $state, $host, layer.color, layer.end_color, 0.5));
+        let middle = Surface_GradientColor($rt, $state, $host, layer.color, layer.end_color, 0.5);
         let balance = kryon.copyValue(0.75 * focus_depth);
-        layer.color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, layer.color, middle, balance));
-        layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, layer.end_color, middle, balance));
+        layer.color = Surface_GradientColor($rt, $state, $host, layer.color, middle, balance);
+        layer.end_color = Surface_GradientColor($rt, $state, $host, layer.end_color, middle, balance);
       }
     }
     layer.gradient = kryon.copyValue(true);
@@ -1226,13 +1223,13 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
         let edge_hover = kryon.copyValue(h * (1.0 - p));
         let face_tint = kryon.copyValue(((background >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (border & Math.trunc(Number(255))));
         let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (border & Math.trunc(Number(255))));
-        layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, face_tint, 0.65 * edge_hover), 1.0 - 0.5 * focus_edge));
-        layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, white, 0.30 * edge_hover), 1.0 - 0.5 * focus_edge));
+        layer.color = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, face_tint, 0.65 * edge_hover), 1.0 - 0.5 * focus_edge);
+        layer.end_color = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, border, white, 0.30 * edge_hover), 1.0 - 0.5 * focus_edge);
         layer.gradient = kryon.copyValue(true);
       }
       if (!light_surroundings && !disabled) {
         let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (border & Math.trunc(Number(255))));
-        layer.end_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, border, white, h * 0.30 * (1.0 - p)));
+        layer.end_color = Surface_GradientColor($rt, $state, $host, border, white, h * 0.30 * (1.0 - p));
         layer.gradient = kryon.copyValue(true);
       }
     }
@@ -1254,7 +1251,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     layer.stroke = kryon.copyValue(1.0);
     let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | Math.trunc(Number(255)));
     let top = kryon.copyValue((0.12 + 0.12 * h) * (1.0 - p * 0.8));
-    let raised = kryon.copyValue(Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0));
+    let raised = Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0);
     raised *= raised;
     let luminance = kryon.copyValue(((light >> Math.trunc(Number(24))) & Math.trunc(Number(255))) * 0.2126 + ((light >> Math.trunc(Number(16))) & Math.trunc(Number(255))) * 0.7152 + ((light >> Math.trunc(Number(8))) & Math.trunc(Number(255))) * 0.0722);
     let reflection = kryon.copyValue(Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, light) - 128.0) / 64.0) * Surface_Unit($rt, $state, $host, (160.0 - luminance) / 96.0));
@@ -1270,23 +1267,23 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       top = kryon.copyValue(0.02);
       bottom = kryon.copyValue(0.02);
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, white, top));
+    layer.color = Surface_Opacity($rt, $state, $host, white, top);
     let rim_light = kryon.copyValue(light);
     let whitening = kryon.copyValue(0.72);
     if (!light_surroundings && !disabled) {
       let hover_light = kryon.copyValue(edge_hover * (1.0 - p));
-      rim_light = kryon.copyValue(Surface_GradientColor($rt, $state, $host, light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), hover_light));
-      rim_light = kryon.copyValue(Surface_LiftColor($rt, $state, $host, rim_light, hover_light));
-      rim_light = kryon.copyValue(Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, rim_light, broad_light), broad_light));
+      rim_light = Surface_GradientColor($rt, $state, $host, light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), hover_light);
+      rim_light = Surface_LiftColor($rt, $state, $host, rim_light, hover_light);
+      rim_light = Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, rim_light, broad_light), broad_light);
       whitening -= 0.40 * broad_light;
       bottom += 0.40 * broad_light;
       if ((border & Math.trunc(Number(255))) == Math.trunc(Number(0))) {
         let borderless_hover = kryon.copyValue(h * (1.0 - p));
-        rim_light = kryon.copyValue(Surface_GradientColor($rt, $state, $host, rim_light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), borderless_hover));
+        rim_light = Surface_GradientColor($rt, $state, $host, rim_light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), borderless_hover);
         whitening *= 1.0 - borderless_hover;
       }
     }
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, rim_light, white, whitening), bottom));
+    layer.end_color = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, rim_light, white, whitening), bottom);
     layer.gradient = kryon.copyValue(true);
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
   }
@@ -1304,7 +1301,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     layer.height += 2.0 * gap;
     layer.radius += gap;
     layer.stroke = kryon.copyValue(1.0);
-    let strength = kryon.copyValue(Surface_Unit($rt, $state, $host, focused));
+    let strength = Surface_Unit($rt, $state, $host, focused);
     if (disabled) {
       strength = kryon.copyValue(0.0);
     }
@@ -1331,18 +1328,18 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     let rim_color = kryon.copyValue(focus_color);
     if (index == Math.trunc(Number(5)) && !light_surroundings) {
       if (Surface_ColorChroma($rt, $state, $host, light) > Math.trunc(Number(64)) && (((light >> Math.trunc(Number(24))) & Math.trunc(Number(255))) > ((light >> Math.trunc(Number(8))) & Math.trunc(Number(255))) || ((light >> Math.trunc(Number(16))) & Math.trunc(Number(255))) > ((light >> Math.trunc(Number(8))) & Math.trunc(Number(255))))) {
-        let material = kryon.copyValue(Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))));
+        let material = Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255)));
         rim_color = kryon.copyValue(((material >> Math.trunc(Number(8))) << Math.trunc(Number(8))) | (focus_color & Math.trunc(Number(255))));
       }
-      rim_color = kryon.copyValue(Surface_DepthColor($rt, $state, $host, Surface_DepthColor($rt, $state, $host, rim_color, 1.0), 0.4));
+      rim_color = Surface_DepthColor($rt, $state, $host, Surface_DepthColor($rt, $state, $host, rim_color, 1.0), 0.4);
     }
     if (index == Math.trunc(Number(6)) && !light_surroundings && (border & Math.trunc(Number(255))) != Math.trunc(Number(0)) && Surface_ColorChroma($rt, $state, $host, border) > Math.trunc(Number(64))) {
       let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (focus_color & Math.trunc(Number(255))));
       let edge_white = kryon.copyValue(0.50 + 0.22 * Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, background) - 128.0) / 64.0));
-      rim_color = kryon.copyValue(Surface_GradientColor($rt, $state, $host, focus_color, white, edge_white));
+      rim_color = Surface_GradientColor($rt, $state, $host, focus_color, white, edge_white);
       layer.stroke = kryon.copyValue(1.5);
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, rim_color, strength));
+    layer.color = Surface_Opacity($rt, $state, $host, rim_color, strength);
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
   }
   if (index == Math.trunc(Number(7))) {
@@ -1376,7 +1373,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     }
     let raised_light = kryon.copyValue(0.0);
     if (light_surroundings && (border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
-      raised_light = kryon.copyValue(Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0));
+      raised_light = Surface_Unit($rt, $state, $host, (height - 40.0) / 8.0);
       raised_light *= raised_light * Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, background) - 128.0) / 64.0);
     }
     if (light_surroundings) {
@@ -1386,7 +1383,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       strength = kryon.copyValue(0.0);
     }
     strength *= (background & Math.trunc(Number(255))) / 255.0;
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, light, 0.0));
+    layer.color = Surface_Opacity($rt, $state, $host, light, 0.0);
     let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (light & Math.trunc(Number(255))));
     let whitening = kryon.copyValue(0.22);
     if (!light_surroundings && (border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
@@ -1394,21 +1391,21 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     }
     let reflected_light = kryon.copyValue(light);
     if (light_surroundings) {
-      reflected_light = kryon.copyValue(Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, reflected_light, raised_light), raised_light));
+      reflected_light = Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, reflected_light, raised_light), raised_light);
     }
     if (!light_surroundings && (border & Math.trunc(Number(255))) == Math.trunc(Number(0))) {
       whitening *= 1.0 - borderless_hover;
-      reflected_light = kryon.copyValue(Surface_GradientColor($rt, $state, $host, light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), borderless_hover));
+      reflected_light = Surface_GradientColor($rt, $state, $host, light, Surface_ChromaColor($rt, $state, $host, light, Math.trunc(Number(255))), borderless_hover);
     }
     if (!light_surroundings && (border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
-      reflected_light = kryon.copyValue(Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, reflected_light, broad_light), broad_light));
+      reflected_light = Surface_LiftColor($rt, $state, $host, Surface_LiftColor($rt, $state, $host, reflected_light, broad_light), broad_light);
       whitening *= 1.0 - 0.5 * broad_light;
     }
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, reflected_light, white, whitening), strength));
+    layer.end_color = Surface_Opacity($rt, $state, $host, Surface_GradientColor($rt, $state, $host, reflected_light, white, whitening), strength);
     layer.gradient = kryon.copyValue(true);
     if (!light_surroundings && (border & Math.trunc(Number(255))) != Math.trunc(Number(0))) {
       let body_chroma = kryon.copyValue(Math.fround(Surface_ColorChroma($rt, $state, $host, background)));
-      let edge_contrast = kryon.copyValue(Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, border) - body_chroma - 64.0) / 64.0));
+      let edge_contrast = Surface_Unit($rt, $state, $host, (Surface_ColorChroma($rt, $state, $host, border) - body_chroma - 64.0) / 64.0);
       layer.gradient_bias = kryon.copyValue(edge_contrast * Surface_Unit($rt, $state, $host, (96.0 - body_chroma) / 32.0) * (1.0 - p));
     }
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
@@ -1438,8 +1435,8 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
       strength = kryon.copyValue(0.0);
     }
     let white = kryon.copyValue((Math.trunc(Number(16777215)) << Math.trunc(Number(8))) | (background & Math.trunc(Number(255))));
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, white, strength));
-    layer.end_color = kryon.copyValue(Surface_Opacity($rt, $state, $host, white, 0.0));
+    layer.color = Surface_Opacity($rt, $state, $host, white, strength);
+    layer.end_color = Surface_Opacity($rt, $state, $host, white, 0.0);
     layer.gradient = kryon.copyValue(true);
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
   }
@@ -1463,7 +1460,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     if (disabled) {
       strength = kryon.copyValue(0.0);
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, background & Math.trunc(Number(255)), strength));
+    layer.color = Surface_Opacity($rt, $state, $host, background & Math.trunc(Number(255)), strength);
     layer.end_color = kryon.copyValue(Math.trunc(Number(0)));
     layer.gradient = kryon.copyValue(true);
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
@@ -1485,7 +1482,7 @@ export function Surface_LightfieldLayer($rt, $state = moduleState, $host = modul
     if ((border & Math.trunc(Number(255))) == Math.trunc(Number(0))) {
       strength *= 0.35;
     }
-    layer.color = kryon.copyValue(Surface_Opacity($rt, $state, $host, Surface_DepthColor($rt, $state, $host, focus_color, 1.0), strength));
+    layer.color = Surface_Opacity($rt, $state, $host, Surface_DepthColor($rt, $state, $host, focus_color, 1.0), strength);
     return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);
   }
   return Surface_FinishLightfieldLayer($rt, $state, $host, layer, index, background, opacity);

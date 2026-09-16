@@ -1235,6 +1235,33 @@ is_positional_record(const char *type)
            strcmp(type, "Color") == 0;
 }
 
+/* Direct module-call RHS: `name(...)` (optionally qualified). Call results are
+ * fresh objects or the callee's defensively-copied parameter, so copying them
+ * again at the call site only costs time. */
+static int
+is_direct_call_rhs(const char *rhs)
+{
+    size_t depth = 0;
+    const char *p;
+
+    if(rhs[0] != '_' && (rhs[0] < 'A' || rhs[0] > 'Z') &&
+       (rhs[0] < 'a' || rhs[0] > 'z') && rhs[0] != '$')
+        return 0;
+    for(p = rhs; *p != '\0'; p++) {
+        if(*p == '(')
+            depth++;
+        else if(*p == ')') {
+            if(depth == 0)
+                return 0;
+            depth--;
+        } else if(depth == 0 && *p != '.' && *p != '_' && *p != '$' &&
+                  (*p < 'A' || *p > 'Z') && (*p < 'a' || *p > 'z') &&
+                  (*p < '0' || *p > '9'))
+            return 0;
+    }
+    return depth == 0 && p > rhs && p[-1] == ')';
+}
+
 static void
 emit_assign(FILE *f, const KirModule *m, const KirStmt *st,
             const char *raw, int indent)
@@ -1272,10 +1299,11 @@ emit_assign(FILE *f, const KirModule *m, const KirStmt *st,
         tx_destination_context = 0;
         emit_indent(f, indent);
         fprintf(f, "%s %s ", out_lhs, op);
-        if(strcmp(op, "=") == 0)
+        int plain_call = strcmp(op, "=") == 0 && is_direct_call_rhs(rhs);
+        if(strcmp(op, "=") == 0 && !plain_call)
             fputs("kryon.copyValue(", f);
         emit_initializer_value_with_meta(f, m, rhs, st);
-        if(strcmp(op, "=") == 0)
+        if(strcmp(op, "=") == 0 && !plain_call)
             fputc(')', f);
         fputs(";\n", f);
     }
@@ -2442,7 +2470,9 @@ emit_decl(FILE *f, const KirModule *m, const KirStmt *st,
                 kir_trim_in_place(type);
             }
             int positional = is_positional_record(type) && *kir_skip_ws(rhs) == '{';
-            fputs("kryon.copyValue(", f);
+            int plain_call = is_direct_call_rhs(kir_skip_ws(rhs));
+            if(!plain_call)
+                fputs("kryon.copyValue(", f);
             if(positional) {
                 fputs("kryon.recordValue(", f);
                 js_string(f, type);
@@ -2451,7 +2481,8 @@ emit_decl(FILE *f, const KirModule *m, const KirStmt *st,
             emit_initializer_value_with_meta(f, m, rhs, st);
             if(positional)
                 fputc(')', f);
-            fputc(')', f);
+            if(!plain_call)
+                fputc(')', f);
         } else
             fputs("null", f);
         fputs(";\n", f);
@@ -2510,13 +2541,17 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         *colon++ = '\0';
         kir_trim_in_place(parts[i]);
         kir_trim_in_place(colon);
-        if(KirFindType(m, colon, NULL) != NULL) {
-            char safe[K2JS_NAME_MAX];
-            js_ident(parts[i], safe, sizeof(safe));
-            fprintf(f, "  %s = ", safe);
-            if(!KirEmitJsRecordValue(f, m, colon, safe))
-                fprintf(f, "kryon.copyValue(%s)", safe);
-            fputs(";\n", f);
+        {
+            const KirModule *owner = NULL;
+            /* Defensive parameter copies are only elided for record types
+             * declared in this module: same-module code follows the value
+             * threading discipline (results are always reassigned from the
+             * callee), while foreign record types keep full copies. */
+            if(KirFindType(m, colon, &owner) != NULL && owner == m) {
+                char safe[K2JS_NAME_MAX];
+                js_ident(parts[i], safe, sizeof(safe));
+                fprintf(f, "  /* pass-by-reference: %s is same-module */\n", colon);
+            }
         }
     }
     fprintf(f, "  $rt = $rt || kryon.createRuntime();\n");

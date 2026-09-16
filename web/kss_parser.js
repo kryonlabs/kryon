@@ -104,25 +104,25 @@ export function KssParser_KssDefaultEnvironment($rt, $state = moduleState, $host
 
 export function KssParser_KssBegin($rt, $state = moduleState, $host = moduleHost, source, path, env) {
   $state = $state || moduleState;
-  env = ((record_source) => ({theme: record_source.theme, contrast: record_source.contrast, density: record_source.density, pointer: record_source.pointer, platform: record_source.platform}))(env);
+  /* pass-by-reference: KssEnvironment is same-module */
   $rt = $rt || kryon.createRuntime();
-  let p = {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0};
-  p.source = kryon.copyValue(source);
-  p.pos = kryon.copyValue(0);
-  p.line = kryon.copyValue(1);
-  p.column = kryon.copyValue(1);
-  p.file = kryon.copyValue(0);
-  p.files[0] = kryon.copyValue(KssParser_KssCopyFileName($rt, $state, $host, path));
+  let p = {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0};
+  p.cursor.source = kryon.copyValue(source);
+  p.cursor.pos = kryon.copyValue(0);
+  p.cursor.line = kryon.copyValue(1);
+  p.cursor.column = kryon.copyValue(1);
+  p.cursor.file = kryon.copyValue(0);
+  p.files[0] = KssParser_KssCopyFileName($rt, $state, $host, path);
   p.file_count = kryon.copyValue(1);
   p.import_depth = kryon.copyValue(0);
   p.token_count = kryon.copyValue(0);
   p.override_count = kryon.copyValue(0);
   p.layer = kryon.copyValue(0);
   p.layer_count = kryon.copyValue(4);
-  p.layer_names[0] = kryon.copyValue(KssParser_KssMakeName($rt, $state, $host, "reset"));
-  p.layer_names[1] = kryon.copyValue(KssParser_KssMakeName($rt, $state, $host, "components"));
-  p.layer_names[2] = kryon.copyValue(KssParser_KssMakeName($rt, $state, $host, "app"));
-  p.layer_names[3] = kryon.copyValue(KssParser_KssMakeName($rt, $state, $host, "overrides"));
+  p.layer_names[0] = KssParser_KssMakeName($rt, $state, $host, "reset");
+  p.layer_names[1] = KssParser_KssMakeName($rt, $state, $host, "components");
+  p.layer_names[2] = KssParser_KssMakeName($rt, $state, $host, "app");
+  p.layer_names[3] = KssParser_KssMakeName($rt, $state, $host, "overrides");
   p.layer_declared = kryon.copyValue(false);
   p.env = kryon.copyValue(env);
   p.theme_count = kryon.copyValue(0);
@@ -140,9 +140,9 @@ export function KssParser_KssBegin($rt, $state = moduleState, $host = moduleHost
 
 export function KssParser_KssBeginDeclarative($rt, $state = moduleState, $host = moduleHost, source, path, env) {
   $state = $state || moduleState;
-  env = ((record_source) => ({theme: record_source.theme, contrast: record_source.contrast, density: record_source.density, pointer: record_source.pointer, platform: record_source.platform}))(env);
+  /* pass-by-reference: KssEnvironment is same-module */
   $rt = $rt || kryon.createRuntime();
-  let p = kryon.copyValue(KssParser_KssBegin($rt, $state, $host, source, path, env));
+  let p = KssParser_KssBegin($rt, $state, $host, source, path, env);
   p.declarative = kryon.copyValue(true);
   return p;
   return kryon.snapshot($rt);
@@ -150,7 +150,7 @@ export function KssParser_KssBeginDeclarative($rt, $state = moduleState, $host =
 
 export function KssParser_KssAddColorOverride($rt, $state = moduleState, $host = moduleHost, p, name, color) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   if (p.override_count < 16) {
     p.overrides[p.override_count].name = kryon.copyValue(name);
@@ -161,42 +161,42 @@ export function KssParser_KssAddColorOverride($rt, $state = moduleState, $host =
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssAtEnd($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssAtEnd($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  return p.pos >= p.source.length;
+  return c.pos >= c.source.length;
 }
 
-export function KssParser_KssPeek($rt, $state = moduleState, $host = moduleHost, p, ahead) {
+export function KssParser_KssPeek($rt, $state = moduleState, $host = moduleHost, c, ahead) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let index = kryon.copyValue(p.pos + ahead);
-  if (index < 0 || index >= p.source.length) {
+  let index = kryon.copyValue(c.pos + ahead);
+  if (index < 0 || index >= c.source.length) {
     return 0;
   }
-  return kryon.index(p.source, index);
+  return kryon.index(c.source, index);
 }
 
-export function KssParser_KssAdvance($rt, $state = moduleState, $host = moduleHost, p, count) {
+export function KssParser_KssAdvance($rt, $state = moduleState, $host = moduleHost, c, count) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
   let step = kryon.copyValue(0);
   while (step < count) {
-    if (p.pos < p.source.length) {
-      if (kryon.index(p.source, p.pos) == 10) {
-        p.line = kryon.copyValue(p.line + 1);
-        p.column = kryon.copyValue(1);
+    if (c.pos < c.source.length) {
+      if (kryon.index(c.source, c.pos) == 10) {
+        c.line = kryon.copyValue(c.line + 1);
+        c.column = kryon.copyValue(1);
       } else {
-        p.column = kryon.copyValue(p.column + 1);
+        c.column = kryon.copyValue(c.column + 1);
       }
-      p.pos = kryon.copyValue(p.pos + 1);
+      c.pos = kryon.copyValue(c.pos + 1);
     }
     step = kryon.copyValue(step + 1);
   }
-  return p;
+  return c;
   return kryon.snapshot($rt);
 }
 
@@ -253,7 +253,7 @@ export function KssParser_KssLower($rt, $state = moduleState, $host = moduleHost
 
 export function KssParser_KssNameEquals($rt, $state = moduleState, $host = moduleHost, name, text) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (name.length != text.length) {
     return false;
@@ -270,8 +270,8 @@ export function KssParser_KssNameEquals($rt, $state = moduleState, $host = modul
 
 export function KssParser_KssNameEqualsName($rt, $state = moduleState, $host = moduleHost, a, b) {
   $state = $state || moduleState;
-  a = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(a);
-  b = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(b);
+  /* pass-by-reference: KssName is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (a.length != b.length) {
     return false;
@@ -316,7 +316,7 @@ export function KssParser_KssCopyFileName($rt, $state = moduleState, $host = mod
 
 export function KssParser_KssNameAppend($rt, $state = moduleState, $host = moduleHost, destination, byte) {
   $state = $state || moduleState;
-  destination = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(destination);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (destination.length < 64) {
     destination.bytes[destination.length] = kryon.copyValue(byte);
@@ -326,101 +326,101 @@ export function KssParser_KssNameAppend($rt, $state = moduleState, $host = modul
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssSkipSpace($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssSkipSpace($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  while (!KssParser_KssAtEnd($rt, $state, $host, p)) {
-    let byte = kryon.copyValue(kryon.index(p.source, p.pos));
+  while (!KssParser_KssAtEnd($rt, $state, $host, c)) {
+    let byte = kryon.copyValue(kryon.index(c.source, c.pos));
     if (KssParser_KssIsSpace($rt, $state, $host, byte)) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
       continue;
     }
-    if (byte == 47 && KssParser_KssPeek($rt, $state, $host, p, 1) == 47) {
-      while (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) != 10) {
-        p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (byte == 47 && KssParser_KssPeek($rt, $state, $host, c, 1) == 47) {
+      while (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) != 10) {
+        c = KssParser_KssAdvance($rt, $state, $host, c, 1);
       }
       continue;
     }
-    if (byte == 47 && KssParser_KssPeek($rt, $state, $host, p, 1) == 42) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 2));
-      while (!KssParser_KssAtEnd($rt, $state, $host, p)) {
-        if (kryon.index(p.source, p.pos) == 42 && KssParser_KssPeek($rt, $state, $host, p, 1) == 47) {
-          p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 2));
+    if (byte == 47 && KssParser_KssPeek($rt, $state, $host, c, 1) == 42) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 2);
+      while (!KssParser_KssAtEnd($rt, $state, $host, c)) {
+        if (kryon.index(c.source, c.pos) == 42 && KssParser_KssPeek($rt, $state, $host, c, 1) == 47) {
+          c = KssParser_KssAdvance($rt, $state, $host, c, 2);
           break;
         }
-        p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+        c = KssParser_KssAdvance($rt, $state, $host, c, 1);
       }
       continue;
     }
     break;
   }
-  return p;
+  return c;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssReadName($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssReadName($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p) || !KssParser_KssIdentStart($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    result.parser = kryon.copyValue(p);
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c) || !KssParser_KssIdentStart($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(false);
     return result;
   }
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIdentChar($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    result.name = kryon.copyValue(KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(p.source, p.pos)));
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIdentChar($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    result.name = KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(c.source, c.pos));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  result.parser = kryon.copyValue(p);
+  result.parser = kryon.copyValue(c);
   result.ok = kryon.copyValue(result.name.length > 0);
   return result;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssReadSelectorName($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssReadSelectorName($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 42) {
-    result.name = kryon.copyValue(KssParser_KssNameAppend($rt, $state, $host, result.name, 42));
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    result.parser = kryon.copyValue(p);
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 42) {
+    result.name = KssParser_KssNameAppend($rt, $state, $host, result.name, 42);
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(true);
     return result;
   }
-  if (KssParser_KssAtEnd($rt, $state, $host, p) || !KssParser_KssIdentStart($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    result.parser = kryon.copyValue(p);
+  if (KssParser_KssAtEnd($rt, $state, $host, c) || !KssParser_KssIdentStart($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(false);
     return result;
   }
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssSelectorIdentChar($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    result.name = kryon.copyValue(KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(p.source, p.pos)));
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssSelectorIdentChar($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    result.name = KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(c.source, c.pos));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  result.parser = kryon.copyValue(p);
+  result.parser = kryon.copyValue(c);
   result.ok = kryon.copyValue(result.name.length > 0);
   return result;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssExpect($rt, $state = moduleState, $host = moduleHost, p, byte) {
+export function KssParser_KssExpect($rt, $state = moduleState, $host = moduleHost, c, byte) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, ok: false};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p) ||kryon.index( p.source, p.pos) != byte) {
-    result.parser = kryon.copyValue(p);
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, ok: false};
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c) ||kryon.index( c.source, c.pos) != byte) {
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(false);
     return result;
   }
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  result.parser = kryon.copyValue(p);
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  result.parser = kryon.copyValue(c);
   result.ok = kryon.copyValue(true);
   return result;
   return kryon.snapshot($rt);
@@ -428,7 +428,7 @@ export function KssParser_KssExpect($rt, $state = moduleState, $host = moduleHos
 
 export function KssParser_KssDiagnosticAppend($rt, $state = moduleState, $host = moduleHost, p, text) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   let index = kryon.copyValue(0);
   while (index < text.length && p.diagnostic_length < 255) {
@@ -442,8 +442,8 @@ export function KssParser_KssDiagnosticAppend($rt, $state = moduleState, $host =
 
 export function KssParser_KssDiagnosticAppendName($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   let index = kryon.copyValue(0);
   while (index < name.length && p.diagnostic_length < 255) {
@@ -457,12 +457,12 @@ export function KssParser_KssDiagnosticAppendName($rt, $state = moduleState, $ho
 
 export function KssParser_KssDiagnosticAppendInt($rt, $state = moduleState, $host = moduleHost, p, value) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   let remaining = kryon.copyValue(value);
   let digits = kryon.copyValue(1);
   if (remaining < 0) {
-    p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, "-"));
+    p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, "-");
     remaining = kryon.copyValue(-remaining);
   }
   let probe = kryon.copyValue(10);
@@ -494,32 +494,32 @@ export function KssParser_KssDiagnosticAppendInt($rt, $state = moduleState, $hos
 
 export function KssParser_KssDiagnosticAt($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, " at "));
-  if (p.file >= 0 && p.file < p.file_count &&kryon.index( p.files, p.file).length > 0) {
+  p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, " at ");
+  if (p.cursor.file >= 0 && p.cursor.file < p.file_count &&kryon.index( p.files, p.cursor.file).length > 0) {
     let index = kryon.copyValue(0);
-    while (index <kryon.index( p.files, p.file).length && p.diagnostic_length < 255) {
-      p.diagnostic[p.diagnostic_length] = kryon.copyValue(kryon.index(kryon.index(p.files, p.file).name, index));
+    while (index <kryon.index( p.files, p.cursor.file).length && p.diagnostic_length < 255) {
+      p.diagnostic[p.diagnostic_length] = kryon.copyValue(kryon.index(kryon.index(p.files, p.cursor.file).name, index));
       p.diagnostic_length = kryon.copyValue(p.diagnostic_length + 1);
       index = kryon.copyValue(index + 1);
     }
-    p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, ":"));
+    p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, ":");
   }
-  p = kryon.copyValue(KssParser_KssDiagnosticAppendInt($rt, $state, $host, p, p.line));
-  p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, ":"));
-  p = kryon.copyValue(KssParser_KssDiagnosticAppendInt($rt, $state, $host, p, p.column));
+  p = KssParser_KssDiagnosticAppendInt($rt, $state, $host, p, p.cursor.line);
+  p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, ":");
+  p = KssParser_KssDiagnosticAppendInt($rt, $state, $host, p, p.cursor.column);
   return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssFail($rt, $state = moduleState, $host = moduleHost, p, message) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   p.diagnostic_length = kryon.copyValue(0);
-  p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, message));
-  p = kryon.copyValue(KssParser_KssDiagnosticAt($rt, $state, $host, p));
+  p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, message);
+  p = KssParser_KssDiagnosticAt($rt, $state, $host, p);
   p.status = kryon.copyValue(Math.trunc(Number(KssStatusError)));
   return p;
   return kryon.snapshot($rt);
@@ -527,33 +527,33 @@ export function KssParser_KssFail($rt, $state = moduleState, $host = moduleHost,
 
 export function KssParser_KssFailName($rt, $state = moduleState, $host = moduleHost, p, message, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   p.diagnostic_length = kryon.copyValue(0);
-  p = kryon.copyValue(KssParser_KssDiagnosticAppend($rt, $state, $host, p, message));
-  p = kryon.copyValue(KssParser_KssDiagnosticAppendName($rt, $state, $host, p, name));
-  p = kryon.copyValue(KssParser_KssDiagnosticAt($rt, $state, $host, p));
+  p = KssParser_KssDiagnosticAppend($rt, $state, $host, p, message);
+  p = KssParser_KssDiagnosticAppendName($rt, $state, $host, p, name);
+  p = KssParser_KssDiagnosticAt($rt, $state, $host, p);
   p.status = kryon.copyValue(Math.trunc(Number(KssStatusError)));
   return p;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssReadHexColor($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssReadHexColor($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, value: 0, ok: false};
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, value: 0, ok: false};
   let value = kryon.copyValue(0);
   let digits = kryon.copyValue(0);
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p) ||kryon.index( p.source, p.pos) != 35) {
-    result.parser = kryon.copyValue(p);
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c) ||kryon.index( c.source, c.pos) != 35) {
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsHexDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    let byte = kryon.copyValue(kryon.index(p.source, p.pos));
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsHexDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    let byte = kryon.copyValue(kryon.index(c.source, c.pos));
     let digit = kryon.copyValue(0);
     if (byte >= 48 && byte <= 57) {
       digit = kryon.copyValue(Math.trunc(Number(byte - 48)));
@@ -564,26 +564,26 @@ export function KssParser_KssReadHexColor($rt, $state = moduleState, $host = mod
     }
     value = kryon.copyValue((value << Math.trunc(Number(4))) | digit);
     digits = kryon.copyValue(digits + 1);
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
   if (digits == 6) {
     value = kryon.copyValue((value << Math.trunc(Number(8))) | Math.trunc(Number(255)));
   } else if (digits != 8) {
-    result.parser = kryon.copyValue(p);
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  result.parser = kryon.copyValue(p);
+  result.parser = kryon.copyValue(c);
   result.value = kryon.copyValue(value);
   result.ok = kryon.copyValue(true);
   return result;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssReadNumber($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssReadNumber($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, value: 0, ok: false};
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, value: 0, ok: false};
   let negative = kryon.copyValue(false);
   let whole = kryon.copyValue(0);
   let fraction = kryon.copyValue(0);
@@ -593,52 +593,52 @@ export function KssParser_KssReadNumber($rt, $state = moduleState, $host = modul
   let seen_digits = kryon.copyValue(false);
   let power = kryon.copyValue(1.0);
   let value64 = kryon.copyValue(0.0);
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-    result.parser = kryon.copyValue(p);
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  if (kryon.index(p.source, p.pos) == 45) {
+  if (kryon.index(c.source, c.pos) == 45) {
     negative = kryon.copyValue(true);
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  } else if (kryon.index(p.source, p.pos) == 43) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  } else if (kryon.index(c.source, c.pos) == 43) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    whole = kryon.copyValue(whole * 10 + Math.trunc(Number(kryon.index(p.source, p.pos) - 48)));
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    whole = kryon.copyValue(whole * 10 + Math.trunc(Number(kryon.index(c.source, c.pos) - 48)));
     seen_digits = kryon.copyValue(true);
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 46 && !seen_digits) {
-    result.parser = kryon.copyValue(p);
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 46 && !seen_digits) {
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 46) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 46) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
       if (fraction_digits < 9) {
-        fraction = kryon.copyValue(fraction * 10 + Math.trunc(Number(kryon.index(p.source, p.pos) - 48)));
+        fraction = kryon.copyValue(fraction * 10 + Math.trunc(Number(kryon.index(c.source, c.pos) - 48)));
         fraction_digits = kryon.copyValue(fraction_digits + 1);
       }
       seen_digits = kryon.copyValue(true);
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
   }
   if (!seen_digits) {
-    result.parser = kryon.copyValue(p);
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) && (kryon.index(p.source, p.pos) == 101 ||kryon.index( p.source, p.pos) == 69)) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 45) {
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) && (kryon.index(c.source, c.pos) == 101 ||kryon.index( c.source, c.pos) == 69)) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 45) {
       exponent_negative = kryon.copyValue(true);
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    } else if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 43) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    } else if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 43) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
-    while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
-      exponent = kryon.copyValue(exponent * 10 + Math.trunc(Number(kryon.index(p.source, p.pos) - 48)));
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
+      exponent = kryon.copyValue(exponent * 10 + Math.trunc(Number(kryon.index(c.source, c.pos) - 48)));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
   }
   let step = kryon.copyValue(0);
@@ -659,56 +659,56 @@ export function KssParser_KssReadNumber($rt, $state = moduleState, $host = modul
   if (negative) {
     value64 = kryon.copyValue(-value64);
   }
-  result.parser = kryon.copyValue(p);
+  result.parser = kryon.copyValue(c);
   result.value = kryon.copyValue(Math.fround(value64));
   result.ok = kryon.copyValue(true);
   return result;
   return kryon.snapshot($rt);
 }
 
-export function KssParser_KssReadDuration($rt, $state = moduleState, $host = moduleHost, p) {
+export function KssParser_KssReadDuration($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssCursor is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, value: 0, ok: false};
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, value: 0, ok: false};
   let negative = kryon.copyValue(false);
   let whole = kryon.copyValue(0);
   let fraction = kryon.copyValue(0);
   let fraction_digits = kryon.copyValue(0);
   let seen_digits = kryon.copyValue(false);
   let seconds = kryon.copyValue(false);
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-    result.parser = kryon.copyValue(p);
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  if (kryon.index(p.source, p.pos) == 45) {
+  if (kryon.index(c.source, c.pos) == 45) {
     negative = kryon.copyValue(true);
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  } else if (kryon.index(p.source, p.pos) == 43) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  } else if (kryon.index(c.source, c.pos) == 43) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
-    whole = kryon.copyValue(whole * 10 + Math.trunc(Number(kryon.index(p.source, p.pos) - 48)));
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
+    whole = kryon.copyValue(whole * 10 + Math.trunc(Number(kryon.index(c.source, c.pos) - 48)));
     seen_digits = kryon.copyValue(true);
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 46) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    while (!KssParser_KssAtEnd($rt, $state, $host, p) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(p.source, p.pos))) {
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) == 46) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    while (!KssParser_KssAtEnd($rt, $state, $host, c) && KssParser_KssIsDigit($rt, $state, $host, kryon.index(c.source, c.pos))) {
       if (fraction_digits < 9) {
-        fraction = kryon.copyValue(fraction * 10 + Math.trunc(Number(kryon.index(p.source, p.pos) - 48)));
+        fraction = kryon.copyValue(fraction * 10 + Math.trunc(Number(kryon.index(c.source, c.pos) - 48)));
         fraction_digits = kryon.copyValue(fraction_digits + 1);
       }
       seen_digits = kryon.copyValue(true);
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
   }
   if (!seen_digits) {
-    result.parser = kryon.copyValue(p);
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  let unit = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let unit = KssParser_KssReadName($rt, $state, $host, c);
   if (unit.ok && KssParser_KssNameEquals($rt, $state, $host, unit.name, "ms")) {
     seconds = kryon.copyValue(false);
   } else if (unit.ok && KssParser_KssNameEquals($rt, $state, $host, unit.name, "s")) {
@@ -717,7 +717,7 @@ export function KssParser_KssReadDuration($rt, $state = moduleState, $host = mod
     result.parser = kryon.copyValue(unit.parser);
     return result;
   } else {
-    result.parser = kryon.copyValue(p);
+    result.parser = kryon.copyValue(c);
     return result;
   }
   let value = kryon.copyValue(0.0);
@@ -760,8 +760,8 @@ export function KssParser_KssReadDuration($rt, $state = moduleState, $host = mod
 
 export function KssParser_KssFindToken($rt, $state = moduleState, $host = moduleHost, p, name, kind) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   let index = kryon.copyValue(p.token_count - 1);
   while (index >= 0) {
@@ -775,7 +775,7 @@ export function KssParser_KssFindToken($rt, $state = moduleState, $host = module
 
 export function KssParser_KssApplyOverride($rt, $state = moduleState, $host = moduleHost, p, index) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   let override = kryon.copyValue(0);
   while (override < p.override_count) {
@@ -802,25 +802,25 @@ export function KssParser_KssApplyOverride($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssAddToken($rt, $state = moduleState, $host = moduleHost, p, token) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  token = ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(token);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssToken is same-module */
   $rt = $rt || kryon.createRuntime();
   if (p.token_count >= 128) {
     return KssParser_KssFail($rt, $state, $host, p, "style token capacity exceeded");
   }
   p.tokens[p.token_count] = kryon.copyValue(token);
   p.token_count = kryon.copyValue(p.token_count + 1);
-  p = kryon.copyValue(KssParser_KssApplyOverride($rt, $state, $host, p, p.token_count - 1));
+  p = KssParser_KssApplyOverride($rt, $state, $host, p, p.token_count - 1);
   return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssOverlayToken($rt, $state = moduleState, $host = moduleHost, p, name, kind, color, number, material, origin) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
-  let index = kryon.copyValue(KssParser_KssFindToken($rt, $state, $host, p, name, kind));
+  let index = KssParser_KssFindToken($rt, $state, $host, p, name, kind);
   if (index < 0) {
     return KssParser_KssFailName($rt, $state, $host, p, "unknown overlay token '", name);
   }
@@ -832,28 +832,28 @@ export function KssParser_KssOverlayToken($rt, $state = moduleState, $host = mod
     p.tokens[index].number = kryon.copyValue(number);
   }
   p.tokens[index].origin = kryon.copyValue(origin);
-  p.tokens[index].file = kryon.copyValue(p.file);
-  p.tokens[index].line = kryon.copyValue(p.line);
-  p.tokens[index].column = kryon.copyValue(p.column);
-  p = kryon.copyValue(KssParser_KssApplyOverride($rt, $state, $host, p, index));
+  p.tokens[index].file = kryon.copyValue(p.cursor.file);
+  p.tokens[index].line = kryon.copyValue(p.cursor.line);
+  p.tokens[index].column = kryon.copyValue(p.cursor.column);
+  p = KssParser_KssApplyOverride($rt, $state, $host, p, index);
   return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssFindColorToken($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   return KssParser_KssFindToken($rt, $state, $host, p, name, Math.trunc(Number(KssTokenColor)));
 }
 
 export function KssParser_KssFindNumberToken($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
-  let index = kryon.copyValue(KssParser_KssFindToken($rt, $state, $host, p, name, Math.trunc(Number(KssTokenDuration))));
+  let index = KssParser_KssFindToken($rt, $state, $host, p, name, Math.trunc(Number(KssTokenDuration)));
   if (index >= 0) {
     return index;
   }
@@ -862,15 +862,15 @@ export function KssParser_KssFindNumberToken($rt, $state = moduleState, $host = 
 
 export function KssParser_KssFindMaterialToken($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   return KssParser_KssFindToken($rt, $state, $host, p, name, Math.trunc(Number(KssTokenMaterial)));
 }
 
 export function KssParser_KssMaterialValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "lightfield")) {
     return Math.trunc(Number($enum0.MaterialLightfield));
@@ -886,7 +886,7 @@ export function KssParser_KssMaterialValue($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssClassId($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   let hash = kryon.copyValue(2166136261);
   if (name.length == 0) {
@@ -907,7 +907,7 @@ export function KssParser_KssClassId($rt, $state = moduleState, $host = moduleHo
 
 export function KssParser_KssKindValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "*") || KssParser_KssNameEquals($rt, $state, $host, name, "Any")) {
     return StyleSheet_StyleKindAny($rt, undefined, $host);
@@ -1028,7 +1028,7 @@ export function KssParser_KssKindValue($rt, $state = moduleState, $host = module
 
 export function KssParser_KssKindValueMore($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "ListBoxMulti")) {
     return StyleSheet_StyleKindListBoxMulti($rt, undefined, $host);
@@ -1113,7 +1113,7 @@ export function KssParser_KssKindValueMore($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssStateValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "any")) {
     return StyleSheet_StyleStateAny($rt, undefined, $host);
@@ -1144,7 +1144,7 @@ export function KssParser_KssStateValue($rt, $state = moduleState, $host = modul
 
 export function KssParser_KssToneValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "any")) {
     return StyleSheet_StyleAny($rt, undefined, $host);
@@ -1169,7 +1169,7 @@ export function KssParser_KssToneValue($rt, $state = moduleState, $host = module
 
 export function KssParser_KssEmphasisValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "any")) {
     return StyleSheet_StyleAny($rt, undefined, $host);
@@ -1194,7 +1194,7 @@ export function KssParser_KssEmphasisValue($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssSizeValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "any")) {
     return StyleSheet_StyleAny($rt, undefined, $host);
@@ -1213,7 +1213,7 @@ export function KssParser_KssSizeValue($rt, $state = moduleState, $host = module
 
 export function KssParser_KssRoleValue($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "Any")) {
     return StyleSheet_StyleAny($rt, undefined, $host);
@@ -1310,72 +1310,83 @@ export function KssParser_KssRoleValue($rt, $state = moduleState, $host = module
 
 export function KssParser_KssApplyAttr($rt, $state = moduleState, $host = moduleHost, p, rule) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
-  let attribute = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  let attribute = KssParser_KssReadName($rt, $state, $host, c);
   if (!attribute.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, attribute.parser, "expected selector attribute"));
+    p.cursor = kryon.copyValue(attribute.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected selector attribute");
     return result;
   }
-  let equals = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, attribute.parser, 61));
+  let equals = KssParser_KssExpect($rt, $state, $host, attribute.parser, 61);
   if (!equals.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, equals.parser, "expected '=' in selector attribute"));
+    p.cursor = kryon.copyValue(equals.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected '=' in selector attribute");
     return result;
   }
-  let value = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, equals.parser));
+  let value = KssParser_KssReadName($rt, $state, $host, equals.parser);
   if (!value.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected selector attribute value"));
+    p.cursor = kryon.copyValue(value.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected selector attribute value");
     return result;
   }
-  let close = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 93));
+  let close = KssParser_KssExpect($rt, $state, $host, value.parser, 93);
   if (!close.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, close.parser, "expected ']'"));
+    p.cursor = kryon.copyValue(close.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected ']'");
     return result;
   }
   if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "tone")) {
-    let mapped = kryon.copyValue(KssParser_KssToneValue($rt, $state, $host, value.name));
+    let mapped = KssParser_KssToneValue($rt, $state, $host, value.name);
     if (mapped == -999999) {
-      result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown tone '", value.name));
+      p.cursor = kryon.copyValue(close.parser);
+      result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown tone '", value.name);
       return result;
     }
     rule.selector.tone = kryon.copyValue(mapped);
   } else if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "emphasis")) {
-    let mapped = kryon.copyValue(KssParser_KssEmphasisValue($rt, $state, $host, value.name));
+    let mapped = KssParser_KssEmphasisValue($rt, $state, $host, value.name);
     if (mapped == -999999) {
-      result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown emphasis '", value.name));
+      p.cursor = kryon.copyValue(close.parser);
+      result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown emphasis '", value.name);
       return result;
     }
     rule.selector.emphasis = kryon.copyValue(mapped);
   } else if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "size")) {
-    let mapped = kryon.copyValue(KssParser_KssSizeValue($rt, $state, $host, value.name));
+    let mapped = KssParser_KssSizeValue($rt, $state, $host, value.name);
     if (mapped == -999999) {
-      result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown size '", value.name));
+      p.cursor = kryon.copyValue(close.parser);
+      result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown size '", value.name);
       return result;
     }
     rule.selector.size = kryon.copyValue(mapped);
   } else if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "state")) {
-    let mapped = kryon.copyValue(KssParser_KssStateValue($rt, $state, $host, value.name));
+    let mapped = KssParser_KssStateValue($rt, $state, $host, value.name);
     if (mapped == -999999) {
-      result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown state '", value.name));
+      p.cursor = kryon.copyValue(close.parser);
+      result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown state '", value.name);
       return result;
     }
     rule.selector.state = kryon.copyValue(mapped);
   } else if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "role")) {
-    let mapped = kryon.copyValue(KssParser_KssRoleValue($rt, $state, $host, value.name));
+    let mapped = KssParser_KssRoleValue($rt, $state, $host, value.name);
     if (mapped == -999999) {
-      result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown role '", value.name));
+      p.cursor = kryon.copyValue(close.parser);
+      result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown role '", value.name);
       return result;
     }
     rule.selector.role = kryon.copyValue(mapped);
   } else if (KssParser_KssNameEquals($rt, $state, $host, attribute.name, "class")) {
-    rule.selector.class_name = kryon.copyValue(KssParser_KssClassId($rt, $state, $host, value.name));
+    rule.selector.class_name = KssParser_KssClassId($rt, $state, $host, value.name);
   } else {
-    result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, close.parser, "unknown selector attribute '", attribute.name));
+    p.cursor = kryon.copyValue(close.parser);
+    result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown selector attribute '", attribute.name);
     return result;
   }
-  result.parser = kryon.copyValue(close.parser);
+  p.cursor = kryon.copyValue(close.parser);
+  result.parser = kryon.copyValue(p);
   result.rule = kryon.copyValue(rule);
   return result;
   return kryon.snapshot($rt);
@@ -1383,66 +1394,80 @@ export function KssParser_KssApplyAttr($rt, $state = moduleState, $host = module
 
 export function KssParser_KssParseSelector($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
   let rule = {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}};
-  rule.selector = kryon.copyValue(StyleSheet_StyleDefaultSelector($rt, undefined, $host));
-  rule.state = kryon.copyValue(StyleSheet_StyleStateAny($rt, undefined, $host));
-  let kind = kryon.copyValue(KssParser_KssReadSelectorName($rt, $state, $host, p));
+  rule.selector = StyleSheet_StyleDefaultSelector($rt, undefined, $host);
+  rule.state = StyleSheet_StyleStateAny($rt, undefined, $host);
+  let kind = KssParser_KssReadSelectorName($rt, $state, $host, c);
   if (!kind.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, kind.parser, "expected style selector"));
+    p.cursor = kryon.copyValue(kind.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected style selector");
     return result;
   }
-  let mapped = kryon.copyValue(KssParser_KssKindValue($rt, $state, $host, kind.name));
+  let mapped = KssParser_KssKindValue($rt, $state, $host, kind.name);
   if (mapped == -999999) {
-    result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, kind.parser, "unknown style selector '", kind.name));
+    p.cursor = kryon.copyValue(kind.parser);
+    result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown style selector '", kind.name);
     return result;
   }
   rule.selector.kind = kryon.copyValue(mapped);
-  p = kryon.copyValue(kind.parser);
+  c = kryon.copyValue(kind.parser);
+  p.cursor = kryon.copyValue(c);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, p, "unterminated style rule"));
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "unterminated style rule");
       return result;
     }
-    if (kryon.index(p.source, p.pos) == 91) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-      let attribute = kryon.copyValue(KssParser_KssApplyAttr($rt, $state, $host, p, rule));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 91) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
+      let attribute = KssParser_KssApplyAttr($rt, $state, $host, p, rule);
       if (attribute.parser.status == Math.trunc(Number(KssStatusError))) {
         return attribute;
       }
       p = kryon.copyValue(attribute.parser);
+      c = kryon.copyValue(p.cursor);
       rule = kryon.copyValue(attribute.rule);
       continue;
     }
-    if (kryon.index(p.source, p.pos) == 46) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-      let class_name = kryon.copyValue(KssParser_KssReadSelectorName($rt, $state, $host, p));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 46) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
+      let class_name = KssParser_KssReadSelectorName($rt, $state, $host, c);
       if (!class_name.ok) {
-        result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, class_name.parser, "expected class name after '.'"));
+        p.cursor = kryon.copyValue(class_name.parser);
+        result.parser = KssParser_KssFail($rt, $state, $host, p, "expected class name after '.'");
         return result;
       }
-      rule.selector.class_name = kryon.copyValue(KssParser_KssClassId($rt, $state, $host, class_name.name));
-      p = kryon.copyValue(class_name.parser);
+      rule.selector.class_name = KssParser_KssClassId($rt, $state, $host, class_name.name);
+      c = kryon.copyValue(class_name.parser);
+      p.cursor = kryon.copyValue(c);
       continue;
     }
-    if (kryon.index(p.source, p.pos) == 58) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-      let state = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 58) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
+      let state = KssParser_KssReadName($rt, $state, $host, c);
       if (!state.ok) {
-        result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, state.parser, "expected state after ':'"));
+        p.cursor = kryon.copyValue(state.parser);
+        result.parser = KssParser_KssFail($rt, $state, $host, p, "expected state after ':'");
         return result;
       }
-      let state_mapped = kryon.copyValue(KssParser_KssStateValue($rt, $state, $host, state.name));
+      let state_mapped = KssParser_KssStateValue($rt, $state, $host, state.name);
       if (state_mapped == -999999) {
-        result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, state.parser, "unknown state '", state.name));
+        p.cursor = kryon.copyValue(state.parser);
+        result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown state '", state.name);
         return result;
       }
       rule.state = kryon.copyValue(state_mapped);
-      p = kryon.copyValue(state.parser);
+      c = kryon.copyValue(state.parser);
+      p.cursor = kryon.copyValue(c);
       continue;
     }
     running = kryon.copyValue(false);
@@ -1455,47 +1480,50 @@ export function KssParser_KssParseSelector($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssCaptureDeclaration($rt, $state = moduleState, $host = moduleHost, p, rule, name, name_start, name_end) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
   if (p.declaration_count >= 1024) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, p, "declaration capacity exceeded"));
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "declaration capacity exceeded");
     return result;
   }
   let entry = {rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0};
   entry.rule = kryon.copyValue(p.rule_total);
   entry.name_start = kryon.copyValue(name_start);
   entry.name_length = kryon.copyValue(name_end - name_start);
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  entry.value_start = kryon.copyValue(p.pos);
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  entry.value_start = kryon.copyValue(p.cursor.pos);
   let running = kryon.copyValue(true);
   while (running) {
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, p, "expected ';'"));
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected ';'");
       return result;
     }
-    if (kryon.index(p.source, p.pos) == 59 ||kryon.index( p.source, p.pos) == 125) {
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 59 ||kryon.index( p.cursor.source, p.cursor.pos) == 125) {
       running = kryon.copyValue(false);
       continue;
     }
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    p.cursor = kryon.copyValue(c);
   }
-  entry.value_length = kryon.copyValue(p.pos - entry.value_start);
+  entry.value_length = kryon.copyValue(p.cursor.pos - entry.value_start);
   while (entry.value_length > 0) {
-    let byte = kryon.copyValue(kryon.index(p.source, entry.value_start + entry.value_length - 1));
+    let byte = kryon.copyValue(kryon.index(p.cursor.source, entry.value_start + entry.value_length - 1));
     if (!KssParser_KssIsSpace($rt, $state, $host, byte)) {
       break;
     }
     entry.value_length = kryon.copyValue(entry.value_length - 1);
   }
   if (entry.value_length <= 0) {
-    result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, p, "expected declaration value after '", name));
+    result.parser = KssParser_KssFailName($rt, $state, $host, p, "expected declaration value after '", name);
     return result;
   }
-  if (kryon.index(p.source, p.pos) == 59) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  if (kryon.index(p.cursor.source, p.cursor.pos) == 59) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    p.cursor = kryon.copyValue(c);
   }
   p.declarations[p.declaration_count] = kryon.copyValue(entry);
   p.declaration_count = kryon.copyValue(p.declaration_count + 1);
@@ -1507,29 +1535,32 @@ export function KssParser_KssCaptureDeclaration($rt, $state = moduleState, $host
 
 export function KssParser_KssCaptureForeign($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (p.foreign_count >= 16) {
     return KssParser_KssFail($rt, $state, $host, p, "foreign block capacity exceeded");
   }
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  let query_start = kryon.copyValue(p.pos);
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) != 123) {
-    if (kryon.index(p.source, p.pos) == 59 ||kryon.index( p.source, p.pos) == 125) {
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  let query_start = kryon.copyValue(p.cursor.pos);
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( p.cursor.source, p.cursor.pos) != 123) {
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 59 ||kryon.index( p.cursor.source, p.cursor.pos) == 125) {
       return KssParser_KssFailName($rt, $state, $host, p, "unknown directive '@", name);
     }
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    p.cursor = kryon.copyValue(c);
   }
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
     return KssParser_KssFail($rt, $state, $host, p, "expected '{' after block name");
   }
   let entry = {name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0};
   entry.name = kryon.copyValue(name);
   entry.query_start = kryon.copyValue(query_start);
-  entry.query_length = kryon.copyValue(p.pos - query_start);
+  entry.query_length = kryon.copyValue(p.cursor.pos - query_start);
   while (entry.query_length > 0) {
-    let byte = kryon.copyValue(kryon.index(p.source, entry.query_start + entry.query_length - 1));
+    let byte = kryon.copyValue(kryon.index(p.cursor.source, entry.query_start + entry.query_length - 1));
     if (!KssParser_KssIsSpace($rt, $state, $host, byte)) {
       break;
     }
@@ -1537,49 +1568,53 @@ export function KssParser_KssCaptureForeign($rt, $state = moduleState, $host = m
   }
   entry.body_start = kryon.copyValue(0);
   entry.body_length = kryon.copyValue(0);
-  entry.file = kryon.copyValue(p.file);
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  entry.body_start = kryon.copyValue(p.pos);
+  entry.file = kryon.copyValue(p.cursor.file);
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  p.cursor = kryon.copyValue(c);
+  entry.body_start = kryon.copyValue(p.cursor.pos);
   p.foreign[p.foreign_count] = kryon.copyValue(entry);
   p.foreign_count = kryon.copyValue(p.foreign_count + 1);
-  p = kryon.copyValue(KssParser_KssSkipBlockRemainder($rt, $state, $host, p));
+  p = KssParser_KssSkipBlockRemainder($rt, $state, $host, p);
   if (p.status == Math.trunc(Number(KssStatusError))) {
     return p;
   }
-  p.foreign[p.foreign_count - 1].body_length = kryon.copyValue(p.pos - 1 -kryon.index( p.foreign, p.foreign_count - 1).body_start);
+  p.foreign[p.foreign_count - 1].body_length = kryon.copyValue(p.cursor.pos - 1 -kryon.index( p.foreign, p.foreign_count - 1).body_start);
   return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssIsGroupName($rt, $state = moduleState, $host = moduleHost, name) {
   $state = $state || moduleState;
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   return KssParser_KssNameEquals($rt, $state, $host, name, "media") || KssParser_KssNameEquals($rt, $state, $host, name, "supports") || KssParser_KssNameEquals($rt, $state, $host, name, "container");
 }
 
 export function KssParser_KssParseGroupBlock($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (p.foreign_count >= 16) {
     return KssParser_KssFail($rt, $state, $host, p, "foreign block capacity exceeded");
   }
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  let query_start = kryon.copyValue(p.pos);
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) != 123) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  let query_start = kryon.copyValue(p.cursor.pos);
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( p.cursor.source, p.cursor.pos) != 123) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    p.cursor = kryon.copyValue(c);
   }
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
     return KssParser_KssFail($rt, $state, $host, p, "expected '{' after group query");
   }
   let entry = {name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0};
   entry.name = kryon.copyValue(name);
   entry.query_start = kryon.copyValue(query_start);
-  entry.query_length = kryon.copyValue(p.pos - query_start);
+  entry.query_length = kryon.copyValue(p.cursor.pos - query_start);
   while (entry.query_length > 0) {
-    let byte = kryon.copyValue(kryon.index(p.source, entry.query_start + entry.query_length - 1));
+    let byte = kryon.copyValue(kryon.index(p.cursor.source, entry.query_start + entry.query_length - 1));
     if (!KssParser_KssIsSpace($rt, $state, $host, byte)) {
       break;
     }
@@ -1587,12 +1622,13 @@ export function KssParser_KssParseGroupBlock($rt, $state = moduleState, $host = 
   }
   entry.body_start = kryon.copyValue(0);
   entry.body_length = kryon.copyValue(0);
-  entry.file = kryon.copyValue(p.file);
+  entry.file = kryon.copyValue(p.cursor.file);
   let group = kryon.copyValue(p.foreign_count);
   p.foreign[p.foreign_count] = kryon.copyValue(entry);
   p.foreign_count = kryon.copyValue(p.foreign_count + 1);
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  p.foreign[group].body_start = kryon.copyValue(p.pos);
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  p.cursor = kryon.copyValue(c);
+  p.foreign[group].body_start = kryon.copyValue(p.cursor.pos);
   p.resume_group = kryon.copyValue(group);
   return KssParser_KssContinueGroupBlock($rt, $state, $host, p);
   return kryon.snapshot($rt);
@@ -1600,22 +1636,25 @@ export function KssParser_KssParseGroupBlock($rt, $state = moduleState, $host = 
 
 export function KssParser_KssContinueGroupBlock($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated group block");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      p.foreign[p.resume_group].body_length = kryon.copyValue(p.pos -kryon.index( p.foreign, p.resume_group).body_start);
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 125) {
+      p.foreign[p.resume_group].body_length = kryon.copyValue(p.cursor.pos -kryon.index( p.foreign, p.resume_group).body_start);
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       p.resume_group = kryon.copyValue(-1);
       running = kryon.copyValue(false);
       continue;
     }
-    p = kryon.copyValue(KssParser_KssParseRule($rt, $state, $host, p));
+    p = KssParser_KssParseRule($rt, $state, $host, p);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
@@ -1628,17 +1667,19 @@ export function KssParser_KssContinueGroupBlock($rt, $state = moduleState, $host
 
 export function KssParser_KssReadColorValue($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let hex = kryon.copyValue(KssParser_KssReadHexColor($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let hex = KssParser_KssReadHexColor($rt, $state, $host, c);
   if (hex.ok) {
     return hex;
   }
-  let reference = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, hex.parser));
+  let reference = KssParser_KssReadName($rt, $state, $host, hex.parser);
   if (reference.ok) {
-    let index = kryon.copyValue(KssParser_KssFindColorToken($rt, $state, $host, reference.parser, reference.name));
+    p.cursor = kryon.copyValue(reference.parser);
+    let index = KssParser_KssFindColorToken($rt, $state, $host, p, reference.name);
     if (index >= 0) {
-      hex.value = kryon.copyValue(kryon.index(reference.parser.tokens, index).color);
+      hex.value = kryon.copyValue(kryon.index(p.tokens, index).color);
       hex.ok = kryon.copyValue(true);
       hex.parser = kryon.copyValue(reference.parser);
       return hex;
@@ -1652,17 +1693,19 @@ export function KssParser_KssReadColorValue($rt, $state = moduleState, $host = m
 
 export function KssParser_KssReadNumberValue($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let literal = kryon.copyValue(KssParser_KssReadNumber($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let literal = KssParser_KssReadNumber($rt, $state, $host, c);
   if (literal.ok) {
     return literal;
   }
-  let reference = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, literal.parser));
+  let reference = KssParser_KssReadName($rt, $state, $host, literal.parser);
   if (reference.ok) {
-    let index = kryon.copyValue(KssParser_KssFindNumberToken($rt, $state, $host, reference.parser, reference.name));
+    p.cursor = kryon.copyValue(reference.parser);
+    let index = KssParser_KssFindNumberToken($rt, $state, $host, p, reference.name);
     if (index >= 0) {
-      literal.value = kryon.copyValue(kryon.index(reference.parser.tokens, index).number);
+      literal.value = kryon.copyValue(kryon.index(p.tokens, index).number);
       literal.ok = kryon.copyValue(true);
       literal.parser = kryon.copyValue(reference.parser);
       return literal;
@@ -1675,26 +1718,30 @@ export function KssParser_KssReadNumberValue($rt, $state = moduleState, $host = 
 
 export function KssParser_KssReadMaterialValue($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, value: 0, ok: false};
-  let reference = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, value: 0, ok: false};
+  let reference = KssParser_KssReadName($rt, $state, $host, c);
   if (!reference.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, reference.parser, "expected material"));
+    p.cursor = kryon.copyValue(reference.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected material");
     return result;
   }
-  let mapped = kryon.copyValue(KssParser_KssMaterialValue($rt, $state, $host, reference.name));
+  let mapped = KssParser_KssMaterialValue($rt, $state, $host, reference.name);
   if (mapped == -999999) {
-    let index = kryon.copyValue(KssParser_KssFindMaterialToken($rt, $state, $host, reference.parser, reference.name));
+    p.cursor = kryon.copyValue(reference.parser);
+    let index = KssParser_KssFindMaterialToken($rt, $state, $host, p, reference.name);
     if (index >= 0) {
-      mapped = kryon.copyValue(kryon.index(reference.parser.tokens, index).material);
+      mapped = kryon.copyValue(kryon.index(p.tokens, index).material);
     }
   }
   if (mapped == -999999) {
-    result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, reference.parser, "unknown material '", reference.name));
+    result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown material '", reference.name);
     return result;
   }
-  result.parser = kryon.copyValue(reference.parser);
+  p.cursor = kryon.copyValue(reference.parser);
+  result.parser = kryon.copyValue(p);
   result.value = kryon.copyValue(mapped);
   result.ok = kryon.copyValue(true);
   return result;
@@ -1703,80 +1750,96 @@ export function KssParser_KssReadMaterialValue($rt, $state = moduleState, $host 
 
 export function KssParser_KssParseProperty($rt, $state = moduleState, $host = moduleHost, p, rule) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  let name_start = kryon.copyValue(p.pos);
-  let name = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  let name_start = kryon.copyValue(p.cursor.pos);
+  let name = KssParser_KssReadName($rt, $state, $host, c);
   if (!name.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, name.parser, "expected property name"));
+    p.cursor = kryon.copyValue(name.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected property name");
     return result;
   }
-  let colon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, name.parser, 58));
+  let colon = KssParser_KssExpect($rt, $state, $host, name.parser, 58);
   if (!colon.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, colon.parser, "expected ':' after property"));
+    p.cursor = kryon.copyValue(colon.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected ':' after property");
     return result;
   }
-  p = kryon.copyValue(colon.parser);
+  c = kryon.copyValue(colon.parser);
+  p.cursor = kryon.copyValue(c);
   if (p.declarative) {
     return KssParser_KssCaptureDeclaration($rt, $state, $host, p, rule, name.name, name_start, name_start + name.name.length);
   }
   if (KssParser_KssNameEquals($rt, $state, $host, name.name, "background")) {
-    let value = kryon.copyValue(KssParser_KssReadColorValue($rt, $state, $host, p));
+    let value = KssParser_KssReadColorValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected hex color"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected hex color");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleBackground)));
     rule.style.background = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name.name, "foreground")) {
-    let value = kryon.copyValue(KssParser_KssReadColorValue($rt, $state, $host, p));
+    let value = KssParser_KssReadColorValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected hex color"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected hex color");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleForeground)));
     rule.style.foreground = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name.name, "border")) {
-    let value = kryon.copyValue(KssParser_KssReadColorValue($rt, $state, $host, p));
+    let value = KssParser_KssReadColorValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected hex color"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected hex color");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleBorder)));
     rule.style.border = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name.name, "focus")) {
-    let value = kryon.copyValue(KssParser_KssReadColorValue($rt, $state, $host, p));
+    let value = KssParser_KssReadColorValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected hex color"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected hex color");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleFocus)));
     rule.style.focus = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name.name, "background-end")) {
-    let value = kryon.copyValue(KssParser_KssReadColorValue($rt, $state, $host, p));
+    let value = KssParser_KssReadColorValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected hex color"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected hex color");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleBackgroundEnd)));
     rule.style.background_end = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else {
     return KssParser_KssParseNumberProperty($rt, $state, $host, p, rule, name.name);
   }
-  let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+  let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
   if (!semicolon.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'"));
+    p.cursor = kryon.copyValue(semicolon.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     return result;
   }
-  result.parser = kryon.copyValue(semicolon.parser);
+  p.cursor = kryon.copyValue(semicolon.parser);
+  result.parser = kryon.copyValue(p);
   result.rule = kryon.copyValue(rule);
   return result;
   return kryon.snapshot($rt);
@@ -1784,147 +1847,173 @@ export function KssParser_KssParseProperty($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssParseNumberProperty($rt, $state = moduleState, $host = moduleHost, p, rule, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  rule = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(rule);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  let c = kryon.copyValue(p.cursor);
+  let result = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
   if (KssParser_KssNameEquals($rt, $state, $host, name, "radius")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleRadius)));
     rule.style.radius = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "border-width")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleBorderWidth)));
     rule.style.border_width = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "opacity")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleOpacity)));
     rule.style.opacity = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "padding-x")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StylePaddingX)));
     rule.style.padding_x = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "padding-y")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StylePaddingY)));
     rule.style.padding_y = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "gap")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleGap)));
     rule.style.gap = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "font-size")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleFontSize)));
     rule.style.font_size = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "letter-spacing")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleLetterSpacing)));
     rule.style.letter_spacing = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "icon-size")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleIconSize)));
     rule.style.icon_size = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "offset-x")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleContentOffset)));
     rule.style.offset_x = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "offset-y")) {
-    let value = kryon.copyValue(KssParser_KssReadNumberValue($rt, $state, $host, p));
+    let value = KssParser_KssReadNumberValue($rt, $state, $host, p);
     if (!value.ok) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, value.parser, "expected number"));
+      p.cursor = kryon.copyValue(value.parser);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected number");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleContentOffset)));
     rule.style.offset_y = kryon.copyValue(value.value);
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "material")) {
-    let value = kryon.copyValue(KssParser_KssReadMaterialValue($rt, $state, $host, p));
+    let value = KssParser_KssReadMaterialValue($rt, $state, $host, p);
     if (!value.ok) {
       result.parser = kryon.copyValue(value.parser);
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleMaterial)));
     rule.style.material = kryon.copyValue(Math.trunc(Number(value.value)));
-    p = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(value.parser.cursor);
+    c = kryon.copyValue(value.parser.cursor);
   } else if (KssParser_KssNameEquals($rt, $state, $host, name, "typeface")) {
     let start = kryon.copyValue(-1);
     let length = kryon.copyValue(0);
-    let scan = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
+    let scan = KssParser_KssSkipSpace($rt, $state, $host, c);
     if (!KssParser_KssAtEnd($rt, $state, $host, scan) && KssParser_KssIdentStart($rt, $state, $host, kryon.index(scan.source, scan.pos))) {
       start = kryon.copyValue(scan.pos);
       while (!KssParser_KssAtEnd($rt, $state, $host, scan) && KssParser_KssIdentChar($rt, $state, $host, kryon.index(scan.source, scan.pos))) {
         length = kryon.copyValue(length + 1);
-        scan = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, scan, 1));
+        scan = KssParser_KssAdvance($rt, $state, $host, scan, 1);
       }
     }
     if (start < 0) {
-      result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, scan, "expected typeface name"));
+      p.cursor = kryon.copyValue(scan);
+      result.parser = KssParser_KssFail($rt, $state, $host, p, "expected typeface name");
       return result;
     }
     rule.style.fields = kryon.copyValue(rule.style.fields | Math.trunc(Number($enum0.StyleTypeface)));
-    rule.style.typeface = kryon.copyValue(kryon.hostCall($host || moduleHost, "StringSlice", [scan.source, start, length]));
-    p = kryon.copyValue(scan);
+    rule.style.typeface = kryon.hostCall($host || moduleHost, "StringSlice", [scan.source, start, length]);
+    c = kryon.copyValue(scan);
   } else {
-    result.parser = kryon.copyValue(KssParser_KssFailName($rt, $state, $host, p, "unknown property '", name));
+    result.parser = KssParser_KssFailName($rt, $state, $host, p, "unknown property '", name);
     return result;
   }
-  let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+  let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
   if (!semicolon.ok) {
-    result.parser = kryon.copyValue(KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'"));
+    p.cursor = kryon.copyValue(semicolon.parser);
+    result.parser = KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     return result;
   }
-  result.parser = kryon.copyValue(semicolon.parser);
+  p.cursor = kryon.copyValue(semicolon.parser);
+  result.parser = kryon.copyValue(p);
   result.rule = kryon.copyValue(rule);
   return result;
   return kryon.snapshot($rt);
@@ -1932,28 +2021,30 @@ export function KssParser_KssParseNumberProperty($rt, $state = moduleState, $hos
 
 export function KssParser_KssParseRule($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   let origin = {file: 0, line: 0, column: 0};
-  origin.file = kryon.copyValue(p.file);
-  origin.line = kryon.copyValue(p.line);
-  origin.column = kryon.copyValue(p.column);
+  origin.file = kryon.copyValue(p.cursor.file);
+  origin.line = kryon.copyValue(p.cursor.line);
+  origin.column = kryon.copyValue(p.cursor.column);
   let span = {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0};
-  span.file = kryon.copyValue(p.file);
+  span.file = kryon.copyValue(p.cursor.file);
   span.group = kryon.copyValue(-1);
-  let selector = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  let selector_start = kryon.copyValue(p.pos);
+  let selector = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}};
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  let selector_start = kryon.copyValue(p.cursor.pos);
   if (p.declarative) {
     let bracket = kryon.copyValue(0);
     let paren = kryon.copyValue(0);
     let quote = kryon.copyValue(0);
     let running = kryon.copyValue(true);
     while (running) {
-      if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+      if (KssParser_KssAtEnd($rt, $state, $host, c)) {
         return KssParser_KssFail($rt, $state, $host, p, "expected '{'");
       }
-      let byte = kryon.copyValue(kryon.index(p.source, p.pos));
+      let byte = kryon.copyValue(kryon.index(p.cursor.source, p.cursor.pos));
       if (quote != 0) {
         if (byte == quote) {
           quote = kryon.copyValue(0);
@@ -1972,43 +2063,50 @@ export function KssParser_KssParseRule($rt, $state = moduleState, $host = module
         running = kryon.copyValue(false);
         continue;
       }
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
     }
   } else {
-    selector = kryon.copyValue(KssParser_KssParseSelector($rt, $state, $host, p));
+    selector = KssParser_KssParseSelector($rt, $state, $host, p);
     if (selector.parser.status == Math.trunc(Number(KssStatusError))) {
       return selector.parser;
     }
     p = kryon.copyValue(selector.parser);
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p) ||kryon.index( p.source, p.pos) != 123) {
+    c = kryon.copyValue(p.cursor);
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c) ||kryon.index( p.cursor.source, p.cursor.pos) != 123) {
       return KssParser_KssFail($rt, $state, $host, p, "expected '{'");
     }
   }
   span.selector_start = kryon.copyValue(selector_start);
-  span.selector_length = kryon.copyValue(p.pos - selector_start);
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  span.body_start = kryon.copyValue(p.pos);
+  span.selector_length = kryon.copyValue(p.cursor.pos - selector_start);
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  p.cursor = kryon.copyValue(c);
+  span.body_start = kryon.copyValue(p.cursor.pos);
   let rule = kryon.copyValue(selector.rule);
   rule.layer = kryon.copyValue(p.layer);
   rule.order = kryon.copyValue(p.rule_total);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated style rule");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      span.body_length = kryon.copyValue(p.pos - span.body_start);
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 125) {
+      span.body_length = kryon.copyValue(p.cursor.pos - span.body_start);
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       running = kryon.copyValue(false);
       continue;
     }
-    let property = kryon.copyValue(KssParser_KssParseProperty($rt, $state, $host, p, rule));
+    let property = KssParser_KssParseProperty($rt, $state, $host, p, rule);
     if (property.parser.status == Math.trunc(Number(KssStatusError))) {
       return property.parser;
     }
     p = kryon.copyValue(property.parser);
+    c = kryon.copyValue(p.cursor);
     rule = kryon.copyValue(property.rule);
   }
   p.rule = kryon.copyValue(rule);
@@ -2022,15 +2120,15 @@ export function KssParser_KssParseRule($rt, $state = moduleState, $host = module
 
 export function KssParser_KssEnvAxisValid($rt, $state = moduleState, $host = moduleHost, axis) {
   $state = $state || moduleState;
-  axis = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(axis);
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   return KssParser_KssNameEquals($rt, $state, $host, axis, "theme") || KssParser_KssNameEquals($rt, $state, $host, axis, "contrast") || KssParser_KssNameEquals($rt, $state, $host, axis, "density") || KssParser_KssNameEquals($rt, $state, $host, axis, "pointer") || KssParser_KssNameEquals($rt, $state, $host, axis, "platform");
 }
 
 export function KssParser_KssEnvValueValid($rt, $state = moduleState, $host = moduleHost, axis, value) {
   $state = $state || moduleState;
-  axis = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(axis);
-  value = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value);
+  /* pass-by-reference: KssName is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, axis, "theme")) {
     return KssParser_KssNameEquals($rt, $state, $host, value, "light") || KssParser_KssNameEquals($rt, $state, $host, value, "dark");
@@ -2049,9 +2147,9 @@ export function KssParser_KssEnvValueValid($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssEnvMatches($rt, $state = moduleState, $host = moduleHost, p, axis, value) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  axis = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(axis);
-  value = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, axis, "theme")) {
     if (KssParser_KssNameEquals($rt, $state, $host, value, "light")) {
@@ -2100,8 +2198,8 @@ export function KssParser_KssEnvMatches($rt, $state = moduleState, $host = modul
 
 export function KssParser_KssThemeActive($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   if (KssParser_KssNameEquals($rt, $state, $host, name, "light")) {
     return p.env.theme == Math.trunc(Number(KssThemeLight));
@@ -2114,17 +2212,19 @@ export function KssParser_KssThemeActive($rt, $state = moduleState, $host = modu
 
 export function KssParser_KssSkipBlockRemainder($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   let depth = kryon.copyValue(1);
-  while (!KssParser_KssAtEnd($rt, $state, $host, p) && depth > 0) {
-    if (kryon.index(p.source, p.pos) == 123) {
+  while (!KssParser_KssAtEnd($rt, $state, $host, c) && depth > 0) {
+    if (kryon.index(c.source, c.pos) == 123) {
       depth = kryon.copyValue(depth + 1);
-    } else if (kryon.index(p.source, p.pos) == 125) {
+    } else if (kryon.index(c.source, c.pos) == 125) {
       depth = kryon.copyValue(depth - 1);
     }
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
   }
+  p.cursor = kryon.copyValue(c);
   if (depth != 0) {
     return KssParser_KssFail($rt, $state, $host, p, "unterminated block");
   }
@@ -2134,44 +2234,52 @@ export function KssParser_KssSkipBlockRemainder($rt, $state = moduleState, $host
 
 export function KssParser_KssTryOverlayEntry($rt, $state = moduleState, $host = moduleHost, p, origin_kind) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let outcome = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, matched: false};
-  let name = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let outcome = {parser: {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, matched: false};
+  let name = KssParser_KssReadName($rt, $state, $host, c);
   if (!name.ok) {
-    outcome.parser = kryon.copyValue(name.parser);
+    p.cursor = kryon.copyValue(name.parser);
+    outcome.parser = kryon.copyValue(p);
     return outcome;
   }
-  let colon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, name.parser, 58));
+  let colon = KssParser_KssExpect($rt, $state, $host, name.parser, 58);
   if (!colon.ok) {
-    outcome.parser = kryon.copyValue(colon.parser);
+    p.cursor = kryon.copyValue(colon.parser);
+    outcome.parser = kryon.copyValue(p);
     return outcome;
   }
+  p.cursor = kryon.copyValue(name.parser);
   let token_index = kryon.copyValue(-1);
-  let scan = kryon.copyValue(name.parser.token_count - 1);
+  let scan = kryon.copyValue(p.token_count - 1);
   while (scan >= 0) {
-    if (KssParser_KssNameEqualsName($rt, $state, $host, kryon.index(name.parser.tokens, scan).name, name.name)) {
+    if (KssParser_KssNameEqualsName($rt, $state, $host, kryon.index(p.tokens, scan).name, name.name)) {
       token_index = kryon.copyValue(scan);
     }
     scan = kryon.copyValue(scan - 1);
   }
   if (token_index < 0) {
-    outcome.parser = kryon.copyValue(colon.parser);
+    p.cursor = kryon.copyValue(colon.parser);
+    outcome.parser = kryon.copyValue(p);
     return outcome;
   }
-  let kind = kryon.copyValue(kryon.index(name.parser.tokens, token_index).kind);
+  let kind = kryon.copyValue(kryon.index(p.tokens, token_index).kind);
   if (kind == Math.trunc(Number(KssTokenColor))) {
-    let value = kryon.copyValue(KssParser_KssReadHexColor($rt, $state, $host, colon.parser));
+    let value = KssParser_KssReadHexColor($rt, $state, $host, colon.parser);
     if (!value.ok) {
-      outcome.parser = kryon.copyValue(colon.parser);
+      p.cursor = kryon.copyValue(colon.parser);
+      outcome.parser = kryon.copyValue(p);
       return outcome;
     }
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 59));
+    let semicolon = KssParser_KssExpect($rt, $state, $host, value.parser, 59);
     if (!semicolon.ok) {
-      outcome.parser = kryon.copyValue(colon.parser);
+      p.cursor = kryon.copyValue(semicolon.parser);
+      outcome.parser = kryon.copyValue(p);
       return outcome;
     }
-    p = kryon.copyValue(KssParser_KssOverlayToken($rt, $state, $host, semicolon.parser, name.name, kind, value.value, 0.0, 0, origin_kind));
+    p.cursor = kryon.copyValue(semicolon.parser);
+    p = KssParser_KssOverlayToken($rt, $state, $host, p, name.name, kind, value.value, 0.0, 0, origin_kind);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       outcome.parser = kryon.copyValue(p);
       return outcome;
@@ -2181,17 +2289,20 @@ export function KssParser_KssTryOverlayEntry($rt, $state = moduleState, $host = 
     return outcome;
   }
   if (kind == Math.trunc(Number(KssTokenMaterial))) {
-    let value = kryon.copyValue(KssParser_KssReadMaterialValue($rt, $state, $host, colon.parser));
+    p.cursor = kryon.copyValue(colon.parser);
+    let value = KssParser_KssReadMaterialValue($rt, $state, $host, p);
     if (!value.ok) {
-      outcome.parser = kryon.copyValue(colon.parser);
+      outcome.parser = kryon.copyValue(value.parser);
       return outcome;
     }
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 59));
+    let semicolon = KssParser_KssExpect($rt, $state, $host, value.parser.cursor, 59);
     if (!semicolon.ok) {
-      outcome.parser = kryon.copyValue(colon.parser);
+      p.cursor = kryon.copyValue(semicolon.parser);
+      outcome.parser = kryon.copyValue(p);
       return outcome;
     }
-    p = kryon.copyValue(KssParser_KssOverlayToken($rt, $state, $host, semicolon.parser, name.name, kind, 0, 0.0, value.value, origin_kind));
+    p.cursor = kryon.copyValue(semicolon.parser);
+    p = KssParser_KssOverlayToken($rt, $state, $host, p, name.name, kind, 0, 0.0, value.value, origin_kind);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       outcome.parser = kryon.copyValue(p);
       return outcome;
@@ -2200,20 +2311,23 @@ export function KssParser_KssTryOverlayEntry($rt, $state = moduleState, $host = 
     outcome.matched = kryon.copyValue(true);
     return outcome;
   }
-  let value = kryon.copyValue(KssParser_KssReadDuration($rt, $state, $host, colon.parser));
+  let value = KssParser_KssReadDuration($rt, $state, $host, colon.parser);
   if (!value.ok) {
-    value = kryon.copyValue(KssParser_KssReadNumber($rt, $state, $host, colon.parser));
+    value = KssParser_KssReadNumber($rt, $state, $host, colon.parser);
   }
   if (!value.ok) {
-    outcome.parser = kryon.copyValue(colon.parser);
+    p.cursor = kryon.copyValue(colon.parser);
+    outcome.parser = kryon.copyValue(p);
     return outcome;
   }
-  let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 59));
+  let semicolon = KssParser_KssExpect($rt, $state, $host, value.parser, 59);
   if (!semicolon.ok) {
-    outcome.parser = kryon.copyValue(colon.parser);
+    p.cursor = kryon.copyValue(semicolon.parser);
+    outcome.parser = kryon.copyValue(p);
     return outcome;
   }
-  p = kryon.copyValue(KssParser_KssOverlayToken($rt, $state, $host, semicolon.parser, name.name, kind, 0, value.value, 0, origin_kind));
+  p.cursor = kryon.copyValue(semicolon.parser);
+  p = KssParser_KssOverlayToken($rt, $state, $host, p, name.name, kind, 0, value.value, 0, origin_kind);
   if (p.status == Math.trunc(Number(KssStatusError))) {
     outcome.parser = kryon.copyValue(p);
     return outcome;
@@ -2226,35 +2340,40 @@ export function KssParser_KssTryOverlayEntry($rt, $state = moduleState, $host = 
 
 export function KssParser_KssParseThemeBlock($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (p.theme_count >= 16) {
     return KssParser_KssFail($rt, $state, $host, p, "style theme capacity exceeded");
   }
   p.themes[p.theme_count] = kryon.copyValue(name);
   p.theme_count = kryon.copyValue(p.theme_count + 1);
-  let open = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 123));
+  let open = KssParser_KssExpect($rt, $state, $host, c, 123);
   if (!open.ok) {
-    return KssParser_KssFail($rt, $state, $host, open.parser, "expected '{' after @theme name");
+    p.cursor = kryon.copyValue(open.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected '{' after @theme name");
   }
-  p = kryon.copyValue(open.parser);
-  let active = kryon.copyValue(KssParser_KssThemeActive($rt, $state, $host, p, name));
+  c = kryon.copyValue(open.parser);
+  p.cursor = kryon.copyValue(c);
+  let active = KssParser_KssThemeActive($rt, $state, $host, p, name);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated theme block");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 125) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       running = kryon.copyValue(false);
       continue;
     }
     if (!active) {
       return KssParser_KssSkipBlockRemainder($rt, $state, $host, p);
     }
-    let entry = kryon.copyValue(KssParser_KssTryOverlayEntry($rt, $state, $host, p, Math.trunc(Number(KssOriginTheme))));
+    let entry = KssParser_KssTryOverlayEntry($rt, $state, $host, p, Math.trunc(Number(KssOriginTheme)));
     if (entry.parser.status == Math.trunc(Number(KssStatusError))) {
       return entry.parser;
     }
@@ -2262,6 +2381,7 @@ export function KssParser_KssParseThemeBlock($rt, $state = moduleState, $host = 
       return KssParser_KssFail($rt, $state, $host, entry.parser, "expected theme overlay entry");
     }
     p = kryon.copyValue(entry.parser);
+    c = kryon.copyValue(p.cursor);
   }
   return p;
   return kryon.snapshot($rt);
@@ -2269,18 +2389,21 @@ export function KssParser_KssParseThemeBlock($rt, $state = moduleState, $host = 
 
 export function KssParser_KssParseEnvBlock($rt, $state = moduleState, $host = moduleHost, p, axis, value) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  axis = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(axis);
-  value = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (!KssParser_KssEnvValueValid($rt, $state, $host, axis, value)) {
     return KssParser_KssFailName($rt, $state, $host, p, "unknown environment value '", value);
   }
-  let open = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 123));
+  let open = KssParser_KssExpect($rt, $state, $host, c, 123);
   if (!open.ok) {
-    return KssParser_KssFail($rt, $state, $host, open.parser, "expected '{' after @env query");
+    p.cursor = kryon.copyValue(open.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected '{' after @env query");
   }
-  p = kryon.copyValue(open.parser);
+  c = kryon.copyValue(open.parser);
+  p.cursor = kryon.copyValue(c);
   if (!KssParser_KssEnvMatches($rt, $state, $host, p, axis, value)) {
     return KssParser_KssSkipBlockRemainder($rt, $state, $host, p);
   }
@@ -2291,30 +2414,34 @@ export function KssParser_KssParseEnvBlock($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssContinueEnvBlock($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated environment block");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(c.source, c.pos) == 125) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       p.in_env = kryon.copyValue(false);
       running = kryon.copyValue(false);
       continue;
     }
     let saved = kryon.copyValue(p);
-    let entry = kryon.copyValue(KssParser_KssTryOverlayEntry($rt, $state, $host, p, Math.trunc(Number(KssOriginEnvironment))));
+    let entry = KssParser_KssTryOverlayEntry($rt, $state, $host, p, Math.trunc(Number(KssOriginEnvironment)));
     if (entry.parser.status == Math.trunc(Number(KssStatusError))) {
       return entry.parser;
     }
     if (entry.matched) {
       p = kryon.copyValue(entry.parser);
+      c = kryon.copyValue(p.cursor);
       continue;
     }
-    p = kryon.copyValue(KssParser_KssParseRule($rt, $state, $host, saved));
+    p = KssParser_KssParseRule($rt, $state, $host, saved);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
@@ -2326,11 +2453,13 @@ export function KssParser_KssContinueEnvBlock($rt, $state = moduleState, $host =
 
 export function KssParser_KssParseTokenGroup($rt, $state = moduleState, $host = moduleHost, p, origin_kind) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let group = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  let group = KssParser_KssReadName($rt, $state, $host, c);
   if (!group.ok) {
-    return KssParser_KssFail($rt, $state, $host, group.parser, "expected token group");
+    p.cursor = kryon.copyValue(group.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected token group");
   }
   let kind = kryon.copyValue(-1);
   if (KssParser_KssNameEquals($rt, $state, $host, group.name, "color")) {
@@ -2342,73 +2471,90 @@ export function KssParser_KssParseTokenGroup($rt, $state = moduleState, $host = 
   } else if (KssParser_KssNameEquals($rt, $state, $host, group.name, "material")) {
     kind = kryon.copyValue(Math.trunc(Number(KssTokenMaterial)));
   } else {
-    return KssParser_KssFailName($rt, $state, $host, group.parser, "unknown token group '", group.name);
+    p.cursor = kryon.copyValue(group.parser);
+    return KssParser_KssFailName($rt, $state, $host, p, "unknown token group '", group.name);
   }
-  let open = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, group.parser, 123));
+  let open = KssParser_KssExpect($rt, $state, $host, group.parser, 123);
   if (!open.ok) {
-    return KssParser_KssFail($rt, $state, $host, open.parser, "expected '{' after token group");
+    p.cursor = kryon.copyValue(open.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected '{' after token group");
   }
-  p = kryon.copyValue(open.parser);
+  c = kryon.copyValue(open.parser);
+  p.cursor = kryon.copyValue(c);
   let running = kryon.copyValue(true);
   while (running) {
     let token = {name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0};
     token.kind = kryon.copyValue(kind);
     token.origin = kryon.copyValue(origin_kind);
-    token.file = kryon.copyValue(p.file);
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    token.file = kryon.copyValue(c.file);
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated token group");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(p.cursor.source, p.cursor.pos) == 125) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       running = kryon.copyValue(false);
       continue;
     }
-    token.line = kryon.copyValue(p.line);
-    token.column = kryon.copyValue(p.column);
-    let name = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+    token.line = kryon.copyValue(p.cursor.line);
+    token.column = kryon.copyValue(p.cursor.column);
+    let name = KssParser_KssReadName($rt, $state, $host, c);
     if (!name.ok) {
-      return KssParser_KssFail($rt, $state, $host, name.parser, "expected token name");
+      p.cursor = kryon.copyValue(name.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected token name");
     }
     token.name = kryon.copyValue(name.name);
-    let colon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, name.parser, 58));
+    let colon = KssParser_KssExpect($rt, $state, $host, name.parser, 58);
     if (!colon.ok) {
-      return KssParser_KssFail($rt, $state, $host, colon.parser, "expected ':' after token name");
+      p.cursor = kryon.copyValue(colon.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ':' after token name");
     }
     if (kind == Math.trunc(Number(KssTokenColor))) {
-      let value = kryon.copyValue(KssParser_KssReadHexColor($rt, $state, $host, colon.parser));
+      let value = KssParser_KssReadHexColor($rt, $state, $host, colon.parser);
       if (!value.ok) {
-        return KssParser_KssFail($rt, $state, $host, value.parser, "expected token color");
+        p.cursor = kryon.copyValue(value.parser);
+        return KssParser_KssFail($rt, $state, $host, p, "expected token color");
       }
       token.color = kryon.copyValue(value.value);
-      p = kryon.copyValue(value.parser);
+      c = kryon.copyValue(value.parser);
+      p.cursor = kryon.copyValue(c);
     } else if (kind == Math.trunc(Number(KssTokenMaterial))) {
-      let value = kryon.copyValue(KssParser_KssReadMaterialValue($rt, $state, $host, colon.parser));
+      p.cursor = kryon.copyValue(colon.parser);
+      let value = KssParser_KssReadMaterialValue($rt, $state, $host, p);
       if (!value.ok) {
         return value.parser;
       }
       token.material = kryon.copyValue(value.value);
-      p = kryon.copyValue(value.parser);
+      c = kryon.copyValue(value.parser.cursor);
     } else if (kind == Math.trunc(Number(KssTokenDuration))) {
-      let value = kryon.copyValue(KssParser_KssReadDuration($rt, $state, $host, colon.parser));
+      let value = KssParser_KssReadDuration($rt, $state, $host, colon.parser);
       if (!value.ok) {
-        return KssParser_KssFail($rt, $state, $host, value.parser, "expected token duration");
+        p.cursor = kryon.copyValue(value.parser);
+        return KssParser_KssFail($rt, $state, $host, p, "expected token duration");
       }
       token.number = kryon.copyValue(value.value);
-      p = kryon.copyValue(value.parser);
+      c = kryon.copyValue(value.parser);
+      p.cursor = kryon.copyValue(c);
     } else {
-      let value = kryon.copyValue(KssParser_KssReadNumber($rt, $state, $host, colon.parser));
+      let value = KssParser_KssReadNumber($rt, $state, $host, colon.parser);
       if (!value.ok) {
-        return KssParser_KssFail($rt, $state, $host, value.parser, "expected token number");
+        p.cursor = kryon.copyValue(value.parser);
+        return KssParser_KssFail($rt, $state, $host, p, "expected token number");
       }
       token.number = kryon.copyValue(value.value);
-      p = kryon.copyValue(value.parser);
+      c = kryon.copyValue(value.parser);
+      p.cursor = kryon.copyValue(c);
     }
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+    let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
     if (!semicolon.ok) {
-      return KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'");
+      p.cursor = kryon.copyValue(semicolon.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     }
-    p = kryon.copyValue(KssParser_KssAddToken($rt, $state, $host, semicolon.parser, token));
+    c = kryon.copyValue(semicolon.parser);
+    p.cursor = kryon.copyValue(c);
+    p = KssParser_KssAddToken($rt, $state, $host, p, token);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
@@ -2419,28 +2565,34 @@ export function KssParser_KssParseTokenGroup($rt, $state = moduleState, $host = 
 
 export function KssParser_KssParseTokensBlock($rt, $state = moduleState, $host = moduleHost, p, origin_kind) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let open = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 123));
+  let c = kryon.copyValue(p.cursor);
+  let open = KssParser_KssExpect($rt, $state, $host, c, 123);
   if (!open.ok) {
-    return KssParser_KssFail($rt, $state, $host, open.parser, "expected '{' after tokens");
+    p.cursor = kryon.copyValue(open.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected '{' after tokens");
   }
-  p = kryon.copyValue(open.parser);
+  c = kryon.copyValue(open.parser);
+  p.cursor = kryon.copyValue(c);
   let running = kryon.copyValue(true);
   while (running) {
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
       return KssParser_KssFail($rt, $state, $host, p, "unterminated tokens block");
     }
-    if (kryon.index(p.source, p.pos) == 125) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    if (kryon.index(c.source, c.pos) == 125) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       running = kryon.copyValue(false);
       continue;
     }
-    p = kryon.copyValue(KssParser_KssParseTokenGroup($rt, $state, $host, p, origin_kind));
+    p = KssParser_KssParseTokenGroup($rt, $state, $host, p, origin_kind);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
+    c = kryon.copyValue(p.cursor);
   }
   return p;
   return kryon.snapshot($rt);
@@ -2448,8 +2600,8 @@ export function KssParser_KssParseTokensBlock($rt, $state = moduleState, $host =
 
 export function KssParser_KssParseLayerName($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   let index = kryon.copyValue(0);
   while (index < p.layer_count) {
@@ -2483,8 +2635,9 @@ export function KssParser_KssParseLayerName($rt, $state = moduleState, $host = m
 
 export function KssParser_KssParseLayerDeclaration($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (p.layer_declared) {
     return KssParser_KssFail($rt, $state, $host, p, "layer order declared twice");
   }
@@ -2492,19 +2645,23 @@ export function KssParser_KssParseLayerDeclaration($rt, $state = moduleState, $h
   p.layer = kryon.copyValue(0);
   let running = kryon.copyValue(true);
   while (running) {
-    let name = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+    let name = KssParser_KssReadName($rt, $state, $host, c);
     if (!name.ok) {
-      return KssParser_KssFail($rt, $state, $host, name.parser, "expected layer name");
+      p.cursor = kryon.copyValue(name.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected layer name");
     }
     if (p.layer_count >= 12) {
       return KssParser_KssFail($rt, $state, $host, p, "layer capacity exceeded");
     }
     p.layer_names[p.layer_count] = kryon.copyValue(name.name);
     p.layer_count = kryon.copyValue(p.layer_count + 1);
-    p = kryon.copyValue(name.parser);
-    p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-    if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 44) {
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+    c = kryon.copyValue(name.parser);
+    p.cursor = kryon.copyValue(c);
+    c = KssParser_KssSkipSpace($rt, $state, $host, c);
+    p.cursor = kryon.copyValue(c);
+    if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( p.cursor.source, p.cursor.pos) == 44) {
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+      p.cursor = kryon.copyValue(c);
       continue;
     }
     running = kryon.copyValue(false);
@@ -2516,191 +2673,231 @@ export function KssParser_KssParseLayerDeclaration($rt, $state = moduleState, $h
 
 export function KssParser_KssReadImportTarget($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0, files: Array.from({length: 8}, (_, index) => ({name: Array.from({length: 96}, (_, index) => 0), length: 0})), file_count: 0, imports: Array.from({length: 8}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, outer_source: "", outer_pos: 0, outer_line: 0, outer_column: 0, outer_file: 0})), import_depth: 0, tokens: Array.from({length: 128}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, kind: 0, color: 0, number: 0, material: 0, origin: 0, file: 0, line: 0, column: 0})), token_count: 0, overrides: Array.from({length: 16}, (_, index) => ({name: "", color: 0})), override_count: 0, layer: 0, layer_names: Array.from({length: 12}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), layer_count: 0, layer_declared: false, pack: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, env: {theme: 0, contrast: 0, density: 0, pointer: 0, platform: 0}, themes: Array.from({length: 16}, (_, index) => ({bytes: Array.from({length: 64}, (_, index) => 0), length: 0})), theme_count: 0, version_seen: false, status: 0, rule: {selector: {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0}, state: 0, layer: 0, order: 0, style: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}}, origin: {file: 0, line: 0, column: 0}, rule_span: {file: 0, selector_start: 0, selector_length: 0, body_start: 0, body_length: 0, group: 0}, pending_import: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, in_env: false, resume_group: 0, declarative: false, declarations: Array.from({length: 1024}, (_, index) => ({rule: 0, name_start: 0, name_length: 0, value_start: 0, value_length: 0})), declaration_count: 0, foreign: Array.from({length: 16}, (_, index) => ({name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, query_start: 0, query_length: 0, body_start: 0, body_length: 0, file: 0})), foreign_count: 0, diagnostic: Array.from({length: 256}, (_, index) => 0), diagnostic_length: 0, rule_total: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-    result.parser = kryon.copyValue(p);
+  let result = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, ok: false};
+  let c = KssParser_KssSkipSpace($rt, $state, $host, p.cursor);
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+    result.parser = kryon.copyValue(c);
     return result;
   }
-  if (kryon.index(p.source, p.pos) == 60) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    while (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) != 62) {
-      result.name = kryon.copyValue(KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(p.source, p.pos)));
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  if (kryon.index(c.source, c.pos) == 60) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    while (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) != 62) {
+      result.name = KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(c.source, c.pos));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-      result.parser = kryon.copyValue(p);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+      result.parser = kryon.copyValue(c);
       return result;
     }
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    result.parser = kryon.copyValue(p);
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(result.name.length > 0);
     return result;
   }
-  if (kryon.index(p.source, p.pos) == 34) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    while (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) != 34) {
-      result.name = kryon.copyValue(KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(p.source, p.pos)));
-      p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+  if (kryon.index(c.source, c.pos) == 34) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    while (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( c.source, c.pos) != 34) {
+      result.name = KssParser_KssNameAppend($rt, $state, $host, result.name, kryon.index(c.source, c.pos));
+      c = KssParser_KssAdvance($rt, $state, $host, c, 1);
     }
-    if (KssParser_KssAtEnd($rt, $state, $host, p)) {
-      result.parser = kryon.copyValue(p);
+    if (KssParser_KssAtEnd($rt, $state, $host, c)) {
+      result.parser = kryon.copyValue(c);
       return result;
     }
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    result.parser = kryon.copyValue(p);
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    result.parser = kryon.copyValue(c);
     result.ok = kryon.copyValue(result.name.length > 0);
     return result;
   }
-  result.parser = kryon.copyValue(p);
+  result.parser = kryon.copyValue(c);
   return result;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssParseLayerList($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+  let c = KssParser_KssSkipSpace($rt, $state, $host, p.cursor);
+  p.cursor = kryon.copyValue(c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
     return KssParser_KssFail($rt, $state, $host, p, "expected layer name");
   }
-  let first = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let first = KssParser_KssReadName($rt, $state, $host, c);
   if (!first.ok) {
-    return KssParser_KssFail($rt, $state, $host, first.parser, "expected layer name");
+    p.cursor = kryon.copyValue(first.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected layer name");
   }
-  p = kryon.copyValue(first.parser);
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 44) {
-    p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-    p = kryon.copyValue(KssParser_KssParseLayerDeclaration($rt, $state, $host, p));
+  c = kryon.copyValue(first.parser);
+  p.cursor = kryon.copyValue(c);
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( p.cursor.source, p.cursor.pos) == 44) {
+    c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+    p.cursor = kryon.copyValue(c);
+    p = KssParser_KssParseLayerDeclaration($rt, $state, $host, p);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
+    c = kryon.copyValue(p.cursor);
   } else {
-    p = kryon.copyValue(KssParser_KssParseLayerName($rt, $state, $host, p, first.name));
+    p = KssParser_KssParseLayerName($rt, $state, $host, p, first.name);
     if (p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
+    c = kryon.copyValue(p.cursor);
   }
-  let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+  let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
   if (!semicolon.ok) {
-    return KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'");
+    p.cursor = kryon.copyValue(semicolon.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected ';'");
   }
-  return semicolon.parser;
+  p.cursor = kryon.copyValue(semicolon.parser);
+  return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssParseDirective($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
-  let keyword = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let c = kryon.copyValue(p.cursor);
+  c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+  p.cursor = kryon.copyValue(c);
+  let keyword = KssParser_KssReadName($rt, $state, $host, c);
   if (!keyword.ok) {
-    return KssParser_KssFail($rt, $state, $host, keyword.parser, "expected directive name");
+    p.cursor = kryon.copyValue(keyword.parser);
+    return KssParser_KssFail($rt, $state, $host, p, "expected directive name");
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "pack")) {
-    let value = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, keyword.parser));
+    let value = KssParser_KssReadName($rt, $state, $host, keyword.parser);
     if (!value.ok) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "expected pack id");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected pack id");
     }
-    p = kryon.copyValue(value.parser);
+    c = kryon.copyValue(value.parser);
+    p.cursor = kryon.copyValue(c);
     if (p.import_depth > 0) {
-      p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-      if (!KssParser_KssAtEnd($rt, $state, $host, p) &&kryon.index( p.source, p.pos) == 59) {
-        p = kryon.copyValue(KssParser_KssAdvance($rt, $state, $host, p, 1));
+      c = KssParser_KssSkipSpace($rt, $state, $host, c);
+      p.cursor = kryon.copyValue(c);
+      if (!KssParser_KssAtEnd($rt, $state, $host, c) &&kryon.index( p.cursor.source, p.cursor.pos) == 59) {
+        c = KssParser_KssAdvance($rt, $state, $host, c, 1);
+        p.cursor = kryon.copyValue(c);
       }
       return p;
     }
     p.pack = kryon.copyValue(value.name);
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+    let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
     if (!semicolon.ok) {
-      return KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'");
+      p.cursor = kryon.copyValue(semicolon.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     }
-    return semicolon.parser;
+    p.cursor = kryon.copyValue(semicolon.parser);
+    return p;
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "version")) {
-    let value = kryon.copyValue(KssParser_KssReadNumber($rt, $state, $host, keyword.parser));
+    let value = KssParser_KssReadNumber($rt, $state, $host, keyword.parser);
     if (!value.ok) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "expected version number");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected version number");
     }
     if (Math.trunc(Number(value.value != 1))) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "unsupported style sheet version");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "unsupported style sheet version");
     }
     if (p.version_seen) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "version declared twice");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "version declared twice");
     }
     p.version_seen = kryon.copyValue(true);
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 59));
+    let semicolon = KssParser_KssExpect($rt, $state, $host, value.parser, 59);
     if (!semicolon.ok) {
-      return KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'");
+      p.cursor = kryon.copyValue(semicolon.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     }
-    return semicolon.parser;
+    p.cursor = kryon.copyValue(semicolon.parser);
+    return p;
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "layer")) {
-    return KssParser_KssParseLayerList($rt, $state, $host, keyword.parser);
+    p.cursor = kryon.copyValue(keyword.parser);
+    return KssParser_KssParseLayerList($rt, $state, $host, p);
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "import")) {
-    let target = kryon.copyValue(KssParser_KssReadImportTarget($rt, $state, $host, keyword.parser));
+    p.cursor = kryon.copyValue(keyword.parser);
+    let target = KssParser_KssReadImportTarget($rt, $state, $host, p);
     if (!target.ok) {
-      return KssParser_KssFail($rt, $state, $host, target.parser, "expected import target");
+      p.cursor = kryon.copyValue(target.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected import target");
     }
-    p = kryon.copyValue(target.parser);
-    let semicolon = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, p, 59));
+    c = kryon.copyValue(target.parser);
+    p.cursor = kryon.copyValue(c);
+    let semicolon = KssParser_KssExpect($rt, $state, $host, c, 59);
     if (!semicolon.ok) {
-      return KssParser_KssFail($rt, $state, $host, semicolon.parser, "expected ';'");
+      p.cursor = kryon.copyValue(semicolon.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ';'");
     }
-    p = kryon.copyValue(semicolon.parser);
+    c = kryon.copyValue(semicolon.parser);
+    p.cursor = kryon.copyValue(c);
     p.pending_import = kryon.copyValue(target.name);
     p.status = kryon.copyValue(Math.trunc(Number(KssStatusNeedImport)));
     return p;
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "theme")) {
-    let value = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, keyword.parser));
+    let value = KssParser_KssReadName($rt, $state, $host, keyword.parser);
     if (!value.ok) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "expected theme name");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected theme name");
     }
-    return KssParser_KssParseThemeBlock($rt, $state, $host, value.parser, value.name);
+    p.cursor = kryon.copyValue(value.parser);
+    return KssParser_KssParseThemeBlock($rt, $state, $host, p, value.name);
   }
   if (KssParser_KssNameEquals($rt, $state, $host, keyword.name, "env")) {
-    let axis = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, keyword.parser));
+    let axis = KssParser_KssReadName($rt, $state, $host, keyword.parser);
     if (!axis.ok) {
-      return KssParser_KssFail($rt, $state, $host, axis.parser, "expected environment axis");
+      p.cursor = kryon.copyValue(axis.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected environment axis");
     }
     if (!KssParser_KssEnvAxisValid($rt, $state, $host, axis.name)) {
-      return KssParser_KssFailName($rt, $state, $host, axis.parser, "unknown environment axis '", axis.name);
+      p.cursor = kryon.copyValue(axis.parser);
+      return KssParser_KssFailName($rt, $state, $host, p, "unknown environment axis '", axis.name);
     }
-    let open = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, axis.parser, 40));
+    let open = KssParser_KssExpect($rt, $state, $host, axis.parser, 40);
     if (!open.ok) {
-      return KssParser_KssFail($rt, $state, $host, open.parser, "expected '(' after @env axis");
+      p.cursor = kryon.copyValue(open.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected '(' after @env axis");
     }
-    let value = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, open.parser));
+    let value = KssParser_KssReadName($rt, $state, $host, open.parser);
     if (!value.ok) {
-      return KssParser_KssFail($rt, $state, $host, value.parser, "expected environment value");
+      p.cursor = kryon.copyValue(value.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected environment value");
     }
-    let close = kryon.copyValue(KssParser_KssExpect($rt, $state, $host, value.parser, 41));
+    let close = KssParser_KssExpect($rt, $state, $host, value.parser, 41);
     if (!close.ok) {
-      return KssParser_KssFail($rt, $state, $host, close.parser, "expected ')'");
+      p.cursor = kryon.copyValue(close.parser);
+      return KssParser_KssFail($rt, $state, $host, p, "expected ')'");
     }
-    return KssParser_KssParseEnvBlock($rt, $state, $host, close.parser, axis.name, value.name);
+    p.cursor = kryon.copyValue(close.parser);
+    return KssParser_KssParseEnvBlock($rt, $state, $host, p, axis.name, value.name);
   }
   if (p.declarative) {
     if (KssParser_KssIsGroupName($rt, $state, $host, keyword.name)) {
-      return KssParser_KssParseGroupBlock($rt, $state, $host, keyword.parser, keyword.name);
+      p.cursor = kryon.copyValue(keyword.parser);
+      return KssParser_KssParseGroupBlock($rt, $state, $host, p, keyword.name);
     }
-    return KssParser_KssCaptureForeign($rt, $state, $host, keyword.parser, keyword.name);
+    p.cursor = kryon.copyValue(keyword.parser);
+    return KssParser_KssCaptureForeign($rt, $state, $host, p, keyword.name);
   }
-  return KssParser_KssFailName($rt, $state, $host, keyword.parser, "unknown directive '@", keyword.name);
+  p.cursor = kryon.copyValue(keyword.parser);
+  return KssParser_KssFailName($rt, $state, $host, p, "unknown directive '@", keyword.name);
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssImportNameOnStack($rt, $state = moduleState, $host = moduleHost, p, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
-  name = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(name);
+  /* pass-by-reference: KssParser is same-module */
+  /* pass-by-reference: KssName is same-module */
   $rt = $rt || kryon.createRuntime();
   let index = kryon.copyValue(0);
   while (index < p.import_depth) {
@@ -2714,9 +2911,9 @@ export function KssParser_KssImportNameOnStack($rt, $state = moduleState, $host 
 
 export function KssParser_KssProvideImport($rt, $state = moduleState, $host = moduleHost, p, source, name) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
-  let import_name = kryon.copyValue(KssParser_KssMakeName($rt, $state, $host, name));
+  let import_name = KssParser_KssMakeName($rt, $state, $host, name);
   if (KssParser_KssImportNameOnStack($rt, $state, $host, p, import_name)) {
     return KssParser_KssFailName($rt, $state, $host, p, "@import cycle: ", import_name);
   }
@@ -2724,19 +2921,19 @@ export function KssParser_KssProvideImport($rt, $state = moduleState, $host = mo
     return KssParser_KssFail($rt, $state, $host, p, "style import depth exceeded");
   }
   p.imports[p.import_depth].name = kryon.copyValue(import_name);
-  p.imports[p.import_depth].outer_source = kryon.copyValue(p.source);
-  p.imports[p.import_depth].outer_pos = kryon.copyValue(p.pos);
-  p.imports[p.import_depth].outer_line = kryon.copyValue(p.line);
-  p.imports[p.import_depth].outer_column = kryon.copyValue(p.column);
-  p.imports[p.import_depth].outer_file = kryon.copyValue(p.file);
+  p.imports[p.import_depth].outer_source = kryon.copyValue(p.cursor.source);
+  p.imports[p.import_depth].outer_pos = kryon.copyValue(p.cursor.pos);
+  p.imports[p.import_depth].outer_line = kryon.copyValue(p.cursor.line);
+  p.imports[p.import_depth].outer_column = kryon.copyValue(p.cursor.column);
+  p.imports[p.import_depth].outer_file = kryon.copyValue(p.cursor.file);
   p.import_depth = kryon.copyValue(p.import_depth + 1);
-  p.files[p.file_count] = kryon.copyValue(KssParser_KssCopyFileName($rt, $state, $host, name));
-  p.file = kryon.copyValue(p.file_count);
+  p.files[p.file_count] = KssParser_KssCopyFileName($rt, $state, $host, name);
+  p.cursor.file = kryon.copyValue(p.file_count);
   p.file_count = kryon.copyValue(p.file_count + 1);
-  p.source = kryon.copyValue(source);
-  p.pos = kryon.copyValue(0);
-  p.line = kryon.copyValue(1);
-  p.column = kryon.copyValue(1);
+  p.cursor.source = kryon.copyValue(source);
+  p.cursor.pos = kryon.copyValue(0);
+  p.cursor.line = kryon.copyValue(1);
+  p.cursor.column = kryon.copyValue(1);
   p.status = kryon.copyValue(Math.trunc(Number(KssStatusContinue)));
   return p;
   return kryon.snapshot($rt);
@@ -2744,7 +2941,7 @@ export function KssParser_KssProvideImport($rt, $state = moduleState, $host = mo
 
 export function KssParser_KssFailImport($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   return KssParser_KssFailName($rt, $state, $host, p, "missing import: ", p.pending_import);
   return kryon.snapshot($rt);
@@ -2752,63 +2949,68 @@ export function KssParser_KssFailImport($rt, $state = moduleState, $host = modul
 
 export function KssParser_KssPopImport($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
   if (p.import_depth <= 0) {
     return p;
   }
   p.import_depth = kryon.copyValue(p.import_depth - 1);
-  p.source = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_source);
-  p.pos = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_pos);
-  p.line = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_line);
-  p.column = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_column);
-  p.file = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_file);
+  p.cursor.source = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_source);
+  p.cursor.pos = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_pos);
+  p.cursor.line = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_line);
+  p.cursor.column = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_column);
+  p.cursor.file = kryon.copyValue(kryon.index(p.imports, p.import_depth).outer_file);
   return p;
   return kryon.snapshot($rt);
 }
 
 export function KssParser_KssStep($rt, $state = moduleState, $host = moduleHost, p) {
   $state = $state || moduleState;
-  p = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(p);
+  /* pass-by-reference: KssParser is same-module */
   $rt = $rt || kryon.createRuntime();
+  let c = kryon.copyValue(p.cursor);
   if (p.status == Math.trunc(Number(KssStatusError)) || p.status == Math.trunc(Number(KssStatusDone))) {
     return p;
   }
   if (p.resume_group >= 0) {
     p.status = kryon.copyValue(Math.trunc(Number(KssStatusContinue)));
-    p = kryon.copyValue(KssParser_KssContinueGroupBlock($rt, $state, $host, p));
+    p = KssParser_KssContinueGroupBlock($rt, $state, $host, p);
     if (p.status == Math.trunc(Number(KssStatusRule)) || p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
+    c = kryon.copyValue(p.cursor);
   }
   if (p.in_env) {
     p.status = kryon.copyValue(Math.trunc(Number(KssStatusContinue)));
-    p = kryon.copyValue(KssParser_KssContinueEnvBlock($rt, $state, $host, p));
+    p = KssParser_KssContinueEnvBlock($rt, $state, $host, p);
     if (p.status == Math.trunc(Number(KssStatusRule)) || p.status == Math.trunc(Number(KssStatusError))) {
       return p;
     }
+    c = kryon.copyValue(p.cursor);
   }
-  p = kryon.copyValue(KssParser_KssSkipSpace($rt, $state, $host, p));
-  if (KssParser_KssAtEnd($rt, $state, $host, p)) {
+  c = KssParser_KssSkipSpace($rt, $state, $host, c);
+  p.cursor = kryon.copyValue(c);
+  if (KssParser_KssAtEnd($rt, $state, $host, c)) {
     if (p.import_depth > 0) {
-      p = kryon.copyValue(KssParser_KssPopImport($rt, $state, $host, p));
+      p = KssParser_KssPopImport($rt, $state, $host, p);
       p.status = kryon.copyValue(Math.trunc(Number(KssStatusContinue)));
       return p;
     }
     p.status = kryon.copyValue(Math.trunc(Number(KssStatusDone)));
     return p;
   }
-  if (kryon.index(p.source, p.pos) == 64) {
-    p = kryon.copyValue(KssParser_KssParseDirective($rt, $state, $host, p));
+  if (kryon.index(p.cursor.source, p.cursor.pos) == 64) {
+    p = KssParser_KssParseDirective($rt, $state, $host, p);
     if (p.status == Math.trunc(Number(KssStatusNeedImport)) || p.status == Math.trunc(Number(KssStatusError)) || p.status == Math.trunc(Number(KssStatusRule))) {
       return p;
     }
     p.status = kryon.copyValue(Math.trunc(Number(KssStatusContinue)));
     return p;
   }
-  let probe = kryon.copyValue(KssParser_KssReadName($rt, $state, $host, p));
+  let probe = KssParser_KssReadName($rt, $state, $host, c);
   if (probe.ok && KssParser_KssNameEquals($rt, $state, $host, probe.name, "tokens")) {
-    return KssParser_KssParseTokensBlock($rt, $state, $host, probe.parser, Math.trunc(Number(KssOriginPack)));
+    p.cursor = kryon.copyValue(probe.parser);
+    return KssParser_KssParseTokensBlock($rt, $state, $host, p, Math.trunc(Number(KssOriginPack)));
   }
   return KssParser_KssParseRule($rt, $state, $host, p);
   return kryon.snapshot($rt);

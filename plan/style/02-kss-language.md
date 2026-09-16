@@ -29,9 +29,22 @@ Remaining:
 - Implement typed pack-option/variant metadata and selector resolution for
   Lightfield's glow treatment. Runtime color-token substitution does not supply
   the planned pack-option grammar.
-- Add focused invalid-input/fuzz coverage for the new grammar and matched
-  C/Go/JS fixtures for each supported addition, including provenance and
-  import-chain diagnostics.
+- Done: matched C/Go/JS fixtures and invalid-input coverage. One fixture
+  (`tests/fixtures/kss/matched.kss` + `matched_module.kss`) drives the
+  generated C parser (provenance asserted via `KssBegin`/`KssStep`), the Go
+  module, and the web runtime with identical winners; truncation sweeps and
+  deterministic byte-mutation fuzz run in all three suites (C 4000
+  iterations, Go 6000, web 500+truncations) with liveness guaranteed.
+- Done: hot-cursor split in `kss_parser.kry`. The per-byte lexical functions
+  thread a small `KssCursor` (source/pos/line/column/file) while the full
+  parser state only moves at statement level; mid-tier functions sync
+  `p.cursor` before parser-level calls and after nested parses. Together with
+  the k2js copy elisions (call-site `copyValue` skipped for direct calls;
+  same-module record parameters passed by reference under the reassign-from-
+  result discipline) this cut web sheet parsing ~30x (3 KB sheet:
+  6.2 s -> 0.2 s) with C/Go behavior unchanged. Follow-up if needed: avoid
+  zero-building parser-embedding result structs (`KssRuleResult` & co.) per
+  declaration.
 
 Reference: [language and overlay design](../../docs/STYLE_SEPARATION_PROPOSALS.md).
 Completion requires matching declared support and diagnostics across runtimes,

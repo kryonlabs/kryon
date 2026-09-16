@@ -95,7 +95,7 @@ export function Style_ResolveState($rt, $state = moduleState, $host = moduleHost
 export function Style_ResolveInteraction($rt, $state = moduleState, $host = moduleHost, explicit_state, disabled, loading, pressed, hovered, focused, selected) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let state = kryon.copyValue(Style_ResolveState($rt, $state, $host, explicit_state, disabled, loading, pressed, hovered, focused, selected));
+  let state = Style_ResolveState($rt, $state, $host, explicit_state, disabled, loading, pressed, hovered, focused, selected);
   let interaction = kryon.copyValue((() => { const $record = {state: 0, hovered: false, pressed: false, focused: false}; $record["state"] = kryon.copyValue(state); $record["hovered"] = kryon.copyValue(hovered); $record["pressed"] = kryon.copyValue(pressed); $record["focused"] = kryon.copyValue(focused); return $record; })());
   if (explicit_state != $enum0.ButtonStateAuto) {
     interaction.hovered = kryon.copyValue(state == $enum0.ButtonStateHover);
@@ -236,12 +236,11 @@ export function Style_ContentBounds($rt, $state = moduleState, $host = moduleHos
 
 export function Style_InsetBounds($rt, $state = moduleState, $host = moduleHost, bounds, padding_x, padding_y, scale) {
   $state = $state || moduleState;
-  bounds = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(bounds);
   $rt = $rt || kryon.createRuntime();
   if (scale <= 0.0) {
     scale = kryon.copyValue(1.0);
   }
-  let content = kryon.copyValue(Style_ContentBounds($rt, $state, $host, bounds.width / scale, bounds.height / scale, padding_x, padding_y));
+  let content = Style_ContentBounds($rt, $state, $host, bounds.width / scale, bounds.height / scale, padding_x, padding_y);
   let result = {x: 0, y: 0, width: 0, height: 0};
   result.x = kryon.copyValue(bounds.x + content.x * scale);
   result.y = kryon.copyValue(bounds.y + content.y * scale);
@@ -253,9 +252,6 @@ export function Style_InsetBounds($rt, $state = moduleState, $host = moduleHost,
 
 export function Style_CenterChild($rt, $state = moduleState, $host = moduleHost, declared, measured, content) {
   $state = $state || moduleState;
-  declared = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(declared);
-  measured = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(measured);
-  content = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(content);
   $rt = $rt || kryon.createRuntime();
   if (declared.x != 0.0 || declared.y != 0.0) {
     return measured;
@@ -274,7 +270,6 @@ export function Style_CenterChild($rt, $state = moduleState, $host = moduleHost,
 
 export function Style_StyleShinePaintFor($rt, $state = moduleState, $host = moduleHost, bounds, radius, shine_alpha, scale) {
   $state = $state || moduleState;
-  bounds = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(bounds);
   $rt = $rt || kryon.createRuntime();
   if (scale <= 0.0) {
     scale = kryon.copyValue(1.0);
@@ -356,7 +351,6 @@ export function Style_StyleElevationPaintFor($rt, $state = moduleState, $host = 
 
 export function Style_StyleRippleFallbackOrigin($rt, $state = moduleState, $host = moduleHost, bounds) {
   $state = $state || moduleState;
-  bounds = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(bounds);
   $rt = $rt || kryon.createRuntime();
   let origin = {x: 0, y: 0};
   origin.x = kryon.copyValue(bounds.x + bounds.width * 0.5);
@@ -400,7 +394,7 @@ export function Style_StyleRipplePaintFor($rt, $state = moduleState, $host = mod
   if (progress > 1.0) {
     progress = kryon.copyValue(1.0);
   }
-  paint.radius = kryon.copyValue(Style_StyleRippleRadius($rt, $state, $host, max_radius * progress, max_radius, scale));
+  paint.radius = Style_StyleRippleRadius($rt, $state, $host, max_radius * progress, max_radius, scale);
   paint.alpha = kryon.copyValue(base_alpha);
   if (!pressed) {
     paint.alpha = kryon.copyValue(Math.trunc(Number(base_alpha * (1.0 - progress))));
@@ -412,44 +406,44 @@ export function Style_StyleRipplePaintFor($rt, $state = moduleState, $host = mod
 
 export function Style_TransitionValues($rt, $state = moduleState, $host = moduleHost, resolved, normal, hover, press, focus, h, p, f) {
   $state = $state || moduleState;
-  resolved = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(resolved);
-  normal = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(normal);
-  hover = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(hover);
-  press = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(press);
-  focus = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(focus);
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
   $rt = $rt || kryon.createRuntime();
-  resolved.background = kryon.copyValue(Surface_InteractionColor($rt, undefined, $host, normal.background, hover.background, press.background, focus.background, h, p, f));
-  resolved.foreground = kryon.copyValue(Surface_InteractionColor($rt, undefined, $host, normal.foreground, hover.foreground, press.foreground, focus.foreground, h, p, f));
-  resolved.border = kryon.copyValue(Surface_InteractionColor($rt, undefined, $host, normal.border, hover.border, press.border, focus.border, h, p, f));
-  resolved.focus = kryon.copyValue(Surface_InteractionColor($rt, undefined, $host, normal.focus, hover.focus, press.focus, focus.focus, h, p, f));
-  resolved.radius = kryon.copyValue(Surface_InteractionValue($rt, undefined, $host, normal.radius, hover.radius, press.radius, focus.radius, h, p, f));
-  resolved.border_width = kryon.copyValue(Surface_InteractionValue($rt, undefined, $host, normal.border_width, hover.border_width, press.border_width, focus.border_width, h, p, f));
-  resolved.opacity = kryon.copyValue(Surface_InteractionValue($rt, undefined, $host, normal.opacity, hover.opacity, press.opacity, focus.opacity, h, p, f));
-  resolved.offset_x = kryon.copyValue(Surface_InteractionValue($rt, undefined, $host, normal.offset_x, hover.offset_x, press.offset_x, focus.offset_x, h, p, f));
-  resolved.offset_y = kryon.copyValue(Surface_InteractionValue($rt, undefined, $host, normal.offset_y, hover.offset_y, press.offset_y, focus.offset_y, h, p, f));
+  resolved.background = Surface_InteractionColor($rt, undefined, $host, normal.background, hover.background, press.background, focus.background, h, p, f);
+  resolved.foreground = Surface_InteractionColor($rt, undefined, $host, normal.foreground, hover.foreground, press.foreground, focus.foreground, h, p, f);
+  resolved.border = Surface_InteractionColor($rt, undefined, $host, normal.border, hover.border, press.border, focus.border, h, p, f);
+  resolved.focus = Surface_InteractionColor($rt, undefined, $host, normal.focus, hover.focus, press.focus, focus.focus, h, p, f);
+  resolved.radius = Surface_InteractionValue($rt, undefined, $host, normal.radius, hover.radius, press.radius, focus.radius, h, p, f);
+  resolved.border_width = Surface_InteractionValue($rt, undefined, $host, normal.border_width, hover.border_width, press.border_width, focus.border_width, h, p, f);
+  resolved.opacity = Surface_InteractionValue($rt, undefined, $host, normal.opacity, hover.opacity, press.opacity, focus.opacity, h, p, f);
+  resolved.offset_x = Surface_InteractionValue($rt, undefined, $host, normal.offset_x, hover.offset_x, press.offset_x, focus.offset_x, h, p, f);
+  resolved.offset_y = Surface_InteractionValue($rt, undefined, $host, normal.offset_y, hover.offset_y, press.offset_y, focus.offset_y, h, p, f);
   return resolved;
   return kryon.snapshot($rt);
 }
 
 export function Style_TransitionFrame($rt, $state = moduleState, $host = moduleHost, resolved, normal, hover, press, focus, h, p, f) {
   $state = $state || moduleState;
-  resolved = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(resolved);
-  normal = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(normal);
-  hover = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(hover);
-  press = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(press);
-  focus = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(focus);
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
   $rt = $rt || kryon.createRuntime();
   let result = {value: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, fill: {normal: false, hover: false, press: false, focus: false, normal_start: 0, normal_end: 0, hover_start: 0, hover_end: 0, press_start: 0, press_end: 0, focus_start: 0, focus_end: 0, hover_amount: 0, press_amount: 0, focus_amount: 0}};
-  result.value = kryon.copyValue(Style_TransitionValues($rt, $state, $host, resolved, normal, hover, press, focus, h, p, f));
-  result.fill = kryon.copyValue(Surface_FillTransition($rt, undefined, $host, Surface_FillState($rt, undefined, $host, normal.fields, normal.background, normal.background_end), Surface_FillState($rt, undefined, $host, hover.fields, hover.background, hover.background_end), Surface_FillState($rt, undefined, $host, press.fields, press.background, press.background_end), Surface_FillState($rt, undefined, $host, focus.fields, focus.background, focus.background_end), h, p, f));
+  result.value = Style_TransitionValues($rt, $state, $host, resolved, normal, hover, press, focus, h, p, f);
+  result.fill = Surface_FillTransition($rt, undefined, $host, Surface_FillState($rt, undefined, $host, normal.fields, normal.background, normal.background_end), Surface_FillState($rt, undefined, $host, hover.fields, hover.background, hover.background_end), Surface_FillState($rt, undefined, $host, press.fields, press.background, press.background_end), Surface_FillState($rt, undefined, $host, focus.fields, focus.background, focus.background_end), h, p, f);
   return result;
   return kryon.snapshot($rt);
 }
 
 export function Style_MergeValues($rt, $state = moduleState, $host = moduleHost, base, override) {
   $state = $state || moduleState;
-  base = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(base);
-  override = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(override);
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleData is same-module */
   $rt = $rt || kryon.createRuntime();
   if ((override.fields & Math.trunc(Number($enum0.StyleBackground))) != Math.trunc(Number(0))) {
     base.background = kryon.copyValue(override.background);
@@ -512,10 +506,10 @@ export function Style_MergeValues($rt, $state = moduleState, $host = moduleHost,
 
 export function Style_ResolveValues($rt, $state = moduleState, $host = moduleHost, base, states, state) {
   $state = $state || moduleState;
-  base = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(base);
-  states = ((record_source) => ({normal: {fields: record_source.normal.fields, background: record_source.normal.background, foreground: record_source.normal.foreground, border: record_source.normal.border, focus: record_source.normal.focus, radius: record_source.normal.radius, border_width: record_source.normal.border_width, opacity: record_source.normal.opacity, padding_x: record_source.normal.padding_x, padding_y: record_source.normal.padding_y, gap: record_source.normal.gap, font_size: record_source.normal.font_size, icon_size: record_source.normal.icon_size, offset_x: record_source.normal.offset_x, offset_y: record_source.normal.offset_y, background_end: record_source.normal.background_end, material: record_source.normal.material, typeface: record_source.normal.typeface, letter_spacing: record_source.normal.letter_spacing}, hover: {fields: record_source.hover.fields, background: record_source.hover.background, foreground: record_source.hover.foreground, border: record_source.hover.border, focus: record_source.hover.focus, radius: record_source.hover.radius, border_width: record_source.hover.border_width, opacity: record_source.hover.opacity, padding_x: record_source.hover.padding_x, padding_y: record_source.hover.padding_y, gap: record_source.hover.gap, font_size: record_source.hover.font_size, icon_size: record_source.hover.icon_size, offset_x: record_source.hover.offset_x, offset_y: record_source.hover.offset_y, background_end: record_source.hover.background_end, material: record_source.hover.material, typeface: record_source.hover.typeface, letter_spacing: record_source.hover.letter_spacing}, pressed: {fields: record_source.pressed.fields, background: record_source.pressed.background, foreground: record_source.pressed.foreground, border: record_source.pressed.border, focus: record_source.pressed.focus, radius: record_source.pressed.radius, border_width: record_source.pressed.border_width, opacity: record_source.pressed.opacity, padding_x: record_source.pressed.padding_x, padding_y: record_source.pressed.padding_y, gap: record_source.pressed.gap, font_size: record_source.pressed.font_size, icon_size: record_source.pressed.icon_size, offset_x: record_source.pressed.offset_x, offset_y: record_source.pressed.offset_y, background_end: record_source.pressed.background_end, material: record_source.pressed.material, typeface: record_source.pressed.typeface, letter_spacing: record_source.pressed.letter_spacing}, focused: {fields: record_source.focused.fields, background: record_source.focused.background, foreground: record_source.focused.foreground, border: record_source.focused.border, focus: record_source.focused.focus, radius: record_source.focused.radius, border_width: record_source.focused.border_width, opacity: record_source.focused.opacity, padding_x: record_source.focused.padding_x, padding_y: record_source.focused.padding_y, gap: record_source.focused.gap, font_size: record_source.focused.font_size, icon_size: record_source.focused.icon_size, offset_x: record_source.focused.offset_x, offset_y: record_source.focused.offset_y, background_end: record_source.focused.background_end, material: record_source.focused.material, typeface: record_source.focused.typeface, letter_spacing: record_source.focused.letter_spacing}, disabled: {fields: record_source.disabled.fields, background: record_source.disabled.background, foreground: record_source.disabled.foreground, border: record_source.disabled.border, focus: record_source.disabled.focus, radius: record_source.disabled.radius, border_width: record_source.disabled.border_width, opacity: record_source.disabled.opacity, padding_x: record_source.disabled.padding_x, padding_y: record_source.disabled.padding_y, gap: record_source.disabled.gap, font_size: record_source.disabled.font_size, icon_size: record_source.disabled.icon_size, offset_x: record_source.disabled.offset_x, offset_y: record_source.disabled.offset_y, background_end: record_source.disabled.background_end, material: record_source.disabled.material, typeface: record_source.disabled.typeface, letter_spacing: record_source.disabled.letter_spacing}, loading: {fields: record_source.loading.fields, background: record_source.loading.background, foreground: record_source.loading.foreground, border: record_source.loading.border, focus: record_source.loading.focus, radius: record_source.loading.radius, border_width: record_source.loading.border_width, opacity: record_source.loading.opacity, padding_x: record_source.loading.padding_x, padding_y: record_source.loading.padding_y, gap: record_source.loading.gap, font_size: record_source.loading.font_size, icon_size: record_source.loading.icon_size, offset_x: record_source.loading.offset_x, offset_y: record_source.loading.offset_y, background_end: record_source.loading.background_end, material: record_source.loading.material, typeface: record_source.loading.typeface, letter_spacing: record_source.loading.letter_spacing}, selected: {fields: record_source.selected.fields, background: record_source.selected.background, foreground: record_source.selected.foreground, border: record_source.selected.border, focus: record_source.selected.focus, radius: record_source.selected.radius, border_width: record_source.selected.border_width, opacity: record_source.selected.opacity, padding_x: record_source.selected.padding_x, padding_y: record_source.selected.padding_y, gap: record_source.selected.gap, font_size: record_source.selected.font_size, icon_size: record_source.selected.icon_size, offset_x: record_source.selected.offset_x, offset_y: record_source.selected.offset_y, background_end: record_source.selected.background_end, material: record_source.selected.material, typeface: record_source.selected.typeface, letter_spacing: record_source.selected.letter_spacing}}))(states);
+  /* pass-by-reference: StyleData is same-module */
+  /* pass-by-reference: StyleStates is same-module */
   $rt = $rt || kryon.createRuntime();
-  base = kryon.copyValue(Style_MergeValues($rt, $state, $host, base, states.normal));
+  base = Style_MergeValues($rt, $state, $host, base, states.normal);
   if (state == $enum0.ButtonStateHover) {
     return Style_MergeValues($rt, $state, $host, base, states.hover);
   }

@@ -3541,7 +3541,7 @@ function runWebKssParser(source, environment) {
       const module = webStyleModules.get(name);
       if (module !== undefined) {
         p = webKssModule.KssParser_KssProvideImport(null, undefined, undefined, p, module, name);
-        unitSources[p.file] = module;
+        unitSources[p.cursor.file] = module;
       } else {
         p = webKssModule.KssParser_KssFailImport(null, undefined, undefined, p);
       }
