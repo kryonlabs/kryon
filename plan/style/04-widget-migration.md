@@ -9,6 +9,14 @@
   in `src/ui/ui_tree.c`, and caller font overrides in `go/kryon/runtime.go`.
   Classify structural/content allowances separately from product decoration;
   remove obsolete entries after migration.
+  Status: every remaining entry is now classified in the script itself.
+  `src/ui/ui.c` (9) is the legacy theme catalog application pending downstream
+  migration off the pre-KSS theme API - its removal is tracked by
+  `09-legacy-removal.md`. `src/ui/ui_tree.c` (1) is the documented
+  no-pack fallback to the platform theme color. `go/kryon/runtime.go` (4) and
+  `src/ui/ui_page.c` (2) are caller-supplied content metrics under the
+  documented metrics contract. No unclassified product decoration remains in
+  these lists; counts keep ratcheting down with the migrations above.
 - Audit every widget subpart against its emitted role/state facts and KSS
   declarations. Add only missing coverage; move any newly discovered decorative
   defaults into the packs without losing explicit zeros.
