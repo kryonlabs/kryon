@@ -47,4 +47,11 @@ bool kss_parse_with_variant(const char *source, const char *variant,
                             KssParseResult *result, char *diagnostic,
                             size_t diagnostic_size);
 
+/* Parse with a variant and a theme ("light", "dark", or empty) applied to
+ * the shared parse environment. */
+bool kss_parse_with_environment(const char *source, const char *variant,
+                                const char *theme, StyleRule *rules,
+                                int rule_capacity, KssParseResult *result,
+                                char *diagnostic, size_t diagnostic_size);
+
 #endif /* KRYON_KSS_PARSER_H */

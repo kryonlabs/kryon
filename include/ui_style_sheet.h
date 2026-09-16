@@ -28,12 +28,14 @@ bool RegisterStylePack(StylePack pack);
 bool RegisterStylePackSource(const char *source, const char *label,
                              const char *description);
 bool RegisterBuiltInStylePacks(void);
+bool ReapplyBuiltInStyleTheme(const char *theme);
 bool EnsureBuiltInStylePacks(void);
 void ClearStylePacks(void);
 int GetStylePackCount(void);
 const StylePack *GetStylePackAt(int index);
 const StylePack *FindStylePack(const char *id);
 bool SetActiveStylePack(const char *id);
+bool SetStyleTheme(const char *theme);
 const StylePack *GetActiveStylePack(void);
 const char *GetActiveStylePackId(void);
 int GetStylePackOptions(StylePackOption *options, int capacity);

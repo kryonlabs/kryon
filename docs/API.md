@@ -2274,6 +2274,13 @@ ignored so one semantic palette can color several packs. Invalid input leaves
 an existing variant unchanged. Re-register an ID to update its palette, then
 select it with `SetActiveStylePack`.
 
+`SetStyleTheme(theme)` re-resolves every registered pack - built-ins, source
+packs, and their declared variants - under a theme overlay ("light", "dark",
+or empty), preserving the active pack; `kryon-preview --theme NAME` exposes
+it for captures. Go and web hosts select themes through their parse
+environments (the Go registry's source-retaining counterpart is a recorded
+follow-up).
+
 Go accepts `[]StyleColorToken` without a count. `ParseStyleVariants(source)`
 reports the sheet's declared `@variant` names with labels, and
 `ParseStyleSheetVariant(source, variant)` parses with one active;

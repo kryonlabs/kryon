@@ -38,6 +38,8 @@ static BuiltInStylePack builtin_style_packs[] = {
     },
 };
 
+static const char *builtin_style_theme = "";
+
 static bool
 register_builtin_style_pack(BuiltInStylePack *pack)
 {
@@ -51,8 +53,9 @@ register_builtin_style_pack(BuiltInStylePack *pack)
         return false;
 
     memset(pack->rules, 0, sizeof(pack->rules));
-    ok = kss_parse_string(source, pack->rules, BUILTIN_STYLE_RULE_MAX, &result,
-                          diagnostic, sizeof(diagnostic));
+    ok = kss_parse_with_environment(source, NULL, builtin_style_theme,
+                                    pack->rules, BUILTIN_STYLE_RULE_MAX, &result,
+                                    diagnostic, sizeof(diagnostic));
     free(source);
     if(!ok || strcmp(result.pack_id, pack->id) != 0 || result.rule_count <= 0)
         return false;
@@ -77,6 +80,19 @@ RegisterBuiltInStylePacks(void)
         if(!register_builtin_style_pack(&builtin_style_packs[i]))
             return false;
     return SetActiveStylePack("material");
+}
+
+bool
+ReapplyBuiltInStyleTheme(const char *theme)
+{
+    int count = (int)(sizeof(builtin_style_packs) /
+                      sizeof(builtin_style_packs[0]));
+
+    builtin_style_theme = theme != NULL ? theme : "";
+    for(int i = 0; i < count; i++)
+        if(!register_builtin_style_pack(&builtin_style_packs[i]))
+            return false;
+    return true;
 }
 
 bool

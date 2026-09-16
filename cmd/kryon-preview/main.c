@@ -19,6 +19,7 @@ typedef struct PreviewOptions {
     const char *source_dir;
     const char *out;
     const char *style;
+    const char *theme;
     int width;
     int height;
     int count;
@@ -43,7 +44,8 @@ usage(void)
             "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n"
             "\n"
             "  --style PACK   run one command with a built-in style pack (material, tk,\n"
-            "                 lightfield) or 'none' for no-style mode\n");
+            "                 lightfield) or 'none' for no-style mode\n"
+            "  --theme NAME   re-resolve packs under a theme overlay (light, dark, or none)\n");
 }
 
 static const char *
@@ -109,6 +111,11 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
             if(value == NULL)
                 return 0;
             opt->style = value;
+        } else if(strcmp(argv[i], "--theme") == 0) {
+            value = arg_value(argc, argv, &i);
+            if(value == NULL)
+                return 0;
+            opt->theme = value;
         } else {
             return 0;
         }
@@ -651,6 +658,10 @@ main(int argc, char **argv)
     InitInterface(opt.width, opt.height, 1.0f);
     SetCurrentTheme(THEME_MONO, 0);
     setenv("KRYON_INSPECT", "1", 1);
+    if(opt.theme != NULL && !SetStyleTheme(opt.theme)) {
+        fprintf(stderr, "kryon-preview: theme '%s' unavailable\n", opt.theme);
+        return 1;
+    }
     if(opt.style != NULL && !apply_style_pack(opt.style))
         return 1;
     if(strcmp(opt.command, "capture") == 0)

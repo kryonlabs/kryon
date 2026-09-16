@@ -106,15 +106,31 @@ kss_copy_diagnostic(char *diagnostic, size_t diagnostic_size,
     diagnostic[length] = '\0';
 }
 
+static int
+kss_theme_value(const char *theme)
+{
+    if(theme == NULL)
+        return 0;
+    if(strcmp(theme, "light") == 0)
+        return KssThemeLight;
+    if(strcmp(theme, "dark") == 0)
+        return KssThemeDark;
+    return KssThemeNone;
+}
+
 static bool
 kss_collect(const char *source, const StyleColorToken *colors, int color_count,
-            const char *variant, StyleRule *rules, int rule_capacity,
-            KssParseResult *result, char *diagnostic, size_t diagnostic_size)
+            const char *variant, const char *theme, StyleRule *rules,
+            int rule_capacity, KssParseResult *result, char *diagnostic,
+            size_t diagnostic_size)
 {
     KssEnvironment environment = KssDefaultEnvironment();
     KssParser parser = KssBegin(StringView(source, strlen(source)),
                                 StringView(NULL, 0),
                                 environment);
+    if(theme != NULL && theme[0] != '\0')
+        parser = KssSetTheme(parser, kss_theme_value(theme));
+
     int rule_count = 0;
 
     if(diagnostic != NULL && diagnostic_size > 0)
@@ -206,7 +222,7 @@ kss_parse_variant(const char *source, const StyleColorToken *colors,
         return false;
     if(color_count < 0 || (color_count > 0 && colors == NULL))
         return false;
-    return kss_collect(source, colors, color_count, NULL, rules,
+    return kss_collect(source, colors, color_count, NULL, NULL, rules,
                        rule_capacity, result, diagnostic, diagnostic_size);
 }
 
@@ -225,9 +241,20 @@ kss_parse_with_variant(const char *source, const char *variant,
                         KssParseResult *result, char *diagnostic,
                         size_t diagnostic_size)
 {
+    return kss_parse_with_environment(source, variant, NULL, rules,
+                                     rule_capacity, result, diagnostic,
+                                     diagnostic_size);
+}
+
+bool
+kss_parse_with_environment(const char *source, const char *variant,
+                            const char *theme, StyleRule *rules,
+                            int rule_capacity, KssParseResult *result,
+                            char *diagnostic, size_t diagnostic_size)
+{
     if(source == NULL || rules == NULL || rule_capacity < 0)
         return false;
-    return kss_collect(source, NULL, 0, variant, rules, rule_capacity,
+    return kss_collect(source, NULL, 0, variant, theme, rules, rule_capacity,
                        result, diagnostic, diagnostic_size);
 }
 

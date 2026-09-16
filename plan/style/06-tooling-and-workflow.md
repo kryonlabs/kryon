@@ -56,6 +56,11 @@
   (joining/splitting one-line rule bodies).
 - Verify live KSS reload in a real app host, including invalid-source recovery.
   Extend preview controls for theme overlays and pack options as their grammar
+  Status: `--theme light|dark` re-resolves registered packs (source packs,
+  built-ins, and declared variants) through SetStyleTheme before `--style`
+  applies, so captures can combine any pack with either theme overlay.
+  Pack options were already selectable through `--style <pack>.<variant>`.
+  Remaining: the Go host's source-retaining SetStyleTheme counterpart.
   becomes available.
 - Finish release-time compilation of imports/overlays into typed style tables;
   keep parsing and allocation out of render hot paths. Verify generated and

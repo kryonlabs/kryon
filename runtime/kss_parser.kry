@@ -2510,6 +2510,11 @@ KssSetVariant :: (p: KssParser, name: KssName) -> KssParser #export {
     return p
 }
 
+KssSetTheme :: (p: KssParser, theme: i32) -> KssParser #export {
+    p.env.theme = theme
+    return p
+}
+
 KssVariantActive :: (p: KssParser, name: KssName) -> bool {
     if p.env.variant.length <= 0 {
         return false

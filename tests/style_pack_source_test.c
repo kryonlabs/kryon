@@ -81,6 +81,25 @@ main(void)
     assert(resolved.background == 0x112233ffu);
     assert(resolved.radius == 6.0f);
 
+    /* Theme overlays: SetStyleTheme re-resolves registered packs (and their
+     * declared variants) under the shared parse environment. */
+    assert(RegisterStylePackSource(
+        "@pack themed; tokens { color { accent: #111111; } } "
+        "@theme dark { accent: #222222; } "
+        "Button { background: accent; }",
+        "Themed", ""));
+    assert(SetActiveStylePack("themed"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x111111ffu);
+    assert(SetStyleTheme("dark"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x222222ffu);
+    /* The active pack survives a theme switch. */
+    assert(strcmp(GetActiveStylePackId(), "themed") == 0);
+    assert(SetStyleTheme(""));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x111111ffu);
+
     ClearStylePacks();
     return 0;
 }
