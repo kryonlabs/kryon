@@ -25,6 +25,13 @@
   runtime-and-backends conformance matrix.
 - Add inspector authoring actions: copy selector, jump to source, unmatched-class
   reporting, and dead-rule diagnostics.
+  Status: `webDOMUnmatchedClasses` reports widget classes present in the
+  mounted tree that no installed sheet references (group selectors included)
+  and `webDOMDeadRules` reports sheet rules matching no mounted node with
+  their selector, source location, and pack; both are typed in
+  kryon-runtime.d.ts and covered by the real-browser inspector test.
+  Remaining: copy-selector and jump-to-source affordances in the inspector UI
+  (the trace already carries the selectors and source locations they need).
 - Complete consistent file/line/column diagnostics with offending-token and
   expected-syntax information, including imported sources.
 - Implement the KSS formatter with stable output, comment preservation, and

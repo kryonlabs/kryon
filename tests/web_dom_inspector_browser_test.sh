@@ -41,7 +41,7 @@ try {
     tokens { color { ink: #f8f8f8; } }
     Button.primary { background: #102030; color: ink; }
     Button#save-action { background: #203040; }
-    Progress { inline-size: 240; }
+    Progress.orphan-dead-rule-marker { inline-size: 240; }
   \`));
   kryon.beginFrame(rt);
   kryon.widget(rt, "Screen", {}, null, {
@@ -55,7 +55,7 @@ try {
   });
   kryon.widget(rt, "Button", {
     label: "Save",
-    class: "primary",
+    class: "primary secondary",
     dom_id: "save-action",
     web_ref: "save-ref",
     on_click: "save"
@@ -133,6 +133,14 @@ try {
   const traceInk = kryon.webDOMStyleTrace(target, "save-ref").winners.color;
   assert(traceInk.token && traceInk.token.name === "ink" && traceInk.token.origin === "pack",
     "style trace token origin missing");
+
+  const deadRules = kryon.webDOMDeadRules(target);
+  assert(deadRules.length === 1 && deadRules[0].selector.includes("Progress"),
+    "dead-rule diagnostics did not report the unmatched rule");
+  assert(deadRules[0].source.length > 0, "dead-rule source location missing");
+  const unmatchedClasses = kryon.webDOMUnmatchedClasses(target);
+  assert(unmatchedClasses.join(" ") === "secondary",
+    "unmatched-class diagnostics did not report the orphan class");
 
   button.textContent = "Saved";
   kryon.webDOMSync(target);

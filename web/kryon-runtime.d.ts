@@ -1258,6 +1258,12 @@ export function webDOMIdentity(target: Element | string | null, query: string): 
 export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;
 export function webDOMStyleFacts(target: Element | string | null, query: string): WebNodeStyleFacts | null;
 export function webDOMStyleTrace(target: Element | string | null, query: string): WebStyleTrace | null;
+
+/** Sheet rules that match no mounted node: {selector, source, pack}. */
+export function webDOMDeadRules(target: Element | string | null): Array<{ selector: string; source: string; pack: string }>;
+
+/** Widget classes present in the mounted tree that no installed sheet references. */
+export function webDOMUnmatchedClasses(target: Element | string | null): string[];
 export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
 export function webDOMRelationRefs(target: Element | string | null, query: string): WebDOMRelationRefs | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;

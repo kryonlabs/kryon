@@ -10224,6 +10224,72 @@ export function webDOMObjects(target) {
   return webDOMObjectsFromRoot(root);
 }
 
+/* Inspector authoring diagnostics: rules that match nothing in the mounted
+ * tree (dead rules) and widget classes no installed sheet references
+ * (unmatched classes). Both report against the currently mounted document. */
+export function webDOMDeadRules(target) {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  const sheets = root.__kryRuntime?.webStyleSheets || [];
+  const nodes = webDOMObjects(target).map((object) => object.node);
+  const dead = [];
+  const list = Array.isArray(sheets) ? sheets : [sheets];
+  for (const sheet of list) {
+    const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
+    for (const rule of parsed?.rules || []) {
+      if (!nodes.some((node) => selectorMatchesWebNode(rule.selector, node))) {
+        dead.push({
+          selector: webStyleSelectorToCSS(rule.selector),
+          source: rule.sourceLine
+            ? `${rule.sourceFile || "sheet"}:${rule.sourceLine}`
+            : "",
+          pack: parsed?.pack || ""
+        });
+      }
+    }
+  }
+  return dead;
+}
+
+export function webDOMUnmatchedClasses(target) {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  const sheets = root.__kryRuntime?.webStyleSheets || [];
+  const nodes = webDOMObjects(target).map((object) => object.node);
+  const referenced = new Set();
+  const list = Array.isArray(sheets) ? sheets : [sheets];
+  for (const sheet of list) {
+    const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
+    const selectors = [];
+    for (const rule of parsed?.rules || [])
+      selectors.push(rule.selector);
+    for (const group of parsed?.groups || [])
+      for (const rule of group.rules || [])
+        selectors.push(rule.selector);
+    for (const selector of selectors) {
+      const collect = (entry) => {
+        for (const className of entry?.classes || [])
+          referenced.add(className);
+        for (const part of entry?.parts || [])
+          collect(part);
+        for (const nested of entry?.matches || [])
+          collect(nested);
+      };
+      collect(selector);
+    }
+  }
+  const unmatched = new Set();
+  for (const node of nodes) {
+    for (const className of webNodeStyleFacts(node).classes || []) {
+      if (className && !referenced.has(className))
+        unmatched.add(className);
+    }
+  }
+  return [...unmatched];
+}
+
 export function webDOMObjectMap(target) {
   const map = new Map();
   for (const object of webDOMObjects(target)) {
