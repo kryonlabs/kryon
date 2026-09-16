@@ -142,17 +142,6 @@ with tempfile.TemporaryDirectory(prefix="kryon-language-") as directory:
         run(*args, str(source))
         assert "defer " not in (out / f"cleanup.{target}").read_text()
 
-    (work / "c/ui_inspect.h").write_text('''
-#include <stdbool.h>
-static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
-static inline void PopInspectSource(void) {}
-''')
-    # Generated units reference the retained-tree header when widget
-    # lowering is active; the scalar fixture only needs it to exist.
-    (work / "c/ui_tree.h").write_text('''
-#pragma once
-''')
-    shutil.copyfile(ROOT / "include" / "kry_bounds.h", work / "c" / "kry_bounds.h")
     # Include the generated translation unit so the harness can inspect its
     # private state without changing the generated API.
     (work / "c/driver.c").write_text('''#include <stdbool.h>
@@ -190,13 +179,12 @@ int main(int argc, char **argv) {
     assert(evaluate_once() == 1 && trace == 19);
 }
 ''')
-    run(os.environ.get("CC", "cc"), "-std=c11", "-Wall", "-Wextra", "-Werror", str(work / "c/driver.c"), "-o", str(work / "c/test"))
+    real_headers = ["-I", str(ROOT / "include"), "-I", str(BUILD / "generated" / "src")]
+    libkryon = str(BUILD / "libkryon.a")
+    run(os.environ.get("CC", "cc"), "-std=c11", "-Wall", "-Wextra", "-Werror", *real_headers, str(work / "c/driver.c"), libkryon, "-o", str(work / "c/test"))
     run(str(work / "c/test"))
-    shutil.copyfile(work / "c/ui_inspect.h", work / "cpp/ui_inspect.h")
-    shutil.copyfile(work / "c/ui_tree.h", work / "cpp/ui_tree.h")
-    shutil.copyfile(work / "c/kry_bounds.h", work / "cpp/kry_bounds.h")
     (work / "cpp/driver.cpp").write_text((work / "c/driver.c").read_text().replace('"cleanup.c"', '"cleanup.cpp"'))
-    run(os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", str(work / "cpp/driver.cpp"), "-o", str(work / "cpp/test"))
+    run(os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", *real_headers, str(work / "cpp/driver.cpp"), libkryon, "-o", str(work / "cpp/test"))
     run(str(work / "cpp/test"))
     for target in ("c", "cpp"):
         for invalid_operation in ("divide", "shift", "convert"):
@@ -309,16 +297,13 @@ Shared :: (value: bool) -> bool {
                     expected = 3 if name == "local_function" else 1
                     symbol = ''.join(part.capitalize() for part in name.split('_')) + '_Check'
                     if target in ("c", "cpp"):
-                        shutil.copyfile(work / "c/ui_inspect.h", output / "ui_inspect.h")
-                        shutil.copyfile(work / "c/ui_tree.h", output / "ui_tree.h")
-                        shutil.copyfile(work / "c/kry_bounds.h", output / "kry_bounds.h")
                         driver = output / f"driver.{target}"
                         header = "h" if target == "c" else "hpp"
                         driver.write_text(f'#include "{name}.{header}"\nint main(void) {{ return {name}_Check() != {expected}; }}\n')
                         compiler = os.environ.get("CC", "cc") if target == "c" else os.environ.get("CXX", "c++")
-                        run(compiler, str(driver), str(output / f"{name}.{target}"),
+                        run(compiler, *real_headers, str(driver), str(output / f"{name}.{target}"),
                             str(output / f"first_provider.{target}"), str(output / f"second_provider.{target}"),
-                            "-o", str(output / "scope_test"))
+                            libkryon, "-o", str(output / "scope_test"))
                         run(str(output / "scope_test"))
                     elif target == "go":
                         driver = output / "scope_test.go"

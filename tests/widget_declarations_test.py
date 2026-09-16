@@ -15,6 +15,22 @@ BUILD = (ROOT / (sys.argv[1] if len(sys.argv) > 1 else "build/linux-x86_64")).re
 BIN = BUILD / "bin"
 
 
+def runtime_link(build):
+    """Link inputs for generated code against the real kryon runtime."""
+    pkg = lambda names: subprocess.run(
+        ["pkg-config", "--libs", *names], capture_output=True, text=True
+    ).stdout.split()
+    return [
+        str(build / "libkryon.a"),
+        str(build / "raylib" / "libraylib.a"),
+        str(build / "vendor" / "curl" / "lib" / "libcurl.a"),
+        str(build / "vendor" / "cmark-gfm" / "src" / "libcmark-gfm.a"),
+        str(build / "vendor" / "cmark-gfm" / "extensions" / "libcmark-gfm-extensions.a"),
+        *pkg(["sdl2", "libdrm", "gbm", "egl", "glesv2"]),
+        *pkg(["gtk+-3.0"]),
+        "-lssl", "-lcrypto", "-lz", "-lpthread", "-lm",
+    ]
+
 def run(*args):
     result = subprocess.run(args, text=True, capture_output=True)
     if result.returncode:
@@ -278,17 +294,13 @@ Inset :: enum {
             portable_flags = ["--strict"] if declaration == portable_ui_provider else []
             run(*command, *portable_flags, *(str(path) for path in sources))
             if target in ("c", "cpp"):
-                (output / "ui_inspect.h").write_text('''
-static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
-static inline void PopInspectSource(void) {}
-''')
-                shutil.copyfile(ROOT / "include" / "kry_bounds.h", output / "kry_bounds.h")
                 header = "h" if target == "c" else "hpp"
                 driver = output / f"driver.{target}"
                 driver.write_text(f'#include "consumer.{header}"\nint main(void) {{ return consumer_Run() != 17; }}\n')
                 compiler = os.environ.get("CC", "cc") if target == "c" else os.environ.get("CXX", "c++")
-                run(compiler, str(driver), str(output / f"consumer.{target}"),
-                    str(output / f"cards.{target}"), "-o", str(output / "test"))
+                run(compiler, "-I", str(ROOT / "include"), "-I", str(BUILD / "generated" / "src"),
+                    str(driver), str(output / f"consumer.{target}"),
+                    str(output / f"cards.{target}"), *runtime_link(BUILD), "-o", str(output / "test"))
                 run(str(output / "test"))
             elif target == "go":
                 driver = output / "declarations_test.go"

@@ -3,6 +3,10 @@
 
 #include "kryon_compat.generated.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct InspectSelection {
     char id[96];
     char kind[32];
@@ -48,5 +52,9 @@ void PopInspectChrome(int token);
 int InspectInputCapturesClick(Vector2 point);
 void PushInspectSource(const char *path, int line);
 void PopInspectSource(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

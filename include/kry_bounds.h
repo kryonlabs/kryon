@@ -3,6 +3,10 @@
 
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Debug bounds checking for .kry fixed-array and string indexing. Builds
  * that define KRYON_BOUNDS_CHECK trap on out-of-range indexes with the
  * offending expression; release builds compile to plain indexing. */
@@ -23,6 +27,10 @@ static inline size_t KryonBoundsCheck(size_t length, size_t index,
     ((base)[KryonBoundsCheck((size_t)(length), (size_t)(index), #base)])
 #else
 #define KRYON_INDEX(base, length, index) ((base)[(index)])
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* KRY_BOUNDS_H */

@@ -1,6 +1,10 @@
 #ifndef KRYON_TREE_H
 #define KRYON_TREE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "kryon_compat.generated.h"
 #include "kryon_key.h"
 #include "ui_controls.h"
@@ -152,5 +156,9 @@ NodeId Grid(GridProps props);
 NodeId Group(ColumnProps props);
 NodeId Stack(ColumnProps props);
 NodeId Screen(ColumnProps props);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
