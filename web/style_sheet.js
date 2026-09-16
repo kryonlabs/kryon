@@ -56,723 +56,1415 @@ export function setHost(host) { moduleHost = host; }
 
 export function StyleSheet_StyleAny($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return -1;
+    let value_0 = number_2de837a0_value(-1,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleStateAny($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 0;
+    let value_0 = number_2de837a0_value(0,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindAny($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 0;
+    let value_0 = number_2de837a0_value(0,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindApp($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 1;
+    let value_0 = number_2de837a0_value(1,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindButton($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 2;
+    let value_0 = number_2de837a0_value(2,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindText($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 3;
+    let value_0 = number_2de837a0_value(3,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTextField($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 4;
+    let value_0 = number_2de837a0_value(4,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTextArea($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 5;
+    let value_0 = number_2de837a0_value(5,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSurface($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 6;
+    let value_0 = number_2de837a0_value(6,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindDropdown($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 7;
+    let value_0 = number_2de837a0_value(7,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindCard($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 8;
+    let value_0 = number_2de837a0_value(8,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSlider($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 9;
+    let value_0 = number_2de837a0_value(9,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindToggle($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 10;
+    let value_0 = number_2de837a0_value(10,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindCheckbox($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 11;
+    let value_0 = number_2de837a0_value(11,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindRadio($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 12;
+    let value_0 = number_2de837a0_value(12,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindProgress($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 13;
+    let value_0 = number_2de837a0_value(13,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSeparator($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 14;
+    let value_0 = number_2de837a0_value(14,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindNavigationBar($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 15;
+    let value_0 = number_2de837a0_value(15,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindNavigationBarItem($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 16;
+    let value_0 = number_2de837a0_value(16,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSelectable($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 17;
+    let value_0 = number_2de837a0_value(17,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindFieldset($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 18;
+    let value_0 = number_2de837a0_value(18,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindPlot($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 19;
+    let value_0 = number_2de837a0_value(19,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindPlotMark($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 20;
+    let value_0 = number_2de837a0_value(20,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindLink($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 21;
+    let value_0 = number_2de837a0_value(21,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTabBar($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 22;
+    let value_0 = number_2de837a0_value(22,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTab($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 23;
+    let value_0 = number_2de837a0_value(23,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTabClose($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 24;
+    let value_0 = number_2de837a0_value(24,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSegmentedControl($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 25;
+    let value_0 = number_2de837a0_value(25,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSegment($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 26;
+    let value_0 = number_2de837a0_value(26,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindMenu($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 27;
+    let value_0 = number_2de837a0_value(27,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindMenuItem($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 28;
+    let value_0 = number_2de837a0_value(28,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindMenuSeparator($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 29;
+    let value_0 = number_2de837a0_value(29,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindListBox($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 30;
+    let value_0 = number_2de837a0_value(30,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindListBoxItem($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 31;
+    let value_0 = number_2de837a0_value(31,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTreeView($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 32;
+    let value_0 = number_2de837a0_value(32,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTreeViewItem($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 33;
+    let value_0 = number_2de837a0_value(33,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindListBoxMulti($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 34;
+    let value_0 = number_2de837a0_value(34,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindListBoxMultiItem($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 35;
+    let value_0 = number_2de837a0_value(35,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindDragDropTarget($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 36;
+    let value_0 = number_2de837a0_value(36,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSpinbox($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 37;
+    let value_0 = number_2de837a0_value(37,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSpinboxValue($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 38;
+    let value_0 = number_2de837a0_value(38,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindColorPickerSwatch($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 39;
+    let value_0 = number_2de837a0_value(39,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindColorPicker($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 62;
+    let value_0 = number_2de837a0_value(62,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSliderThumb($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 40;
+    let value_0 = number_2de837a0_value(40,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindToggleThumb($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 41;
+    let value_0 = number_2de837a0_value(41,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindScroll($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 42;
+    let value_0 = number_2de837a0_value(42,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindScrollThumb($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 43;
+    let value_0 = number_2de837a0_value(43,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindPanedView($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 44;
+    let value_0 = number_2de837a0_value(44,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindToast($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 45;
+    let value_0 = number_2de837a0_value(45,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindCollapsible($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 46;
+    let value_0 = number_2de837a0_value(46,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTitleBar($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 47;
+    let value_0 = number_2de837a0_value(47,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindToolbar($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 48;
+    let value_0 = number_2de837a0_value(48,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindModal($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 49;
+    let value_0 = number_2de837a0_value(49,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindTableView($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 50;
+    let value_0 = number_2de837a0_value(50,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindGuide($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 51;
+    let value_0 = number_2de837a0_value(51,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindImage($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 52;
+    let value_0 = number_2de837a0_value(52,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindFocus($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 53;
+    let value_0 = number_2de837a0_value(53,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindPopup($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 54;
+    let value_0 = number_2de837a0_value(54,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindCanvas($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 55;
+    let value_0 = number_2de837a0_value(55,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindDrag($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 56;
+    let value_0 = number_2de837a0_value(56,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindDragValue($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 57;
+    let value_0 = number_2de837a0_value(57,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindHeading($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 58;
+    let value_0 = number_2de837a0_value(58,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindParagraphText($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 59;
+    let value_0 = number_2de837a0_value(59,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindPage($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 60;
+    let value_0 = number_2de837a0_value(60,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindSection($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 61;
+    let value_0 = number_2de837a0_value(61,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleKindReorder($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 63;
+    let value_0 = number_2de837a0_value(63,32,true);
+    return value_0;
 }
 
 export function StyleSheet_StyleDefaultFacts($rt, $state = moduleState, $host = moduleHost, kind) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let facts = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
-  facts.kind = kryon.copyValue(kind);
-  facts.role = StyleSheet_StyleAny($rt, $state, $host);
-  facts.tone = StyleSheet_StyleAny($rt, $state, $host);
-  facts.emphasis = StyleSheet_StyleAny($rt, $state, $host);
-  facts.size = StyleSheet_StyleAny($rt, $state, $host);
-  facts.state = StyleSheet_StyleAny($rt, $state, $host);
-  facts.validation = StyleSheet_StyleAny($rt, $state, $host);
-  facts.orientation = StyleSheet_StyleAny($rt, $state, $host);
-  facts.placement = StyleSheet_StyleAny($rt, $state, $host);
-  return facts;
-  return kryon.snapshot($rt);
+    kind = number_2de837a0_value(kind,32,true);
+    let value_0 = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_1);
+    let facts = value_2;
+    let value_3 = number_2de837a0_value(kind,32,true);
+    facts.kind = value_3;
+    let value_4 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.role = value_4;
+    let value_5 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.tone = value_5;
+    let value_6 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.emphasis = value_6;
+    let value_7 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.size = value_7;
+    let value_8 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.state = value_8;
+    let value_9 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.validation = value_9;
+    let value_10 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.orientation = value_10;
+    let value_11 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    facts.placement = value_11;
+    let value_13 = facts;
+    let value_14 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function StyleSheet_StyleControlFacts($rt, $state = moduleState, $host = moduleHost, kind, name, class_name, tone, emphasis, size, state) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let facts = StyleSheet_StyleDefaultFacts($rt, $state, $host, kind);
-  facts.name = kryon.copyValue(name);
-  facts.class_name = kryon.copyValue(class_name);
-  facts.tone = kryon.copyValue(tone);
-  facts.emphasis = kryon.copyValue(emphasis);
-  facts.size = kryon.copyValue(size);
-  facts.state = kryon.copyValue(state);
-  return facts;
-  return kryon.snapshot($rt);
+    kind = number_2de837a0_value(kind,32,true);
+    name = number_2de837a0_value(name,32,true);
+    class_name = number_2de837a0_value(class_name,32,true);
+    tone = number_2de837a0_value(tone,32,true);
+    emphasis = number_2de837a0_value(emphasis,32,true);
+    size = number_2de837a0_value(size,32,true);
+    state = number_2de837a0_value(state,32,true);
+    let value_0 = number_2de837a0_value(kind,32,true);
+    let value_2 = StyleSheet_StyleDefaultFacts($rt, $state, $host, value_0);
+    let value_3 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_2);
+    let value_1 = value_3;
+    let value_4 = value_1;
+    let value_5 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_4);
+    let facts = value_5;
+    let value_6 = number_2de837a0_value(name,32,true);
+    facts.name = value_6;
+    let value_7 = number_2de837a0_value(class_name,32,true);
+    facts.class_name = value_7;
+    let value_8 = number_2de837a0_value(tone,32,true);
+    facts.tone = value_8;
+    let value_9 = number_2de837a0_value(emphasis,32,true);
+    facts.emphasis = value_9;
+    let value_10 = number_2de837a0_value(size,32,true);
+    facts.size = value_10;
+    let value_11 = number_2de837a0_value(state,32,true);
+    facts.state = value_11;
+    let value_13 = facts;
+    let value_14 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function StyleSheet_StyleControlRoleFacts($rt, $state = moduleState, $host = moduleHost, kind, name, class_name, role, tone, emphasis, size, state) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let facts = StyleSheet_StyleControlFacts($rt, $state, $host, kind, name, class_name, tone, emphasis, size, state);
-  facts.role = kryon.copyValue(role);
-  return facts;
-  return kryon.snapshot($rt);
+    kind = number_2de837a0_value(kind,32,true);
+    name = number_2de837a0_value(name,32,true);
+    class_name = number_2de837a0_value(class_name,32,true);
+    role = number_2de837a0_value(role,32,true);
+    tone = number_2de837a0_value(tone,32,true);
+    emphasis = number_2de837a0_value(emphasis,32,true);
+    size = number_2de837a0_value(size,32,true);
+    state = number_2de837a0_value(state,32,true);
+    let value_0 = number_2de837a0_value(kind,32,true);
+    let value_1 = number_2de837a0_value(name,32,true);
+    let value_2 = number_2de837a0_value(class_name,32,true);
+    let value_3 = number_2de837a0_value(tone,32,true);
+    let value_4 = number_2de837a0_value(emphasis,32,true);
+    let value_5 = number_2de837a0_value(size,32,true);
+    let value_6 = number_2de837a0_value(state,32,true);
+    let value_8 = StyleSheet_StyleControlFacts($rt, $state, $host, value_0, value_1, value_2, value_3, value_4, value_5, value_6);
+    let value_9 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_8);
+    let value_7 = value_9;
+    let value_10 = value_7;
+    let value_11 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_10);
+    let facts = value_11;
+    let value_12 = number_2de837a0_value(role,32,true);
+    facts.role = value_12;
+    let value_14 = facts;
+    let value_15 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_14);
+    let value_13 = value_15;
+    return value_13;
 }
 
 export function StyleSheet_StyleTextFacts($rt, $state = moduleState, $host = moduleHost, name, class_name, role, state) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let facts = StyleSheet_StyleDefaultFacts($rt, $state, $host, StyleSheet_StyleKindText($rt, $state, $host));
-  facts.name = kryon.copyValue(name);
-  facts.class_name = kryon.copyValue(class_name);
-  facts.role = kryon.copyValue(role);
-  facts.state = kryon.copyValue(state);
-  return facts;
-  return kryon.snapshot($rt);
+    name = number_2de837a0_value(name,32,true);
+    class_name = number_2de837a0_value(class_name,32,true);
+    role = number_2de837a0_value(role,32,true);
+    state = number_2de837a0_value(state,32,true);
+    let value_0 = number_2de837a0_value(StyleSheet_StyleKindText($rt, $state, $host),32,true);
+    let value_2 = StyleSheet_StyleDefaultFacts($rt, $state, $host, value_0);
+    let value_3 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_2);
+    let value_1 = value_3;
+    let value_4 = value_1;
+    let value_5 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_4);
+    let facts = value_5;
+    let value_6 = number_2de837a0_value(name,32,true);
+    facts.name = value_6;
+    let value_7 = number_2de837a0_value(class_name,32,true);
+    facts.class_name = value_7;
+    let value_8 = number_2de837a0_value(role,32,true);
+    facts.role = value_8;
+    let value_9 = number_2de837a0_value(state,32,true);
+    facts.state = value_9;
+    let value_11 = facts;
+    let value_12 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_11);
+    let value_10 = value_12;
+    return value_10;
 }
 
 export function StyleSheet_StyleDefaultSelector($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let selector = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
-  selector.kind = StyleSheet_StyleKindAny($rt, $state, $host);
-  selector.role = StyleSheet_StyleAny($rt, $state, $host);
-  selector.tone = StyleSheet_StyleAny($rt, $state, $host);
-  selector.emphasis = StyleSheet_StyleAny($rt, $state, $host);
-  selector.size = StyleSheet_StyleAny($rt, $state, $host);
-  selector.state = StyleSheet_StyleAny($rt, $state, $host);
-  selector.validation = StyleSheet_StyleAny($rt, $state, $host);
-  selector.orientation = StyleSheet_StyleAny($rt, $state, $host);
-  selector.placement = StyleSheet_StyleAny($rt, $state, $host);
-  return selector;
-  return kryon.snapshot($rt);
+    let value_0 = {kind: 0, name: 0, class_name: 0, role: 0, tone: 0, emphasis: 0, size: 0, state: 0, validation: 0, orientation: 0, placement: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_1);
+    let selector = value_2;
+    let value_3 = number_2de837a0_value(StyleSheet_StyleKindAny($rt, $state, $host),32,true);
+    selector.kind = value_3;
+    let value_4 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.role = value_4;
+    let value_5 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.tone = value_5;
+    let value_6 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.emphasis = value_6;
+    let value_7 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.size = value_7;
+    let value_8 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.state = value_8;
+    let value_9 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.validation = value_9;
+    let value_10 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.orientation = value_10;
+    let value_11 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    selector.placement = value_11;
+    let value_13 = selector;
+    let value_14 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function StyleSheet_StyleMatchesOptional($rt, $state = moduleState, $host = moduleHost, selector_value, fact_value) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (selector_value == StyleSheet_StyleAny($rt, $state, $host)) {
-    return true;
-  }
-  return selector_value == fact_value;
+    selector_value = number_2de837a0_value(selector_value,32,true);
+    fact_value = number_2de837a0_value(fact_value,32,true);
+    let value_0 = number_2de837a0_value(selector_value,32,true);
+    let value_1 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_2 = number_2de837a0_bool(value_0 == value_1);
+    if (value_2) {
+        let value_3 = number_2de837a0_bool(true);
+        return value_3;
+    }
+    let value_4 = number_2de837a0_value(selector_value,32,true);
+    let value_5 = number_2de837a0_value(fact_value,32,true);
+    let value_6 = number_2de837a0_bool(value_4 == value_5);
+    return value_6;
 }
 
 export function StyleSheet_StyleSelectorMatches($rt, $state = moduleState, $host = moduleHost, selector, facts) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleSelector is same-module */
-  /* pass-by-reference: StyleFacts is same-module */
-  $rt = $rt || kryon.createRuntime();
-  if (selector.kind != StyleSheet_StyleKindAny($rt, $state, $host) && selector.kind != facts.kind) {
-    return false;
-  }
-  if (selector.name != 0 && selector.name != facts.name) {
-    return false;
-  }
-  if (selector.class_name != 0 && selector.class_name != facts.class_name) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.role, facts.role)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.tone, facts.tone)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.emphasis, facts.emphasis)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.size, facts.size)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.state, facts.state)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.validation, facts.validation)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.orientation, facts.orientation)) {
-    return false;
-  }
-  if (!StyleSheet_StyleMatchesOptional($rt, $state, $host, selector.placement, facts.placement)) {
-    return false;
-  }
-  return true;
+    let value_0 = selector;
+    let value_1 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_0);
+    selector = value_1;
+    let value_2 = facts;
+    let value_3 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_2);
+    facts = value_3;
+    let value_4 = number_2de837a0_value(selector.kind,32,true);
+    let value_5 = number_2de837a0_value(StyleSheet_StyleKindAny($rt, $state, $host),32,true);
+    let value_6 = number_2de837a0_bool(value_4 != value_5);
+    let value_7 = number_2de837a0_bool(value_6);
+    if (value_7) {
+        let value_8 = number_2de837a0_value(selector.kind,32,true);
+        let value_9 = number_2de837a0_value(facts.kind,32,true);
+        let value_10 = number_2de837a0_bool(value_8 != value_9);
+        value_7 = value_10;
+    }
+    if (value_7) {
+        let value_11 = number_2de837a0_bool(false);
+        return value_11;
+    }
+    let value_12 = number_2de837a0_value(selector.name,32,true);
+    let value_13 = number_2de837a0_value(0,32,true);
+    let value_14 = number_2de837a0_bool(value_12 != value_13);
+    let value_15 = number_2de837a0_bool(value_14);
+    if (value_15) {
+        let value_16 = number_2de837a0_value(selector.name,32,true);
+        let value_17 = number_2de837a0_value(facts.name,32,true);
+        let value_18 = number_2de837a0_bool(value_16 != value_17);
+        value_15 = value_18;
+    }
+    if (value_15) {
+        let value_19 = number_2de837a0_bool(false);
+        return value_19;
+    }
+    let value_20 = number_2de837a0_value(selector.class_name,32,true);
+    let value_21 = number_2de837a0_value(0,32,true);
+    let value_22 = number_2de837a0_bool(value_20 != value_21);
+    let value_23 = number_2de837a0_bool(value_22);
+    if (value_23) {
+        let value_24 = number_2de837a0_value(selector.class_name,32,true);
+        let value_25 = number_2de837a0_value(facts.class_name,32,true);
+        let value_26 = number_2de837a0_bool(value_24 != value_25);
+        value_23 = value_26;
+    }
+    if (value_23) {
+        let value_27 = number_2de837a0_bool(false);
+        return value_27;
+    }
+    let value_28 = number_2de837a0_value(selector.role,32,true);
+    let value_29 = number_2de837a0_value(facts.role,32,true);
+    let value_30 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_28, value_29));
+    let value_31 = number_2de837a0_bool(!value_30);
+    if (value_31) {
+        let value_32 = number_2de837a0_bool(false);
+        return value_32;
+    }
+    let value_33 = number_2de837a0_value(selector.tone,32,true);
+    let value_34 = number_2de837a0_value(facts.tone,32,true);
+    let value_35 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_33, value_34));
+    let value_36 = number_2de837a0_bool(!value_35);
+    if (value_36) {
+        let value_37 = number_2de837a0_bool(false);
+        return value_37;
+    }
+    let value_38 = number_2de837a0_value(selector.emphasis,32,true);
+    let value_39 = number_2de837a0_value(facts.emphasis,32,true);
+    let value_40 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_38, value_39));
+    let value_41 = number_2de837a0_bool(!value_40);
+    if (value_41) {
+        let value_42 = number_2de837a0_bool(false);
+        return value_42;
+    }
+    let value_43 = number_2de837a0_value(selector.size,32,true);
+    let value_44 = number_2de837a0_value(facts.size,32,true);
+    let value_45 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_43, value_44));
+    let value_46 = number_2de837a0_bool(!value_45);
+    if (value_46) {
+        let value_47 = number_2de837a0_bool(false);
+        return value_47;
+    }
+    let value_48 = number_2de837a0_value(selector.state,32,true);
+    let value_49 = number_2de837a0_value(facts.state,32,true);
+    let value_50 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_48, value_49));
+    let value_51 = number_2de837a0_bool(!value_50);
+    if (value_51) {
+        let value_52 = number_2de837a0_bool(false);
+        return value_52;
+    }
+    let value_53 = number_2de837a0_value(selector.validation,32,true);
+    let value_54 = number_2de837a0_value(facts.validation,32,true);
+    let value_55 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_53, value_54));
+    let value_56 = number_2de837a0_bool(!value_55);
+    if (value_56) {
+        let value_57 = number_2de837a0_bool(false);
+        return value_57;
+    }
+    let value_58 = number_2de837a0_value(selector.orientation,32,true);
+    let value_59 = number_2de837a0_value(facts.orientation,32,true);
+    let value_60 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_58, value_59));
+    let value_61 = number_2de837a0_bool(!value_60);
+    if (value_61) {
+        let value_62 = number_2de837a0_bool(false);
+        return value_62;
+    }
+    let value_63 = number_2de837a0_value(selector.placement,32,true);
+    let value_64 = number_2de837a0_value(facts.placement,32,true);
+    let value_65 = number_2de837a0_bool(StyleSheet_StyleMatchesOptional($rt, $state, $host, value_63, value_64));
+    let value_66 = number_2de837a0_bool(!value_65);
+    if (value_66) {
+        let value_67 = number_2de837a0_bool(false);
+        return value_67;
+    }
+    let value_68 = number_2de837a0_bool(true);
+    return value_68;
 }
 
 export function StyleSheet_StyleSelectorSpecificity($rt, $state = moduleState, $host = moduleHost, selector) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleSelector is same-module */
-  $rt = $rt || kryon.createRuntime();
-  let score = kryon.copyValue(0);
-  if (selector.kind != StyleSheet_StyleKindAny($rt, $state, $host)) {
-    score += 1;
-  }
-  if (selector.role != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.tone != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.emphasis != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.size != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.state != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.validation != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.orientation != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.placement != StyleSheet_StyleAny($rt, $state, $host)) {
-    score += 10;
-  }
-  if (selector.class_name != 0) {
-    score += 20;
-  }
-  if (selector.name != 0) {
-    score += 100;
-  }
-  return score;
+    let value_0 = selector;
+    let value_1 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_0);
+    selector = value_1;
+    let value_2 = number_2de837a0_value(0,32,true);
+    let score = number_2de837a0_value(value_2,32,true);
+    let value_3 = number_2de837a0_value(selector.kind,32,true);
+    let value_4 = number_2de837a0_value(StyleSheet_StyleKindAny($rt, $state, $host),32,true);
+    let value_5 = number_2de837a0_bool(value_3 != value_4);
+    if (value_5) {
+        let value_6 = number_2de837a0_value(score,32,true);
+        let value_7 = number_2de837a0_value(1,32,true);
+        score = number_2de837a0_bits(value_6,value_7,32,true,1);
+    }
+    let value_8 = number_2de837a0_value(selector.role,32,true);
+    let value_9 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_10 = number_2de837a0_bool(value_8 != value_9);
+    if (value_10) {
+        let value_11 = number_2de837a0_value(score,32,true);
+        let value_12 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_11,value_12,32,true,1);
+    }
+    let value_13 = number_2de837a0_value(selector.tone,32,true);
+    let value_14 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_15 = number_2de837a0_bool(value_13 != value_14);
+    if (value_15) {
+        let value_16 = number_2de837a0_value(score,32,true);
+        let value_17 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_16,value_17,32,true,1);
+    }
+    let value_18 = number_2de837a0_value(selector.emphasis,32,true);
+    let value_19 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_20 = number_2de837a0_bool(value_18 != value_19);
+    if (value_20) {
+        let value_21 = number_2de837a0_value(score,32,true);
+        let value_22 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_21,value_22,32,true,1);
+    }
+    let value_23 = number_2de837a0_value(selector.size,32,true);
+    let value_24 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_25 = number_2de837a0_bool(value_23 != value_24);
+    if (value_25) {
+        let value_26 = number_2de837a0_value(score,32,true);
+        let value_27 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_26,value_27,32,true,1);
+    }
+    let value_28 = number_2de837a0_value(selector.state,32,true);
+    let value_29 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_30 = number_2de837a0_bool(value_28 != value_29);
+    if (value_30) {
+        let value_31 = number_2de837a0_value(score,32,true);
+        let value_32 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_31,value_32,32,true,1);
+    }
+    let value_33 = number_2de837a0_value(selector.validation,32,true);
+    let value_34 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_35 = number_2de837a0_bool(value_33 != value_34);
+    if (value_35) {
+        let value_36 = number_2de837a0_value(score,32,true);
+        let value_37 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_36,value_37,32,true,1);
+    }
+    let value_38 = number_2de837a0_value(selector.orientation,32,true);
+    let value_39 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_40 = number_2de837a0_bool(value_38 != value_39);
+    if (value_40) {
+        let value_41 = number_2de837a0_value(score,32,true);
+        let value_42 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_41,value_42,32,true,1);
+    }
+    let value_43 = number_2de837a0_value(selector.placement,32,true);
+    let value_44 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_45 = number_2de837a0_bool(value_43 != value_44);
+    if (value_45) {
+        let value_46 = number_2de837a0_value(score,32,true);
+        let value_47 = number_2de837a0_value(10,32,true);
+        score = number_2de837a0_bits(value_46,value_47,32,true,1);
+    }
+    let value_48 = number_2de837a0_value(selector.class_name,32,true);
+    let value_49 = number_2de837a0_value(0,32,true);
+    let value_50 = number_2de837a0_bool(value_48 != value_49);
+    if (value_50) {
+        let value_51 = number_2de837a0_value(score,32,true);
+        let value_52 = number_2de837a0_value(20,32,true);
+        score = number_2de837a0_bits(value_51,value_52,32,true,1);
+    }
+    let value_53 = number_2de837a0_value(selector.name,32,true);
+    let value_54 = number_2de837a0_value(0,32,true);
+    let value_55 = number_2de837a0_bool(value_53 != value_54);
+    if (value_55) {
+        let value_56 = number_2de837a0_value(score,32,true);
+        let value_57 = number_2de837a0_value(100,32,true);
+        score = number_2de837a0_bits(value_56,value_57,32,true,1);
+    }
+    let value_58 = number_2de837a0_value(score,32,true);
+    return value_58;
 }
 
 export function StyleSheet_StyleRuleScore($rt, $state = moduleState, $host = moduleHost, rule) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleRule is same-module */
-  $rt = $rt || kryon.createRuntime();
-  return rule.layer * 1000000 + StyleSheet_StyleSelectorSpecificity($rt, $state, $host, rule.selector) * 1000 + rule.order;
+    let value_0 = rule;
+    let value_1 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_0);
+    rule = value_1;
+    let value_2 = number_2de837a0_value(rule.layer,32,true);
+    let value_3 = number_2de837a0_value(1000000,32,true);
+    let value_4 = number_2de837a0_value(number_2de837a0_bits(value_2,value_3,32,true,3),32,true);
+    let value_6 = rule.selector;
+    let value_7 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_6);
+    let value_5 = value_7;
+    let value_8 = number_2de837a0_value(StyleSheet_StyleSelectorSpecificity($rt, $state, $host, value_5),32,true);
+    let value_9 = number_2de837a0_value(1000,32,true);
+    let value_10 = number_2de837a0_value(number_2de837a0_bits(value_8,value_9,32,true,3),32,true);
+    let value_11 = number_2de837a0_value(number_2de837a0_bits(value_4,value_10,32,true,1),32,true);
+    let value_12 = number_2de837a0_value(rule.order,32,true);
+    let value_13 = number_2de837a0_value(number_2de837a0_bits(value_11,value_12,32,true,1),32,true);
+    return value_13;
 }
 
 export function StyleSheet_StyleRuleMatchesState($rt, $state = moduleState, $host = moduleHost, rule_state, active_state) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (rule_state == StyleSheet_StyleStateAny($rt, $state, $host)) {
-    return true;
-  }
-  if (rule_state == $enum0.ButtonStateNormal) {
-    return true;
-  }
-  return rule_state == active_state;
+    rule_state = number_2de837a0_value(rule_state,32,true);
+    active_state = number_2de837a0_value(active_state,32,true);
+    let value_0 = number_2de837a0_value(rule_state,32,true);
+    let value_1 = number_2de837a0_value(StyleSheet_StyleStateAny($rt, $state, $host),32,true);
+    let value_2 = number_2de837a0_bool(value_0 == value_1);
+    if (value_2) {
+        let value_3 = number_2de837a0_bool(true);
+        return value_3;
+    }
+    let value_4 = number_2de837a0_value(rule_state,32,true);
+    let value_5 = number_2de837a0_value($enum0.ButtonStateNormal,32,true);
+    let value_6 = number_2de837a0_bool(value_4 == value_5);
+    if (value_6) {
+        let value_7 = number_2de837a0_bool(true);
+        return value_7;
+    }
+    let value_8 = number_2de837a0_value(rule_state,32,true);
+    let value_9 = number_2de837a0_value(active_state,32,true);
+    let value_10 = number_2de837a0_bool(value_8 == value_9);
+    return value_10;
 }
 
 export function StyleSheet_StyleRuleMatches($rt, $state = moduleState, $host = moduleHost, rule, facts, active_state) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleRule is same-module */
-  /* pass-by-reference: StyleFacts is same-module */
-  $rt = $rt || kryon.createRuntime();
-  if (!StyleSheet_StyleRuleMatchesState($rt, $state, $host, rule.state, active_state)) {
-    return false;
-  }
-  return StyleSheet_StyleSelectorMatches($rt, $state, $host, rule.selector, facts);
+    let value_0 = rule;
+    let value_1 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_0);
+    rule = value_1;
+    let value_2 = facts;
+    let value_3 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_2);
+    facts = value_3;
+    active_state = number_2de837a0_value(active_state,32,true);
+    let value_4 = number_2de837a0_value(rule.state,32,true);
+    let value_5 = number_2de837a0_value(active_state,32,true);
+    let value_6 = number_2de837a0_bool(StyleSheet_StyleRuleMatchesState($rt, $state, $host, value_4, value_5));
+    let value_7 = number_2de837a0_bool(!value_6);
+    if (value_7) {
+        let value_8 = number_2de837a0_bool(false);
+        return value_8;
+    }
+    let value_10 = rule.selector;
+    let value_11 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_10);
+    let value_9 = value_11;
+    let value_13 = facts;
+    let value_14 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_13);
+    let value_12 = value_14;
+    let value_15 = number_2de837a0_bool(StyleSheet_StyleSelectorMatches($rt, $state, $host, value_9, value_12));
+    return value_15;
 }
 
 export function StyleSheet_StyleWins($rt, $state = moduleState, $host = moduleHost, score, current) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return score >= current;
+    score = number_2de837a0_value(score,32,true);
+    current = number_2de837a0_value(current,32,true);
+    let value_0 = number_2de837a0_value(score,32,true);
+    let value_1 = number_2de837a0_value(current,32,true);
+    let value_2 = number_2de837a0_bool(value_0 >= value_1);
+    return value_2;
 }
 
 export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = moduleHost, base) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let cascade = {result: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, background_score: 0, foreground_score: 0, border_score: 0, focus_score: 0, radius_score: 0, border_width_score: 0, opacity_score: 0, padding_x_score: 0, padding_y_score: 0, gap_score: 0, font_size_score: 0, icon_size_score: 0, content_offset_score: 0, background_end_score: 0, material_score: 0, typeface_score: 0, letter_spacing_score: 0};
-  cascade.result = kryon.copyValue(base);
-  return cascade;
-  return kryon.snapshot($rt);
+    let value_0 = base;
+    let value_1 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_0);
+    base = value_1;
+    let value_2 = {result: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, background_score: 0, foreground_score: 0, border_score: 0, focus_score: 0, radius_score: 0, border_width_score: 0, opacity_score: 0, padding_x_score: 0, padding_y_score: 0, gap_score: 0, font_size_score: 0, icon_size_score: 0, content_offset_score: 0, background_end_score: 0, material_score: 0, typeface_score: 0, letter_spacing_score: 0};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_3);
+    let cascade = value_4;
+    let value_6 = base;
+    let value_7 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_6);
+    let value_5 = value_7;
+    let value_8 = value_5;
+    let value_9 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_8);
+    cascade.result = value_9;
+    let value_11 = cascade;
+    let value_12 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_11);
+    let value_10 = value_12;
+    return value_10;
 }
 
 export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = moduleHost, cascade, rule, facts, active_state) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleCascade is same-module */
-  /* pass-by-reference: StyleRule is same-module */
-  /* pass-by-reference: StyleFacts is same-module */
-  $rt = $rt || kryon.createRuntime();
-  if (!StyleSheet_StyleRuleMatches($rt, $state, $host, rule, facts, active_state)) {
-    return cascade;
-  }
-  let score = StyleSheet_StyleRuleScore($rt, $state, $host, rule);
-  let style = kryon.copyValue(rule.style);
-  if ((style.fields & Math.trunc(Number($enum0.StyleBackground))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.background_score)) {
-    cascade.result.background = kryon.copyValue(style.background);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleBackground)));
-    cascade.background_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleForeground))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.foreground_score)) {
-    cascade.result.foreground = kryon.copyValue(style.foreground);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleForeground)));
-    cascade.foreground_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleBorder))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.border_score)) {
-    cascade.result.border = kryon.copyValue(style.border);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleBorder)));
-    cascade.border_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleFocus))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.focus_score)) {
-    cascade.result.focus = kryon.copyValue(style.focus);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleFocus)));
-    cascade.focus_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleRadius))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.radius_score)) {
-    cascade.result.radius = kryon.copyValue(style.radius);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleRadius)));
-    cascade.radius_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleBorderWidth))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.border_width_score)) {
-    cascade.result.border_width = kryon.copyValue(style.border_width);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleBorderWidth)));
-    cascade.border_width_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleOpacity))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.opacity_score)) {
-    cascade.result.opacity = kryon.copyValue(style.opacity);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleOpacity)));
-    cascade.opacity_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StylePaddingX))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.padding_x_score)) {
-    cascade.result.padding_x = kryon.copyValue(style.padding_x);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StylePaddingX)));
-    cascade.padding_x_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StylePaddingY))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.padding_y_score)) {
-    cascade.result.padding_y = kryon.copyValue(style.padding_y);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StylePaddingY)));
-    cascade.padding_y_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleGap))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.gap_score)) {
-    cascade.result.gap = kryon.copyValue(style.gap);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleGap)));
-    cascade.gap_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleFontSize))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.font_size_score)) {
-    cascade.result.font_size = kryon.copyValue(style.font_size);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleFontSize)));
-    cascade.font_size_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleLetterSpacing))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.letter_spacing_score)) {
-    cascade.result.letter_spacing = kryon.copyValue(style.letter_spacing);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleLetterSpacing)));
-    cascade.letter_spacing_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleIconSize))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.icon_size_score)) {
-    cascade.result.icon_size = kryon.copyValue(style.icon_size);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleIconSize)));
-    cascade.icon_size_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleContentOffset))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.content_offset_score)) {
-    cascade.result.offset_x = kryon.copyValue(style.offset_x);
-    cascade.result.offset_y = kryon.copyValue(style.offset_y);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleContentOffset)));
-    cascade.content_offset_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleBackgroundEnd))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.background_end_score)) {
-    cascade.result.background_end = kryon.copyValue(style.background_end);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleBackgroundEnd)));
-    cascade.background_end_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleMaterial))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.material_score)) {
-    cascade.result.material = kryon.copyValue(style.material);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleMaterial)));
-    cascade.material_score = kryon.copyValue(score);
-  }
-  if ((style.fields & Math.trunc(Number($enum0.StyleTypeface))) != Math.trunc(Number(0)) && StyleSheet_StyleWins($rt, $state, $host, score, cascade.typeface_score)) {
-    cascade.result.typeface = kryon.copyValue(style.typeface);
-    cascade.result.fields = kryon.copyValue(cascade.result.fields | Math.trunc(Number($enum0.StyleTypeface)));
-    cascade.typeface_score = kryon.copyValue(score);
-  }
-  return cascade;
-  return kryon.snapshot($rt);
+    let value_0 = cascade;
+    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_0);
+    cascade = value_1;
+    let value_2 = rule;
+    let value_3 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_2);
+    rule = value_3;
+    let value_4 = facts;
+    let value_5 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_4);
+    facts = value_5;
+    active_state = number_2de837a0_value(active_state,32,true);
+    let value_7 = rule;
+    let value_8 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_7);
+    let value_6 = value_8;
+    let value_10 = facts;
+    let value_11 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_10);
+    let value_9 = value_11;
+    let value_12 = number_2de837a0_value(active_state,32,true);
+    let value_13 = number_2de837a0_bool(StyleSheet_StyleRuleMatches($rt, $state, $host, value_6, value_9, value_12));
+    let value_14 = number_2de837a0_bool(!value_13);
+    if (value_14) {
+        let value_16 = cascade;
+        let value_17 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_16);
+        let value_15 = value_17;
+        return value_15;
+    }
+    let value_19 = rule;
+    let value_20 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_19);
+    let value_18 = value_20;
+    let value_21 = number_2de837a0_value(StyleSheet_StyleRuleScore($rt, $state, $host, value_18),32,true);
+    let score = number_2de837a0_value(value_21,32,true);
+    let value_23 = rule.style;
+    let value_24 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_23);
+    let value_22 = value_24;
+    let value_25 = value_22;
+    let value_26 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_25);
+    let style = value_26;
+    let value_27 = number_2de837a0_value(style.fields,32,false);
+    let value_28 = number_2de837a0_value($enum0.StyleBackground,32,true);
+    let value_29 = number_2de837a0_value(number_2de837a0_bits(value_28,0,32,false,0),32,false);
+    let value_30 = number_2de837a0_value(number_2de837a0_bits(value_27,value_29,32,false,8),32,false);
+    let value_31 = number_2de837a0_value(0,32,true);
+    let value_32 = number_2de837a0_value(number_2de837a0_bits(value_31,0,32,false,0),32,false);
+    let value_33 = number_2de837a0_bool(value_30 != value_32);
+    let value_34 = number_2de837a0_bool(value_33);
+    if (value_34) {
+        let value_35 = number_2de837a0_value(score,32,true);
+        let value_36 = number_2de837a0_value(cascade.background_score,32,true);
+        let value_37 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_35, value_36));
+        value_34 = value_37;
+    }
+    if (value_34) {
+        let value_38 = number_2de837a0_value(style.background,32,false);
+        cascade.result.background = value_38;
+        let value_39 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_40 = number_2de837a0_value($enum0.StyleBackground,32,true);
+        let value_41 = number_2de837a0_value(number_2de837a0_bits(value_40,0,32,false,0),32,false);
+        let value_42 = number_2de837a0_value(number_2de837a0_bits(value_39,value_41,32,false,9),32,false);
+        cascade.result.fields = value_42;
+        let value_43 = number_2de837a0_value(score,32,true);
+        cascade.background_score = value_43;
+    }
+    let value_44 = number_2de837a0_value(style.fields,32,false);
+    let value_45 = number_2de837a0_value($enum0.StyleForeground,32,true);
+    let value_46 = number_2de837a0_value(number_2de837a0_bits(value_45,0,32,false,0),32,false);
+    let value_47 = number_2de837a0_value(number_2de837a0_bits(value_44,value_46,32,false,8),32,false);
+    let value_48 = number_2de837a0_value(0,32,true);
+    let value_49 = number_2de837a0_value(number_2de837a0_bits(value_48,0,32,false,0),32,false);
+    let value_50 = number_2de837a0_bool(value_47 != value_49);
+    let value_51 = number_2de837a0_bool(value_50);
+    if (value_51) {
+        let value_52 = number_2de837a0_value(score,32,true);
+        let value_53 = number_2de837a0_value(cascade.foreground_score,32,true);
+        let value_54 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_52, value_53));
+        value_51 = value_54;
+    }
+    if (value_51) {
+        let value_55 = number_2de837a0_value(style.foreground,32,false);
+        cascade.result.foreground = value_55;
+        let value_56 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_57 = number_2de837a0_value($enum0.StyleForeground,32,true);
+        let value_58 = number_2de837a0_value(number_2de837a0_bits(value_57,0,32,false,0),32,false);
+        let value_59 = number_2de837a0_value(number_2de837a0_bits(value_56,value_58,32,false,9),32,false);
+        cascade.result.fields = value_59;
+        let value_60 = number_2de837a0_value(score,32,true);
+        cascade.foreground_score = value_60;
+    }
+    let value_61 = number_2de837a0_value(style.fields,32,false);
+    let value_62 = number_2de837a0_value($enum0.StyleBorder,32,true);
+    let value_63 = number_2de837a0_value(number_2de837a0_bits(value_62,0,32,false,0),32,false);
+    let value_64 = number_2de837a0_value(number_2de837a0_bits(value_61,value_63,32,false,8),32,false);
+    let value_65 = number_2de837a0_value(0,32,true);
+    let value_66 = number_2de837a0_value(number_2de837a0_bits(value_65,0,32,false,0),32,false);
+    let value_67 = number_2de837a0_bool(value_64 != value_66);
+    let value_68 = number_2de837a0_bool(value_67);
+    if (value_68) {
+        let value_69 = number_2de837a0_value(score,32,true);
+        let value_70 = number_2de837a0_value(cascade.border_score,32,true);
+        let value_71 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_69, value_70));
+        value_68 = value_71;
+    }
+    if (value_68) {
+        let value_72 = number_2de837a0_value(style.border,32,false);
+        cascade.result.border = value_72;
+        let value_73 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_74 = number_2de837a0_value($enum0.StyleBorder,32,true);
+        let value_75 = number_2de837a0_value(number_2de837a0_bits(value_74,0,32,false,0),32,false);
+        let value_76 = number_2de837a0_value(number_2de837a0_bits(value_73,value_75,32,false,9),32,false);
+        cascade.result.fields = value_76;
+        let value_77 = number_2de837a0_value(score,32,true);
+        cascade.border_score = value_77;
+    }
+    let value_78 = number_2de837a0_value(style.fields,32,false);
+    let value_79 = number_2de837a0_value($enum0.StyleFocus,32,true);
+    let value_80 = number_2de837a0_value(number_2de837a0_bits(value_79,0,32,false,0),32,false);
+    let value_81 = number_2de837a0_value(number_2de837a0_bits(value_78,value_80,32,false,8),32,false);
+    let value_82 = number_2de837a0_value(0,32,true);
+    let value_83 = number_2de837a0_value(number_2de837a0_bits(value_82,0,32,false,0),32,false);
+    let value_84 = number_2de837a0_bool(value_81 != value_83);
+    let value_85 = number_2de837a0_bool(value_84);
+    if (value_85) {
+        let value_86 = number_2de837a0_value(score,32,true);
+        let value_87 = number_2de837a0_value(cascade.focus_score,32,true);
+        let value_88 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_86, value_87));
+        value_85 = value_88;
+    }
+    if (value_85) {
+        let value_89 = number_2de837a0_value(style.focus,32,false);
+        cascade.result.focus = value_89;
+        let value_90 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_91 = number_2de837a0_value($enum0.StyleFocus,32,true);
+        let value_92 = number_2de837a0_value(number_2de837a0_bits(value_91,0,32,false,0),32,false);
+        let value_93 = number_2de837a0_value(number_2de837a0_bits(value_90,value_92,32,false,9),32,false);
+        cascade.result.fields = value_93;
+        let value_94 = number_2de837a0_value(score,32,true);
+        cascade.focus_score = value_94;
+    }
+    let value_95 = number_2de837a0_value(style.fields,32,false);
+    let value_96 = number_2de837a0_value($enum0.StyleRadius,32,true);
+    let value_97 = number_2de837a0_value(number_2de837a0_bits(value_96,0,32,false,0),32,false);
+    let value_98 = number_2de837a0_value(number_2de837a0_bits(value_95,value_97,32,false,8),32,false);
+    let value_99 = number_2de837a0_value(0,32,true);
+    let value_100 = number_2de837a0_value(number_2de837a0_bits(value_99,0,32,false,0),32,false);
+    let value_101 = number_2de837a0_bool(value_98 != value_100);
+    let value_102 = number_2de837a0_bool(value_101);
+    if (value_102) {
+        let value_103 = number_2de837a0_value(score,32,true);
+        let value_104 = number_2de837a0_value(cascade.radius_score,32,true);
+        let value_105 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_103, value_104));
+        value_102 = value_105;
+    }
+    if (value_102) {
+        let value_106 = Math.fround(style.radius);
+        cascade.result.radius = value_106;
+        let value_107 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_108 = number_2de837a0_value($enum0.StyleRadius,32,true);
+        let value_109 = number_2de837a0_value(number_2de837a0_bits(value_108,0,32,false,0),32,false);
+        let value_110 = number_2de837a0_value(number_2de837a0_bits(value_107,value_109,32,false,9),32,false);
+        cascade.result.fields = value_110;
+        let value_111 = number_2de837a0_value(score,32,true);
+        cascade.radius_score = value_111;
+    }
+    let value_112 = number_2de837a0_value(style.fields,32,false);
+    let value_113 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
+    let value_114 = number_2de837a0_value(number_2de837a0_bits(value_113,0,32,false,0),32,false);
+    let value_115 = number_2de837a0_value(number_2de837a0_bits(value_112,value_114,32,false,8),32,false);
+    let value_116 = number_2de837a0_value(0,32,true);
+    let value_117 = number_2de837a0_value(number_2de837a0_bits(value_116,0,32,false,0),32,false);
+    let value_118 = number_2de837a0_bool(value_115 != value_117);
+    let value_119 = number_2de837a0_bool(value_118);
+    if (value_119) {
+        let value_120 = number_2de837a0_value(score,32,true);
+        let value_121 = number_2de837a0_value(cascade.border_width_score,32,true);
+        let value_122 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_120, value_121));
+        value_119 = value_122;
+    }
+    if (value_119) {
+        let value_123 = Math.fround(style.border_width);
+        cascade.result.border_width = value_123;
+        let value_124 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_125 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
+        let value_126 = number_2de837a0_value(number_2de837a0_bits(value_125,0,32,false,0),32,false);
+        let value_127 = number_2de837a0_value(number_2de837a0_bits(value_124,value_126,32,false,9),32,false);
+        cascade.result.fields = value_127;
+        let value_128 = number_2de837a0_value(score,32,true);
+        cascade.border_width_score = value_128;
+    }
+    let value_129 = number_2de837a0_value(style.fields,32,false);
+    let value_130 = number_2de837a0_value($enum0.StyleOpacity,32,true);
+    let value_131 = number_2de837a0_value(number_2de837a0_bits(value_130,0,32,false,0),32,false);
+    let value_132 = number_2de837a0_value(number_2de837a0_bits(value_129,value_131,32,false,8),32,false);
+    let value_133 = number_2de837a0_value(0,32,true);
+    let value_134 = number_2de837a0_value(number_2de837a0_bits(value_133,0,32,false,0),32,false);
+    let value_135 = number_2de837a0_bool(value_132 != value_134);
+    let value_136 = number_2de837a0_bool(value_135);
+    if (value_136) {
+        let value_137 = number_2de837a0_value(score,32,true);
+        let value_138 = number_2de837a0_value(cascade.opacity_score,32,true);
+        let value_139 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_137, value_138));
+        value_136 = value_139;
+    }
+    if (value_136) {
+        let value_140 = Math.fround(style.opacity);
+        cascade.result.opacity = value_140;
+        let value_141 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_142 = number_2de837a0_value($enum0.StyleOpacity,32,true);
+        let value_143 = number_2de837a0_value(number_2de837a0_bits(value_142,0,32,false,0),32,false);
+        let value_144 = number_2de837a0_value(number_2de837a0_bits(value_141,value_143,32,false,9),32,false);
+        cascade.result.fields = value_144;
+        let value_145 = number_2de837a0_value(score,32,true);
+        cascade.opacity_score = value_145;
+    }
+    let value_146 = number_2de837a0_value(style.fields,32,false);
+    let value_147 = number_2de837a0_value($enum0.StylePaddingX,32,true);
+    let value_148 = number_2de837a0_value(number_2de837a0_bits(value_147,0,32,false,0),32,false);
+    let value_149 = number_2de837a0_value(number_2de837a0_bits(value_146,value_148,32,false,8),32,false);
+    let value_150 = number_2de837a0_value(0,32,true);
+    let value_151 = number_2de837a0_value(number_2de837a0_bits(value_150,0,32,false,0),32,false);
+    let value_152 = number_2de837a0_bool(value_149 != value_151);
+    let value_153 = number_2de837a0_bool(value_152);
+    if (value_153) {
+        let value_154 = number_2de837a0_value(score,32,true);
+        let value_155 = number_2de837a0_value(cascade.padding_x_score,32,true);
+        let value_156 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_154, value_155));
+        value_153 = value_156;
+    }
+    if (value_153) {
+        let value_157 = Math.fround(style.padding_x);
+        cascade.result.padding_x = value_157;
+        let value_158 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_159 = number_2de837a0_value($enum0.StylePaddingX,32,true);
+        let value_160 = number_2de837a0_value(number_2de837a0_bits(value_159,0,32,false,0),32,false);
+        let value_161 = number_2de837a0_value(number_2de837a0_bits(value_158,value_160,32,false,9),32,false);
+        cascade.result.fields = value_161;
+        let value_162 = number_2de837a0_value(score,32,true);
+        cascade.padding_x_score = value_162;
+    }
+    let value_163 = number_2de837a0_value(style.fields,32,false);
+    let value_164 = number_2de837a0_value($enum0.StylePaddingY,32,true);
+    let value_165 = number_2de837a0_value(number_2de837a0_bits(value_164,0,32,false,0),32,false);
+    let value_166 = number_2de837a0_value(number_2de837a0_bits(value_163,value_165,32,false,8),32,false);
+    let value_167 = number_2de837a0_value(0,32,true);
+    let value_168 = number_2de837a0_value(number_2de837a0_bits(value_167,0,32,false,0),32,false);
+    let value_169 = number_2de837a0_bool(value_166 != value_168);
+    let value_170 = number_2de837a0_bool(value_169);
+    if (value_170) {
+        let value_171 = number_2de837a0_value(score,32,true);
+        let value_172 = number_2de837a0_value(cascade.padding_y_score,32,true);
+        let value_173 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_171, value_172));
+        value_170 = value_173;
+    }
+    if (value_170) {
+        let value_174 = Math.fround(style.padding_y);
+        cascade.result.padding_y = value_174;
+        let value_175 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_176 = number_2de837a0_value($enum0.StylePaddingY,32,true);
+        let value_177 = number_2de837a0_value(number_2de837a0_bits(value_176,0,32,false,0),32,false);
+        let value_178 = number_2de837a0_value(number_2de837a0_bits(value_175,value_177,32,false,9),32,false);
+        cascade.result.fields = value_178;
+        let value_179 = number_2de837a0_value(score,32,true);
+        cascade.padding_y_score = value_179;
+    }
+    let value_180 = number_2de837a0_value(style.fields,32,false);
+    let value_181 = number_2de837a0_value($enum0.StyleGap,32,true);
+    let value_182 = number_2de837a0_value(number_2de837a0_bits(value_181,0,32,false,0),32,false);
+    let value_183 = number_2de837a0_value(number_2de837a0_bits(value_180,value_182,32,false,8),32,false);
+    let value_184 = number_2de837a0_value(0,32,true);
+    let value_185 = number_2de837a0_value(number_2de837a0_bits(value_184,0,32,false,0),32,false);
+    let value_186 = number_2de837a0_bool(value_183 != value_185);
+    let value_187 = number_2de837a0_bool(value_186);
+    if (value_187) {
+        let value_188 = number_2de837a0_value(score,32,true);
+        let value_189 = number_2de837a0_value(cascade.gap_score,32,true);
+        let value_190 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_188, value_189));
+        value_187 = value_190;
+    }
+    if (value_187) {
+        let value_191 = Math.fround(style.gap);
+        cascade.result.gap = value_191;
+        let value_192 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_193 = number_2de837a0_value($enum0.StyleGap,32,true);
+        let value_194 = number_2de837a0_value(number_2de837a0_bits(value_193,0,32,false,0),32,false);
+        let value_195 = number_2de837a0_value(number_2de837a0_bits(value_192,value_194,32,false,9),32,false);
+        cascade.result.fields = value_195;
+        let value_196 = number_2de837a0_value(score,32,true);
+        cascade.gap_score = value_196;
+    }
+    let value_197 = number_2de837a0_value(style.fields,32,false);
+    let value_198 = number_2de837a0_value($enum0.StyleFontSize,32,true);
+    let value_199 = number_2de837a0_value(number_2de837a0_bits(value_198,0,32,false,0),32,false);
+    let value_200 = number_2de837a0_value(number_2de837a0_bits(value_197,value_199,32,false,8),32,false);
+    let value_201 = number_2de837a0_value(0,32,true);
+    let value_202 = number_2de837a0_value(number_2de837a0_bits(value_201,0,32,false,0),32,false);
+    let value_203 = number_2de837a0_bool(value_200 != value_202);
+    let value_204 = number_2de837a0_bool(value_203);
+    if (value_204) {
+        let value_205 = number_2de837a0_value(score,32,true);
+        let value_206 = number_2de837a0_value(cascade.font_size_score,32,true);
+        let value_207 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_205, value_206));
+        value_204 = value_207;
+    }
+    if (value_204) {
+        let value_208 = Math.fround(style.font_size);
+        cascade.result.font_size = value_208;
+        let value_209 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_210 = number_2de837a0_value($enum0.StyleFontSize,32,true);
+        let value_211 = number_2de837a0_value(number_2de837a0_bits(value_210,0,32,false,0),32,false);
+        let value_212 = number_2de837a0_value(number_2de837a0_bits(value_209,value_211,32,false,9),32,false);
+        cascade.result.fields = value_212;
+        let value_213 = number_2de837a0_value(score,32,true);
+        cascade.font_size_score = value_213;
+    }
+    let value_214 = number_2de837a0_value(style.fields,32,false);
+    let value_215 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
+    let value_216 = number_2de837a0_value(number_2de837a0_bits(value_215,0,32,false,0),32,false);
+    let value_217 = number_2de837a0_value(number_2de837a0_bits(value_214,value_216,32,false,8),32,false);
+    let value_218 = number_2de837a0_value(0,32,true);
+    let value_219 = number_2de837a0_value(number_2de837a0_bits(value_218,0,32,false,0),32,false);
+    let value_220 = number_2de837a0_bool(value_217 != value_219);
+    let value_221 = number_2de837a0_bool(value_220);
+    if (value_221) {
+        let value_222 = number_2de837a0_value(score,32,true);
+        let value_223 = number_2de837a0_value(cascade.letter_spacing_score,32,true);
+        let value_224 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_222, value_223));
+        value_221 = value_224;
+    }
+    if (value_221) {
+        let value_225 = Math.fround(style.letter_spacing);
+        cascade.result.letter_spacing = value_225;
+        let value_226 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_227 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
+        let value_228 = number_2de837a0_value(number_2de837a0_bits(value_227,0,32,false,0),32,false);
+        let value_229 = number_2de837a0_value(number_2de837a0_bits(value_226,value_228,32,false,9),32,false);
+        cascade.result.fields = value_229;
+        let value_230 = number_2de837a0_value(score,32,true);
+        cascade.letter_spacing_score = value_230;
+    }
+    let value_231 = number_2de837a0_value(style.fields,32,false);
+    let value_232 = number_2de837a0_value($enum0.StyleIconSize,32,true);
+    let value_233 = number_2de837a0_value(number_2de837a0_bits(value_232,0,32,false,0),32,false);
+    let value_234 = number_2de837a0_value(number_2de837a0_bits(value_231,value_233,32,false,8),32,false);
+    let value_235 = number_2de837a0_value(0,32,true);
+    let value_236 = number_2de837a0_value(number_2de837a0_bits(value_235,0,32,false,0),32,false);
+    let value_237 = number_2de837a0_bool(value_234 != value_236);
+    let value_238 = number_2de837a0_bool(value_237);
+    if (value_238) {
+        let value_239 = number_2de837a0_value(score,32,true);
+        let value_240 = number_2de837a0_value(cascade.icon_size_score,32,true);
+        let value_241 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_239, value_240));
+        value_238 = value_241;
+    }
+    if (value_238) {
+        let value_242 = Math.fround(style.icon_size);
+        cascade.result.icon_size = value_242;
+        let value_243 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_244 = number_2de837a0_value($enum0.StyleIconSize,32,true);
+        let value_245 = number_2de837a0_value(number_2de837a0_bits(value_244,0,32,false,0),32,false);
+        let value_246 = number_2de837a0_value(number_2de837a0_bits(value_243,value_245,32,false,9),32,false);
+        cascade.result.fields = value_246;
+        let value_247 = number_2de837a0_value(score,32,true);
+        cascade.icon_size_score = value_247;
+    }
+    let value_248 = number_2de837a0_value(style.fields,32,false);
+    let value_249 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
+    let value_250 = number_2de837a0_value(number_2de837a0_bits(value_249,0,32,false,0),32,false);
+    let value_251 = number_2de837a0_value(number_2de837a0_bits(value_248,value_250,32,false,8),32,false);
+    let value_252 = number_2de837a0_value(0,32,true);
+    let value_253 = number_2de837a0_value(number_2de837a0_bits(value_252,0,32,false,0),32,false);
+    let value_254 = number_2de837a0_bool(value_251 != value_253);
+    let value_255 = number_2de837a0_bool(value_254);
+    if (value_255) {
+        let value_256 = number_2de837a0_value(score,32,true);
+        let value_257 = number_2de837a0_value(cascade.content_offset_score,32,true);
+        let value_258 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_256, value_257));
+        value_255 = value_258;
+    }
+    if (value_255) {
+        let value_259 = Math.fround(style.offset_x);
+        cascade.result.offset_x = value_259;
+        let value_260 = Math.fround(style.offset_y);
+        cascade.result.offset_y = value_260;
+        let value_261 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_262 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
+        let value_263 = number_2de837a0_value(number_2de837a0_bits(value_262,0,32,false,0),32,false);
+        let value_264 = number_2de837a0_value(number_2de837a0_bits(value_261,value_263,32,false,9),32,false);
+        cascade.result.fields = value_264;
+        let value_265 = number_2de837a0_value(score,32,true);
+        cascade.content_offset_score = value_265;
+    }
+    let value_266 = number_2de837a0_value(style.fields,32,false);
+    let value_267 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
+    let value_268 = number_2de837a0_value(number_2de837a0_bits(value_267,0,32,false,0),32,false);
+    let value_269 = number_2de837a0_value(number_2de837a0_bits(value_266,value_268,32,false,8),32,false);
+    let value_270 = number_2de837a0_value(0,32,true);
+    let value_271 = number_2de837a0_value(number_2de837a0_bits(value_270,0,32,false,0),32,false);
+    let value_272 = number_2de837a0_bool(value_269 != value_271);
+    let value_273 = number_2de837a0_bool(value_272);
+    if (value_273) {
+        let value_274 = number_2de837a0_value(score,32,true);
+        let value_275 = number_2de837a0_value(cascade.background_end_score,32,true);
+        let value_276 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_274, value_275));
+        value_273 = value_276;
+    }
+    if (value_273) {
+        let value_277 = number_2de837a0_value(style.background_end,32,false);
+        cascade.result.background_end = value_277;
+        let value_278 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_279 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
+        let value_280 = number_2de837a0_value(number_2de837a0_bits(value_279,0,32,false,0),32,false);
+        let value_281 = number_2de837a0_value(number_2de837a0_bits(value_278,value_280,32,false,9),32,false);
+        cascade.result.fields = value_281;
+        let value_282 = number_2de837a0_value(score,32,true);
+        cascade.background_end_score = value_282;
+    }
+    let value_283 = number_2de837a0_value(style.fields,32,false);
+    let value_284 = number_2de837a0_value($enum0.StyleMaterial,32,true);
+    let value_285 = number_2de837a0_value(number_2de837a0_bits(value_284,0,32,false,0),32,false);
+    let value_286 = number_2de837a0_value(number_2de837a0_bits(value_283,value_285,32,false,8),32,false);
+    let value_287 = number_2de837a0_value(0,32,true);
+    let value_288 = number_2de837a0_value(number_2de837a0_bits(value_287,0,32,false,0),32,false);
+    let value_289 = number_2de837a0_bool(value_286 != value_288);
+    let value_290 = number_2de837a0_bool(value_289);
+    if (value_290) {
+        let value_291 = number_2de837a0_value(score,32,true);
+        let value_292 = number_2de837a0_value(cascade.material_score,32,true);
+        let value_293 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_291, value_292));
+        value_290 = value_293;
+    }
+    if (value_290) {
+        let value_294 = number_2de837a0_value(style.material,32,true);
+        cascade.result.material = value_294;
+        let value_295 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_296 = number_2de837a0_value($enum0.StyleMaterial,32,true);
+        let value_297 = number_2de837a0_value(number_2de837a0_bits(value_296,0,32,false,0),32,false);
+        let value_298 = number_2de837a0_value(number_2de837a0_bits(value_295,value_297,32,false,9),32,false);
+        cascade.result.fields = value_298;
+        let value_299 = number_2de837a0_value(score,32,true);
+        cascade.material_score = value_299;
+    }
+    let value_300 = number_2de837a0_value(style.fields,32,false);
+    let value_301 = number_2de837a0_value($enum0.StyleTypeface,32,true);
+    let value_302 = number_2de837a0_value(number_2de837a0_bits(value_301,0,32,false,0),32,false);
+    let value_303 = number_2de837a0_value(number_2de837a0_bits(value_300,value_302,32,false,8),32,false);
+    let value_304 = number_2de837a0_value(0,32,true);
+    let value_305 = number_2de837a0_value(number_2de837a0_bits(value_304,0,32,false,0),32,false);
+    let value_306 = number_2de837a0_bool(value_303 != value_305);
+    let value_307 = number_2de837a0_bool(value_306);
+    if (value_307) {
+        let value_308 = number_2de837a0_value(score,32,true);
+        let value_309 = number_2de837a0_value(cascade.typeface_score,32,true);
+        let value_310 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_308, value_309));
+        value_307 = value_310;
+    }
+    if (value_307) {
+        let value_311 = style.typeface;
+        cascade.result.typeface = value_311;
+        let value_312 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_313 = number_2de837a0_value($enum0.StyleTypeface,32,true);
+        let value_314 = number_2de837a0_value(number_2de837a0_bits(value_313,0,32,false,0),32,false);
+        let value_315 = number_2de837a0_value(number_2de837a0_bits(value_312,value_314,32,false,9),32,false);
+        cascade.result.fields = value_315;
+        let value_316 = number_2de837a0_value(score,32,true);
+        cascade.typeface_score = value_316;
+    }
+    let value_318 = cascade;
+    let value_319 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_318);
+    let value_317 = value_319;
+    return value_317;
 }
 
 export function StyleSheet_FinishStyleCascade($rt, $state = moduleState, $host = moduleHost, cascade) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleCascade is same-module */
-  $rt = $rt || kryon.createRuntime();
-  return cascade.result;
-  return kryon.snapshot($rt);
+    let value_0 = cascade;
+    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_0);
+    cascade = value_1;
+    let value_3 = cascade.result;
+    let value_4 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_3);
+    let value_2 = value_4;
+    return value_2;
 }
 
 export function StyleSheet_ResolveStyleRule($rt, $state = moduleState, $host = moduleHost, base, facts, rule, active_state) {
   $state = $state || moduleState;
-  /* pass-by-reference: StyleFacts is same-module */
-  /* pass-by-reference: StyleRule is same-module */
-  $rt = $rt || kryon.createRuntime();
-  let cascade = StyleSheet_BeginStyleCascade($rt, $state, $host, base);
-  cascade = StyleSheet_ApplyStyleRule($rt, $state, $host, cascade, rule, facts, active_state);
-  return StyleSheet_FinishStyleCascade($rt, $state, $host, cascade);
-  return kryon.snapshot($rt);
+    let value_0 = base;
+    let value_1 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_0);
+    base = value_1;
+    let value_2 = facts;
+    let value_3 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_2);
+    facts = value_3;
+    let value_4 = rule;
+    let value_5 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_4);
+    rule = value_5;
+    active_state = number_2de837a0_value(active_state,32,true);
+    let value_7 = base;
+    let value_8 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_7);
+    let value_6 = value_8;
+    let value_10 = StyleSheet_BeginStyleCascade($rt, $state, $host, value_6);
+    let value_11 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_10);
+    let value_9 = value_11;
+    let value_12 = value_9;
+    let value_13 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_12);
+    let cascade = value_13;
+    let value_15 = cascade;
+    let value_16 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_15);
+    let value_14 = value_16;
+    let value_18 = rule;
+    let value_19 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_18);
+    let value_17 = value_19;
+    let value_21 = facts;
+    let value_22 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_21);
+    let value_20 = value_22;
+    let value_23 = number_2de837a0_value(active_state,32,true);
+    let value_25 = StyleSheet_ApplyStyleRule($rt, $state, $host, value_14, value_17, value_20, value_23);
+    let value_26 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_25);
+    let value_24 = value_26;
+    let value_27 = value_24;
+    let value_28 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_27);
+    cascade = value_28;
+    let value_30 = cascade;
+    let value_31 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_30);
+    let value_29 = value_31;
+    let value_33 = StyleSheet_FinishStyleCascade($rt, $state, $host, value_29);
+    let value_34 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_33);
+    let value_32 = value_34;
+    return value_32;
 }
 
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {

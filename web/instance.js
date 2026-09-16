@@ -53,8 +53,18 @@ export function setHost(host) { moduleHost = host; }
 
 export function Instance_InstanceExpired($rt, $state = moduleState, $host = moduleHost, age) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return age < 0 || age > 12;
+    age = number_501dbd3c_value(age,64,true);
+    let value_0 = number_501dbd3c_value(age,64,true);
+    let value_1 = number_501dbd3c_value(0n,64,true);
+    let value_2 = number_501dbd3c_bool(value_0 < value_1);
+    let value_3 = number_501dbd3c_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_501dbd3c_value(age,64,true);
+        let value_5 = number_501dbd3c_value(12n,64,true);
+        let value_6 = number_501dbd3c_bool(value_4 > value_5);
+        value_3 = value_6;
+    }
+    return value_3;
 }
 
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {

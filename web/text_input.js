@@ -57,1630 +57,4466 @@ export function setHost(host) { moduleHost = host; }
 
 export function TextInput_TextInputFactsFor($rt, $state = moduleState, $host = moduleHost, style_kind, class_name) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return StyleSheet_StyleControlFacts($rt, undefined, $host, style_kind, 0, class_name, $enum0.ButtonToneNeutral, $enum0.ButtonEmphasisSoft, $enum0.ControlSizeMedium, $enum0.ButtonStateNormal);
-  return kryon.snapshot($rt);
+    style_kind = number_02f1747b_value(style_kind,32,true);
+    class_name = number_02f1747b_value(class_name,32,true);
+    let value_0 = number_02f1747b_value(style_kind,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_value(class_name,32,true);
+    let value_3 = number_02f1747b_value($enum0.ButtonToneNeutral,32,true);
+    let value_4 = number_02f1747b_value($enum0.ButtonEmphasisSoft,32,true);
+    let value_5 = number_02f1747b_value($enum0.ControlSizeMedium,32,true);
+    let value_6 = number_02f1747b_value($enum0.ButtonStateNormal,32,true);
+    let value_8 = StyleSheet_StyleControlFacts($rt, undefined, $host, value_0, value_1, value_2, value_3, value_4, value_5, value_6);
+    let value_9 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_8);
+    let value_7 = value_9;
+    return value_7;
 }
 
 export function TextInput_TextFocusClaimDecisionFor($rt, $state = moduleState, $host = moduleHost, has_target, has_previous_owner, same_owner) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {claim: false, displace_previous: false, cancel_previous: false, close_context: false, clear_peer_selection: false};
-  decision.claim = kryon.copyValue(has_target);
-  if (!has_target) {
-    return decision;
-  }
-  decision.displace_previous = kryon.copyValue(has_previous_owner && !same_owner);
-  decision.cancel_previous = kryon.copyValue(!same_owner);
-  decision.close_context = kryon.copyValue(!same_owner);
-  decision.clear_peer_selection = kryon.copyValue(!same_owner);
-  return decision;
-  return kryon.snapshot($rt);
+    has_target = number_02f1747b_bool(has_target);
+    has_previous_owner = number_02f1747b_bool(has_previous_owner);
+    same_owner = number_02f1747b_bool(same_owner);
+    let value_0 = {claim: false, displace_previous: false, cancel_previous: false, close_context: false, clear_peer_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({claim: record_source.claim, displace_previous: record_source.displace_previous, cancel_previous: record_source.cancel_previous, close_context: record_source.close_context, clear_peer_selection: record_source.clear_peer_selection}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(has_target);
+    decision.claim = value_3;
+    let value_4 = number_02f1747b_bool(has_target);
+    let value_5 = number_02f1747b_bool(!value_4);
+    if (value_5) {
+        let value_7 = decision;
+        let value_8 = ((record_source) => ({claim: record_source.claim, displace_previous: record_source.displace_previous, cancel_previous: record_source.cancel_previous, close_context: record_source.close_context, clear_peer_selection: record_source.clear_peer_selection}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    let value_9 = number_02f1747b_bool(has_previous_owner);
+    let value_10 = number_02f1747b_bool(value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_bool(same_owner);
+        let value_12 = number_02f1747b_bool(!value_11);
+        value_10 = value_12;
+    }
+    decision.displace_previous = value_10;
+    let value_13 = number_02f1747b_bool(same_owner);
+    let value_14 = number_02f1747b_bool(!value_13);
+    decision.cancel_previous = value_14;
+    let value_15 = number_02f1747b_bool(same_owner);
+    let value_16 = number_02f1747b_bool(!value_15);
+    decision.close_context = value_16;
+    let value_17 = number_02f1747b_bool(same_owner);
+    let value_18 = number_02f1747b_bool(!value_17);
+    decision.clear_peer_selection = value_18;
+    let value_20 = decision;
+    let value_21 = ((record_source) => ({claim: record_source.claim, displace_previous: record_source.displace_previous, cancel_previous: record_source.cancel_previous, close_context: record_source.close_context, clear_peer_selection: record_source.clear_peer_selection}))(value_20);
+    let value_19 = value_21;
+    return value_19;
 }
 
 export function TextInput_TextFocusOwnerDecisionFor($rt, $state = moduleState, $host = moduleHost, has_target, owns_focus, has_frame_owner, target_flag, has_focus_owner) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {focused: false, adopt_owner: false, mark_frame_owner: false, clear_target: false};
-  if (!has_target) {
-    return decision;
-  }
-  if (owns_focus) {
-    decision.focused = kryon.copyValue(true);
-    decision.mark_frame_owner = kryon.copyValue(true);
-    return decision;
-  }
-  if (has_frame_owner) {
-    decision.clear_target = kryon.copyValue(true);
-    return decision;
-  }
-  if (target_flag && !has_focus_owner) {
-    decision.focused = kryon.copyValue(true);
-    decision.adopt_owner = kryon.copyValue(true);
-    decision.mark_frame_owner = kryon.copyValue(true);
-    return decision;
-  }
-  decision.clear_target = kryon.copyValue(true);
-  return decision;
-  return kryon.snapshot($rt);
+    has_target = number_02f1747b_bool(has_target);
+    owns_focus = number_02f1747b_bool(owns_focus);
+    has_frame_owner = number_02f1747b_bool(has_frame_owner);
+    target_flag = number_02f1747b_bool(target_flag);
+    has_focus_owner = number_02f1747b_bool(has_focus_owner);
+    let value_0 = {focused: false, adopt_owner: false, mark_frame_owner: false, clear_target: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(has_target);
+    let value_4 = number_02f1747b_bool(!value_3);
+    if (value_4) {
+        let value_6 = decision;
+        let value_7 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_6);
+        let value_5 = value_7;
+        return value_5;
+    }
+    let value_8 = number_02f1747b_bool(owns_focus);
+    if (value_8) {
+        let value_9 = number_02f1747b_bool(true);
+        decision.focused = value_9;
+        let value_10 = number_02f1747b_bool(true);
+        decision.mark_frame_owner = value_10;
+        let value_12 = decision;
+        let value_13 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_12);
+        let value_11 = value_13;
+        return value_11;
+    }
+    let value_14 = number_02f1747b_bool(has_frame_owner);
+    if (value_14) {
+        let value_15 = number_02f1747b_bool(true);
+        decision.clear_target = value_15;
+        let value_17 = decision;
+        let value_18 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_17);
+        let value_16 = value_18;
+        return value_16;
+    }
+    let value_19 = number_02f1747b_bool(target_flag);
+    let value_20 = number_02f1747b_bool(value_19);
+    if (value_20) {
+        let value_21 = number_02f1747b_bool(has_focus_owner);
+        let value_22 = number_02f1747b_bool(!value_21);
+        value_20 = value_22;
+    }
+    if (value_20) {
+        let value_23 = number_02f1747b_bool(true);
+        decision.focused = value_23;
+        let value_24 = number_02f1747b_bool(true);
+        decision.adopt_owner = value_24;
+        let value_25 = number_02f1747b_bool(true);
+        decision.mark_frame_owner = value_25;
+        let value_27 = decision;
+        let value_28 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_27);
+        let value_26 = value_28;
+        return value_26;
+    }
+    let value_29 = number_02f1747b_bool(true);
+    decision.clear_target = value_29;
+    let value_31 = decision;
+    let value_32 = ((record_source) => ({focused: record_source.focused, adopt_owner: record_source.adopt_owner, mark_frame_owner: record_source.mark_frame_owner, clear_target: record_source.clear_target}))(value_31);
+    let value_30 = value_32;
+    return value_30;
 }
 
 export function TextInput_TextFocusOwnerIsStale($rt, $state = moduleState, $host = moduleHost, has_owner, owner_frame, current_frame) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return has_owner && owner_frame != current_frame - 1 && owner_frame != current_frame;
+    has_owner = number_02f1747b_bool(has_owner);
+    owner_frame = number_02f1747b_value(owner_frame,64,true);
+    current_frame = number_02f1747b_value(current_frame,64,true);
+    let value_0 = number_02f1747b_bool(has_owner);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_value(owner_frame,64,true);
+        let value_3 = number_02f1747b_value(current_frame,64,true);
+        let value_4 = number_02f1747b_value(1n,64,true);
+        let value_5 = number_02f1747b_value(number_02f1747b_bits(value_3,value_4,64,true,2),64,true);
+        let value_6 = number_02f1747b_bool(value_2 != value_5);
+        value_1 = value_6;
+    }
+    let value_7 = number_02f1747b_bool(value_1);
+    if (value_7) {
+        let value_8 = number_02f1747b_value(owner_frame,64,true);
+        let value_9 = number_02f1747b_value(current_frame,64,true);
+        let value_10 = number_02f1747b_bool(value_8 != value_9);
+        value_7 = value_10;
+    }
+    return value_7;
 }
 
 export function TextInput_TextPlatformInputActiveFor($rt, $state = moduleState, $host = moduleHost, requested, has_owner, owner_rendered_this_frame) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return requested || (has_owner && owner_rendered_this_frame);
+    requested = number_02f1747b_bool(requested);
+    has_owner = number_02f1747b_bool(has_owner);
+    owner_rendered_this_frame = number_02f1747b_bool(owner_rendered_this_frame);
+    let value_0 = number_02f1747b_bool(requested);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (!value_1) {
+        let value_2 = number_02f1747b_bool(has_owner);
+        let value_3 = number_02f1747b_bool(value_2);
+        if (value_3) {
+            let value_4 = number_02f1747b_bool(owner_rendered_this_frame);
+            value_3 = value_4;
+        }
+        value_1 = value_3;
+    }
+    return value_1;
 }
 
 export function TextInput_TextPlatformInputSyncDecisionFor($rt, $state = moduleState, $host = moduleHost, show_requested, has_callback, platform_active, text_input_active) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {active: false, call_callback: false, callback_active: false, clear_show_request: false};
-  decision.clear_show_request = kryon.copyValue(true);
-  if (show_requested && has_callback) {
-    decision.active = kryon.copyValue(true);
-    decision.call_callback = kryon.copyValue(true);
-    decision.callback_active = kryon.copyValue(true);
-    return decision;
-  }
-  decision.active = kryon.copyValue(text_input_active);
-  if (platform_active != text_input_active) {
-    decision.call_callback = kryon.copyValue(has_callback);
-    decision.callback_active = kryon.copyValue(text_input_active);
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    show_requested = number_02f1747b_bool(show_requested);
+    has_callback = number_02f1747b_bool(has_callback);
+    platform_active = number_02f1747b_bool(platform_active);
+    text_input_active = number_02f1747b_bool(text_input_active);
+    let value_0 = {active: false, call_callback: false, callback_active: false, clear_show_request: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({active: record_source.active, call_callback: record_source.call_callback, callback_active: record_source.callback_active, clear_show_request: record_source.clear_show_request}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(true);
+    decision.clear_show_request = value_3;
+    let value_4 = number_02f1747b_bool(show_requested);
+    let value_5 = number_02f1747b_bool(value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_bool(has_callback);
+        value_5 = value_6;
+    }
+    if (value_5) {
+        let value_7 = number_02f1747b_bool(true);
+        decision.active = value_7;
+        let value_8 = number_02f1747b_bool(true);
+        decision.call_callback = value_8;
+        let value_9 = number_02f1747b_bool(true);
+        decision.callback_active = value_9;
+        let value_11 = decision;
+        let value_12 = ((record_source) => ({active: record_source.active, call_callback: record_source.call_callback, callback_active: record_source.callback_active, clear_show_request: record_source.clear_show_request}))(value_11);
+        let value_10 = value_12;
+        return value_10;
+    }
+    let value_13 = number_02f1747b_bool(text_input_active);
+    decision.active = value_13;
+    let value_14 = number_02f1747b_bool(platform_active);
+    let value_15 = number_02f1747b_bool(text_input_active);
+    let value_16 = number_02f1747b_bool(value_14 != value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_bool(has_callback);
+        decision.call_callback = value_17;
+        let value_18 = number_02f1747b_bool(text_input_active);
+        decision.callback_active = value_18;
+    }
+    let value_20 = decision;
+    let value_21 = ((record_source) => ({active: record_source.active, call_callback: record_source.call_callback, callback_active: record_source.callback_active, clear_show_request: record_source.clear_show_request}))(value_20);
+    let value_19 = value_21;
+    return value_19;
 }
 
 export function TextInput_TextFocusReleaseDecisionFor($rt, $state = moduleState, $host = moduleHost, has_target, owns_focus, owns_frame_focus, active_focus_matches, owns_field_drag, owns_area_drag) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {release: false, cancel_self: false, clear_owner: false, clear_frame_owner: false, clear_active_focus: false, close_context: false, clear_field_drag: false, clear_area_drag: false};
-  decision.release = kryon.copyValue(has_target);
-  if (!has_target) {
-    return decision;
-  }
-  decision.cancel_self = kryon.copyValue(owns_focus);
-  decision.clear_owner = kryon.copyValue(owns_focus);
-  decision.clear_frame_owner = kryon.copyValue(owns_frame_focus);
-  decision.clear_active_focus = kryon.copyValue(active_focus_matches);
-  decision.close_context = kryon.copyValue(true);
-  decision.clear_field_drag = kryon.copyValue(owns_field_drag);
-  decision.clear_area_drag = kryon.copyValue(owns_area_drag);
-  return decision;
-  return kryon.snapshot($rt);
+    has_target = number_02f1747b_bool(has_target);
+    owns_focus = number_02f1747b_bool(owns_focus);
+    owns_frame_focus = number_02f1747b_bool(owns_frame_focus);
+    active_focus_matches = number_02f1747b_bool(active_focus_matches);
+    owns_field_drag = number_02f1747b_bool(owns_field_drag);
+    owns_area_drag = number_02f1747b_bool(owns_area_drag);
+    let value_0 = {release: false, cancel_self: false, clear_owner: false, clear_frame_owner: false, clear_active_focus: false, close_context: false, clear_field_drag: false, clear_area_drag: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({release: record_source.release, cancel_self: record_source.cancel_self, clear_owner: record_source.clear_owner, clear_frame_owner: record_source.clear_frame_owner, clear_active_focus: record_source.clear_active_focus, close_context: record_source.close_context, clear_field_drag: record_source.clear_field_drag, clear_area_drag: record_source.clear_area_drag}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(has_target);
+    decision.release = value_3;
+    let value_4 = number_02f1747b_bool(has_target);
+    let value_5 = number_02f1747b_bool(!value_4);
+    if (value_5) {
+        let value_7 = decision;
+        let value_8 = ((record_source) => ({release: record_source.release, cancel_self: record_source.cancel_self, clear_owner: record_source.clear_owner, clear_frame_owner: record_source.clear_frame_owner, clear_active_focus: record_source.clear_active_focus, close_context: record_source.close_context, clear_field_drag: record_source.clear_field_drag, clear_area_drag: record_source.clear_area_drag}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    let value_9 = number_02f1747b_bool(owns_focus);
+    decision.cancel_self = value_9;
+    let value_10 = number_02f1747b_bool(owns_focus);
+    decision.clear_owner = value_10;
+    let value_11 = number_02f1747b_bool(owns_frame_focus);
+    decision.clear_frame_owner = value_11;
+    let value_12 = number_02f1747b_bool(active_focus_matches);
+    decision.clear_active_focus = value_12;
+    let value_13 = number_02f1747b_bool(true);
+    decision.close_context = value_13;
+    let value_14 = number_02f1747b_bool(owns_field_drag);
+    decision.clear_field_drag = value_14;
+    let value_15 = number_02f1747b_bool(owns_area_drag);
+    decision.clear_area_drag = value_15;
+    let value_17 = decision;
+    let value_18 = ((record_source) => ({release: record_source.release, cancel_self: record_source.cancel_self, clear_owner: record_source.clear_owner, clear_frame_owner: record_source.clear_frame_owner, clear_active_focus: record_source.clear_active_focus, close_context: record_source.close_context, clear_field_drag: record_source.clear_field_drag, clear_area_drag: record_source.clear_area_drag}))(value_17);
+    let value_16 = value_18;
+    return value_16;
 }
 
 export function TextInput_TextCompositionInputDecisionFor($rt, $state = moduleState, $host = moduleHost, focused, read_only) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {accept_events: false, cancel: false, drain_events: false};
-  decision.accept_events = kryon.copyValue(focused && !read_only);
-  decision.cancel = kryon.copyValue(!decision.accept_events);
-  decision.drain_events = kryon.copyValue(focused && read_only);
-  return decision;
-  return kryon.snapshot($rt);
+    focused = number_02f1747b_bool(focused);
+    read_only = number_02f1747b_bool(read_only);
+    let value_0 = {accept_events: false, cancel: false, drain_events: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({accept_events: record_source.accept_events, cancel: record_source.cancel, drain_events: record_source.drain_events}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(focused);
+    let value_4 = number_02f1747b_bool(value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(read_only);
+        let value_6 = number_02f1747b_bool(!value_5);
+        value_4 = value_6;
+    }
+    decision.accept_events = value_4;
+    let value_7 = number_02f1747b_bool(decision.accept_events);
+    let value_8 = number_02f1747b_bool(!value_7);
+    decision.cancel = value_8;
+    let value_9 = number_02f1747b_bool(focused);
+    let value_10 = number_02f1747b_bool(value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_bool(read_only);
+        value_10 = value_11;
+    }
+    decision.drain_events = value_10;
+    let value_13 = decision;
+    let value_14 = ((record_source) => ({accept_events: record_source.accept_events, cancel: record_source.cancel, drain_events: record_source.drain_events}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function TextInput_TextCompositionCancelDecisionFor($rt, $state = moduleState, $host = moduleHost, has_owner, scoped, same_owner) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {visible: false, cancel: false};
-  decision.cancel = kryon.copyValue(has_owner && (!scoped || same_owner));
-  return decision;
-  return kryon.snapshot($rt);
+    has_owner = number_02f1747b_bool(has_owner);
+    scoped = number_02f1747b_bool(scoped);
+    same_owner = number_02f1747b_bool(same_owner);
+    let value_0 = {visible: false, cancel: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, cancel: record_source.cancel}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(has_owner);
+    let value_4 = number_02f1747b_bool(value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(scoped);
+        let value_6 = number_02f1747b_bool(!value_5);
+        let value_7 = number_02f1747b_bool(value_6);
+        if (!value_7) {
+            let value_8 = number_02f1747b_bool(same_owner);
+            value_7 = value_8;
+        }
+        value_4 = value_7;
+    }
+    decision.cancel = value_4;
+    let value_10 = decision;
+    let value_11 = ((record_source) => ({visible: record_source.visible, cancel: record_source.cancel}))(value_10);
+    let value_9 = value_11;
+    return value_9;
 }
 
 export function TextInput_TextCompositionGetDecisionFor($rt, $state = moduleState, $host = moduleHost, has_owner, same_owner, has_text) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {visible: false, cancel: false};
-  decision.visible = kryon.copyValue(has_owner && same_owner && has_text);
-  return decision;
-  return kryon.snapshot($rt);
+    has_owner = number_02f1747b_bool(has_owner);
+    same_owner = number_02f1747b_bool(same_owner);
+    has_text = number_02f1747b_bool(has_text);
+    let value_0 = {visible: false, cancel: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, cancel: record_source.cancel}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(has_owner);
+    let value_4 = number_02f1747b_bool(value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(same_owner);
+        value_4 = value_5;
+    }
+    let value_6 = number_02f1747b_bool(value_4);
+    if (value_6) {
+        let value_7 = number_02f1747b_bool(has_text);
+        value_6 = value_7;
+    }
+    decision.visible = value_6;
+    let value_9 = decision;
+    let value_10 = ((record_source) => ({visible: record_source.visible, cancel: record_source.cancel}))(value_9);
+    let value_8 = value_10;
+    return value_8;
 }
 
 export function TextInput_TextCompositionPhaseDecisionFor($rt, $state = moduleState, $host = moduleHost, phase) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {store_preedit: false, commit: false, cancel: false};
-  decision.store_preedit = kryon.copyValue(phase == 1 || phase == 2);
-  decision.commit = kryon.copyValue(phase == 3);
-  decision.cancel = kryon.copyValue(phase == 4);
-  return decision;
-  return kryon.snapshot($rt);
+    phase = number_02f1747b_value(phase,32,true);
+    let value_0 = {store_preedit: false, commit: false, cancel: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({store_preedit: record_source.store_preedit, commit: record_source.commit, cancel: record_source.cancel}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(phase,32,true);
+    let value_4 = number_02f1747b_value(1,32,true);
+    let value_5 = number_02f1747b_bool(value_3 == value_4);
+    let value_6 = number_02f1747b_bool(value_5);
+    if (!value_6) {
+        let value_7 = number_02f1747b_value(phase,32,true);
+        let value_8 = number_02f1747b_value(2,32,true);
+        let value_9 = number_02f1747b_bool(value_7 == value_8);
+        value_6 = value_9;
+    }
+    decision.store_preedit = value_6;
+    let value_10 = number_02f1747b_value(phase,32,true);
+    let value_11 = number_02f1747b_value(3,32,true);
+    let value_12 = number_02f1747b_bool(value_10 == value_11);
+    decision.commit = value_12;
+    let value_13 = number_02f1747b_value(phase,32,true);
+    let value_14 = number_02f1747b_value(4,32,true);
+    let value_15 = number_02f1747b_bool(value_13 == value_14);
+    decision.cancel = value_15;
+    let value_17 = decision;
+    let value_18 = ((record_source) => ({store_preedit: record_source.store_preedit, commit: record_source.commit, cancel: record_source.cancel}))(value_17);
+    let value_16 = value_18;
+    return value_16;
 }
 
 export function TextInput_TextCompositionApplyDecisionFor($rt, $state = moduleState, $host = moduleHost, phase, text_changed) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let event = TextInput_TextCompositionPhaseDecisionFor($rt, $state, $host, phase);
-  let decision = {text_changed: false, presentation_changed: false, selection_changed: false};
-  if (event.store_preedit || event.cancel) {
-    decision.presentation_changed = kryon.copyValue(true);
-    return decision;
-  }
-  if (event.commit) {
-    decision.text_changed = kryon.copyValue(text_changed);
-    decision.presentation_changed = kryon.copyValue(true);
-    decision.selection_changed = kryon.copyValue(true);
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    phase = number_02f1747b_value(phase,32,true);
+    text_changed = number_02f1747b_bool(text_changed);
+    let value_0 = number_02f1747b_value(phase,32,true);
+    let value_2 = TextInput_TextCompositionPhaseDecisionFor($rt, $state, $host, value_0);
+    let value_3 = ((record_source) => ({store_preedit: record_source.store_preedit, commit: record_source.commit, cancel: record_source.cancel}))(value_2);
+    let value_1 = value_3;
+    let value_4 = value_1;
+    let value_5 = ((record_source) => ({store_preedit: record_source.store_preedit, commit: record_source.commit, cancel: record_source.cancel}))(value_4);
+    let event = value_5;
+    let value_6 = {text_changed: false, presentation_changed: false, selection_changed: false};
+    let value_7 = value_6;
+    let value_8 = ((record_source) => ({text_changed: record_source.text_changed, presentation_changed: record_source.presentation_changed, selection_changed: record_source.selection_changed}))(value_7);
+    let decision = value_8;
+    let value_9 = number_02f1747b_bool(event.store_preedit);
+    let value_10 = number_02f1747b_bool(value_9);
+    if (!value_10) {
+        let value_11 = number_02f1747b_bool(event.cancel);
+        value_10 = value_11;
+    }
+    if (value_10) {
+        let value_12 = number_02f1747b_bool(true);
+        decision.presentation_changed = value_12;
+        let value_14 = decision;
+        let value_15 = ((record_source) => ({text_changed: record_source.text_changed, presentation_changed: record_source.presentation_changed, selection_changed: record_source.selection_changed}))(value_14);
+        let value_13 = value_15;
+        return value_13;
+    }
+    let value_16 = number_02f1747b_bool(event.commit);
+    if (value_16) {
+        let value_17 = number_02f1747b_bool(text_changed);
+        decision.text_changed = value_17;
+        let value_18 = number_02f1747b_bool(true);
+        decision.presentation_changed = value_18;
+        let value_19 = number_02f1747b_bool(true);
+        decision.selection_changed = value_19;
+    }
+    let value_21 = decision;
+    let value_22 = ((record_source) => ({text_changed: record_source.text_changed, presentation_changed: record_source.presentation_changed, selection_changed: record_source.selection_changed}))(value_21);
+    let value_20 = value_22;
+    return value_20;
 }
 
 export function TextInput_TextCompositionSelectionLength($rt, $state = moduleState, $host = moduleHost, preedit_len, cursor, selection_length) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (preedit_len < 0) {
-    preedit_len = kryon.copyValue(0);
-  }
-  if (cursor < 0) {
-    cursor = kryon.copyValue(0);
-  }
-  if (cursor > preedit_len) {
-    cursor = kryon.copyValue(preedit_len);
-  }
-  if (selection_length < 0) {
-    selection_length = kryon.copyValue(0);
-  }
-  let max_length = kryon.copyValue(preedit_len - cursor);
-  if (selection_length > max_length) {
-    return max_length;
-  }
-  return selection_length;
+    preedit_len = number_02f1747b_value(preedit_len,32,true);
+    cursor = number_02f1747b_value(cursor,32,true);
+    selection_length = number_02f1747b_value(selection_length,32,true);
+    let value_0 = number_02f1747b_value(preedit_len,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(0,32,true);
+        preedit_len = value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 < value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(0,32,true);
+        cursor = value_7;
+    }
+    let value_8 = number_02f1747b_value(cursor,32,true);
+    let value_9 = number_02f1747b_value(preedit_len,32,true);
+    let value_10 = number_02f1747b_bool(value_8 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(preedit_len,32,true);
+        cursor = value_11;
+    }
+    let value_12 = number_02f1747b_value(selection_length,32,true);
+    let value_13 = number_02f1747b_value(0,32,true);
+    let value_14 = number_02f1747b_bool(value_12 < value_13);
+    if (value_14) {
+        let value_15 = number_02f1747b_value(0,32,true);
+        selection_length = value_15;
+    }
+    let value_16 = number_02f1747b_value(preedit_len,32,true);
+    let value_17 = number_02f1747b_value(cursor,32,true);
+    let value_18 = number_02f1747b_value(number_02f1747b_bits(value_16,value_17,32,true,2),32,true);
+    let max_length = number_02f1747b_value(value_18,32,true);
+    let value_19 = number_02f1747b_value(selection_length,32,true);
+    let value_20 = number_02f1747b_value(max_length,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(max_length,32,true);
+        return value_22;
+    }
+    let value_23 = number_02f1747b_value(selection_length,32,true);
+    return value_23;
 }
 
 export function TextInput_TextCompositionViewRangeFor($rt, $state = moduleState, $host = moduleHost, selection_start, selection_end, preedit_len, preedit_cursor, preedit_selection_end) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let view_range = {replace_start: 0, replace_end: 0, cursor: 0, selection_start: 0, selection_end: 0, composition_start: 0, composition_end: 0};
-  if (selection_start < 0) {
-    selection_start = kryon.copyValue(0);
-  }
-  if (selection_end < 0) {
-    selection_end = kryon.copyValue(0);
-  }
-  if (selection_start <= selection_end) {
-    view_range.replace_start = kryon.copyValue(selection_start);
-    view_range.replace_end = kryon.copyValue(selection_end);
-  } else {
-    view_range.replace_start = kryon.copyValue(selection_end);
-    view_range.replace_end = kryon.copyValue(selection_start);
-  }
-  if (preedit_len < 0) {
-    preedit_len = kryon.copyValue(0);
-  }
-  if (preedit_cursor < 0) {
-    preedit_cursor = kryon.copyValue(0);
-  }
-  if (preedit_cursor > preedit_len) {
-    preedit_cursor = kryon.copyValue(preedit_len);
-  }
-  if (preedit_selection_end < preedit_cursor) {
-    preedit_selection_end = kryon.copyValue(preedit_cursor);
-  }
-  if (preedit_selection_end > preedit_len) {
-    preedit_selection_end = kryon.copyValue(preedit_len);
-  }
-  view_range.cursor = kryon.copyValue(view_range.replace_start + preedit_cursor);
-  view_range.selection_start = kryon.copyValue(view_range.cursor);
-  view_range.selection_end = kryon.copyValue(view_range.replace_start + preedit_selection_end);
-  view_range.composition_start = kryon.copyValue(view_range.replace_start);
-  view_range.composition_end = kryon.copyValue(view_range.replace_start + preedit_len);
-  return view_range;
-  return kryon.snapshot($rt);
+    selection_start = number_02f1747b_value(selection_start,32,true);
+    selection_end = number_02f1747b_value(selection_end,32,true);
+    preedit_len = number_02f1747b_value(preedit_len,32,true);
+    preedit_cursor = number_02f1747b_value(preedit_cursor,32,true);
+    preedit_selection_end = number_02f1747b_value(preedit_selection_end,32,true);
+    let value_0 = {replace_start: 0, replace_end: 0, cursor: 0, selection_start: 0, selection_end: 0, composition_start: 0, composition_end: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({replace_start: record_source.replace_start, replace_end: record_source.replace_end, cursor: record_source.cursor, selection_start: record_source.selection_start, selection_end: record_source.selection_end, composition_start: record_source.composition_start, composition_end: record_source.composition_end}))(value_1);
+    let view_range = value_2;
+    let value_3 = number_02f1747b_value(selection_start,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        selection_start = value_6;
+    }
+    let value_7 = number_02f1747b_value(selection_end,32,true);
+    let value_8 = number_02f1747b_value(0,32,true);
+    let value_9 = number_02f1747b_bool(value_7 < value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_value(0,32,true);
+        selection_end = value_10;
+    }
+    let value_11 = number_02f1747b_value(selection_start,32,true);
+    let value_12 = number_02f1747b_value(selection_end,32,true);
+    let value_13 = number_02f1747b_bool(value_11 <= value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_value(selection_start,32,true);
+        view_range.replace_start = value_14;
+        let value_15 = number_02f1747b_value(selection_end,32,true);
+        view_range.replace_end = value_15;
+    } else {
+        let value_16 = number_02f1747b_value(selection_end,32,true);
+        view_range.replace_start = value_16;
+        let value_17 = number_02f1747b_value(selection_start,32,true);
+        view_range.replace_end = value_17;
+    }
+    let value_18 = number_02f1747b_value(preedit_len,32,true);
+    let value_19 = number_02f1747b_value(0,32,true);
+    let value_20 = number_02f1747b_bool(value_18 < value_19);
+    if (value_20) {
+        let value_21 = number_02f1747b_value(0,32,true);
+        preedit_len = value_21;
+    }
+    let value_22 = number_02f1747b_value(preedit_cursor,32,true);
+    let value_23 = number_02f1747b_value(0,32,true);
+    let value_24 = number_02f1747b_bool(value_22 < value_23);
+    if (value_24) {
+        let value_25 = number_02f1747b_value(0,32,true);
+        preedit_cursor = value_25;
+    }
+    let value_26 = number_02f1747b_value(preedit_cursor,32,true);
+    let value_27 = number_02f1747b_value(preedit_len,32,true);
+    let value_28 = number_02f1747b_bool(value_26 > value_27);
+    if (value_28) {
+        let value_29 = number_02f1747b_value(preedit_len,32,true);
+        preedit_cursor = value_29;
+    }
+    let value_30 = number_02f1747b_value(preedit_selection_end,32,true);
+    let value_31 = number_02f1747b_value(preedit_cursor,32,true);
+    let value_32 = number_02f1747b_bool(value_30 < value_31);
+    if (value_32) {
+        let value_33 = number_02f1747b_value(preedit_cursor,32,true);
+        preedit_selection_end = value_33;
+    }
+    let value_34 = number_02f1747b_value(preedit_selection_end,32,true);
+    let value_35 = number_02f1747b_value(preedit_len,32,true);
+    let value_36 = number_02f1747b_bool(value_34 > value_35);
+    if (value_36) {
+        let value_37 = number_02f1747b_value(preedit_len,32,true);
+        preedit_selection_end = value_37;
+    }
+    let value_38 = number_02f1747b_value(view_range.replace_start,32,true);
+    let value_39 = number_02f1747b_value(preedit_cursor,32,true);
+    let value_40 = number_02f1747b_value(number_02f1747b_bits(value_38,value_39,32,true,1),32,true);
+    view_range.cursor = value_40;
+    let value_41 = number_02f1747b_value(view_range.cursor,32,true);
+    view_range.selection_start = value_41;
+    let value_42 = number_02f1747b_value(view_range.replace_start,32,true);
+    let value_43 = number_02f1747b_value(preedit_selection_end,32,true);
+    let value_44 = number_02f1747b_value(number_02f1747b_bits(value_42,value_43,32,true,1),32,true);
+    view_range.selection_end = value_44;
+    let value_45 = number_02f1747b_value(view_range.replace_start,32,true);
+    view_range.composition_start = value_45;
+    let value_46 = number_02f1747b_value(view_range.replace_start,32,true);
+    let value_47 = number_02f1747b_value(preedit_len,32,true);
+    let value_48 = number_02f1747b_value(number_02f1747b_bits(value_46,value_47,32,true,1),32,true);
+    view_range.composition_end = value_48;
+    let value_50 = view_range;
+    let value_51 = ((record_source) => ({replace_start: record_source.replace_start, replace_end: record_source.replace_end, cursor: record_source.cursor, selection_start: record_source.selection_start, selection_end: record_source.selection_end, composition_start: record_source.composition_start, composition_end: record_source.composition_end}))(value_50);
+    let value_49 = value_51;
+    return value_49;
 }
 
 export function TextInput_TextCompositionPaintSpanForText($rt, $state = moduleState, $host = moduleHost, composition_start, composition_end, text_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let span = {visible: false, start: 0, end: 0};
-  if (text_len < 0) {
-    text_len = kryon.copyValue(0);
-  }
-  if (composition_start < 0) {
-    composition_start = kryon.copyValue(0);
-  }
-  if (composition_end < 0) {
-    composition_end = kryon.copyValue(0);
-  }
-  if (composition_start > text_len) {
-    composition_start = kryon.copyValue(text_len);
-  }
-  if (composition_end > text_len) {
-    composition_end = kryon.copyValue(text_len);
-  }
-  if (composition_end <= composition_start) {
-    return span;
-  }
-  span.visible = kryon.copyValue(true);
-  span.start = kryon.copyValue(composition_start);
-  span.end = kryon.copyValue(composition_end);
-  return span;
-  return kryon.snapshot($rt);
+    composition_start = number_02f1747b_value(composition_start,32,true);
+    composition_end = number_02f1747b_value(composition_end,32,true);
+    text_len = number_02f1747b_value(text_len,32,true);
+    let value_0 = {visible: false, start: 0, end: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_1);
+    let span = value_2;
+    let value_3 = number_02f1747b_value(text_len,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        text_len = value_6;
+    }
+    let value_7 = number_02f1747b_value(composition_start,32,true);
+    let value_8 = number_02f1747b_value(0,32,true);
+    let value_9 = number_02f1747b_bool(value_7 < value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_value(0,32,true);
+        composition_start = value_10;
+    }
+    let value_11 = number_02f1747b_value(composition_end,32,true);
+    let value_12 = number_02f1747b_value(0,32,true);
+    let value_13 = number_02f1747b_bool(value_11 < value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_value(0,32,true);
+        composition_end = value_14;
+    }
+    let value_15 = number_02f1747b_value(composition_start,32,true);
+    let value_16 = number_02f1747b_value(text_len,32,true);
+    let value_17 = number_02f1747b_bool(value_15 > value_16);
+    if (value_17) {
+        let value_18 = number_02f1747b_value(text_len,32,true);
+        composition_start = value_18;
+    }
+    let value_19 = number_02f1747b_value(composition_end,32,true);
+    let value_20 = number_02f1747b_value(text_len,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(text_len,32,true);
+        composition_end = value_22;
+    }
+    let value_23 = number_02f1747b_value(composition_end,32,true);
+    let value_24 = number_02f1747b_value(composition_start,32,true);
+    let value_25 = number_02f1747b_bool(value_23 <= value_24);
+    if (value_25) {
+        let value_27 = span;
+        let value_28 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_27);
+        let value_26 = value_28;
+        return value_26;
+    }
+    let value_29 = number_02f1747b_bool(true);
+    span.visible = value_29;
+    let value_30 = number_02f1747b_value(composition_start,32,true);
+    span.start = value_30;
+    let value_31 = number_02f1747b_value(composition_end,32,true);
+    span.end = value_31;
+    let value_33 = span;
+    let value_34 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_33);
+    let value_32 = value_34;
+    return value_32;
 }
 
 export function TextInput_TextCompositionPaintSpanForLine($rt, $state = moduleState, $host = moduleHost, composition_start, composition_end, line_start, line_end) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let span = {visible: false, start: 0, end: 0};
-  if (composition_end <= composition_start) {
-    return span;
-  }
-  if (line_end < line_start) {
-    line_end = kryon.copyValue(line_start);
-  }
-  span.start = kryon.copyValue(composition_start);
-  if (span.start < line_start) {
-    span.start = kryon.copyValue(line_start);
-  }
-  span.end = kryon.copyValue(composition_end);
-  if (span.end > line_end) {
-    span.end = kryon.copyValue(line_end);
-  }
-  if (span.end <= span.start) {
-    return span;
-  }
-  span.visible = kryon.copyValue(true);
-  return span;
-  return kryon.snapshot($rt);
+    composition_start = number_02f1747b_value(composition_start,32,true);
+    composition_end = number_02f1747b_value(composition_end,32,true);
+    line_start = number_02f1747b_value(line_start,32,true);
+    line_end = number_02f1747b_value(line_end,32,true);
+    let value_0 = {visible: false, start: 0, end: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_1);
+    let span = value_2;
+    let value_3 = number_02f1747b_value(composition_end,32,true);
+    let value_4 = number_02f1747b_value(composition_start,32,true);
+    let value_5 = number_02f1747b_bool(value_3 <= value_4);
+    if (value_5) {
+        let value_7 = span;
+        let value_8 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    let value_9 = number_02f1747b_value(line_end,32,true);
+    let value_10 = number_02f1747b_value(line_start,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(line_start,32,true);
+        line_end = value_12;
+    }
+    let value_13 = number_02f1747b_value(composition_start,32,true);
+    span.start = value_13;
+    let value_14 = number_02f1747b_value(span.start,32,true);
+    let value_15 = number_02f1747b_value(line_start,32,true);
+    let value_16 = number_02f1747b_bool(value_14 < value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(line_start,32,true);
+        span.start = value_17;
+    }
+    let value_18 = number_02f1747b_value(composition_end,32,true);
+    span.end = value_18;
+    let value_19 = number_02f1747b_value(span.end,32,true);
+    let value_20 = number_02f1747b_value(line_end,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(line_end,32,true);
+        span.end = value_22;
+    }
+    let value_23 = number_02f1747b_value(span.end,32,true);
+    let value_24 = number_02f1747b_value(span.start,32,true);
+    let value_25 = number_02f1747b_bool(value_23 <= value_24);
+    if (value_25) {
+        let value_27 = span;
+        let value_28 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_27);
+        let value_26 = value_28;
+        return value_26;
+    }
+    let value_29 = number_02f1747b_bool(true);
+    span.visible = value_29;
+    let value_31 = span;
+    let value_32 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end}))(value_31);
+    let value_30 = value_32;
+    return value_30;
 }
 
 export function TextInput_TextCompositionUnderlineEndX($rt, $state = moduleState, $host = moduleHost, start_x, end_x, stroke_width) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (stroke_width < 1) {
-    stroke_width = kryon.copyValue(1);
-  }
-  if (end_x <= start_x) {
-    return start_x + stroke_width;
-  }
-  return end_x;
+    start_x = number_02f1747b_value(start_x,32,true);
+    end_x = number_02f1747b_value(end_x,32,true);
+    stroke_width = number_02f1747b_value(stroke_width,32,true);
+    let value_0 = number_02f1747b_value(stroke_width,32,true);
+    let value_1 = number_02f1747b_value(1,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(1,32,true);
+        stroke_width = value_3;
+    }
+    let value_4 = number_02f1747b_value(end_x,32,true);
+    let value_5 = number_02f1747b_value(start_x,32,true);
+    let value_6 = number_02f1747b_bool(value_4 <= value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(start_x,32,true);
+        let value_8 = number_02f1747b_value(stroke_width,32,true);
+        let value_9 = number_02f1747b_value(number_02f1747b_bits(value_7,value_8,32,true,1),32,true);
+        return value_9;
+    }
+    let value_10 = number_02f1747b_value(end_x,32,true);
+    return value_10;
 }
 
 export function TextInput_TextCompositionUnderlineY($rt, $state = moduleState, $host = moduleHost, text_y, line_height, stroke_width) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (stroke_width < 1) {
-    stroke_width = kryon.copyValue(1);
-  }
-  return text_y + line_height - stroke_width;
+    text_y = number_02f1747b_value(text_y,32,true);
+    line_height = number_02f1747b_value(line_height,32,true);
+    stroke_width = number_02f1747b_value(stroke_width,32,true);
+    let value_0 = number_02f1747b_value(stroke_width,32,true);
+    let value_1 = number_02f1747b_value(1,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(1,32,true);
+        stroke_width = value_3;
+    }
+    let value_4 = number_02f1747b_value(text_y,32,true);
+    let value_5 = number_02f1747b_value(line_height,32,true);
+    let value_6 = number_02f1747b_value(number_02f1747b_bits(value_4,value_5,32,true,1),32,true);
+    let value_7 = number_02f1747b_value(stroke_width,32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_6,value_7,32,true,2),32,true);
+    return value_8;
 }
 
 export function TextInput_TextSelectionPaintSpanForLine($rt, $state = moduleState, $host = moduleHost, selection_start, selection_end, line_start, line_end) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let span = {visible: false, start: 0, end: 0, continues_past_line: false};
-  if (selection_end <= selection_start) {
-    return span;
-  }
-  if (line_end < line_start) {
-    line_end = kryon.copyValue(line_start);
-  }
-  span.start = kryon.copyValue(selection_start);
-  if (span.start < line_start) {
-    span.start = kryon.copyValue(line_start);
-  }
-  span.end = kryon.copyValue(selection_end);
-  if (span.end > line_end) {
-    span.end = kryon.copyValue(line_end);
-  }
-  span.continues_past_line = kryon.copyValue(selection_start <= line_start && selection_end > line_end);
-  if (span.end < span.start) {
-    return span;
-  }
-  if (span.end == span.start && !span.continues_past_line) {
-    return span;
-  }
-  span.visible = kryon.copyValue(true);
-  return span;
-  return kryon.snapshot($rt);
+    selection_start = number_02f1747b_value(selection_start,32,true);
+    selection_end = number_02f1747b_value(selection_end,32,true);
+    line_start = number_02f1747b_value(line_start,32,true);
+    line_end = number_02f1747b_value(line_end,32,true);
+    let value_0 = {visible: false, start: 0, end: 0, continues_past_line: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_1);
+    let span = value_2;
+    let value_3 = number_02f1747b_value(selection_end,32,true);
+    let value_4 = number_02f1747b_value(selection_start,32,true);
+    let value_5 = number_02f1747b_bool(value_3 <= value_4);
+    if (value_5) {
+        let value_7 = span;
+        let value_8 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    let value_9 = number_02f1747b_value(line_end,32,true);
+    let value_10 = number_02f1747b_value(line_start,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(line_start,32,true);
+        line_end = value_12;
+    }
+    let value_13 = number_02f1747b_value(selection_start,32,true);
+    span.start = value_13;
+    let value_14 = number_02f1747b_value(span.start,32,true);
+    let value_15 = number_02f1747b_value(line_start,32,true);
+    let value_16 = number_02f1747b_bool(value_14 < value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(line_start,32,true);
+        span.start = value_17;
+    }
+    let value_18 = number_02f1747b_value(selection_end,32,true);
+    span.end = value_18;
+    let value_19 = number_02f1747b_value(span.end,32,true);
+    let value_20 = number_02f1747b_value(line_end,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(line_end,32,true);
+        span.end = value_22;
+    }
+    let value_23 = number_02f1747b_value(selection_start,32,true);
+    let value_24 = number_02f1747b_value(line_start,32,true);
+    let value_25 = number_02f1747b_bool(value_23 <= value_24);
+    let value_26 = number_02f1747b_bool(value_25);
+    if (value_26) {
+        let value_27 = number_02f1747b_value(selection_end,32,true);
+        let value_28 = number_02f1747b_value(line_end,32,true);
+        let value_29 = number_02f1747b_bool(value_27 > value_28);
+        value_26 = value_29;
+    }
+    span.continues_past_line = value_26;
+    let value_30 = number_02f1747b_value(span.end,32,true);
+    let value_31 = number_02f1747b_value(span.start,32,true);
+    let value_32 = number_02f1747b_bool(value_30 < value_31);
+    if (value_32) {
+        let value_34 = span;
+        let value_35 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_34);
+        let value_33 = value_35;
+        return value_33;
+    }
+    let value_36 = number_02f1747b_value(span.end,32,true);
+    let value_37 = number_02f1747b_value(span.start,32,true);
+    let value_38 = number_02f1747b_bool(value_36 == value_37);
+    let value_39 = number_02f1747b_bool(value_38);
+    if (value_39) {
+        let value_40 = number_02f1747b_bool(span.continues_past_line);
+        let value_41 = number_02f1747b_bool(!value_40);
+        value_39 = value_41;
+    }
+    if (value_39) {
+        let value_43 = span;
+        let value_44 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_43);
+        let value_42 = value_44;
+        return value_42;
+    }
+    let value_45 = number_02f1747b_bool(true);
+    span.visible = value_45;
+    let value_47 = span;
+    let value_48 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_47);
+    let value_46 = value_48;
+    return value_46;
 }
 
 export function TextInput_TextSelectionPaintSpanForText($rt, $state = moduleState, $host = moduleHost, selection_start, selection_end, text_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let span = {visible: false, start: 0, end: 0, continues_past_line: false};
-  if (text_len < 0) {
-    text_len = kryon.copyValue(0);
-  }
-  if (selection_start < 0) {
-    selection_start = kryon.copyValue(0);
-  }
-  if (selection_end < 0) {
-    selection_end = kryon.copyValue(0);
-  }
-  if (selection_start > text_len) {
-    selection_start = kryon.copyValue(text_len);
-  }
-  if (selection_end > text_len) {
-    selection_end = kryon.copyValue(text_len);
-  }
-  if (selection_end <= selection_start) {
-    return span;
-  }
-  span.visible = kryon.copyValue(true);
-  span.start = kryon.copyValue(selection_start);
-  span.end = kryon.copyValue(selection_end);
-  span.continues_past_line = kryon.copyValue(false);
-  return span;
-  return kryon.snapshot($rt);
+    selection_start = number_02f1747b_value(selection_start,32,true);
+    selection_end = number_02f1747b_value(selection_end,32,true);
+    text_len = number_02f1747b_value(text_len,32,true);
+    let value_0 = {visible: false, start: 0, end: 0, continues_past_line: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_1);
+    let span = value_2;
+    let value_3 = number_02f1747b_value(text_len,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        text_len = value_6;
+    }
+    let value_7 = number_02f1747b_value(selection_start,32,true);
+    let value_8 = number_02f1747b_value(0,32,true);
+    let value_9 = number_02f1747b_bool(value_7 < value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_value(0,32,true);
+        selection_start = value_10;
+    }
+    let value_11 = number_02f1747b_value(selection_end,32,true);
+    let value_12 = number_02f1747b_value(0,32,true);
+    let value_13 = number_02f1747b_bool(value_11 < value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_value(0,32,true);
+        selection_end = value_14;
+    }
+    let value_15 = number_02f1747b_value(selection_start,32,true);
+    let value_16 = number_02f1747b_value(text_len,32,true);
+    let value_17 = number_02f1747b_bool(value_15 > value_16);
+    if (value_17) {
+        let value_18 = number_02f1747b_value(text_len,32,true);
+        selection_start = value_18;
+    }
+    let value_19 = number_02f1747b_value(selection_end,32,true);
+    let value_20 = number_02f1747b_value(text_len,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(text_len,32,true);
+        selection_end = value_22;
+    }
+    let value_23 = number_02f1747b_value(selection_end,32,true);
+    let value_24 = number_02f1747b_value(selection_start,32,true);
+    let value_25 = number_02f1747b_bool(value_23 <= value_24);
+    if (value_25) {
+        let value_27 = span;
+        let value_28 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_27);
+        let value_26 = value_28;
+        return value_26;
+    }
+    let value_29 = number_02f1747b_bool(true);
+    span.visible = value_29;
+    let value_30 = number_02f1747b_value(selection_start,32,true);
+    span.start = value_30;
+    let value_31 = number_02f1747b_value(selection_end,32,true);
+    span.end = value_31;
+    let value_32 = number_02f1747b_bool(false);
+    span.continues_past_line = value_32;
+    let value_34 = span;
+    let value_35 = ((record_source) => ({visible: record_source.visible, start: record_source.start, end: record_source.end, continues_past_line: record_source.continues_past_line}))(value_34);
+    let value_33 = value_35;
+    return value_33;
 }
 
 export function TextInput_TextSelectionOwnerMatches($rt, $state = moduleState, $host = moduleHost, has_owner, same_owner, selection_id, requested_id) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (has_owner && same_owner) {
-    return true;
-  }
-  return requested_id > 0 && selection_id == requested_id;
+    has_owner = number_02f1747b_bool(has_owner);
+    same_owner = number_02f1747b_bool(same_owner);
+    selection_id = number_02f1747b_value(selection_id,32,true);
+    requested_id = number_02f1747b_value(requested_id,32,true);
+    let value_0 = number_02f1747b_bool(has_owner);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(same_owner);
+        value_1 = value_2;
+    }
+    if (value_1) {
+        let value_3 = number_02f1747b_bool(true);
+        return value_3;
+    }
+    let value_4 = number_02f1747b_value(requested_id,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 > value_5);
+    let value_7 = number_02f1747b_bool(value_6);
+    if (value_7) {
+        let value_8 = number_02f1747b_value(selection_id,32,true);
+        let value_9 = number_02f1747b_value(requested_id,32,true);
+        let value_10 = number_02f1747b_bool(value_8 == value_9);
+        value_7 = value_10;
+    }
+    return value_7;
 }
 
 export function TextInput_TextContextMenuStateFor($rt, $state = moduleState, $host = moduleHost, has_selection, copy_all_when_empty, has_text, read_only, clipboard_has_text) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let state = {cut_enabled: false, copy_enabled: false, paste_enabled: false, select_all_enabled: false};
-  let can_copy_content = kryon.copyValue(has_selection || (copy_all_when_empty && has_text));
-  state.cut_enabled = kryon.copyValue(can_copy_content && !read_only);
-  state.copy_enabled = kryon.copyValue(can_copy_content);
-  state.paste_enabled = kryon.copyValue(clipboard_has_text && !read_only);
-  state.select_all_enabled = kryon.copyValue(has_text);
-  return state;
-  return kryon.snapshot($rt);
+    has_selection = number_02f1747b_bool(has_selection);
+    copy_all_when_empty = number_02f1747b_bool(copy_all_when_empty);
+    has_text = number_02f1747b_bool(has_text);
+    read_only = number_02f1747b_bool(read_only);
+    clipboard_has_text = number_02f1747b_bool(clipboard_has_text);
+    let value_0 = {cut_enabled: false, copy_enabled: false, paste_enabled: false, select_all_enabled: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({cut_enabled: record_source.cut_enabled, copy_enabled: record_source.copy_enabled, paste_enabled: record_source.paste_enabled, select_all_enabled: record_source.select_all_enabled}))(value_1);
+    let state = value_2;
+    let value_3 = number_02f1747b_bool(has_selection);
+    let value_4 = number_02f1747b_bool(value_3);
+    if (!value_4) {
+        let value_5 = number_02f1747b_bool(copy_all_when_empty);
+        let value_6 = number_02f1747b_bool(value_5);
+        if (value_6) {
+            let value_7 = number_02f1747b_bool(has_text);
+            value_6 = value_7;
+        }
+        value_4 = value_6;
+    }
+    let can_copy_content = number_02f1747b_bool(value_4);
+    let value_8 = number_02f1747b_bool(can_copy_content);
+    let value_9 = number_02f1747b_bool(value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_bool(read_only);
+        let value_11 = number_02f1747b_bool(!value_10);
+        value_9 = value_11;
+    }
+    state.cut_enabled = value_9;
+    let value_12 = number_02f1747b_bool(can_copy_content);
+    state.copy_enabled = value_12;
+    let value_13 = number_02f1747b_bool(clipboard_has_text);
+    let value_14 = number_02f1747b_bool(value_13);
+    if (value_14) {
+        let value_15 = number_02f1747b_bool(read_only);
+        let value_16 = number_02f1747b_bool(!value_15);
+        value_14 = value_16;
+    }
+    state.paste_enabled = value_14;
+    let value_17 = number_02f1747b_bool(has_text);
+    state.select_all_enabled = value_17;
+    let value_19 = state;
+    let value_20 = ((record_source) => ({cut_enabled: record_source.cut_enabled, copy_enabled: record_source.copy_enabled, paste_enabled: record_source.paste_enabled, select_all_enabled: record_source.select_all_enabled}))(value_19);
+    let value_18 = value_20;
+    return value_18;
 }
 
 export function TextInput_TextContextCommandCut($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 1;
+    let value_0 = number_02f1747b_value(1,32,true);
+    return value_0;
 }
 
 export function TextInput_TextContextCommandCopy($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 2;
+    let value_0 = number_02f1747b_value(2,32,true);
+    return value_0;
 }
 
 export function TextInput_TextContextCommandPaste($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 3;
+    let value_0 = number_02f1747b_value(3,32,true);
+    return value_0;
 }
 
 export function TextInput_TextContextCommandSelectAll($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 4;
+    let value_0 = number_02f1747b_value(4,32,true);
+    return value_0;
 }
 
 export function TextInput_TextEditCommandDecisionFor($rt, $state = moduleState, $host = moduleHost, command, has_selection, copy_all_when_empty, clear_all_when_empty, has_text, allow_copy, allow_delete, allow_paste) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {copy_selection: false, copy_all: false, delete_selection: false, clear_all: false, paste: false, select_all: false, collapse_selection: false};
-  if (command == TextInput_TextContextCommandCut($rt, $state, $host)) {
-    if (has_selection) {
-      decision.copy_selection = kryon.copyValue(allow_copy);
-      decision.delete_selection = kryon.copyValue(allow_copy && allow_delete);
-    } else if (copy_all_when_empty && has_text) {
-      decision.copy_all = kryon.copyValue(allow_copy);
-      decision.clear_all = kryon.copyValue(allow_copy && allow_delete && clear_all_when_empty);
+    command = number_02f1747b_value(command,32,true);
+    has_selection = number_02f1747b_bool(has_selection);
+    copy_all_when_empty = number_02f1747b_bool(copy_all_when_empty);
+    clear_all_when_empty = number_02f1747b_bool(clear_all_when_empty);
+    has_text = number_02f1747b_bool(has_text);
+    allow_copy = number_02f1747b_bool(allow_copy);
+    allow_delete = number_02f1747b_bool(allow_delete);
+    allow_paste = number_02f1747b_bool(allow_paste);
+    let value_0 = {copy_selection: false, copy_all: false, delete_selection: false, clear_all: false, paste: false, select_all: false, collapse_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(command,32,true);
+    let value_4 = number_02f1747b_value(TextInput_TextContextCommandCut($rt, $state, $host),32,true);
+    let value_5 = number_02f1747b_bool(value_3 == value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_bool(has_selection);
+        if (value_6) {
+            let value_7 = number_02f1747b_bool(allow_copy);
+            decision.copy_selection = value_7;
+            let value_8 = number_02f1747b_bool(allow_copy);
+            let value_9 = number_02f1747b_bool(value_8);
+            if (value_9) {
+                let value_10 = number_02f1747b_bool(allow_delete);
+                value_9 = value_10;
+            }
+            decision.delete_selection = value_9;
+        } else {
+            let value_11 = number_02f1747b_bool(copy_all_when_empty);
+            let value_12 = number_02f1747b_bool(value_11);
+            if (value_12) {
+                let value_13 = number_02f1747b_bool(has_text);
+                value_12 = value_13;
+            }
+            if (value_12) {
+                let value_14 = number_02f1747b_bool(allow_copy);
+                decision.copy_all = value_14;
+                let value_15 = number_02f1747b_bool(allow_copy);
+                let value_16 = number_02f1747b_bool(value_15);
+                if (value_16) {
+                    let value_17 = number_02f1747b_bool(allow_delete);
+                    value_16 = value_17;
+                }
+                let value_18 = number_02f1747b_bool(value_16);
+                if (value_18) {
+                    let value_19 = number_02f1747b_bool(clear_all_when_empty);
+                    value_18 = value_19;
+                }
+                decision.clear_all = value_18;
+            }
+        }
+        let value_20 = number_02f1747b_bool(decision.copy_selection);
+        let value_21 = number_02f1747b_bool(value_20);
+        if (!value_21) {
+            let value_22 = number_02f1747b_bool(decision.copy_all);
+            value_21 = value_22;
+        }
+        let value_23 = number_02f1747b_bool(value_21);
+        if (!value_23) {
+            let value_24 = number_02f1747b_bool(decision.delete_selection);
+            value_23 = value_24;
+        }
+        let value_25 = number_02f1747b_bool(value_23);
+        if (!value_25) {
+            let value_26 = number_02f1747b_bool(decision.clear_all);
+            value_25 = value_26;
+        }
+        decision.collapse_selection = value_25;
+        let value_28 = decision;
+        let value_29 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_28);
+        let value_27 = value_29;
+        return value_27;
     }
-    decision.collapse_selection = kryon.copyValue(decision.copy_selection || decision.copy_all || decision.delete_selection || decision.clear_all);
-    return decision;
-  }
-  if (command == TextInput_TextContextCommandCopy($rt, $state, $host)) {
-    if (has_selection) {
-      decision.copy_selection = kryon.copyValue(allow_copy);
-    } else if (allow_copy && copy_all_when_empty && has_text) {
-      decision.copy_all = kryon.copyValue(true);
+    let value_30 = number_02f1747b_value(command,32,true);
+    let value_31 = number_02f1747b_value(TextInput_TextContextCommandCopy($rt, $state, $host),32,true);
+    let value_32 = number_02f1747b_bool(value_30 == value_31);
+    if (value_32) {
+        let value_33 = number_02f1747b_bool(has_selection);
+        if (value_33) {
+            let value_34 = number_02f1747b_bool(allow_copy);
+            decision.copy_selection = value_34;
+        } else {
+            let value_35 = number_02f1747b_bool(allow_copy);
+            let value_36 = number_02f1747b_bool(value_35);
+            if (value_36) {
+                let value_37 = number_02f1747b_bool(copy_all_when_empty);
+                value_36 = value_37;
+            }
+            let value_38 = number_02f1747b_bool(value_36);
+            if (value_38) {
+                let value_39 = number_02f1747b_bool(has_text);
+                value_38 = value_39;
+            }
+            if (value_38) {
+                let value_40 = number_02f1747b_bool(true);
+                decision.copy_all = value_40;
+            }
+        }
+        let value_42 = decision;
+        let value_43 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_42);
+        let value_41 = value_43;
+        return value_41;
     }
-    return decision;
-  }
-  if (command == TextInput_TextContextCommandPaste($rt, $state, $host)) {
-    if (allow_paste) {
-      decision.delete_selection = kryon.copyValue(allow_delete && has_selection);
-      decision.paste = kryon.copyValue(true);
-      decision.collapse_selection = kryon.copyValue(true);
+    let value_44 = number_02f1747b_value(command,32,true);
+    let value_45 = number_02f1747b_value(TextInput_TextContextCommandPaste($rt, $state, $host),32,true);
+    let value_46 = number_02f1747b_bool(value_44 == value_45);
+    if (value_46) {
+        let value_47 = number_02f1747b_bool(allow_paste);
+        if (value_47) {
+            let value_48 = number_02f1747b_bool(allow_delete);
+            let value_49 = number_02f1747b_bool(value_48);
+            if (value_49) {
+                let value_50 = number_02f1747b_bool(has_selection);
+                value_49 = value_50;
+            }
+            decision.delete_selection = value_49;
+            let value_51 = number_02f1747b_bool(true);
+            decision.paste = value_51;
+            let value_52 = number_02f1747b_bool(true);
+            decision.collapse_selection = value_52;
+        }
+        let value_54 = decision;
+        let value_55 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_54);
+        let value_53 = value_55;
+        return value_53;
     }
-    return decision;
-  }
-  if (command == TextInput_TextContextCommandSelectAll($rt, $state, $host)) {
-    decision.select_all = kryon.copyValue(true);
-    return decision;
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    let value_56 = number_02f1747b_value(command,32,true);
+    let value_57 = number_02f1747b_value(TextInput_TextContextCommandSelectAll($rt, $state, $host),32,true);
+    let value_58 = number_02f1747b_bool(value_56 == value_57);
+    if (value_58) {
+        let value_59 = number_02f1747b_bool(true);
+        decision.select_all = value_59;
+        let value_61 = decision;
+        let value_62 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_61);
+        let value_60 = value_62;
+        return value_60;
+    }
+    let value_64 = decision;
+    let value_65 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_64);
+    let value_63 = value_65;
+    return value_63;
 }
 
 export function TextInput_TextContextCommandDecisionFor($rt, $state = moduleState, $host = moduleHost, command, has_selection, copy_all_when_empty, has_text, read_only) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextEditCommandDecisionFor($rt, $state, $host, command, has_selection, copy_all_when_empty, copy_all_when_empty, has_text, true, !read_only, !read_only);
-  return kryon.snapshot($rt);
+    command = number_02f1747b_value(command,32,true);
+    has_selection = number_02f1747b_bool(has_selection);
+    copy_all_when_empty = number_02f1747b_bool(copy_all_when_empty);
+    has_text = number_02f1747b_bool(has_text);
+    read_only = number_02f1747b_bool(read_only);
+    let value_0 = number_02f1747b_value(command,32,true);
+    let value_1 = number_02f1747b_bool(has_selection);
+    let value_2 = number_02f1747b_bool(copy_all_when_empty);
+    let value_3 = number_02f1747b_bool(copy_all_when_empty);
+    let value_4 = number_02f1747b_bool(has_text);
+    let value_5 = number_02f1747b_bool(true);
+    let value_6 = number_02f1747b_bool(read_only);
+    let value_7 = number_02f1747b_bool(!value_6);
+    let value_8 = number_02f1747b_bool(read_only);
+    let value_9 = number_02f1747b_bool(!value_8);
+    let value_11 = TextInput_TextEditCommandDecisionFor($rt, $state, $host, value_0, value_1, value_2, value_3, value_4, value_5, value_7, value_9);
+    let value_12 = ((record_source) => ({copy_selection: record_source.copy_selection, copy_all: record_source.copy_all, delete_selection: record_source.delete_selection, clear_all: record_source.clear_all, paste: record_source.paste, select_all: record_source.select_all, collapse_selection: record_source.collapse_selection}))(value_11);
+    let value_10 = value_12;
+    return value_10;
 }
 
 export function TextInput_TextShortcutInputFor($rt, $state = moduleState, $host = moduleHost, modifier, select_all, copy, cut, paste) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let input = {select_all: false, copy: false, cut: false, paste: false};
-  input.select_all = kryon.copyValue(modifier && select_all);
-  input.copy = kryon.copyValue(modifier && copy);
-  input.cut = kryon.copyValue(modifier && cut);
-  input.paste = kryon.copyValue(modifier && paste);
-  return input;
-  return kryon.snapshot($rt);
+    modifier = number_02f1747b_bool(modifier);
+    select_all = number_02f1747b_bool(select_all);
+    copy = number_02f1747b_bool(copy);
+    cut = number_02f1747b_bool(cut);
+    paste = number_02f1747b_bool(paste);
+    let value_0 = {select_all: false, copy: false, cut: false, paste: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({select_all: record_source.select_all, copy: record_source.copy, cut: record_source.cut, paste: record_source.paste}))(value_1);
+    let input = value_2;
+    let value_3 = number_02f1747b_bool(modifier);
+    let value_4 = number_02f1747b_bool(value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(select_all);
+        value_4 = value_5;
+    }
+    input.select_all = value_4;
+    let value_6 = number_02f1747b_bool(modifier);
+    let value_7 = number_02f1747b_bool(value_6);
+    if (value_7) {
+        let value_8 = number_02f1747b_bool(copy);
+        value_7 = value_8;
+    }
+    input.copy = value_7;
+    let value_9 = number_02f1747b_bool(modifier);
+    let value_10 = number_02f1747b_bool(value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_bool(cut);
+        value_10 = value_11;
+    }
+    input.cut = value_10;
+    let value_12 = number_02f1747b_bool(modifier);
+    let value_13 = number_02f1747b_bool(value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_bool(paste);
+        value_13 = value_14;
+    }
+    input.paste = value_13;
+    let value_16 = input;
+    let value_17 = ((record_source) => ({select_all: record_source.select_all, copy: record_source.copy, cut: record_source.cut, paste: record_source.paste}))(value_16);
+    let value_15 = value_17;
+    return value_15;
 }
 
 export function TextInput_TextShortcutShouldClaimSelectionFocus($rt, $state = moduleState, $host = moduleHost, has_selection, focused, keyboard_enabled, modifier, copy_pressed, cut_pressed, paste_pressed) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return has_selection && !focused && keyboard_enabled && modifier && (copy_pressed || cut_pressed || paste_pressed);
+    has_selection = number_02f1747b_bool(has_selection);
+    focused = number_02f1747b_bool(focused);
+    keyboard_enabled = number_02f1747b_bool(keyboard_enabled);
+    modifier = number_02f1747b_bool(modifier);
+    copy_pressed = number_02f1747b_bool(copy_pressed);
+    cut_pressed = number_02f1747b_bool(cut_pressed);
+    paste_pressed = number_02f1747b_bool(paste_pressed);
+    let value_0 = number_02f1747b_bool(has_selection);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(focused);
+        let value_3 = number_02f1747b_bool(!value_2);
+        value_1 = value_3;
+    }
+    let value_4 = number_02f1747b_bool(value_1);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(keyboard_enabled);
+        value_4 = value_5;
+    }
+    let value_6 = number_02f1747b_bool(value_4);
+    if (value_6) {
+        let value_7 = number_02f1747b_bool(modifier);
+        value_6 = value_7;
+    }
+    let value_8 = number_02f1747b_bool(value_6);
+    if (value_8) {
+        let value_9 = number_02f1747b_bool(copy_pressed);
+        let value_10 = number_02f1747b_bool(value_9);
+        if (!value_10) {
+            let value_11 = number_02f1747b_bool(cut_pressed);
+            value_10 = value_11;
+        }
+        let value_12 = number_02f1747b_bool(value_10);
+        if (!value_12) {
+            let value_13 = number_02f1747b_bool(paste_pressed);
+            value_12 = value_13;
+        }
+        value_8 = value_12;
+    }
+    return value_8;
 }
 
 export function TextInput_TextDeleteShortcutShouldRun($rt, $state = moduleState, $host = moduleHost, read_only, backspace_pressed, delete_pressed, queued_backspace_count) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !read_only && (backspace_pressed || delete_pressed || queued_backspace_count > 0);
+    read_only = number_02f1747b_bool(read_only);
+    backspace_pressed = number_02f1747b_bool(backspace_pressed);
+    delete_pressed = number_02f1747b_bool(delete_pressed);
+    queued_backspace_count = number_02f1747b_value(queued_backspace_count,32,true);
+    let value_0 = number_02f1747b_bool(read_only);
+    let value_1 = number_02f1747b_bool(!value_0);
+    let value_2 = number_02f1747b_bool(value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_bool(backspace_pressed);
+        let value_4 = number_02f1747b_bool(value_3);
+        if (!value_4) {
+            let value_5 = number_02f1747b_bool(delete_pressed);
+            value_4 = value_5;
+        }
+        let value_6 = number_02f1747b_bool(value_4);
+        if (!value_6) {
+            let value_7 = number_02f1747b_value(queued_backspace_count,32,true);
+            let value_8 = number_02f1747b_value(0,32,true);
+            let value_9 = number_02f1747b_bool(value_7 > value_8);
+            value_6 = value_9;
+        }
+        value_2 = value_6;
+    }
+    return value_2;
 }
 
 export function TextInput_TextSelectionReplacementShouldRun($rt, $state = moduleState, $host = moduleHost, read_only, handled, has_selection, modifier) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !read_only && !handled && has_selection && !modifier;
+    read_only = number_02f1747b_bool(read_only);
+    handled = number_02f1747b_bool(handled);
+    has_selection = number_02f1747b_bool(has_selection);
+    modifier = number_02f1747b_bool(modifier);
+    let value_0 = number_02f1747b_bool(read_only);
+    let value_1 = number_02f1747b_bool(!value_0);
+    let value_2 = number_02f1747b_bool(value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_bool(handled);
+        let value_4 = number_02f1747b_bool(!value_3);
+        value_2 = value_4;
+    }
+    let value_5 = number_02f1747b_bool(value_2);
+    if (value_5) {
+        let value_6 = number_02f1747b_bool(has_selection);
+        value_5 = value_6;
+    }
+    let value_7 = number_02f1747b_bool(value_5);
+    if (value_7) {
+        let value_8 = number_02f1747b_bool(modifier);
+        let value_9 = number_02f1747b_bool(!value_8);
+        value_7 = value_9;
+    }
+    return value_7;
 }
 
 export function TextInput_TextNativeEditShouldRun($rt, $state = moduleState, $host = moduleHost, read_only, handled) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !read_only && !handled;
+    read_only = number_02f1747b_bool(read_only);
+    handled = number_02f1747b_bool(handled);
+    let value_0 = number_02f1747b_bool(read_only);
+    let value_1 = number_02f1747b_bool(!value_0);
+    let value_2 = number_02f1747b_bool(value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_bool(handled);
+        let value_4 = number_02f1747b_bool(!value_3);
+        value_2 = value_4;
+    }
+    return value_2;
 }
 
 export function TextInput_TextCommitAfterHandledShouldRun($rt, $state = moduleState, $host = moduleHost, read_only, handled, enter_requested) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !read_only && handled && enter_requested;
+    read_only = number_02f1747b_bool(read_only);
+    handled = number_02f1747b_bool(handled);
+    enter_requested = number_02f1747b_bool(enter_requested);
+    let value_0 = number_02f1747b_bool(read_only);
+    let value_1 = number_02f1747b_bool(!value_0);
+    let value_2 = number_02f1747b_bool(value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_bool(handled);
+        value_2 = value_3;
+    }
+    let value_4 = number_02f1747b_bool(value_2);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(enter_requested);
+        value_4 = value_5;
+    }
+    return value_4;
 }
 
 export function TextInput_TextNavigationShouldRun($rt, $state = moduleState, $host = moduleHost, handled) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !handled;
+    handled = number_02f1747b_bool(handled);
+    let value_0 = number_02f1747b_bool(handled);
+    let value_1 = number_02f1747b_bool(!value_0);
+    return value_1;
 }
 
 export function TextInput_TextAreaEnterNewlineShouldRun($rt, $state = moduleState, $host = moduleHost, read_only, enter_requested) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !read_only && enter_requested;
+    read_only = number_02f1747b_bool(read_only);
+    enter_requested = number_02f1747b_bool(enter_requested);
+    let value_0 = number_02f1747b_bool(read_only);
+    let value_1 = number_02f1747b_bool(!value_0);
+    let value_2 = number_02f1747b_bool(value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_bool(enter_requested);
+        value_2 = value_3;
+    }
+    return value_2;
 }
 
 export function TextInput_TextAreaChangedShouldCollapseSelection($rt, $state = moduleState, $host = moduleHost, changed, handled) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return changed && !handled;
+    changed = number_02f1747b_bool(changed);
+    handled = number_02f1747b_bool(handled);
+    let value_0 = number_02f1747b_bool(changed);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(handled);
+        let value_3 = number_02f1747b_bool(!value_2);
+        value_1 = value_3;
+    }
+    return value_1;
 }
 
 export function TextInput_TextFieldChangedShouldCollapseSelection($rt, $state = moduleState, $host = moduleHost, changed, left_pressed, right_pressed, home_pressed, end_pressed) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return changed || left_pressed || right_pressed || home_pressed || end_pressed;
+    changed = number_02f1747b_bool(changed);
+    left_pressed = number_02f1747b_bool(left_pressed);
+    right_pressed = number_02f1747b_bool(right_pressed);
+    home_pressed = number_02f1747b_bool(home_pressed);
+    end_pressed = number_02f1747b_bool(end_pressed);
+    let value_0 = number_02f1747b_bool(changed);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (!value_1) {
+        let value_2 = number_02f1747b_bool(left_pressed);
+        value_1 = value_2;
+    }
+    let value_3 = number_02f1747b_bool(value_1);
+    if (!value_3) {
+        let value_4 = number_02f1747b_bool(right_pressed);
+        value_3 = value_4;
+    }
+    let value_5 = number_02f1747b_bool(value_3);
+    if (!value_5) {
+        let value_6 = number_02f1747b_bool(home_pressed);
+        value_5 = value_6;
+    }
+    let value_7 = number_02f1747b_bool(value_5);
+    if (!value_7) {
+        let value_8 = number_02f1747b_bool(end_pressed);
+        value_7 = value_8;
+    }
+    return value_7;
 }
 
 export function TextInput_TextKeyboardShouldRun($rt, $state = moduleState, $host = moduleHost, focused, keyboard_enabled) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return focused && keyboard_enabled;
+    focused = number_02f1747b_bool(focused);
+    keyboard_enabled = number_02f1747b_bool(keyboard_enabled);
+    let value_0 = number_02f1747b_bool(focused);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(keyboard_enabled);
+        value_1 = value_2;
+    }
+    return value_1;
 }
 
 export function TextInput_TextEscapeShouldBlur($rt, $state = moduleState, $host = moduleHost, focused, keyboard_enabled, escape_pressed) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return focused && keyboard_enabled && escape_pressed;
+    focused = number_02f1747b_bool(focused);
+    keyboard_enabled = number_02f1747b_bool(keyboard_enabled);
+    escape_pressed = number_02f1747b_bool(escape_pressed);
+    let value_0 = number_02f1747b_bool(focused);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(keyboard_enabled);
+        value_1 = value_2;
+    }
+    let value_3 = number_02f1747b_bool(value_1);
+    if (value_3) {
+        let value_4 = number_02f1747b_bool(escape_pressed);
+        value_3 = value_4;
+    }
+    return value_3;
 }
 
 export function TextInput_TextOutsideClickShouldBlur($rt, $state = moduleState, $host = moduleHost, focused, context_active, scroll_gesture_pending) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return focused && !context_active && !scroll_gesture_pending;
+    focused = number_02f1747b_bool(focused);
+    context_active = number_02f1747b_bool(context_active);
+    scroll_gesture_pending = number_02f1747b_bool(scroll_gesture_pending);
+    let value_0 = number_02f1747b_bool(focused);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(context_active);
+        let value_3 = number_02f1747b_bool(!value_2);
+        value_1 = value_3;
+    }
+    let value_4 = number_02f1747b_bool(value_1);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(scroll_gesture_pending);
+        let value_6 = number_02f1747b_bool(!value_5);
+        value_4 = value_6;
+    }
+    return value_4;
 }
 
 export function TextInput_TextSelectionRangeShouldResolve($rt, $state = moduleState, $host = moduleHost, focused, context_active, has_selection) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return (focused || context_active) && has_selection;
+    focused = number_02f1747b_bool(focused);
+    context_active = number_02f1747b_bool(context_active);
+    has_selection = number_02f1747b_bool(has_selection);
+    let value_0 = number_02f1747b_bool(focused);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (!value_1) {
+        let value_2 = number_02f1747b_bool(context_active);
+        value_1 = value_2;
+    }
+    let value_3 = number_02f1747b_bool(value_1);
+    if (value_3) {
+        let value_4 = number_02f1747b_bool(has_selection);
+        value_3 = value_4;
+    }
+    return value_3;
 }
 
 export function TextInput_TextCompositionDisplayShouldRun($rt, $state = moduleState, $host = moduleHost, secure) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !secure;
+    secure = number_02f1747b_bool(secure);
+    let value_0 = number_02f1747b_bool(secure);
+    let value_1 = number_02f1747b_bool(!value_0);
+    return value_1;
 }
 
 export function TextInput_TextEditCommitShouldRun($rt, $state = moduleState, $host = moduleHost, enter_pressed, queued_enter_count) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return enter_pressed || queued_enter_count > 0;
+    enter_pressed = number_02f1747b_bool(enter_pressed);
+    queued_enter_count = number_02f1747b_value(queued_enter_count,32,true);
+    let value_0 = number_02f1747b_bool(enter_pressed);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (!value_1) {
+        let value_2 = number_02f1747b_value(queued_enter_count,32,true);
+        let value_3 = number_02f1747b_value(0,32,true);
+        let value_4 = number_02f1747b_bool(value_2 > value_3);
+        value_1 = value_4;
+    }
+    return value_1;
 }
 
 export function TextInput_TextAreaScrollbarShouldShow($rt, $state = moduleState, $host = moduleHost, has_scroll_storage, max_scroll) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return has_scroll_storage && max_scroll > 0;
+    has_scroll_storage = number_02f1747b_bool(has_scroll_storage);
+    max_scroll = number_02f1747b_value(max_scroll,32,true);
+    let value_0 = number_02f1747b_bool(has_scroll_storage);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_value(max_scroll,32,true);
+        let value_3 = number_02f1747b_value(0,32,true);
+        let value_4 = number_02f1747b_bool(value_2 > value_3);
+        value_1 = value_4;
+    }
+    return value_1;
 }
 
 export function TextInput_TextAreaWheelShouldScroll($rt, $state = moduleState, $host = moduleHost, mouse_inside, captured, modifier) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return mouse_inside && !captured && !modifier;
+    mouse_inside = number_02f1747b_bool(mouse_inside);
+    captured = number_02f1747b_bool(captured);
+    modifier = number_02f1747b_bool(modifier);
+    let value_0 = number_02f1747b_bool(mouse_inside);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(captured);
+        let value_3 = number_02f1747b_bool(!value_2);
+        value_1 = value_3;
+    }
+    let value_4 = number_02f1747b_bool(value_1);
+    if (value_4) {
+        let value_5 = number_02f1747b_bool(modifier);
+        let value_6 = number_02f1747b_bool(!value_5);
+        value_4 = value_6;
+    }
+    return value_4;
 }
 
 export function TextInput_TextAreaRevealCursorShouldRun($rt, $state = moduleState, $host = moduleHost, focused, changed, navigation_pressed) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return focused && (changed || navigation_pressed);
+    focused = number_02f1747b_bool(focused);
+    changed = number_02f1747b_bool(changed);
+    navigation_pressed = number_02f1747b_bool(navigation_pressed);
+    let value_0 = number_02f1747b_bool(focused);
+    let value_1 = number_02f1747b_bool(value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_bool(changed);
+        let value_3 = number_02f1747b_bool(value_2);
+        if (!value_3) {
+            let value_4 = number_02f1747b_bool(navigation_pressed);
+            value_3 = value_4;
+        }
+        value_1 = value_3;
+    }
+    return value_1;
 }
 
 export function TextInput_TextAreaRevealScroll($rt, $state = moduleState, $host = moduleHost, scroll, cursor_y, cursor_height, viewport_height) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (cursor_y < scroll) {
-    return cursor_y;
-  }
-  if (cursor_y + cursor_height > scroll + viewport_height) {
-    return cursor_y + cursor_height - viewport_height;
-  }
-  return scroll;
+    scroll = number_02f1747b_value(scroll,32,true);
+    cursor_y = number_02f1747b_value(cursor_y,32,true);
+    cursor_height = number_02f1747b_value(cursor_height,32,true);
+    viewport_height = number_02f1747b_value(viewport_height,32,true);
+    let value_0 = number_02f1747b_value(cursor_y,32,true);
+    let value_1 = number_02f1747b_value(scroll,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(cursor_y,32,true);
+        return value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor_y,32,true);
+    let value_5 = number_02f1747b_value(cursor_height,32,true);
+    let value_6 = number_02f1747b_value(number_02f1747b_bits(value_4,value_5,32,true,1),32,true);
+    let value_7 = number_02f1747b_value(scroll,32,true);
+    let value_8 = number_02f1747b_value(viewport_height,32,true);
+    let value_9 = number_02f1747b_value(number_02f1747b_bits(value_7,value_8,32,true,1),32,true);
+    let value_10 = number_02f1747b_bool(value_6 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(cursor_y,32,true);
+        let value_12 = number_02f1747b_value(cursor_height,32,true);
+        let value_13 = number_02f1747b_value(number_02f1747b_bits(value_11,value_12,32,true,1),32,true);
+        let value_14 = number_02f1747b_value(viewport_height,32,true);
+        let value_15 = number_02f1747b_value(number_02f1747b_bits(value_13,value_14,32,true,2),32,true);
+        return value_15;
+    }
+    let value_16 = number_02f1747b_value(scroll,32,true);
+    return value_16;
 }
 
 export function TextInput_TextAreaScrollFor($rt, $state = moduleState, $host = moduleHost, scroll, max_scroll) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (max_scroll < 0) {
-    max_scroll = kryon.copyValue(0);
-  }
-  if (scroll < 0) {
-    return 0;
-  }
-  if (scroll > max_scroll) {
-    return max_scroll;
-  }
-  return scroll;
+    scroll = number_02f1747b_value(scroll,32,true);
+    max_scroll = number_02f1747b_value(max_scroll,32,true);
+    let value_0 = number_02f1747b_value(max_scroll,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(0,32,true);
+        max_scroll = value_3;
+    }
+    let value_4 = number_02f1747b_value(scroll,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 < value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(0,32,true);
+        return value_7;
+    }
+    let value_8 = number_02f1747b_value(scroll,32,true);
+    let value_9 = number_02f1747b_value(max_scroll,32,true);
+    let value_10 = number_02f1747b_bool(value_8 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(max_scroll,32,true);
+        return value_11;
+    }
+    let value_12 = number_02f1747b_value(scroll,32,true);
+    return value_12;
 }
 
 export function TextInput_TextFieldRevealCursorShouldRun($rt, $state = moduleState, $host = moduleHost, focused) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return focused;
+    focused = number_02f1747b_bool(focused);
+    let value_0 = number_02f1747b_bool(focused);
+    return value_0;
 }
 
 export function TextInput_TextFieldContextShouldRegister($rt, $state = moduleState, $host = moduleHost, secure) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return !secure;
+    secure = number_02f1747b_bool(secure);
+    let value_0 = number_02f1747b_bool(secure);
+    let value_1 = number_02f1747b_bool(!value_0);
+    return value_1;
 }
 
 export function TextInput_TextNavNone($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 0;
+    let value_0 = number_02f1747b_value(0,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavLeft($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 1;
+    let value_0 = number_02f1747b_value(1,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavRight($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 2;
+    let value_0 = number_02f1747b_value(2,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavHome($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 3;
+    let value_0 = number_02f1747b_value(3,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavEnd($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 4;
+    let value_0 = number_02f1747b_value(4,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavUp($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 5;
+    let value_0 = number_02f1747b_value(5,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavDown($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 6;
+    let value_0 = number_02f1747b_value(6,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavPageUp($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 7;
+    let value_0 = number_02f1747b_value(7,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavPageDown($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 8;
+    let value_0 = number_02f1747b_value(8,32,true);
+    return value_0;
 }
 
 export function TextInput_TextNavigationKeyFor($rt, $state = moduleState, $host = moduleHost, multiline, left, right, home, end, up, down, page_up, page_down) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (left) {
-    return TextInput_TextNavLeft($rt, $state, $host);
-  }
-  if (right) {
-    return TextInput_TextNavRight($rt, $state, $host);
-  }
-  if (home) {
-    return TextInput_TextNavHome($rt, $state, $host);
-  }
-  if (end) {
-    return TextInput_TextNavEnd($rt, $state, $host);
-  }
-  if (multiline && up) {
-    return TextInput_TextNavUp($rt, $state, $host);
-  }
-  if (multiline && down) {
-    return TextInput_TextNavDown($rt, $state, $host);
-  }
-  if (multiline && page_up) {
-    return TextInput_TextNavPageUp($rt, $state, $host);
-  }
-  if (multiline && page_down) {
-    return TextInput_TextNavPageDown($rt, $state, $host);
-  }
-  return TextInput_TextNavNone($rt, $state, $host);
+    multiline = number_02f1747b_bool(multiline);
+    left = number_02f1747b_bool(left);
+    right = number_02f1747b_bool(right);
+    home = number_02f1747b_bool(home);
+    end = number_02f1747b_bool(end);
+    up = number_02f1747b_bool(up);
+    down = number_02f1747b_bool(down);
+    page_up = number_02f1747b_bool(page_up);
+    page_down = number_02f1747b_bool(page_down);
+    let value_0 = number_02f1747b_bool(left);
+    if (value_0) {
+        let value_1 = number_02f1747b_value(TextInput_TextNavLeft($rt, $state, $host),32,true);
+        return value_1;
+    }
+    let value_2 = number_02f1747b_bool(right);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(TextInput_TextNavRight($rt, $state, $host),32,true);
+        return value_3;
+    }
+    let value_4 = number_02f1747b_bool(home);
+    if (value_4) {
+        let value_5 = number_02f1747b_value(TextInput_TextNavHome($rt, $state, $host),32,true);
+        return value_5;
+    }
+    let value_6 = number_02f1747b_bool(end);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(TextInput_TextNavEnd($rt, $state, $host),32,true);
+        return value_7;
+    }
+    let value_8 = number_02f1747b_bool(multiline);
+    let value_9 = number_02f1747b_bool(value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_bool(up);
+        value_9 = value_10;
+    }
+    if (value_9) {
+        let value_11 = number_02f1747b_value(TextInput_TextNavUp($rt, $state, $host),32,true);
+        return value_11;
+    }
+    let value_12 = number_02f1747b_bool(multiline);
+    let value_13 = number_02f1747b_bool(value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_bool(down);
+        value_13 = value_14;
+    }
+    if (value_13) {
+        let value_15 = number_02f1747b_value(TextInput_TextNavDown($rt, $state, $host),32,true);
+        return value_15;
+    }
+    let value_16 = number_02f1747b_bool(multiline);
+    let value_17 = number_02f1747b_bool(value_16);
+    if (value_17) {
+        let value_18 = number_02f1747b_bool(page_up);
+        value_17 = value_18;
+    }
+    if (value_17) {
+        let value_19 = number_02f1747b_value(TextInput_TextNavPageUp($rt, $state, $host),32,true);
+        return value_19;
+    }
+    let value_20 = number_02f1747b_bool(multiline);
+    let value_21 = number_02f1747b_bool(value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_bool(page_down);
+        value_21 = value_22;
+    }
+    if (value_21) {
+        let value_23 = number_02f1747b_value(TextInput_TextNavPageDown($rt, $state, $host),32,true);
+        return value_23;
+    }
+    let value_24 = number_02f1747b_value(TextInput_TextNavNone($rt, $state, $host),32,true);
+    return value_24;
 }
 
 export function TextInput_TextBackspaceRepeatFor($rt, $state = moduleState, $host = moduleHost, pressed, down, now, next_repeat_at) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let result = {count: 0, next_repeat_at: 0};
-  if (pressed) {
-    result.count = kryon.copyValue(1);
-    result.next_repeat_at = kryon.copyValue(now + 0.34);
-    return result;
-  }
-  if (!down) {
-    result.next_repeat_at = kryon.copyValue(0.0);
-    return result;
-  }
-  if (next_repeat_at <= 0.0) {
-    result.next_repeat_at = kryon.copyValue(now + 0.34);
-    return result;
-  }
-  let count = kryon.copyValue(0);
-  let cursor = kryon.copyValue(next_repeat_at);
-  while (now >= cursor && count < 8) {
-    count += 1;
-    cursor += 0.045;
-  }
-  result.count = kryon.copyValue(count);
-  result.next_repeat_at = kryon.copyValue(cursor);
-  return result;
-  return kryon.snapshot($rt);
+    pressed = number_02f1747b_bool(pressed);
+    down = number_02f1747b_bool(down);
+    let value_0 = {count: 0, next_repeat_at: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({count: record_source.count, next_repeat_at: record_source.next_repeat_at}))(value_1);
+    let result = value_2;
+    let value_3 = number_02f1747b_bool(pressed);
+    if (value_3) {
+        let value_4 = number_02f1747b_value(1,32,true);
+        result.count = value_4;
+        let value_5 = now;
+        let value_6 = 0.34;
+        let value_7 = value_5 + value_6;
+        result.next_repeat_at = value_7;
+        let value_9 = result;
+        let value_10 = ((record_source) => ({count: record_source.count, next_repeat_at: record_source.next_repeat_at}))(value_9);
+        let value_8 = value_10;
+        return value_8;
+    }
+    let value_11 = number_02f1747b_bool(down);
+    let value_12 = number_02f1747b_bool(!value_11);
+    if (value_12) {
+        let value_13 = 0.0;
+        result.next_repeat_at = value_13;
+        let value_15 = result;
+        let value_16 = ((record_source) => ({count: record_source.count, next_repeat_at: record_source.next_repeat_at}))(value_15);
+        let value_14 = value_16;
+        return value_14;
+    }
+    let value_17 = next_repeat_at;
+    let value_18 = 0.0;
+    let value_19 = number_02f1747b_bool(value_17 <= value_18);
+    if (value_19) {
+        let value_20 = now;
+        let value_21 = 0.34;
+        let value_22 = value_20 + value_21;
+        result.next_repeat_at = value_22;
+        let value_24 = result;
+        let value_25 = ((record_source) => ({count: record_source.count, next_repeat_at: record_source.next_repeat_at}))(value_24);
+        let value_23 = value_25;
+        return value_23;
+    }
+    let value_26 = number_02f1747b_value(0,32,true);
+    let count = number_02f1747b_value(value_26,32,true);
+    let value_27 = next_repeat_at;
+    let cursor = value_27;
+    while (true) {
+        let value_28 = now;
+        let value_29 = cursor;
+        let value_30 = number_02f1747b_bool(value_28 >= value_29);
+        let value_31 = number_02f1747b_bool(value_30);
+        if (value_31) {
+            let value_32 = number_02f1747b_value(count,32,true);
+            let value_33 = number_02f1747b_value(8,32,true);
+            let value_34 = number_02f1747b_bool(value_32 < value_33);
+            value_31 = value_34;
+        }
+        if (!value_31) { break; }
+        let value_35 = number_02f1747b_value(count,32,true);
+        let value_36 = number_02f1747b_value(1,32,true);
+        count = number_02f1747b_bits(value_35,value_36,32,true,1);
+        let value_37 = cursor;
+        let value_38 = 0.045;
+        cursor = value_37 + value_38;
+    }
+    let value_39 = number_02f1747b_value(count,32,true);
+    result.count = value_39;
+    let value_40 = cursor;
+    result.next_repeat_at = value_40;
+    let value_42 = result;
+    let value_43 = ((record_source) => ({count: record_source.count, next_repeat_at: record_source.next_repeat_at}))(value_42);
+    let value_41 = value_43;
+    return value_41;
 }
 
 export function TextInput_TextDeleteNone($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 0;
+    let value_0 = number_02f1747b_value(0,32,true);
+    return value_0;
 }
 
 export function TextInput_TextDeleteBackspace($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 1;
+    let value_0 = number_02f1747b_value(1,32,true);
+    return value_0;
 }
 
 export function TextInput_TextDeleteForward($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 2;
+    let value_0 = number_02f1747b_value(2,32,true);
+    return value_0;
 }
 
 export function TextInput_TextInputMetric($rt, $state = moduleState, $host = moduleHost, fields, field, value, fallback) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if ((fields & field) == Math.trunc(Number(0)) || value < 0) {
-    return fallback;
-  }
-  return value;
+    fields = number_02f1747b_value(fields,32,false);
+    field = number_02f1747b_value(field,32,false);
+    value = number_02f1747b_value(value,32,true);
+    fallback = number_02f1747b_value(fallback,32,true);
+    let value_0 = number_02f1747b_value(fields,32,false);
+    let value_1 = number_02f1747b_value(field,32,false);
+    let value_2 = number_02f1747b_value(number_02f1747b_bits(value_0,value_1,32,false,8),32,false);
+    let value_3 = number_02f1747b_value(0,32,true);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(value_3,0,32,false,0),32,false);
+    let value_5 = number_02f1747b_bool(value_2 == value_4);
+    let value_6 = number_02f1747b_bool(value_5);
+    if (!value_6) {
+        let value_7 = number_02f1747b_value(value,32,true);
+        let value_8 = number_02f1747b_value(0,32,true);
+        let value_9 = number_02f1747b_bool(value_7 < value_8);
+        value_6 = value_9;
+    }
+    if (value_6) {
+        let value_10 = number_02f1747b_value(fallback,32,true);
+        return value_10;
+    }
+    let value_11 = number_02f1747b_value(value,32,true);
+    return value_11;
 }
 
 export function TextInput_TextInputScaledMetric($rt, $state = moduleState, $host = moduleHost, value, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (scale <= 0.0) {
-    scale = kryon.copyValue(1.0);
-  }
-  let metric = kryon.copyValue(Math.trunc(Number(value * scale)));
-  if (metric < 0) {
-    return 0;
-  }
-  return metric;
+    value = Math.fround(value);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(scale);
+    let value_1 = Math.fround(0.0);
+    let value_2 = number_02f1747b_bool(value_0 <= value_1);
+    if (value_2) {
+        let value_3 = Math.fround(1.0);
+        scale = value_3;
+    }
+    let value_4 = Math.fround(value);
+    let value_5 = Math.fround(scale);
+    let value_6 = Math.fround(value_4 * value_5);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_6,32,true),0,32,true,0),32,true);
+    let metric = number_02f1747b_value(value_7,32,true);
+    let value_8 = number_02f1747b_value(metric,32,true);
+    let value_9 = number_02f1747b_value(0,32,true);
+    let value_10 = number_02f1747b_bool(value_8 < value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(0,32,true);
+        return value_11;
+    }
+    let value_12 = number_02f1747b_value(metric,32,true);
+    return value_12;
 }
 
 export function TextInput_TextInputRoundScaledMetric($rt, $state = moduleState, $host = moduleHost, value, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (scale <= 0.0) {
-    scale = kryon.copyValue(1.0);
-  }
-  let metric = kryon.copyValue(Math.trunc(Number(((Math.trunc(Number(value + 0.5)))) * scale + 0.5)));
-  if (metric < 0) {
-    return 0;
-  }
-  return metric;
+    value = Math.fround(value);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(scale);
+    let value_1 = Math.fround(0.0);
+    let value_2 = number_02f1747b_bool(value_0 <= value_1);
+    if (value_2) {
+        let value_3 = Math.fround(1.0);
+        scale = value_3;
+    }
+    let value_4 = Math.fround(value);
+    let value_5 = Math.fround(0.5);
+    let value_6 = Math.fround(value_4 + value_5);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_6,32,true),0,32,true,0),32,true);
+    let value_8 = Math.fround(Math.fround(value_7));
+    let value_9 = Math.fround(scale);
+    let value_10 = Math.fround(value_8 * value_9);
+    let value_11 = Math.fround(0.5);
+    let value_12 = Math.fround(value_10 + value_11);
+    let value_13 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_12,32,true),0,32,true,0),32,true);
+    let metric = number_02f1747b_value(value_13,32,true);
+    let value_14 = number_02f1747b_value(metric,32,true);
+    let value_15 = number_02f1747b_value(0,32,true);
+    let value_16 = number_02f1747b_bool(value_14 < value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(0,32,true);
+        return value_17;
+    }
+    let value_18 = number_02f1747b_value(metric,32,true);
+    return value_18;
 }
 
 export function TextInput_TextInputRequestedFieldsFor($rt, $state = moduleState, $host = moduleHost, fields, padding_x, padding_y, line_gap) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let requested = kryon.copyValue(fields);
-  if (padding_x > 0) {
-    requested = kryon.copyValue(requested | Math.trunc(Number($enum0.StylePaddingX)));
-  }
-  if (padding_y > 0) {
-    requested = kryon.copyValue(requested | Math.trunc(Number($enum0.StylePaddingY)));
-  }
-  if (line_gap >= 0) {
-    requested = kryon.copyValue(requested | Math.trunc(Number($enum0.StyleGap)));
-  }
-  return ((requested) >>> 0);
+    fields = number_02f1747b_value(fields,32,false);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    line_gap = number_02f1747b_value(line_gap,32,true);
+    let value_0 = number_02f1747b_value(fields,32,false);
+    let requested = number_02f1747b_value(value_0,32,false);
+    let value_1 = number_02f1747b_value(padding_x,32,true);
+    let value_2 = number_02f1747b_value(0,32,true);
+    let value_3 = number_02f1747b_bool(value_1 > value_2);
+    if (value_3) {
+        let value_4 = number_02f1747b_value(requested,32,false);
+        let value_5 = number_02f1747b_value($enum0.StylePaddingX,32,true);
+        let value_6 = number_02f1747b_value(number_02f1747b_bits(value_5,0,32,false,0),32,false);
+        let value_7 = number_02f1747b_value(number_02f1747b_bits(value_4,value_6,32,false,9),32,false);
+        requested = value_7;
+    }
+    let value_8 = number_02f1747b_value(padding_y,32,true);
+    let value_9 = number_02f1747b_value(0,32,true);
+    let value_10 = number_02f1747b_bool(value_8 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(requested,32,false);
+        let value_12 = number_02f1747b_value($enum0.StylePaddingY,32,true);
+        let value_13 = number_02f1747b_value(number_02f1747b_bits(value_12,0,32,false,0),32,false);
+        let value_14 = number_02f1747b_value(number_02f1747b_bits(value_11,value_13,32,false,9),32,false);
+        requested = value_14;
+    }
+    let value_15 = number_02f1747b_value(line_gap,32,true);
+    let value_16 = number_02f1747b_value(0,32,true);
+    let value_17 = number_02f1747b_bool(value_15 >= value_16);
+    if (value_17) {
+        let value_18 = number_02f1747b_value(requested,32,false);
+        let value_19 = number_02f1747b_value($enum0.StyleGap,32,true);
+        let value_20 = number_02f1747b_value(number_02f1747b_bits(value_19,0,32,false,0),32,false);
+        let value_21 = number_02f1747b_value(number_02f1747b_bits(value_18,value_20,32,false,9),32,false);
+        requested = value_21;
+    }
+    let value_22 = number_02f1747b_value(requested,32,false);
+    return value_22;
 }
 
 export function TextInput_TextInputResolvedMetric($rt, $state = moduleState, $host = moduleHost, requested_fields, field, requested_value, resolved_fields, resolved_value, scale, unset_value) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if ((requested_fields & field) != Math.trunc(Number(0))) {
-    if (requested_value < 0) {
-      return 0;
+    requested_fields = number_02f1747b_value(requested_fields,32,false);
+    field = number_02f1747b_value(field,32,false);
+    requested_value = number_02f1747b_value(requested_value,32,true);
+    resolved_fields = number_02f1747b_value(resolved_fields,32,false);
+    resolved_value = Math.fround(resolved_value);
+    scale = Math.fround(scale);
+    unset_value = number_02f1747b_value(unset_value,32,true);
+    let value_0 = number_02f1747b_value(requested_fields,32,false);
+    let value_1 = number_02f1747b_value(field,32,false);
+    let value_2 = number_02f1747b_value(number_02f1747b_bits(value_0,value_1,32,false,8),32,false);
+    let value_3 = number_02f1747b_value(0,32,true);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(value_3,0,32,false,0),32,false);
+    let value_5 = number_02f1747b_bool(value_2 != value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(requested_value,32,true);
+        let value_7 = number_02f1747b_value(0,32,true);
+        let value_8 = number_02f1747b_bool(value_6 < value_7);
+        if (value_8) {
+            let value_9 = number_02f1747b_value(0,32,true);
+            return value_9;
+        }
+        let value_10 = number_02f1747b_value(requested_value,32,true);
+        return value_10;
     }
-    return requested_value;
-  }
-  if ((resolved_fields & field) != Math.trunc(Number(0)) && resolved_value >= 0.0) {
-    return TextInput_TextInputRoundScaledMetric($rt, $state, $host, resolved_value, scale);
-  }
-  return unset_value;
+    let value_11 = number_02f1747b_value(resolved_fields,32,false);
+    let value_12 = number_02f1747b_value(field,32,false);
+    let value_13 = number_02f1747b_value(number_02f1747b_bits(value_11,value_12,32,false,8),32,false);
+    let value_14 = number_02f1747b_value(0,32,true);
+    let value_15 = number_02f1747b_value(number_02f1747b_bits(value_14,0,32,false,0),32,false);
+    let value_16 = number_02f1747b_bool(value_13 != value_15);
+    let value_17 = number_02f1747b_bool(value_16);
+    if (value_17) {
+        let value_18 = Math.fround(resolved_value);
+        let value_19 = Math.fround(0.0);
+        let value_20 = number_02f1747b_bool(value_18 >= value_19);
+        value_17 = value_20;
+    }
+    if (value_17) {
+        let value_21 = Math.fround(resolved_value);
+        let value_22 = Math.fround(scale);
+        let value_23 = number_02f1747b_value(TextInput_TextInputRoundScaledMetric($rt, $state, $host, value_21, value_22),32,true);
+        return value_23;
+    }
+    let value_24 = number_02f1747b_value(unset_value,32,true);
+    return value_24;
 }
 
 export function TextInput_TextInputResolvedStyleFor($rt, $state = moduleState, $host = moduleHost, fields, padding_x, padding_y, line_gap, radius, resolved_fields, resolved_padding_x, resolved_padding_y, resolved_gap, resolved_radius, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let style = {fields: 0, padding_x: 0, padding_y: 0, line_gap: 0, radius: 0};
-  let requested_fields = TextInput_TextInputRequestedFieldsFor($rt, $state, $host, fields, padding_x, padding_y, line_gap);
-  style.fields = kryon.copyValue(requested_fields | resolved_fields);
-  style.padding_x = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, resolved_fields, resolved_padding_x, scale, padding_x);
-  style.padding_y = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, resolved_fields, resolved_padding_y, scale, padding_y);
-  style.line_gap = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StyleGap)), line_gap, resolved_fields, resolved_gap, scale, -1);
-  style.radius = kryon.copyValue(radius);
-  if ((fields & Math.trunc(Number($enum0.StyleRadius))) == Math.trunc(Number(0)) || radius < 0.0) {
-    style.radius = kryon.copyValue(resolved_radius);
-  }
-  return style;
-  return kryon.snapshot($rt);
+    fields = number_02f1747b_value(fields,32,false);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    line_gap = number_02f1747b_value(line_gap,32,true);
+    radius = Math.fround(radius);
+    resolved_fields = number_02f1747b_value(resolved_fields,32,false);
+    resolved_padding_x = Math.fround(resolved_padding_x);
+    resolved_padding_y = Math.fround(resolved_padding_y);
+    resolved_gap = Math.fround(resolved_gap);
+    resolved_radius = Math.fround(resolved_radius);
+    scale = Math.fround(scale);
+    let value_0 = {fields: 0, padding_x: 0, padding_y: 0, line_gap: 0, radius: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({fields: record_source.fields, padding_x: record_source.padding_x, padding_y: record_source.padding_y, line_gap: record_source.line_gap, radius: record_source.radius}))(value_1);
+    let style = value_2;
+    let value_3 = number_02f1747b_value(fields,32,false);
+    let value_4 = number_02f1747b_value(padding_x,32,true);
+    let value_5 = number_02f1747b_value(padding_y,32,true);
+    let value_6 = number_02f1747b_value(line_gap,32,true);
+    let value_7 = number_02f1747b_value(TextInput_TextInputRequestedFieldsFor($rt, $state, $host, value_3, value_4, value_5, value_6),32,false);
+    let requested_fields = number_02f1747b_value(value_7,32,false);
+    let value_8 = number_02f1747b_value(requested_fields,32,false);
+    let value_9 = number_02f1747b_value(resolved_fields,32,false);
+    let value_10 = number_02f1747b_value(number_02f1747b_bits(value_8,value_9,32,false,9),32,false);
+    style.fields = value_10;
+    let value_11 = number_02f1747b_value(requested_fields,32,false);
+    let value_12 = number_02f1747b_value($enum0.StylePaddingX,32,true);
+    let value_13 = number_02f1747b_value(number_02f1747b_bits(value_12,0,32,false,0),32,false);
+    let value_14 = number_02f1747b_value(padding_x,32,true);
+    let value_15 = number_02f1747b_value(resolved_fields,32,false);
+    let value_16 = Math.fround(resolved_padding_x);
+    let value_17 = Math.fround(scale);
+    let value_18 = number_02f1747b_value(padding_x,32,true);
+    let value_19 = number_02f1747b_value(TextInput_TextInputResolvedMetric($rt, $state, $host, value_11, value_13, value_14, value_15, value_16, value_17, value_18),32,true);
+    style.padding_x = value_19;
+    let value_20 = number_02f1747b_value(requested_fields,32,false);
+    let value_21 = number_02f1747b_value($enum0.StylePaddingY,32,true);
+    let value_22 = number_02f1747b_value(number_02f1747b_bits(value_21,0,32,false,0),32,false);
+    let value_23 = number_02f1747b_value(padding_y,32,true);
+    let value_24 = number_02f1747b_value(resolved_fields,32,false);
+    let value_25 = Math.fround(resolved_padding_y);
+    let value_26 = Math.fround(scale);
+    let value_27 = number_02f1747b_value(padding_y,32,true);
+    let value_28 = number_02f1747b_value(TextInput_TextInputResolvedMetric($rt, $state, $host, value_20, value_22, value_23, value_24, value_25, value_26, value_27),32,true);
+    style.padding_y = value_28;
+    let value_29 = number_02f1747b_value(requested_fields,32,false);
+    let value_30 = number_02f1747b_value($enum0.StyleGap,32,true);
+    let value_31 = number_02f1747b_value(number_02f1747b_bits(value_30,0,32,false,0),32,false);
+    let value_32 = number_02f1747b_value(line_gap,32,true);
+    let value_33 = number_02f1747b_value(resolved_fields,32,false);
+    let value_34 = Math.fround(resolved_gap);
+    let value_35 = Math.fround(scale);
+    let value_36 = number_02f1747b_value(-1,32,true);
+    let value_37 = number_02f1747b_value(TextInput_TextInputResolvedMetric($rt, $state, $host, value_29, value_31, value_32, value_33, value_34, value_35, value_36),32,true);
+    style.line_gap = value_37;
+    let value_38 = Math.fround(radius);
+    style.radius = value_38;
+    let value_39 = number_02f1747b_value(fields,32,false);
+    let value_40 = number_02f1747b_value($enum0.StyleRadius,32,true);
+    let value_41 = number_02f1747b_value(number_02f1747b_bits(value_40,0,32,false,0),32,false);
+    let value_42 = number_02f1747b_value(number_02f1747b_bits(value_39,value_41,32,false,8),32,false);
+    let value_43 = number_02f1747b_value(0,32,true);
+    let value_44 = number_02f1747b_value(number_02f1747b_bits(value_43,0,32,false,0),32,false);
+    let value_45 = number_02f1747b_bool(value_42 == value_44);
+    let value_46 = number_02f1747b_bool(value_45);
+    if (!value_46) {
+        let value_47 = Math.fround(radius);
+        let value_48 = Math.fround(0.0);
+        let value_49 = number_02f1747b_bool(value_47 < value_48);
+        value_46 = value_49;
+    }
+    if (value_46) {
+        let value_50 = Math.fround(resolved_radius);
+        style.radius = value_50;
+    }
+    let value_52 = style;
+    let value_53 = ((record_source) => ({fields: record_source.fields, padding_x: record_source.padding_x, padding_y: record_source.padding_y, line_gap: record_source.line_gap, radius: record_source.radius}))(value_52);
+    let value_51 = value_53;
+    return value_51;
 }
 
 export function TextInput_TextInputDefaultPaddingX($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(10.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextInputDefaultPaddingY($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 8.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(8.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextAreaMinWrapWidth($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 24.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(24.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextAreaScrollbarWidthFor($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 12.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(12.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextAreaMaxScrollFor($rt, $state = moduleState, $host = moduleHost, content_height, bounds_height, padding_y) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let viewport_height = kryon.copyValue(Math.trunc(Number(bounds_height - padding_y * 2)));
-  let max_scroll = kryon.copyValue(content_height - viewport_height);
-  if (max_scroll < 0) {
-    return 0;
-  }
-  return max_scroll;
+    content_height = number_02f1747b_value(content_height,32,true);
+    bounds_height = Math.fround(bounds_height);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    let value_0 = Math.fround(bounds_height);
+    let value_1 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_0,32,true),0,32,true,0),32,true);
+    let value_2 = number_02f1747b_value(padding_y,32,true);
+    let value_3 = number_02f1747b_value(2,32,true);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(value_2,value_3,32,true,3),32,true);
+    let value_5 = number_02f1747b_value(number_02f1747b_bits(value_1,value_4,32,true,2),32,true);
+    let viewport_height = number_02f1747b_value(value_5,32,true);
+    let value_6 = number_02f1747b_value(content_height,32,true);
+    let value_7 = number_02f1747b_value(viewport_height,32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_6,value_7,32,true,2),32,true);
+    let max_scroll = number_02f1747b_value(value_8,32,true);
+    let value_9 = number_02f1747b_value(max_scroll,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(0,32,true);
+        return value_12;
+    }
+    let value_13 = number_02f1747b_value(max_scroll,32,true);
+    return value_13;
 }
 
 export function TextInput_TextAreaWheelScrollFor($rt, $state = moduleState, $host = moduleHost, scroll, wheel, line_height) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return scroll - Math.trunc(Number(wheel * line_height * 3.0));
+    scroll = number_02f1747b_value(scroll,32,true);
+    wheel = Math.fround(wheel);
+    line_height = number_02f1747b_value(line_height,32,true);
+    let value_0 = number_02f1747b_value(scroll,32,true);
+    let value_1 = Math.fround(wheel);
+    let value_2 = number_02f1747b_value(line_height,32,true);
+    let value_3 = Math.fround(Math.fround(value_2));
+    let value_4 = Math.fround(value_1 * value_3);
+    let value_5 = Math.fround(3.0);
+    let value_6 = Math.fround(value_4 * value_5);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_6,32,true),0,32,true,0),32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_0,value_7,32,true,2),32,true);
+    return value_8;
 }
 
 export function TextInput_TextAreaDragScrollFor($rt, $state = moduleState, $host = moduleHost, scroll, mouse_y, bounds_y, bounds_height, padding_y, line_height) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let next = kryon.copyValue(scroll);
-  if (mouse_y < Math.trunc(Number(bounds_y)) + padding_y) {
-    next -= line_height;
-  }
-  if (mouse_y > Math.trunc(Number(bounds_y + bounds_height)) - padding_y) {
-    next += line_height;
-  }
-  if (next < 0) {
-    return 0;
-  }
-  return next;
+    scroll = number_02f1747b_value(scroll,32,true);
+    mouse_y = number_02f1747b_value(mouse_y,32,true);
+    bounds_y = Math.fround(bounds_y);
+    bounds_height = Math.fround(bounds_height);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    line_height = number_02f1747b_value(line_height,32,true);
+    let value_0 = number_02f1747b_value(scroll,32,true);
+    let next = number_02f1747b_value(value_0,32,true);
+    let value_1 = number_02f1747b_value(mouse_y,32,true);
+    let value_2 = Math.fround(bounds_y);
+    let value_3 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_2,32,true),0,32,true,0),32,true);
+    let value_4 = number_02f1747b_value(padding_y,32,true);
+    let value_5 = number_02f1747b_value(number_02f1747b_bits(value_3,value_4,32,true,1),32,true);
+    let value_6 = number_02f1747b_bool(value_1 < value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(next,32,true);
+        let value_8 = number_02f1747b_value(line_height,32,true);
+        next = number_02f1747b_bits(value_7,value_8,32,true,2);
+    }
+    let value_9 = number_02f1747b_value(mouse_y,32,true);
+    let value_10 = Math.fround(bounds_y);
+    let value_11 = Math.fround(bounds_height);
+    let value_12 = Math.fround(value_10 + value_11);
+    let value_13 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_12,32,true),0,32,true,0),32,true);
+    let value_14 = number_02f1747b_value(padding_y,32,true);
+    let value_15 = number_02f1747b_value(number_02f1747b_bits(value_13,value_14,32,true,2),32,true);
+    let value_16 = number_02f1747b_bool(value_9 > value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(next,32,true);
+        let value_18 = number_02f1747b_value(line_height,32,true);
+        next = number_02f1747b_bits(value_17,value_18,32,true,1);
+    }
+    let value_19 = number_02f1747b_value(next,32,true);
+    let value_20 = number_02f1747b_value(0,32,true);
+    let value_21 = number_02f1747b_bool(value_19 < value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(0,32,true);
+        return value_22;
+    }
+    let value_23 = number_02f1747b_value(next,32,true);
+    return value_23;
 }
 
 export function TextInput_TextAreaGutterMetricsFor($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let metrics = {top_inset: 0, active_y_inset: 0, label_x_inset: 0, label_font: 0, extra_rows: 0};
-  metrics.top_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale);
-  metrics.active_y_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale);
-  metrics.label_x_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 6.0, scale);
-  metrics.label_font = TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale);
-  metrics.extra_rows = kryon.copyValue(3);
-  return metrics;
-  return kryon.snapshot($rt);
+    scale = Math.fround(scale);
+    let value_0 = {top_inset: 0, active_y_inset: 0, label_x_inset: 0, label_font: 0, extra_rows: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(value_1);
+    let metrics = value_2;
+    let value_3 = Math.fround(10.0);
+    let value_4 = Math.fround(scale);
+    let value_5 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_3, value_4),32,true);
+    metrics.top_inset = value_5;
+    let value_6 = Math.fround(2.0);
+    let value_7 = Math.fround(scale);
+    let value_8 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_6, value_7),32,true);
+    metrics.active_y_inset = value_8;
+    let value_9 = Math.fround(6.0);
+    let value_10 = Math.fround(scale);
+    let value_11 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_9, value_10),32,true);
+    metrics.label_x_inset = value_11;
+    let value_12 = Math.fround(10.0);
+    let value_13 = Math.fround(scale);
+    let value_14 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_12, value_13),32,true);
+    metrics.label_font = value_14;
+    let value_15 = number_02f1747b_value(3,32,true);
+    metrics.extra_rows = value_15;
+    let value_17 = metrics;
+    let value_18 = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(value_17);
+    let value_16 = value_18;
+    return value_16;
 }
 
 export function TextInput_TextAreaGutterRowsFor($rt, $state = moduleState, $host = moduleHost, bounds_height, line_height, metrics) {
   $state = $state || moduleState;
-  /* pass-by-reference: TextAreaGutterMetrics is same-module */
-  $rt = $rt || kryon.createRuntime();
-  if (line_height <= 0) {
-    return 0;
-  }
-  let rows = kryon.copyValue((Math.trunc(Number(bounds_height)) / line_height) + metrics.extra_rows);
-  if (rows < 0) {
-    return 0;
-  }
-  return rows;
+    bounds_height = Math.fround(bounds_height);
+    line_height = number_02f1747b_value(line_height,32,true);
+    let value_0 = metrics;
+    let value_1 = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(value_0);
+    metrics = value_1;
+    let value_2 = number_02f1747b_value(line_height,32,true);
+    let value_3 = number_02f1747b_value(0,32,true);
+    let value_4 = number_02f1747b_bool(value_2 <= value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_value(0,32,true);
+        return value_5;
+    }
+    let value_6 = Math.fround(bounds_height);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_6,32,true),0,32,true,0),32,true);
+    let value_8 = number_02f1747b_value(line_height,32,true);
+    let value_9 = number_02f1747b_value(number_02f1747b_bits(value_7,value_8,32,true,4),32,true);
+    let value_10 = number_02f1747b_value(metrics.extra_rows,32,true);
+    let value_11 = number_02f1747b_value(number_02f1747b_bits(value_9,value_10,32,true,1),32,true);
+    let rows = number_02f1747b_value(value_11,32,true);
+    let value_12 = number_02f1747b_value(rows,32,true);
+    let value_13 = number_02f1747b_value(0,32,true);
+    let value_14 = number_02f1747b_bool(value_12 < value_13);
+    if (value_14) {
+        let value_15 = number_02f1747b_value(0,32,true);
+        return value_15;
+    }
+    let value_16 = number_02f1747b_value(rows,32,true);
+    return value_16;
 }
 
 export function TextInput_TextAreaGutterFirstY($rt, $state = moduleState, $host = moduleHost, gutter_y, scroll_y, line_height, metrics) {
   $state = $state || moduleState;
-  /* pass-by-reference: TextAreaGutterMetrics is same-module */
-  $rt = $rt || kryon.createRuntime();
-  if (line_height <= 0) {
-    return Math.trunc(Number(gutter_y + metrics.top_inset));
-  }
-  return Math.trunc(Number(gutter_y + metrics.top_inset - (scroll_y % line_height)));
+    gutter_y = Math.fround(gutter_y);
+    scroll_y = number_02f1747b_value(scroll_y,32,true);
+    line_height = number_02f1747b_value(line_height,32,true);
+    let value_0 = metrics;
+    let value_1 = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(value_0);
+    metrics = value_1;
+    let value_2 = number_02f1747b_value(line_height,32,true);
+    let value_3 = number_02f1747b_value(0,32,true);
+    let value_4 = number_02f1747b_bool(value_2 <= value_3);
+    if (value_4) {
+        let value_5 = Math.fround(gutter_y);
+        let value_6 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_5,32,true),0,32,true,0),32,true);
+        let value_7 = number_02f1747b_value(metrics.top_inset,32,true);
+        let value_8 = number_02f1747b_value(number_02f1747b_bits(value_6,value_7,32,true,1),32,true);
+        return value_8;
+    }
+    let value_9 = Math.fround(gutter_y);
+    let value_10 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_9,32,true),0,32,true,0),32,true);
+    let value_11 = number_02f1747b_value(metrics.top_inset,32,true);
+    let value_12 = number_02f1747b_value(number_02f1747b_bits(value_10,value_11,32,true,1),32,true);
+    let value_13 = number_02f1747b_value(scroll_y,32,true);
+    let value_14 = number_02f1747b_value(line_height,32,true);
+    let value_15 = number_02f1747b_value(number_02f1747b_bits(value_13,value_14,32,true,5),32,true);
+    let value_16 = number_02f1747b_value(number_02f1747b_bits(value_12,value_15,32,true,2),32,true);
+    return value_16;
 }
 
 export function TextInput_TextAreaGutterInactiveAlpha($rt, $state = moduleState, $host = moduleHost, alpha) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return Math.trunc(Number(alpha * 0.62));
+    alpha = number_02f1747b_value(alpha,8,false);
+    let value_0 = number_02f1747b_value(alpha,8,false);
+    let value_1 = Math.fround(Math.fround(value_0));
+    let value_2 = Math.fround(0.62);
+    let value_3 = Math.fround(value_1 * value_2);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_3,8,false),0,8,false,0),8,false);
+    return value_4;
 }
 
 export function TextInput_TextFieldRevealMargin($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 8.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(8.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextInputDoubleClickSlopFor($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 6.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(6.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextInputDoubleClickMaxSeconds($rt, $state = moduleState, $host = moduleHost) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return 0.45;
+    let value_0 = Math.fround(0.45);
+    return value_0;
 }
 
 export function TextInput_TextInputDoubleClickDecisionFor($rt, $state = moduleState, $host = moduleHost, same_owner, same_id, elapsed_seconds, dx, dy, slop) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {double_click: false};
-  if (slop < 0) {
-    slop = kryon.copyValue(0);
-  }
-  if (dx < 0) {
-    dx = kryon.copyValue(-dx);
-  }
-  if (dy < 0) {
-    dy = kryon.copyValue(-dy);
-  }
-  decision.double_click = kryon.copyValue(same_owner && same_id && elapsed_seconds <= TextInput_TextInputDoubleClickMaxSeconds($rt, $state, $host) && dx <= slop && dy <= slop);
-  return decision;
-  return kryon.snapshot($rt);
+    same_owner = number_02f1747b_bool(same_owner);
+    same_id = number_02f1747b_bool(same_id);
+    elapsed_seconds = Math.fround(elapsed_seconds);
+    dx = number_02f1747b_value(dx,32,true);
+    dy = number_02f1747b_value(dy,32,true);
+    slop = number_02f1747b_value(slop,32,true);
+    let value_0 = {double_click: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({double_click: record_source.double_click}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(slop,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        slop = value_6;
+    }
+    let value_7 = number_02f1747b_value(dx,32,true);
+    let value_8 = number_02f1747b_value(0,32,true);
+    let value_9 = number_02f1747b_bool(value_7 < value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_value(dx,32,true);
+        let value_11 = number_02f1747b_value(number_02f1747b_bits(0,value_10,32,true,2),32,true);
+        dx = value_11;
+    }
+    let value_12 = number_02f1747b_value(dy,32,true);
+    let value_13 = number_02f1747b_value(0,32,true);
+    let value_14 = number_02f1747b_bool(value_12 < value_13);
+    if (value_14) {
+        let value_15 = number_02f1747b_value(dy,32,true);
+        let value_16 = number_02f1747b_value(number_02f1747b_bits(0,value_15,32,true,2),32,true);
+        dy = value_16;
+    }
+    let value_17 = number_02f1747b_bool(same_owner);
+    let value_18 = number_02f1747b_bool(value_17);
+    if (value_18) {
+        let value_19 = number_02f1747b_bool(same_id);
+        value_18 = value_19;
+    }
+    let value_20 = number_02f1747b_bool(value_18);
+    if (value_20) {
+        let value_21 = Math.fround(elapsed_seconds);
+        let value_22 = Math.fround(TextInput_TextInputDoubleClickMaxSeconds($rt, $state, $host));
+        let value_23 = number_02f1747b_bool(value_21 <= value_22);
+        value_20 = value_23;
+    }
+    let value_24 = number_02f1747b_bool(value_20);
+    if (value_24) {
+        let value_25 = number_02f1747b_value(dx,32,true);
+        let value_26 = number_02f1747b_value(slop,32,true);
+        let value_27 = number_02f1747b_bool(value_25 <= value_26);
+        value_24 = value_27;
+    }
+    let value_28 = number_02f1747b_bool(value_24);
+    if (value_28) {
+        let value_29 = number_02f1747b_value(dy,32,true);
+        let value_30 = number_02f1747b_value(slop,32,true);
+        let value_31 = number_02f1747b_bool(value_29 <= value_30);
+        value_28 = value_31;
+    }
+    decision.double_click = value_28;
+    let value_33 = decision;
+    let value_34 = ((record_source) => ({double_click: record_source.double_click}))(value_33);
+    let value_32 = value_34;
+    return value_32;
 }
 
 export function TextInput_TextFieldPanDragThresholdFor($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 5.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(5.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextFieldPanDecisionFor($rt, $state = moduleState, $host = moduleHost, already_panning, dx, dy, threshold) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {pan: false};
-  if (threshold < 0) {
-    threshold = kryon.copyValue(0);
-  }
-  let abs_dx = kryon.copyValue(dx);
-  let abs_dy = kryon.copyValue(dy);
-  if (abs_dx < 0) {
-    abs_dx = kryon.copyValue(-abs_dx);
-  }
-  if (abs_dy < 0) {
-    abs_dy = kryon.copyValue(-abs_dy);
-  }
-  decision.pan = kryon.copyValue(already_panning || (abs_dx > threshold && abs_dx >= abs_dy));
-  return decision;
-  return kryon.snapshot($rt);
+    already_panning = number_02f1747b_bool(already_panning);
+    dx = number_02f1747b_value(dx,32,true);
+    dy = number_02f1747b_value(dy,32,true);
+    threshold = number_02f1747b_value(threshold,32,true);
+    let value_0 = {pan: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({pan: record_source.pan}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(threshold,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        threshold = value_6;
+    }
+    let value_7 = number_02f1747b_value(dx,32,true);
+    let abs_dx = number_02f1747b_value(value_7,32,true);
+    let value_8 = number_02f1747b_value(dy,32,true);
+    let abs_dy = number_02f1747b_value(value_8,32,true);
+    let value_9 = number_02f1747b_value(abs_dx,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(abs_dx,32,true);
+        let value_13 = number_02f1747b_value(number_02f1747b_bits(0,value_12,32,true,2),32,true);
+        abs_dx = value_13;
+    }
+    let value_14 = number_02f1747b_value(abs_dy,32,true);
+    let value_15 = number_02f1747b_value(0,32,true);
+    let value_16 = number_02f1747b_bool(value_14 < value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(abs_dy,32,true);
+        let value_18 = number_02f1747b_value(number_02f1747b_bits(0,value_17,32,true,2),32,true);
+        abs_dy = value_18;
+    }
+    let value_19 = number_02f1747b_bool(already_panning);
+    let value_20 = number_02f1747b_bool(value_19);
+    if (!value_20) {
+        let value_21 = number_02f1747b_value(abs_dx,32,true);
+        let value_22 = number_02f1747b_value(threshold,32,true);
+        let value_23 = number_02f1747b_bool(value_21 > value_22);
+        let value_24 = number_02f1747b_bool(value_23);
+        if (value_24) {
+            let value_25 = number_02f1747b_value(abs_dx,32,true);
+            let value_26 = number_02f1747b_value(abs_dy,32,true);
+            let value_27 = number_02f1747b_bool(value_25 >= value_26);
+            value_24 = value_27;
+        }
+        value_20 = value_24;
+    }
+    decision.pan = value_20;
+    let value_29 = decision;
+    let value_30 = ((record_source) => ({pan: record_source.pan}))(value_29);
+    let value_28 = value_30;
+    return value_28;
 }
 
 export function TextInput_TextFieldMinCursorHeight($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 8.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(8.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextFieldCursorVerticalPadding($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return TextInput_TextInputScaledMetric($rt, $state, $host, 8.0, scale);
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(8.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    return value_2;
 }
 
 export function TextInput_TextFieldClipGuard($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let clip_guard = TextInput_TextInputScaledMetric($rt, $state, $host, 1.0, scale);
-  if (clip_guard < 1) {
-    return 1;
-  }
-  return clip_guard;
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(1.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    let clip_guard = number_02f1747b_value(value_2,32,true);
+    let value_3 = number_02f1747b_value(clip_guard,32,true);
+    let value_4 = number_02f1747b_value(1,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(1,32,true);
+        return value_6;
+    }
+    let value_7 = number_02f1747b_value(clip_guard,32,true);
+    return value_7;
 }
 
 export function TextInput_TextInputStrokeWidth($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let width = TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale);
-  if (width < 1) {
-    return 1;
-  }
-  return width;
+    scale = Math.fround(scale);
+    let value_0 = Math.fround(2.0);
+    let value_1 = Math.fround(scale);
+    let value_2 = number_02f1747b_value(TextInput_TextInputScaledMetric($rt, $state, $host, value_0, value_1),32,true);
+    let width = number_02f1747b_value(value_2,32,true);
+    let value_3 = number_02f1747b_value(width,32,true);
+    let value_4 = number_02f1747b_value(1,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(1,32,true);
+        return value_6;
+    }
+    let value_7 = number_02f1747b_value(width,32,true);
+    return value_7;
 }
 
 export function TextInput_TextInputMetricsFor($rt, $state = moduleState, $host = moduleHost, fields, font, padding_x, padding_y, line_gap, default_font, default_padding_x, default_padding_y, default_line_gap) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let metrics = {font: 0, padding_x: 0, padding_y: 0, line_gap: 0, line_height: 0};
-  metrics.font = kryon.copyValue(font);
-  if (metrics.font <= 0) {
-    metrics.font = kryon.copyValue(default_font);
-  }
-  metrics.padding_x = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, default_padding_x);
-  metrics.padding_y = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, default_padding_y);
-  metrics.line_gap = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StyleGap)), line_gap, default_line_gap);
-  metrics.line_height = kryon.copyValue(metrics.font + metrics.line_gap);
-  if (metrics.line_height <= 0) {
-    metrics.line_height = kryon.copyValue(1);
-  }
-  return metrics;
-  return kryon.snapshot($rt);
+    fields = number_02f1747b_value(fields,32,false);
+    font = number_02f1747b_value(font,32,true);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    line_gap = number_02f1747b_value(line_gap,32,true);
+    default_font = number_02f1747b_value(default_font,32,true);
+    default_padding_x = number_02f1747b_value(default_padding_x,32,true);
+    default_padding_y = number_02f1747b_value(default_padding_y,32,true);
+    default_line_gap = number_02f1747b_value(default_line_gap,32,true);
+    let value_0 = {font: 0, padding_x: 0, padding_y: 0, line_gap: 0, line_height: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({font: record_source.font, padding_x: record_source.padding_x, padding_y: record_source.padding_y, line_gap: record_source.line_gap, line_height: record_source.line_height}))(value_1);
+    let metrics = value_2;
+    let value_3 = number_02f1747b_value(font,32,true);
+    metrics.font = value_3;
+    let value_4 = number_02f1747b_value(metrics.font,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 <= value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(default_font,32,true);
+        metrics.font = value_7;
+    }
+    let value_8 = number_02f1747b_value(fields,32,false);
+    let value_9 = number_02f1747b_value($enum0.StylePaddingX,32,true);
+    let value_10 = number_02f1747b_value(number_02f1747b_bits(value_9,0,32,false,0),32,false);
+    let value_11 = number_02f1747b_value(padding_x,32,true);
+    let value_12 = number_02f1747b_value(default_padding_x,32,true);
+    let value_13 = number_02f1747b_value(TextInput_TextInputMetric($rt, $state, $host, value_8, value_10, value_11, value_12),32,true);
+    metrics.padding_x = value_13;
+    let value_14 = number_02f1747b_value(fields,32,false);
+    let value_15 = number_02f1747b_value($enum0.StylePaddingY,32,true);
+    let value_16 = number_02f1747b_value(number_02f1747b_bits(value_15,0,32,false,0),32,false);
+    let value_17 = number_02f1747b_value(padding_y,32,true);
+    let value_18 = number_02f1747b_value(default_padding_y,32,true);
+    let value_19 = number_02f1747b_value(TextInput_TextInputMetric($rt, $state, $host, value_14, value_16, value_17, value_18),32,true);
+    metrics.padding_y = value_19;
+    let value_20 = number_02f1747b_value(fields,32,false);
+    let value_21 = number_02f1747b_value($enum0.StyleGap,32,true);
+    let value_22 = number_02f1747b_value(number_02f1747b_bits(value_21,0,32,false,0),32,false);
+    let value_23 = number_02f1747b_value(line_gap,32,true);
+    let value_24 = number_02f1747b_value(default_line_gap,32,true);
+    let value_25 = number_02f1747b_value(TextInput_TextInputMetric($rt, $state, $host, value_20, value_22, value_23, value_24),32,true);
+    metrics.line_gap = value_25;
+    let value_26 = number_02f1747b_value(metrics.font,32,true);
+    let value_27 = number_02f1747b_value(metrics.line_gap,32,true);
+    let value_28 = number_02f1747b_value(number_02f1747b_bits(value_26,value_27,32,true,1),32,true);
+    metrics.line_height = value_28;
+    let value_29 = number_02f1747b_value(metrics.line_height,32,true);
+    let value_30 = number_02f1747b_value(0,32,true);
+    let value_31 = number_02f1747b_bool(value_29 <= value_30);
+    if (value_31) {
+        let value_32 = number_02f1747b_value(1,32,true);
+        metrics.line_height = value_32;
+    }
+    let value_34 = metrics;
+    let value_35 = ((record_source) => ({font: record_source.font, padding_x: record_source.padding_x, padding_y: record_source.padding_y, line_gap: record_source.line_gap, line_height: record_source.line_height}))(value_34);
+    let value_33 = value_35;
+    return value_33;
 }
 
 export function TextInput_TextInputContentWidth($rt, $state = moduleState, $host = moduleHost, bounds_width, padding_x) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let width = kryon.copyValue(Math.trunc(Number(bounds_width - padding_x * 2)));
-  if (width < 0) {
-    return 0;
-  }
-  return width;
+    bounds_width = Math.fround(bounds_width);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    let value_0 = Math.fround(bounds_width);
+    let value_1 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_0,32,true),0,32,true,0),32,true);
+    let value_2 = number_02f1747b_value(padding_x,32,true);
+    let value_3 = number_02f1747b_value(2,32,true);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(value_2,value_3,32,true,3),32,true);
+    let value_5 = number_02f1747b_value(number_02f1747b_bits(value_1,value_4,32,true,2),32,true);
+    let width = number_02f1747b_value(value_5,32,true);
+    let value_6 = number_02f1747b_value(width,32,true);
+    let value_7 = number_02f1747b_value(0,32,true);
+    let value_8 = number_02f1747b_bool(value_6 < value_7);
+    if (value_8) {
+        let value_9 = number_02f1747b_value(0,32,true);
+        return value_9;
+    }
+    let value_10 = number_02f1747b_value(width,32,true);
+    return value_10;
 }
 
 export function TextInput_TextAreaPageRows($rt, $state = moduleState, $host = moduleHost, bounds_height, font, line_gap, padding_y) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let line_height = kryon.copyValue(font + line_gap);
-  let visible_height = kryon.copyValue(Math.trunc(Number(bounds_height - padding_y * 2)));
-  if (line_height <= 0 || visible_height < line_height) {
-    return 1;
-  }
-  let rows = kryon.copyValue(visible_height / line_height);
-  if (rows < 1) {
-    return 1;
-  }
-  if (rows < 2) {
-    return 2;
-  }
-  return rows;
+    bounds_height = Math.fround(bounds_height);
+    font = number_02f1747b_value(font,32,true);
+    line_gap = number_02f1747b_value(line_gap,32,true);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    let value_0 = number_02f1747b_value(font,32,true);
+    let value_1 = number_02f1747b_value(line_gap,32,true);
+    let value_2 = number_02f1747b_value(number_02f1747b_bits(value_0,value_1,32,true,1),32,true);
+    let line_height = number_02f1747b_value(value_2,32,true);
+    let value_3 = Math.fround(bounds_height);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_3,32,true),0,32,true,0),32,true);
+    let value_5 = number_02f1747b_value(padding_y,32,true);
+    let value_6 = number_02f1747b_value(2,32,true);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(value_5,value_6,32,true,3),32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_4,value_7,32,true,2),32,true);
+    let visible_height = number_02f1747b_value(value_8,32,true);
+    let value_9 = number_02f1747b_value(line_height,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 <= value_10);
+    let value_12 = number_02f1747b_bool(value_11);
+    if (!value_12) {
+        let value_13 = number_02f1747b_value(visible_height,32,true);
+        let value_14 = number_02f1747b_value(line_height,32,true);
+        let value_15 = number_02f1747b_bool(value_13 < value_14);
+        value_12 = value_15;
+    }
+    if (value_12) {
+        let value_16 = number_02f1747b_value(1,32,true);
+        return value_16;
+    }
+    let value_17 = number_02f1747b_value(visible_height,32,true);
+    let value_18 = number_02f1747b_value(line_height,32,true);
+    let value_19 = number_02f1747b_value(number_02f1747b_bits(value_17,value_18,32,true,4),32,true);
+    let rows = number_02f1747b_value(value_19,32,true);
+    let value_20 = number_02f1747b_value(rows,32,true);
+    let value_21 = number_02f1747b_value(1,32,true);
+    let value_22 = number_02f1747b_bool(value_20 < value_21);
+    if (value_22) {
+        let value_23 = number_02f1747b_value(1,32,true);
+        return value_23;
+    }
+    let value_24 = number_02f1747b_value(rows,32,true);
+    let value_25 = number_02f1747b_value(2,32,true);
+    let value_26 = number_02f1747b_bool(value_24 < value_25);
+    if (value_26) {
+        let value_27 = number_02f1747b_value(2,32,true);
+        return value_27;
+    }
+    let value_28 = number_02f1747b_value(rows,32,true);
+    return value_28;
 }
 
 export function TextInput_TextAreaWrapWidthFor($rt, $state = moduleState, $host = moduleHost, bounds_width, padding_x, wrap, min_wrap_width) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (!wrap) {
-    return 0;
-  }
-  let width = kryon.copyValue(Math.trunc(Number(bounds_width - padding_x * 2)));
-  if (width < min_wrap_width) {
-    return 0;
-  }
-  return width;
+    bounds_width = Math.fround(bounds_width);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    wrap = number_02f1747b_bool(wrap);
+    min_wrap_width = number_02f1747b_value(min_wrap_width,32,true);
+    let value_0 = number_02f1747b_bool(wrap);
+    let value_1 = number_02f1747b_bool(!value_0);
+    if (value_1) {
+        let value_2 = number_02f1747b_value(0,32,true);
+        return value_2;
+    }
+    let value_3 = Math.fround(bounds_width);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_3,32,true),0,32,true,0),32,true);
+    let value_5 = number_02f1747b_value(padding_x,32,true);
+    let value_6 = number_02f1747b_value(2,32,true);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(value_5,value_6,32,true,3),32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_4,value_7,32,true,2),32,true);
+    let width = number_02f1747b_value(value_8,32,true);
+    let value_9 = number_02f1747b_value(width,32,true);
+    let value_10 = number_02f1747b_value(min_wrap_width,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(0,32,true);
+        return value_12;
+    }
+    let value_13 = number_02f1747b_value(width,32,true);
+    return value_13;
 }
 
 export function TextInput_TextAreaPaintFor($rt, $state = moduleState, $host = moduleHost, bounds, font, line_gap, padding_x, padding_y, wrap, content_height, scroll_y, text_line_height, min_wrap_width) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let paint = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, wrap_width: 0, viewport_height: 0, max_scroll: 0, scroll_y: 0, placeholder_x: 0, placeholder_y: 0};
-  let line_height = kryon.copyValue(font + line_gap);
-  paint.viewport_height = kryon.copyValue(Math.trunc(Number(bounds.height - padding_y * 2)));
-  if (paint.viewport_height < 0) {
-    paint.viewport_height = kryon.copyValue(0);
-  }
-  paint.max_scroll = TextInput_TextAreaMaxScrollFor($rt, $state, $host, content_height, bounds.height, padding_y);
-  paint.scroll_y = TextInput_TextAreaScrollFor($rt, $state, $host, scroll_y, paint.max_scroll);
-  paint.wrap_width = TextInput_TextAreaWrapWidthFor($rt, $state, $host, bounds.width, padding_x, wrap, min_wrap_width);
-  paint.clip_bounds.x = kryon.copyValue(bounds.x + padding_x);
-  paint.clip_bounds.y = kryon.copyValue(bounds.y + padding_y);
-  paint.clip_bounds.width = kryon.copyValue(bounds.width - (padding_x * 2));
-  paint.clip_bounds.height = kryon.copyValue(bounds.height - (padding_y * 2));
-  if (paint.clip_bounds.width < 0.0) {
-    paint.clip_bounds.width = kryon.copyValue(0.0);
-  }
-  if (paint.clip_bounds.height < 0.0) {
-    paint.clip_bounds.height = kryon.copyValue(0.0);
-  }
-  paint.placeholder_x = kryon.copyValue(Math.trunc(Number(bounds.x + padding_x)));
-  paint.placeholder_y = kryon.copyValue(Math.trunc(Number(bounds.y + padding_y + (line_height - text_line_height) / 2)));
-  return paint;
-  return kryon.snapshot($rt);
+    let value_0 = bounds;
+    let value_1 = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(value_0);
+    bounds = value_1;
+    font = number_02f1747b_value(font,32,true);
+    line_gap = number_02f1747b_value(line_gap,32,true);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    padding_y = number_02f1747b_value(padding_y,32,true);
+    wrap = number_02f1747b_bool(wrap);
+    content_height = number_02f1747b_value(content_height,32,true);
+    scroll_y = number_02f1747b_value(scroll_y,32,true);
+    text_line_height = number_02f1747b_value(text_line_height,32,true);
+    min_wrap_width = number_02f1747b_value(min_wrap_width,32,true);
+    let value_2 = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, wrap_width: 0, viewport_height: 0, max_scroll: 0, scroll_y: 0, placeholder_x: 0, placeholder_y: 0};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({clip_bounds: {x: record_source.clip_bounds.x, y: record_source.clip_bounds.y, width: record_source.clip_bounds.width, height: record_source.clip_bounds.height}, wrap_width: record_source.wrap_width, viewport_height: record_source.viewport_height, max_scroll: record_source.max_scroll, scroll_y: record_source.scroll_y, placeholder_x: record_source.placeholder_x, placeholder_y: record_source.placeholder_y}))(value_3);
+    let paint = value_4;
+    let value_5 = number_02f1747b_value(font,32,true);
+    let value_6 = number_02f1747b_value(line_gap,32,true);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(value_5,value_6,32,true,1),32,true);
+    let line_height = number_02f1747b_value(value_7,32,true);
+    let value_8 = Math.fround(bounds.height);
+    let value_9 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_8,32,true),0,32,true,0),32,true);
+    let value_10 = number_02f1747b_value(padding_y,32,true);
+    let value_11 = number_02f1747b_value(2,32,true);
+    let value_12 = number_02f1747b_value(number_02f1747b_bits(value_10,value_11,32,true,3),32,true);
+    let value_13 = number_02f1747b_value(number_02f1747b_bits(value_9,value_12,32,true,2),32,true);
+    paint.viewport_height = value_13;
+    let value_14 = number_02f1747b_value(paint.viewport_height,32,true);
+    let value_15 = number_02f1747b_value(0,32,true);
+    let value_16 = number_02f1747b_bool(value_14 < value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(0,32,true);
+        paint.viewport_height = value_17;
+    }
+    let value_18 = number_02f1747b_value(content_height,32,true);
+    let value_19 = Math.fround(bounds.height);
+    let value_20 = number_02f1747b_value(padding_y,32,true);
+    let value_21 = number_02f1747b_value(TextInput_TextAreaMaxScrollFor($rt, $state, $host, value_18, value_19, value_20),32,true);
+    paint.max_scroll = value_21;
+    let value_22 = number_02f1747b_value(scroll_y,32,true);
+    let value_23 = number_02f1747b_value(paint.max_scroll,32,true);
+    let value_24 = number_02f1747b_value(TextInput_TextAreaScrollFor($rt, $state, $host, value_22, value_23),32,true);
+    paint.scroll_y = value_24;
+    let value_25 = Math.fround(bounds.width);
+    let value_26 = number_02f1747b_value(padding_x,32,true);
+    let value_27 = number_02f1747b_bool(wrap);
+    let value_28 = number_02f1747b_value(min_wrap_width,32,true);
+    let value_29 = number_02f1747b_value(TextInput_TextAreaWrapWidthFor($rt, $state, $host, value_25, value_26, value_27, value_28),32,true);
+    paint.wrap_width = value_29;
+    let value_30 = Math.fround(bounds.x);
+    let value_31 = number_02f1747b_value(padding_x,32,true);
+    let value_32 = Math.fround(Math.fround(value_31));
+    let value_33 = Math.fround(value_30 + value_32);
+    paint.clip_bounds.x = value_33;
+    let value_34 = Math.fround(bounds.y);
+    let value_35 = number_02f1747b_value(padding_y,32,true);
+    let value_36 = Math.fround(Math.fround(value_35));
+    let value_37 = Math.fround(value_34 + value_36);
+    paint.clip_bounds.y = value_37;
+    let value_38 = Math.fround(bounds.width);
+    let value_39 = number_02f1747b_value(padding_x,32,true);
+    let value_40 = number_02f1747b_value(2,32,true);
+    let value_41 = number_02f1747b_value(number_02f1747b_bits(value_39,value_40,32,true,3),32,true);
+    let value_42 = Math.fround(Math.fround(value_41));
+    let value_43 = Math.fround(value_38 - value_42);
+    paint.clip_bounds.width = value_43;
+    let value_44 = Math.fround(bounds.height);
+    let value_45 = number_02f1747b_value(padding_y,32,true);
+    let value_46 = number_02f1747b_value(2,32,true);
+    let value_47 = number_02f1747b_value(number_02f1747b_bits(value_45,value_46,32,true,3),32,true);
+    let value_48 = Math.fround(Math.fround(value_47));
+    let value_49 = Math.fround(value_44 - value_48);
+    paint.clip_bounds.height = value_49;
+    let value_50 = Math.fround(paint.clip_bounds.width);
+    let value_51 = Math.fround(0.0);
+    let value_52 = number_02f1747b_bool(value_50 < value_51);
+    if (value_52) {
+        let value_53 = Math.fround(0.0);
+        paint.clip_bounds.width = value_53;
+    }
+    let value_54 = Math.fround(paint.clip_bounds.height);
+    let value_55 = Math.fround(0.0);
+    let value_56 = number_02f1747b_bool(value_54 < value_55);
+    if (value_56) {
+        let value_57 = Math.fround(0.0);
+        paint.clip_bounds.height = value_57;
+    }
+    let value_58 = Math.fround(bounds.x);
+    let value_59 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_58,32,true),0,32,true,0),32,true);
+    let value_60 = number_02f1747b_value(padding_x,32,true);
+    let value_61 = number_02f1747b_value(number_02f1747b_bits(value_59,value_60,32,true,1),32,true);
+    paint.placeholder_x = value_61;
+    let value_62 = Math.fround(bounds.y);
+    let value_63 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_62,32,true),0,32,true,0),32,true);
+    let value_64 = number_02f1747b_value(padding_y,32,true);
+    let value_65 = number_02f1747b_value(number_02f1747b_bits(value_63,value_64,32,true,1),32,true);
+    let value_66 = number_02f1747b_value(line_height,32,true);
+    let value_67 = number_02f1747b_value(text_line_height,32,true);
+    let value_68 = number_02f1747b_value(number_02f1747b_bits(value_66,value_67,32,true,2),32,true);
+    let value_69 = number_02f1747b_value(2,32,true);
+    let value_70 = number_02f1747b_value(number_02f1747b_bits(value_68,value_69,32,true,4),32,true);
+    let value_71 = number_02f1747b_value(number_02f1747b_bits(value_65,value_70,32,true,1),32,true);
+    paint.placeholder_y = value_71;
+    let value_73 = paint;
+    let value_74 = ((record_source) => ({clip_bounds: {x: record_source.clip_bounds.x, y: record_source.clip_bounds.y, width: record_source.clip_bounds.width, height: record_source.clip_bounds.height}, wrap_width: record_source.wrap_width, viewport_height: record_source.viewport_height, max_scroll: record_source.max_scroll, scroll_y: record_source.scroll_y, placeholder_x: record_source.placeholder_x, placeholder_y: record_source.placeholder_y}))(value_73);
+    let value_72 = value_74;
+    return value_72;
 }
 
 export function TextInput_TextInputBufferLimit($rt, $state = moduleState, $host = moduleHost, text_size, max_codepoints) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let limit = kryon.copyValue(text_size - 1);
-  if (max_codepoints > 0 && max_codepoints < limit) {
-    limit = kryon.copyValue(max_codepoints);
-  }
-  if (limit < 0) {
-    return 0;
-  }
-  return limit;
+    text_size = number_02f1747b_value(text_size,32,true);
+    max_codepoints = number_02f1747b_value(max_codepoints,32,true);
+    let value_0 = number_02f1747b_value(text_size,32,true);
+    let value_1 = number_02f1747b_value(1,32,true);
+    let value_2 = number_02f1747b_value(number_02f1747b_bits(value_0,value_1,32,true,2),32,true);
+    let limit = number_02f1747b_value(value_2,32,true);
+    let value_3 = number_02f1747b_value(max_codepoints,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 > value_4);
+    let value_6 = number_02f1747b_bool(value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(max_codepoints,32,true);
+        let value_8 = number_02f1747b_value(limit,32,true);
+        let value_9 = number_02f1747b_bool(value_7 < value_8);
+        value_6 = value_9;
+    }
+    if (value_6) {
+        let value_10 = number_02f1747b_value(max_codepoints,32,true);
+        limit = value_10;
+    }
+    let value_11 = number_02f1747b_value(limit,32,true);
+    let value_12 = number_02f1747b_value(0,32,true);
+    let value_13 = number_02f1747b_bool(value_11 < value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_value(0,32,true);
+        return value_14;
+    }
+    let value_15 = number_02f1747b_value(limit,32,true);
+    return value_15;
 }
 
 export function TextInput_TextFieldScrollFor($rt, $state = moduleState, $host = moduleHost, bounds_x, bounds_width, padding_x, text_width, scroll) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let result = {scroll: 0, max_scroll: 0, clip_width: 0, text_origin_x: 0};
-  result.clip_width = TextInput_TextInputContentWidth($rt, $state, $host, bounds_width, padding_x);
-  result.max_scroll = kryon.copyValue(text_width - result.clip_width);
-  if (result.max_scroll < 0) {
-    result.max_scroll = kryon.copyValue(0);
-  }
-  if (scroll < 0) {
-    result.scroll = kryon.copyValue(0);
-  } else if (scroll > result.max_scroll) {
-    result.scroll = kryon.copyValue(result.max_scroll);
-  } else {
-    result.scroll = kryon.copyValue(scroll);
-  }
-  result.text_origin_x = kryon.copyValue(Math.trunc(Number(bounds_x + padding_x - result.scroll)));
-  return result;
-  return kryon.snapshot($rt);
+    bounds_x = Math.fround(bounds_x);
+    bounds_width = Math.fround(bounds_width);
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    text_width = number_02f1747b_value(text_width,32,true);
+    scroll = number_02f1747b_value(scroll,32,true);
+    let value_0 = {scroll: 0, max_scroll: 0, clip_width: 0, text_origin_x: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({scroll: record_source.scroll, max_scroll: record_source.max_scroll, clip_width: record_source.clip_width, text_origin_x: record_source.text_origin_x}))(value_1);
+    let result = value_2;
+    let value_3 = Math.fround(bounds_width);
+    let value_4 = number_02f1747b_value(padding_x,32,true);
+    let value_5 = number_02f1747b_value(TextInput_TextInputContentWidth($rt, $state, $host, value_3, value_4),32,true);
+    result.clip_width = value_5;
+    let value_6 = number_02f1747b_value(text_width,32,true);
+    let value_7 = number_02f1747b_value(result.clip_width,32,true);
+    let value_8 = number_02f1747b_value(number_02f1747b_bits(value_6,value_7,32,true,2),32,true);
+    result.max_scroll = value_8;
+    let value_9 = number_02f1747b_value(result.max_scroll,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(0,32,true);
+        result.max_scroll = value_12;
+    }
+    let value_13 = number_02f1747b_value(scroll,32,true);
+    let value_14 = number_02f1747b_value(0,32,true);
+    let value_15 = number_02f1747b_bool(value_13 < value_14);
+    if (value_15) {
+        let value_16 = number_02f1747b_value(0,32,true);
+        result.scroll = value_16;
+    } else {
+        let value_17 = number_02f1747b_value(scroll,32,true);
+        let value_18 = number_02f1747b_value(result.max_scroll,32,true);
+        let value_19 = number_02f1747b_bool(value_17 > value_18);
+        if (value_19) {
+            let value_20 = number_02f1747b_value(result.max_scroll,32,true);
+            result.scroll = value_20;
+        } else {
+            let value_21 = number_02f1747b_value(scroll,32,true);
+            result.scroll = value_21;
+        }
+    }
+    let value_22 = Math.fround(bounds_x);
+    let value_23 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_22,32,true),0,32,true,0),32,true);
+    let value_24 = number_02f1747b_value(padding_x,32,true);
+    let value_25 = number_02f1747b_value(number_02f1747b_bits(value_23,value_24,32,true,1),32,true);
+    let value_26 = number_02f1747b_value(result.scroll,32,true);
+    let value_27 = number_02f1747b_value(number_02f1747b_bits(value_25,value_26,32,true,2),32,true);
+    result.text_origin_x = value_27;
+    let value_29 = result;
+    let value_30 = ((record_source) => ({scroll: record_source.scroll, max_scroll: record_source.max_scroll, clip_width: record_source.clip_width, text_origin_x: record_source.text_origin_x}))(value_29);
+    let value_28 = value_30;
+    return value_28;
 }
 
 export function TextInput_TextFieldRevealScroll($rt, $state = moduleState, $host = moduleHost, scroll, max_scroll, clip_width, cursor_text_x, margin) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (margin < 0) {
-    margin = kryon.copyValue(0);
-  }
-  if (cursor_text_x < scroll + margin) {
-    scroll = kryon.copyValue(cursor_text_x - margin);
-  }
-  if (cursor_text_x > scroll + clip_width - margin) {
-    scroll = kryon.copyValue(cursor_text_x - clip_width + margin);
-  }
-  if (scroll < 0) {
-    return 0;
-  }
-  if (scroll > max_scroll) {
-    return max_scroll;
-  }
-  return scroll;
+    scroll = number_02f1747b_value(scroll,32,true);
+    max_scroll = number_02f1747b_value(max_scroll,32,true);
+    clip_width = number_02f1747b_value(clip_width,32,true);
+    cursor_text_x = number_02f1747b_value(cursor_text_x,32,true);
+    margin = number_02f1747b_value(margin,32,true);
+    let value_0 = number_02f1747b_value(margin,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(0,32,true);
+        margin = value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor_text_x,32,true);
+    let value_5 = number_02f1747b_value(scroll,32,true);
+    let value_6 = number_02f1747b_value(margin,32,true);
+    let value_7 = number_02f1747b_value(number_02f1747b_bits(value_5,value_6,32,true,1),32,true);
+    let value_8 = number_02f1747b_bool(value_4 < value_7);
+    if (value_8) {
+        let value_9 = number_02f1747b_value(cursor_text_x,32,true);
+        let value_10 = number_02f1747b_value(margin,32,true);
+        let value_11 = number_02f1747b_value(number_02f1747b_bits(value_9,value_10,32,true,2),32,true);
+        scroll = value_11;
+    }
+    let value_12 = number_02f1747b_value(cursor_text_x,32,true);
+    let value_13 = number_02f1747b_value(scroll,32,true);
+    let value_14 = number_02f1747b_value(clip_width,32,true);
+    let value_15 = number_02f1747b_value(number_02f1747b_bits(value_13,value_14,32,true,1),32,true);
+    let value_16 = number_02f1747b_value(margin,32,true);
+    let value_17 = number_02f1747b_value(number_02f1747b_bits(value_15,value_16,32,true,2),32,true);
+    let value_18 = number_02f1747b_bool(value_12 > value_17);
+    if (value_18) {
+        let value_19 = number_02f1747b_value(cursor_text_x,32,true);
+        let value_20 = number_02f1747b_value(clip_width,32,true);
+        let value_21 = number_02f1747b_value(number_02f1747b_bits(value_19,value_20,32,true,2),32,true);
+        let value_22 = number_02f1747b_value(margin,32,true);
+        let value_23 = number_02f1747b_value(number_02f1747b_bits(value_21,value_22,32,true,1),32,true);
+        scroll = value_23;
+    }
+    let value_24 = number_02f1747b_value(scroll,32,true);
+    let value_25 = number_02f1747b_value(0,32,true);
+    let value_26 = number_02f1747b_bool(value_24 < value_25);
+    if (value_26) {
+        let value_27 = number_02f1747b_value(0,32,true);
+        return value_27;
+    }
+    let value_28 = number_02f1747b_value(scroll,32,true);
+    let value_29 = number_02f1747b_value(max_scroll,32,true);
+    let value_30 = number_02f1747b_bool(value_28 > value_29);
+    if (value_30) {
+        let value_31 = number_02f1747b_value(max_scroll,32,true);
+        return value_31;
+    }
+    let value_32 = number_02f1747b_value(scroll,32,true);
+    return value_32;
 }
 
 export function TextInput_TextFieldCursorHeightFor($rt, $state = moduleState, $host = moduleHost, font, bounds_height, text_line_height, min_height, vertical_padding) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let height = kryon.copyValue(text_line_height);
-  let max_height = kryon.copyValue(Math.trunc(Number(bounds_height - vertical_padding)));
-  if (height < font) {
-    height = kryon.copyValue(font);
-  }
-  if (max_height < min_height) {
-    max_height = kryon.copyValue(Math.trunc(Number(bounds_height)));
-  }
-  if (height > max_height) {
-    height = kryon.copyValue(max_height);
-  }
-  if (height < min_height) {
-    height = kryon.copyValue(min_height);
-  }
-  return height;
+    font = number_02f1747b_value(font,32,true);
+    bounds_height = Math.fround(bounds_height);
+    text_line_height = number_02f1747b_value(text_line_height,32,true);
+    min_height = number_02f1747b_value(min_height,32,true);
+    vertical_padding = number_02f1747b_value(vertical_padding,32,true);
+    let value_0 = number_02f1747b_value(text_line_height,32,true);
+    let height = number_02f1747b_value(value_0,32,true);
+    let value_1 = Math.fround(bounds_height);
+    let value_2 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_1,32,true),0,32,true,0),32,true);
+    let value_3 = number_02f1747b_value(vertical_padding,32,true);
+    let value_4 = number_02f1747b_value(number_02f1747b_bits(value_2,value_3,32,true,2),32,true);
+    let max_height = number_02f1747b_value(value_4,32,true);
+    let value_5 = number_02f1747b_value(height,32,true);
+    let value_6 = number_02f1747b_value(font,32,true);
+    let value_7 = number_02f1747b_bool(value_5 < value_6);
+    if (value_7) {
+        let value_8 = number_02f1747b_value(font,32,true);
+        height = value_8;
+    }
+    let value_9 = number_02f1747b_value(max_height,32,true);
+    let value_10 = number_02f1747b_value(min_height,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = Math.fround(bounds_height);
+        let value_13 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_12,32,true),0,32,true,0),32,true);
+        max_height = value_13;
+    }
+    let value_14 = number_02f1747b_value(height,32,true);
+    let value_15 = number_02f1747b_value(max_height,32,true);
+    let value_16 = number_02f1747b_bool(value_14 > value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_value(max_height,32,true);
+        height = value_17;
+    }
+    let value_18 = number_02f1747b_value(height,32,true);
+    let value_19 = number_02f1747b_value(min_height,32,true);
+    let value_20 = number_02f1747b_bool(value_18 < value_19);
+    if (value_20) {
+        let value_21 = number_02f1747b_value(min_height,32,true);
+        height = value_21;
+    }
+    let value_22 = number_02f1747b_value(height,32,true);
+    return value_22;
 }
 
 export function TextInput_TextFieldPaintFor($rt, $state = moduleState, $host = moduleHost, bounds, padding_x, scroll_x, font, text_line_height, min_cursor_height, cursor_vertical_padding, clip_guard) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let paint = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, text_x: 0, cursor_y: 0, cursor_height: 0};
-  let clip_width = TextInput_TextInputContentWidth($rt, $state, $host, bounds.width, padding_x);
-  paint.clip_bounds.x = kryon.copyValue(bounds.x + padding_x);
-  paint.clip_bounds.y = kryon.copyValue(bounds.y - clip_guard);
-  paint.clip_bounds.width = kryon.copyValue(Math.fround(clip_width));
-  paint.clip_bounds.height = kryon.copyValue(bounds.height + (clip_guard * 2));
-  if (paint.clip_bounds.height < 0.0) {
-    paint.clip_bounds.height = kryon.copyValue(0.0);
-  }
-  paint.text_x = kryon.copyValue(Math.trunc(Number(bounds.x + padding_x - scroll_x)));
-  paint.cursor_height = TextInput_TextFieldCursorHeightFor($rt, $state, $host, font, bounds.height, text_line_height, min_cursor_height, cursor_vertical_padding);
-  paint.cursor_y = kryon.copyValue(Math.trunc(Number(bounds.y + (Math.trunc(Number(bounds.height)) - paint.cursor_height) / 2)));
-  return paint;
-  return kryon.snapshot($rt);
+    let value_0 = bounds;
+    let value_1 = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(value_0);
+    bounds = value_1;
+    padding_x = number_02f1747b_value(padding_x,32,true);
+    scroll_x = number_02f1747b_value(scroll_x,32,true);
+    font = number_02f1747b_value(font,32,true);
+    text_line_height = number_02f1747b_value(text_line_height,32,true);
+    min_cursor_height = number_02f1747b_value(min_cursor_height,32,true);
+    cursor_vertical_padding = number_02f1747b_value(cursor_vertical_padding,32,true);
+    clip_guard = number_02f1747b_value(clip_guard,32,true);
+    let value_2 = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, text_x: 0, cursor_y: 0, cursor_height: 0};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({clip_bounds: {x: record_source.clip_bounds.x, y: record_source.clip_bounds.y, width: record_source.clip_bounds.width, height: record_source.clip_bounds.height}, text_x: record_source.text_x, cursor_y: record_source.cursor_y, cursor_height: record_source.cursor_height}))(value_3);
+    let paint = value_4;
+    let value_5 = Math.fround(bounds.width);
+    let value_6 = number_02f1747b_value(padding_x,32,true);
+    let value_7 = number_02f1747b_value(TextInput_TextInputContentWidth($rt, $state, $host, value_5, value_6),32,true);
+    let clip_width = number_02f1747b_value(value_7,32,true);
+    let value_8 = Math.fround(bounds.x);
+    let value_9 = number_02f1747b_value(padding_x,32,true);
+    let value_10 = Math.fround(Math.fround(value_9));
+    let value_11 = Math.fround(value_8 + value_10);
+    paint.clip_bounds.x = value_11;
+    let value_12 = Math.fround(bounds.y);
+    let value_13 = number_02f1747b_value(clip_guard,32,true);
+    let value_14 = Math.fround(Math.fround(value_13));
+    let value_15 = Math.fround(value_12 - value_14);
+    paint.clip_bounds.y = value_15;
+    let value_16 = number_02f1747b_value(clip_width,32,true);
+    let value_17 = Math.fround(Math.fround(value_16));
+    paint.clip_bounds.width = value_17;
+    let value_18 = Math.fround(bounds.height);
+    let value_19 = number_02f1747b_value(clip_guard,32,true);
+    let value_20 = number_02f1747b_value(2,32,true);
+    let value_21 = number_02f1747b_value(number_02f1747b_bits(value_19,value_20,32,true,3),32,true);
+    let value_22 = Math.fround(Math.fround(value_21));
+    let value_23 = Math.fround(value_18 + value_22);
+    paint.clip_bounds.height = value_23;
+    let value_24 = Math.fround(paint.clip_bounds.height);
+    let value_25 = Math.fround(0.0);
+    let value_26 = number_02f1747b_bool(value_24 < value_25);
+    if (value_26) {
+        let value_27 = Math.fround(0.0);
+        paint.clip_bounds.height = value_27;
+    }
+    let value_28 = Math.fround(bounds.x);
+    let value_29 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_28,32,true),0,32,true,0),32,true);
+    let value_30 = number_02f1747b_value(padding_x,32,true);
+    let value_31 = number_02f1747b_value(number_02f1747b_bits(value_29,value_30,32,true,1),32,true);
+    let value_32 = number_02f1747b_value(scroll_x,32,true);
+    let value_33 = number_02f1747b_value(number_02f1747b_bits(value_31,value_32,32,true,2),32,true);
+    paint.text_x = value_33;
+    let value_34 = number_02f1747b_value(font,32,true);
+    let value_35 = Math.fround(bounds.height);
+    let value_36 = number_02f1747b_value(text_line_height,32,true);
+    let value_37 = number_02f1747b_value(min_cursor_height,32,true);
+    let value_38 = number_02f1747b_value(cursor_vertical_padding,32,true);
+    let value_39 = number_02f1747b_value(TextInput_TextFieldCursorHeightFor($rt, $state, $host, value_34, value_35, value_36, value_37, value_38),32,true);
+    paint.cursor_height = value_39;
+    let value_40 = Math.fround(bounds.y);
+    let value_41 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_40,32,true),0,32,true,0),32,true);
+    let value_42 = Math.fround(bounds.height);
+    let value_43 = number_02f1747b_value(number_02f1747b_bits(number_02f1747b_float(value_42,32,true),0,32,true,0),32,true);
+    let value_44 = number_02f1747b_value(paint.cursor_height,32,true);
+    let value_45 = number_02f1747b_value(number_02f1747b_bits(value_43,value_44,32,true,2),32,true);
+    let value_46 = number_02f1747b_value(2,32,true);
+    let value_47 = number_02f1747b_value(number_02f1747b_bits(value_45,value_46,32,true,4),32,true);
+    let value_48 = number_02f1747b_value(number_02f1747b_bits(value_41,value_47,32,true,1),32,true);
+    paint.cursor_y = value_48;
+    let value_50 = paint;
+    let value_51 = ((record_source) => ({clip_bounds: {x: record_source.clip_bounds.x, y: record_source.clip_bounds.y, width: record_source.clip_bounds.width, height: record_source.clip_bounds.height}, text_x: record_source.text_x, cursor_y: record_source.cursor_y, cursor_height: record_source.cursor_height}))(value_50);
+    let value_49 = value_51;
+    return value_49;
 }
 
 export function TextInput_TextSelectionRangeFor($rt, $state = moduleState, $host = moduleHost, anchor, cursor) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let out = {start: 0, end: 0, has_selection: false};
-  if (anchor < cursor) {
-    out.start = kryon.copyValue(anchor);
-    out.end = kryon.copyValue(cursor);
-  } else {
-    out.start = kryon.copyValue(cursor);
-    out.end = kryon.copyValue(anchor);
-  }
-  out.has_selection = kryon.copyValue(out.start != out.end);
-  return out;
-  return kryon.snapshot($rt);
+    anchor = number_02f1747b_value(anchor,32,true);
+    cursor = number_02f1747b_value(cursor,32,true);
+    let value_0 = {start: 0, end: 0, has_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({start: record_source.start, end: record_source.end, has_selection: record_source.has_selection}))(value_1);
+    let out = value_2;
+    let value_3 = number_02f1747b_value(anchor,32,true);
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(anchor,32,true);
+        out.start = value_6;
+        let value_7 = number_02f1747b_value(cursor,32,true);
+        out.end = value_7;
+    } else {
+        let value_8 = number_02f1747b_value(cursor,32,true);
+        out.start = value_8;
+        let value_9 = number_02f1747b_value(anchor,32,true);
+        out.end = value_9;
+    }
+    let value_10 = number_02f1747b_value(out.start,32,true);
+    let value_11 = number_02f1747b_value(out.end,32,true);
+    let value_12 = number_02f1747b_bool(value_10 != value_11);
+    out.has_selection = value_12;
+    let value_14 = out;
+    let value_15 = ((record_source) => ({start: record_source.start, end: record_source.end, has_selection: record_source.has_selection}))(value_14);
+    let value_13 = value_15;
+    return value_13;
 }
 
 export function TextInput_TextSelectionRangeForLength($rt, $state = moduleState, $host = moduleHost, anchor, cursor, length) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let out = TextInput_TextSelectionRangeFor($rt, $state, $host, anchor, cursor);
-  if (length < 0) {
-    length = kryon.copyValue(0);
-  }
-  if (out.start < 0) {
-    out.start = kryon.copyValue(0);
-  }
-  if (out.end < 0) {
-    out.end = kryon.copyValue(0);
-  }
-  if (out.start > length) {
-    out.start = kryon.copyValue(length);
-  }
-  if (out.end > length) {
-    out.end = kryon.copyValue(length);
-  }
-  out.has_selection = kryon.copyValue(out.start != out.end);
-  return out;
-  return kryon.snapshot($rt);
+    anchor = number_02f1747b_value(anchor,32,true);
+    cursor = number_02f1747b_value(cursor,32,true);
+    length = number_02f1747b_value(length,32,true);
+    let value_0 = number_02f1747b_value(anchor,32,true);
+    let value_1 = number_02f1747b_value(cursor,32,true);
+    let value_3 = TextInput_TextSelectionRangeFor($rt, $state, $host, value_0, value_1);
+    let value_4 = ((record_source) => ({start: record_source.start, end: record_source.end, has_selection: record_source.has_selection}))(value_3);
+    let value_2 = value_4;
+    let value_5 = value_2;
+    let value_6 = ((record_source) => ({start: record_source.start, end: record_source.end, has_selection: record_source.has_selection}))(value_5);
+    let out = value_6;
+    let value_7 = number_02f1747b_value(length,32,true);
+    let value_8 = number_02f1747b_value(0,32,true);
+    let value_9 = number_02f1747b_bool(value_7 < value_8);
+    if (value_9) {
+        let value_10 = number_02f1747b_value(0,32,true);
+        length = value_10;
+    }
+    let value_11 = number_02f1747b_value(out.start,32,true);
+    let value_12 = number_02f1747b_value(0,32,true);
+    let value_13 = number_02f1747b_bool(value_11 < value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_value(0,32,true);
+        out.start = value_14;
+    }
+    let value_15 = number_02f1747b_value(out.end,32,true);
+    let value_16 = number_02f1747b_value(0,32,true);
+    let value_17 = number_02f1747b_bool(value_15 < value_16);
+    if (value_17) {
+        let value_18 = number_02f1747b_value(0,32,true);
+        out.end = value_18;
+    }
+    let value_19 = number_02f1747b_value(out.start,32,true);
+    let value_20 = number_02f1747b_value(length,32,true);
+    let value_21 = number_02f1747b_bool(value_19 > value_20);
+    if (value_21) {
+        let value_22 = number_02f1747b_value(length,32,true);
+        out.start = value_22;
+    }
+    let value_23 = number_02f1747b_value(out.end,32,true);
+    let value_24 = number_02f1747b_value(length,32,true);
+    let value_25 = number_02f1747b_bool(value_23 > value_24);
+    if (value_25) {
+        let value_26 = number_02f1747b_value(length,32,true);
+        out.end = value_26;
+    }
+    let value_27 = number_02f1747b_value(out.start,32,true);
+    let value_28 = number_02f1747b_value(out.end,32,true);
+    let value_29 = number_02f1747b_bool(value_27 != value_28);
+    out.has_selection = value_29;
+    let value_31 = out;
+    let value_32 = ((record_source) => ({start: record_source.start, end: record_source.end, has_selection: record_source.has_selection}))(value_31);
+    let value_30 = value_32;
+    return value_30;
 }
 
 export function TextInput_TextCursorForLength($rt, $state = moduleState, $host = moduleHost, cursor, length) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (length < 0) {
-    length = kryon.copyValue(0);
-  }
-  if (cursor < 0) {
-    return 0;
-  }
-  if (cursor > length) {
-    return length;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    length = number_02f1747b_value(length,32,true);
+    let value_0 = number_02f1747b_value(length,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(0,32,true);
+        length = value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 < value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(0,32,true);
+        return value_7;
+    }
+    let value_8 = number_02f1747b_value(cursor,32,true);
+    let value_9 = number_02f1747b_value(length,32,true);
+    let value_10 = number_02f1747b_bool(value_8 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(length,32,true);
+        return value_11;
+    }
+    let value_12 = number_02f1747b_value(cursor,32,true);
+    return value_12;
 }
 
 export function TextInput_TextSelectionAfterMove($rt, $state = moduleState, $host = moduleHost, anchor, cursor, target, extend) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let out = {anchor: 0, cursor: 0, has_selection: false};
-  if (extend) {
-    if (anchor == cursor) {
-      out.anchor = kryon.copyValue(cursor);
+    anchor = number_02f1747b_value(anchor,32,true);
+    cursor = number_02f1747b_value(cursor,32,true);
+    target = number_02f1747b_value(target,32,true);
+    extend = number_02f1747b_bool(extend);
+    let value_0 = {anchor: 0, cursor: 0, has_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_1);
+    let out = value_2;
+    let value_3 = number_02f1747b_bool(extend);
+    if (value_3) {
+        let value_4 = number_02f1747b_value(anchor,32,true);
+        let value_5 = number_02f1747b_value(cursor,32,true);
+        let value_6 = number_02f1747b_bool(value_4 == value_5);
+        if (value_6) {
+            let value_7 = number_02f1747b_value(cursor,32,true);
+            out.anchor = value_7;
+        } else {
+            let value_8 = number_02f1747b_value(anchor,32,true);
+            out.anchor = value_8;
+        }
+        let value_9 = number_02f1747b_value(target,32,true);
+        out.cursor = value_9;
     } else {
-      out.anchor = kryon.copyValue(anchor);
+        let value_10 = number_02f1747b_value(target,32,true);
+        out.anchor = value_10;
+        let value_11 = number_02f1747b_value(target,32,true);
+        out.cursor = value_11;
     }
-    out.cursor = kryon.copyValue(target);
-  } else {
-    out.anchor = kryon.copyValue(target);
-    out.cursor = kryon.copyValue(target);
-  }
-  out.has_selection = kryon.copyValue(out.anchor != out.cursor);
-  return out;
-  return kryon.snapshot($rt);
+    let value_12 = number_02f1747b_value(out.anchor,32,true);
+    let value_13 = number_02f1747b_value(out.cursor,32,true);
+    let value_14 = number_02f1747b_bool(value_12 != value_13);
+    out.has_selection = value_14;
+    let value_16 = out;
+    let value_17 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_16);
+    let value_15 = value_17;
+    return value_15;
 }
 
 export function TextInput_TextSelectionCollapsed($rt, $state = moduleState, $host = moduleHost, cursor) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let out = {anchor: 0, cursor: 0, has_selection: false};
-  out.anchor = kryon.copyValue(cursor);
-  out.cursor = kryon.copyValue(cursor);
-  out.has_selection = kryon.copyValue(false);
-  return out;
-  return kryon.snapshot($rt);
+    cursor = number_02f1747b_value(cursor,32,true);
+    let value_0 = {anchor: 0, cursor: 0, has_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_1);
+    let out = value_2;
+    let value_3 = number_02f1747b_value(cursor,32,true);
+    out.anchor = value_3;
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    out.cursor = value_4;
+    let value_5 = number_02f1747b_bool(false);
+    out.has_selection = value_5;
+    let value_7 = out;
+    let value_8 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_7);
+    let value_6 = value_8;
+    return value_6;
 }
 
 export function TextInput_TextSelectionAll($rt, $state = moduleState, $host = moduleHost, length) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let out = {anchor: 0, cursor: 0, has_selection: false};
-  if (length < 0) {
-    length = kryon.copyValue(0);
-  }
-  out.anchor = kryon.copyValue(0);
-  out.cursor = kryon.copyValue(length);
-  out.has_selection = kryon.copyValue(length > 0);
-  return out;
-  return kryon.snapshot($rt);
+    length = number_02f1747b_value(length,32,true);
+    let value_0 = {anchor: 0, cursor: 0, has_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_1);
+    let out = value_2;
+    let value_3 = number_02f1747b_value(length,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_value(0,32,true);
+        length = value_6;
+    }
+    let value_7 = number_02f1747b_value(0,32,true);
+    out.anchor = value_7;
+    let value_8 = number_02f1747b_value(length,32,true);
+    out.cursor = value_8;
+    let value_9 = number_02f1747b_value(length,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 > value_10);
+    out.has_selection = value_11;
+    let value_13 = out;
+    let value_14 = ((record_source) => ({anchor: record_source.anchor, cursor: record_source.cursor, has_selection: record_source.has_selection}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function TextInput_TextBufferLineStartCursor($rt, $state = moduleState, $host = moduleHost, cursor) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (cursor < 0) {
-    return 0;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    let value_0 = number_02f1747b_value(cursor,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 < value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(0,32,true);
+        return value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    return value_4;
 }
 
 export function TextInput_TextBufferInsertDecisionFor($rt, $state = moduleState, $host = moduleHost, text_size, used, at, insert_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {can_insert: false, tail_count: 0};
-  if (text_size <= 0 || used < 0 || at < 0 || at > used || insert_len <= 0) {
-    return decision;
-  }
-  if (used + insert_len >= text_size) {
-    return decision;
-  }
-  decision.can_insert = kryon.copyValue(true);
-  decision.tail_count = kryon.copyValue(used - at + 1);
-  return decision;
-  return kryon.snapshot($rt);
+    text_size = number_02f1747b_value(text_size,32,true);
+    used = number_02f1747b_value(used,32,true);
+    at = number_02f1747b_value(at,32,true);
+    insert_len = number_02f1747b_value(insert_len,32,true);
+    let value_0 = {can_insert: false, tail_count: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({can_insert: record_source.can_insert, tail_count: record_source.tail_count}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(text_size,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 <= value_4);
+    let value_6 = number_02f1747b_bool(value_5);
+    if (!value_6) {
+        let value_7 = number_02f1747b_value(used,32,true);
+        let value_8 = number_02f1747b_value(0,32,true);
+        let value_9 = number_02f1747b_bool(value_7 < value_8);
+        value_6 = value_9;
+    }
+    let value_10 = number_02f1747b_bool(value_6);
+    if (!value_10) {
+        let value_11 = number_02f1747b_value(at,32,true);
+        let value_12 = number_02f1747b_value(0,32,true);
+        let value_13 = number_02f1747b_bool(value_11 < value_12);
+        value_10 = value_13;
+    }
+    let value_14 = number_02f1747b_bool(value_10);
+    if (!value_14) {
+        let value_15 = number_02f1747b_value(at,32,true);
+        let value_16 = number_02f1747b_value(used,32,true);
+        let value_17 = number_02f1747b_bool(value_15 > value_16);
+        value_14 = value_17;
+    }
+    let value_18 = number_02f1747b_bool(value_14);
+    if (!value_18) {
+        let value_19 = number_02f1747b_value(insert_len,32,true);
+        let value_20 = number_02f1747b_value(0,32,true);
+        let value_21 = number_02f1747b_bool(value_19 <= value_20);
+        value_18 = value_21;
+    }
+    if (value_18) {
+        let value_23 = decision;
+        let value_24 = ((record_source) => ({can_insert: record_source.can_insert, tail_count: record_source.tail_count}))(value_23);
+        let value_22 = value_24;
+        return value_22;
+    }
+    let value_25 = number_02f1747b_value(used,32,true);
+    let value_26 = number_02f1747b_value(insert_len,32,true);
+    let value_27 = number_02f1747b_value(number_02f1747b_bits(value_25,value_26,32,true,1),32,true);
+    let value_28 = number_02f1747b_value(text_size,32,true);
+    let value_29 = number_02f1747b_bool(value_27 >= value_28);
+    if (value_29) {
+        let value_31 = decision;
+        let value_32 = ((record_source) => ({can_insert: record_source.can_insert, tail_count: record_source.tail_count}))(value_31);
+        let value_30 = value_32;
+        return value_30;
+    }
+    let value_33 = number_02f1747b_bool(true);
+    decision.can_insert = value_33;
+    let value_34 = number_02f1747b_value(used,32,true);
+    let value_35 = number_02f1747b_value(at,32,true);
+    let value_36 = number_02f1747b_value(number_02f1747b_bits(value_34,value_35,32,true,2),32,true);
+    let value_37 = number_02f1747b_value(1,32,true);
+    let value_38 = number_02f1747b_value(number_02f1747b_bits(value_36,value_37,32,true,1),32,true);
+    decision.tail_count = value_38;
+    let value_40 = decision;
+    let value_41 = ((record_source) => ({can_insert: record_source.can_insert, tail_count: record_source.tail_count}))(value_40);
+    let value_39 = value_41;
+    return value_39;
 }
 
 export function TextInput_TextBufferDeleteDecisionFor($rt, $state = moduleState, $host = moduleHost, used, at, delete_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {can_delete: false, tail_count: 0};
-  if (used < 0 || at < 0 || delete_len <= 0 || at + delete_len > used) {
-    return decision;
-  }
-  decision.can_delete = kryon.copyValue(true);
-  decision.tail_count = kryon.copyValue(used - at - delete_len + 1);
-  return decision;
-  return kryon.snapshot($rt);
+    used = number_02f1747b_value(used,32,true);
+    at = number_02f1747b_value(at,32,true);
+    delete_len = number_02f1747b_value(delete_len,32,true);
+    let value_0 = {can_delete: false, tail_count: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({can_delete: record_source.can_delete, tail_count: record_source.tail_count}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(used,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    let value_6 = number_02f1747b_bool(value_5);
+    if (!value_6) {
+        let value_7 = number_02f1747b_value(at,32,true);
+        let value_8 = number_02f1747b_value(0,32,true);
+        let value_9 = number_02f1747b_bool(value_7 < value_8);
+        value_6 = value_9;
+    }
+    let value_10 = number_02f1747b_bool(value_6);
+    if (!value_10) {
+        let value_11 = number_02f1747b_value(delete_len,32,true);
+        let value_12 = number_02f1747b_value(0,32,true);
+        let value_13 = number_02f1747b_bool(value_11 <= value_12);
+        value_10 = value_13;
+    }
+    let value_14 = number_02f1747b_bool(value_10);
+    if (!value_14) {
+        let value_15 = number_02f1747b_value(at,32,true);
+        let value_16 = number_02f1747b_value(delete_len,32,true);
+        let value_17 = number_02f1747b_value(number_02f1747b_bits(value_15,value_16,32,true,1),32,true);
+        let value_18 = number_02f1747b_value(used,32,true);
+        let value_19 = number_02f1747b_bool(value_17 > value_18);
+        value_14 = value_19;
+    }
+    if (value_14) {
+        let value_21 = decision;
+        let value_22 = ((record_source) => ({can_delete: record_source.can_delete, tail_count: record_source.tail_count}))(value_21);
+        let value_20 = value_22;
+        return value_20;
+    }
+    let value_23 = number_02f1747b_bool(true);
+    decision.can_delete = value_23;
+    let value_24 = number_02f1747b_value(used,32,true);
+    let value_25 = number_02f1747b_value(at,32,true);
+    let value_26 = number_02f1747b_value(number_02f1747b_bits(value_24,value_25,32,true,2),32,true);
+    let value_27 = number_02f1747b_value(delete_len,32,true);
+    let value_28 = number_02f1747b_value(number_02f1747b_bits(value_26,value_27,32,true,2),32,true);
+    let value_29 = number_02f1747b_value(1,32,true);
+    let value_30 = number_02f1747b_value(number_02f1747b_bits(value_28,value_29,32,true,1),32,true);
+    decision.tail_count = value_30;
+    let value_32 = decision;
+    let value_33 = ((record_source) => ({can_delete: record_source.can_delete, tail_count: record_source.tail_count}))(value_32);
+    let value_31 = value_33;
+    return value_31;
 }
 
 export function TextInput_TextBufferDeleteRangeDecisionFor($rt, $state = moduleState, $host = moduleHost, used, start, end) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {can_delete: false, start: 0, end: 0, cursor: 0, tail_count: 0};
-  if (used < 0) {
-    return decision;
-  }
-  if (start < 0) {
-    start = kryon.copyValue(0);
-  }
-  if (end < 0) {
-    end = kryon.copyValue(0);
-  }
-  if (start > used) {
-    start = kryon.copyValue(used);
-  }
-  if (end > used) {
-    end = kryon.copyValue(used);
-  }
-  if (end <= start) {
-    return decision;
-  }
-  decision.can_delete = kryon.copyValue(true);
-  decision.start = kryon.copyValue(start);
-  decision.end = kryon.copyValue(end);
-  decision.cursor = kryon.copyValue(start);
-  decision.tail_count = kryon.copyValue(used - end + 1);
-  return decision;
-  return kryon.snapshot($rt);
+    used = number_02f1747b_value(used,32,true);
+    start = number_02f1747b_value(start,32,true);
+    end = number_02f1747b_value(end,32,true);
+    let value_0 = {can_delete: false, start: 0, end: 0, cursor: 0, tail_count: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({can_delete: record_source.can_delete, start: record_source.start, end: record_source.end, cursor: record_source.cursor, tail_count: record_source.tail_count}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(used,32,true);
+    let value_4 = number_02f1747b_value(0,32,true);
+    let value_5 = number_02f1747b_bool(value_3 < value_4);
+    if (value_5) {
+        let value_7 = decision;
+        let value_8 = ((record_source) => ({can_delete: record_source.can_delete, start: record_source.start, end: record_source.end, cursor: record_source.cursor, tail_count: record_source.tail_count}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    let value_9 = number_02f1747b_value(start,32,true);
+    let value_10 = number_02f1747b_value(0,32,true);
+    let value_11 = number_02f1747b_bool(value_9 < value_10);
+    if (value_11) {
+        let value_12 = number_02f1747b_value(0,32,true);
+        start = value_12;
+    }
+    let value_13 = number_02f1747b_value(end,32,true);
+    let value_14 = number_02f1747b_value(0,32,true);
+    let value_15 = number_02f1747b_bool(value_13 < value_14);
+    if (value_15) {
+        let value_16 = number_02f1747b_value(0,32,true);
+        end = value_16;
+    }
+    let value_17 = number_02f1747b_value(start,32,true);
+    let value_18 = number_02f1747b_value(used,32,true);
+    let value_19 = number_02f1747b_bool(value_17 > value_18);
+    if (value_19) {
+        let value_20 = number_02f1747b_value(used,32,true);
+        start = value_20;
+    }
+    let value_21 = number_02f1747b_value(end,32,true);
+    let value_22 = number_02f1747b_value(used,32,true);
+    let value_23 = number_02f1747b_bool(value_21 > value_22);
+    if (value_23) {
+        let value_24 = number_02f1747b_value(used,32,true);
+        end = value_24;
+    }
+    let value_25 = number_02f1747b_value(end,32,true);
+    let value_26 = number_02f1747b_value(start,32,true);
+    let value_27 = number_02f1747b_bool(value_25 <= value_26);
+    if (value_27) {
+        let value_29 = decision;
+        let value_30 = ((record_source) => ({can_delete: record_source.can_delete, start: record_source.start, end: record_source.end, cursor: record_source.cursor, tail_count: record_source.tail_count}))(value_29);
+        let value_28 = value_30;
+        return value_28;
+    }
+    let value_31 = number_02f1747b_bool(true);
+    decision.can_delete = value_31;
+    let value_32 = number_02f1747b_value(start,32,true);
+    decision.start = value_32;
+    let value_33 = number_02f1747b_value(end,32,true);
+    decision.end = value_33;
+    let value_34 = number_02f1747b_value(start,32,true);
+    decision.cursor = value_34;
+    let value_35 = number_02f1747b_value(used,32,true);
+    let value_36 = number_02f1747b_value(end,32,true);
+    let value_37 = number_02f1747b_value(number_02f1747b_bits(value_35,value_36,32,true,2),32,true);
+    let value_38 = number_02f1747b_value(1,32,true);
+    let value_39 = number_02f1747b_value(number_02f1747b_bits(value_37,value_38,32,true,1),32,true);
+    decision.tail_count = value_39;
+    let value_41 = decision;
+    let value_42 = ((record_source) => ({can_delete: record_source.can_delete, start: record_source.start, end: record_source.end, cursor: record_source.cursor, tail_count: record_source.tail_count}))(value_41);
+    let value_40 = value_42;
+    return value_40;
 }
 
 export function TextInput_TextBufferCursorAfterInsert($rt, $state = moduleState, $host = moduleHost, cursor, at, insert_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (cursor >= at) {
-    return cursor + insert_len;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    at = number_02f1747b_value(at,32,true);
+    insert_len = number_02f1747b_value(insert_len,32,true);
+    let value_0 = number_02f1747b_value(cursor,32,true);
+    let value_1 = number_02f1747b_value(at,32,true);
+    let value_2 = number_02f1747b_bool(value_0 >= value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(cursor,32,true);
+        let value_4 = number_02f1747b_value(insert_len,32,true);
+        let value_5 = number_02f1747b_value(number_02f1747b_bits(value_3,value_4,32,true,1),32,true);
+        return value_5;
+    }
+    let value_6 = number_02f1747b_value(cursor,32,true);
+    return value_6;
 }
 
 export function TextInput_TextBufferCursorAfterDelete($rt, $state = moduleState, $host = moduleHost, cursor, at, delete_len) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (cursor >= at + delete_len) {
-    return cursor - delete_len;
-  }
-  if (cursor > at) {
-    return at;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    at = number_02f1747b_value(at,32,true);
+    delete_len = number_02f1747b_value(delete_len,32,true);
+    let value_0 = number_02f1747b_value(cursor,32,true);
+    let value_1 = number_02f1747b_value(at,32,true);
+    let value_2 = number_02f1747b_value(delete_len,32,true);
+    let value_3 = number_02f1747b_value(number_02f1747b_bits(value_1,value_2,32,true,1),32,true);
+    let value_4 = number_02f1747b_bool(value_0 >= value_3);
+    if (value_4) {
+        let value_5 = number_02f1747b_value(cursor,32,true);
+        let value_6 = number_02f1747b_value(delete_len,32,true);
+        let value_7 = number_02f1747b_value(number_02f1747b_bits(value_5,value_6,32,true,2),32,true);
+        return value_7;
+    }
+    let value_8 = number_02f1747b_value(cursor,32,true);
+    let value_9 = number_02f1747b_value(at,32,true);
+    let value_10 = number_02f1747b_bool(value_8 > value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(at,32,true);
+        return value_11;
+    }
+    let value_12 = number_02f1747b_value(cursor,32,true);
+    return value_12;
 }
 
 export function TextInput_TextBufferBracketCursorFor($rt, $state = moduleState, $host = moduleHost, cursor, length) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (length <= 0) {
-    return -1;
-  }
-  if (cursor < 0) {
-    return 0;
-  }
-  if (cursor >= length) {
-    return length - 1;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    length = number_02f1747b_value(length,32,true);
+    let value_0 = number_02f1747b_value(length,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 <= value_1);
+    if (value_2) {
+        let value_3 = number_02f1747b_value(-1,32,true);
+        return value_3;
+    }
+    let value_4 = number_02f1747b_value(cursor,32,true);
+    let value_5 = number_02f1747b_value(0,32,true);
+    let value_6 = number_02f1747b_bool(value_4 < value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_value(0,32,true);
+        return value_7;
+    }
+    let value_8 = number_02f1747b_value(cursor,32,true);
+    let value_9 = number_02f1747b_value(length,32,true);
+    let value_10 = number_02f1747b_bool(value_8 >= value_9);
+    if (value_10) {
+        let value_11 = number_02f1747b_value(length,32,true);
+        let value_12 = number_02f1747b_value(1,32,true);
+        let value_13 = number_02f1747b_value(number_02f1747b_bits(value_11,value_12,32,true,2),32,true);
+        return value_13;
+    }
+    let value_14 = number_02f1747b_value(cursor,32,true);
+    return value_14;
 }
 
 export function TextInput_TextBufferBracketCandidatePos($rt, $state = moduleState, $host = moduleHost, cursor, current_is_bracket) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  if (cursor > 0 && !current_is_bracket) {
-    return cursor - 1;
-  }
-  return cursor;
+    cursor = number_02f1747b_value(cursor,32,true);
+    current_is_bracket = number_02f1747b_bool(current_is_bracket);
+    let value_0 = number_02f1747b_value(cursor,32,true);
+    let value_1 = number_02f1747b_value(0,32,true);
+    let value_2 = number_02f1747b_bool(value_0 > value_1);
+    let value_3 = number_02f1747b_bool(value_2);
+    if (value_3) {
+        let value_4 = number_02f1747b_bool(current_is_bracket);
+        let value_5 = number_02f1747b_bool(!value_4);
+        value_3 = value_5;
+    }
+    if (value_3) {
+        let value_6 = number_02f1747b_value(cursor,32,true);
+        let value_7 = number_02f1747b_value(1,32,true);
+        let value_8 = number_02f1747b_value(number_02f1747b_bits(value_6,value_7,32,true,2),32,true);
+        return value_8;
+    }
+    let value_9 = number_02f1747b_value(cursor,32,true);
+    return value_9;
 }
 
 export function TextInput_TextBufferBracketDecisionFor($rt, $state = moduleState, $host = moduleHost, pos, bracket_code) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {valid: false, pos: 0, open: 0, close: 0, direction: 0};
-  decision.pos = kryon.copyValue(pos);
-  if (bracket_code == 40) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(40);
-    decision.close = kryon.copyValue(41);
-    decision.direction = kryon.copyValue(1);
-    return decision;
-  }
-  if (bracket_code == 91) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(91);
-    decision.close = kryon.copyValue(93);
-    decision.direction = kryon.copyValue(1);
-    return decision;
-  }
-  if (bracket_code == 123) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(123);
-    decision.close = kryon.copyValue(125);
-    decision.direction = kryon.copyValue(1);
-    return decision;
-  }
-  if (bracket_code == 41) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(40);
-    decision.close = kryon.copyValue(41);
-    decision.direction = kryon.copyValue(-1);
-    return decision;
-  }
-  if (bracket_code == 93) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(91);
-    decision.close = kryon.copyValue(93);
-    decision.direction = kryon.copyValue(-1);
-    return decision;
-  }
-  if (bracket_code == 125) {
-    decision.valid = kryon.copyValue(true);
-    decision.open = kryon.copyValue(123);
-    decision.close = kryon.copyValue(125);
-    decision.direction = kryon.copyValue(-1);
-    return decision;
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    pos = number_02f1747b_value(pos,32,true);
+    bracket_code = number_02f1747b_value(bracket_code,32,true);
+    let value_0 = {valid: false, pos: 0, open: 0, close: 0, direction: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(pos,32,true);
+    decision.pos = value_3;
+    let value_4 = number_02f1747b_value(bracket_code,32,true);
+    let value_5 = number_02f1747b_value(40,32,true);
+    let value_6 = number_02f1747b_bool(value_4 == value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_bool(true);
+        decision.valid = value_7;
+        let value_8 = number_02f1747b_value(40,32,true);
+        decision.open = value_8;
+        let value_9 = number_02f1747b_value(41,32,true);
+        decision.close = value_9;
+        let value_10 = number_02f1747b_value(1,32,true);
+        decision.direction = value_10;
+        let value_12 = decision;
+        let value_13 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_12);
+        let value_11 = value_13;
+        return value_11;
+    }
+    let value_14 = number_02f1747b_value(bracket_code,32,true);
+    let value_15 = number_02f1747b_value(91,32,true);
+    let value_16 = number_02f1747b_bool(value_14 == value_15);
+    if (value_16) {
+        let value_17 = number_02f1747b_bool(true);
+        decision.valid = value_17;
+        let value_18 = number_02f1747b_value(91,32,true);
+        decision.open = value_18;
+        let value_19 = number_02f1747b_value(93,32,true);
+        decision.close = value_19;
+        let value_20 = number_02f1747b_value(1,32,true);
+        decision.direction = value_20;
+        let value_22 = decision;
+        let value_23 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_22);
+        let value_21 = value_23;
+        return value_21;
+    }
+    let value_24 = number_02f1747b_value(bracket_code,32,true);
+    let value_25 = number_02f1747b_value(123,32,true);
+    let value_26 = number_02f1747b_bool(value_24 == value_25);
+    if (value_26) {
+        let value_27 = number_02f1747b_bool(true);
+        decision.valid = value_27;
+        let value_28 = number_02f1747b_value(123,32,true);
+        decision.open = value_28;
+        let value_29 = number_02f1747b_value(125,32,true);
+        decision.close = value_29;
+        let value_30 = number_02f1747b_value(1,32,true);
+        decision.direction = value_30;
+        let value_32 = decision;
+        let value_33 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_32);
+        let value_31 = value_33;
+        return value_31;
+    }
+    let value_34 = number_02f1747b_value(bracket_code,32,true);
+    let value_35 = number_02f1747b_value(41,32,true);
+    let value_36 = number_02f1747b_bool(value_34 == value_35);
+    if (value_36) {
+        let value_37 = number_02f1747b_bool(true);
+        decision.valid = value_37;
+        let value_38 = number_02f1747b_value(40,32,true);
+        decision.open = value_38;
+        let value_39 = number_02f1747b_value(41,32,true);
+        decision.close = value_39;
+        let value_40 = number_02f1747b_value(-1,32,true);
+        decision.direction = value_40;
+        let value_42 = decision;
+        let value_43 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_42);
+        let value_41 = value_43;
+        return value_41;
+    }
+    let value_44 = number_02f1747b_value(bracket_code,32,true);
+    let value_45 = number_02f1747b_value(93,32,true);
+    let value_46 = number_02f1747b_bool(value_44 == value_45);
+    if (value_46) {
+        let value_47 = number_02f1747b_bool(true);
+        decision.valid = value_47;
+        let value_48 = number_02f1747b_value(91,32,true);
+        decision.open = value_48;
+        let value_49 = number_02f1747b_value(93,32,true);
+        decision.close = value_49;
+        let value_50 = number_02f1747b_value(-1,32,true);
+        decision.direction = value_50;
+        let value_52 = decision;
+        let value_53 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_52);
+        let value_51 = value_53;
+        return value_51;
+    }
+    let value_54 = number_02f1747b_value(bracket_code,32,true);
+    let value_55 = number_02f1747b_value(125,32,true);
+    let value_56 = number_02f1747b_bool(value_54 == value_55);
+    if (value_56) {
+        let value_57 = number_02f1747b_bool(true);
+        decision.valid = value_57;
+        let value_58 = number_02f1747b_value(123,32,true);
+        decision.open = value_58;
+        let value_59 = number_02f1747b_value(125,32,true);
+        decision.close = value_59;
+        let value_60 = number_02f1747b_value(-1,32,true);
+        decision.direction = value_60;
+        let value_62 = decision;
+        let value_63 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_62);
+        let value_61 = value_63;
+        return value_61;
+    }
+    let value_65 = decision;
+    let value_66 = ((record_source) => ({valid: record_source.valid, pos: record_source.pos, open: record_source.open, close: record_source.close, direction: record_source.direction}))(value_65);
+    let value_64 = value_66;
+    return value_64;
 }
 
 export function TextInput_TextNavigationDecisionFor($rt, $state = moduleState, $host = moduleHost, key, multiline, shift, modifier, secure, has_selection) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {consumed: false, collapse_selection_start: false, collapse_selection_end: false, char_direction: 0, word_direction: 0, document_edge: 0, line_edge: 0, vertical_direction: 0, page_direction: 0, extend_selection: false};
-  decision.extend_selection = kryon.copyValue(shift);
-  if (key == TextInput_TextNavLeft($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (!shift && has_selection) {
-      decision.collapse_selection_start = kryon.copyValue(true);
-    } else if (modifier && secure) {
-      decision.document_edge = kryon.copyValue(-1);
-    } else if (modifier) {
-      decision.word_direction = kryon.copyValue(-1);
-    } else {
-      decision.char_direction = kryon.copyValue(-1);
+    key = number_02f1747b_value(key,32,true);
+    multiline = number_02f1747b_bool(multiline);
+    shift = number_02f1747b_bool(shift);
+    modifier = number_02f1747b_bool(modifier);
+    secure = number_02f1747b_bool(secure);
+    has_selection = number_02f1747b_bool(has_selection);
+    let value_0 = {consumed: false, collapse_selection_start: false, collapse_selection_end: false, char_direction: 0, word_direction: 0, document_edge: 0, line_edge: 0, vertical_direction: 0, page_direction: 0, extend_selection: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_bool(shift);
+    decision.extend_selection = value_3;
+    let value_4 = number_02f1747b_value(key,32,true);
+    let value_5 = number_02f1747b_value(TextInput_TextNavLeft($rt, $state, $host),32,true);
+    let value_6 = number_02f1747b_bool(value_4 == value_5);
+    if (value_6) {
+        let value_7 = number_02f1747b_bool(true);
+        decision.consumed = value_7;
+        let value_8 = number_02f1747b_bool(shift);
+        let value_9 = number_02f1747b_bool(!value_8);
+        let value_10 = number_02f1747b_bool(value_9);
+        if (value_10) {
+            let value_11 = number_02f1747b_bool(has_selection);
+            value_10 = value_11;
+        }
+        if (value_10) {
+            let value_12 = number_02f1747b_bool(true);
+            decision.collapse_selection_start = value_12;
+        } else {
+            let value_13 = number_02f1747b_bool(modifier);
+            let value_14 = number_02f1747b_bool(value_13);
+            if (value_14) {
+                let value_15 = number_02f1747b_bool(secure);
+                value_14 = value_15;
+            }
+            if (value_14) {
+                let value_16 = number_02f1747b_value(-1,32,true);
+                decision.document_edge = value_16;
+            } else {
+                let value_17 = number_02f1747b_bool(modifier);
+                if (value_17) {
+                    let value_18 = number_02f1747b_value(-1,32,true);
+                    decision.word_direction = value_18;
+                } else {
+                    let value_19 = number_02f1747b_value(-1,32,true);
+                    decision.char_direction = value_19;
+                }
+            }
+        }
+        let value_21 = decision;
+        let value_22 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_21);
+        let value_20 = value_22;
+        return value_20;
     }
-    return decision;
-  }
-  if (key == TextInput_TextNavRight($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (!shift && has_selection) {
-      decision.collapse_selection_end = kryon.copyValue(true);
-    } else if (modifier && secure) {
-      decision.document_edge = kryon.copyValue(1);
-    } else if (modifier) {
-      decision.word_direction = kryon.copyValue(1);
-    } else {
-      decision.char_direction = kryon.copyValue(1);
+    let value_23 = number_02f1747b_value(key,32,true);
+    let value_24 = number_02f1747b_value(TextInput_TextNavRight($rt, $state, $host),32,true);
+    let value_25 = number_02f1747b_bool(value_23 == value_24);
+    if (value_25) {
+        let value_26 = number_02f1747b_bool(true);
+        decision.consumed = value_26;
+        let value_27 = number_02f1747b_bool(shift);
+        let value_28 = number_02f1747b_bool(!value_27);
+        let value_29 = number_02f1747b_bool(value_28);
+        if (value_29) {
+            let value_30 = number_02f1747b_bool(has_selection);
+            value_29 = value_30;
+        }
+        if (value_29) {
+            let value_31 = number_02f1747b_bool(true);
+            decision.collapse_selection_end = value_31;
+        } else {
+            let value_32 = number_02f1747b_bool(modifier);
+            let value_33 = number_02f1747b_bool(value_32);
+            if (value_33) {
+                let value_34 = number_02f1747b_bool(secure);
+                value_33 = value_34;
+            }
+            if (value_33) {
+                let value_35 = number_02f1747b_value(1,32,true);
+                decision.document_edge = value_35;
+            } else {
+                let value_36 = number_02f1747b_bool(modifier);
+                if (value_36) {
+                    let value_37 = number_02f1747b_value(1,32,true);
+                    decision.word_direction = value_37;
+                } else {
+                    let value_38 = number_02f1747b_value(1,32,true);
+                    decision.char_direction = value_38;
+                }
+            }
+        }
+        let value_40 = decision;
+        let value_41 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_40);
+        let value_39 = value_41;
+        return value_39;
     }
-    return decision;
-  }
-  if (key == TextInput_TextNavHome($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (multiline && !modifier) {
-      decision.line_edge = kryon.copyValue(-1);
-    } else {
-      decision.document_edge = kryon.copyValue(-1);
+    let value_42 = number_02f1747b_value(key,32,true);
+    let value_43 = number_02f1747b_value(TextInput_TextNavHome($rt, $state, $host),32,true);
+    let value_44 = number_02f1747b_bool(value_42 == value_43);
+    if (value_44) {
+        let value_45 = number_02f1747b_bool(true);
+        decision.consumed = value_45;
+        let value_46 = number_02f1747b_bool(multiline);
+        let value_47 = number_02f1747b_bool(value_46);
+        if (value_47) {
+            let value_48 = number_02f1747b_bool(modifier);
+            let value_49 = number_02f1747b_bool(!value_48);
+            value_47 = value_49;
+        }
+        if (value_47) {
+            let value_50 = number_02f1747b_value(-1,32,true);
+            decision.line_edge = value_50;
+        } else {
+            let value_51 = number_02f1747b_value(-1,32,true);
+            decision.document_edge = value_51;
+        }
+        let value_53 = decision;
+        let value_54 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_53);
+        let value_52 = value_54;
+        return value_52;
     }
-    return decision;
-  }
-  if (key == TextInput_TextNavEnd($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (multiline && !modifier) {
-      decision.line_edge = kryon.copyValue(1);
-    } else {
-      decision.document_edge = kryon.copyValue(1);
+    let value_55 = number_02f1747b_value(key,32,true);
+    let value_56 = number_02f1747b_value(TextInput_TextNavEnd($rt, $state, $host),32,true);
+    let value_57 = number_02f1747b_bool(value_55 == value_56);
+    if (value_57) {
+        let value_58 = number_02f1747b_bool(true);
+        decision.consumed = value_58;
+        let value_59 = number_02f1747b_bool(multiline);
+        let value_60 = number_02f1747b_bool(value_59);
+        if (value_60) {
+            let value_61 = number_02f1747b_bool(modifier);
+            let value_62 = number_02f1747b_bool(!value_61);
+            value_60 = value_62;
+        }
+        if (value_60) {
+            let value_63 = number_02f1747b_value(1,32,true);
+            decision.line_edge = value_63;
+        } else {
+            let value_64 = number_02f1747b_value(1,32,true);
+            decision.document_edge = value_64;
+        }
+        let value_66 = decision;
+        let value_67 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_66);
+        let value_65 = value_67;
+        return value_65;
     }
-    return decision;
-  }
-  if (key == TextInput_TextNavUp($rt, $state, $host) && multiline) {
-    decision.consumed = kryon.copyValue(true);
-    decision.vertical_direction = kryon.copyValue(-1);
-    return decision;
-  }
-  if (key == TextInput_TextNavDown($rt, $state, $host) && multiline) {
-    decision.consumed = kryon.copyValue(true);
-    decision.vertical_direction = kryon.copyValue(1);
-    return decision;
-  }
-  if (key == TextInput_TextNavPageUp($rt, $state, $host) && multiline) {
-    decision.consumed = kryon.copyValue(true);
-    decision.page_direction = kryon.copyValue(-1);
-    return decision;
-  }
-  if (key == TextInput_TextNavPageDown($rt, $state, $host) && multiline) {
-    decision.consumed = kryon.copyValue(true);
-    decision.page_direction = kryon.copyValue(1);
-    return decision;
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    let value_68 = number_02f1747b_value(key,32,true);
+    let value_69 = number_02f1747b_value(TextInput_TextNavUp($rt, $state, $host),32,true);
+    let value_70 = number_02f1747b_bool(value_68 == value_69);
+    let value_71 = number_02f1747b_bool(value_70);
+    if (value_71) {
+        let value_72 = number_02f1747b_bool(multiline);
+        value_71 = value_72;
+    }
+    if (value_71) {
+        let value_73 = number_02f1747b_bool(true);
+        decision.consumed = value_73;
+        let value_74 = number_02f1747b_value(-1,32,true);
+        decision.vertical_direction = value_74;
+        let value_76 = decision;
+        let value_77 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_76);
+        let value_75 = value_77;
+        return value_75;
+    }
+    let value_78 = number_02f1747b_value(key,32,true);
+    let value_79 = number_02f1747b_value(TextInput_TextNavDown($rt, $state, $host),32,true);
+    let value_80 = number_02f1747b_bool(value_78 == value_79);
+    let value_81 = number_02f1747b_bool(value_80);
+    if (value_81) {
+        let value_82 = number_02f1747b_bool(multiline);
+        value_81 = value_82;
+    }
+    if (value_81) {
+        let value_83 = number_02f1747b_bool(true);
+        decision.consumed = value_83;
+        let value_84 = number_02f1747b_value(1,32,true);
+        decision.vertical_direction = value_84;
+        let value_86 = decision;
+        let value_87 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_86);
+        let value_85 = value_87;
+        return value_85;
+    }
+    let value_88 = number_02f1747b_value(key,32,true);
+    let value_89 = number_02f1747b_value(TextInput_TextNavPageUp($rt, $state, $host),32,true);
+    let value_90 = number_02f1747b_bool(value_88 == value_89);
+    let value_91 = number_02f1747b_bool(value_90);
+    if (value_91) {
+        let value_92 = number_02f1747b_bool(multiline);
+        value_91 = value_92;
+    }
+    if (value_91) {
+        let value_93 = number_02f1747b_bool(true);
+        decision.consumed = value_93;
+        let value_94 = number_02f1747b_value(-1,32,true);
+        decision.page_direction = value_94;
+        let value_96 = decision;
+        let value_97 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_96);
+        let value_95 = value_97;
+        return value_95;
+    }
+    let value_98 = number_02f1747b_value(key,32,true);
+    let value_99 = number_02f1747b_value(TextInput_TextNavPageDown($rt, $state, $host),32,true);
+    let value_100 = number_02f1747b_bool(value_98 == value_99);
+    let value_101 = number_02f1747b_bool(value_100);
+    if (value_101) {
+        let value_102 = number_02f1747b_bool(multiline);
+        value_101 = value_102;
+    }
+    if (value_101) {
+        let value_103 = number_02f1747b_bool(true);
+        decision.consumed = value_103;
+        let value_104 = number_02f1747b_value(1,32,true);
+        decision.page_direction = value_104;
+        let value_106 = decision;
+        let value_107 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_106);
+        let value_105 = value_107;
+        return value_105;
+    }
+    let value_109 = decision;
+    let value_110 = ((record_source) => ({consumed: record_source.consumed, collapse_selection_start: record_source.collapse_selection_start, collapse_selection_end: record_source.collapse_selection_end, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge, line_edge: record_source.line_edge, vertical_direction: record_source.vertical_direction, page_direction: record_source.page_direction, extend_selection: record_source.extend_selection}))(value_109);
+    let value_108 = value_110;
+    return value_108;
 }
 
 export function TextInput_TextDeleteDecisionFor($rt, $state = moduleState, $host = moduleHost, action, modifier, secure, has_selection) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {consumed: false, char_direction: 0, word_direction: 0, document_edge: 0};
-  if (action == TextInput_TextDeleteBackspace($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (has_selection) {
-      return decision;
+    action = number_02f1747b_value(action,32,true);
+    modifier = number_02f1747b_bool(modifier);
+    secure = number_02f1747b_bool(secure);
+    has_selection = number_02f1747b_bool(has_selection);
+    let value_0 = {consumed: false, char_direction: 0, word_direction: 0, document_edge: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(action,32,true);
+    let value_4 = number_02f1747b_value(TextInput_TextDeleteBackspace($rt, $state, $host),32,true);
+    let value_5 = number_02f1747b_bool(value_3 == value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_bool(true);
+        decision.consumed = value_6;
+        let value_7 = number_02f1747b_bool(has_selection);
+        if (value_7) {
+            let value_9 = decision;
+            let value_10 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_9);
+            let value_8 = value_10;
+            return value_8;
+        }
+        let value_11 = number_02f1747b_bool(modifier);
+        let value_12 = number_02f1747b_bool(value_11);
+        if (value_12) {
+            let value_13 = number_02f1747b_bool(secure);
+            value_12 = value_13;
+        }
+        if (value_12) {
+            let value_14 = number_02f1747b_value(-1,32,true);
+            decision.document_edge = value_14;
+        } else {
+            let value_15 = number_02f1747b_bool(modifier);
+            if (value_15) {
+                let value_16 = number_02f1747b_value(-1,32,true);
+                decision.word_direction = value_16;
+            } else {
+                let value_17 = number_02f1747b_value(-1,32,true);
+                decision.char_direction = value_17;
+            }
+        }
+        let value_19 = decision;
+        let value_20 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_19);
+        let value_18 = value_20;
+        return value_18;
     }
-    if (modifier && secure) {
-      decision.document_edge = kryon.copyValue(-1);
-    } else if (modifier) {
-      decision.word_direction = kryon.copyValue(-1);
-    } else {
-      decision.char_direction = kryon.copyValue(-1);
+    let value_21 = number_02f1747b_value(action,32,true);
+    let value_22 = number_02f1747b_value(TextInput_TextDeleteForward($rt, $state, $host),32,true);
+    let value_23 = number_02f1747b_bool(value_21 == value_22);
+    if (value_23) {
+        let value_24 = number_02f1747b_bool(true);
+        decision.consumed = value_24;
+        let value_25 = number_02f1747b_bool(has_selection);
+        if (value_25) {
+            let value_27 = decision;
+            let value_28 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_27);
+            let value_26 = value_28;
+            return value_26;
+        }
+        let value_29 = number_02f1747b_bool(modifier);
+        let value_30 = number_02f1747b_bool(value_29);
+        if (value_30) {
+            let value_31 = number_02f1747b_bool(secure);
+            value_30 = value_31;
+        }
+        if (value_30) {
+            let value_32 = number_02f1747b_value(1,32,true);
+            decision.document_edge = value_32;
+        } else {
+            let value_33 = number_02f1747b_bool(modifier);
+            if (value_33) {
+                let value_34 = number_02f1747b_value(1,32,true);
+                decision.word_direction = value_34;
+            } else {
+                let value_35 = number_02f1747b_value(1,32,true);
+                decision.char_direction = value_35;
+            }
+        }
+        let value_37 = decision;
+        let value_38 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_37);
+        let value_36 = value_38;
+        return value_36;
     }
-    return decision;
-  }
-  if (action == TextInput_TextDeleteForward($rt, $state, $host)) {
-    decision.consumed = kryon.copyValue(true);
-    if (has_selection) {
-      return decision;
-    }
-    if (modifier && secure) {
-      decision.document_edge = kryon.copyValue(1);
-    } else if (modifier) {
-      decision.word_direction = kryon.copyValue(1);
-    } else {
-      decision.char_direction = kryon.copyValue(1);
-    }
-    return decision;
-  }
-  return decision;
-  return kryon.snapshot($rt);
+    let value_40 = decision;
+    let value_41 = ((record_source) => ({consumed: record_source.consumed, char_direction: record_source.char_direction, word_direction: record_source.word_direction, document_edge: record_source.document_edge}))(value_40);
+    let value_39 = value_41;
+    return value_39;
 }
 
 export function TextInput_TextInsertDecisionFor($rt, $state = moduleState, $host = moduleHost, codepoint, encoded_len, text_len, text_size, current_codepoints, inserted_codepoints, max_codepoints, allow_newlines) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let decision = {accept: false, skip: false, stop: false};
-  if (codepoint == 13) {
-    decision.skip = kryon.copyValue(true);
-    return decision;
-  }
-  if (codepoint == 10 && !allow_newlines) {
-    decision.skip = kryon.copyValue(true);
-    return decision;
-  }
-  if (codepoint < 32 && codepoint != 10) {
-    decision.skip = kryon.copyValue(true);
-    return decision;
-  }
-  if (encoded_len <= 0) {
-    decision.skip = kryon.copyValue(true);
-    return decision;
-  }
-  if (text_size <= 0 || text_len + encoded_len + 1 > text_size) {
-    decision.stop = kryon.copyValue(true);
-    return decision;
-  }
-  if (max_codepoints > 0 && current_codepoints + inserted_codepoints >= max_codepoints) {
-    decision.stop = kryon.copyValue(true);
-    return decision;
-  }
-  decision.accept = kryon.copyValue(true);
-  return decision;
-  return kryon.snapshot($rt);
+    codepoint = number_02f1747b_value(codepoint,32,true);
+    encoded_len = number_02f1747b_value(encoded_len,32,true);
+    text_len = number_02f1747b_value(text_len,32,true);
+    text_size = number_02f1747b_value(text_size,32,true);
+    current_codepoints = number_02f1747b_value(current_codepoints,32,true);
+    inserted_codepoints = number_02f1747b_value(inserted_codepoints,32,true);
+    max_codepoints = number_02f1747b_value(max_codepoints,32,true);
+    allow_newlines = number_02f1747b_bool(allow_newlines);
+    let value_0 = {accept: false, skip: false, stop: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_1);
+    let decision = value_2;
+    let value_3 = number_02f1747b_value(codepoint,32,true);
+    let value_4 = number_02f1747b_value(13,32,true);
+    let value_5 = number_02f1747b_bool(value_3 == value_4);
+    if (value_5) {
+        let value_6 = number_02f1747b_bool(true);
+        decision.skip = value_6;
+        let value_8 = decision;
+        let value_9 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_8);
+        let value_7 = value_9;
+        return value_7;
+    }
+    let value_10 = number_02f1747b_value(codepoint,32,true);
+    let value_11 = number_02f1747b_value(10,32,true);
+    let value_12 = number_02f1747b_bool(value_10 == value_11);
+    let value_13 = number_02f1747b_bool(value_12);
+    if (value_13) {
+        let value_14 = number_02f1747b_bool(allow_newlines);
+        let value_15 = number_02f1747b_bool(!value_14);
+        value_13 = value_15;
+    }
+    if (value_13) {
+        let value_16 = number_02f1747b_bool(true);
+        decision.skip = value_16;
+        let value_18 = decision;
+        let value_19 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_18);
+        let value_17 = value_19;
+        return value_17;
+    }
+    let value_20 = number_02f1747b_value(codepoint,32,true);
+    let value_21 = number_02f1747b_value(32,32,true);
+    let value_22 = number_02f1747b_bool(value_20 < value_21);
+    let value_23 = number_02f1747b_bool(value_22);
+    if (value_23) {
+        let value_24 = number_02f1747b_value(codepoint,32,true);
+        let value_25 = number_02f1747b_value(10,32,true);
+        let value_26 = number_02f1747b_bool(value_24 != value_25);
+        value_23 = value_26;
+    }
+    if (value_23) {
+        let value_27 = number_02f1747b_bool(true);
+        decision.skip = value_27;
+        let value_29 = decision;
+        let value_30 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_29);
+        let value_28 = value_30;
+        return value_28;
+    }
+    let value_31 = number_02f1747b_value(encoded_len,32,true);
+    let value_32 = number_02f1747b_value(0,32,true);
+    let value_33 = number_02f1747b_bool(value_31 <= value_32);
+    if (value_33) {
+        let value_34 = number_02f1747b_bool(true);
+        decision.skip = value_34;
+        let value_36 = decision;
+        let value_37 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_36);
+        let value_35 = value_37;
+        return value_35;
+    }
+    let value_38 = number_02f1747b_value(text_size,32,true);
+    let value_39 = number_02f1747b_value(0,32,true);
+    let value_40 = number_02f1747b_bool(value_38 <= value_39);
+    let value_41 = number_02f1747b_bool(value_40);
+    if (!value_41) {
+        let value_42 = number_02f1747b_value(text_len,32,true);
+        let value_43 = number_02f1747b_value(encoded_len,32,true);
+        let value_44 = number_02f1747b_value(number_02f1747b_bits(value_42,value_43,32,true,1),32,true);
+        let value_45 = number_02f1747b_value(1,32,true);
+        let value_46 = number_02f1747b_value(number_02f1747b_bits(value_44,value_45,32,true,1),32,true);
+        let value_47 = number_02f1747b_value(text_size,32,true);
+        let value_48 = number_02f1747b_bool(value_46 > value_47);
+        value_41 = value_48;
+    }
+    if (value_41) {
+        let value_49 = number_02f1747b_bool(true);
+        decision.stop = value_49;
+        let value_51 = decision;
+        let value_52 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_51);
+        let value_50 = value_52;
+        return value_50;
+    }
+    let value_53 = number_02f1747b_value(max_codepoints,32,true);
+    let value_54 = number_02f1747b_value(0,32,true);
+    let value_55 = number_02f1747b_bool(value_53 > value_54);
+    let value_56 = number_02f1747b_bool(value_55);
+    if (value_56) {
+        let value_57 = number_02f1747b_value(current_codepoints,32,true);
+        let value_58 = number_02f1747b_value(inserted_codepoints,32,true);
+        let value_59 = number_02f1747b_value(number_02f1747b_bits(value_57,value_58,32,true,1),32,true);
+        let value_60 = number_02f1747b_value(max_codepoints,32,true);
+        let value_61 = number_02f1747b_bool(value_59 >= value_60);
+        value_56 = value_61;
+    }
+    if (value_56) {
+        let value_62 = number_02f1747b_bool(true);
+        decision.stop = value_62;
+        let value_64 = decision;
+        let value_65 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_64);
+        let value_63 = value_65;
+        return value_63;
+    }
+    let value_66 = number_02f1747b_bool(true);
+    decision.accept = value_66;
+    let value_68 = decision;
+    let value_69 = ((record_source) => ({accept: record_source.accept, skip: record_source.skip, stop: record_source.stop}))(value_68);
+    let value_67 = value_69;
+    return value_67;
 }
 
 export function TextInput_TextWordBlank($rt, $state = moduleState, $host = moduleHost, codepoint) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return codepoint == 32 || codepoint == 9 || codepoint == 0x3000;
+    codepoint = number_02f1747b_value(codepoint,32,true);
+    let value_0 = number_02f1747b_value(codepoint,32,true);
+    let value_1 = number_02f1747b_value(32,32,true);
+    let value_2 = number_02f1747b_bool(value_0 == value_1);
+    let value_3 = number_02f1747b_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_02f1747b_value(codepoint,32,true);
+        let value_5 = number_02f1747b_value(9,32,true);
+        let value_6 = number_02f1747b_bool(value_4 == value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_02f1747b_bool(value_3);
+    if (!value_7) {
+        let value_8 = number_02f1747b_value(codepoint,32,true);
+        let value_9 = number_02f1747b_value(12288,32,true);
+        let value_10 = number_02f1747b_bool(value_8 == value_9);
+        value_7 = value_10;
+    }
+    return value_7;
 }
 
 export function TextInput_TextWordSeparator($rt, $state = moduleState, $host = moduleHost, codepoint) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  return codepoint == 44 || codepoint == 0x3001 || codepoint == 46 || codepoint == 0x3002 || codepoint == 59 || codepoint == 0xff1b || codepoint == 40 || codepoint == 0xff08 || codepoint == 41 || codepoint == 0xff09 || codepoint == 123 || codepoint == 0xff5b || codepoint == 125 || codepoint == 0xff5d || codepoint == 91 || codepoint == 0x300c || codepoint == 93 || codepoint == 0x300d || codepoint == 124 || codepoint == 0xff5c || codepoint == 33 || codepoint == 0xff01 || codepoint == 92 || codepoint == 0xffe5 || codepoint == 47 || codepoint == 0x30fb || codepoint == 0xff0f || codepoint == 10 || codepoint == 13;
+    codepoint = number_02f1747b_value(codepoint,32,true);
+    let value_0 = number_02f1747b_value(codepoint,32,true);
+    let value_1 = number_02f1747b_value(44,32,true);
+    let value_2 = number_02f1747b_bool(value_0 == value_1);
+    let value_3 = number_02f1747b_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_02f1747b_value(codepoint,32,true);
+        let value_5 = number_02f1747b_value(12289,32,true);
+        let value_6 = number_02f1747b_bool(value_4 == value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_02f1747b_bool(value_3);
+    if (!value_7) {
+        let value_8 = number_02f1747b_value(codepoint,32,true);
+        let value_9 = number_02f1747b_value(46,32,true);
+        let value_10 = number_02f1747b_bool(value_8 == value_9);
+        value_7 = value_10;
+    }
+    let value_11 = number_02f1747b_bool(value_7);
+    if (!value_11) {
+        let value_12 = number_02f1747b_value(codepoint,32,true);
+        let value_13 = number_02f1747b_value(12290,32,true);
+        let value_14 = number_02f1747b_bool(value_12 == value_13);
+        value_11 = value_14;
+    }
+    let value_15 = number_02f1747b_bool(value_11);
+    if (!value_15) {
+        let value_16 = number_02f1747b_value(codepoint,32,true);
+        let value_17 = number_02f1747b_value(59,32,true);
+        let value_18 = number_02f1747b_bool(value_16 == value_17);
+        value_15 = value_18;
+    }
+    let value_19 = number_02f1747b_bool(value_15);
+    if (!value_19) {
+        let value_20 = number_02f1747b_value(codepoint,32,true);
+        let value_21 = number_02f1747b_value(65307,32,true);
+        let value_22 = number_02f1747b_bool(value_20 == value_21);
+        value_19 = value_22;
+    }
+    let value_23 = number_02f1747b_bool(value_19);
+    if (!value_23) {
+        let value_24 = number_02f1747b_value(codepoint,32,true);
+        let value_25 = number_02f1747b_value(40,32,true);
+        let value_26 = number_02f1747b_bool(value_24 == value_25);
+        value_23 = value_26;
+    }
+    let value_27 = number_02f1747b_bool(value_23);
+    if (!value_27) {
+        let value_28 = number_02f1747b_value(codepoint,32,true);
+        let value_29 = number_02f1747b_value(65288,32,true);
+        let value_30 = number_02f1747b_bool(value_28 == value_29);
+        value_27 = value_30;
+    }
+    let value_31 = number_02f1747b_bool(value_27);
+    if (!value_31) {
+        let value_32 = number_02f1747b_value(codepoint,32,true);
+        let value_33 = number_02f1747b_value(41,32,true);
+        let value_34 = number_02f1747b_bool(value_32 == value_33);
+        value_31 = value_34;
+    }
+    let value_35 = number_02f1747b_bool(value_31);
+    if (!value_35) {
+        let value_36 = number_02f1747b_value(codepoint,32,true);
+        let value_37 = number_02f1747b_value(65289,32,true);
+        let value_38 = number_02f1747b_bool(value_36 == value_37);
+        value_35 = value_38;
+    }
+    let value_39 = number_02f1747b_bool(value_35);
+    if (!value_39) {
+        let value_40 = number_02f1747b_value(codepoint,32,true);
+        let value_41 = number_02f1747b_value(123,32,true);
+        let value_42 = number_02f1747b_bool(value_40 == value_41);
+        value_39 = value_42;
+    }
+    let value_43 = number_02f1747b_bool(value_39);
+    if (!value_43) {
+        let value_44 = number_02f1747b_value(codepoint,32,true);
+        let value_45 = number_02f1747b_value(65371,32,true);
+        let value_46 = number_02f1747b_bool(value_44 == value_45);
+        value_43 = value_46;
+    }
+    let value_47 = number_02f1747b_bool(value_43);
+    if (!value_47) {
+        let value_48 = number_02f1747b_value(codepoint,32,true);
+        let value_49 = number_02f1747b_value(125,32,true);
+        let value_50 = number_02f1747b_bool(value_48 == value_49);
+        value_47 = value_50;
+    }
+    let value_51 = number_02f1747b_bool(value_47);
+    if (!value_51) {
+        let value_52 = number_02f1747b_value(codepoint,32,true);
+        let value_53 = number_02f1747b_value(65373,32,true);
+        let value_54 = number_02f1747b_bool(value_52 == value_53);
+        value_51 = value_54;
+    }
+    let value_55 = number_02f1747b_bool(value_51);
+    if (!value_55) {
+        let value_56 = number_02f1747b_value(codepoint,32,true);
+        let value_57 = number_02f1747b_value(91,32,true);
+        let value_58 = number_02f1747b_bool(value_56 == value_57);
+        value_55 = value_58;
+    }
+    let value_59 = number_02f1747b_bool(value_55);
+    if (!value_59) {
+        let value_60 = number_02f1747b_value(codepoint,32,true);
+        let value_61 = number_02f1747b_value(12300,32,true);
+        let value_62 = number_02f1747b_bool(value_60 == value_61);
+        value_59 = value_62;
+    }
+    let value_63 = number_02f1747b_bool(value_59);
+    if (!value_63) {
+        let value_64 = number_02f1747b_value(codepoint,32,true);
+        let value_65 = number_02f1747b_value(93,32,true);
+        let value_66 = number_02f1747b_bool(value_64 == value_65);
+        value_63 = value_66;
+    }
+    let value_67 = number_02f1747b_bool(value_63);
+    if (!value_67) {
+        let value_68 = number_02f1747b_value(codepoint,32,true);
+        let value_69 = number_02f1747b_value(12301,32,true);
+        let value_70 = number_02f1747b_bool(value_68 == value_69);
+        value_67 = value_70;
+    }
+    let value_71 = number_02f1747b_bool(value_67);
+    if (!value_71) {
+        let value_72 = number_02f1747b_value(codepoint,32,true);
+        let value_73 = number_02f1747b_value(124,32,true);
+        let value_74 = number_02f1747b_bool(value_72 == value_73);
+        value_71 = value_74;
+    }
+    let value_75 = number_02f1747b_bool(value_71);
+    if (!value_75) {
+        let value_76 = number_02f1747b_value(codepoint,32,true);
+        let value_77 = number_02f1747b_value(65372,32,true);
+        let value_78 = number_02f1747b_bool(value_76 == value_77);
+        value_75 = value_78;
+    }
+    let value_79 = number_02f1747b_bool(value_75);
+    if (!value_79) {
+        let value_80 = number_02f1747b_value(codepoint,32,true);
+        let value_81 = number_02f1747b_value(33,32,true);
+        let value_82 = number_02f1747b_bool(value_80 == value_81);
+        value_79 = value_82;
+    }
+    let value_83 = number_02f1747b_bool(value_79);
+    if (!value_83) {
+        let value_84 = number_02f1747b_value(codepoint,32,true);
+        let value_85 = number_02f1747b_value(65281,32,true);
+        let value_86 = number_02f1747b_bool(value_84 == value_85);
+        value_83 = value_86;
+    }
+    let value_87 = number_02f1747b_bool(value_83);
+    if (!value_87) {
+        let value_88 = number_02f1747b_value(codepoint,32,true);
+        let value_89 = number_02f1747b_value(92,32,true);
+        let value_90 = number_02f1747b_bool(value_88 == value_89);
+        value_87 = value_90;
+    }
+    let value_91 = number_02f1747b_bool(value_87);
+    if (!value_91) {
+        let value_92 = number_02f1747b_value(codepoint,32,true);
+        let value_93 = number_02f1747b_value(65509,32,true);
+        let value_94 = number_02f1747b_bool(value_92 == value_93);
+        value_91 = value_94;
+    }
+    let value_95 = number_02f1747b_bool(value_91);
+    if (!value_95) {
+        let value_96 = number_02f1747b_value(codepoint,32,true);
+        let value_97 = number_02f1747b_value(47,32,true);
+        let value_98 = number_02f1747b_bool(value_96 == value_97);
+        value_95 = value_98;
+    }
+    let value_99 = number_02f1747b_bool(value_95);
+    if (!value_99) {
+        let value_100 = number_02f1747b_value(codepoint,32,true);
+        let value_101 = number_02f1747b_value(12539,32,true);
+        let value_102 = number_02f1747b_bool(value_100 == value_101);
+        value_99 = value_102;
+    }
+    let value_103 = number_02f1747b_bool(value_99);
+    if (!value_103) {
+        let value_104 = number_02f1747b_value(codepoint,32,true);
+        let value_105 = number_02f1747b_value(65295,32,true);
+        let value_106 = number_02f1747b_bool(value_104 == value_105);
+        value_103 = value_106;
+    }
+    let value_107 = number_02f1747b_bool(value_103);
+    if (!value_107) {
+        let value_108 = number_02f1747b_value(codepoint,32,true);
+        let value_109 = number_02f1747b_value(10,32,true);
+        let value_110 = number_02f1747b_bool(value_108 == value_109);
+        value_107 = value_110;
+    }
+    let value_111 = number_02f1747b_bool(value_107);
+    if (!value_111) {
+        let value_112 = number_02f1747b_value(codepoint,32,true);
+        let value_113 = number_02f1747b_value(13,32,true);
+        let value_114 = number_02f1747b_bool(value_112 == value_113);
+        value_111 = value_114;
+    }
+    return value_111;
 }
 
 export function TextInput_TextWordBoundaryFor($rt, $state = moduleState, $host = moduleHost, previous, current) {
   $state = $state || moduleState;
-  $rt = $rt || kryon.createRuntime();
-  let previous_blank = TextInput_TextWordBlank($rt, $state, $host, previous);
-  let previous_separator = TextInput_TextWordSeparator($rt, $state, $host, previous);
-  let current_blank = TextInput_TextWordBlank($rt, $state, $host, current);
-  let current_separator = TextInput_TextWordSeparator($rt, $state, $host, current);
-  return ((previous_blank || previous_separator) && !(current_separator || current_blank)) || (current_separator && !previous_separator);
+    previous = number_02f1747b_value(previous,32,true);
+    current = number_02f1747b_value(current,32,true);
+    let value_0 = number_02f1747b_value(previous,32,true);
+    let value_1 = number_02f1747b_bool(TextInput_TextWordBlank($rt, $state, $host, value_0));
+    let previous_blank = number_02f1747b_bool(value_1);
+    let value_2 = number_02f1747b_value(previous,32,true);
+    let value_3 = number_02f1747b_bool(TextInput_TextWordSeparator($rt, $state, $host, value_2));
+    let previous_separator = number_02f1747b_bool(value_3);
+    let value_4 = number_02f1747b_value(current,32,true);
+    let value_5 = number_02f1747b_bool(TextInput_TextWordBlank($rt, $state, $host, value_4));
+    let current_blank = number_02f1747b_bool(value_5);
+    let value_6 = number_02f1747b_value(current,32,true);
+    let value_7 = number_02f1747b_bool(TextInput_TextWordSeparator($rt, $state, $host, value_6));
+    let current_separator = number_02f1747b_bool(value_7);
+    let value_8 = number_02f1747b_bool(previous_blank);
+    let value_9 = number_02f1747b_bool(value_8);
+    if (!value_9) {
+        let value_10 = number_02f1747b_bool(previous_separator);
+        value_9 = value_10;
+    }
+    let value_11 = number_02f1747b_bool(value_9);
+    if (value_11) {
+        let value_12 = number_02f1747b_bool(current_separator);
+        let value_13 = number_02f1747b_bool(value_12);
+        if (!value_13) {
+            let value_14 = number_02f1747b_bool(current_blank);
+            value_13 = value_14;
+        }
+        let value_15 = number_02f1747b_bool(!value_13);
+        value_11 = value_15;
+    }
+    let value_16 = number_02f1747b_bool(value_11);
+    if (!value_16) {
+        let value_17 = number_02f1747b_bool(current_separator);
+        let value_18 = number_02f1747b_bool(value_17);
+        if (value_18) {
+            let value_19 = number_02f1747b_bool(previous_separator);
+            let value_20 = number_02f1747b_bool(!value_19);
+            value_18 = value_20;
+        }
+        value_16 = value_18;
+    }
+    return value_16;
 }
 
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {
