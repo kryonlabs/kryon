@@ -92,12 +92,13 @@ test_matched_fixture(void)
     const StyleRule *surface;
     const StyleRule *button;
     const StyleRule *pressed;
+    const StyleRule *quiet;
     const StyleRule *contrast;
 
     assert(collect(source, "matched.kss", module, "matched_module.kss",
                    &collected));
     /* Import order first, then document order; density(compact) excluded. */
-    assert(collected.count == 4);
+    assert(collected.count == 5);
     surface = &collected.rules[0];
     assert(surface->selector.kind == StyleKindSurface());
     assert(surface->style.padding_x == 7.0f);
@@ -126,6 +127,11 @@ test_matched_fixture(void)
     pressed = &collected.rules[3];
     assert(pressed->state == ButtonStatePressed);
     assert(pressed->style.background == 0x304050ffu);
+
+    quiet = &collected.rules[4];
+    assert(quiet->style.background == 0x00000000u);
+    assert(quiet->style.foreground == 0x000000ffu);
+    assert(quiet->style.border == 0xffffffffu);
 
     free(source);
     free(module);

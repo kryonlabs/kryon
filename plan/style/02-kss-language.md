@@ -22,6 +22,43 @@ Remaining:
   Audit nested token groups, font and line metrics, transition properties,
   deterministic color functions, and explicit-zero behavior. Record unsupported
   features per runtime before adding them; do not add spelling aliases.
+- Done (reconciliation): the value set is recorded below, per surface, from the
+  single grammar in `runtime/kss_parser.kry`. One gap was closed: the closed
+  set of named colors (`transparent`, `black`, `white`) from the proposal now
+  parses in the shared grammar after token lookup (tokens win over builtins),
+  asserted by the matched fixture in C, Go, and web (web keeps passing the
+  same names through to CSS). Remaining record:
+  - Token groups: `color`, `length` (alias `number`), `duration`, `material`
+    are supported with flat names. Unsupported: `radius`, `easing`, `font`,
+    and `shadow` groups (no StyleData consumer or resolver recipe yet),
+    dotted token names, and nested groups (`length control { ... }`). Token
+    names may already contain dots (`pad.x`, `accent.hover` parse as one
+    identifier); the gap is numeric-first leaves (`space.3` fails the
+    identifier-start rule) and the lack of consumers for grouped namespaces.
+  - Color values: `#rrggbb`, `#rrggbbaa`, color tokens, and the three
+    named colors above (short `#rgb` hex is not accepted). Unsupported: `color-mix(...)` and any computed color
+    function - these need a deterministic rounding spec (integer pipeline in
+    f64, no float division) before they can match across C/Go/JS.
+  - Number values: decimal literals with optional sign, fraction, and
+    exponent; `ms`/`s` duration suffixes on duration-token and
+    duration-property positions. Divergence recorded: web mapping also
+    accepts a `px` suffix and strips it; the typed path rejects `12px`.
+    Web-only CSS-spelled properties are accepted by the web mapper by design
+    and are not StyleData properties.
+  - Properties: the typed path covers the full `StyleData` field set
+    (background, background-end, foreground, border, focus, radius,
+    border-width, opacity, padding-x/y, gap, font-size, icon-size,
+    offset-x/y, letter-spacing, material, typeface). Explicit zero is
+    supported both as literal `0` and through zero-valued tokens; presence
+    bits are always set. Unsupported: `transition` (state styles already
+    drive `TransitionValues` from host interaction weights; a per-property
+    transition list with easing needs its own design) and `font_family`
+    (StyleData has no font field yet).
+  - Selectors: widget kinds, `[attr=value]` (tone, role, state), `.class`,
+    and `:state` are supported on all surfaces. Comma-separated selector
+    lists are web-only today (the typed parser yields one selector per
+    rule); `@layer base { ... }` block form is unsupported - the ordered
+    `@layer a, b;` declaration is the canonical layering mechanism.
 - Done since: the web runtime's KSS-to-CSS layer runs the generated
   `kss_parser` module in declarative mode (raw selector/declaration spans,
   foreign blocks); theme/env/import decisions are no longer re-derived in

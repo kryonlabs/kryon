@@ -69,8 +69,8 @@ func TestKssMatchedFixture(t *testing.T) {
 	module := kssFixtureText(t, "../../tests/fixtures/kss/matched_module.kss")
 	collected := kssCollectFixture(t, source, module)
 
-	if len(collected.rules) != 4 {
-		t.Fatalf("rules = %d, want 4", len(collected.rules))
+	if len(collected.rules) != 5 {
+		t.Fatalf("rules = %d, want 5", len(collected.rules))
 	}
 	surface := collected.rules[0]
 	if surface.Selector.Kind != StyleSheet_StyleKindSurface() || surface.Style.PaddingX != 7 {
@@ -104,6 +104,12 @@ func TestKssMatchedFixture(t *testing.T) {
 	pressed := collected.rules[3]
 	if pressed.State != int32(ButtonStatePressed) || pressed.Style.Background != 0x304050ff {
 		t.Fatalf("pressed rule mismatch: %+v", pressed)
+	}
+	quiet := collected.rules[4]
+	if quiet.Style.Background != 0x00000000 ||
+		quiet.Style.Foreground != 0x000000ff ||
+		quiet.Style.Border != 0xffffffff {
+		t.Fatalf("named-color rule mismatch: %+v", quiet.Style)
 	}
 }
 

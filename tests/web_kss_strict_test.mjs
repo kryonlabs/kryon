@@ -90,7 +90,7 @@ assert.throws(() => runtime.parseWebStyleSheet(
     theme: "dark", contrast: "high"
   });
   assert.equal(sheet.pack, "matched.demo");
-  assert.equal(sheet.rules.length, 4);
+  assert.equal(sheet.rules.length, 5);
   assert.equal(sheet.rules[0].selector.kind, "Surface");
   assert.equal(sheet.rules[0].style["padding-x"], 7);
   assert.equal(sheet.rules[1].style["border-width"], 2);
@@ -104,6 +104,9 @@ assert.throws(() => runtime.parseWebStyleSheet(
   assert.equal(button.style.material, "Flat");
   assert.equal(button.style.typeface, "semibold");
   assert.equal(sheet.rules[3].style.background, "#304050");
+  assert.equal(sheet.rules[4].style.background, "transparent");
+  assert.equal(sheet.rules[4].style.foreground, "black");
+  assert.equal(sheet.rules[4].style.border, "white");
 
   // Invalid-input sweep: truncations and deterministic mutations must never
   // crash the generated module.

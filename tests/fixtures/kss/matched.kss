@@ -31,3 +31,4 @@ Button {
   typeface: semibold;
 }
 Button:pressed { background: #304050; }
+Button.quiet { background: transparent; foreground: black; border: white; }

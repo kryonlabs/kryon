@@ -1684,6 +1684,24 @@ export function KssParser_KssReadColorValue($rt, $state = moduleState, $host = m
       hex.parser = kryon.copyValue(reference.parser);
       return hex;
     }
+    if (KssParser_KssNameEquals($rt, $state, $host, reference.name, "transparent")) {
+      hex.value = kryon.copyValue(0x00000000);
+      hex.ok = kryon.copyValue(true);
+      hex.parser = kryon.copyValue(reference.parser);
+      return hex;
+    }
+    if (KssParser_KssNameEquals($rt, $state, $host, reference.name, "black")) {
+      hex.value = kryon.copyValue(0x000000ff);
+      hex.ok = kryon.copyValue(true);
+      hex.parser = kryon.copyValue(reference.parser);
+      return hex;
+    }
+    if (KssParser_KssNameEquals($rt, $state, $host, reference.name, "white")) {
+      hex.value = kryon.copyValue(0xffffffff);
+      hex.ok = kryon.copyValue(true);
+      hex.parser = kryon.copyValue(reference.parser);
+      return hex;
+    }
   }
   hex.ok = kryon.copyValue(false);
   hex.parser = kryon.copyValue(hex.parser);

@@ -1664,6 +1664,26 @@ KssReadColorValue :: (p: KssParser) -> KssColorResult {
             hex.parser = reference.parser
             return hex
         }
+        # Closed set of named colors from the value-set proposal. Tokens win
+        # over builtins so packs keep full control of their palette.
+        if KssNameEquals(reference.name, "transparent") {
+            hex.value = 0x00000000
+            hex.ok = true
+            hex.parser = reference.parser
+            return hex
+        }
+        if KssNameEquals(reference.name, "black") {
+            hex.value = 0x000000ff
+            hex.ok = true
+            hex.parser = reference.parser
+            return hex
+        }
+        if KssNameEquals(reference.name, "white") {
+            hex.value = 0xffffffff
+            hex.ok = true
+            hex.parser = reference.parser
+            return hex
+        }
     }
     hex.ok = false
     hex.parser = hex.parser
