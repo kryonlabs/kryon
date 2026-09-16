@@ -1030,9 +1030,15 @@ export interface WebStyleSelector {
 export interface WebStyleRule {
   selector: WebStyleSelector;
   style: Record<string, unknown>;
+  /** Unresolved declaration text per property (token references). */
+  raw?: Record<string, string>;
   layer: number;
   order: number;
   score: number;
+  /** Owning source file name for rules parsed with provenance. */
+  sourceFile?: string;
+  /** One-based source line for rules parsed with provenance. */
+  sourceLine?: number;
 }
 
 export interface WebStyleTraceRule {
@@ -1042,7 +1048,15 @@ export interface WebStyleTraceRule {
   specificity: number;
   score: number;
   style: Record<string, unknown>;
+  raw: Record<string, string>;
+  /** "file:line" of the rule, or "" when unknown. */
+  source: string;
   pack: string;
+}
+
+export interface WebStyleTokenOrigin {
+  name: string;
+  origin: "pack" | "import" | "theme" | "environment" | "variant";
 }
 
 export interface WebStyleTraceWinner {
@@ -1052,11 +1066,17 @@ export interface WebStyleTraceWinner {
   order: number;
   specificity: number;
   score: number;
+  /** "file:line" of the winning rule, or "" when unknown. */
+  source: string;
+  /** Token reference when the winning declaration named a token. */
+  token: WebStyleTokenOrigin | null;
   pack: string;
 }
 
 export interface WebStyleTrace {
   facts: WebNodeStyleFacts;
+  /** Active parse environment of the traced sheets (theme/variant/axes). */
+  environment: Record<string, string> | null;
   matchedRules: WebStyleTraceRule[];
   resolved: Record<string, unknown>;
   winners: Record<string, WebStyleTraceWinner>;
@@ -1083,6 +1103,12 @@ export interface WebStyleSheet {
   rules: WebStyleRule[];
   keyframes?: WebStyleKeyframes[];
   groups?: WebStyleConditionalGroup[];
+  /** Active parse environment (theme/contrast/density/pointer/platform/variant). */
+  environment?: Record<string, string>;
+  /** Source file names by parser file index (imports included). */
+  sourceFiles?: string[];
+  /** Token name -> origin kind ("pack" | "import" | "theme" | "environment" | "variant"). */
+  tokens?: Record<string, string>;
 }
 
 export interface Ref<T = unknown> {

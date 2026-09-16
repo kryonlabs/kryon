@@ -21,6 +21,12 @@
   folding them into pack data is part of the conformance-matrix work below.
 - Carry sufficient resolved field-presence/provenance through frame operations
   to distinguish missing values from explicit zero and explain the painted result.
+  Note: the structured JS emission restored in the k2js work trades parse speed
+  for explicit value threading (~10x on sheet parses versus the copy-eliding
+  variant). That is accepted for now; if web pack parsing needs to get cheaper
+  again, the recorded follow-ups are emitting cheap cursor moves inside
+  statement-local value chains and avoiding zero-built parser-embedding result
+  structs per declaration.
 - Establish a style conformance matrix for C, Go, JS, KRB, DOM, canvas, libdraw,
   termi, and null/test paths. Verify shared generated execution as well as the same field winners, role/state/class
   matching, pack loading, and no-style content behavior on supported paths.

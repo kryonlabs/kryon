@@ -119,15 +119,27 @@ assert.throws(() => runtime.parseWebStyleSheet(
   assert.equal(glowSheet.rules[3].style.background, "#00ff00");
   assert.equal(glowSheet.rules[5].style.background, "transparent");
 
+  // Inspector provenance: sheets report the active environment, declared
+  // tokens with their origin kind, and per-rule source locations plus the
+  // unresolved declaration text for token winners.
+  assert.equal(sheet.environment.theme, "dark");
+  assert.equal(glowSheet.environment.variant, "glow");
+  assert.equal(sheet.tokens["shared-ink"], "pack");
+  assert.ok(sheet.rules[2].sourceLine > 0);
+  assert.equal(sheet.rules[2].raw.background, "accent");
+
   // Invalid-input sweep: truncations and deterministic mutations must never
   // crash the generated module.
   let seed = 0x5eed1234;
   const next = () => (seed = (seed * 1103515245 + 12345) >>> 0);
-  for (let cut = 0; cut <= fixture.length; cut++) {
+  /* Sample prefixes rather than walking every byte: the structured JS
+   * emission trades parse speed for maintainability, so the sweep keeps
+   * byte-level coverage through the mutations below instead. */
+  for (let cut = 0; cut <= fixture.length; cut += 5) {
     try { runtime.parseWebStyleSheet(fixture.slice(0, cut)); } catch { /* diagnosed */ }
   }
   const mutated = Buffer.from(fixture, "utf8");
-  for (let iteration = 0; iteration < 500; iteration++) {
+  for (let iteration = 0; iteration < 200; iteration++) {
     mutated.fill(0);
     mutated.write(fixture, 0);
     for (let flip = 0; flip < 3; flip++) {

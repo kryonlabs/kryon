@@ -3507,6 +3507,12 @@ function webKssNameText(name) {
   return String.fromCharCode(...name.bytes.slice(0, name.length));
 }
 
+function webKssFileName(file) {
+  if (!file || file.length <= 0)
+    return "";
+  return String.fromCharCode(...file.name.slice(0, file.length));
+}
+
 function webKssDiagnostic(p) {
   const text = String.fromCharCode(...p.diagnostic.slice(0, p.diagnostic_length));
   return text || "style sheet did not complete";
@@ -3538,6 +3544,7 @@ function runWebKssParser(source, environment) {
       rules.push({
         rule: p.rule,
         span: { ...p.rule_span },
+        origin: { ...p.origin },
         source: unitSources[p.rule_span.file] ?? source
       });
       p.status = webKssModule.KssStatusContinue;
@@ -3559,16 +3566,31 @@ function runWebKssParser(source, environment) {
   }
   if (p.status !== webKssModule.KssStatusDone)
     throw new Error(webKssDiagnostic(p));
-  return { parser: p, rules, unitSources };
+  const sourceFiles = [];
+  for (let i = 0; i < p.file_count; i++)
+    sourceFiles.push(webKssFileName(p.files[i]));
+  return { parser: p, rules, unitSources, sourceFiles };
+}
+
+function webKssOriginName(origin) {
+  switch (origin) {
+    case webKssModule.KssOriginImport: return "import";
+    case webKssModule.KssOriginTheme: return "theme";
+    case webKssModule.KssOriginEnvironment: return "environment";
+    case webKssModule.KssOriginVariant: return "variant";
+    default: return "pack";
+  }
 }
 
 function webTokensFromParser(p) {
   const tokens = emptyWebStyleTokens();
+  tokens.origins = new Map();
   for (let i = 0; i < p.token_count; i++) {
     const token = p.tokens[i];
     const name = webKssNameText(token.name);
     if (!name)
       continue;
+    tokens.origins.set(name, webKssOriginName(token.origin));
     if (token.kind === webKssModule.KssTokenColor)
       tokens.colors.set(name, webCssColor(token.color));
     else if (token.kind === webKssModule.KssTokenMaterial)
@@ -3593,6 +3615,7 @@ function webKeyframesFromBody(body, tokens) {
 
 function webDeclarationsForRule(item, p, tokens) {
   const style = {};
+  const raw = {};
   for (let i = 0; i < p.declaration_count; i++) {
     const entry = p.declarations[i];
     if (entry.rule !== item.rule.order)
@@ -3600,21 +3623,24 @@ function webDeclarationsForRule(item, p, tokens) {
     const name = item.source.slice(entry.name_start, entry.name_start + entry.name_length);
     const value = item.source.slice(entry.value_start, entry.value_start + entry.value_length);
     style[name] = parseKssDeclarationValue(name, value, tokens);
+    raw[name] = value;
   }
-  return style;
+  return [style, raw];
 }
 
-function webRulesFromItem(item, p, tokens) {
+function webRulesFromItem(item, p, tokens, sourceFiles) {
   const mapped = [];
   const selectorText = item.source.slice(
     item.span.selector_start, item.span.selector_start + item.span.selector_length
   ).trim();
-  const style = webDeclarationsForRule(item, p, tokens);
+  const [style, raw] = webDeclarationsForRule(item, p, tokens);
+  const sourceFile = sourceFiles[(item.origin ? item.origin.file : item.span.file)] || "";
+  const sourceLine = item.origin ? item.origin.line : 0;
   for (const part of splitSelectorList(selectorText)) {
     if (!part.trim())
       continue;
     const selector = parseSelector(part);
-    mapped.push({ selector, style, layer: item.rule.layer });
+    mapped.push({ selector, style, raw, layer: item.rule.layer, sourceFile, sourceLine });
   }
   return mapped;
 }
@@ -3623,6 +3649,7 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
   const run = runWebKssParser(stripKssComments(String(source ?? "")), environment);
   const p = run.parser;
   const unitSources = run.unitSources;
+  const sourceFiles = run.sourceFiles;
   const tokens = webTokensFromParser(p);
   for (const [name, color] of Object.entries(colors || {})) {
     if (tokens.colors.has(name))
@@ -3653,7 +3680,7 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
   }
 
   for (const item of run.rules) {
-    const mapped = webRulesFromItem(item, p, tokens);
+    const mapped = webRulesFromItem(item, p, tokens, sourceFiles);
     const groupIndex = item.span.group >= 0 ? foreignToGroup[item.span.group] : -1;
     const target = groupIndex >= 0 ? groups[groupIndex].rules : rules;
     for (const mappedRule of mapped) {
@@ -3666,7 +3693,22 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
     }
   }
 
-  return { pack: webKssNameText(p.pack), rules, keyframes, groups };
+  const activeEnvironment = {
+    ...defaultWebStyleEnvironment(),
+    ...(environment || {})
+  };
+  const tokensOrigin = {};
+  for (const [name, origin] of tokens.origins || [])
+    tokensOrigin[name] = origin;
+  return {
+    pack: webKssNameText(p.pack),
+    rules,
+    keyframes,
+    groups,
+    environment: activeEnvironment,
+    sourceFiles,
+    tokens: tokensOrigin
+  };
 }
 
 function cssEscapeString(value) {
@@ -5227,15 +5269,22 @@ export function traceWebStyle(node, sheets = []) {
   const resolved = {};
   const winners = {};
   const matchedRules = [];
+  let environment = null;
   const list = Array.isArray(sheets) ? sheets : [sheets];
   for (const sheet of list) {
     const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
+    if (!environment && parsed?.environment)
+      environment = parsed.environment;
+    const ruleTokens = parsed?.tokens || {};
     const rules = parsed?.rules || [];
     for (const rule of rules) {
       if (!selectorMatchesWebNode(rule.selector, node))
         continue;
       const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
       const selector = webStyleSelectorToCSS(rule.selector);
+      const source = rule.sourceLine
+        ? `${rule.sourceFile || "sheet"}:${rule.sourceLine}`
+        : "";
       matchedRules.push({
         selector,
         layer: rule.layer || 0,
@@ -5243,9 +5292,15 @@ export function traceWebStyle(node, sheets = []) {
         specificity: rule.selector?.specificity || 0,
         score,
         style: { ...(rule.style || {}) },
+        raw: { ...(rule.raw || {}) },
+        source,
         pack: parsed?.pack || ""
       });
       for (const [name, value] of Object.entries(rule.style || {})) {
+        const tokenName = String(rule.raw?.[name] ?? "").trim();
+        const tokenOrigin = tokenName && ruleTokens[tokenName]
+          ? { name: tokenName, origin: ruleTokens[tokenName] }
+          : null;
         if (!winners[name] || score >= winners[name].score) {
           resolved[name] = value;
           winners[name] = {
@@ -5255,6 +5310,8 @@ export function traceWebStyle(node, sheets = []) {
             order: rule.order || 0,
             specificity: rule.selector?.specificity || 0,
             score,
+            source,
+            token: tokenOrigin,
             pack: parsed?.pack || ""
           };
         }
@@ -5263,6 +5320,7 @@ export function traceWebStyle(node, sheets = []) {
   }
   return {
     facts: webNodeStyleFacts(node),
+    environment,
     matchedRules,
     resolved,
     winners

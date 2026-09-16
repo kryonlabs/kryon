@@ -38,7 +38,8 @@ try {
   kryon.setWebStyleSheets(rt, kryon.parseWebStyleSheet(\`
     @pack inspector;
     Screen { display: grid; gap: 6; }
-    Button.primary { background: #102030; color: #f8f8f8; }
+    tokens { color { ink: #f8f8f8; } }
+    Button.primary { background: #102030; color: ink; }
     Button#save-action { background: #203040; }
     Progress { inline-size: 240; }
   \`));
@@ -123,6 +124,15 @@ try {
   assert(trace.matchedRules.length === 2, "style trace matched rule count missing");
   assert(trace.winners.background.selector.includes("#save-action"),
     "style trace winner selector missing");
+  assert(trace.winners.background.source && trace.winners.background.source.endsWith(":6"),
+    "style trace winner source location missing");
+  assert(trace.matchedRules.every((rule) => rule.source.length > 0),
+    "style trace matched-rule source locations missing");
+  assert(trace.environment && trace.environment.platform === "web",
+    "style trace active environment missing");
+  const traceInk = kryon.webDOMStyleTrace(target, "save-ref").winners.color;
+  assert(traceInk.token && traceInk.token.name === "ink" && traceInk.token.origin === "pack",
+    "style trace token origin missing");
 
   button.textContent = "Saved";
   kryon.webDOMSync(target);

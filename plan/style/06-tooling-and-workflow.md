@@ -9,6 +9,20 @@
   per-field winner, token origin, source location, specificity/layer, resolved
   value, and backend degradation. Audit existing inspector output before adding
   missing fields.
+  Status: web sheets and style traces now carry the missing core fields.
+  `parseWebStyleSheet` results include the active environment (theme, axes,
+  variant), source file names for imports, token name -> origin kind
+  (pack/import/theme/environment/variant), and per-rule source file/line plus
+  the unresolved declaration text. `traceWebStyle`/`webDOMStyleTrace` winners
+  gain `source` ("file:line") and `token` (name + origin when the declaration
+  referenced a token), matched rules gain `source` and `raw`, and the trace
+  result gains `environment`. Covered by the web KSS strict suite (provenance
+  assertions on the matched fixture, including the active glow variant) and
+  the real-browser inspector test (winner source, matched-rule sources,
+  environment, token origin). Still open: per-field losing-rule lists (the
+  matched-rules array carries all candidates and scores; a convenience view is
+  pending) and backend degradation reporting, which waits on the
+  runtime-and-backends conformance matrix.
 - Add inspector authoring actions: copy selector, jump to source, unmatched-class
   reporting, and dead-rule diagnostics.
 - Complete consistent file/line/column diagnostics with offending-token and
