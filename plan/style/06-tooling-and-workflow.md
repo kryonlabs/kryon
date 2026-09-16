@@ -49,8 +49,11 @@
   also wired into `make test`), Go (`TestKssFormatterRoundTrip`), and the web
   strict suite. The k2go cross-module enum reference bug this surfaced
   (double-prefixing members that already carry the enum name) is fixed.
-  Still open: a CLI entry point and declaration re-flow (joining/splitting
-  one-line rule bodies).
+  The CLI entry point landed as `kssfmt` (mirroring kry-fmt: in-place by
+  default, `--check` for CI), built from `cmd/kssfmt` against the shared
+  formatter, installed alongside the other tools, and covered by
+  `tests/kssfmt_cli_test.sh` in `make test`. Still open: declaration re-flow
+  (joining/splitting one-line rule bodies).
 - Verify live KSS reload in a real app host, including invalid-source recovery.
   Extend preview controls for theme overlays and pack options as their grammar
   becomes available.

@@ -49,6 +49,7 @@ KT = $(BUILD_DIR)/bin/kt
 KRYON_PREVIEW = $(BUILD_DIR)/bin/kryon-preview
 KRYON_CMD = $(BUILD_DIR)/bin/kryon
 KRY_FMT = $(BUILD_DIR)/bin/kry-fmt.sh
+KSSFMT = $(BUILD_DIR)/bin/kssfmt
 KRY_LOCALE_CHECK = $(BUILD_DIR)/bin/kry-locale-check.sh
 KRB_RUN = $(BUILD_DIR)/bin/krb-run
 KRB_SDL = $(BUILD_DIR)/bin/krb-sdl
@@ -405,15 +406,16 @@ k2cpp: $(K2CPP)
 k2go: $(K2GO)
 k2js: $(K2JS)
 
-all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK)
+all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 
-tools: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
+tools: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
 
-install: $(KT) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK)
+install: $(KT) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 	mkdir -p $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 755 $(KT) $(DESTDIR)$(BINDIR)/kt
 	$(INSTALL) -m 755 $(KRYON_CMD) $(DESTDIR)$(BINDIR)/kryon
 	$(INSTALL) -m 755 $(KRY_FMT) $(DESTDIR)$(BINDIR)/kry-fmt.sh
+	$(INSTALL) -m 755 $(KSSFMT) $(DESTDIR)$(BINDIR)/kssfmt
 	$(INSTALL) -m 755 $(KRY_LOCALE_CHECK) $(DESTDIR)$(BINDIR)/kry-locale-check.sh
 
 examples-run:
@@ -971,6 +973,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)
+	sh tests/kssfmt_cli_test.sh $(KSSFMT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
 	sh tests/krb_engine_test.sh $(K2B) $(KRB_RUN) .
 	$(KRY_SW_TEST)
@@ -1193,6 +1196,9 @@ $(KRYON_CMD): scripts/kryon.sh | $(BUILD_DIR)/bin
 
 $(KRY_FMT): scripts/kry-fmt.sh | $(BUILD_DIR)/bin
 	cp scripts/kry-fmt.sh $@
+
+$(KSSFMT): cmd/kssfmt/main.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.h $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/kss_parser.c src/ui/kss_parser.h src/ui/style_sheet.c include/ui_style_sheet.h | $(BUILD_DIR)/bin
+	$(CC) -std=c99 -Wall -Wextra -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc cmd/kssfmt/main.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $@
 	chmod 755 $@
 
 $(KRY_LOCALE_CHECK): scripts/kry-locale-check.sh | $(BUILD_DIR)/bin
