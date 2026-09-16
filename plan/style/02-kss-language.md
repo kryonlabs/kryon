@@ -75,9 +75,11 @@ Remaining:
   variant rules resolve together. Lightfield's glow treatment belongs here.
   Caveat kept from theme/env semantics: overlays apply from their position
   onward, so sheets declare variant overlays before referencing rules.
-  Follow-ups: mirror `<pack>.<variant>` registration in the Go and web host
-  pack registries (the grammar and parser APIs already match), and surface
-  the active variant in the inspector (06).
+  Follow-ups: the Go host now registers declared variants identically
+  (`ParseStyleVariants`, `ParseStyleSheetVariant`, `<pack>.<variant>` packs);
+  the web layer has no pack registry, so variant selection there is the
+  parse environment's `variant` field by design. Remaining: surface the
+  active variant in the inspector (06).
 - Done: matched C/Go/JS fixtures and invalid-input coverage. One fixture
   (`tests/fixtures/kss/matched.kss` + `matched_module.kss`) drives the
   generated C parser (provenance asserted via `KssBegin`/`KssStep`), the Go

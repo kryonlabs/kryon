@@ -42,12 +42,15 @@ func kssNameText(name KssName) string {
 	return string(name.Bytes[:name.Length])
 }
 
-func kssRunParser(source string, colors []StyleColorToken) (KssParser, []StyleRule, bool) {
+func kssRunParser(source string, colors []StyleColorToken, variant string) (KssParser, []StyleRule, bool) {
 	host, ok := active().(*runtime)
 	if !ok {
 		host = New(AppConfig{}).(*runtime)
 	}
 	parser := KssParser_KssBegin(source, "", KssParser_KssDefaultEnvironment())
+	if variant != "" {
+		parser = KssParser_KssSetVariant(parser, KssParser_KssMakeName(variant))
+	}
 	for _, color := range colors {
 		parser = KssParser_KssAddColorOverride(parser, color.Name, color.Color)
 	}
@@ -74,11 +77,44 @@ func kssRunParser(source string, colors []StyleColorToken) (KssParser, []StyleRu
 // ParseStyleSheet parses KSS source through the shared runtime module.
 // Diagnostics carry file, line, and column provenance.
 func ParseStyleSheet(source string) (string, []StyleRule, error) {
-	return parseStyleVariant(source, nil)
+	return parseStyleVariant(source, nil, "")
 }
 
-func parseStyleVariant(source string, colors []StyleColorToken) (string, []StyleRule, error) {
-	parser, rules, ok := kssRunParser(source, colors)
+// StyleVariantInfo names one '@variant name "Label"' declaration in a sheet.
+type StyleVariantInfo struct {
+	Name  string
+	Label string
+}
+
+// ParseStyleVariants returns every variant a sheet declares, with the labels
+// hosts show in style pickers. Declarations are reported even when inactive.
+func ParseStyleVariants(source string) []StyleVariantInfo {
+	parser, _, ok := kssRunParser(source, nil, "")
+	if !ok {
+		return nil
+	}
+	count := int(parser.VariantCount)
+	if count > len(parser.Variants) {
+		count = len(parser.Variants)
+	}
+	variants := make([]StyleVariantInfo, 0, count)
+	for i := 0; i < count; i++ {
+		variants = append(variants, StyleVariantInfo{
+			Name:  kssNameText(parser.Variants[i].Name),
+			Label: kssNameText(parser.Variants[i].Label),
+		})
+	}
+	return variants
+}
+
+// ParseStyleSheetVariant parses with a declared pack variant active, so
+// '@variant' blocks named by the variant contribute rules and overlays.
+func ParseStyleSheetVariant(source, variant string) (string, []StyleRule, error) {
+	return parseStyleVariant(source, nil, variant)
+}
+
+func parseStyleVariant(source string, colors []StyleColorToken, variant string) (string, []StyleRule, error) {
+	parser, rules, ok := kssRunParser(source, colors, variant)
 	if !ok {
 		text := strings.TrimSpace(string(parser.Diagnostic[:parser.DiagnosticLength]))
 		if text == "" {

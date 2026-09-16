@@ -770,3 +770,37 @@ func TestStylePackColorVariant(t *testing.T) {
 		t.Fatal("base palette was modified")
 	}
 }
+
+func TestStylePackDeclaredVariant(t *testing.T) {
+	ClearStylePacks()
+	source := "@pack lf; tokens { color { accent: #112233; } } " +
+		"@variant glow \"Glow\" { accent: #00ff00; } " +
+		"Button { background: accent; radius: 6; } " +
+		"@variant glow \"Glow\" { Button { radius: 12; } }"
+	variants := ParseStyleVariants(source)
+	if len(variants) != 2 || variants[0].Name != "glow" || variants[0].Label != "Glow" {
+		t.Fatalf("variant declarations: %+v", variants)
+	}
+	if !RegisterStylePackSource(source, "Lightfield", "") {
+		t.Fatal("register source")
+	}
+	if GetStylePackCount() != 2 {
+		t.Fatalf("packs = %d, want 2 (base + glow)", GetStylePackCount())
+	}
+	if !SetActiveStylePack("lf.glow") {
+		t.Fatal("activate variant pack")
+	}
+	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
+	resolved := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
+	if resolved.Background != 0x00ff00ff || resolved.Radius != 12 {
+		t.Fatalf("variant resolution: %+v", resolved)
+	}
+	if !SetActiveStylePack("lf") {
+		t.Fatal("activate base pack")
+	}
+	resolved = ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
+	if resolved.Background != 0x112233ff || resolved.Radius != 6 {
+		t.Fatalf("base resolution: %+v", resolved)
+	}
+	ClearStylePacks()
+}

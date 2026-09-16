@@ -2274,10 +2274,16 @@ ignored so one semantic palette can color several packs. Invalid input leaves
 an existing variant unchanged. Re-register an ID to update its palette, then
 select it with `SetActiveStylePack`.
 
-Go accepts `[]StyleColorToken` without a count. Web callers pass a color-token
-object as the second argument to `parseWebStyleSheet(source, colors)` and install
-the returned sheet. Built-in packs expose their control colors as tokens;
-applications own mapping their theme palette to those tokens.
+Go accepts `[]StyleColorToken` without a count. `ParseStyleVariants(source)`
+reports the sheet's declared `@variant` names with labels, and
+`ParseStyleSheetVariant(source, variant)` parses with one active;
+`RegisterStylePackSource` registers each declaration as a selectable
+`<pack>.<variant>` pack, matching the C host. Web callers pass a color-token
+object as the second argument to `parseWebStyleSheet(source, colors)` and select
+a variant through the environment's `variant` field; the web layer has no pack
+registry, so variant selection happens at parse time. Built-in packs expose
+their control colors as tokens; applications own mapping their theme palette to
+those tokens.
 
 ### KSS language model
 

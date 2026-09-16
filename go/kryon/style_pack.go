@@ -39,12 +39,34 @@ func RegisterStylePackSource(source, label, description string) bool {
 		label = id
 	}
 	copied := append([]StyleRule(nil), rules...)
-	return RegisterStylePack(StylePack{
+	if !RegisterStylePack(StylePack{
 		ID:          id,
 		Label:       label,
 		Description: description,
 		Sheet:       copied,
-	})
+	}) {
+		return false
+	}
+	/* Declared '@variant' blocks become selectable packs under
+	 * '<pack>.<variant>'; each re-parses the source with that variant active
+	 * so base and variant rules resolve together. */
+	for _, variant := range ParseStyleVariants(source) {
+		if variant.Name == "" {
+			continue
+		}
+		_, variantRules, variantErr := ParseStyleSheetVariant(source, variant.Name)
+		if variantErr != nil || len(variantRules) == 0 {
+			return false
+		}
+		variantCopied := append([]StyleRule(nil), variantRules...)
+		RegisterStylePack(StylePack{
+			ID:          id + "." + variant.Name,
+			Label:       variant.Label,
+			Description: description,
+			Sheet:       variantCopied,
+		})
+	}
+	return true
 }
 
 func ClearStylePacks() {
@@ -210,7 +232,7 @@ func RegisterStylePackVariant(id, source, label string, colors []StyleColorToken
 	if id == "" || len(id) >= 64 {
 		return false
 	}
-	base, rules, err := parseStyleVariant(source, colors)
+	base, rules, err := parseStyleVariant(source, colors, "")
 	if err != nil || base == "" || len(rules) == 0 {
 		return false
 	}
