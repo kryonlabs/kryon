@@ -672,7 +672,7 @@ style-widget-policy-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/style_widget_policy
 	$(BUILD_DIR)/style-widget-policy-test
 
 surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) -Iinclude tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
 	$(BUILD_DIR)/surface-policy-test
 
 image-policy-test: $(GENERATED_SRC_DIR)/runtime/image.c $(GENERATED_SRC_DIR)/runtime/image.h
@@ -848,7 +848,7 @@ dropdown-policy-test: $(GENERATED_SRC_DIR)/runtime/dropdown.c $(GENERATED_SRC_DI
 	$(DROPDOWN_POLICY_TEST)
 
 drag-drop-policy-test: $(GENERATED_SRC_DIR)/runtime/drag_drop.c $(GENERATED_SRC_DIR)/runtime/drag_drop.h
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/drag_drop_policy_test.c $(GENERATED_SRC_DIR)/runtime/drag_drop.c -lm -o $(DRAG_DROP_POLICY_TEST)
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) -Iinclude tests/drag_drop_policy_test.c $(GENERATED_SRC_DIR)/runtime/drag_drop.c -lm -o $(DRAG_DROP_POLICY_TEST)
 	$(DRAG_DROP_POLICY_TEST)
 
 reorder-policy-test: $(GENERATED_SRC_DIR)/runtime/reorder.c $(GENERATED_SRC_DIR)/runtime/reorder.h $(GENERATED_SRC_DIR)/runtime/reorder_props.c $(GENERATED_SRC_DIR)/runtime/reorder_props.h
@@ -1015,7 +1015,6 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(CURSOR_INTENT_TEST)
 	$(KIR_TEST)
 	@cat $(K2KIR_TEST)
-
 test-asan:
 	ASAN_OPTIONS="detect_leaks=0:halt_on_error=1" CFLAGS="$(CFLAGS) -O1 -g -fsanitize=address -fno-omit-frame-pointer" LDLIBS="$(LDLIBS) -fsanitize=address" $(MAKE) BUILD_DIR=$(BUILD_DIR)-asan test
 
@@ -1608,9 +1607,9 @@ $(ANIMATION_TEST): tests/animation_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_P
 		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir.h | $(BUILD_DIR)
+$(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c cmd/kir/kir.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -Icmd/kir tests/kir_test.c cmd/kir/kir.c -o $@
+	$(CC) $(CFLAGS) -Icmd/kir tests/kir_test.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c -o $@
 
 $(K2KIR_TEST): tests/k2kir_test.sh $(K2KIR) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

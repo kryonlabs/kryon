@@ -39,6 +39,7 @@ app_specific_matches=$(
         --glob '!.git/**' \
         --glob '!tools/check-kryon-boundaries.sh' \
         --glob '!CHANGELOG.md' \
+        --glob '!plan/**' \
         --glob '!docs/site/showcase-data.json' \
         --glob '!docs/site/showcase/**' \
         2>/dev/null || true

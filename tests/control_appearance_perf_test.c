@@ -329,7 +329,7 @@ bench_dropdown(Counters *c, unsigned long long i)
     memset(&props, 0, sizeof(props));
     props.bounds = (Rectangle){20, 20, 232, 42};
     props.id = 500 + (i & 31);
-    props.label = "Inner Breeze";
+    props.label = "Long Session";
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     props.size = ControlSizeMedium;
@@ -348,7 +348,7 @@ bench_dropdown(Counters *c, unsigned long long i)
                                    (int)appearance.value.font_size, 18);
     paint_material(c, frame.material);
     drawing_counter(c, (Drawing){.kind = DrawingText, .bounds = {34, 30, 130, 20},
-        .text = "Inner Breeze", .font = frame.font, .color = frame.foreground});
+        .text = "Long Session", .font = frame.font, .color = frame.foreground});
     drawing_counter(c, (Drawing){.kind = DrawingChevron, .bounds = {222, 35, 10, 8},
         .color = frame.foreground});
 }

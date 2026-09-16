@@ -293,6 +293,8 @@ include/kry_backend.h function KryBackendSelect
 include/kry_backend.h typedef clear
 include/kry_backend_rec.h function KryBackendRecBackend
 include/kry_backend_rec.h function KryBackendRecCalls
+include/kry_bounds.h function KryonBoundsCheck
+include/kry_bounds.h macro KRYON_INDEX
 include/kry_capabilities.h enum KRY_CAP_BIOMETRIC_UNLOCK
 include/kry_capabilities.h enum KRY_CAP_CLIPBOARD
 include/kry_capabilities.h enum KRY_CAP_FILE_PICKER
@@ -1465,6 +1467,7 @@ include/ui_icon_types.h enum ICON_PFP_BOWL
 include/ui_icon_types.h enum ICON_PFP_BUSH
 include/ui_icon_types.h enum ICON_PFP_BUTTERFLY
 include/ui_icon_types.h enum ICON_PFP_CACTUS
+include/ui_icon_types.h enum ICON_PFP_CAT
 include/ui_icon_types.h enum ICON_PFP_COFFEE
 include/ui_icon_types.h enum ICON_PFP_DRAGONFLY
 include/ui_icon_types.h enum ICON_PFP_FIREPLACE
@@ -1474,6 +1477,7 @@ include/ui_icon_types.h enum ICON_PFP_FOX
 include/ui_icon_types.h enum ICON_PFP_HEART
 include/ui_icon_types.h enum ICON_PFP_INCENSE
 include/ui_icon_types.h enum ICON_PFP_LOTUS
+include/ui_icon_types.h enum ICON_PFP_MOON
 include/ui_icon_types.h enum ICON_PFP_MOUNTAIN
 include/ui_icon_types.h enum ICON_PFP_MUSHROOM
 include/ui_icon_types.h enum ICON_PFP_PALM
@@ -1484,6 +1488,7 @@ include/ui_icon_types.h enum ICON_PFP_TREE1
 include/ui_icon_types.h enum ICON_PFP_TREE2
 include/ui_icon_types.h enum ICON_PFP_TREE3
 include/ui_icon_types.h enum ICON_PFP_TREE4
+include/ui_icon_types.h enum ICON_PFP_TURTLE
 include/ui_icon_types.h enum ICON_PLATFORMS_APPIMAGE
 include/ui_icon_types.h enum ICON_PLATFORMS_BROWSER
 include/ui_icon_types.h enum ICON_PLATFORMS_CHROMEWEBSTORE
@@ -1630,6 +1635,7 @@ include/ui_profile.h enum SYNC_PROFILE_ICON_BOWL
 include/ui_profile.h enum SYNC_PROFILE_ICON_BUSH
 include/ui_profile.h enum SYNC_PROFILE_ICON_BUTTERFLY
 include/ui_profile.h enum SYNC_PROFILE_ICON_CACTUS
+include/ui_profile.h enum SYNC_PROFILE_ICON_CAT
 include/ui_profile.h enum SYNC_PROFILE_ICON_COFFEE
 include/ui_profile.h enum SYNC_PROFILE_ICON_DRAGONFLY
 include/ui_profile.h enum SYNC_PROFILE_ICON_FIREPLACE
@@ -1639,6 +1645,7 @@ include/ui_profile.h enum SYNC_PROFILE_ICON_FOX
 include/ui_profile.h enum SYNC_PROFILE_ICON_HEART
 include/ui_profile.h enum SYNC_PROFILE_ICON_INCENSE
 include/ui_profile.h enum SYNC_PROFILE_ICON_LOTUS
+include/ui_profile.h enum SYNC_PROFILE_ICON_MOON
 include/ui_profile.h enum SYNC_PROFILE_ICON_MOUNTAIN
 include/ui_profile.h enum SYNC_PROFILE_ICON_MUSHROOM
 include/ui_profile.h enum SYNC_PROFILE_ICON_NONE
@@ -1651,6 +1658,7 @@ include/ui_profile.h enum SYNC_PROFILE_ICON_TREE2
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE3
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE4
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE5
+include/ui_profile.h enum SYNC_PROFILE_ICON_TURTLE
 include/ui_profile.h function GetProfileImageIconCount
 include/ui_profile.h function GetProfileImageIconName
 include/ui_profile.h function GetProfileImageIconType

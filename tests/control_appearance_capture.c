@@ -15,7 +15,7 @@ render_column(int x, int fancy)
     static int area_cursor = 81;
     static int area_focus = 1;
     static int area_scroll = 0;
-    static const char *items[] = {"Morning", "Inner Breeze", "Focus"};
+    static const char *items[] = {"Morning", "Long Session", "Focus"};
     const char *title = fancy ? "Glow / fancy" : "Simple / no glow";
     const char *subtitle = fancy ? "glass, lightfield, blur layers" : "flat material, no glow layers";
     ThemeScheme scheme;

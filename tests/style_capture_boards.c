@@ -42,7 +42,7 @@ render_board(void)
     static int dropdown_selected = 1;
     static int checkbox_flags = 5;
     static int toggle_on = 1;
-    static const char *items[] = {"Morning", "Inner Breeze", "Focus"};
+    static const char *items[] = {"Morning", "Long Session", "Focus"};
     static const ButtonState states[] = {
         ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
         ButtonStateFocus, ButtonStateDisabled, ButtonStateSelected,

@@ -199,7 +199,7 @@ export function TextInput_TextCompositionPhaseDecisionFor($rt, $state = moduleSt
 export function TextInput_TextCompositionApplyDecisionFor($rt, $state = moduleState, $host = moduleHost, phase, text_changed) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let event = kryon.copyValue(TextInput_TextCompositionPhaseDecisionFor($rt, $state, $host, phase));
+  let event = TextInput_TextCompositionPhaseDecisionFor($rt, $state, $host, phase);
   let decision = {text_changed: false, presentation_changed: false, selection_changed: false};
   if (event.store_preedit || event.cancel) {
     decision.presentation_changed = kryon.copyValue(true);
@@ -865,11 +865,11 @@ export function TextInput_TextInputResolvedStyleFor($rt, $state = moduleState, $
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
   let style = {fields: 0, padding_x: 0, padding_y: 0, line_gap: 0, radius: 0};
-  let requested_fields = kryon.copyValue(TextInput_TextInputRequestedFieldsFor($rt, $state, $host, fields, padding_x, padding_y, line_gap));
+  let requested_fields = TextInput_TextInputRequestedFieldsFor($rt, $state, $host, fields, padding_x, padding_y, line_gap);
   style.fields = kryon.copyValue(requested_fields | resolved_fields);
-  style.padding_x = kryon.copyValue(TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, resolved_fields, resolved_padding_x, scale, padding_x));
-  style.padding_y = kryon.copyValue(TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, resolved_fields, resolved_padding_y, scale, padding_y));
-  style.line_gap = kryon.copyValue(TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StyleGap)), line_gap, resolved_fields, resolved_gap, scale, -1));
+  style.padding_x = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, resolved_fields, resolved_padding_x, scale, padding_x);
+  style.padding_y = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, resolved_fields, resolved_padding_y, scale, padding_y);
+  style.line_gap = TextInput_TextInputResolvedMetric($rt, $state, $host, requested_fields, Math.trunc(Number($enum0.StyleGap)), line_gap, resolved_fields, resolved_gap, scale, -1);
   style.radius = kryon.copyValue(radius);
   if ((fields & Math.trunc(Number($enum0.StyleRadius))) == Math.trunc(Number(0)) || radius < 0.0) {
     style.radius = kryon.copyValue(resolved_radius);
@@ -939,10 +939,10 @@ export function TextInput_TextAreaGutterMetricsFor($rt, $state = moduleState, $h
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
   let metrics = {top_inset: 0, active_y_inset: 0, label_x_inset: 0, label_font: 0, extra_rows: 0};
-  metrics.top_inset = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale));
-  metrics.active_y_inset = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale));
-  metrics.label_x_inset = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 6.0, scale));
-  metrics.label_font = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale));
+  metrics.top_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale);
+  metrics.active_y_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale);
+  metrics.label_x_inset = TextInput_TextInputScaledMetric($rt, $state, $host, 6.0, scale);
+  metrics.label_font = TextInput_TextInputScaledMetric($rt, $state, $host, 10.0, scale);
   metrics.extra_rows = kryon.copyValue(3);
   return metrics;
   return kryon.snapshot($rt);
@@ -950,7 +950,7 @@ export function TextInput_TextAreaGutterMetricsFor($rt, $state = moduleState, $h
 
 export function TextInput_TextAreaGutterRowsFor($rt, $state = moduleState, $host = moduleHost, bounds_height, line_height, metrics) {
   $state = $state || moduleState;
-  metrics = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(metrics);
+  /* pass-by-reference: TextAreaGutterMetrics is same-module */
   $rt = $rt || kryon.createRuntime();
   if (line_height <= 0) {
     return 0;
@@ -964,7 +964,7 @@ export function TextInput_TextAreaGutterRowsFor($rt, $state = moduleState, $host
 
 export function TextInput_TextAreaGutterFirstY($rt, $state = moduleState, $host = moduleHost, gutter_y, scroll_y, line_height, metrics) {
   $state = $state || moduleState;
-  metrics = ((record_source) => ({top_inset: record_source.top_inset, active_y_inset: record_source.active_y_inset, label_x_inset: record_source.label_x_inset, label_font: record_source.label_font, extra_rows: record_source.extra_rows}))(metrics);
+  /* pass-by-reference: TextAreaGutterMetrics is same-module */
   $rt = $rt || kryon.createRuntime();
   if (line_height <= 0) {
     return Math.trunc(Number(gutter_y + metrics.top_inset));
@@ -1055,7 +1055,7 @@ export function TextInput_TextFieldCursorVerticalPadding($rt, $state = moduleSta
 export function TextInput_TextFieldClipGuard($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let clip_guard = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 1.0, scale));
+  let clip_guard = TextInput_TextInputScaledMetric($rt, $state, $host, 1.0, scale);
   if (clip_guard < 1) {
     return 1;
   }
@@ -1065,7 +1065,7 @@ export function TextInput_TextFieldClipGuard($rt, $state = moduleState, $host = 
 export function TextInput_TextInputStrokeWidth($rt, $state = moduleState, $host = moduleHost, scale) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let width = kryon.copyValue(TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale));
+  let width = TextInput_TextInputScaledMetric($rt, $state, $host, 2.0, scale);
   if (width < 1) {
     return 1;
   }
@@ -1080,9 +1080,9 @@ export function TextInput_TextInputMetricsFor($rt, $state = moduleState, $host =
   if (metrics.font <= 0) {
     metrics.font = kryon.copyValue(default_font);
   }
-  metrics.padding_x = kryon.copyValue(TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, default_padding_x));
-  metrics.padding_y = kryon.copyValue(TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, default_padding_y));
-  metrics.line_gap = kryon.copyValue(TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StyleGap)), line_gap, default_line_gap));
+  metrics.padding_x = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingX)), padding_x, default_padding_x);
+  metrics.padding_y = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StylePaddingY)), padding_y, default_padding_y);
+  metrics.line_gap = TextInput_TextInputMetric($rt, $state, $host, fields, Math.trunc(Number($enum0.StyleGap)), line_gap, default_line_gap);
   metrics.line_height = kryon.copyValue(metrics.font + metrics.line_gap);
   if (metrics.line_height <= 0) {
     metrics.line_height = kryon.copyValue(1);
@@ -1134,7 +1134,6 @@ export function TextInput_TextAreaWrapWidthFor($rt, $state = moduleState, $host 
 
 export function TextInput_TextAreaPaintFor($rt, $state = moduleState, $host = moduleHost, bounds, font, line_gap, padding_x, padding_y, wrap, content_height, scroll_y, text_line_height, min_wrap_width) {
   $state = $state || moduleState;
-  bounds = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(bounds);
   $rt = $rt || kryon.createRuntime();
   let paint = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, wrap_width: 0, viewport_height: 0, max_scroll: 0, scroll_y: 0, placeholder_x: 0, placeholder_y: 0};
   let line_height = kryon.copyValue(font + line_gap);
@@ -1142,9 +1141,9 @@ export function TextInput_TextAreaPaintFor($rt, $state = moduleState, $host = mo
   if (paint.viewport_height < 0) {
     paint.viewport_height = kryon.copyValue(0);
   }
-  paint.max_scroll = kryon.copyValue(TextInput_TextAreaMaxScrollFor($rt, $state, $host, content_height, bounds.height, padding_y));
-  paint.scroll_y = kryon.copyValue(TextInput_TextAreaScrollFor($rt, $state, $host, scroll_y, paint.max_scroll));
-  paint.wrap_width = kryon.copyValue(TextInput_TextAreaWrapWidthFor($rt, $state, $host, bounds.width, padding_x, wrap, min_wrap_width));
+  paint.max_scroll = TextInput_TextAreaMaxScrollFor($rt, $state, $host, content_height, bounds.height, padding_y);
+  paint.scroll_y = TextInput_TextAreaScrollFor($rt, $state, $host, scroll_y, paint.max_scroll);
+  paint.wrap_width = TextInput_TextAreaWrapWidthFor($rt, $state, $host, bounds.width, padding_x, wrap, min_wrap_width);
   paint.clip_bounds.x = kryon.copyValue(bounds.x + padding_x);
   paint.clip_bounds.y = kryon.copyValue(bounds.y + padding_y);
   paint.clip_bounds.width = kryon.copyValue(bounds.width - (padding_x * 2));
@@ -1178,7 +1177,7 @@ export function TextInput_TextFieldScrollFor($rt, $state = moduleState, $host = 
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
   let result = {scroll: 0, max_scroll: 0, clip_width: 0, text_origin_x: 0};
-  result.clip_width = kryon.copyValue(TextInput_TextInputContentWidth($rt, $state, $host, bounds_width, padding_x));
+  result.clip_width = TextInput_TextInputContentWidth($rt, $state, $host, bounds_width, padding_x);
   result.max_scroll = kryon.copyValue(text_width - result.clip_width);
   if (result.max_scroll < 0) {
     result.max_scroll = kryon.copyValue(0);
@@ -1238,10 +1237,9 @@ export function TextInput_TextFieldCursorHeightFor($rt, $state = moduleState, $h
 
 export function TextInput_TextFieldPaintFor($rt, $state = moduleState, $host = moduleHost, bounds, padding_x, scroll_x, font, text_line_height, min_cursor_height, cursor_vertical_padding, clip_guard) {
   $state = $state || moduleState;
-  bounds = ((record_source) => ({x: record_source.x, y: record_source.y, width: record_source.width, height: record_source.height}))(bounds);
   $rt = $rt || kryon.createRuntime();
   let paint = {clip_bounds: {x: 0, y: 0, width: 0, height: 0}, text_x: 0, cursor_y: 0, cursor_height: 0};
-  let clip_width = kryon.copyValue(TextInput_TextInputContentWidth($rt, $state, $host, bounds.width, padding_x));
+  let clip_width = TextInput_TextInputContentWidth($rt, $state, $host, bounds.width, padding_x);
   paint.clip_bounds.x = kryon.copyValue(bounds.x + padding_x);
   paint.clip_bounds.y = kryon.copyValue(bounds.y - clip_guard);
   paint.clip_bounds.width = kryon.copyValue(Math.fround(clip_width));
@@ -1250,7 +1248,7 @@ export function TextInput_TextFieldPaintFor($rt, $state = moduleState, $host = m
     paint.clip_bounds.height = kryon.copyValue(0.0);
   }
   paint.text_x = kryon.copyValue(Math.trunc(Number(bounds.x + padding_x - scroll_x)));
-  paint.cursor_height = kryon.copyValue(TextInput_TextFieldCursorHeightFor($rt, $state, $host, font, bounds.height, text_line_height, min_cursor_height, cursor_vertical_padding));
+  paint.cursor_height = TextInput_TextFieldCursorHeightFor($rt, $state, $host, font, bounds.height, text_line_height, min_cursor_height, cursor_vertical_padding);
   paint.cursor_y = kryon.copyValue(Math.trunc(Number(bounds.y + (Math.trunc(Number(bounds.height)) - paint.cursor_height) / 2)));
   return paint;
   return kryon.snapshot($rt);
@@ -1275,7 +1273,7 @@ export function TextInput_TextSelectionRangeFor($rt, $state = moduleState, $host
 export function TextInput_TextSelectionRangeForLength($rt, $state = moduleState, $host = moduleHost, anchor, cursor, length) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let out = kryon.copyValue(TextInput_TextSelectionRangeFor($rt, $state, $host, anchor, cursor));
+  let out = TextInput_TextSelectionRangeFor($rt, $state, $host, anchor, cursor);
   if (length < 0) {
     length = kryon.copyValue(0);
   }
@@ -1678,10 +1676,10 @@ export function TextInput_TextWordSeparator($rt, $state = moduleState, $host = m
 export function TextInput_TextWordBoundaryFor($rt, $state = moduleState, $host = moduleHost, previous, current) {
   $state = $state || moduleState;
   $rt = $rt || kryon.createRuntime();
-  let previous_blank = kryon.copyValue(TextInput_TextWordBlank($rt, $state, $host, previous));
-  let previous_separator = kryon.copyValue(TextInput_TextWordSeparator($rt, $state, $host, previous));
-  let current_blank = kryon.copyValue(TextInput_TextWordBlank($rt, $state, $host, current));
-  let current_separator = kryon.copyValue(TextInput_TextWordSeparator($rt, $state, $host, current));
+  let previous_blank = TextInput_TextWordBlank($rt, $state, $host, previous);
+  let previous_separator = TextInput_TextWordSeparator($rt, $state, $host, previous);
+  let current_blank = TextInput_TextWordBlank($rt, $state, $host, current);
+  let current_separator = TextInput_TextWordSeparator($rt, $state, $host, current);
   return ((previous_blank || previous_separator) && !(current_separator || current_blank)) || (current_separator && !previous_separator);
 }
 

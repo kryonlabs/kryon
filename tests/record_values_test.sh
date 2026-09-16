@@ -8,12 +8,12 @@ echo "Record test output: $work"
 cd "$root"
 
 "$bin/k2c" --strict --no-main --root . -o "$work/c" tests/fixtures/record_values.kry tests/fixtures/record_types.kry
-cc -std=c99 -Wall -Werror -I"$work/c" tests/record_values_main.c \
+cc -std=c99 -Wall -Werror -I"$work/c" -I"$root/include" tests/record_values_main.c \
     "$work/c/tests/fixtures/record_values.c" -lm -o "$work/check-c"
 "$work/check-c"
 
 "$bin/k2cpp" --strict --no-main --root . -o "$work/cpp" tests/fixtures/record_values.kry tests/fixtures/record_types.kry
-c++ -std=c++11 -Wall -I"$work/cpp" tests/record_values_main.cpp \
+c++ -std=c++11 -Wall -I"$work/cpp" -I"$root/include" tests/record_values_main.cpp \
     "$work/cpp/tests/fixtures/record_values.cpp" -o "$work/check-cpp"
 "$work/check-cpp"
 
