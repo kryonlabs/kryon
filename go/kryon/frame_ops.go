@@ -58,6 +58,7 @@ type FrameOp struct {
 	BorderWidth       float32
 	Opacity           float32
 	Material          MaterialKind
+	Fields            uint32
 	ContentOffset     Vector2
 	Gap               float32
 	FontID            uint32

@@ -132,7 +132,13 @@ func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
 	if op.Material == MaterialFlat && op.Radius <= 0 && op.Opacity >= 1 {
 		fill := op.Color
 		if fill.A == 0 {
-			fill = Color{255, 255, 255, 255}
+			if op.Fields&uint32(StyleBackground) != 0 {
+				// Explicit transparent background: paint nothing.
+				fill = Color{0, 0, 0, 0}
+			} else {
+				// Unstyled debug fill.
+				fill = Color{255, 255, 255, 255}
+			}
 		}
 		fillRect(img, op.Bounds, fill)
 		if op.BorderWidth > 0 && op.BorderColor.A != 0 {
@@ -424,10 +430,10 @@ func renderTextAreaLines(text string, wrapWidth int, fontSize int32, fontID uint
 
 func renderTextArea(img *image.RGBA, op FrameOp) {
 	paintOp := op
-	if paintOp.Opacity == 0 {
+	if paintOp.Opacity == 0 && paintOp.Fields&uint32(StyleOpacity) == 0 {
 		paintOp.Opacity = 1
 	}
-	if paintOp.BorderWidth == 0 {
+	if paintOp.BorderWidth == 0 && paintOp.Fields&uint32(StyleBorderWidth) == 0 {
 		paintOp.BorderWidth = 1
 	}
 	if paintOp.FocusColor.A == 0 {
@@ -549,10 +555,10 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		}
 		strokeRect(img, op.Bounds, border)
 	} else {
-		if op.Opacity == 0 {
+		if op.Opacity == 0 && op.Fields&uint32(StyleOpacity) == 0 {
 			op.Opacity = 1
 		}
-		if op.BorderWidth == 0 {
+		if op.BorderWidth == 0 && op.Fields&uint32(StyleBorderWidth) == 0 {
 			op.BorderWidth = 1
 		}
 		if op.FocusColor.A == 0 {

@@ -1307,7 +1307,7 @@ func (r *runtime) Surface(bounds Rectangle, style Style) {
 		Material: style.Material, FocusColor: style.Focus, AmbientColor: r.appAmbientColor(),
 		BackgroundEnd: style.BackgroundEnd, HasBackgroundEnd: style.Fields&StyleBackgroundEnd != 0,
 		Color: style.Background, BorderColor: style.Border, Radius: style.Radius,
-		BorderWidth: style.BorderWidth, Opacity: style.Opacity})
+		BorderWidth: style.BorderWidth, Opacity: style.Opacity, Fields: style.Fields})
 }
 func (r *runtime) RectGradientH(x, y, w, h int32, left, right Color) {
 	r.record(FrameOp{
@@ -6710,6 +6710,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		BorderWidth:       paint.BorderWidth,
 		Opacity:           paint.Opacity,
 		Material:          paint.Material,
+		Fields:            paint.Fields,
 		FillStates:        styleFill(paint),
 		FillStatesValid:   true,
 		FontSize:          font,
