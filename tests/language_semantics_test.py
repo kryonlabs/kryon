@@ -152,6 +152,7 @@ static inline void PopInspectSource(void) {}
     (work / "c/ui_tree.h").write_text('''
 #pragma once
 ''')
+    shutil.copyfile(ROOT / "include" / "kry_bounds.h", work / "c" / "kry_bounds.h")
     # Include the generated translation unit so the harness can inspect its
     # private state without changing the generated API.
     (work / "c/driver.c").write_text('''#include <stdbool.h>
@@ -193,6 +194,7 @@ int main(int argc, char **argv) {
     run(str(work / "c/test"))
     shutil.copyfile(work / "c/ui_inspect.h", work / "cpp/ui_inspect.h")
     shutil.copyfile(work / "c/ui_tree.h", work / "cpp/ui_tree.h")
+    shutil.copyfile(work / "c/kry_bounds.h", work / "cpp/kry_bounds.h")
     (work / "cpp/driver.cpp").write_text((work / "c/driver.c").read_text().replace('"cleanup.c"', '"cleanup.cpp"'))
     run(os.environ.get("CXX", "c++"), "-std=c++17", "-Wall", "-Wextra", "-Werror", str(work / "cpp/driver.cpp"), "-o", str(work / "cpp/test"))
     run(str(work / "cpp/test"))
@@ -309,6 +311,7 @@ Shared :: (value: bool) -> bool {
                     if target in ("c", "cpp"):
                         shutil.copyfile(work / "c/ui_inspect.h", output / "ui_inspect.h")
                         shutil.copyfile(work / "c/ui_tree.h", output / "ui_tree.h")
+                        shutil.copyfile(work / "c/kry_bounds.h", output / "kry_bounds.h")
                         driver = output / f"driver.{target}"
                         header = "h" if target == "c" else "hpp"
                         driver.write_text(f'#include "{name}.{header}"\nint main(void) {{ return {name}_Check() != {expected}; }}\n')

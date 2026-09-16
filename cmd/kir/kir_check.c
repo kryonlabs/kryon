@@ -300,12 +300,14 @@ contextual_slot(Checker *c, int index, const char *expected)
 }
 
 /* Modules that import C headers interoperate with C: calls and names the
- * frontend cannot see are verified by the C compiler, not by strict checking. */
+ * frontend cannot see are verified by the C compiler, not by strict checking.
+ * A quoted import that resolved to another Kry module is not C interop. */
 static int
 module_uses_c(const Checker *c)
 {
     for(int i = 0; i < c->module->import_count; i++)
-        if(c->module->imports[i].kind == KIR_IMPORT_HEADER)
+        if(c->module->imports[i].kind == KIR_IMPORT_HEADER &&
+           c->module->imports[i].resolved_module == NULL)
             return 1;
     return 0;
 }

@@ -213,6 +213,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-widget-slots-") as directory:
             run(*command, "--strict", *map(str, sources))
             if target in ("c", "cpp"):
                 (output / "ui_inspect.h").write_text("")
+                shutil.copyfile(ROOT / "include" / "kry_bounds.h", output / "kry_bounds.h")
                 header = "h" if target == "c" else "hpp"
                 driver = output / f"driver.{target}"
                 driver.write_text(f'''#include "caller.{header}"

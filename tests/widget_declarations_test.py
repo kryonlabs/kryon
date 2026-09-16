@@ -282,6 +282,7 @@ Inset :: enum {
 static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
 static inline void PopInspectSource(void) {}
 ''')
+                shutil.copyfile(ROOT / "include" / "kry_bounds.h", output / "kry_bounds.h")
                 header = "h" if target == "c" else "hpp"
                 driver = output / f"driver.{target}"
                 driver.write_text(f'#include "consumer.{header}"\nint main(void) {{ return consumer_Run() != 17; }}\n')
@@ -297,7 +298,15 @@ func TestDeclarations(t *testing.T) {
     if Consumer_Run() != 17 { t.Fatal("block and function invocations disagree") }
 }
 ''')
-                run("go", "test", str(output / "consumer.go"), str(output / "cards.go"), str(driver))
+                (output / "go.mod").write_text(
+                    "module widgets\n\ngo 1.25.0\n\nrequire (\n"
+                    "\tgithub.com/waozixyz/kryon/go/kryon v0.0.0\n"
+                    "\tgolang.org/x/image v0.45.0\n"
+                    "\tgolang.org/x/sys v0.47.0\n"
+                    "\tgolang.org/x/text v0.41.0\n)\n"
+                    f"replace github.com/waozixyz/kryon/go/kryon => {ROOT / 'go' / 'kryon'}\n")
+                shutil.copyfile(ROOT / "go" / "kryon" / "go.sum", output / "go.sum")
+                run("go", "test", "-C", str(output), ".")
             else:
                 for runtime_file in (ROOT / "web").glob("*.js"):
                     shutil.copyfile(runtime_file, output / runtime_file.name)
@@ -456,8 +465,8 @@ Layout :: (settings: Settings) #ui {
             assert '"CardScope"' not in generated, (target, "JS output exposed lowered card scope")
         else:
             assert len(re.findall(r"(?<![A-Za-z])Button\(", generated)) == 1, (target, "leaf button opened a content scope")
-            assert generated.count("ButtonScope(") == 1, (target, "composed button lost its content scope")
+            assert generated.count("ButtonScope((") == 1, (target, "composed button lost its content scope")
             assert len(re.findall(r"(?<![A-Za-z])Card\(", generated)) == 1, (target, "leaf card opened a content scope")
-            assert generated.count("CardScope(") == 1, (target, "composed card lost its content scope")
+            assert generated.count("CardScope((") == 1, (target, "composed card lost its content scope")
 
 print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go, JavaScript")
