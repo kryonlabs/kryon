@@ -39,7 +39,7 @@ typedef struct Collected {
 
 static bool
 collect(const char *source, const char *path, const char *module_source,
-        const char *module_path, Collected *out)
+        const char *module_path, const char *variant, Collected *out)
 {
     KssEnvironment env = KssDefaultEnvironment();
     KssParser p;
@@ -50,6 +50,8 @@ collect(const char *source, const char *path, const char *module_source,
     env.density = KssDensityComfortable;
     p = KssBegin(StringView(source, strlen(source)),
                  StringView(path, strlen(path)), env);
+    if(variant != NULL)
+        p = KssSetVariant(p, kss_parser_KssMakeName(StringView(variant, strlen(variant))));
     for(;;) {
         if(p.status == KssStatusRule) {
             assert(out->count < 64);
@@ -89,13 +91,17 @@ test_matched_fixture(void)
     char *source = read_file("tests/fixtures/kss/matched.kss");
     char *module = read_file("tests/fixtures/kss/matched_module.kss");
     Collected collected;
+    Collected glow;
+    StyleRule rules[64];
+    KssParseResult result;
+    char diagnostic[256];
     const StyleRule *surface;
     const StyleRule *button;
     const StyleRule *pressed;
     const StyleRule *quiet;
     const StyleRule *contrast;
 
-    assert(collect(source, "matched.kss", module, "matched_module.kss",
+    assert(collect(source, "matched.kss", module, "matched_module.kss", NULL,
                    &collected));
     /* Import order first, then document order; density(compact) excluded. */
     assert(collected.count == 5);
@@ -122,7 +128,7 @@ test_matched_fixture(void)
     assert(button->style.material == MaterialFlat);
     assert(StringEqual(button->style.typeface, StringView("semibold", 8)));
     assert(collected.origins[2].file == 0);
-    assert(collected.origins[2].line == 23);
+    assert(collected.origins[2].line == 27);
 
     pressed = &collected.rules[3];
     assert(pressed->state == ButtonStatePressed);
@@ -132,6 +138,30 @@ test_matched_fixture(void)
     assert(quiet->style.background == 0x00000000u);
     assert(quiet->style.foreground == 0x000000ffu);
     assert(quiet->style.border == 0xffffffffu);
+
+    /* The declared variant is enumerated but contributes nothing unless the
+     * parse environment selects it. */
+    assert(RegisterStyleModule("matched-module", module));
+    assert(kss_parse_with_variant(source, NULL, rules, 64, &result,
+                                  diagnostic, sizeof(diagnostic)));
+    assert(result.variant_count == 1);
+    assert(strcmp(result.variants[0].name, "glow") == 0);
+    assert(strcmp(result.variants[0].label, "Glow") == 0);
+    /* Default environment: no theme, no contrast overlay, so the sheet
+     * yields import rules plus the three pack rules. */
+    assert(result.rule_count == 4);
+
+    assert(collect(source, "matched.kss", module, "matched_module.kss",
+                  "glow", &glow));
+    /* The variant overlay wins over the dark theme for accent (origin
+     * variant sorts above theme), and the variant rule lands after the
+     * environment rule and before the pack layer. */
+    assert(glow.count == 6);
+    assert(glow.rules[2].style.letter_spacing == 9.0f);
+    assert(glow.rules[2].layer == 0);
+    assert(glow.rules[3].style.background == 0x00ff00ffu);
+    assert(glow.rules[3].style.letter_spacing == 2.0f);
+    assert(glow.rules[5].style.background == 0x00000000u);
 
     free(source);
     free(module);

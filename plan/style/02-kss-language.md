@@ -63,9 +63,21 @@ Remaining:
   `kss_parser` module in declarative mode (raw selector/declaration spans,
   foreign blocks); theme/env/import decisions are no longer re-derived in
   `web/kryon-runtime.js`.
-- Implement typed pack-option/variant metadata and selector resolution for
-  Lightfield's glow treatment. Runtime color-token substitution does not supply
-  the planned pack-option grammar.
+- Done: typed pack-option/variant metadata and resolution. `@variant name
+  "Label" { token overlays and rules }` lives in the shared grammar;
+  declarations are enumerated (name + label) even when inactive, the parse
+  environment selects the active variant (C `kss_parse_with_variant`/
+  `KssSetVariant`, Go `KssParser_KssSetVariant`, web environment `variant`
+  field), active overlays apply at the variant origin (above theme and env,
+  below scoped rules), and active variant rules yield in document order.
+  `RegisterStylePackSource` registers each declared variant as a selectable
+  `<pack>.<variant>` option; activation re-parses the source so base and
+  variant rules resolve together. Lightfield's glow treatment belongs here.
+  Caveat kept from theme/env semantics: overlays apply from their position
+  onward, so sheets declare variant overlays before referencing rules.
+  Follow-ups: mirror `<pack>.<variant>` registration in the Go and web host
+  pack registries (the grammar and parser APIs already match), and surface
+  the active variant in the inspector (06).
 - Done: matched C/Go/JS fixtures and invalid-input coverage. One fixture
   (`tests/fixtures/kss/matched.kss` + `matched_module.kss`) drives the
   generated C parser (provenance asserted via `KssBegin`/`KssStep`), the Go

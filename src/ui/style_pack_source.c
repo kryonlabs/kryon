@@ -48,6 +48,10 @@ style_source_pack_slot(const char *id)
     return &source_packs[source_pack_count++];
 }
 
+static bool register_style_variant(const char *source, const char *base_id,
+                                   const char *variant_name,
+                                   const char *variant_label);
+
 static bool
 register_style_source(const char *source, const char *label,
                       const char *description, const char *id,
@@ -112,6 +116,71 @@ register_style_source(const char *source, const char *label,
     slot->sheet.rules = slot->rules;
     slot->sheet.rule_count = result.rule_count;
 
+    if(!RegisterStylePack((StylePack){
+        .id = slot->id,
+        .label = slot->label,
+        .description = slot->description,
+        .sheet = &slot->sheet,
+    }))
+        return false;
+
+    /* Declared '@variant' blocks become selectable pack options under
+     * '<pack>.<variant>'; each re-parses the same source with that variant
+     * active so base and variant rules resolve together. */
+    for(int i = 0; i < result.variant_count && i < KSS_VARIANT_MAX; i++) {
+        if(!register_style_variant(source_copy, result.pack_id,
+                                   result.variants[i].name,
+                                   result.variants[i].label))
+            return false;
+    }
+    return true;
+}
+
+static bool
+register_style_variant(const char *source, const char *base_id,
+                       const char *variant_name, const char *variant_label)
+{
+    KssParseResult result = {0};
+    StyleRule rules[STYLE_SOURCE_RULE_MAX] = {0};
+    char diagnostic[256];
+    char variant_id[sizeof(((StyleSourcePack *)0)->id)] = {0};
+    char variant_source[96] = {0};
+    StyleSourcePack *slot;
+    char *source_copy = NULL;
+    char *label_copy = NULL;
+    char *description_copy = NULL;
+
+    snprintf(variant_id, sizeof(variant_id), "%s.%s", base_id, variant_name);
+    snprintf(variant_source, sizeof(variant_source), "%s", variant_name);
+    if(!kss_parse_with_variant(source, variant_source, rules,
+                               STYLE_SOURCE_RULE_MAX, &result,
+                               diagnostic, sizeof(diagnostic)))
+        return false;
+    if(result.rule_count <= 0)
+        return false;
+    slot = style_source_pack_slot(variant_id);
+    if(slot == NULL)
+        return false;
+    source_copy = style_copy_text(source);
+    label_copy = style_copy_text(variant_label);
+    description_copy = style_copy_text("");
+    if(source_copy == NULL || label_copy == NULL || description_copy == NULL) {
+        free(source_copy);
+        free(label_copy);
+        free(description_copy);
+        return false;
+    }
+    free((void *)slot->source);
+    free((void *)slot->label);
+    free((void *)slot->description);
+    memset(slot, 0, sizeof(*slot));
+    snprintf(slot->id, sizeof(slot->id), "%s", variant_id);
+    slot->source = source_copy;
+    slot->label = label_copy;
+    slot->description = description_copy;
+    memcpy(slot->rules, rules, (size_t)result.rule_count * sizeof(rules[0]));
+    slot->sheet.rules = slot->rules;
+    slot->sheet.rule_count = result.rule_count;
     return RegisterStylePack((StylePack){
         .id = slot->id,
         .label = slot->label,

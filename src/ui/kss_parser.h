@@ -6,9 +6,18 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define KSS_VARIANT_MAX 8
+
+typedef struct KssVariantInfo {
+    char name[64];
+    char label[64];
+} KssVariantInfo;
+
 typedef struct KssParseResult {
     char pack_id[64];
     int rule_count;
+    KssVariantInfo variants[KSS_VARIANT_MAX];
+    int variant_count;
 } KssParseResult;
 
 /* Importable in-memory KSS sources for '@import <id>;'. */
@@ -24,5 +33,12 @@ bool kss_parse_variant(const char *source, const StyleColorToken *colors,
 bool kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
                       KssParseResult *result, char *diagnostic,
                       size_t diagnostic_size);
+
+/* Parse with a declared pack variant active ('@variant name ...' blocks yield
+ * rules and overlays); variant may be NULL or empty for the base sheet. */
+bool kss_parse_with_variant(const char *source, const char *variant,
+                            StyleRule *rules, int rule_capacity,
+                            KssParseResult *result, char *diagnostic,
+                            size_t diagnostic_size);
 
 #endif /* KRYON_KSS_PARSER_H */

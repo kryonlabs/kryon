@@ -23,9 +23,10 @@ type kssCollected struct {
 	rules   []StyleRule
 	origins []KssOrigin
 	spans   []KssRuleSpan
+	parser  KssParser
 }
 
-func kssCollectFixture(t *testing.T, source, module string) kssCollected {
+func kssCollectFixture(t *testing.T, source, module, variant string) kssCollected {
 	t.Helper()
 	host, ok := active().(*runtime)
 	if !ok {
@@ -36,6 +37,9 @@ func kssCollectFixture(t *testing.T, source, module string) kssCollected {
 	env.Contrast = KssContrastHigh
 	env.Density = KssDensityComfortable
 	parser := KssParser_KssBegin(source, "matched.kss", env)
+	if variant != "" {
+		parser = KssParser_KssSetVariant(parser, KssParser_KssMakeName(variant))
+	}
 	var collected kssCollected
 	for {
 		if parser.Status == KssStatusRule {
@@ -60,6 +64,7 @@ func kssCollectFixture(t *testing.T, source, module string) kssCollected {
 	if parser.Status != KssStatusDone {
 		t.Fatalf("parse failed: %s", strings.TrimSpace(string(parser.Diagnostic[:parser.DiagnosticLength])))
 	}
+	collected.parser = parser
 	return collected
 }
 
@@ -67,7 +72,7 @@ func TestKssMatchedFixture(t *testing.T) {
 	ClearStyleModules()
 	source := kssFixtureText(t, "../../tests/fixtures/kss/matched.kss")
 	module := kssFixtureText(t, "../../tests/fixtures/kss/matched_module.kss")
-	collected := kssCollectFixture(t, source, module)
+	collected := kssCollectFixture(t, source, module, "")
 
 	if len(collected.rules) != 5 {
 		t.Fatalf("rules = %d, want 5", len(collected.rules))
@@ -98,7 +103,7 @@ func TestKssMatchedFixture(t *testing.T) {
 	if button.Style.Typeface != "semibold" {
 		t.Fatalf("typeface = %q", button.Style.Typeface)
 	}
-	if collected.origins[2].File != 0 || collected.origins[2].Line != 23 {
+	if collected.origins[2].File != 0 || collected.origins[2].Line != 27 {
 		t.Fatalf("button origin = %+v, want file 0 line 23", collected.origins[2])
 	}
 	pressed := collected.rules[3]
@@ -110,6 +115,26 @@ func TestKssMatchedFixture(t *testing.T) {
 		quiet.Style.Foreground != 0x000000ff ||
 		quiet.Style.Border != 0xffffffff {
 		t.Fatalf("named-color rule mismatch: %+v", quiet.Style)
+	}
+
+	glow := kssCollectFixture(t, source, module, "glow")
+	if len(glow.rules) != 6 {
+		t.Fatalf("glow rules = %d, want 6", len(glow.rules))
+	}
+	if glow.rules[2].Style.LetterSpacing != 9 || glow.rules[2].Layer != 0 {
+		t.Fatalf("variant rule mismatch: %+v", glow.rules[2])
+	}
+	if glow.rules[3].Style.Background != 0x00ff00ff ||
+		glow.rules[3].Style.LetterSpacing != 2 {
+		t.Fatalf("variant overlay mismatch: %+v", glow.rules[3].Style)
+	}
+	if glow.rules[5].Style.Background != 0x00000000 {
+		t.Fatalf("variant tail rule mismatch: %+v", glow.rules[5].Style)
+	}
+	if glow.parser.VariantCount != 1 ||
+		kssNameText(glow.parser.Variants[0].Name) != "glow" ||
+		kssNameText(glow.parser.Variants[0].Label) != "Glow" {
+		t.Fatalf("variant declaration mismatch: %d", glow.parser.VariantCount)
 	}
 }
 

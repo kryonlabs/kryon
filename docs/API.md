@@ -2305,15 +2305,30 @@ text and resolve imports; they never reimplement parsing:
   the remainder of the sheet. Built-in aliases (`reset`/`base`/`defaults`,
   `components`/`widgets`, `app`, `overrides`) keep their indices until a sheet
   declares its own order.
+- `@variant name "Label" { token overlays and rules }` declares a selectable
+  pack option in the sheet itself. Every declaration is recorded (name and
+  label) even when inactive, so hosts can enumerate options; the parse
+  environment names the active variant (C: `kss_parse_with_variant` or
+  `KssSetVariant`; Go: `KssParser_KssSetVariant`; web: the environment's
+  `variant` field). An active variant contributes rules in document order and
+  applies token overlays with the variant origin. As with `@theme` and `@env`,
+  overlays take effect from their position onward: declare variant overlays
+  before the rules that reference their tokens.
+  `RegisterStylePackSource` registers each declared variant as a selectable
+  pack under `<pack>.<variant>` carrying the declared label; activating it
+  re-parses the source with that variant so base and variant rules resolve
+  together. This is the intended home for Lightfield's glow treatment.
 - Precedence for token values is imported tokens, then pack tokens, then the
-  active `@theme` overlay, then matching `@env` overrides, then programmatic
-  variant color substitution; scoped rules always resolve against the final
-  table.
+  active `@theme` overlay, then matching `@env` overrides, then active
+  `@variant` overlays and programmatic variant color substitution; scoped
+  rules always resolve against the final table.
 
 C hosts include `runtime/kss_parser.h` and drive `KssBegin`/`KssStep`
 (`KssStatusRule` yields a rule, `KssStatusNeedImport` expects
-`KssProvideImport` or `KssFailImport`); `kss_parse_string` and
-`kss_parse_variant` remain as shims over that loop. Go hosts call
+`KssProvideImport` or `KssFailImport`); `kss_parse_string`,
+`kss_parse_variant`, and `kss_parse_with_variant` remain as shims over that
+loop, and `KssParseResult` reports the pack id, rule count, and declared
+variant names with labels. Go hosts call
 `ParseStyleSheet`, and `runtime/kss_parser.kry`'s generated module is the
 single grammar implementation for every backend.
 

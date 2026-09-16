@@ -108,6 +108,17 @@ assert.throws(() => runtime.parseWebStyleSheet(
   assert.equal(sheet.rules[4].style.foreground, "black");
   assert.equal(sheet.rules[4].style.border, "white");
 
+  // Declared variants: enumerated but inert unless the environment selects
+  // them; the active variant overlays tokens (above theme) and adds rules.
+  const glowSheet = runtime.parseWebStyleSheet(fixture, {}, {
+    ...runtime.defaultWebStyleEnvironment(),
+    theme: "dark", contrast: "high", variant: "glow"
+  });
+  assert.equal(glowSheet.rules.length, 6);
+  assert.equal(glowSheet.rules[2].style["letter-spacing"], 9);
+  assert.equal(glowSheet.rules[3].style.background, "#00ff00");
+  assert.equal(glowSheet.rules[5].style.background, "transparent");
+
   // Invalid-input sweep: truncations and deterministic mutations must never
   // crash the generated module.
   let seed = 0x5eed1234;

@@ -3478,7 +3478,17 @@ function webKssEnvironment(environment) {
       env.platform === "terminal" ? webKssModule.KssPlatformTerminal :
         env.platform === "desktop" ? webKssModule.KssPlatformDesktop :
           webKssModule.KssPlatformWeb;
-  return { theme, contrast, density, pointer, platform };
+  const variant = webKssNameFromText(env.variant);
+  return { theme, contrast, density, pointer, platform, variant };
+}
+
+function webKssNameFromText(text) {
+  const bytes = new Array(64).fill(0);
+  const source = String(text || "");
+  const length = Math.min(source.length, 64);
+  for (let i = 0; i < length; i++)
+    bytes[i] = source.charCodeAt(i) & 0xff;
+  return { bytes, length };
 }
 
 let webKssHostInstalled = false;

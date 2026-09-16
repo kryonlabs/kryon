@@ -67,14 +67,6 @@ KssTheme :: enum {
 }
 
 
-KssEnvironment :: struct {
-    theme: i32
-    contrast: i32
-    density: i32
-    pointer: i32
-    platform: i32
-}
-
 KssDefaultEnvironment :: () -> KssEnvironment #export {
     env: KssEnvironment
     env.theme = (i32)KssThemeNone
@@ -96,6 +88,15 @@ KssCursor :: struct {
 KssName :: struct {
     bytes: [64]u8
     length: i32
+}
+
+KssEnvironment :: struct {
+    theme: i32
+    contrast: i32
+    density: i32
+    pointer: i32
+    platform: i32
+    variant: KssName
 }
 
 KssSourceFile :: struct {
@@ -169,6 +170,11 @@ KssImportFrame :: struct {
     outer_file: i32
 }
 
+KssVariantDecl :: struct {
+    name: KssName
+    label: KssName
+}
+
 KssParser :: struct {
     cursor: KssCursor
     files: [8]KssSourceFile
@@ -194,6 +200,10 @@ KssParser :: struct {
     rule_span: KssRuleSpan
     pending_import: KssName
     in_env: bool
+    variants: [8]KssVariantDecl
+    variant_count: i32
+    in_variant: bool
+    variant_label: KssName
     resume_group: i32
     declarative: bool
     declarations: [1024]KssDeclaration
@@ -233,6 +243,7 @@ KssBegin :: (source: string, path: string, env: KssEnvironment) -> KssParser #ex
     p.declaration_count = 0
     p.foreign_count = 0
     p.resume_group = -1
+    p.variant_count = 0
     p.diagnostic_length = 0
     return p
 }
@@ -2439,6 +2450,103 @@ KssContinueEnvBlock :: (p: KssParser) -> KssParser {
     return p
 }
 
+
+# '@variant name "Label" { token overlays and rules }'. Variants are pack
+# options declared in the sheet itself: every declaration is recorded (name
+# and label) for host enumeration, and only the variant named by the parse
+# environment contributes rules and token overlays. Overlay entries apply
+# with the variant origin, above theme and environment.
+
+KssReadVariantLabel :: (c: KssCursor) -> KssNameResult {
+    result: KssNameResult
+    c = KssSkipSpace(c)
+    if KssAtEnd(c) || c.source[c.pos] != 34 {
+        result.parser = c
+        return result
+    }
+    c = KssAdvance(c, 1)
+    while !KssAtEnd(c) && c.source[c.pos] != 34 {
+        result.name = KssNameAppend(result.name, c.source[c.pos])
+        c = KssAdvance(c, 1)
+    }
+    if KssAtEnd(c) {
+        result.parser = c
+        return result
+    }
+    c = KssAdvance(c, 1)
+    result.parser = c
+    result.ok = true
+    return result
+}
+
+KssSetVariant :: (p: KssParser, name: KssName) -> KssParser #export {
+    p.env.variant = name
+    return p
+}
+
+KssVariantActive :: (p: KssParser, name: KssName) -> bool {
+    if p.env.variant.length <= 0 {
+        return false
+    }
+    return KssNameEqualsName(p.env.variant, name)
+}
+
+KssParseVariantBlock :: (p: KssParser, name: KssName) -> KssParser {
+    if p.variant_count >= 8 {
+        return KssFail(p, "style variant capacity exceeded")
+    }
+    p.variants[p.variant_count].name = name
+    p.variants[p.variant_count].label = p.variant_label
+    p.variant_count = p.variant_count + 1
+    open: KssExpectResult = KssExpect(p.cursor, 123)
+    if !open.ok {
+        p.cursor = open.parser
+        return KssFail(p, "expected '{' after @variant name")
+    }
+    p.cursor = open.parser
+    if !KssVariantActive(p, name) {
+        return KssSkipBlockRemainder(p)
+    }
+    p.in_variant = true
+    return KssContinueVariantBlock(p)
+}
+
+KssContinueVariantBlock :: (p: KssParser) -> KssParser {
+    c: KssCursor = p.cursor
+    running: bool = true
+    while running {
+        c = KssSkipSpace(c)
+        p.cursor = c
+        if KssAtEnd(c) {
+            return KssFail(p, "unterminated variant block")
+        }
+        if c.source[c.pos] == 125 {
+            c = KssAdvance(c, 1)
+            p.cursor = c
+            p.in_variant = false
+            running = false
+            continue
+        }
+        saved: KssParser = p
+        entry: KssOverlayOutcome = KssTryOverlayEntry(p,
+            (i32)KssOriginVariant)
+        if entry.parser.status == (i32)KssStatusError {
+            return entry.parser
+        }
+        if entry.matched {
+            p = entry.parser
+            c = p.cursor
+            continue
+        }
+        p = KssParseRule(saved)
+        if p.status == (i32)KssStatusError {
+            return p
+        }
+        return p
+    }
+    return p
+}
+
 # 'tokens { group { name: value; ... } ... }'
 
 KssParseTokenGroup :: (p: KssParser, origin_kind: i32) -> KssParser {
@@ -2811,6 +2919,21 @@ KssParseDirective :: (p: KssParser) -> KssParser {
         p.status = (i32)KssStatusNeedImport
         return p
     }
+    if KssNameEquals(keyword.name, "variant") {
+        name: KssNameResult = KssReadName(keyword.parser)
+        if !name.ok {
+            p.cursor = name.parser
+            return KssFail(p, "expected variant name")
+        }
+        label: KssNameResult = KssReadVariantLabel(name.parser)
+        if !label.ok {
+            p.cursor = label.parser
+            return KssFail(p, "expected variant label string")
+        }
+        p.variant_label = label.name
+        p.cursor = label.parser
+        return KssParseVariantBlock(p, name.name)
+    }
     if KssNameEquals(keyword.name, "theme") {
         value: KssNameResult = KssReadName(keyword.parser)
         if !value.ok {
@@ -2938,6 +3061,15 @@ KssStep :: (p: KssParser) -> KssParser #export {
     if p.in_env {
         p.status = (i32)KssStatusContinue
         p = KssContinueEnvBlock(p)
+        if p.status == (i32)KssStatusRule ||
+           p.status == (i32)KssStatusError {
+            return p
+        }
+        c = p.cursor
+    }
+    if p.in_variant {
+        p.status = (i32)KssStatusContinue
+        p = KssContinueVariantBlock(p)
         if p.status == (i32)KssStatusRule ||
            p.status == (i32)KssStatusError {
             return p

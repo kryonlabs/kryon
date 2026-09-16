@@ -107,16 +107,21 @@ kss_copy_diagnostic(char *diagnostic, size_t diagnostic_size,
 
 static bool
 kss_collect(const char *source, const StyleColorToken *colors, int color_count,
-            StyleRule *rules, int rule_capacity, KssParseResult *result,
-            char *diagnostic, size_t diagnostic_size)
+            const char *variant, StyleRule *rules, int rule_capacity,
+            KssParseResult *result, char *diagnostic, size_t diagnostic_size)
 {
+    KssEnvironment environment = KssDefaultEnvironment();
     KssParser parser = KssBegin(StringView(source, strlen(source)),
                                 StringView(NULL, 0),
-                                KssDefaultEnvironment());
+                                environment);
     int rule_count = 0;
 
     if(diagnostic != NULL && diagnostic_size > 0)
         diagnostic[0] = '\0';
+    if(variant != NULL && variant[0] != '\0')
+        parser = KssSetVariant(parser,
+                               kss_parser_KssMakeName(StringView(variant,
+                                                                  strlen(variant))));
     for(int i = 0; i < color_count; i++)
         parser = KssAddColorOverride(parser,
                                      StringView(colors[i].name,
@@ -161,6 +166,25 @@ kss_collect(const char *source, const StyleColorToken *colors, int color_count,
     if(result != NULL) {
         int length = parser.pack.length;
         result->rule_count = rule_count;
+        result->variant_count = parser.variant_count;
+        for(int i = 0; i < parser.variant_count && i < KSS_VARIANT_MAX; i++) {
+            int name_length = parser.variants[i].name.length;
+            int label_length = parser.variants[i].label.length;
+            if(name_length < 0)
+                name_length = 0;
+            if((size_t)name_length >= sizeof(result->variants[i].name))
+                name_length = (int)sizeof(result->variants[i].name) - 1;
+            if(label_length < 0)
+                label_length = 0;
+            if((size_t)label_length >= sizeof(result->variants[i].label))
+                label_length = (int)sizeof(result->variants[i].label) - 1;
+            memcpy(result->variants[i].name, parser.variants[i].name.bytes,
+                   (size_t)name_length);
+            result->variants[i].name[name_length] = '\0';
+            memcpy(result->variants[i].label, parser.variants[i].label.bytes,
+                   (size_t)label_length);
+            result->variants[i].label[label_length] = '\0';
+        }
         if(length < 0)
             length = 0;
         if((size_t)length >= sizeof(result->pack_id))
@@ -181,8 +205,8 @@ kss_parse_variant(const char *source, const StyleColorToken *colors,
         return false;
     if(color_count < 0 || (color_count > 0 && colors == NULL))
         return false;
-    return kss_collect(source, colors, color_count, rules, rule_capacity,
-                       result, diagnostic, diagnostic_size);
+    return kss_collect(source, colors, color_count, NULL, rules,
+                       rule_capacity, result, diagnostic, diagnostic_size);
 }
 
 bool
@@ -192,4 +216,16 @@ kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
 {
     return kss_parse_variant(source, NULL, 0, rules, rule_capacity, result,
                              diagnostic, diagnostic_size);
+}
+
+bool
+kss_parse_with_variant(const char *source, const char *variant,
+                        StyleRule *rules, int rule_capacity,
+                        KssParseResult *result, char *diagnostic,
+                        size_t diagnostic_size)
+{
+    if(source == NULL || rules == NULL || rule_capacity < 0)
+        return false;
+    return kss_collect(source, NULL, 0, variant, rules, rule_capacity,
+                       result, diagnostic, diagnostic_size);
 }

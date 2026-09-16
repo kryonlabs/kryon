@@ -19,6 +19,10 @@ tokens {
 @env density(compact) {
   Button { padding-y: 4; }
 }
+@variant glow "Glow" {
+  accent: #00ff00;
+  Button { letter-spacing: 9; }
+}
 @layer components;
 Button {
   background: accent;

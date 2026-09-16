@@ -61,6 +61,25 @@ main(void)
     resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
     assert(resolved.background == 0x44aa88ffu);
 
+    /* Declared '@variant' blocks become selectable packs under
+     * '<pack>.<variant>' with their label; the variant sheet resolves base
+     * and variant rules together. */
+    const char *variantSource =
+        "@pack lf; tokens { color { accent: #112233; } } "
+        "@variant glow \"Glow\" { accent: #00ff00; } "
+        "Button { background: accent; radius: 6; } "
+        "@variant glow \"Glow\" { Button { radius: 12; } }";
+    assert(RegisterStylePackSource(variantSource, "Lightfield", ""));
+    assert(GetStylePackCount() == 5);
+    assert(SetActiveStylePack("lf.glow"));
+    assert(strcmp(GetActiveStylePack()->label, "Glow") == 0);
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x00ff00ffu);
+    assert(resolved.radius == 12.0f);
+    assert(SetActiveStylePack("lf"));
+    resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    assert(resolved.background == 0x112233ffu);
+    assert(resolved.radius == 6.0f);
 
     ClearStylePacks();
     return 0;
