@@ -15,7 +15,8 @@ Remaining:
   now fails visibly instead of emitting the removed `kryon.expr` runtime
   placeholder, executable fixture generation rejects any placeholder calls, and
   fixed-capacity module state/global/local `sizeof(...)` lowers to the
-  declared capacity. Element-size expressions and computed capacities remain
+  declared capacity, and fixed-array element-size operands support
+  `sizeof(array) / sizeof(array[0])`. Broader computed capacities remain
   open.
 - Report coverage per backend and fixture; distinguish generating, executing,
   comparing state, and checking rendered output.

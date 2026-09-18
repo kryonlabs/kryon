@@ -1031,6 +1031,7 @@ assert.equal(generated.Valid_FractionalPreviewMode(rt, state, host, 1.75), 1);
 assert.equal(generated.Valid_FractionalPreviewMode(rt, state, host, -1.75), -1);
 assert.equal(generated.Valid_LabelCapacity(rt, state, host), 64);
 assert.equal(generated.Valid_LocalCapacity(rt, state, host), 12);
+assert.equal(generated.Valid_LocalElementCount(rt, state, host), 12);
 const snap = generated.frame(rt, state, host);
 assert.equal(state.count, 1);
 assert.equal(state.viewport_width, 320);

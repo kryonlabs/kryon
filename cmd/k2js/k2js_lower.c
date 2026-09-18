@@ -884,6 +884,8 @@ sizeof_expression(const KirModule *m, const char *operand,
                   char *dst, size_t dst_size)
 {
     char name[K2JS_NAME_MAX];
+    char element[KIR_NAME_MAX];
+    const char *type = NULL;
     const char *p = kir_skip_ws(operand);
     size_t length = 0;
 
@@ -895,24 +897,50 @@ sizeof_expression(const KirModule *m, const char *operand,
         name[length++] = *p++;
     }
     name[length] = '\0';
-    if(*kir_skip_ws(p) != '\0')
-        return 0;
     for(int i = tx_local_count - 1; i >= 0; i--) {
-        if(strcmp(tx_locals[i].name, name) == 0)
-            return array_capacity_expression(tx_locals[i].type,
-                                             dst, dst_size);
+        if(strcmp(tx_locals[i].name, name) == 0) {
+            type = tx_locals[i].type;
+            break;
+        }
     }
-    for(int i = 0; i < m->state_count; i++) {
-        if(strcmp(m->state_fields[i].name, name) == 0)
-            return array_capacity_expression(m->state_fields[i].type,
-                                             dst, dst_size);
+    if(type == NULL) {
+        for(int i = 0; i < m->state_count; i++) {
+            if(strcmp(m->state_fields[i].name, name) == 0) {
+                type = m->state_fields[i].type;
+                break;
+            }
+        }
     }
-    for(int i = 0; i < m->global_count; i++) {
-        if(strcmp(m->globals[i].name, name) == 0)
-            return array_capacity_expression(m->globals[i].type,
-                                             dst, dst_size);
+    if(type == NULL) {
+        for(int i = 0; i < m->global_count; i++) {
+            if(strcmp(m->globals[i].name, name) == 0) {
+                type = m->globals[i].type;
+                break;
+            }
+        }
     }
-    return 0;
+    if(type == NULL)
+        return 0;
+    p = kir_skip_ws(p);
+    if(*p == '\0')
+        return array_capacity_expression(type, dst, dst_size);
+    if(*p != '[' || !KirArrayElementType(type, element, sizeof(element), NULL))
+        return 0;
+    p++;
+    int depth = 1;
+    while(*p != '\0' && depth > 0) {
+        if(*p == '[')
+            depth++;
+        else if(*p == ']')
+            depth--;
+        p++;
+    }
+    if(depth != 0 || *kir_skip_ws(p) != '\0')
+        return 0;
+    if(array_capacity_expression(element, dst, dst_size))
+        return 1;
+    snprintf(dst, dst_size, "1");
+    return 1;
 }
 
 /* Find where the indexed primary begins in already-emitted translated text,

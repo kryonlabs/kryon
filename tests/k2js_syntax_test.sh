@@ -84,6 +84,10 @@ LocalCapacity :: () -> int {
     local_label: [12] char = "local"
     return sizeof(local_label)
 }
+LocalElementCount :: () -> int {
+    local_label: [12] char = "local"
+    return sizeof(local_label) / sizeof(local_label[0])
+}
 note_input :: (value: string) -> int {
     unused value
     count += 10
@@ -1607,7 +1611,7 @@ state {
 
 UnsupportedExpression :: () #ui {
     label: [16] char = "hello"
-    count = sizeof(label) / sizeof(label[0])
+    count = sizeof(label + 1)
 }
 EOF
 
