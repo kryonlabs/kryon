@@ -54,6 +54,13 @@ map, composite effect builder, vendor-fallback list, or border-style policy.
 explicit background-image presence. Selector serialization and other remaining
 CSS decisions still need migration; these helpers do not close all KSS work.
 
+Generated browser modules (`web/instance.js`, control/drawing props, editor,
+style/surface policy, and KSS parser/formatter) are ignored build artifacts.
+Edit their `runtime/*.kry` owners and run `make generate-web-runtime`; never
+track or hand-edit the generated JavaScript. Handwritten DOM/storage adapters
+remain tracked. Distribution packages include the generated modules so users
+of packaged tools do not need a source build to obtain browser runtime files.
+
 ## Belongs In Kryon
 
 - reusable widgets, layout, text input, focus, theme, DPI, modal, scroll, and

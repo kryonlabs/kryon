@@ -1,5 +1,5 @@
 #!/bin/sh
-# web/*.js runtime modules must stay byte-identical to the k2js output of
+# Generated web/*.js artifacts must be untracked and reproducible from
 # runtime/*.kry; the .kry sources are the single source of truth.
 set -eu
 
@@ -17,14 +17,18 @@ trap 'rm -rf "$work"' EXIT INT TERM
 "$k2js" --strict --no-main --root runtime --runtime ./kryon-runtime.js \
     -o "$work" runtime/kss_parser.kry runtime/kss_formatter.kry \
     runtime/text_input.kry runtime/style_sheet.kry runtime/style.kry \
-    runtime/surface.kry runtime/control_props.kry runtime/drawing_props.kry
+    runtime/surface.kry runtime/control_props.kry runtime/drawing_props.kry runtime/instance.kry
 
 status=0
-for name in kss_parser kss_formatter text_input style_sheet style surface control_props drawing_props; do
+for name in kss_parser kss_formatter text_input style_sheet style surface control_props drawing_props instance; do
+    if git ls-files --error-unmatch "web/$name.js" >/dev/null 2>&1; then
+        echo "generated artifact must not be tracked: web/$name.js" >&2
+        status=1
+    fi
     generated="$work/$name.js"
     if ! cmp -s "$generated" "web/$name.js"; then
         echo "web/$name.js differs from k2js output of runtime/$name.kry" >&2
-        echo "  regenerate with: make -W runtime/kss_parser.kry generate-runtime" >&2
+        echo "  regenerate with: make -W runtime/kss_parser.kry -W runtime/instance.kry generate-web-runtime" >&2
         status=1
     fi
 done

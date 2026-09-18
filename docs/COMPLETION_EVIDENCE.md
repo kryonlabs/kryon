@@ -650,3 +650,20 @@ No production code changed for that correction. Browser checks confirm retained
 node cleanup and independent inline/export snapshots. Go uses gofmt; the Kry
 formatter ran on a review copy, with unrelated indentation rewrites inspected
 and omitted. `git diff --check` passes. The full plan remains incomplete.
+
+## Generated JavaScript is build output
+
+The nine generated browser modules are no longer tracked. `.gitignore` names
+those artifacts explicitly; maintained `.kry` sources remain authoritative.
+`make generate-web-runtime` supplies them, and public compiler/tool, web test,
+provenance, and distribution targets depend on generation. The tools archive
+checks every generated module. The reproducibility gate also rejects tracked
+generated browser modules, including instance policy.
+
+A fresh source tree materialized from the index had no generated browser files
+or compiler binary. `make -j4 generate-web-runtime web-generated-check` rebuilt
+the compiler and all nine artifacts; Node then imported the complete browser
+runtime successfully. Root provenance/reproducibility checks and the tools
+archive check pass. Logs: `build/css-inline/clean-web-build.log`,
+`untracked-web-check.log`, and `tools-package.log`. This removes about 39,500
+lines of generated JavaScript from Git, not the necessary browser build outputs.

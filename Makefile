@@ -406,6 +406,17 @@ k2cpp: $(K2CPP)
 k2go: $(K2GO)
 k2js: $(K2JS)
 
+# Generated browser modules are local build artifacts, never source-controlled.
+WEB_GENERATED_MODULES := instance control_props drawing_props text_input style_sheet style surface kss_parser kss_formatter
+WEB_GENERATED_JS := $(addprefix web/,$(addsuffix .js,$(WEB_GENERATED_MODULES)))
+.PHONY: generate-web-runtime
+generate-web-runtime: $(WEB_GENERATED_JS)
+
+all tools k2js k2js-runtime-snapshot-test k2js-syntax-test generated-runtime-parity-test \
+widget-instance-test keyboard-policy-test web-text-capacity-test web-text-input-browser-test \
+web-dom-browser-test web-dom-inspector-browser-test runtime-declarations-check \
+generated-provenance-check web-generated-check: generate-web-runtime
+
 all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 
 tools: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
@@ -1076,7 +1087,7 @@ generated-provenance-check: $(K2JS)
 	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
 
 # The web runtime modules are k2js output of runtime/*.kry; hand edits in
-# web/*.js drift from the .kry source of truth and are caught here.
+# generated web/*.js drift from the .kry source of truth and are caught here.
 .PHONY: web-generated-check
 web-generated-check: $(K2JS)
 	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
@@ -1137,7 +1148,7 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
 RUNTIME_PROPS_H := $(patsubst runtime/%.kry,include/ui_%.generated.h,$(wildcard runtime/*_props.kry))
-generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js web/text_input.js web/style_sheet.js $(RUNTIME_PROPS_H)
+generate-runtime: generate-web-runtime $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js web/text_input.js web/style_sheet.js $(RUNTIME_PROPS_H)
 	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
 
@@ -1276,7 +1287,7 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh $(wildcard web/*.js) web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
+$(TOOLS_DIST_ARCHIVE): tools $(WEB_GENERATED_JS) README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh $(wildcard web/*.js) web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	rm -rf $(TOOLS_DIST_ROOT)
 	mkdir -p $(TOOLS_DIST_ROOT)/bin $(TOOLS_DIST_ROOT)/web $(DIST_DIR)
 	cp $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/

@@ -260,3 +260,12 @@ check.
 internally. Native platform, storage, and performance-sensitive C code remains
 first-class through the C backend and through explicit KRB capabilities or host
 imports.
+
+### Generated browser runtime
+
+Run `make generate-web-runtime` to generate the browser policy modules from
+`runtime/*.kry`. The nine generated `web/*.js` modules are ignored build output;
+only their `.kry` sources and handwritten browser adapters are maintained in Git.
+`make k2js`, web test targets, and tool packaging generate them automatically.
+Before importing `web/kryon-runtime.js` directly from a source checkout, run the
+generation target. Packaged tools include the complete generated runtime.

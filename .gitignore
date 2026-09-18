@@ -19,3 +19,14 @@ tools/otfchop/otfchop
 # native plan9 cpp-stage intermediates
 src/**/*.i
 src/**/*.8
+
+# JavaScript generated from runtime/*.kry by make generate-web-runtime
+/web/instance.js
+/web/control_props.js
+/web/drawing_props.js
+/web/text_input.js
+/web/style_sheet.js
+/web/style.js
+/web/surface.js
+/web/kss_parser.js
+/web/kss_formatter.js

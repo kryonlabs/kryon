@@ -11,7 +11,10 @@ also pass through the shared parser module; hosts supply their platform default
 and import sources. Go's source pack registry retains source/variant identities
 and stages theme re-resolution before replacing published sheets, so a missing
 import cannot partially apply a theme change. Generated provenance checks cover
-both KSS modules, including byte equality for checked-in JavaScript outputs.
+both KSS modules, including byte equality for locally generated JavaScript
+artifacts. Generated browser modules are ignored build outputs, not tracked
+sources. `make generate-web-runtime` creates all nine from `runtime/*.kry`;
+web test, compiler-tool, and packaging targets depend on that generation.
 Declarative consumers resolve each yielded rule against the current token table
 through `KssResolveCSSValue`; keyframes use the same declaration stream. Earlier
 rules retain their values and provenance when later overlays update tokens.

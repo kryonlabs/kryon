@@ -12,7 +12,9 @@ test -n "$root"
 for file in VERSION manifest.json bin/k2c bin/k2cpp bin/k2go bin/k2js bin/k2kir bin/k2b bin/kt \
             bin/kryon bin/kry-fmt.sh bin/kry-locale-check.sh \
             bin/kryon-preview bin/krb-run bin/krb-sdl \
-            web/instance.js web/control_props.js web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts; do
+            web/instance.js web/control_props.js web/drawing_props.js web/text_input.js \
+            web/style_sheet.js web/style.js web/surface.js web/kss_parser.js web/kss_formatter.js \
+            web/text_dom.js web/text_edit.js web/kryon-runtime.js web/kryon-runtime.d.ts web/kryon-runtime.ts; do
     grep -qx "$root/$file" "$listing"
 done
 
