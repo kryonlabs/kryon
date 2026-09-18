@@ -14064,6 +14064,57 @@ func KssParser_KssSelectorGroup(c KssCursor) KssSelectorSpan {
 	return value_117
 }
 
+func KssParser_KssSelectorGroupMatches(name string, count int32, matching int32) bool {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = matching
+		var value_5 int32 = 0
+		var value_6 bool = value_4 < value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = matching
+		var value_9 int32 = count
+		var value_10 bool = value_8 > value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 bool = false
+		return value_11
+	}
+	var value_12 string = name
+	var value_13 string = "not"
+	var value_14 bool = value_12 == value_13
+	if value_14 {
+		var value_15 int32 = matching
+		var value_16 int32 = 0
+		var value_17 bool = value_15 == value_16
+		return value_17
+	}
+	var value_18 string = name
+	var value_19 string = "is"
+	var value_20 bool = value_18 == value_19
+	var value_21 bool = value_20
+	if !value_21 {
+		var value_22 string = name
+		var value_23 string = "where"
+		var value_24 bool = value_22 == value_23
+		value_21 = value_24
+	}
+	if value_21 {
+		var value_25 int32 = matching
+		var value_26 int32 = 0
+		var value_27 bool = value_25 > value_26
+		return value_27
+	}
+	var value_28 bool = false
+	return value_28
+}
+
 func KssParser_KssBeginSelector(source string) KssSelectorCursor {
 	var parser KssSelectorCursor = KssSelectorCursor{}
 	var value_0 string = source

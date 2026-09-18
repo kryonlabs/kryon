@@ -3022,7 +3022,7 @@ function parseSimpleSelector(text) {
   let parser = webKssModule.KssParser_KssBeginSelector(null, null, null, String(text || ""));
   const selector = {
     kind: "*", id: "", classes: [], attrs: {}, attrOps: {}, pseudos: [],
-    not: [], matches: [], state: "", states: [], specificity: 0
+    not: [], matches: [], groups: [], state: "", states: [], specificity: 0
   };
   for (;;) {
     const atom = webKssModule.KssParser_KssSelectorNext(null, null, null, parser);
@@ -3055,10 +3055,8 @@ function parseSimpleSelector(text) {
           selector.states.push(name);
         break;
       case webKssModule.KssSelectorNot:
-        selector.not.push(...splitSelectorList(atom.argument).map(parseSelector));
-        break;
       case webKssModule.KssSelectorMatches:
-        selector.matches.push(...splitSelectorList(atom.argument).map(parseSelector));
+        selector.groups.push({name, selectors: splitSelectorList(atom.argument).map(parseSelector)});
         break;
       case webKssModule.KssSelectorPseudo:
         selector.pseudos.push(atom.has_argument ? `${name}(${atom.argument.trim()})` : name);
@@ -3502,6 +3500,8 @@ export function webStyleSelectorToCSS(selector) {
     parts.push(`:not(${webStyleSelectorToCSS(notSelector)})`);
   if (selector.matches?.length)
     parts.push(`:is(${selector.matches.map(webStyleSelectorToCSS).join(",")})`);
+  for (const group of selector.groups || [])
+    parts.push(`:${cssEscapeIdent(group.name)}(${group.selectors.map(webStyleSelectorToCSS).join(",")})`);
   const states = selector.states?.length ? selector.states : (selector.state ? [selector.state] : []);
   for (const state of states) {
     const stateSelector = webStyleStateSelectorToCSS(state);
@@ -4745,6 +4745,16 @@ function selectorMatchesSimpleWebNode(selector, node, scopeNode = null) {
       !selector.matches.some((matchSelector) =>
         selectorMatchesWebNode(matchSelector, node, scopeNode)))
     return false;
+  for (const group of selector.groups || []) {
+    let matching = 0;
+    for (const candidate of group.selectors) {
+      if (selectorMatchesWebNode(candidate, node, scopeNode))
+        matching++;
+    }
+    if (!webKssModule.KssParser_KssSelectorGroupMatches(null, null, null,
+        group.name, group.selectors.length, matching))
+      return false;
+  }
   return true;
 }
 
@@ -9860,6 +9870,11 @@ export function webDOMUnmatchedClasses(target) {
           collect(part);
         for (const nested of entry?.matches || [])
           collect(nested);
+        for (const nested of entry?.not || [])
+          collect(nested);
+        for (const group of entry?.groups || [])
+          for (const nested of group.selectors)
+            collect(nested);
       };
       collect(selector);
     }

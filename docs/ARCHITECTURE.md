@@ -35,6 +35,10 @@ in the web object builder, CSS pseudo serialization, and structural matching.
 Balanced groups preserve nested functional arguments;
 malformed streams fail explicitly. Typed native selectors retain their closed
 representation and are not widened by the declarative export lexer.
+Selector-list pseudos retain individual groups in web selector objects.
+`KssSelectorGroupMatches` reduces each group's observed match count using the
+shared positive/negative rule, so repeated `:is`/`:where` groups cannot collapse
+into a single OR list. CSS serialization preserves group names and boundaries.
 
 ## Public API
 

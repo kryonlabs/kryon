@@ -301,3 +301,33 @@ Verification: `make k2js-syntax-test` passes, including cross-module checks,
 shared KSS fixtures, strict KSS, and Chromium DOM/inspector execution. All five
 style guards and `git diff --check` pass. No generated source changes were
 needed: these adapters now call the existing generated lexer.
+
+## Independent functional selector groups
+
+Parsed web selectors now retain each `:is`, `:where`, and `:not` occurrence as
+its own group. Previously repeated positive groups were flattened, so
+`Button:is(.a):is(.b)` incorrectly matched a button with only `.a`. Matching
+now requires each group to hold. `KssSelectorGroupMatches` in maintained
+`runtime/kss_parser.kry` owns positive/negative alternative reduction, rejecting
+empty groups, impossible counts, and unknown group names. Hosts supply match
+counts and retain the nested selector objects. Generated C/Go/JS outputs all
+execute the same 13 new predicate cases (53 combined predicate cases).
+
+CSS export preserves repeated groups, list boundaries, and `:where` spelling.
+Unmatched-class inspection traverses groups and negative alternatives. Web
+integration covers repeated positive/negative groups, nested groups, and CSS
+serialization; browser coverage ensures repeated groups with an unsatisfied
+condition cannot override an installed matching rule. The existing prebuilt
+`matches`/`not` fields remain supported; parsed selectors no longer fill them.
+
+This does not close functional specificity, repeated ID/attribute storage,
+combinator backtracking, relative-selector traversal, or the complete compound
+matching migration. Native typed selector conformance remains separate from
+execution of the shared group predicate. No original plan is fully closed.
+
+Verification: matched C/Go/JS predicates, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, both Chromium DOM/inspector suites,
+generated provenance, and all five style guards pass. The detached suite at
+`/tmp/kryon-selector-groups/verify.log` ends with `RESULT 0`. Go uses gofmt;
+the Kry formatter ran on a review copy, with unrelated continuation indentation
+rewrites inspected and omitted. Generated outputs were regenerated normally.

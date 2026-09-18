@@ -17,7 +17,9 @@ builds its selector objects from borrowed spans and tagged atoms. CSS export and
 structural matching also use those atoms to read functional pseudo arguments;
 they do not maintain separate regular-expression argument grammars. Remaining
 functional-pseudo dispatch, compound matching, traversal, and CSS export decisions
-are tracked in the completion ledger.
+are tracked in the completion ledger. `KssSelectorGroupMatches` owns positive
+and negative selector-list reduction; web storage retains separate groups and
+supplies their alternative-match counts.
 
 Host
 adapters own source/import storage, native string views, and publication of

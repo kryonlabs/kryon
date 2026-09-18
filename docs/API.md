@@ -2416,7 +2416,13 @@ Functional pseudo arguments in web selector objects use the shared selector
 lexer when matched or exported. CSS export preserves nested arguments such as
 `:has(> Button:not(.quiet))`, including quoted parentheses in attributes.
 Malformed pseudo strings in prebuilt selector objects throw an error instead
-of being serialized as an escaped pseudo name.
+of being serialized as an escaped pseudo name. Parsed `WebStyleSelector.groups`
+preserves each `:is`, `:where`, and `:not` list independently. Every group must
+match; alternatives inside `:is`/`:where` use any-match, while `:not` requires
+no matching alternative. CSS export preserves these group boundaries and names.
+Prebuilt `matches` and `not` lists remain supported with their existing behavior.
+Functional-selector specificity is still the existing KSS weighting; this group
+representation does not establish CSS specificity conformance.
 
 ### Style field presence and structural metrics
 

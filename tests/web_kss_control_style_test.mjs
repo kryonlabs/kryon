@@ -22,13 +22,15 @@ for (const line of cases) {
 
 const kss = await import(new URL("./kss_parser.js", pathToFileURL(runtimePath)));
 const predicates = readFileSync(new URL("./fixtures/kss/selector-predicates.tsv", import.meta.url), "utf8").trimEnd().split("\n");
-assert.equal(predicates.length, 40);
+assert.equal(predicates.length, 53);
 for (const line of predicates) {
   const [kind, first, second, third, expected] = line.split("\t");
   const actual = kind === "A"
     ? kss.KssParser_KssAttributeMatches(null, null, null, first === "<empty>" || first === "<missing>" ? "" : first,
       second === "<empty>" ? "" : second, third, first !== "<missing>")
-    : kss.KssParser_KssNthMatches(null, null, null, first, Number(second));
+    : kind === "G"
+      ? kss.KssParser_KssSelectorGroupMatches(null, null, null, first, Number(second), Number(third))
+      : kss.KssParser_KssNthMatches(null, null, null, first, Number(second));
   assert.equal(actual, expected === "1", line);
 }
 
@@ -231,6 +233,30 @@ for (const line of grammarCases) {
     '[data-kry-kind="Button"]:read-only:active');
   assert.equal(runtime.webStyleSelectorToCSS({...base, pseudos: ["nth_child(2n + 1)"]}),
     '[data-kry-kind="Button"]:nth-child(2n + 1)');
+}
+
+// Separate functional groups must all hold; alternatives within a group may vary.
+{
+  const target = {kind: "Button", classes: ["a"]};
+  const sheet = runtime.parseWebStyleSheet(`
+    Button:is(.a, .other):is(.b, .third) { radius: 11; }
+    Button:where(.a):where(.b) { padding-x: 12; }
+    Button:not(.hidden, .disabled):not(.quiet) { foreground: #123456; }
+  `);
+  assert.deepEqual(runtime.resolveWebStyle(target, sheet), {foreground: "#123456"});
+  target.classes.push("b");
+  assert.deepEqual(runtime.resolveWebStyle(target, sheet), {
+    radius: 11, "padding-x": 12, foreground: "#123456"
+  });
+  target.classes.push("quiet");
+  assert.deepEqual(runtime.resolveWebStyle(target, sheet), {radius: 11, "padding-x": 12});
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+    '[data-kry-kind="Button"]:is(.kryon-node.a,.kryon-node.other):is(.kryon-node.b,.kryon-node.third)');
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[1].selector),
+    '[data-kry-kind="Button"]:where(.kryon-node.a):where(.kryon-node.b)');
+  const nested = runtime.parseWebStyleSheet('Button:not(:is(.a):is(.b)) {radius: 3;}');
+  assert.deepEqual(runtime.resolveWebStyle({kind: "Button", classes: ["a"]}, nested), {radius: 3});
+  assert.deepEqual(runtime.resolveWebStyle(target, nested), {});
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose

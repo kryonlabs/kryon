@@ -369,6 +369,9 @@ test_selector_predicates(void)
             actual = KssAttributeMatches(StringView(fields[1], strlen(fields[1])),
                 StringView(fields[2], strlen(fields[2])), StringView(fields[3], strlen(fields[3])),
                 present);
+        } else if(strcmp(fields[0], "G") == 0) {
+            actual = KssSelectorGroupMatches(StringView(fields[1], strlen(fields[1])),
+                atoi(fields[2]), atoi(fields[3]));
         } else {
             assert(strcmp(fields[0], "N") == 0);
             actual = KssNthMatches(StringView(fields[1], strlen(fields[1])), atoi(fields[2]));
@@ -376,7 +379,7 @@ test_selector_predicates(void)
         assert(actual == (atoi(fields[4]) != 0));
         count++;
     }
-    assert(count == 40);
+    assert(count == 53);
     fclose(file);
 }
 

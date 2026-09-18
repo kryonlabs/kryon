@@ -39,7 +39,7 @@ try {
     @pack inspector;
     Screen { display: grid; gap: 6; }
     tokens { color { ink: #f8f8f8; } }
-    Button.primary { background: #102030; color: ink; }
+    Button:is(.primary):not(.quiet) { background: #102030; color: ink; }
     Button#save-action { background: #203040; }
     Progress.orphan-dead-rule-marker { inline-size: 240; }
   \`));

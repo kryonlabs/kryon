@@ -4434,6 +4434,20 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     return result
 }
 
+# Hosts count matching alternatives; this policy owns selector-list negation.
+KssSelectorGroupMatches :: (name: string, count: i32, matching: i32) -> bool #export {
+    if count <= 0 || matching < 0 || matching > count {
+        return false
+    }
+    if name == "not" {
+        return matching == 0
+    }
+    if name == "is" || name == "where" {
+        return matching > 0
+    }
+    return false
+}
+
 KssSelectorAtomKind :: enum {
     KssSelectorKind = 0
     KssSelectorId = 1

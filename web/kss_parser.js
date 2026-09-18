@@ -20112,6 +20112,60 @@ export function KssParser_KssSelectorGroup($rt, $state = moduleState, $host = mo
     return value_191;
 }
 
+export function KssParser_KssSelectorGroupMatches($rt, $state = moduleState, $host = moduleHost, name, count, matching) {
+  $state = $state || moduleState;
+    count = number_85173a94_value(count,32,true);
+    matching = number_85173a94_value(matching,32,true);
+    let value_0 = number_85173a94_value(count,32,true);
+    let value_1 = number_85173a94_value(0,32,true);
+    let value_2 = number_85173a94_bool(value_0 <= value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_85173a94_value(matching,32,true);
+        let value_5 = number_85173a94_value(0,32,true);
+        let value_6 = number_85173a94_bool(value_4 < value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_85173a94_bool(value_3);
+    if (!value_7) {
+        let value_8 = number_85173a94_value(matching,32,true);
+        let value_9 = number_85173a94_value(count,32,true);
+        let value_10 = number_85173a94_bool(value_8 > value_9);
+        value_7 = value_10;
+    }
+    if (value_7) {
+        let value_11 = number_85173a94_bool(false);
+        return value_11;
+    }
+    let value_12 = name;
+    let value_13 = "not";
+    let value_14 = number_85173a94_bool(value_12 == value_13);
+    if (value_14) {
+        let value_15 = number_85173a94_value(matching,32,true);
+        let value_16 = number_85173a94_value(0,32,true);
+        let value_17 = number_85173a94_bool(value_15 == value_16);
+        return value_17;
+    }
+    let value_18 = name;
+    let value_19 = "is";
+    let value_20 = number_85173a94_bool(value_18 == value_19);
+    let value_21 = number_85173a94_bool(value_20);
+    if (!value_21) {
+        let value_22 = name;
+        let value_23 = "where";
+        let value_24 = number_85173a94_bool(value_22 == value_23);
+        value_21 = value_24;
+    }
+    if (value_21) {
+        let value_25 = number_85173a94_value(matching,32,true);
+        let value_26 = number_85173a94_value(0,32,true);
+        let value_27 = number_85173a94_bool(value_25 > value_26);
+        return value_27;
+    }
+    let value_28 = number_85173a94_bool(false);
+    return value_28;
+}
+
 export function KssParser_KssBeginSelector($rt, $state = moduleState, $host = moduleHost, source) {
   $state = $state || moduleState;
     let value_0 = {cursor: {source: "", pos: 0, line: 0, column: 0, file: 0}, specificity: 0, has_kind: false};

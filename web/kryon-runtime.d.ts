@@ -1020,6 +1020,8 @@ export interface WebStyleSelector {
   pseudos: string[];
   not: WebStyleSelector[];
   matches: WebStyleSelector[];
+  /** Each selector-list pseudo is an independent condition. */
+  groups?: { name: "is" | "where" | "not"; selectors: WebStyleSelector[] }[];
   state: string;
   states: string[];
   specificity: number;

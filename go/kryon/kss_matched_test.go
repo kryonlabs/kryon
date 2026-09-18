@@ -288,8 +288,8 @@ func TestKssCSSValues(t *testing.T) {
 func TestKssSelectorPredicates(t *testing.T) {
 	source := kssFixtureText(t, "../../tests/fixtures/kss/selector-predicates.tsv")
 	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
-	if len(lines) != 40 {
-		t.Fatalf("expected 40 cases, got %d", len(lines))
+	if len(lines) != 53 {
+		t.Fatalf("expected 53 cases, got %d", len(lines))
 	}
 	for _, line := range lines {
 		fields := strings.Split(line, "\t")
@@ -308,6 +308,13 @@ func TestKssSelectorPredicates(t *testing.T) {
 		var actual bool
 		if fields[0] == "A" {
 			actual = KssParser_KssAttributeMatches(fields[1], fields[2], fields[3], present)
+		} else if fields[0] == "G" {
+			count, countErr := strconv.Atoi(fields[2])
+			matching, matchingErr := strconv.Atoi(fields[3])
+			if countErr != nil || matchingErr != nil {
+				t.Fatalf("invalid group %q", line)
+			}
+			actual = KssParser_KssSelectorGroupMatches(fields[1], int32(count), int32(matching))
 		} else {
 			position, err := strconv.ParseInt(fields[2], 10, 32)
 			if err != nil || fields[0] != "N" {

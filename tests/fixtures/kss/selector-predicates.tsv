@@ -38,3 +38,16 @@ N	odd	0	-	0
 N	n-2147483647	2147483647	-	1
 N	-2147483647n+2147483647	2147483647	-	1
 A	<missing>	<empty>	=	0
+G	is	2	0	0
+G	is	2	1	1
+G	is	2	2	1
+G	where	2	0	0
+G	where	2	1	1
+G	not	2	0	1
+G	not	2	1	0
+G	not	2	2	0
+G	is	0	0	0
+G	not	0	0	0
+G	is	2	3	0
+G	is	2	-1	0
+G	invalid	2	1	0

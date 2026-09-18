@@ -31,7 +31,8 @@ DOM access, and serialization. Declaration interpretation, cascade comparisons,
 specificity weights, attribute operators, nth-position formulas, state predicates,
 and basic structural rules now use shared `.kry` policy. Main selector lexing
 and atom parsing are also shared, including functional argument parsing in web
-matching and CSS export. Functional-pseudo dispatch, compound matching,
+matching and CSS export. Selector-list groups retain their boundaries and use
+shared positive/negative reduction. Functional-pseudo dispatch, other compound matching,
 CSS export, and traversal migration stay open (see the evidence ledger). Generated C, Go, and
 JavaScript are outputs, not policy owners.
 
