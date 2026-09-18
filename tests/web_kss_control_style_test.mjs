@@ -530,6 +530,22 @@ for (const line of grammarCases) {
   const later = {rules: [{...prebuilt.rules[2], style: {background: "#aabbcc"}}]};
   assert.equal(runtime.resolveWebStyle(target, [prebuilt, later]).background, "#aabbcc");
   assert.equal(runtime.traceWebStyle(target, [prebuilt, later]).winners.background.value, "#aabbcc");
+
+  const aliases = runtime.parseWebStyleSheet(`
+    Button.accent { color: #111111; border: #222222; }
+    Button.accent { foreground: #333333; border-color: #444444; }
+    Button.accent { color: #555555; border: #666666; }
+  `);
+  assert.deepEqual(runtime.resolveWebStyle(target, aliases), {
+    color: "#555555",
+    border: "#666666"
+  });
+  assert.deepEqual(runtime.traceWebStyle(target, aliases).resolved, {
+    color: "#555555",
+    border: "#666666"
+  });
+  assert.equal(runtime.traceWebStyle(target, aliases).winners.color.value, "#555555");
+  assert.equal(runtime.traceWebStyle(target, aliases).winners.border.value, "#666666");
 }
 
 const sheet = runtime.parseWebStyleSheet(`

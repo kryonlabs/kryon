@@ -3549,6 +3549,82 @@ function webStyleCSSValue(name, value) {
     ? value + "px" : String(value);
 }
 
+function webStyleSingleCascadeProperty(name, value) {
+  if (name === "foreground" || name === "color")
+    return "color";
+  if (name === "border-color")
+    return "border-color";
+  if (name === "border")
+    return /\s/.test(String(value ?? "").trim()) ? "border" : "border-color";
+  if (name === "focus" || name === "outline-color")
+    return "outline-color";
+  if (name === "radius" || name === "border-radius")
+    return "border-radius";
+  if (name === "typeface" || name === "font-family")
+    return "font-family";
+  return null;
+}
+
+function webStyleSetResolvedDeclaration(target, priorities, name, value, priority,
+    onRemove = null) {
+  priorities.__rawProperties ??= {};
+  priorities.__rawPropertyCounts ??= {};
+  priorities.__propertyPriorities ??= {};
+  priorities.__propertyOwners ??= {};
+  const property = webStyleSingleCascadeProperty(name, value);
+  let accepted = property === null;
+  if (property !== null) {
+    const current = priorities.__propertyPriorities[property];
+    if (!current ||
+        StyleSheet_StylePriorityWins(null, null, null, priority, current)) {
+      accepted = true;
+      const owner = priorities.__propertyOwners[property];
+      if (owner && owner !== name && priorities.__rawProperties[owner]) {
+        delete priorities.__rawProperties[owner];
+        delete priorities.__rawPropertyCounts[owner];
+        delete priorities[owner];
+        delete target[owner];
+        if (onRemove)
+          onRemove(owner);
+      }
+      priorities.__propertyPriorities[property] = priority;
+      priorities.__propertyOwners[property] = name;
+    }
+  }
+  if (!accepted)
+    return false;
+  if (Object.hasOwn(target, name))
+    delete target[name];
+  priorities[name] = priority;
+  priorities.__rawPropertyCounts[name] = property === null ? 0 : 1;
+  priorities.__rawProperties[name] = property === null ? [] : [property];
+  target[name] = value;
+  return true;
+}
+
+function webStyleDeclarationWins(priorities, name, value, priority) {
+  if (!priorities[name] ||
+      StyleSheet_StylePriorityWins(null, null, null, priority, priorities[name])) {
+    return true;
+  }
+  const property = webStyleSingleCascadeProperty(name, value);
+  if (property === null)
+    return false;
+  const current = priorities.__propertyPriorities?.[property];
+  if (!current ||
+      StyleSheet_StylePriorityWins(null, null, null, priority, current)) {
+    return true;
+  }
+  return false;
+}
+
+function webStyleFinishResolvedPriorities(priorities) {
+  delete priorities.__rawProperties;
+  delete priorities.__rawPropertyCounts;
+  delete priorities.__propertyPriorities;
+  delete priorities.__propertyOwners;
+}
+
 function webStyleDeclarations(style) {
   const declarations = [];
   const cssValue = (name, value) => value === undefined || value === null || value === ""
@@ -4316,13 +4392,12 @@ export function resolveWebStyle(node, sheets = []) {
         continue;
       const priority = webRulePriority(rule);
       for (const [name, value] of Object.entries(rule.style || {})) {
-        if (priorities[name] === undefined || StyleSheet_StylePriorityWins(null, null, null, priority, priorities[name])) {
-          priorities[name] = priority;
-          resolved[name] = value;
-        }
+        if (webStyleDeclarationWins(priorities, name, value, priority))
+          webStyleSetResolvedDeclaration(resolved, priorities, name, value, priority);
       }
     }
   }
+  webStyleFinishResolvedPriorities(priorities);
   return resolved;
 }
 
@@ -4365,9 +4440,9 @@ export function traceWebStyle(node, sheets = []) {
         const tokenOrigin = rule.tokenOrigins?.[name] || (tokenName && ruleTokens[tokenName]
           ? { name: tokenName, origin: ruleTokens[tokenName] }
           : null);
-        if (!priorities[name] || StyleSheet_StylePriorityWins(null, null, null, priority, priorities[name])) {
-          resolved[name] = value;
-          priorities[name] = priority;
+        if (webStyleDeclarationWins(priorities, name, value, priority)) {
+          webStyleSetResolvedDeclaration(resolved, priorities, name, value, priority,
+            (removed) => delete winners[removed]);
           winners[name] = {
             value,
             selector,
@@ -4383,6 +4458,7 @@ export function traceWebStyle(node, sheets = []) {
       }
     }
   }
+  webStyleFinishResolvedPriorities(priorities);
   return {
     facts: webNodeStyleFacts(node),
     environment,
