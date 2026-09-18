@@ -31,7 +31,8 @@ state and structural predicates. The web adapter collects structural facts once
 per selector/node match; it no longer reimplements the rules for those pseudos.
 Declarative selector lists/chains and atoms are streamed by `KssSelectorPart`
 and `KssSelectorNext`. Their borrowed UTF-8 spans avoid a second regex grammar
-in the web object builder. Balanced groups preserve nested functional arguments;
+in the web object builder, CSS pseudo serialization, and structural matching.
+Balanced groups preserve nested functional arguments;
 malformed streams fail explicitly. Typed native selectors retain their closed
 representation and are not widened by the declarative export lexer.
 

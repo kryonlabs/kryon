@@ -3412,15 +3412,26 @@ function webStyleSelectorAttrToCSS(key, value, op = "=") {
   return attr(key);
 }
 
+function parseSelectorPseudo(pseudo) {
+  ensureWebKssHost();
+  const parser = webKssModule.KssParser_KssBeginSelector(null, null, null,
+    ":" + String(pseudo || "").trim());
+  const atom = webKssModule.KssParser_KssSelectorNext(null, null, null, parser);
+  const end = webKssModule.KssParser_KssSelectorNext(null, null, null, atom.parser);
+  if (!atom.ok || atom.done || !end.ok || !end.done)
+    throw new Error("invalid KSS pseudo selector");
+  const name = webKssModule.KssParser_KssPseudoName(null, null, null, atom.name);
+  return {name: webKssNameText(name), argument: atom.argument,
+    functional: atom.has_argument};
+}
+
 function webStylePseudoToCSS(pseudo) {
-  const text = String(pseudo || "").trim();
-  const functional = text.match(/^([A-Za-z_][\w-]*)\(([^)]*)\)$/);
-  if (!functional)
-    return ":" + cssEscapeIdent(text);
-  const rawName = functional[1].replace(/_/g, "-").toLowerCase();
-  const name = cssEscapeIdent(rawName);
-  if (rawName === "has") {
-    const arg = splitSelectorList(functional[2]).map((raw) => {
+  const parsed = parseSelectorPseudo(pseudo);
+  const name = cssEscapeIdent(parsed.name);
+  if (!parsed.functional)
+    return ":" + name;
+  if (parsed.name === "has") {
+    const arg = splitSelectorList(parsed.argument).map((raw) => {
       let text = String(raw || "").trim();
       const relation = /^[>+~]/.test(text) ? text[0] : "";
       if (relation)
@@ -3429,7 +3440,7 @@ function webStylePseudoToCSS(pseudo) {
     }).filter(Boolean).join(",");
     return `:${name}(${arg})`;
   }
-  const arg = functional[2].trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
+  const arg = parsed.argument.trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
   return `:${name}(${arg})`;
 }
 
@@ -4605,38 +4616,10 @@ function webNodeDescendantsFromFrame(node) {
     candidate && candidate.path !== path && candidate.path?.startsWith(path + "/"));
 }
 
-function nthChildPseudoMatches(pseudo, siblings, node) {
-  const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
-  if (!match)
-    return false;
-  return nthChildPositionMatches(match[1], siblings, node, false);
-}
-
-function nthLastChildPseudoMatches(pseudo, siblings, node) {
-  const match = String(pseudo || "").match(/^nth-last-child\(([^)]*)\)$/);
-  if (!match)
-    return false;
-  return nthChildPositionMatches(match[1], siblings, node, true);
-}
-
 function webNodeSameTypeSiblingsFromFrame(siblings, node) {
   const kind = String(node?.kind || "").toLowerCase();
   return siblings.filter((candidate) =>
     String(candidate?.kind || "").toLowerCase() === kind);
-}
-
-function nthOfTypePseudoMatches(pseudo, siblings, node) {
-  const match = String(pseudo || "").match(/^nth-of-type\(([^)]*)\)$/);
-  if (!match)
-    return false;
-  return nthChildPositionMatches(match[1], webNodeSameTypeSiblingsFromFrame(siblings, node), node, false);
-}
-
-function nthLastOfTypePseudoMatches(pseudo, siblings, node) {
-  const match = String(pseudo || "").match(/^nth-last-of-type\(([^)]*)\)$/);
-  if (!match)
-    return false;
-  return nthChildPositionMatches(match[1], webNodeSameTypeSiblingsFromFrame(siblings, node), node, true);
 }
 
 function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
@@ -4677,10 +4660,7 @@ function webNodeMatchesRouteTarget(node) {
 }
 
 function selectorHasPseudoMatches(pseudo, node, scopeNode = null) {
-  const match = String(pseudo || "").match(/^has\(([\s\S]*)\)$/);
-  if (!match)
-    return false;
-  return splitSelectorList(match[1]).some((rawSelector) => {
+  return splitSelectorList(pseudo.argument).some((rawSelector) => {
     const raw = String(rawSelector || "").trim();
     if (!raw || /:has\s*\(/i.test(raw))
       return false;
@@ -4725,24 +4705,26 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
     target: webNodeMatchesRouteTarget(node)
   };
   for (const pseudo of pseudos) {
-    const decision = webKssModule.KssParser_KssStructuralMatch(null, null, null, String(pseudo), facts);
+    const parsed = parseSelectorPseudo(pseudo);
+    const decision = parsed.functional ? -1 :
+      webKssModule.KssParser_KssStructuralMatch(null, null, null, parsed.name, facts);
     if (decision >= 0) {
       if (decision === 0)
         return false;
-    } else if (String(pseudo).startsWith("has(")) {
-      if (!selectorHasPseudoMatches(pseudo, node, scopeNode))
+    } else if (parsed.functional && parsed.name === "has") {
+      if (!selectorHasPseudoMatches(parsed, node, scopeNode))
         return false;
-    } else if (String(pseudo).startsWith("nth-child(")) {
-      if (!nthChildPseudoMatches(pseudo, siblings, node))
+    } else if (parsed.functional && parsed.name === "nth-child") {
+      if (!nthChildPositionMatches(parsed.argument, siblings, node, false))
         return false;
-    } else if (String(pseudo).startsWith("nth-last-child(")) {
-      if (!nthLastChildPseudoMatches(pseudo, siblings, node))
+    } else if (parsed.functional && parsed.name === "nth-last-child") {
+      if (!nthChildPositionMatches(parsed.argument, siblings, node, true))
         return false;
-    } else if (String(pseudo).startsWith("nth-of-type(")) {
-      if (!nthOfTypePseudoMatches(pseudo, siblings, node))
+    } else if (parsed.functional && parsed.name === "nth-of-type") {
+      if (!nthChildPositionMatches(parsed.argument, typeSiblings, node, false))
         return false;
-    } else if (String(pseudo).startsWith("nth-last-of-type(")) {
-      if (!nthLastOfTypePseudoMatches(pseudo, siblings, node))
+    } else if (parsed.functional && parsed.name === "nth-last-of-type") {
+      if (!nthChildPositionMatches(parsed.argument, typeSiblings, node, true))
         return false;
     } else {
       return false;

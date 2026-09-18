@@ -279,3 +279,25 @@ passes, with the latter ending `RESULT 0`. Checks affected by the final comment
 and header corrections were rerun. Go uses gofmt; the `.kry` formatter ran on a
 review copy and unrelated continuation rewrites were inspected and omitted.
 No original plan file is fully closed by this lexer migration.
+
+## Shared functional pseudo argument parsing
+
+Web CSS export and structural matching now read pseudo names and balanced
+arguments through generated `KssSelectorNext` and `KssPseudoName`. This removes
+six independent regular-expression argument parsers. Nested selectors such as
+`:has(> Button:not(.quiet))` now export intact; quoted parentheses in attribute
+values remain part of the argument. Prebuilt malformed pseudo strings fail
+explicitly. CSS pseudo names retain their spelling after shared normalization,
+without converting native CSS `active`/`read-only` to internal state aliases.
+
+Focused web tests cover matching and CSS serialization, quoted parentheses,
+malformed trailing atoms/delimiters, and normalized names. The Chromium DOM
+suite installs a nested selector and checks its computed outline style.
+Functional dispatch, relative-selector traversal, compound Boolean semantics,
+specificity of functional selectors, and remaining CSS mapping still require
+migration or conformance work. This closes no original plan document.
+
+Verification: `make k2js-syntax-test` passes, including cross-module checks,
+shared KSS fixtures, strict KSS, and Chromium DOM/inspector execution. All five
+style guards and `git diff --check` pass. No generated source changes were
+needed: these adapters now call the existing generated lexer.

@@ -652,6 +652,7 @@ try {
     Button.primary {
       background-color: rgb(12, 34, 56);
     }
+    Section:has(> Button.primary:not(.missing)) { outline-style: dashed; }
     @media all {
       Button.primary { border-top-width: 3px; }
     }
@@ -659,6 +660,8 @@ try {
   assert(typeof removeInstalledStyle === "function", "installed CSS cleanup missing");
   const installedStyle = document.querySelector('style[data-kry-style="browser-install"]');
   assert(installedStyle?.textContent.includes('@media all'), "conditional CSS group not installed");
+  assert(getComputedStyle(article).outlineStyle === "dashed",
+    "installed nested functional selector did not match in Chromium");
   const eventLog = [];
   article.addEventListener("click", (event) => {
     eventLog.push(event.kryObject?.ref || "");

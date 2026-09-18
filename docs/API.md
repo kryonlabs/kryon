@@ -2412,6 +2412,12 @@ as spans by the shared grammar and only interpreted as CSS by the web layer.
 Theme overlays, environment blocks, imports, layers, and provenance behave
 identically to the native runtimes; the hand-written web KSS parser is gone.
 
+Functional pseudo arguments in web selector objects use the shared selector
+lexer when matched or exported. CSS export preserves nested arguments such as
+`:has(> Button:not(.quiet))`, including quoted parentheses in attributes.
+Malformed pseudo strings in prebuilt selector objects throw an error instead
+of being serialized as an escaped pseudo name.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

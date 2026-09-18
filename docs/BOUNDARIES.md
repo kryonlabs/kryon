@@ -13,7 +13,9 @@ resolution and inspector traces. Attribute operators and nth-position formulas
 also run in `.kry`, as do state predicates and basic structural pseudo rules;
 hosts provide values, sibling lists, and relationship/content/focus facts.
 Main selector tokenization and atom parsing also live in `.kry`; the web adapter
-builds its selector objects from borrowed spans and tagged atoms. Remaining
+builds its selector objects from borrowed spans and tagged atoms. CSS export and
+structural matching also use those atoms to read functional pseudo arguments;
+they do not maintain separate regular-expression argument grammars. Remaining
 functional-pseudo dispatch, compound matching, traversal, and CSS export decisions
 are tracked in the completion ledger.
 

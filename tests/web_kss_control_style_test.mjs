@@ -211,6 +211,28 @@ for (const line of grammarCases) {
   assert.throws(() => runtime.parseWebStyleSheet('Button/* unfinished {radius: 1;}'), /unterminated selector comment/);
 }
 
+// CSS serialization and runtime matching consume the same nested pseudo grammar.
+{
+  const parent = {kind: "Column", path: "root", parentPath: "root"};
+  const child = {kind: "Button", path: "root/button", parentPath: "root",
+    classes: ["accent"], title: "text ) with ( delimiters"};
+  parent.__kryFrameNodes = child.__kryFrameNodes = [parent, child];
+  const source = 'Column:has(> Button:not(.quiet)[title="text ) with ( delimiters"]) { radius: 13; }';
+  const sheet = runtime.parseWebStyleSheet(source);
+  assert.deepEqual(runtime.resolveWebStyle(parent, sheet), {radius: 13});
+  const css = runtime.webStyleSelectorToCSS(sheet.rules[0].selector);
+  assert.equal(css, '[data-kry-kind="Column"]:has(> [data-kry-kind="Button"][title="text ) with ( delimiters"]:not(.kryon-node.quiet))');
+  child.classes.push("quiet");
+  assert.deepEqual(runtime.resolveWebStyle(parent, sheet), {});
+  const base = runtime.parseWebStyleSheet('Button {radius: 1;}').rules[0].selector;
+  assert.throws(() => runtime.webStyleSelectorToCSS({...base, pseudos: ["has(.accent))"]}), /invalid KSS pseudo selector/);
+  assert.throws(() => runtime.webStyleSelectorToCSS({...base, pseudos: ["nth-child(2).injected"]}), /invalid KSS pseudo selector/);
+  assert.equal(runtime.webStyleSelectorToCSS({...base, pseudos: ["read-only", "active"]}),
+    '[data-kry-kind="Button"]:read-only:active');
+  assert.equal(runtime.webStyleSelectorToCSS({...base, pseudos: ["nth_child(2n + 1)"]}),
+    '[data-kry-kind="Button"]:nth-child(2n + 1)');
+}
+
 // Parsed and prebuilt rules take the same shared priority path. Ties choose
 // the later declaration, including across sheets; fields cascade independently.
 {
