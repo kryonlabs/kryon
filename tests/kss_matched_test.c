@@ -410,6 +410,12 @@ static const FactField selector_S_fields[] = {
     {"value_present", offsetof(KssStateFacts, value_present), 'b'},
 };
 
+static const FactField selector_I_fields[] = {
+    {"id", offsetof(KssIdentityFacts, id), 's'},
+    {"name", offsetof(KssIdentityFacts, name), 's'},
+    {"key", offsetof(KssIdentityFacts, key), 's'},
+};
+
 static const FactField selector_R_fields[] = {
     {"has_parent", offsetof(KssStructuralFacts, has_parent), 'b'},
     {"has_scope", offsetof(KssStructuralFacts, has_scope), 'b'},
@@ -440,12 +446,19 @@ test_selector_facts(void)
             fields[i + 1] = separator + 1;
         }
         bool state = strcmp(fields[0], "S") == 0;
-        assert(state || strcmp(fields[0], "R") == 0);
+        bool identity = strcmp(fields[0], "I") == 0;
+        assert(state || identity || strcmp(fields[0], "R") == 0);
         KssStateFacts state_facts = {0};
         KssStructuralFacts structural = {0};
+        KssIdentityFacts identity_facts = {0};
         char *record = state ? (char *)&state_facts : (char *)&structural;
         const FactField *table = state ? selector_S_fields : selector_R_fields;
         size_t length = state ? sizeof(selector_S_fields) / sizeof(*table) : sizeof(selector_R_fields) / sizeof(*table);
+        if(identity) {
+            record = (char *)&identity_facts;
+            table = selector_I_fields;
+            length = sizeof(selector_I_fields) / sizeof(*table);
+        }
         char *assignment = strtok(fields[2], ",");
         while(assignment != NULL && strcmp(assignment, "-") != 0) {
             char *value = strchr(assignment, '=');
@@ -469,11 +482,17 @@ test_selector_facts(void)
             assignment = strtok(NULL, ",");
         }
         String query = StringView(fields[1], strlen(fields[1]));
-        int actual = state ? (int)KssStateMatches(query, state_facts) : KssStructuralMatch(query, structural);
+        int actual;
+        if(state)
+            actual = (int)KssStateMatches(query, state_facts);
+        else if(identity)
+            actual = (int)KssIdentityMatches(query, identity_facts);
+        else
+            actual = KssStructuralMatch(query, structural);
         assert(actual == atoi(fields[3]));
         count++;
     }
-    assert(count == 55);
+    assert(count == 63);
     fclose(file);
 }
 

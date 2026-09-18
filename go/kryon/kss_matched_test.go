@@ -331,7 +331,7 @@ func TestKssSelectorPredicates(t *testing.T) {
 func TestKssSelectorFacts(t *testing.T) {
 	source := kssFixtureText(t, "../../tests/fixtures/kss/selector-facts.tsv")
 	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
-	if len(lines) != 55 {
+	if len(lines) != 63 {
 		t.Fatal(len(lines))
 	}
 	for _, line := range lines {
@@ -341,9 +341,13 @@ func TestKssSelectorFacts(t *testing.T) {
 		}
 		var state KssStateFacts
 		var structural KssStructuralFacts
+		var identity KssIdentityFacts
 		record := reflect.ValueOf(&state).Elem()
 		if fields[0] == "R" {
 			record = reflect.ValueOf(&structural).Elem()
+		}
+		if fields[0] == "I" {
+			record = reflect.ValueOf(&identity).Elem()
 		}
 		if fields[2] != "-" {
 			for _, entry := range strings.Split(fields[2], ",") {
@@ -354,6 +358,9 @@ func TestKssSelectorFacts(t *testing.T) {
 				words := strings.Split(parts[0], "_")
 				for i, word := range words {
 					words[i] = strings.ToUpper(word[:1]) + word[1:]
+					if word == "id" {
+						words[i] = "ID"
+					}
 				}
 				field := record.FieldByName(strings.Join(words, ""))
 				if !field.IsValid() {
@@ -378,6 +385,10 @@ func TestKssSelectorFacts(t *testing.T) {
 		actual := int32(0)
 		if fields[0] == "S" {
 			if KssParser_KssStateMatches(fields[1], state) {
+				actual = 1
+			}
+		} else if fields[0] == "I" {
+			if KssParser_KssIdentityMatches(fields[1], identity) {
 				actual = 1
 			}
 		} else {

@@ -653,6 +653,8 @@ try {
       background-color: rgb(12, 34, 56);
     }
     Section:has(> Button.primary:not(.missing)) { outline-style: dashed; }
+    Section[webRef="missing"][webRef="article-ref"] { outline-style: solid; }
+    Section#missing#article-id { outline-style: groove; }
     Section:is([webRef="article-ref"]):is(.missing) { outline-style: dotted; }
     Section:where([webRef="article-ref"]):where(.missing) { outline-style: double; }
     @media all {

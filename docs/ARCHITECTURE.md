@@ -39,6 +39,10 @@ Selector-list pseudos retain individual groups in web selector objects.
 `KssSelectorGroupMatches` reduces each group's observed match count using the
 shared positive/negative rule, so repeated `:is`/`:where` groups cannot collapse
 into a single OR list. CSS serialization preserves group names and boundaries.
+Ordered ID/attribute condition lists likewise preserve repeated constraints.
+Hosts supply `KssIdentityFacts` to generated identity matching; existing generated
+attribute predicates evaluate each retained attribute condition. Summary maps
+are not the matching or serialization source for parsed selectors.
 
 ## Public API
 

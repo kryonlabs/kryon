@@ -2424,6 +2424,14 @@ Prebuilt `matches` and `not` lists remain supported with their existing behavior
 Functional-selector specificity is still the existing KSS weighting; this group
 representation does not establish CSS specificity conformance.
 
+Parsed selectors also expose ordered `ids` and `attributes` lists. Every ID
+condition must match the node's ID, name, or key, and every attribute condition
+must hold, including multiple conditions with the same name. These lists are
+authoritative for matching and export. The older `id`, `attrs`, and `attrOps`
+fields retain the last value as a summary; prebuilt selectors without the new
+lists continue to use those older fields. To edit a parsed selector's conditions,
+edit the lists, rather than its summary fields.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

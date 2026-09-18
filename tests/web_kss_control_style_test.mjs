@@ -35,6 +35,7 @@ for (const line of predicates) {
 }
 
 const factDefaults = {
+  "I": {id: "", name: "", key: ""},
   "S": {
     "kind": "",
     "tag": "",
@@ -74,7 +75,7 @@ const factDefaults = {
   }
 };
 const factCases = readFileSync(new URL("./fixtures/kss/selector-facts.tsv", import.meta.url), "utf8").trimEnd().split("\n");
-assert.equal(factCases.length, 55);
+assert.equal(factCases.length, 63);
 for (const line of factCases) {
   const [kind, query, assignments, expected] = line.split("\t");
   const facts = {...factDefaults[kind]};
@@ -86,7 +87,8 @@ for (const line of factCases) {
     }
   }
   const actual = kind === "S" ? Number(kss.KssParser_KssStateMatches(null, null, null, query, facts))
-    : kss.KssParser_KssStructuralMatch(null, null, null, query, facts);
+    : kind === "I" ? Number(kss.KssParser_KssIdentityMatches(null, null, null, query, facts))
+      : kss.KssParser_KssStructuralMatch(null, null, null, query, facts);
   assert.equal(actual, Number(expected), line);
 }
 
@@ -257,6 +259,33 @@ for (const line of grammarCases) {
   const nested = runtime.parseWebStyleSheet('Button:not(:is(.a):is(.b)) {radius: 3;}');
   assert.deepEqual(runtime.resolveWebStyle({kind: "Button", classes: ["a"]}, nested), {radius: 3});
   assert.deepEqual(runtime.resolveWebStyle(target, nested), {});
+}
+
+// Repeated names are independent constraints, not overwrites in a map.
+{
+  const target = {kind: "Button", domId: "save", name: "action", key: "primary", title: "prefix-end"};
+  const sheet = runtime.parseWebStyleSheet(`
+    Button[title^="prefix"][title$="end"] { radius: 9; }
+    Button[title="wrong"][title] { padding-x: 99; }
+    Button[title="wrong"][title="prefix-end"] { padding-y: 99; }
+    Button#missing#save { gap: 99; }
+    Button#save#action#primary { foreground: #123456; }
+    Button#save#save { border: #abcdef; }
+  `);
+  const expected = {radius: 9, foreground: "#123456", border: "#abcdef"};
+  assert.deepEqual(runtime.resolveWebStyle(target, sheet), expected);
+  assert.deepEqual(runtime.traceWebStyle(target, sheet).resolved, expected);
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+    '[data-kry-kind="Button"][title^="prefix"][title$="end"]');
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[1].selector),
+    '[data-kry-kind="Button"][title="wrong"][title]');
+  assert.deepEqual(sheet.rules[3].selector.ids, ["missing", "save"]);
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[3].selector),
+    '[data-kry-kind="Button"]:is(#missing,[data-kry-name="missing"],[data-kry-key="missing"]):is(#save,[data-kry-name="save"],[data-kry-key="save"])');
+  target.title = "other-end";
+  assert.deepEqual(runtime.resolveWebStyle(target, sheet), {foreground: "#123456", border: "#abcdef"});
+  const {ids, attributes, ...legacy} = sheet.rules[0].selector;
+  assert.deepEqual(runtime.resolveWebStyle(target, {rules: [{...sheet.rules[0], selector: legacy}]}), {radius: 9});
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose

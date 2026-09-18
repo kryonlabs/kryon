@@ -331,3 +331,44 @@ generated provenance, and all five style guards pass. The detached suite at
 `/tmp/kryon-selector-groups/verify.log` ends with `RESULT 0`. Go uses gofmt;
 the Kry formatter ran on a review copy, with unrelated continuation indentation
 rewrites inspected and omitted. Generated outputs were regenerated normally.
+
+## Repeated ID and attribute conditions
+
+Parsed web selectors now retain ordered `ids` and `attributes` arrays. The
+previous scalar ID and attribute maps silently overwrote earlier constraints:
+`#missing#save` behaved as `#save`, and `[title="wrong"][title]` lost the equality
+condition. Matching and CSS export now consume all conditions. Existing
+`id`/`attrs`/`attrOps` fields remain last-value summaries; prebuilt objects without
+the ordered arrays retain their original behavior. Summary operator entries
+are also cleared when a later presence condition replaces their value.
+
+`KssIdentityFacts` and `KssIdentityMatches` in `runtime/kss_parser.kry` own the
+case-sensitive ID/name/key alternative comparison, with empty queries rejected.
+Eight new shared C/Go/JS fact cases cover each alternative, missing/mismatching
+facts, case sensitivity, Unicode, and an empty query (63 total fact cases).
+Web integration covers conflicting equalities, prefix/suffix intersections,
+presence combined with equality, repeated IDs, distinct identity aliases,
+traces, serialization, and the existing prebuilt-map form. Browser coverage
+ensures failed earlier conditions cannot override a matching installed rule.
+
+This closes the repeated-condition storage defect, not the entire compound
+selector migration. Native/data/ARIA presence normalization, functional
+specificity, combinator backtracking, and traversal policy remain open.
+No original plan document is fully closed by this change.
+
+Follow-up probe confirms an existing chain-matching defect: for an `.outer`
+parent with two nested `.branch` descendants and a `.leaf` beneath them,
+`.outer > .branch .leaf` resolves to no style, even though the outer branch
+satisfies the full chain. The greedy nearest-ancestor selection does not
+backtrack after a later condition fails. This remains an explicit open task;
+the repeated-condition fix does not claim complete combinator matching.
+
+Verification: a fresh detached run in `build/selector-conditions/verify.log`
+ends with `RESULT 0`, covering generation, matched C/Go/JS fixtures,
+`fast-test`, generated-runtime parity, Go runtime, C++/Go/JS syntax, strict KSS,
+Chromium DOM/inspector, generated provenance, and all five style guards. The
+prior interrupted run's temporary logs disappeared; this run supplies complete
+replacement evidence. The Go fixture reader handles the generated `ID` acronym.
+Go uses gofmt; the Kry formatter ran on a review copy, with unrelated existing
+continuation-indent rewrites inspected and omitted. Generated sources were
+regenerated normally, and `git diff --check` passes.

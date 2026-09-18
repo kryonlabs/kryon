@@ -53,3 +53,11 @@ R	focus-within	-	0
 R	target	target=1	1
 R	target	-	0
 R	has(Button)	-	-1
+I	save	id=save	1
+I	save	name=save	1
+I	save	key=save	1
+I	save	id=other,name=else,key=third	0
+I	Save	id=save	0
+I	保存	name=保存	1
+I		-	0
+I	save	-	0

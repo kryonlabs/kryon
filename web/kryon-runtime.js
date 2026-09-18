@@ -3021,7 +3021,7 @@ function parseSimpleSelector(text) {
   ensureWebKssHost();
   let parser = webKssModule.KssParser_KssBeginSelector(null, null, null, String(text || ""));
   const selector = {
-    kind: "*", id: "", classes: [], attrs: {}, attrOps: {}, pseudos: [],
+    kind: "*", id: "", ids: [], classes: [], attrs: {}, attrOps: {}, attributes: [], pseudos: [],
     not: [], matches: [], groups: [], state: "", states: [], specificity: 0
   };
   for (;;) {
@@ -3040,6 +3040,7 @@ function parseSimpleSelector(text) {
         break;
       case webKssModule.KssSelectorId:
         selector.id = atom.name;
+        selector.ids.push(atom.name);
         break;
       case webKssModule.KssSelectorClass:
         selector.classes.push(atom.name);
@@ -3048,6 +3049,10 @@ function parseSimpleSelector(text) {
         selector.attrs[atom.name] = atom.has_value ? atom.value : null;
         if (atom.has_value)
           selector.attrOps[atom.name] = atom.operation;
+        else
+          delete selector.attrOps[atom.name];
+        selector.attributes.push({name: atom.name, value: atom.has_value ? atom.value : null,
+          operation: atom.has_value ? atom.operation : "="});
         break;
       case webKssModule.KssSelectorState:
         selector.state = name;
@@ -3475,6 +3480,19 @@ function webStyleStateSelectorToCSS(state) {
   return native.length ? `:is(${[...native, mirrored].join(",")})` : mirrored;
 }
 
+function selectorIds(selector) {
+  return selector.ids ?? (selector.id ? [selector.id] : []);
+}
+
+function* selectorAttributes(selector) {
+  if (selector.attributes) {
+    yield* selector.attributes;
+    return;
+  }
+  for (const [name, value] of Object.entries(selector.attrs || {}))
+    yield {name, value, operation: selector.attrOps?.[name] || "="};
+}
+
 export function webStyleSelectorToCSS(selector) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
     return selector.parts.map((part, index) => {
@@ -3488,12 +3506,12 @@ export function webStyleSelectorToCSS(selector) {
     parts.push(".kryon-node");
   else
     parts.push(`[data-kry-kind="${cssEscapeString(selector.kind)}"]`);
-  if (selector.id)
-    parts.push(`:is(#${cssEscapeIdent(selector.id)},[data-kry-name="${cssEscapeString(selector.id)}"],[data-kry-key="${cssEscapeString(selector.id)}"])`);
+  for (const id of selectorIds(selector))
+    parts.push(`:is(#${cssEscapeIdent(id)},[data-kry-name="${cssEscapeString(id)}"],[data-kry-key="${cssEscapeString(id)}"])`);
   for (const cls of selector.classes || [])
     parts.push("." + cssEscapeIdent(cls));
-  for (const [key, value] of Object.entries(selector.attrs || {}))
-    parts.push(webStyleSelectorAttrToCSS(key, value, selector.attrOps?.[key] || "="));
+  for (const {name, value, operation} of selectorAttributes(selector))
+    parts.push(webStyleSelectorAttrToCSS(name, value, operation));
   for (const pseudo of selector.pseudos || [])
     parts.push(webStylePseudoToCSS(pseudo));
   for (const notSelector of selector.not || [])
@@ -4542,13 +4560,15 @@ function selectorKindMatches(kind, facts) {
 function selectorMatchesFacts(selector, facts) {
   if (!selectorKindMatches(selector.kind, facts))
     return false;
-  if (selector.id && selector.id !== facts.id && selector.id !== facts.name && selector.id !== facts.key)
-    return false;
+  const identity = {id: String(facts.id || ""), name: String(facts.name || ""), key: String(facts.key || "")};
+  for (const id of selectorIds(selector)) {
+    if (!webKssModule.KssParser_KssIdentityMatches(null, null, null, id, identity))
+      return false;
+  }
   for (const cls of selector.classes)
     if (!facts.classes?.includes(cls))
       return false;
-  for (const [key, value] of Object.entries(selector.attrs)) {
-    const op = selector.attrOps?.[key] || "=";
+  for (const {name: key, value, operation: op} of selectorAttributes(selector)) {
     if (value === null) {
       if (!selectorAttrPresent(key, facts))
         return false;

@@ -279,6 +279,12 @@ type KssCSSValue struct {
 	TokenOrigin int32
 }
 
+type KssIdentityFacts struct {
+	ID   string
+	Name string
+	Key  string
+}
+
 type KssStateFacts struct {
 	Kind                  string
 	Tag                   string
@@ -12250,6 +12256,34 @@ func KssParser_KssTextAt(value string, needle string, start int32) bool {
 	}
 	var value_29 bool = true
 	return value_29
+}
+
+func KssParser_KssIdentityMatches(expected string, facts KssIdentityFacts) bool {
+	var value_0 int32 = int32(len(expected))
+	var value_1 int32 = 0
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 bool = false
+		return value_3
+	}
+	var value_4 string = expected
+	var value_5 string = facts.ID
+	var value_6 bool = value_4 == value_5
+	var value_7 bool = value_6
+	if !value_7 {
+		var value_8 string = expected
+		var value_9 string = facts.Name
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 string = expected
+		var value_13 string = facts.Key
+		var value_14 bool = value_12 == value_13
+		value_11 = value_14
+	}
+	return value_11
 }
 
 func KssParser_KssAttributeMatches(value string, needle string, operation string, present bool) bool {

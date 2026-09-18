@@ -19,7 +19,9 @@ they do not maintain separate regular-expression argument grammars. Remaining
 functional-pseudo dispatch, compound matching, traversal, and CSS export decisions
 are tracked in the completion ledger. `KssSelectorGroupMatches` owns positive
 and negative selector-list reduction; web storage retains separate groups and
-supplies their alternative-match counts.
+supplies their alternative-match counts. `KssIdentityMatches` owns ID/name/key
+comparison. The web adapter retains ordered ID and attribute conditions, rather
+than letting storage keyed by attribute name discard repeated constraints.
 
 Host
 adapters own source/import storage, native string views, and publication of

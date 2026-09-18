@@ -17879,6 +17879,38 @@ export function KssParser_KssTextAt($rt, $state = moduleState, $host = moduleHos
     return value_29;
 }
 
+export function KssParser_KssIdentityMatches($rt, $state = moduleState, $host = moduleHost, expected, facts) {
+  $state = $state || moduleState;
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({id: record_source.id, name: record_source.name, key: record_source.key}))(value_0);
+    facts = value_1;
+    let value_2 = number_85173a94_value(kryon.StringByteLength(expected),32,true);
+    let value_3 = number_85173a94_value(0,32,true);
+    let value_4 = number_85173a94_bool(value_2 == value_3);
+    if (value_4) {
+        let value_5 = number_85173a94_bool(false);
+        return value_5;
+    }
+    let value_6 = expected;
+    let value_7 = facts.id;
+    let value_8 = number_85173a94_bool(value_6 == value_7);
+    let value_9 = number_85173a94_bool(value_8);
+    if (!value_9) {
+        let value_10 = expected;
+        let value_11 = facts.name;
+        let value_12 = number_85173a94_bool(value_10 == value_11);
+        value_9 = value_12;
+    }
+    let value_13 = number_85173a94_bool(value_9);
+    if (!value_13) {
+        let value_14 = expected;
+        let value_15 = facts.key;
+        let value_16 = number_85173a94_bool(value_14 == value_15);
+        value_13 = value_16;
+    }
+    return value_13;
+}
+
 export function KssParser_KssAttributeMatches($rt, $state = moduleState, $host = moduleHost, value, needle, operation, present) {
   $state = $state || moduleState;
     present = number_85173a94_bool(present);

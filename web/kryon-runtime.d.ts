@@ -1014,8 +1014,12 @@ export interface WebDOMSnapshot {
 export interface WebStyleSelector {
   kind: string;
   id: string;
+  /** Ordered ID conditions; authoritative when present. */
+  ids?: string[];
   classes: string[];
   attrs: Record<string, string | null>;
+  /** Ordered attribute conditions, including repeated names. Authoritative when present. */
+  attributes?: { name: string; value: string | null; operation: string }[];
   attrOps: Record<string, string>;
   pseudos: string[];
   not: WebStyleSelector[];

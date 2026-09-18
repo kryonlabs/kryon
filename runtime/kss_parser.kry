@@ -3939,6 +3939,19 @@ KssTextAt :: (value: string, needle: string, start: i32) -> bool {
     return true
 }
 
+KssIdentityFacts :: struct {
+    id: string
+    name: string
+    key: string
+}
+
+KssIdentityMatches :: (expected: string, facts: KssIdentityFacts) -> bool #export {
+    if expected.length == 0 {
+        return false
+    }
+    return expected == facts.id || expected == facts.name || expected == facts.key
+}
+
 KssAttributeMatches :: (value: string, needle: string, operation: string, present: bool) -> bool #export {
     if !present {
         return false
