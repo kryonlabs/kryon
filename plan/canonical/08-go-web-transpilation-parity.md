@@ -14,8 +14,9 @@ Remaining:
 - Add real lowering for every supported expression form. Unsupported lowering
   now fails visibly instead of emitting the removed `kryon.expr` runtime
   placeholder, executable fixture generation rejects any placeholder calls, and
-  fixed-capacity module state/global `sizeof(...)` lowers to the declared
-  capacity. Local buffers and computed capacities remain open.
+  fixed-capacity module state/global/local `sizeof(...)` lowers to the
+  declared capacity. Element-size expressions and computed capacities remain
+  open.
 - Report coverage per backend and fixture; distinguish generating, executing,
   comparing state, and checking rendered output.
 - Verify every policy change in C, Go, and JS; syntax and snapshots are useful

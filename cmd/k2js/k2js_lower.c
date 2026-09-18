@@ -33,6 +33,12 @@ typedef struct {
     int used;
 } K2jsGlobalFunction;
 
+typedef struct {
+    char name[K2JS_NAME_MAX];
+    char type[KIR_NAME_MAX];
+    int depth;
+} K2jsLocal;
+
 static K2jsGlobalFunction g_functions[512];
 static int g_function_count;
 static const KirModule *g_mod;
@@ -41,6 +47,8 @@ static K2jsExtern g_externs[K2JS_EXTERN_MAX];
 static int g_extern_count;
 static const KirModule *g_enum_imports[128];
 static int g_enum_import_count;
+static K2jsLocal tx_locals[256];
+static int tx_local_count;
 
 static int
 enum_import_index(const KirModule *module)
@@ -485,6 +493,36 @@ state_field_index(const KirModule *m, const char *name, size_t len)
     return -1;
 }
 
+static void
+tx_clear_locals(void)
+{
+    tx_local_count = 0;
+}
+
+static void
+tx_push_local(const char *name, const char *type, int depth)
+{
+    if(name == NULL || type == NULL || name[0] == '\0' || type[0] == '\0')
+        return;
+    if(tx_local_count >= (int)(sizeof(tx_locals) / sizeof(tx_locals[0]))) {
+        fprintf(stderr, "k2js: too many local declarations while lowering JavaScript\n");
+        exit(1);
+    }
+    snprintf(tx_locals[tx_local_count].name,
+             sizeof(tx_locals[tx_local_count].name), "%s", name);
+    snprintf(tx_locals[tx_local_count].type,
+             sizeof(tx_locals[tx_local_count].type), "%s", type);
+    tx_locals[tx_local_count].depth = depth;
+    tx_local_count++;
+}
+
+static void
+tx_pop_locals(int depth)
+{
+    while(tx_local_count > 0 && tx_locals[tx_local_count - 1].depth >= depth)
+        tx_local_count--;
+}
+
 static int
 module_fn_index(const KirModule *m, const char *name, size_t len)
 {
@@ -859,6 +897,11 @@ sizeof_expression(const KirModule *m, const char *operand,
     name[length] = '\0';
     if(*kir_skip_ws(p) != '\0')
         return 0;
+    for(int i = tx_local_count - 1; i >= 0; i--) {
+        if(strcmp(tx_locals[i].name, name) == 0)
+            return array_capacity_expression(tx_locals[i].type,
+                                             dst, dst_size);
+    }
     for(int i = 0; i < m->state_count; i++) {
         if(strcmp(m->state_fields[i].name, name) == 0)
             return array_capacity_expression(m->state_fields[i].type,
@@ -2596,6 +2639,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int block_stack[128];
     int block_top = 0;
 
+    tx_clear_locals();
     kir_camel_ident(fn->name, fname, sizeof(fname));
     fprintf(f, "export function %s_%s($rt, $state = moduleState, $host = moduleHost",
             guard, fname);
@@ -2622,7 +2666,9 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     fprintf(f, "  $state = $state || moduleState;\n");
     if(!function_has_web_metadata(fn) &&
        KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m, "", NULL)) {
-        fprintf(f,"}\n\n"); return;
+        fprintf(f,"}\n\n");
+        tx_clear_locals();
+        return;
     }
     for(int i = 0; i < n; i++) {
         char *colon = strchr(parts[i], ':');
@@ -2631,6 +2677,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         *colon++ = '\0';
         kir_trim_in_place(parts[i]);
         kir_trim_in_place(colon);
+        tx_push_local(parts[i], colon, 0);
         {
             const KirModule *owner = NULL;
             /* Defensive parameter copies are only elided for record types
@@ -2664,6 +2711,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_BLOCK_CLOSE: {
             int emitted = block_top > 0 ? block_stack[--block_top] : 1;
 
+            tx_pop_locals(indent);
             if(j + 1 < fn->stmt_count &&
                fn->stmts[j + 1].kind == KIR_STMT_IF &&
                strncmp(fn->stmts[j + 1].text, "else", 4) == 0) {
@@ -2705,6 +2753,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             break;
         case KIR_STMT_DECL:
             emit_decl(f, m, st, raw, indent);
+            tx_push_local(st->name, st->type, indent);
             break;
         case KIR_STMT_ASSIGN:
             emit_assign(f, m, st, raw, indent);
@@ -2997,6 +3046,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     if(!function_returns_value(fn))
         fprintf(f, "  return kryon.snapshot($rt);\n");
     fprintf(f, "}\n\n");
+    tx_clear_locals();
 }
 
 static void

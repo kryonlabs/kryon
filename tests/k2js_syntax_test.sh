@@ -80,6 +80,10 @@ call_host :: () -> int {
 LabelCapacity :: () -> int {
     return sizeof(label)
 }
+LocalCapacity :: () -> int {
+    local_label: [12] char = "local"
+    return sizeof(local_label)
+}
 note_input :: (value: string) -> int {
     unused value
     count += 10
@@ -1603,7 +1607,7 @@ state {
 
 UnsupportedExpression :: () #ui {
     label: [16] char = "hello"
-    count = sizeof(label)
+    count = sizeof(label) / sizeof(label[0])
 }
 EOF
 
