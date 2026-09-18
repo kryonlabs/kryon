@@ -1,0 +1,40 @@
+A	hello world	world	~=	1
+A	hello world	wor	~=	0
+A	en-US	en	|=	1
+A	english	en	|=	0
+A	café 🌿	café	^=	1
+A	café 🌿	🌿	$=	1
+A	café 🌿	fé	*=	1
+A	abc	<empty>	^=	0
+A	abc	<empty>	$=	0
+A	abc	<empty>	*=	0
+A	<empty>	<empty>	=	1
+A	abc	ABC	=	0
+A	abc	abc	invalid	0
+A	long	longer	$=	0
+A	abc	b	*=	1
+A	abc	d	*=	0
+N	odd	3	-	1
+N	odd	2	-	0
+N	 EVEN 	4	-	1
+N	2n + 1	5	-	1
+N	2n + 1	6	-	0
+N	-n + 3	2	-	1
+N	-n + 3	4	-	0
+N	0n+4	4	-	1
+N	0n+4	5	-	0
+N	+n	5	-	1
+N	3	3	-	1
+N	+3	3	-	1
+N	3	2	-	0
+N	2n-1	1	-	1
+N	2 n	2	-	0
+N	1e0	1	-	0
+N	0x1	1	-	0
+N	1.0	1	-	0
+N	2n+	2	-	0
+N	999999999999999999999n	2	-	0
+N	odd	0	-	0
+N	n-2147483647	2147483647	-	1
+N	-2147483647n+2147483647	2147483647	-	1
+A	<missing>	<empty>	=	0

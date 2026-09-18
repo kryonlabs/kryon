@@ -29,7 +29,9 @@ Implementation constraint: keep KSS language and behavior in maintained `.kry`
 modules, including CSS-only declaration semantics. Hosts provide storage, I/O,
 DOM access, and serialization. Shared CSS declaration interpretation is now
 implemented. Cascade comparisons and specificity weights now use shared policy;
-selector parsing/matching remain open (see the evidence ledger). Generated C, Go, and JavaScript are outputs, not policy owners.
+attribute operators and nth-position predicates also use `.kry`. Remaining
+selector grammar, state predicates, and traversal migration stay open (see the
+evidence ledger). Generated C, Go, and JavaScript are outputs, not policy owners.
 
 ## Execution order
 

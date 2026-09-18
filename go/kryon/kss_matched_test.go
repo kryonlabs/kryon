@@ -283,3 +283,39 @@ func TestKssCSSValues(t *testing.T) {
 		t.Fatal("overflowing exponent accepted")
 	}
 }
+
+func TestKssSelectorPredicates(t *testing.T) {
+	source := kssFixtureText(t, "../../tests/fixtures/kss/selector-predicates.tsv")
+	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
+	if len(lines) != 40 {
+		t.Fatalf("expected 40 cases, got %d", len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 5 {
+			t.Fatalf("invalid fixture %q", line)
+		}
+		present := fields[1] != "<missing>"
+		if !present {
+			fields[1] = ""
+		}
+		for i := 1; i <= 2; i++ {
+			if fields[i] == "<empty>" {
+				fields[i] = ""
+			}
+		}
+		var actual bool
+		if fields[0] == "A" {
+			actual = KssParser_KssAttributeMatches(fields[1], fields[2], fields[3], present)
+		} else {
+			position, err := strconv.ParseInt(fields[2], 10, 32)
+			if err != nil || fields[0] != "N" {
+				t.Fatalf("invalid position %q", line)
+			}
+			actual = KssParser_KssNthMatches(fields[1], int32(position))
+		}
+		if actual != (fields[4] == "1") {
+			t.Fatalf("predicate %q returned %v", line, actual)
+		}
+	}
+}

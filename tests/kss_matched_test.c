@@ -341,6 +341,44 @@ test_css_values(void)
     free(source);
 }
 
+static void
+test_selector_predicates(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/selector-predicates.tsv", "r");
+    char line[1024];
+    int count = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        char *fields[5] = {line};
+        for(int i = 0; i < 4; i++) {
+            char *separator = strchr(fields[i], '\t');
+            assert(separator != NULL);
+            *separator = '\0';
+            fields[i + 1] = separator + 1;
+        }
+        bool present = strcmp(fields[1], "<missing>") != 0;
+        if(!present)
+            fields[1][0] = '\0';
+        for(int i = 1; i <= 2; i++) {
+            if(strcmp(fields[i], "<empty>") == 0)
+                fields[i][0] = '\0';
+        }
+        bool actual;
+        if(strcmp(fields[0], "A") == 0) {
+            actual = KssAttributeMatches(StringView(fields[1], strlen(fields[1])),
+                StringView(fields[2], strlen(fields[2])), StringView(fields[3], strlen(fields[3])),
+                present);
+        } else {
+            assert(strcmp(fields[0], "N") == 0);
+            actual = KssNthMatches(StringView(fields[1], strlen(fields[1])), atoi(fields[2]));
+        }
+        assert(actual == (atoi(fields[4]) != 0));
+        count++;
+    }
+    assert(count == 40);
+    fclose(file);
+}
+
 int
 main(void)
 {
@@ -349,6 +387,7 @@ main(void)
     ClearStyleModules();
     test_environment_names();
     test_css_values();
+    test_selector_predicates();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

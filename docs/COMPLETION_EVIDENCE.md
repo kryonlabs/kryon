@@ -155,8 +155,8 @@ its unrelated continuation-indentation changes were inspected and omitted.
 Generated Go and the new Go test are gofmt-formatted.
 
 Remaining web selector ownership is more than its parser: `selectorKindMatches`,
-`selectorAttrValueMatches`, `selectorMatchesFacts`, `styleStateMatches`, nth-child
-formula evaluation, structural pseudo decisions, and combinator traversal rules
+`selectorMatchesFacts`, `styleStateMatches`, structural pseudo dispatch, and
+combinator traversal rules
 still execute in JavaScript. DOM/frame relationship lookup, attribute retrieval,
 route reading, and property-map storage are host services; predicate/operator
 semantics and traversal decisions need shared `.kry` owners. Preserve support for
@@ -168,3 +168,38 @@ The complete verification run finished with `RESULT 0`: `k2js-syntax-test`
 includes the KSS suites and both Chromium DOM/inspector suites, and generated
 provenance checks pass against the maintained `.kry` sources. No original plan
 file is fully closed by this cascade slice.
+
+## Shared selector predicates
+
+Attribute operator matching and `nth-*` formulas now live in
+`runtime/kss_parser.kry`. JavaScript supplies strings and sibling indices/counts;
+its operator switch, numeric coercion, and `an+b` regex have been removed.
+Reverse indexing and absent-sibling rejection also use generated decisions.
+The existing selector grammar/pseudo dispatch and sibling retrieval remain in
+the web host; this does not claim completion of selector migration.
+
+`tests/fixtures/kss/selector-predicates.tsv` drives 40 identical C/Go/JS cases:
+attribute words/prefixes/suffixes/substrings/dash matches, Unicode, empty operands,
+missing values, invalid operators, integer and positive/negative/zero-step formulas, invalid
+number spellings, oversized input, and arithmetic beyond signed 32-bit deltas.
+Web integration tests exercise forward/reverse and same-type sibling matching
+through the actual adapters and verify per-property winners.
+
+Two host-specific behaviors are deliberately corrected: empty substring-style
+attribute operands no longer match every string, and JavaScript numeric forms
+such as `0x1`, `1e0`, and `1.0` are no longer accepted as nth positions. The shared
+formula parser bounds coefficient/offset magnitudes and uses i64 intermediates.
+
+The adapter also preserves missing values for shared rejection: an absent
+`data-*` attribute no longer matches an empty equality operand. Native attribute
+fact normalization still needs its separate presence audit.
+
+Verification passes: focused C/Go/JS predicates and web integration;
+`fast-test`; the declared generated-runtime parity subset; Go runtime;
+`k2js-syntax-test` including strict KSS and Chromium DOM/inspector suites;
+generated provenance; and all five style guards. Checks affected by the later
+presence-parameter correction were rerun successfully, including the final
+missing-value fixture. Logs are in `/tmp/kryon-selectors/`; both verification
+scripts finish with `RESULT 0`. Go was formatted with gofmt. The `.kry` formatter
+ran on a review copy; unrelated continuation rewrites were inspected and omitted.
+No original plan file is fully closed by this predicate migration.

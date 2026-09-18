@@ -232,6 +232,16 @@ inspector traces. High specificity cannot outrank a higher layer, and a large
 source position cannot outrank higher specificity. Web rule/trace `score` is a
 diagnostic summary, not a priority override. Prebuilt web rules may omit it.
 
+Web attribute operators and `nth-child`/`nth-last-child`/`nth-of-type`/
+`nth-last-of-type` formulas use shared KSS predicates. Attribute matching is
+case-sensitive and handles UTF-8 text; a missing value never matches. Empty `~=`, `^=`, `$=`, and `*=` operands
+never match, and unknown operators are rejected. Position formulas accept
+integers, `odd`, `even`, and `an+b`; hexadecimal, exponential, and fractional
+number spellings do not match. Coefficient and offset magnitudes are limited to
+2147483647, with 64-bit intermediate arithmetic. Missing sibling positions do
+not match. Hosts provide attributes and sibling identity/order.
+
+
 KSS tokens are grouped in one `tokens { ... }` block. Accepted groups are
 `color`, `length`, `number`, `duration`, and `material`; duration values are
 stored as milliseconds, so `80ms` is `80` and `0.14s` is `140`.

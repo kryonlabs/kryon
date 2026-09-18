@@ -23,6 +23,9 @@ Native cascades retain a `StylePriority` tuple for each field; web hosts retain
 the same tuples in property maps. The shared comparison orders layer,
 specificity, and source order directly, avoiding collisions from scalar score
 arithmetic. Scalar web scores remain diagnostic metadata only.
+The shared KSS parser module also owns attribute operator predicates and
+nth-position formula evaluation. Browser adapters provide attribute strings,
+sibling indices/counts, and traversal direction; generated code decides matches.
 
 ## Public API
 

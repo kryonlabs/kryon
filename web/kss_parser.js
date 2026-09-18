@@ -17720,6 +17720,647 @@ export function KssParser_KssOverrideCSSValue($rt, $state = moduleState, $host =
     return value_24;
 }
 
+export function KssParser_KssTextAt($rt, $state = moduleState, $host = moduleHost, value, needle, start) {
+  $state = $state || moduleState;
+    start = number_85173a94_value(start,32,true);
+    let value_0 = number_85173a94_value(start,32,true);
+    let value_1 = number_85173a94_value(0,32,true);
+    let value_2 = number_85173a94_bool(value_0 < value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_85173a94_value(start,32,true);
+        let value_5 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+        let value_6 = number_85173a94_bool(value_4 > value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_85173a94_bool(value_3);
+    if (!value_7) {
+        let value_8 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+        let value_9 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+        let value_10 = number_85173a94_value(start,32,true);
+        let value_11 = number_85173a94_value(number_85173a94_bits(value_9,value_10,32,true,2),32,true);
+        let value_12 = number_85173a94_bool(value_8 > value_11);
+        value_7 = value_12;
+    }
+    if (value_7) {
+        let value_13 = number_85173a94_bool(false);
+        return value_13;
+    }
+    let value_14 = number_85173a94_value(0,32,true);
+    let index = number_85173a94_value(value_14,32,true);
+    while (true) {
+        let value_15 = number_85173a94_value(index,32,true);
+        let value_16 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+        let value_17 = number_85173a94_bool(value_15 < value_16);
+        if (!value_17) { break; }
+        let value_18 = number_85173a94_value(start,32,true);
+        let value_19 = number_85173a94_value(index,32,true);
+        let value_20 = number_85173a94_value(number_85173a94_bits(value_18,value_19,32,true,1),32,true);
+        let value_21 = number_85173a94_value(kryon.index(value, value_20),8,false);
+        let value_22 = number_85173a94_value(index,32,true);
+        let value_23 = number_85173a94_value(kryon.index(needle, value_22),8,false);
+        let value_24 = number_85173a94_bool(value_21 != value_23);
+        if (value_24) {
+            let value_25 = number_85173a94_bool(false);
+            return value_25;
+        }
+        let value_26 = number_85173a94_value(index,32,true);
+        let value_27 = number_85173a94_value(1,32,true);
+        let value_28 = number_85173a94_value(number_85173a94_bits(value_26,value_27,32,true,1),32,true);
+        index = value_28;
+    }
+    let value_29 = number_85173a94_bool(true);
+    return value_29;
+}
+
+export function KssParser_KssAttributeMatches($rt, $state = moduleState, $host = moduleHost, value, needle, operator, present) {
+  $state = $state || moduleState;
+    present = number_85173a94_bool(present);
+    let value_0 = number_85173a94_bool(present);
+    let value_1 = number_85173a94_bool(!value_0);
+    if (value_1) {
+        let value_2 = number_85173a94_bool(false);
+        return value_2;
+    }
+    let value_3 = operator;
+    let value_4 = "=";
+    let value_5 = number_85173a94_bool(value_3 == value_4);
+    let value_6 = number_85173a94_bool(value_5);
+    if (!value_6) {
+        let value_7 = operator;
+        let value_8 = "";
+        let value_9 = number_85173a94_bool(value_7 == value_8);
+        value_6 = value_9;
+    }
+    if (value_6) {
+        let value_10 = value;
+        let value_11 = needle;
+        let value_12 = number_85173a94_bool(value_10 == value_11);
+        return value_12;
+    }
+    let value_13 = operator;
+    let value_14 = "|=";
+    let value_15 = number_85173a94_bool(value_13 == value_14);
+    if (value_15) {
+        let value_16 = value;
+        let value_17 = needle;
+        let value_18 = number_85173a94_bool(value_16 == value_17);
+        let value_19 = number_85173a94_bool(value_18);
+        if (!value_19) {
+            let value_20 = value;
+            let value_21 = needle;
+            let value_22 = number_85173a94_value(0,32,true);
+            let value_23 = number_85173a94_bool(KssParser_KssTextAt($rt, $state, $host, value_20, value_21, value_22));
+            let value_24 = number_85173a94_bool(value_23);
+            if (value_24) {
+                let value_25 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+                let value_26 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+                let value_27 = number_85173a94_bool(value_25 > value_26);
+                value_24 = value_27;
+            }
+            let value_28 = number_85173a94_bool(value_24);
+            if (value_28) {
+                let value_29 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+                let value_30 = number_85173a94_value(kryon.index(value, value_29),8,false);
+                let value_31 = number_85173a94_value(45,8,false);
+                let value_32 = number_85173a94_bool(value_30 == value_31);
+                value_28 = value_32;
+            }
+            value_19 = value_28;
+        }
+        return value_19;
+    }
+    let value_33 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+    let value_34 = number_85173a94_value(0,32,true);
+    let value_35 = number_85173a94_bool(value_33 == value_34);
+    if (value_35) {
+        let value_36 = number_85173a94_bool(false);
+        return value_36;
+    }
+    let value_37 = operator;
+    let value_38 = "^=";
+    let value_39 = number_85173a94_bool(value_37 == value_38);
+    if (value_39) {
+        let value_40 = value;
+        let value_41 = needle;
+        let value_42 = number_85173a94_value(0,32,true);
+        let value_43 = number_85173a94_bool(KssParser_KssTextAt($rt, $state, $host, value_40, value_41, value_42));
+        return value_43;
+    }
+    let value_44 = operator;
+    let value_45 = "$=";
+    let value_46 = number_85173a94_bool(value_44 == value_45);
+    if (value_46) {
+        let value_47 = value;
+        let value_48 = needle;
+        let value_49 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+        let value_50 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+        let value_51 = number_85173a94_value(number_85173a94_bits(value_49,value_50,32,true,2),32,true);
+        let value_52 = number_85173a94_bool(KssParser_KssTextAt($rt, $state, $host, value_47, value_48, value_51));
+        return value_52;
+    }
+    let value_53 = operator;
+    let value_54 = "*=";
+    let value_55 = number_85173a94_bool(value_53 == value_54);
+    if (value_55) {
+        let value_56 = number_85173a94_value(0,32,true);
+        let start = number_85173a94_value(value_56,32,true);
+        while (true) {
+            let value_57 = number_85173a94_value(start,32,true);
+            let value_58 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+            let value_59 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+            let value_60 = number_85173a94_value(number_85173a94_bits(value_58,value_59,32,true,2),32,true);
+            let value_61 = number_85173a94_bool(value_57 <= value_60);
+            if (!value_61) { break; }
+            let value_62 = value;
+            let value_63 = needle;
+            let value_64 = number_85173a94_value(start,32,true);
+            let value_65 = number_85173a94_bool(KssParser_KssTextAt($rt, $state, $host, value_62, value_63, value_64));
+            if (value_65) {
+                let value_66 = number_85173a94_bool(true);
+                return value_66;
+            }
+            let value_67 = number_85173a94_value(start,32,true);
+            let value_68 = number_85173a94_value(1,32,true);
+            let value_69 = number_85173a94_value(number_85173a94_bits(value_67,value_68,32,true,1),32,true);
+            start = value_69;
+        }
+        let value_70 = number_85173a94_bool(false);
+        return value_70;
+    }
+    let value_71 = operator;
+    let value_72 = "~=";
+    let value_73 = number_85173a94_bool(value_71 == value_72);
+    if (value_73) {
+        let value_74 = number_85173a94_value(0,32,true);
+        let start = number_85173a94_value(value_74,32,true);
+        while (true) {
+            let value_75 = number_85173a94_value(start,32,true);
+            let value_76 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+            let value_77 = number_85173a94_bool(value_75 < value_76);
+            if (!value_77) { break; }
+            while (true) {
+                let value_78 = number_85173a94_value(start,32,true);
+                let value_79 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+                let value_80 = number_85173a94_bool(value_78 < value_79);
+                let value_81 = number_85173a94_bool(value_80);
+                if (value_81) {
+                    let value_82 = number_85173a94_value(start,32,true);
+                    let value_83 = number_85173a94_value(kryon.index(value, value_82),8,false);
+                    let value_84 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_83));
+                    value_81 = value_84;
+                }
+                if (!value_81) { break; }
+                let value_85 = number_85173a94_value(start,32,true);
+                let value_86 = number_85173a94_value(1,32,true);
+                let value_87 = number_85173a94_value(number_85173a94_bits(value_85,value_86,32,true,1),32,true);
+                start = value_87;
+            }
+            let value_88 = number_85173a94_value(start,32,true);
+            let end = number_85173a94_value(value_88,32,true);
+            while (true) {
+                let value_89 = number_85173a94_value(end,32,true);
+                let value_90 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+                let value_91 = number_85173a94_bool(value_89 < value_90);
+                let value_92 = number_85173a94_bool(value_91);
+                if (value_92) {
+                    let value_93 = number_85173a94_value(end,32,true);
+                    let value_94 = number_85173a94_value(kryon.index(value, value_93),8,false);
+                    let value_95 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_94));
+                    let value_96 = number_85173a94_bool(!value_95);
+                    value_92 = value_96;
+                }
+                if (!value_92) { break; }
+                let value_97 = number_85173a94_value(end,32,true);
+                let value_98 = number_85173a94_value(1,32,true);
+                let value_99 = number_85173a94_value(number_85173a94_bits(value_97,value_98,32,true,1),32,true);
+                end = value_99;
+            }
+            let value_100 = number_85173a94_value(end,32,true);
+            let value_101 = number_85173a94_value(start,32,true);
+            let value_102 = number_85173a94_value(number_85173a94_bits(value_100,value_101,32,true,2),32,true);
+            let value_103 = number_85173a94_value(kryon.StringByteLength(needle),32,true);
+            let value_104 = number_85173a94_bool(value_102 == value_103);
+            let value_105 = number_85173a94_bool(value_104);
+            if (value_105) {
+                let value_106 = value;
+                let value_107 = needle;
+                let value_108 = number_85173a94_value(start,32,true);
+                let value_109 = number_85173a94_bool(KssParser_KssTextAt($rt, $state, $host, value_106, value_107, value_108));
+                value_105 = value_109;
+            }
+            if (value_105) {
+                let value_110 = number_85173a94_bool(true);
+                return value_110;
+            }
+            let value_111 = number_85173a94_value(end,32,true);
+            start = value_111;
+        }
+        let value_112 = number_85173a94_bool(false);
+        return value_112;
+    }
+    let value_113 = number_85173a94_bool(false);
+    return value_113;
+}
+
+export function KssParser_KssNthMatches($rt, $state = moduleState, $host = moduleHost, source, position) {
+  $state = $state || moduleState;
+    position = number_85173a94_value(position,32,true);
+    let value_0 = number_85173a94_value(position,32,true);
+    let value_1 = number_85173a94_value(0,32,true);
+    let value_2 = number_85173a94_bool(value_0 <= value_1);
+    if (value_2) {
+        let value_3 = number_85173a94_bool(false);
+        return value_3;
+    }
+    let value_4 = {source: "", pos: 0, line: 0, column: 0, file: 0};
+    let value_5 = value_4;
+    let value_6 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_5);
+    let c = value_6;
+    let value_7 = source;
+    c.source = value_7;
+    let value_9 = c;
+    let value_10 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_9);
+    let value_8 = value_10;
+    let value_12 = KssParser_KssSkipSpace($rt, $state, $host, value_8);
+    let value_13 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_12);
+    let value_11 = value_13;
+    let value_14 = value_11;
+    let value_15 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_14);
+    c = value_15;
+    let value_17 = c;
+    let value_18 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_17);
+    let value_16 = value_18;
+    let value_20 = KssParser_KssReadName($rt, $state, $host, value_16);
+    let value_21 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, ok: record_source.ok}))(value_20);
+    let value_19 = value_21;
+    let value_22 = value_19;
+    let value_23 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, ok: record_source.ok}))(value_22);
+    let word = value_23;
+    let value_24 = number_85173a94_bool(word.ok);
+    let value_25 = number_85173a94_bool(value_24);
+    if (value_25) {
+        let value_27 = word.parser;
+        let value_28 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_27);
+        let value_26 = value_28;
+        let value_30 = KssParser_KssSkipSpace($rt, $state, $host, value_26);
+        let value_31 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_30);
+        let value_29 = value_31;
+        let value_32 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_29));
+        value_25 = value_32;
+    }
+    if (value_25) {
+        let value_34 = word.name;
+        let value_35 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_34);
+        let value_33 = value_35;
+        let value_36 = "odd";
+        let value_37 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_33, value_36));
+        if (value_37) {
+            let value_38 = number_85173a94_value(position,32,true);
+            let value_39 = number_85173a94_value(2,32,true);
+            let value_40 = number_85173a94_value(number_85173a94_bits(value_38,value_39,32,true,5),32,true);
+            let value_41 = number_85173a94_value(1,32,true);
+            let value_42 = number_85173a94_bool(value_40 == value_41);
+            return value_42;
+        }
+        let value_44 = word.name;
+        let value_45 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_44);
+        let value_43 = value_45;
+        let value_46 = "even";
+        let value_47 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_43, value_46));
+        if (value_47) {
+            let value_48 = number_85173a94_value(position,32,true);
+            let value_49 = number_85173a94_value(2,32,true);
+            let value_50 = number_85173a94_value(number_85173a94_bits(value_48,value_49,32,true,5),32,true);
+            let value_51 = number_85173a94_value(0,32,true);
+            let value_52 = number_85173a94_bool(value_50 == value_51);
+            return value_52;
+        }
+    }
+    let value_53 = number_85173a94_value(1n,64,true);
+    let sign = number_85173a94_value(value_53,64,true);
+    let value_55 = c;
+    let value_56 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_55);
+    let value_54 = value_56;
+    let value_57 = number_85173a94_value(0,32,true);
+    let value_58 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_54, value_57),8,false);
+    let value_59 = number_85173a94_value(45,8,false);
+    let value_60 = number_85173a94_bool(value_58 == value_59);
+    if (value_60) {
+        let value_61 = number_85173a94_value(-1n,64,true);
+        sign = value_61;
+        let value_63 = c;
+        let value_64 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_63);
+        let value_62 = value_64;
+        let value_65 = number_85173a94_value(1,32,true);
+        let value_67 = KssParser_KssAdvance($rt, $state, $host, value_62, value_65);
+        let value_68 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_67);
+        let value_66 = value_68;
+        let value_69 = value_66;
+        let value_70 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_69);
+        c = value_70;
+    } else {
+        let value_72 = c;
+        let value_73 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_72);
+        let value_71 = value_73;
+        let value_74 = number_85173a94_value(0,32,true);
+        let value_75 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_71, value_74),8,false);
+        let value_76 = number_85173a94_value(43,8,false);
+        let value_77 = number_85173a94_bool(value_75 == value_76);
+        if (value_77) {
+            let value_79 = c;
+            let value_80 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_79);
+            let value_78 = value_80;
+            let value_81 = number_85173a94_value(1,32,true);
+            let value_83 = KssParser_KssAdvance($rt, $state, $host, value_78, value_81);
+            let value_84 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_83);
+            let value_82 = value_84;
+            let value_85 = value_82;
+            let value_86 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_85);
+            c = value_86;
+        }
+    }
+    let value_87 = number_85173a94_value(0n,64,true);
+    let number = number_85173a94_value(value_87,64,true);
+    let value_88 = number_85173a94_bool(false);
+    let digits = number_85173a94_bool(value_88);
+    while (true) {
+        let value_90 = c;
+        let value_91 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_90);
+        let value_89 = value_91;
+        let value_92 = number_85173a94_value(0,32,true);
+        let value_93 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_89, value_92),8,false);
+        let value_94 = number_85173a94_bool(KssParser_KssIsDigit($rt, $state, $host, value_93));
+        if (!value_94) { break; }
+        let value_95 = number_85173a94_value(number,64,true);
+        let value_96 = number_85173a94_value(10n,64,true);
+        let value_97 = number_85173a94_value(number_85173a94_bits(value_95,value_96,64,true,3),64,true);
+        let value_99 = c;
+        let value_100 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_99);
+        let value_98 = value_100;
+        let value_101 = number_85173a94_value(0,32,true);
+        let value_102 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_98, value_101),8,false);
+        let value_103 = number_85173a94_value(48,8,false);
+        let value_104 = number_85173a94_value(number_85173a94_bits(value_102,value_103,8,false,2),8,false);
+        let value_105 = number_85173a94_value(number_85173a94_bits(value_104,0,64,true,0),64,true);
+        let value_106 = number_85173a94_value(number_85173a94_bits(value_97,value_105,64,true,1),64,true);
+        number = value_106;
+        let value_107 = number_85173a94_value(number,64,true);
+        let value_108 = number_85173a94_value(2147483647n,64,true);
+        let value_109 = number_85173a94_bool(value_107 > value_108);
+        if (value_109) {
+            let value_110 = number_85173a94_bool(false);
+            return value_110;
+        }
+        let value_111 = number_85173a94_bool(true);
+        digits = value_111;
+        let value_113 = c;
+        let value_114 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_113);
+        let value_112 = value_114;
+        let value_115 = number_85173a94_value(1,32,true);
+        let value_117 = KssParser_KssAdvance($rt, $state, $host, value_112, value_115);
+        let value_118 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_117);
+        let value_116 = value_118;
+        let value_119 = value_116;
+        let value_120 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_119);
+        c = value_120;
+    }
+    let value_122 = c;
+    let value_123 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_122);
+    let value_121 = value_123;
+    let value_124 = number_85173a94_value(0,32,true);
+    let value_125 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_121, value_124),8,false);
+    let value_126 = number_85173a94_value(KssParser_KssLower($rt, $state, $host, value_125),8,false);
+    let value_127 = number_85173a94_value(110,8,false);
+    let value_128 = number_85173a94_bool(value_126 != value_127);
+    if (value_128) {
+        let value_129 = number_85173a94_bool(digits);
+        let value_130 = number_85173a94_bool(value_129);
+        if (value_130) {
+            let value_132 = c;
+            let value_133 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_132);
+            let value_131 = value_133;
+            let value_135 = KssParser_KssSkipSpace($rt, $state, $host, value_131);
+            let value_136 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_135);
+            let value_134 = value_136;
+            let value_137 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_134));
+            value_130 = value_137;
+        }
+        let value_138 = number_85173a94_bool(value_130);
+        if (value_138) {
+            let value_139 = number_85173a94_value(position,32,true);
+            let value_140 = number_85173a94_value(number_85173a94_bits(value_139,0,64,true,0),64,true);
+            let value_141 = number_85173a94_value(sign,64,true);
+            let value_142 = number_85173a94_value(number,64,true);
+            let value_143 = number_85173a94_value(number_85173a94_bits(value_141,value_142,64,true,3),64,true);
+            let value_144 = number_85173a94_bool(value_140 == value_143);
+            value_138 = value_144;
+        }
+        return value_138;
+    }
+    let value_145 = number_85173a94_bool(digits);
+    let value_146 = number_85173a94_bool(!value_145);
+    if (value_146) {
+        let value_147 = number_85173a94_value(1n,64,true);
+        number = value_147;
+    }
+    let value_148 = number_85173a94_value(sign,64,true);
+    let value_149 = number_85173a94_value(number,64,true);
+    let value_150 = number_85173a94_value(number_85173a94_bits(value_148,value_149,64,true,3),64,true);
+    let step = number_85173a94_value(value_150,64,true);
+    let value_152 = c;
+    let value_153 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_152);
+    let value_151 = value_153;
+    let value_154 = number_85173a94_value(1,32,true);
+    let value_156 = KssParser_KssAdvance($rt, $state, $host, value_151, value_154);
+    let value_157 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_156);
+    let value_155 = value_157;
+    let value_159 = KssParser_KssSkipSpace($rt, $state, $host, value_155);
+    let value_160 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_159);
+    let value_158 = value_160;
+    let value_161 = value_158;
+    let value_162 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_161);
+    c = value_162;
+    let value_163 = number_85173a94_value(0n,64,true);
+    let offset = number_85173a94_value(value_163,64,true);
+    let value_165 = c;
+    let value_166 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_165);
+    let value_164 = value_166;
+    let value_167 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_164));
+    let value_168 = number_85173a94_bool(!value_167);
+    if (value_168) {
+        let value_169 = number_85173a94_value(1n,64,true);
+        sign = value_169;
+        let value_171 = c;
+        let value_172 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_171);
+        let value_170 = value_172;
+        let value_173 = number_85173a94_value(0,32,true);
+        let value_174 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_170, value_173),8,false);
+        let value_175 = number_85173a94_value(45,8,false);
+        let value_176 = number_85173a94_bool(value_174 == value_175);
+        if (value_176) {
+            let value_177 = number_85173a94_value(-1n,64,true);
+            sign = value_177;
+        } else {
+            let value_179 = c;
+            let value_180 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_179);
+            let value_178 = value_180;
+            let value_181 = number_85173a94_value(0,32,true);
+            let value_182 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_178, value_181),8,false);
+            let value_183 = number_85173a94_value(43,8,false);
+            let value_184 = number_85173a94_bool(value_182 != value_183);
+            if (value_184) {
+                let value_185 = number_85173a94_bool(false);
+                return value_185;
+            }
+        }
+        let value_187 = c;
+        let value_188 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_187);
+        let value_186 = value_188;
+        let value_189 = number_85173a94_value(1,32,true);
+        let value_191 = KssParser_KssAdvance($rt, $state, $host, value_186, value_189);
+        let value_192 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_191);
+        let value_190 = value_192;
+        let value_194 = KssParser_KssSkipSpace($rt, $state, $host, value_190);
+        let value_195 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_194);
+        let value_193 = value_195;
+        let value_196 = value_193;
+        let value_197 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_196);
+        c = value_197;
+        let value_198 = number_85173a94_bool(false);
+        digits = value_198;
+        while (true) {
+            let value_200 = c;
+            let value_201 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_200);
+            let value_199 = value_201;
+            let value_202 = number_85173a94_value(0,32,true);
+            let value_203 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_199, value_202),8,false);
+            let value_204 = number_85173a94_bool(KssParser_KssIsDigit($rt, $state, $host, value_203));
+            if (!value_204) { break; }
+            let value_205 = number_85173a94_value(offset,64,true);
+            let value_206 = number_85173a94_value(10n,64,true);
+            let value_207 = number_85173a94_value(number_85173a94_bits(value_205,value_206,64,true,3),64,true);
+            let value_209 = c;
+            let value_210 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_209);
+            let value_208 = value_210;
+            let value_211 = number_85173a94_value(0,32,true);
+            let value_212 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_208, value_211),8,false);
+            let value_213 = number_85173a94_value(48,8,false);
+            let value_214 = number_85173a94_value(number_85173a94_bits(value_212,value_213,8,false,2),8,false);
+            let value_215 = number_85173a94_value(number_85173a94_bits(value_214,0,64,true,0),64,true);
+            let value_216 = number_85173a94_value(number_85173a94_bits(value_207,value_215,64,true,1),64,true);
+            offset = value_216;
+            let value_217 = number_85173a94_value(offset,64,true);
+            let value_218 = number_85173a94_value(2147483647n,64,true);
+            let value_219 = number_85173a94_bool(value_217 > value_218);
+            if (value_219) {
+                let value_220 = number_85173a94_bool(false);
+                return value_220;
+            }
+            let value_221 = number_85173a94_bool(true);
+            digits = value_221;
+            let value_223 = c;
+            let value_224 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_223);
+            let value_222 = value_224;
+            let value_225 = number_85173a94_value(1,32,true);
+            let value_227 = KssParser_KssAdvance($rt, $state, $host, value_222, value_225);
+            let value_228 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_227);
+            let value_226 = value_228;
+            let value_229 = value_226;
+            let value_230 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_229);
+            c = value_230;
+        }
+        let value_231 = number_85173a94_bool(digits);
+        let value_232 = number_85173a94_bool(!value_231);
+        let value_233 = number_85173a94_bool(value_232);
+        if (!value_233) {
+            let value_235 = c;
+            let value_236 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_235);
+            let value_234 = value_236;
+            let value_238 = KssParser_KssSkipSpace($rt, $state, $host, value_234);
+            let value_239 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_238);
+            let value_237 = value_239;
+            let value_240 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_237));
+            let value_241 = number_85173a94_bool(!value_240);
+            value_233 = value_241;
+        }
+        if (value_233) {
+            let value_242 = number_85173a94_bool(false);
+            return value_242;
+        }
+        let value_243 = number_85173a94_value(sign,64,true);
+        let value_244 = number_85173a94_value(offset,64,true);
+        let value_245 = number_85173a94_value(number_85173a94_bits(value_243,value_244,64,true,3),64,true);
+        offset = value_245;
+    }
+    let value_246 = number_85173a94_value(step,64,true);
+    let value_247 = number_85173a94_value(0n,64,true);
+    let value_248 = number_85173a94_bool(value_246 == value_247);
+    if (value_248) {
+        let value_249 = number_85173a94_value(position,32,true);
+        let value_250 = number_85173a94_value(number_85173a94_bits(value_249,0,64,true,0),64,true);
+        let value_251 = number_85173a94_value(offset,64,true);
+        let value_252 = number_85173a94_bool(value_250 == value_251);
+        return value_252;
+    }
+    let value_253 = number_85173a94_value(position,32,true);
+    let value_254 = number_85173a94_value(number_85173a94_bits(value_253,0,64,true,0),64,true);
+    let value_255 = number_85173a94_value(offset,64,true);
+    let value_256 = number_85173a94_value(number_85173a94_bits(value_254,value_255,64,true,2),64,true);
+    let delta = number_85173a94_value(value_256,64,true);
+    let value_257 = number_85173a94_value(delta,64,true);
+    let value_258 = number_85173a94_value(step,64,true);
+    let value_259 = number_85173a94_value(number_85173a94_bits(value_257,value_258,64,true,5),64,true);
+    let value_260 = number_85173a94_value(0n,64,true);
+    let value_261 = number_85173a94_bool(value_259 == value_260);
+    let value_262 = number_85173a94_bool(value_261);
+    if (value_262) {
+        let value_263 = number_85173a94_value(delta,64,true);
+        let value_264 = number_85173a94_value(step,64,true);
+        let value_265 = number_85173a94_value(number_85173a94_bits(value_263,value_264,64,true,4),64,true);
+        let value_266 = number_85173a94_value(0n,64,true);
+        let value_267 = number_85173a94_bool(value_265 >= value_266);
+        value_262 = value_267;
+    }
+    return value_262;
+}
+
+export function KssParser_KssNthSiblingMatches($rt, $state = moduleState, $host = moduleHost, source, index, count, from_end) {
+  $state = $state || moduleState;
+    index = number_85173a94_value(index,32,true);
+    count = number_85173a94_value(count,32,true);
+    from_end = number_85173a94_bool(from_end);
+    let value_0 = number_85173a94_value(index,32,true);
+    let value_1 = number_85173a94_value(0,32,true);
+    let value_2 = number_85173a94_bool(value_0 < value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (!value_3) {
+        let value_4 = number_85173a94_value(index,32,true);
+        let value_5 = number_85173a94_value(count,32,true);
+        let value_6 = number_85173a94_bool(value_4 >= value_5);
+        value_3 = value_6;
+    }
+    if (value_3) {
+        let value_7 = number_85173a94_bool(false);
+        return value_7;
+    }
+    let value_8 = number_85173a94_value(index,32,true);
+    let value_9 = number_85173a94_value(1,32,true);
+    let value_10 = number_85173a94_value(number_85173a94_bits(value_8,value_9,32,true,1),32,true);
+    let position = number_85173a94_value(value_10,32,true);
+    let value_11 = number_85173a94_bool(from_end);
+    if (value_11) {
+        let value_12 = number_85173a94_value(count,32,true);
+        let value_13 = number_85173a94_value(index,32,true);
+        let value_14 = number_85173a94_value(number_85173a94_bits(value_12,value_13,32,true,2),32,true);
+        position = value_14;
+    }
+    let value_15 = source;
+    let value_16 = number_85173a94_value(position,32,true);
+    let value_17 = number_85173a94_bool(KssParser_KssNthMatches($rt, $state, $host, value_15, value_16));
+    return value_17;
+}
+
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {
   kryon.beginFrame(rt);
   const result = KssParser_KssDefaultEnvironment(rt, state, host);

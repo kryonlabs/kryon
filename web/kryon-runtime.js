@@ -4650,23 +4650,8 @@ function selectorAttrValue(key, facts) {
 }
 
 function selectorAttrValueMatches(actual, expected, op) {
-  const value = String(actual ?? "");
-  const needle = String(expected ?? "");
-  switch (op || "=") {
-    case "~=":
-      return value.split(/\s+/).filter(Boolean).includes(needle);
-    case "^=":
-      return value.startsWith(needle);
-    case "$=":
-      return value.endsWith(needle);
-    case "*=":
-      return value.includes(needle);
-    case "|=":
-      return value === needle || value.startsWith(needle + "-");
-    case "=":
-    default:
-      return value === needle;
-  }
+  return webKssModule.KssParser_KssAttributeMatches(null, null, null,
+    String(actual ?? ""), String(expected ?? ""), op || "=", actual !== undefined && actual !== null);
 }
 
 function selectorKindMatches(kind, facts) {
@@ -4793,30 +4778,8 @@ function nthLastOfTypePseudoMatches(pseudo, siblings, node) {
 
 function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
   const index = siblings.indexOf(node);
-  const position = fromEnd ? siblings.length - index : index + 1;
-  const value = String(text || "").trim().toLowerCase();
-  if (index < 0)
-    return false;
-  if (value === "odd")
-    return position % 2 === 1;
-  if (value === "even")
-    return position > 0 && position % 2 === 0;
-  const number = Number(value);
-  if (Number.isInteger(number) && number > 0)
-    return position === number;
-  const compact = value.replace(/\s+/g, "");
-  const formula = compact.match(/^([+-]?\d*)n(?:([+-]\d+))?$/);
-  if (!formula)
-    return false;
-  const rawA = formula[1];
-  const a = rawA === "" || rawA === "+" ? 1 : rawA === "-" ? -1 : Number(rawA);
-  const b = formula[2] === undefined ? 0 : Number(formula[2]);
-  if (!Number.isInteger(a) || !Number.isInteger(b))
-    return false;
-  if (a === 0)
-    return position === b;
-  const delta = position - b;
-  return delta / a >= 0 && delta % a === 0;
+  return webKssModule.KssParser_KssNthSiblingMatches(null, null, null,
+    String(text || ""), index, siblings.length, fromEnd);
 }
 
 function webNodeHasFocusWithin(node) {

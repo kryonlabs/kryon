@@ -20,6 +20,43 @@ for (const line of cases) {
   assert.equal(sharedStyle.StyleSheet_StylePriorityWins(null, null, null, priority, current), Boolean(wins));
 }
 
+const kss = await import(new URL("./kss_parser.js", pathToFileURL(runtimePath)));
+const predicates = readFileSync(new URL("./fixtures/kss/selector-predicates.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+assert.equal(predicates.length, 40);
+for (const line of predicates) {
+  const [kind, first, second, third, expected] = line.split("\t");
+  const actual = kind === "A"
+    ? kss.KssParser_KssAttributeMatches(null, null, null, first === "<empty>" || first === "<missing>" ? "" : first,
+      second === "<empty>" ? "" : second, third, first !== "<missing>")
+    : kss.KssParser_KssNthMatches(null, null, null, first, Number(second));
+  assert.equal(actual, expected === "1", line);
+}
+
+// Exercise the actual host adapters, including reverse and same-type indices.
+{
+  const nodes = ["Button", "Text", "Button", "Button"].map((kind, index) => ({
+    kind, path: `row/${index}`, parentPath: "row", title: "café 🌿"
+  }));
+  for (const node of nodes)
+    node.__kryFrameNodes = nodes;
+  const sheet = runtime.parseWebStyleSheet(`
+    Button[title^="café"] { background: #112233; }
+    Button[title$="🌿"] { foreground: #445566; }
+    Button[title^=""] { background: #ffffff; }
+    Button[data-absent=""] { background: #ffffff; }
+    Button:nth-child(2n + 1) { border: #778899; }
+    Button:nth-last-child(2) { radius: 4; }
+    Button:nth-of-type(2) { padding-x: 7; }
+    Button:nth-last-of-type(2) { padding-y: 8; }
+    Button:nth-child(0x3) { radius: 99; }
+  `);
+  assert.deepEqual(runtime.resolveWebStyle(nodes[2], sheet), {
+    background: "#112233", foreground: "#445566", border: "#778899",
+    radius: 4, "padding-x": 7, "padding-y": 8
+  });
+  assert.equal(runtime.resolveWebStyle(nodes[3], sheet).border, undefined);
+}
+
 // Parsed and prebuilt rules take the same shared priority path. Ties choose
 // the later declaration, including across sheets; fields cascade independently.
 {

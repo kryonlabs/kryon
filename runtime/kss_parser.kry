@@ -3908,3 +3908,151 @@ KssOverrideCSSValue :: (value: KssCSSValue, replacement: string, provided: bool)
     value.text = parsed.text
     return value
 }
+
+# Selector predicates operate on borrowed UTF-8 bytes. Hosts supply attribute
+# values and sibling positions; matching semantics stay shared.
+KssTextAt :: (value: string, needle: string, start: i32) -> bool {
+    if start < 0 || start > value.length || needle.length > value.length - start {
+        return false
+    }
+    index: i32 = 0
+    while index < needle.length {
+        if value[start + index] != needle[index] {
+            return false
+        }
+        index = index + 1
+    }
+    return true
+}
+
+KssAttributeMatches :: (value: string, needle: string, operator: string, present: bool) -> bool #export {
+    if !present {
+        return false
+    }
+    if operator == "=" || operator == "" {
+        return value == needle
+    }
+    if operator == "|=" {
+        return value == needle || (KssTextAt(value, needle, 0) &&
+            value.length > needle.length && value[needle.length] == 45)
+    }
+    if needle.length == 0 {
+        return false
+    }
+    if operator == "^=" {
+        return KssTextAt(value, needle, 0)
+    }
+    if operator == "$=" {
+        return KssTextAt(value, needle, value.length - needle.length)
+    }
+    if operator == "*=" {
+        start: i32 = 0
+        while start <= value.length - needle.length {
+            if KssTextAt(value, needle, start) {
+                return true
+            }
+            start = start + 1
+        }
+        return false
+    }
+    if operator == "~=" {
+        start: i32 = 0
+        while start < value.length {
+            while start < value.length && KssIsSpace(value[start]) {
+                start = start + 1
+            }
+            end: i32 = start
+            while end < value.length && !KssIsSpace(value[end]) {
+                end = end + 1
+            }
+            if end - start == needle.length && KssTextAt(value, needle, start) {
+                return true
+            }
+            start = end
+        }
+        return false
+    }
+    return false
+}
+
+KssNthMatches :: (source: string, position: i32) -> bool #export {
+    if position <= 0 {
+        return false
+    }
+    c: KssCursor
+    c.source = source
+    c = KssSkipSpace(c)
+    word: KssNameResult = KssReadName(c)
+    if word.ok && KssAtEnd(KssSkipSpace(word.parser)) {
+        if KssNameEquals(word.name, "odd") {
+            return position % 2 == 1
+        }
+        if KssNameEquals(word.name, "even") {
+            return position % 2 == 0
+        }
+    }
+    sign: i64 = 1
+    if KssPeek(c, 0) == 45 {
+        sign = -1
+        c = KssAdvance(c, 1)
+    } else if KssPeek(c, 0) == 43 {
+        c = KssAdvance(c, 1)
+    }
+    number: i64 = 0
+    digits: bool = false
+    while KssIsDigit(KssPeek(c, 0)) {
+        number = number * 10 + (i64)(KssPeek(c, 0) - 48)
+        if number > 2147483647 {
+            return false
+        }
+        digits = true
+        c = KssAdvance(c, 1)
+    }
+    if KssLower(KssPeek(c, 0)) != 110 {
+        return digits && KssAtEnd(KssSkipSpace(c)) && (i64)position == sign * number
+    }
+    if !digits {
+        number = 1
+    }
+    step: i64 = sign * number
+    c = KssSkipSpace(KssAdvance(c, 1))
+    offset: i64 = 0
+    if !KssAtEnd(c) {
+        sign = 1
+        if KssPeek(c, 0) == 45 {
+            sign = -1
+        } else if KssPeek(c, 0) != 43 {
+            return false
+        }
+        c = KssSkipSpace(KssAdvance(c, 1))
+        digits = false
+        while KssIsDigit(KssPeek(c, 0)) {
+            offset = offset * 10 + (i64)(KssPeek(c, 0) - 48)
+            if offset > 2147483647 {
+                return false
+            }
+            digits = true
+            c = KssAdvance(c, 1)
+        }
+        if !digits || !KssAtEnd(KssSkipSpace(c)) {
+            return false
+        }
+        offset = sign * offset
+    }
+    if step == 0 {
+        return (i64)position == offset
+    }
+    delta: i64 = (i64)position - offset
+    return delta % step == 0 && delta / step >= 0
+}
+
+KssNthSiblingMatches :: (source: string, index: i32, count: i32, from_end: bool) -> bool #export {
+    if index < 0 || index >= count {
+        return false
+    }
+    position: i32 = index + 1
+    if from_end {
+        position = count - index
+    }
+    return KssNthMatches(source, position)
+}
