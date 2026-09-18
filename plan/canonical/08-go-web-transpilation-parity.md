@@ -13,7 +13,9 @@ Remaining:
   scope restoration, nesting and early-exit coverage.
 - Add real lowering for every supported expression form. Unsupported lowering
   now fails visibly instead of emitting the removed `kryon.expr` runtime
-  placeholder, and executable fixture generation rejects any placeholder calls.
+  placeholder, executable fixture generation rejects any placeholder calls, and
+  fixed-capacity module state/global `sizeof(...)` lowers to the declared
+  capacity. Local buffers and computed capacities remain open.
 - Report coverage per backend and fixture; distinguish generating, executing,
   comparing state, and checking rendered output.
 - Verify every policy change in C, Go, and JS; syntax and snapshots are useful

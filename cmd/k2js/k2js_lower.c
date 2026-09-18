@@ -801,6 +801,77 @@ k2js_unsupported_expression(const char *src)
     exit(1);
 }
 
+static void
+k2js_unsupported_sizeof(const char *operand)
+{
+    fprintf(stderr,
+            "k2js: unsupported JavaScript sizeof lowering: sizeof(%s)\n",
+            operand);
+    fprintf(stderr,
+            "k2js: only fixed-capacity module state/global arrays are "
+            "supported in executable web parity fixtures\n");
+    exit(1);
+}
+
+static int
+array_capacity_expression(const char *type, char *dst, size_t dst_size)
+{
+    char element[KIR_NAME_MAX];
+    int capacity = 0;
+    const char *start;
+    const char *end;
+    size_t length;
+
+    type = kir_skip_ws(type);
+    if(!KirArrayElementType(type, element, sizeof(element), &capacity))
+        return 0;
+    start = kir_skip_ws(type + 1);
+    end = start;
+    while(*end != '\0' && *end != ']')
+        end++;
+    if(*end != ']')
+        return 0;
+    while(end > start && isspace((unsigned char)end[-1]))
+        end--;
+    length = (size_t)(end - start);
+    if(length == 0 || length >= dst_size)
+        return 0;
+    memcpy(dst, start, length);
+    dst[length] = '\0';
+    return 1;
+}
+
+static int
+sizeof_expression(const KirModule *m, const char *operand,
+                  char *dst, size_t dst_size)
+{
+    char name[K2JS_NAME_MAX];
+    const char *p = kir_skip_ws(operand);
+    size_t length = 0;
+
+    if(!(isalpha((unsigned char)*p) || *p == '_'))
+        return 0;
+    while(kir_is_ident_char((unsigned char)*p)) {
+        if(length + 1 >= sizeof(name))
+            return 0;
+        name[length++] = *p++;
+    }
+    name[length] = '\0';
+    if(*kir_skip_ws(p) != '\0')
+        return 0;
+    for(int i = 0; i < m->state_count; i++) {
+        if(strcmp(m->state_fields[i].name, name) == 0)
+            return array_capacity_expression(m->state_fields[i].type,
+                                             dst, dst_size);
+    }
+    for(int i = 0; i < m->global_count; i++) {
+        if(strcmp(m->globals[i].name, name) == 0)
+            return array_capacity_expression(m->globals[i].type,
+                                             dst, dst_size);
+    }
+    return 0;
+}
+
 /* Find where the indexed primary begins in already-emitted translated text,
  * so 'base[index]' can be rewritten as a byte-aware runtime index. */
 static size_t
@@ -909,7 +980,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         }
         free(parsed.exprs);
     }
-    if(contains_top_level_compound(src) || strstr(src, "sizeof") != NULL) {
+    if(contains_top_level_compound(src)) {
         k2js_unsupported_expression(src);
     }
     while(*p != '\0' && dn + 16 < dst_size) {
@@ -1083,6 +1154,19 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             while(kir_is_ident_char((unsigned char)*q) && il + 1 < sizeof(ident))
                 ident[il++] = *q++;
             ident[il] = '\0';
+            if(strcmp(ident, "sizeof") == 0 && *kir_skip_ws(q) == '(') {
+                char raw[K2JS_TEXT_MAX];
+                char size_expression[K2JS_TEXT_MAX];
+
+                q = consume_group(kir_skip_ws(q) + 1, raw, sizeof(raw));
+                if(!sizeof_expression(m, raw, size_expression,
+                                      sizeof(size_expression)))
+                    k2js_unsupported_sizeof(raw);
+                dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s",
+                                       size_expression);
+                p = q;
+                continue;
+            }
             if((strcmp(ident, "NULL") == 0 || strcmp(ident, "nil") == 0) &&
                !kir_is_ident_char((unsigned char)*q)) {
                 dn += (size_t)snprintf(dst + dn, dst_size - dn, "null");

@@ -15,7 +15,7 @@ intent until rerun at the revision being delivered.
 | Canonical API | Canonical plan records completed naming and release-call migrations; generated policy modules and surface guards exist. | Audit remaining behavior ownership. Do not repeat public renaming or the 34-call release-consumption migration. |
 | Web parity | `tests/generated_runtime_parity_test.sh` reports menus, scroll_content, drag_drop, and composed_popup as native/Go only, and composition as web partial. Its JS runner imports and executes composition. | Four fixtures need JS execution; composition needs completion, not a new implementation from zero. Correct the older claim that none of its JS cases execute. |
 | Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, and shortcuts; no equivalent queued down/move/up/wheel driver is present there. | Reuse composition support. Add the missing lifecycle driver and connect it to actual shared decisions. Native DOM pointer handlers alone do not prove generated-runtime parity. |
-| Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, and the web runtime no longer exports that placeholder. | Add real lowering for every supported expression form before claiming condition/activation parity. |
+| Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, the web runtime no longer exports that placeholder, and `sizeof(state_or_global_fixed_array)` lowers to the declared capacity. | Add real lowering for the remaining supported expression forms before claiming condition/activation parity. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
 | Theme switching | `src/ui/style_pack_source.c` implements `SetStyleTheme`; Go registers source packs in `go/kryon/style_pack.go`, but no Go `SetStyleTheme` definition was found. | Complete source retention and theme re-resolution in Go. |
 | DOM | Identity, source ranges, relationships, accessibility, commands, and mounted helpers already exist in `web/kryon-runtime.js`; `tests/k2js_syntax_test_runner.mjs` covers examples of these. | Treat DOM documents as contract audits; API existence does not establish all expression forms or element families. |
@@ -51,9 +51,12 @@ one-property aliases now cascade together in the web resolver (`foreground` /
 coverage. The unresolved-expression web placeholder is removed: unsupported
 executable lowering now exits with an actionable diagnostic, the JS runtime no
 longer exports `kryon.expr`, and `tests/k2js_syntax_test.sh` rejects generated
-placeholder calls. Broader shorthand/longhand side precedence remains open.
-Remaining compound matching, specificity conformance, and CSS export migration
-stay open (see the evidence ledger). Generated C, Go,
+placeholder calls. Fixed-capacity module state/global `sizeof(...)` now lowers
+to the declared capacity in executable JS and has focused syntax-runner
+coverage; local buffers and computed capacities remain open. Broader
+shorthand/longhand side precedence remains open. Remaining compound matching,
+specificity conformance, and CSS export migration stay open (see the evidence
+ledger). Generated C, Go,
 and JavaScript are outputs, not policy owners.
 
 ## Execution order

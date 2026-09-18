@@ -77,6 +77,9 @@ FractionalPreviewMode :: (value: float) -> int {
 call_host :: () -> int {
     return host_value(count)
 }
+LabelCapacity :: () -> int {
+    return sizeof(label)
+}
 note_input :: (value: string) -> int {
     unused value
     count += 10
@@ -1595,11 +1598,11 @@ cat > "$work/src/unsupported_expr.kry" <<'EOF'
 #import "kryon.h"
 
 state {
-    label: [16] char = "hello"
     count: int = 0
 }
 
 UnsupportedExpression :: () #ui {
+    label: [16] char = "hello"
     count = sizeof(label)
 }
 EOF
@@ -1608,6 +1611,6 @@ if "$k2js" --root "$work" -o "$work/out" "$work/src/unsupported_expr.kry" 2>"$wo
     echo "unsupported expression placeholder did not fail during k2js lowering" >&2
     exit 1
 fi
-grep -q 'unsupported JavaScript expression lowering' "$work/unsupported_expr.err"
+grep -q 'unsupported JavaScript sizeof lowering' "$work/unsupported_expr.err"
 
 echo "k2js syntax ok"
