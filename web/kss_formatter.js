@@ -73,14 +73,14 @@ export function KssFormatter_KssFormatFail($rt, $state = moduleState, $host = mo
         let value_9 = number_088b7c17_bool(value_8);
         if (value_9) {
             let value_10 = number_088b7c17_value(index,32,true);
-            let value_11 = number_088b7c17_value(text.length,32,true);
+            let value_11 = number_088b7c17_value(kryon.StringByteLength(text),32,true);
             let value_12 = number_088b7c17_bool(value_10 < value_11);
             value_9 = value_12;
         }
         if (!value_9) { break; }
         let value_13 = number_088b7c17_value(index,32,true);
         let value_14 = number_088b7c17_value(index,32,true);
-        let value_15 = number_088b7c17_value(text.charCodeAt(value_14),8,false);
+        let value_15 = number_088b7c17_value(kryon.index(text, value_14),8,false);
         state.result.diagnostic[value_13] = value_15;
         let value_16 = number_088b7c17_value(index,32,true);
         let value_17 = number_088b7c17_value(1,32,true);
@@ -528,7 +528,7 @@ export function KssFormatter_KssFormatScanGaps($rt, $state = moduleState, $host 
     let value_32 = ((record_source) => ({source: record_source.source, result: {ok: record_source.result.ok, segments: Array.from({length: 1024}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, length: record_source.length, atom: record_source.atom}))(record_source.result.segments[index])), count: record_source.result.count, diagnostic: Array.from({length: 128}, (_, index) => record_source.result.diagnostic[index]), diagnostic_length: record_source.result.diagnostic_length}, constructs: Array.from({length: 192}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, end: record_source.end}))(record_source.constructs[index])), construct_count: record_source.construct_count}))(value_31);
     let value_30 = value_32;
     let value_33 = number_088b7c17_value(cursor,32,true);
-    let value_34 = number_088b7c17_value(state.source.length,32,true);
+    let value_34 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
     let value_36 = KssFormatter_KssFormatScanRange($rt, $state, $host, value_30, value_33, value_34);
     let value_37 = ((record_source) => ({source: record_source.source, result: {ok: record_source.result.ok, segments: Array.from({length: 1024}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, length: record_source.length, atom: record_source.atom}))(record_source.result.segments[index])), count: record_source.result.count, diagnostic: Array.from({length: 128}, (_, index) => record_source.result.diagnostic[index]), diagnostic_length: record_source.result.diagnostic_length}, constructs: Array.from({length: 192}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, end: record_source.end}))(record_source.constructs[index])), construct_count: record_source.construct_count}))(value_36);
     let value_35 = value_37;
@@ -558,11 +558,11 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
         let value_6 = number_088b7c17_value(0,8,false);
         let byte = number_088b7c17_value(value_6,8,false);
         let value_7 = number_088b7c17_value(cursor,32,true);
-        let value_8 = number_088b7c17_value(state.source.length,32,true);
+        let value_8 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
         let value_9 = number_088b7c17_bool(value_7 < value_8);
         if (value_9) {
             let value_10 = number_088b7c17_value(cursor,32,true);
-            let value_11 = number_088b7c17_value(state.source.charCodeAt(value_10),8,false);
+            let value_11 = number_088b7c17_value(kryon.index(state.source, value_10),8,false);
             byte = value_11;
         }
         let value_12 = number_088b7c17_value(byte,8,false);
@@ -582,7 +582,7 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
             let value_22 = number_088b7c17_value(cursor,32,true);
             let value_23 = number_088b7c17_value(1,32,true);
             let value_24 = number_088b7c17_value(number_088b7c17_bits(value_22,value_23,32,true,1),32,true);
-            let value_25 = number_088b7c17_value(state.source.length,32,true);
+            let value_25 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
             let value_26 = number_088b7c17_bool(value_24 < value_25);
             value_21 = value_26;
         }
@@ -590,7 +590,7 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
             let value_27 = number_088b7c17_value(cursor,32,true);
             let value_28 = number_088b7c17_value(1,32,true);
             let value_29 = number_088b7c17_value(number_088b7c17_bits(value_27,value_28,32,true,1),32,true);
-            let value_30 = number_088b7c17_value(state.source.charCodeAt(value_29),8,false);
+            let value_30 = number_088b7c17_value(kryon.index(state.source, value_29),8,false);
             let next = number_088b7c17_value(value_30,8,false);
             let value_31 = number_088b7c17_value(next,8,false);
             let value_32 = number_088b7c17_value(47,8,false);
@@ -600,12 +600,12 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
                 let end = number_088b7c17_value(value_34,32,true);
                 while (true) {
                     let value_35 = number_088b7c17_value(end,32,true);
-                    let value_36 = number_088b7c17_value(state.source.length,32,true);
+                    let value_36 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
                     let value_37 = number_088b7c17_bool(value_35 < value_36);
                     let value_38 = number_088b7c17_bool(value_37);
                     if (value_38) {
                         let value_39 = number_088b7c17_value(end,32,true);
-                        let value_40 = number_088b7c17_value(state.source.charCodeAt(value_39),8,false);
+                        let value_40 = number_088b7c17_value(kryon.index(state.source, value_39),8,false);
                         let value_41 = number_088b7c17_value(10,8,false);
                         let value_42 = number_088b7c17_bool(value_40 != value_41);
                         value_38 = value_42;
@@ -644,11 +644,11 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
                     let value_64 = number_088b7c17_value(end,32,true);
                     let value_65 = number_088b7c17_value(1,32,true);
                     let value_66 = number_088b7c17_value(number_088b7c17_bits(value_64,value_65,32,true,1),32,true);
-                    let value_67 = number_088b7c17_value(state.source.length,32,true);
+                    let value_67 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
                     let value_68 = number_088b7c17_bool(value_66 < value_67);
                     if (!value_68) { break; }
                     let value_69 = number_088b7c17_value(end,32,true);
-                    let value_70 = number_088b7c17_value(state.source.charCodeAt(value_69),8,false);
+                    let value_70 = number_088b7c17_value(kryon.index(state.source, value_69),8,false);
                     let value_71 = number_088b7c17_value(42,8,false);
                     let value_72 = number_088b7c17_bool(value_70 == value_71);
                     let value_73 = number_088b7c17_bool(value_72);
@@ -656,7 +656,7 @@ export function KssFormatter_KssFormatScanRange($rt, $state = moduleState, $host
                         let value_74 = number_088b7c17_value(end,32,true);
                         let value_75 = number_088b7c17_value(1,32,true);
                         let value_76 = number_088b7c17_value(number_088b7c17_bits(value_74,value_75,32,true,1),32,true);
-                        let value_77 = number_088b7c17_value(state.source.charCodeAt(value_76),8,false);
+                        let value_77 = number_088b7c17_value(kryon.index(state.source, value_76),8,false);
                         let value_78 = number_088b7c17_value(47,8,false);
                         let value_79 = number_088b7c17_bool(value_77 == value_78);
                         value_73 = value_79;
@@ -908,13 +908,13 @@ export function KssFormatter_KssFormatEmitConstruct($rt, $state = moduleState, $
             let value_14 = number_088b7c17_bool(value_13);
             if (value_14) {
                 let value_15 = number_088b7c17_value(line_end,32,true);
-                let value_16 = number_088b7c17_value(state.source.length,32,true);
+                let value_16 = number_088b7c17_value(kryon.StringByteLength(state.source),32,true);
                 let value_17 = number_088b7c17_bool(value_15 < value_16);
                 value_14 = value_17;
             }
             if (!value_14) { break; }
             let value_18 = number_088b7c17_value(line_end,32,true);
-            let value_19 = number_088b7c17_value(state.source.charCodeAt(value_18),8,false);
+            let value_19 = number_088b7c17_value(kryon.index(state.source, value_18),8,false);
             let value_20 = number_088b7c17_value(10,8,false);
             let value_21 = number_088b7c17_bool(value_19 == value_20);
             if (value_21) {
@@ -933,7 +933,7 @@ export function KssFormatter_KssFormatEmitConstruct($rt, $state = moduleState, $
             let value_28 = number_088b7c17_bool(value_26 < value_27);
             if (!value_28) { break; }
             let value_29 = number_088b7c17_value(trimmed,32,true);
-            let value_30 = number_088b7c17_value(state.source.charCodeAt(value_29),8,false);
+            let value_30 = number_088b7c17_value(kryon.index(state.source, value_29),8,false);
             let byte = number_088b7c17_value(value_30,8,false);
             let value_31 = number_088b7c17_value(byte,8,false);
             let value_32 = number_088b7c17_value(32,8,false);
@@ -968,7 +968,7 @@ export function KssFormatter_KssFormatEmitConstruct($rt, $state = moduleState, $
             let value_48 = number_088b7c17_value(depth,32,true);
             let indent = number_088b7c17_value(value_48,32,true);
             let value_49 = number_088b7c17_value(trimmed,32,true);
-            let value_50 = number_088b7c17_value(state.source.charCodeAt(value_49),8,false);
+            let value_50 = number_088b7c17_value(kryon.index(state.source, value_49),8,false);
             let value_51 = number_088b7c17_value(125,8,false);
             let value_52 = number_088b7c17_bool(value_50 == value_51);
             let value_53 = number_088b7c17_bool(value_52);
@@ -1050,7 +1050,7 @@ export function KssFormatter_KssFormatEmitConstruct($rt, $state = moduleState, $
                 let value_109 = number_088b7c17_bool(value_107 < value_108);
                 if (!value_109) { break; }
                 let value_110 = number_088b7c17_value(scan,32,true);
-                let value_111 = number_088b7c17_value(state.source.charCodeAt(value_110),8,false);
+                let value_111 = number_088b7c17_value(kryon.index(state.source, value_110),8,false);
                 let byte = number_088b7c17_value(value_111,8,false);
                 let value_112 = number_088b7c17_value(byte,8,false);
                 let value_113 = number_088b7c17_value(123,8,false);

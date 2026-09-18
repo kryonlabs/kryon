@@ -22,6 +22,31 @@ for (const line of environmentCases) {
   assert.equal(String.fromCharCode(...environment.variant.bytes.slice(0, environment.variant.length)), names[5]);
 }
 
+// The same source is resolved in C, Go and JS at each yielded rule.
+{
+  const source = readEnvironmentFixture(new URL("./fixtures/kss/css-values.kss", import.meta.url), "utf8");
+  const sheet = runtime.parseWebStyleSheet(source, {}, {
+    ...runtime.defaultWebStyleEnvironment(), theme: "dark"
+  });
+  assert.equal(sheet.rules.length, 2);
+  assert.equal(sheet.rules[0].style.background, "#112233");
+  assert.equal(sheet.rules[0].style["padding-x"], 12);
+  assert.equal(sheet.rules[0].style.opacity, 0.25);
+  assert.equal(sheet.rules[0].style.width, 150);
+  assert.equal(sheet.rules[0].style["--caption"], '"café; }"');
+  assert.equal(sheet.rules[0].style["background-image"], "url(https://example.test/a;b)");
+  assert.equal(sheet.rules[0].tokenOrigins.background.origin, "pack");
+  assert.equal(sheet.rules[1].style.background, "#445566");
+  assert.equal(sheet.rules[1].tokenOrigins.background.origin, "theme");
+  assert.equal(sheet.keyframes[0].frames[0].style.background, "#112233");
+  const override = runtime.parseWebStyleSheet(source, {accent: "#abcdef"});
+  assert.equal(override.rules[0].style.background, "#abcdef");
+  assert.throws(() => runtime.parseWebStyleSheet("Button { unknown-property: 1; }"), /unknown KSS property/);
+  const literal = runtime.parseWebStyleSheet('tokens { color { accent: #112233; } } Button { background: accent; background: #ffffff; }');
+  assert.equal(literal.rules[0].style.background, "#ffffff");
+  assert.equal(literal.rules[0].tokenOrigins.background, undefined);
+}
+
 // Theme overlays, environment blocks, and imports all flow through the
 // generated runtime/kss_parser.kry module; this layer only maps to CSS.
 

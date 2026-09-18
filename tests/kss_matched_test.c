@@ -287,6 +287,60 @@ test_environment_names(void)
     fclose(file);
 }
 
+static void
+test_css_values(void)
+{
+    char *source = read_file("tests/fixtures/kss/css-values.kss");
+    KssEnvironment env = KssDefaultEnvironment();
+    env = KssEnvironmentWithNames(env, StringView("dark", 4),
+        StringView("", 0), StringView("", 0), StringView("", 0),
+        StringView("", 0), StringView("", 0));
+    KssParser p = KssBeginDeclarative(StringView(source, strlen(source)),
+        StringView("css-values.kss", 14), env);
+    int rules = 0;
+    int colors = 0;
+    int captions = 0;
+    while(p.status == KssStatusContinue || p.status == KssStatusRule) {
+        if(p.status == KssStatusRule) {
+            rules++;
+            for(int i = 0; i < p.declaration_count; i++) {
+                KssDeclaration entry = p.declarations[i];
+                if(entry.rule != p.rule.order)
+                    continue;
+                String name = StringView(source + entry.name_start, entry.name_length);
+                String text = StringView(source + entry.value_start, entry.value_length);
+                KssCSSValue value = KssResolveCSSValue(p, name, text);
+                assert(value.valid);
+                if(StringEqual(name, StringView("background", 10))) {
+                    assert(value.kind == KssCSSColor);
+                    assert(value.color == (colors < 2 ? 0x112233ffu : 0x445566ffu));
+                    assert(value.token_origin == (colors < 2 ? KssOriginPack : KssOriginTheme));
+                    KssCSSValue override = KssOverrideCSSValue(value, StringView("#abcdef", 7), true);
+                    assert(override.kind == KssCSSLiteral);
+                    assert(StringEqual(override.text, StringView("#abcdef", 7)));
+                    colors++;
+                }
+                if(StringEqual(name, StringView("--caption", 9))) {
+                    assert(StringEqual(value.text, StringView("\"café; }\"", strlen("\"café; }\""))));
+                    captions++;
+                }
+                if(StringEqual(name, StringView("width", 5))) {
+                    assert(value.kind == KssCSSNumber && value.number == 150);
+                }
+            }
+            p.status = KssStatusContinue;
+        } else {
+            p = KssStep(p);
+        }
+    }
+    assert(p.status == KssStatusDone);
+    assert(rules == 4 && colors == 3 && captions == 1);
+    assert(!KssResolveCSSValue(p, StringView("unknown-property", 16), StringView("1", 1)).valid);
+    const char *invalid = "1e9999999999999999999999";
+    assert(KssResolveCSSValue(p, StringView("width", 5), StringView(invalid, strlen(invalid))).kind == KssCSSLiteral);
+    free(source);
+}
+
 int
 main(void)
 {
@@ -294,6 +348,7 @@ main(void)
 
     ClearStyleModules();
     test_environment_names();
+    test_css_values();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

@@ -222,3 +222,64 @@ func TestKssEnvironmentNames(t *testing.T) {
 		}
 	}
 }
+
+func TestKssCSSValues(t *testing.T) {
+	host := active().(*runtime)
+	source := kssFixtureText(t, "../../tests/fixtures/kss/css-values.kss")
+	env := KssParser_KssEnvironmentWithNames(KssParser_KssDefaultEnvironment(), "dark", "", "", "", "", "")
+	parser := KssParser_KssBeginDeclarative(source, "css-values.kss", env)
+	rules, colors, captions := 0, 0, 0
+	for parser.Status == KssStatusContinue || parser.Status == KssStatusRule {
+		if parser.Status != KssStatusRule {
+			parser = host.KssParser_KssStep(parser)
+			continue
+		}
+		rules++
+		for i := int32(0); i < parser.DeclarationCount; i++ {
+			entry := parser.Declarations[i]
+			if entry.Rule != parser.Rule.Order {
+				continue
+			}
+			name := source[entry.NameStart : entry.NameStart+entry.NameLength]
+			text := source[entry.ValueStart : entry.ValueStart+entry.ValueLength]
+			value := host.KssParser_KssResolveCSSValue(parser, name, text)
+			if !value.Valid {
+				t.Fatalf("invalid property %q", name)
+			}
+			switch name {
+			case "background":
+				want, origin := uint32(0x112233ff), int32(KssOriginKindKssOriginPack)
+				if colors == 2 {
+					want, origin = 0x445566ff, int32(KssOriginKindKssOriginTheme)
+				}
+				if value.Kind != int32(KssCSSValueKindKssCSSColor) || value.Color != want || value.TokenOrigin != origin {
+					t.Fatalf("color %d: %+v", colors, value)
+				}
+				override := host.KssParser_KssOverrideCSSValue(value, "#abcdef", true)
+				if override.Kind != int32(KssCSSValueKindKssCSSLiteral) || override.Text != "#abcdef" {
+					t.Fatal(override)
+				}
+				colors++
+			case "--caption":
+				if value.Text != `"café; }"` {
+					t.Fatal(value.Text)
+				}
+				captions++
+			case "width":
+				if value.Kind != int32(KssCSSValueKindKssCSSNumber) || value.Number != 150 {
+					t.Fatal(value)
+				}
+			}
+		}
+		parser.Status = KssStatusContinue
+	}
+	if parser.Status != KssStatusDone || rules != 4 || colors != 3 || captions != 1 {
+		t.Fatalf("status %v, rules %d, colors %d, captions %d", parser.Status, rules, colors, captions)
+	}
+	if host.KssParser_KssResolveCSSValue(parser, "unknown-property", "1").Valid {
+		t.Fatal("unknown property accepted")
+	}
+	if host.KssParser_KssResolveCSSValue(parser, "width", "1e9999999999999999999999").Kind != int32(KssCSSValueKindKssCSSLiteral) {
+		t.Fatal("overflowing exponent accepted")
+	}
+}

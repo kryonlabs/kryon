@@ -1062,7 +1062,7 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             if(e->target == KIR_GO)
                 format(result, sizeof(result), "int32(len(%s))", a);
             else if(e->target == KIR_JS)
-                format(result, sizeof(result), "%s.length", a);
+                format(result, sizeof(result), "kryon.StringByteLength(%s)", a);
             else
                 format(result, sizeof(result), "(int32_t)%s.length", a);
             break;
@@ -1084,7 +1084,7 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         KirArrayElementType(base_type, NULL, 0, &capacity);
         if(!strcmp(base_type, "string")) {
             if(e->target == KIR_JS)
-                format(result, sizeof(result), "%s.charCodeAt(%s)", a, b);
+                format(result, sizeof(result), "kryon.index(%s, %s)", a, b);
             else if(e->target == KIR_GO)
                 format(result, sizeof(result), "%s[%s]", a, b);
             else

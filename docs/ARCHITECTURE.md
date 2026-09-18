@@ -12,6 +12,11 @@ and import sources. Go's source pack registry retains source/variant identities
 and stages theme re-resolution before replacing published sheets, so a missing
 import cannot partially apply a theme change. Generated provenance checks cover
 both KSS modules, including byte equality for checked-in JavaScript outputs.
+Declarative consumers resolve each yielded rule against the current token table
+through `KssResolveCSSValue`; keyframes use the same declaration stream. Earlier
+rules retain their values and provenance when later overlays update tokens.
+Structured JavaScript string indexing and length use UTF-8 bytes, matching C/Go
+and the byte offsets consumed by `StringSlice`.
 
 ## Public API
 

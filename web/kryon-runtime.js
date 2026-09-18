@@ -507,6 +507,10 @@ export function index(base, index) {
   return typeof base === "string" ? utf8StringBytes(base)[index] : base[index];
 }
 
+export function StringByteLength(source) {
+  return utf8StringBytes(source).length;
+}
+
 /* Borrowed substring view shared with generated strict code. */
 export function StringSlice(source, start, length) {
   const bytes = utf8StringBytes(String(source ?? ""));
@@ -2996,159 +3000,6 @@ const webStyleLayers = {
   overrides: 3
 };
 
-const webKssColorProperties = new Set([
-  "background", "foreground", "border", "focus", "background-end",
-  "color", "background-color",
-  "accent-color", "caret-color", "border-color", "border-top-color",
-  "border-right-color", "border-bottom-color", "border-left-color",
-  "border-inline-color", "border-block-color", "border-inline-start-color",
-  "border-inline-end-color", "border-block-start-color", "border-block-end-color",
-  "outline-color", "text-decoration-color", "text-emphasis-color",
-  "column-rule-color"
-]);
-
-const webKssLengthProperties = new Set([
-  "radius", "border-radius", "border-width", "opacity",
-  "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
-  "border-inline-width", "border-block-width", "border-inline-start-width",
-  "border-inline-end-width", "border-block-start-width", "border-block-end-width",
-  "border-top-left-radius", "border-top-right-radius",
-  "border-bottom-right-radius", "border-bottom-left-radius",
-  "border-start-start-radius", "border-start-end-radius",
-  "border-end-start-radius", "border-end-end-radius",
-  "padding", "padding-x", "padding-y",
-  "padding-left", "padding-right", "padding-top", "padding-bottom",
-  "padding-inline", "padding-block",
-  "padding-inline-start", "padding-inline-end",
-  "padding-block-start", "padding-block-end",
-  "margin", "margin-x", "margin-y",
-  "margin-left", "margin-right", "margin-top", "margin-bottom",
-  "margin-inline", "margin-block",
-  "margin-inline-start", "margin-inline-end",
-  "margin-block-start", "margin-block-end",
-  "width", "height", "min-width", "max-width", "min-height", "max-height",
-  "inline-size", "block-size", "min-inline-size", "max-inline-size",
-  "min-block-size", "max-block-size",
-  "inset", "top", "right", "bottom", "left",
-  "inset-inline", "inset-block",
-  "inset-inline-start", "inset-inline-end",
-  "inset-block-start", "inset-block-end",
-  "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
-  "flex-basis",
-  "text-indent", "text-decoration-thickness", "text-underline-offset",
-  "vertical-align", "perspective", "offset-distance",
-  "outline-width", "outline-offset", "tab-size",
-  "column-count", "column-width", "column-rule-width", "border-spacing",
-  "contain-intrinsic-size", "contain-intrinsic-width",
-  "contain-intrinsic-height", "contain-intrinsic-inline-size",
-  "contain-intrinsic-block-size", "overflow-clip-margin",
-  "shape-margin",
-  "scroll-margin", "scroll-margin-top", "scroll-margin-right",
-  "scroll-margin-bottom", "scroll-margin-left",
-  "scroll-margin-inline", "scroll-margin-block",
-  "scroll-margin-inline-start", "scroll-margin-inline-end",
-  "scroll-margin-block-start", "scroll-margin-block-end",
-  "scroll-padding", "scroll-padding-top", "scroll-padding-right",
-  "scroll-padding-bottom", "scroll-padding-left",
-  "scroll-padding-inline", "scroll-padding-block",
-  "scroll-padding-inline-start", "scroll-padding-inline-end",
-  "scroll-padding-block-start", "scroll-padding-block-end",
-  "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
-]);
-
-const webKssMaterialProperties = new Set(["material"]);
-
-const webKssLiteralProperties = new Set([
-  "font", "typeface", "font-family", "font-weight", "font-style", "font-variant", "font-stretch",
-  "font-kerning", "font-optical-sizing", "font-feature-settings",
-  "font-variation-settings", "font-size-adjust", "font-synthesis",
-  "font-synthesis-weight", "font-synthesis-style",
-  "font-synthesis-small-caps", "font-synthesis-position",
-  "font-variant-alternates", "font-variant-caps", "font-variant-east-asian",
-  "font-variant-ligatures", "font-variant-numeric",
-  "font-variant-position", "font-language-override", "font-palette",
-  "text-align", "text-align-last", "text-rendering",
-  "text-decoration", "text-decoration-line", "text-decoration-style",
-  "text-decoration-skip", "text-decoration-skip-ink",
-  "text-underline-position", "text-shadow", "text-emphasis",
-  "text-emphasis-style", "text-emphasis-position",
-  "text-transform", "text-overflow", "white-space",
-  "text-size-adjust", "text-orientation", "text-wrap",
-  "text-wrap-mode", "text-wrap-style", "text-justify", "line-break",
-  "hanging-punctuation",
-  "text-combine-upright", "ruby-align", "ruby-position",
-  "text-spacing-trim", "text-autospace", "text-box-trim", "text-box-edge",
-  "word-break", "overflow-wrap", "word-wrap", "display", "position", "z-index",
-  "overflow", "overflow-inline", "overflow-block",
-  "border-top", "border-right", "border-bottom", "border-left",
-  "border-inline", "border-block", "border-inline-start",
-  "border-inline-end", "border-block-start", "border-block-end",
-  "border-style", "border-top-style", "border-right-style",
-  "border-bottom-style", "border-left-style", "border-inline-style",
-  "border-block-style", "border-inline-start-style",
-  "border-inline-end-style", "border-block-start-style", "border-block-end-style",
-  "border-image", "border-image-source", "border-image-slice",
-  "border-image-width", "border-image-outset", "border-image-repeat",
-  "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
-  "hyphens", "line-clamp", "list-style", "list-style-type",
-  "list-style-position", "list-style-image", "counter-reset",
-  "counter-increment", "counter-set", "quotes", "marker-side",
-  "marker-start", "marker-end", "orphans", "widows",
-  "box-decoration-break",
-  "border-collapse", "table-layout", "caption-side", "empty-cells",
-  "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
-  "overscroll-behavior-y", "overscroll-behavior-inline",
-  "overscroll-behavior-block", "scroll-snap-type", "scroll-snap-align",
-  "scroll-snap-stop", "scrollbar-color", "scrollbar-width",
-  "scrollbar-gutter", "touch-action",
-  "align-items", "justify-content", "align-self", "justify-self",
-  "flex-direction", "flex-wrap", "flex-flow", "flex", "flex-grow", "flex-shrink",
-  "grid", "grid-template", "grid-template-columns", "grid-template-rows", "grid-template-areas",
-  "grid-auto-columns", "grid-auto-rows", "grid-auto-flow",
-  "grid-column", "grid-column-start", "grid-column-end", "grid-area",
-  "grid-row", "grid-row-start", "grid-row-end",
-  "align-content", "justify-items", "place-items", "place-content", "place-self",
-  "align-tracks", "justify-tracks",
-  "object-fit", "object-position", "object-view-box", "aspect-ratio",
-  "image-rendering", "image-orientation", "image-resolution",
-  "background-image", "background-size", "background-position",
-  "background-position-x", "background-position-y",
-  "background-repeat", "background-repeat-x", "background-repeat-y",
-  "background-clip", "background-origin",
-  "background-attachment", "background-blend-mode", "visibility",
-  "transition", "transition-property", "transition-duration",
-  "transition-timing-function", "transition-delay", "transition-behavior",
-  "animation", "animation-name", "animation-duration",
-  "animation-timing-function", "animation-delay",
-  "animation-iteration-count", "animation-direction",
-  "animation-fill-mode", "animation-play-state",
-  "animation-composition", "animation-timeline", "animation-range", "animation-range-start",
-  "animation-range-end", "scroll-timeline", "scroll-timeline-name",
-  "scroll-timeline-axis", "view-timeline", "view-timeline-name",
-  "view-timeline-axis", "view-timeline-inset", "timeline-scope",
-  "transform", "transform-origin", "transform-box", "transform-style",
-  "translate", "rotate", "scale", "perspective-origin", "backface-visibility",
-  "offset-path", "offset-rotate", "offset-anchor", "offset-position",
-  "filter", "backdrop-filter", "clip-path",
-  "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
-  "mask-origin", "mask-clip", "mask-composite", "mask-mode",
-  "cursor", "pointer-events", "appearance", "user-select", "resize",
-  "outline", "outline-style", "box-shadow", "color-scheme",
-  "field-sizing", "interpolate-size", "overlay", "forced-color-adjust",
-  "print-color-adjust", "color-interpolation", "color-interpolation-filters",
-  "paint-order", "shape-outside", "shape-image-threshold",
-  "contain", "content-visibility", "contain-intrinsic-size",
-  "contain-intrinsic-width", "contain-intrinsic-height",
-  "contain-intrinsic-inline-size", "contain-intrinsic-block-size",
-  "container", "container-type", "container-name", "will-change",
-  "anchor-name", "position-anchor", "position-area", "position-try",
-  "position-try-fallbacks", "position-try-order", "position-visibility",
-  "view-transition-name", "isolation", "mix-blend-mode", "columns",
-  "column-fill", "column-span", "column-rule", "column-rule-style",
-  "break-before", "break-after", "break-inside", "float", "clear",
-  "order"
-]);
-
 function stripKssComments(source) {
   return String(source || "")
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -3369,74 +3220,6 @@ function parseSelector(text) {
   };
 }
 
-function parseKssValue(value) {
-  const text = String(value || "").trim();
-  const number = Number(text.replace(/px$/, ""));
-  if (Number.isFinite(number) && /^-?\d+(?:\.\d+)?(?:px)?$/.test(text))
-    return number;
-  return text;
-}
-
-function parseKssDurationValue(value) {
-  const text = String(value || "").trim();
-  const match = text.match(/^(-?\d+(?:\.\d+)?)(ms|s)?$/i);
-  if (!match)
-    throw new Error(`expected token duration ${text}`);
-  const number = Number(match[1]);
-  return match[2]?.toLowerCase() === "s" ? number * 1000 : number;
-}
-
-function parseKssDeclarationValue(name, value, tokens) {
-  const parsed = parseKssValue(value);
-  if (typeof parsed !== "string")
-    return parsed;
-  const key = parsed.trim();
-  const property = String(name || "").toLowerCase();
-  if (webKssColorProperties.has(property))
-    return tokens.colors.get(key) ?? parsed;
-  if (webKssLengthProperties.has(property))
-    return tokens.lengths.get(key) ?? parsed;
-  if (webKssMaterialProperties.has(property))
-    return tokens.materials.get(key) ?? parsed;
-  if (property.startsWith("--"))
-    return parsed;
-  if (!webKssLiteralProperties.has(property))
-    throw new Error(`unknown KSS property ${name}`);
-  return parsed;
-}
-
-function parseKssDeclarations(body, tokens = emptyWebStyleTokens()) {
-  const style = {};
-  for (const part of String(body || "").split(";")) {
-    const colon = part.indexOf(":");
-    if (colon < 0)
-      continue;
-    const name = part.slice(0, colon).trim();
-    if (!name)
-      continue;
-    style[name] = parseKssDeclarationValue(name, part.slice(colon + 1), tokens);
-  }
-  return style;
-}
-
-function emptyWebStyleTokens() {
-  return { colors: new Map(), lengths: new Map(), materials: new Map() };
-}
-
-function findMatchingBrace(text, open) {
-  let depth = 0;
-  for (let i = open; i < text.length; i++) {
-    if (text[i] === "{")
-      depth++;
-    else if (text[i] === "}") {
-      depth--;
-      if (depth === 0)
-        return i;
-    }
-  }
-  return -1;
-}
-
 // The KSS grammar lives once in runtime/kss_parser.kry; this layer only maps
 // its typed output (rules, spans, declarations, tokens, foreign blocks) onto
 // CSS selectors, values, keyframes, and conditional groups.
@@ -3514,19 +3297,21 @@ function webMaterialName(material) {
   return "Flat";
 }
 
-function runWebKssParser(source, environment) {
+function runWebKssParser(source, environment, colors) {
   let p = webKssModule.KssParser_KssBeginDeclarative(null, undefined, undefined,
     source, "", webKssEnvironment(environment));
   const unitSources = [source];
   const rules = [];
   for (;;) {
     if (p.status === webKssModule.KssStatusRule) {
-      rules.push({
+      const item = {
         rule: p.rule,
         span: { ...p.rule_span },
         origin: { ...p.origin },
         source: unitSources[p.rule_span.file] ?? source
-      });
+      };
+      Object.assign(item, webDeclarationsForRule(item, p, colors));
+      rules.push(item);
       p.status = webKssModule.KssStatusContinue;
       continue;
     }
@@ -3562,94 +3347,85 @@ function webKssOriginName(origin) {
   }
 }
 
-function webTokensFromParser(p) {
-  const tokens = emptyWebStyleTokens();
-  tokens.origins = new Map();
-  for (let i = 0; i < p.token_count; i++) {
-    const token = p.tokens[i];
-    const name = webKssNameText(token.name);
-    if (!name)
-      continue;
-    tokens.origins.set(name, webKssOriginName(token.origin));
-    if (token.kind === webKssModule.KssTokenColor)
-      tokens.colors.set(name, webCssColor(token.color));
-    else if (token.kind === webKssModule.KssTokenMaterial)
-      tokens.materials.set(name, webMaterialName(token.material));
-    else
-      tokens.lengths.set(name, token.number);
-  }
-  return tokens;
+// The generated module decides property support, values, token references,
+// and overrides. This adapter only serializes its tagged result for CSS.
+function webDeclarationValue(p, name, source, colors) {
+  let value = webKssModule.KssParser_KssResolveCSSValue(null, undefined, undefined,
+    p, name, source);
+  if (!value.valid)
+    throw new Error(`unknown KSS property ${name}`);
+  const token = webKssNameText(value.token_name);
+  value = webKssModule.KssParser_KssOverrideCSSValue(null, undefined, undefined,
+    value, String(colors?.[token] ?? ""), Object.hasOwn(colors || {}, token));
+  let resolved = value.text;
+  if (value.kind === webKssModule.KssCSSNumber)
+    resolved = value.number;
+  else if (value.kind === webKssModule.KssCSSColor)
+    resolved = webCssColor(value.color);
+  else if (value.kind === webKssModule.KssCSSMaterial)
+    resolved = webMaterialName(value.material);
+  return { resolved, token: value.has_token
+    ? {name: token, origin: webKssOriginName(value.token_origin)} : null };
 }
 
-function webKeyframesFromBody(body, tokens) {
-  const frames = [];
-  const framePattern = /([^{}]+)\{([^{}]*)\}/g;
-  for (let frame; (frame = framePattern.exec(body));) {
-    const selector = splitSelectorList(frame[1]).join(", ");
-    if (!selector)
-      continue;
-    frames.push({ selector, style: parseKssDeclarations(frame[2], tokens) });
-  }
-  return frames;
-}
-
-function webDeclarationsForRule(item, p, tokens) {
+function webDeclarationsForRule(item, p, colors) {
   const style = {};
   const raw = {};
+  const tokenOrigins = {};
   for (let i = 0; i < p.declaration_count; i++) {
     const entry = p.declarations[i];
     if (entry.rule !== item.rule.order)
       continue;
-    const name = item.source.slice(entry.name_start, entry.name_start + entry.name_length);
-    const value = item.source.slice(entry.value_start, entry.value_start + entry.value_length);
-    style[name] = parseKssDeclarationValue(name, value, tokens);
-    raw[name] = value;
+    const name = StringSlice(item.source, entry.name_start, entry.name_length);
+    const source = StringSlice(item.source, entry.value_start, entry.value_length);
+    const value = webDeclarationValue(p, name, source, colors);
+    style[name] = value.resolved;
+    raw[name] = source;
+    if (value.token)
+      tokenOrigins[name] = value.token;
+    else
+      delete tokenOrigins[name];
   }
-  return [style, raw];
+  return {style, raw, tokenOrigins};
 }
 
-function webRulesFromItem(item, p, tokens, sourceFiles) {
+function webRulesFromItem(item, sourceFiles) {
   const mapped = [];
-  const selectorText = item.source.slice(
-    item.span.selector_start, item.span.selector_start + item.span.selector_length
-  ).trim();
-  const [style, raw] = webDeclarationsForRule(item, p, tokens);
+  const selectorText = stripKssComments(StringSlice(item.source,
+    item.span.selector_start, item.span.selector_length)).trim();
+  const {style, raw, tokenOrigins} = item;
   const sourceFile = sourceFiles[(item.origin ? item.origin.file : item.span.file)] || "";
   const sourceLine = item.origin ? item.origin.line : 0;
   for (const part of splitSelectorList(selectorText)) {
     if (!part.trim())
       continue;
     const selector = parseSelector(part);
-    mapped.push({ selector, style, raw, layer: item.rule.layer, sourceFile, sourceLine });
+    mapped.push({ selector, style, raw, tokenOrigins, layer: item.rule.layer, sourceFile, sourceLine });
   }
   return mapped;
 }
 
 export function parseWebStyleSheet(source, colors = {}, environment = defaultWebStyleEnvironment()) {
-  const run = runWebKssParser(stripKssComments(String(source ?? "")), environment);
+  const run = runWebKssParser(String(source ?? ""), environment, colors);
   const p = run.parser;
   const unitSources = run.unitSources;
   const sourceFiles = run.sourceFiles;
-  const tokens = webTokensFromParser(p);
-  for (const [name, color] of Object.entries(colors || {})) {
-    if (tokens.colors.has(name))
-      tokens.colors.set(name, parseKssValue(color));
-  }
 
   const rules = [];
   const groups = [];
   const keyframes = [];
   const groupNames = ["media", "supports", "container"];
   const foreignToGroup = [];
+  const foreignToKeyframes = [];
 
   for (let i = 0; i < p.foreign_count; i++) {
     const foreign = p.foreign[i];
     const unit = unitSources[foreign.file] ?? "";
     const name = webKssNameText(foreign.name).toLowerCase();
-    const query = unit.slice(foreign.query_start, foreign.query_start + foreign.query_length).trim();
-    const body = unit.slice(foreign.body_start, foreign.body_start + foreign.body_length);
+    const query = StringSlice(unit, foreign.query_start, foreign.query_length).trim();
+    foreignToKeyframes.push(name === "keyframes" ? keyframes.length : -1);
     if (name === "keyframes") {
-      keyframes.push({ name: query, frames: webKeyframesFromBody(body, tokens) });
+      keyframes.push({ name: query, frames: [] });
       foreignToGroup.push(-1);
     } else if (groupNames.includes(name) && query) {
       groups.push({ kind: name, query, rules: [] });
@@ -3660,7 +3436,13 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
   }
 
   for (const item of run.rules) {
-    const mapped = webRulesFromItem(item, p, tokens, sourceFiles);
+    const keyframesIndex = item.span.group >= 0 ? foreignToKeyframes[item.span.group] : -1;
+    if (keyframesIndex >= 0) {
+      const selector = StringSlice(item.source, item.span.selector_start, item.span.selector_length);
+      keyframes[keyframesIndex].frames.push({selector: splitSelectorList(selector).join(", "), style: item.style});
+      continue;
+    }
+    const mapped = webRulesFromItem(item, sourceFiles);
     const groupIndex = item.span.group >= 0 ? foreignToGroup[item.span.group] : -1;
     const target = groupIndex >= 0 ? groups[groupIndex].rules : rules;
     for (const mappedRule of mapped) {
@@ -3678,8 +3460,10 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
     ...(environment || {})
   };
   const tokensOrigin = {};
-  for (const [name, origin] of tokens.origins || [])
-    tokensOrigin[name] = origin;
+  for (let i = 0; i < p.token_count; i++) {
+    const token = p.tokens[i];
+    tokensOrigin[webKssNameText(token.name)] = webKssOriginName(token.origin);
+  }
   return {
     pack: webKssNameText(p.pack),
     rules,
@@ -5278,9 +5062,9 @@ export function traceWebStyle(node, sheets = []) {
       });
       for (const [name, value] of Object.entries(rule.style || {})) {
         const tokenName = String(rule.raw?.[name] ?? "").trim();
-        const tokenOrigin = tokenName && ruleTokens[tokenName]
+        const tokenOrigin = rule.tokenOrigins?.[name] || (tokenName && ruleTokens[tokenName]
           ? { name: tokenName, origin: ruleTokens[tokenName] }
-          : null;
+          : null);
         if (!winners[name] || score >= winners[name].score) {
           resolved[name] = value;
           winners[name] = {

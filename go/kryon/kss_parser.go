@@ -230,6 +230,12 @@ type KssNumberResult struct {
 	Ok     bool
 }
 
+type KssScalarResult struct {
+	Parser KssCursor
+	Value  float64
+	Ok     bool
+}
+
 type KssColorResult struct {
 	Parser KssCursor
 	Value  uint32
@@ -250,6 +256,27 @@ type KssIntResult struct {
 type KssOverlayOutcome struct {
 	Parser  KssParser
 	Matched bool
+}
+
+type KssCSSValueKind int32
+
+const (
+	KssCSSValueKindKssCSSLiteral  = 0
+	KssCSSValueKindKssCSSNumber   = 1
+	KssCSSValueKindKssCSSColor    = 2
+	KssCSSValueKindKssCSSMaterial = 3
+)
+
+type KssCSSValue struct {
+	Valid       bool
+	Kind        int32
+	Number      float64
+	Color       uint32
+	Material    int32
+	Text        string
+	HasToken    bool
+	TokenName   KssName
+	TokenOrigin int32
 }
 
 func KssParser_KssDefaultEnvironment() KssEnvironment {
@@ -1696,13 +1723,29 @@ func KssParser_KssReadHexColor(c KssCursor) KssColorResult {
 }
 
 func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
+	var value_0 KssCursor = c
+	var value_1 KssScalarResult = KssParser_KssReadScalar(value_0)
+	var scalar KssScalarResult = value_1
 	var result KssNumberResult = KssNumberResult{}
+	var value_2 KssCursor = scalar.Parser
+	result.Parser = value_2
+	var value_3 float64 = scalar.Value
+	var value_4 float32 = float32(value_3)
+	result.Value = value_4
+	var value_5 bool = scalar.Ok
+	result.Ok = value_5
+	var value_6 KssNumberResult = result
+	return value_6
+}
+
+func KssParser_KssReadScalar(c KssCursor) KssScalarResult {
+	var result KssScalarResult = KssScalarResult{}
 	var value_0 bool = false
 	var negative bool = value_0
-	var value_1 uint32 = 0
-	var whole uint32 = value_1
-	var value_2 uint32 = 0
-	var fraction uint32 = value_2
+	var value_1 float64 = 0.0
+	var whole float64 = value_1
+	var value_2 float64 = 0.0
+	var fraction float64 = value_2
 	var value_3 int32 = 0
 	var fraction_digits int32 = value_3
 	var value_4 int32 = 0
@@ -1723,7 +1766,7 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 	if value_12 {
 		var value_13 KssCursor = c
 		result.Parser = value_13
-		var value_14 KssNumberResult = result
+		var value_14 KssScalarResult = result
 		return value_14
 	}
 	var value_15 int32 = c.Pos
@@ -1763,15 +1806,15 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 		if !value_33 {
 			break
 		}
-		var value_37 uint32 = whole
-		var value_38 uint32 = 10
-		var value_39 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(value_38), 32, false, 3))
+		var value_37 float64 = whole
+		var value_38 float64 = 10.0
+		var value_39 float64 = value_37 * value_38
 		var value_40 int32 = c.Pos
 		var value_41 uint8 = c.Source[value_40]
 		var value_42 uint8 = 48
 		var value_43 uint8 = uint8(number_runtime_bits(uint64(value_41), uint64(value_42), 8, false, 2))
-		var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
-		var value_45 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(value_44), 32, false, 1))
+		var value_44 float64 = float64(value_43)
+		var value_45 float64 = value_39 + value_44
 		whole = value_45
 		var value_46 bool = true
 		seen_digits = value_46
@@ -1800,7 +1843,7 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 	if value_58 {
 		var value_61 KssCursor = c
 		result.Parser = value_61
-		var value_62 KssNumberResult = result
+		var value_62 KssScalarResult = result
 		return value_62
 	}
 	var value_63 KssCursor = c
@@ -1834,18 +1877,18 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 				break
 			}
 			var value_81 int32 = fraction_digits
-			var value_82 int32 = 9
+			var value_82 int32 = 17
 			var value_83 bool = value_81 < value_82
 			if value_83 {
-				var value_84 uint32 = fraction
-				var value_85 uint32 = 10
-				var value_86 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, false, 3))
+				var value_84 float64 = fraction
+				var value_85 float64 = 10.0
+				var value_86 float64 = value_84 * value_85
 				var value_87 int32 = c.Pos
 				var value_88 uint8 = c.Source[value_87]
 				var value_89 uint8 = 48
 				var value_90 uint8 = uint8(number_runtime_bits(uint64(value_88), uint64(value_89), 8, false, 2))
-				var value_91 uint32 = uint32(number_runtime_bits(uint64(value_90), uint64(0), 32, false, 0))
-				var value_92 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(value_91), 32, false, 1))
+				var value_91 float64 = float64(value_90)
+				var value_92 float64 = value_86 + value_91
 				fraction = value_92
 				var value_93 int32 = fraction_digits
 				var value_94 int32 = 1
@@ -1865,7 +1908,7 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 	if value_101 {
 		var value_102 KssCursor = c
 		result.Parser = value_102
-		var value_103 KssNumberResult = result
+		var value_103 KssScalarResult = result
 		return value_103
 	}
 	var value_104 KssCursor = c
@@ -1929,103 +1972,142 @@ func KssParser_KssReadNumber(c KssCursor) KssNumberResult {
 				c = value_142
 			}
 		}
+		var value_143 int32 = c.Pos
+		var exponent_start int32 = value_143
 		for {
-			var value_143 KssCursor = c
-			var value_144 bool = KssParser_KssAtEnd(value_143)
-			var value_145 bool = !value_144
-			var value_146 bool = value_145
-			if value_146 {
-				var value_147 int32 = c.Pos
-				var value_148 uint8 = c.Source[value_147]
-				var value_149 bool = KssParser_KssIsDigit(value_148)
-				value_146 = value_149
+			var value_144 KssCursor = c
+			var value_145 bool = KssParser_KssAtEnd(value_144)
+			var value_146 bool = !value_145
+			var value_147 bool = value_146
+			if value_147 {
+				var value_148 int32 = c.Pos
+				var value_149 uint8 = c.Source[value_148]
+				var value_150 bool = KssParser_KssIsDigit(value_149)
+				value_147 = value_150
 			}
-			if !value_146 {
+			if !value_147 {
 				break
 			}
-			var value_150 int32 = exponent
-			var value_151 int32 = 10
-			var value_152 int32 = int32(number_runtime_bits(uint64(value_150), uint64(value_151), 32, true, 3))
-			var value_153 int32 = c.Pos
-			var value_154 uint8 = c.Source[value_153]
-			var value_155 uint8 = 48
-			var value_156 uint8 = uint8(number_runtime_bits(uint64(value_154), uint64(value_155), 8, false, 2))
-			var value_157 int32 = int32(number_runtime_bits(uint64(value_156), uint64(0), 32, true, 0))
-			var value_158 int32 = int32(number_runtime_bits(uint64(value_152), uint64(value_157), 32, true, 1))
-			exponent = value_158
-			var value_159 KssCursor = c
-			var value_160 int32 = 1
-			var value_161 KssCursor = KssParser_KssAdvance(value_159, value_160)
-			c = value_161
+			var value_151 int32 = exponent
+			var value_152 int32 = 400
+			var value_153 bool = value_151 <= value_152
+			if value_153 {
+				var value_154 int32 = exponent
+				var value_155 int32 = 10
+				var value_156 int32 = int32(number_runtime_bits(uint64(value_154), uint64(value_155), 32, true, 3))
+				var value_157 int32 = c.Pos
+				var value_158 uint8 = c.Source[value_157]
+				var value_159 uint8 = 48
+				var value_160 uint8 = uint8(number_runtime_bits(uint64(value_158), uint64(value_159), 8, false, 2))
+				var value_161 int32 = int32(number_runtime_bits(uint64(value_160), uint64(0), 32, true, 0))
+				var value_162 int32 = int32(number_runtime_bits(uint64(value_156), uint64(value_161), 32, true, 1))
+				exponent = value_162
+			}
+			var value_163 KssCursor = c
+			var value_164 int32 = 1
+			var value_165 KssCursor = KssParser_KssAdvance(value_163, value_164)
+			c = value_165
+		}
+		var value_166 int32 = c.Pos
+		var value_167 int32 = exponent_start
+		var value_168 bool = value_166 == value_167
+		var value_169 bool = value_168
+		if !value_169 {
+			var value_170 int32 = exponent
+			var value_171 int32 = 400
+			var value_172 bool = value_170 > value_171
+			value_169 = value_172
+		}
+		if value_169 {
+			var value_173 KssCursor = c
+			result.Parser = value_173
+			var value_174 KssScalarResult = result
+			return value_174
 		}
 	}
-	var value_162 int32 = 0
-	var step int32 = value_162
+	var value_175 int32 = 0
+	var step int32 = value_175
 	for {
-		var value_163 int32 = step
-		var value_164 int32 = fraction_digits
-		var value_165 bool = value_163 < value_164
-		if !value_165 {
+		var value_176 int32 = step
+		var value_177 int32 = fraction_digits
+		var value_178 bool = value_176 < value_177
+		if !value_178 {
 			break
 		}
-		var value_166 float64 = power
-		var value_167 float64 = 10.0
-		var value_168 float64 = value_166 * value_167
-		power = value_168
-		var value_169 int32 = step
-		var value_170 int32 = 1
-		var value_171 int32 = int32(number_runtime_bits(uint64(value_169), uint64(value_170), 32, true, 1))
-		step = value_171
+		var value_179 float64 = power
+		var value_180 float64 = 10.0
+		var value_181 float64 = value_179 * value_180
+		power = value_181
+		var value_182 int32 = step
+		var value_183 int32 = 1
+		var value_184 int32 = int32(number_runtime_bits(uint64(value_182), uint64(value_183), 32, true, 1))
+		step = value_184
 	}
-	var value_172 uint32 = whole
-	var value_173 float64 = float64(value_172)
-	var value_174 uint32 = fraction
-	var value_175 float64 = float64(value_174)
-	var value_176 float64 = power
-	var value_177 float64 = value_175 / value_176
-	var value_178 float64 = value_173 + value_177
-	value64 = value_178
-	var value_179 int32 = 0
-	step = value_179
+	var value_185 float64 = whole
+	var value_186 float64 = float64(value_185)
+	var value_187 float64 = fraction
+	var value_188 float64 = float64(value_187)
+	var value_189 float64 = power
+	var value_190 float64 = value_188 / value_189
+	var value_191 float64 = value_186 + value_190
+	value64 = value_191
+	var value_192 int32 = 0
+	step = value_192
 	for {
-		var value_180 int32 = step
-		var value_181 int32 = exponent
-		var value_182 bool = value_180 < value_181
-		if !value_182 {
+		var value_193 int32 = step
+		var value_194 int32 = exponent
+		var value_195 bool = value_193 < value_194
+		if !value_195 {
 			break
 		}
-		var value_183 bool = exponent_negative
-		if value_183 {
-			var value_184 float64 = value64
-			var value_185 float64 = 10.0
-			var value_186 float64 = value_184 / value_185
-			value64 = value_186
+		var value_196 bool = exponent_negative
+		if value_196 {
+			var value_197 float64 = value64
+			var value_198 float64 = 10.0
+			var value_199 float64 = value_197 / value_198
+			value64 = value_199
 		} else {
-			var value_187 float64 = value64
-			var value_188 float64 = 10.0
-			var value_189 float64 = value_187 * value_188
-			value64 = value_189
+			var value_200 float64 = value64
+			var value_201 float64 = 10.0
+			var value_202 float64 = value_200 * value_201
+			value64 = value_202
 		}
-		var value_190 int32 = step
-		var value_191 int32 = 1
-		var value_192 int32 = int32(number_runtime_bits(uint64(value_190), uint64(value_191), 32, true, 1))
-		step = value_192
+		var value_203 int32 = step
+		var value_204 int32 = 1
+		var value_205 int32 = int32(number_runtime_bits(uint64(value_203), uint64(value_204), 32, true, 1))
+		step = value_205
 	}
-	var value_193 bool = negative
-	if value_193 {
-		var value_194 float64 = value64
-		var value_195 float64 = -value_194
-		value64 = value_195
+	var value_206 bool = negative
+	if value_206 {
+		var value_207 float64 = value64
+		var value_208 float64 = -value_207
+		value64 = value_208
 	}
-	var value_196 KssCursor = c
-	result.Parser = value_196
-	var value_197 float64 = value64
-	var value_198 float32 = float32(value_197)
-	result.Value = value_198
-	var value_199 bool = true
-	result.Ok = value_199
-	var value_200 KssNumberResult = result
-	return value_200
+	var value_209 KssCursor = c
+	result.Parser = value_209
+	var value_210 float64 = value64
+	var value_211 float64 = 1.7976931348623157e308
+	var value_212 bool = value_210 > value_211
+	var value_213 bool = value_212
+	if !value_213 {
+		var value_214 float64 = value64
+		var value_215 float64 = 1.7976931348623157e308
+		var value_216 float64 = -value_215
+		var value_217 bool = value_214 < value_216
+		value_213 = value_217
+	}
+	if value_213 {
+		var value_218 bool = false
+		result.Ok = value_218
+		var value_219 KssScalarResult = result
+		return value_219
+	}
+	var value_220 float64 = value64
+	result.Value = value_220
+	var value_221 bool = true
+	result.Ok = value_221
+	var value_222 KssScalarResult = result
+	return value_222
 }
 
 func KssParser_KssReadDuration(c KssCursor) KssNumberResult {
@@ -4060,113 +4142,256 @@ func KssParser_KssCaptureDeclaration(p KssParser, rule StyleRule, name KssName, 
 	p.Cursor = value_15
 	var value_16 int32 = p.Cursor.Pos
 	entry.ValueStart = value_16
-	var value_17 bool = true
-	var running bool = value_17
+	var value_17 uint8 = 0
+	var quote uint8 = value_17
+	var value_18 int32 = 0
+	var depth int32 = value_18
+	var value_19 bool = true
+	var running bool = value_19
 	for {
-		var value_18 bool = running
-		if !value_18 {
+		var value_20 bool = running
+		if !value_20 {
 			break
 		}
-		var value_19 KssCursor = c
-		var value_20 bool = KssParser_KssAtEnd(value_19)
-		if value_20 {
-			var value_21 KssParser = p
-			var value_22 string = "expected ';'"
-			var value_23 KssParser = KssParser_KssFail(value_21, value_22)
-			result.Parser = value_23
-			var value_24 KssRuleResult = result
-			return value_24
+		var value_21 KssCursor = c
+		var value_22 bool = KssParser_KssAtEnd(value_21)
+		if value_22 {
+			var value_23 KssParser = p
+			var value_24 string = "expected ';'"
+			var value_25 KssParser = KssParser_KssFail(value_23, value_24)
+			result.Parser = value_25
+			var value_26 KssRuleResult = result
+			return value_26
 		}
-		var value_25 int32 = p.Cursor.Pos
-		var value_26 uint8 = p.Cursor.Source[value_25]
-		var value_27 uint8 = 59
-		var value_28 bool = value_26 == value_27
-		var value_29 bool = value_28
-		if !value_29 {
-			var value_30 int32 = p.Cursor.Pos
-			var value_31 uint8 = p.Cursor.Source[value_30]
-			var value_32 uint8 = 125
-			var value_33 bool = value_31 == value_32
-			value_29 = value_33
+		var value_27 int32 = c.Pos
+		var value_28 uint8 = c.Source[value_27]
+		var byte uint8 = value_28
+		var value_29 uint8 = quote
+		var value_30 uint8 = 0
+		var value_31 bool = value_29 != value_30
+		if value_31 {
+			var value_32 uint8 = byte
+			var value_33 uint8 = 92
+			var value_34 bool = value_32 == value_33
+			var value_35 bool = value_34
+			if value_35 {
+				var value_36 KssCursor = c
+				var value_37 int32 = 1
+				var value_38 uint8 = KssParser_KssPeek(value_36, value_37)
+				var value_39 uint8 = 0
+				var value_40 bool = value_38 != value_39
+				value_35 = value_40
+			}
+			if value_35 {
+				var value_41 KssCursor = c
+				var value_42 int32 = 2
+				var value_43 KssCursor = KssParser_KssAdvance(value_41, value_42)
+				c = value_43
+				var value_44 KssCursor = c
+				p.Cursor = value_44
+				continue
+			}
+			var value_45 uint8 = byte
+			var value_46 uint8 = quote
+			var value_47 bool = value_45 == value_46
+			if value_47 {
+				var value_48 uint8 = 0
+				quote = value_48
+			}
+		} else {
+			var value_49 uint8 = byte
+			var value_50 uint8 = 34
+			var value_51 bool = value_49 == value_50
+			var value_52 bool = value_51
+			if !value_52 {
+				var value_53 uint8 = byte
+				var value_54 uint8 = 39
+				var value_55 bool = value_53 == value_54
+				value_52 = value_55
+			}
+			if value_52 {
+				var value_56 uint8 = byte
+				quote = value_56
+			} else {
+				var value_57 uint8 = byte
+				var value_58 uint8 = 47
+				var value_59 bool = value_57 == value_58
+				var value_60 bool = value_59
+				if value_60 {
+					var value_61 KssCursor = c
+					var value_62 int32 = 1
+					var value_63 uint8 = KssParser_KssPeek(value_61, value_62)
+					var value_64 uint8 = 42
+					var value_65 bool = value_63 == value_64
+					var value_66 bool = value_65
+					if !value_66 {
+						var value_67 int32 = depth
+						var value_68 int32 = 0
+						var value_69 bool = value_67 == value_68
+						var value_70 bool = value_69
+						if value_70 {
+							var value_71 KssCursor = c
+							var value_72 int32 = 1
+							var value_73 uint8 = KssParser_KssPeek(value_71, value_72)
+							var value_74 uint8 = 47
+							var value_75 bool = value_73 == value_74
+							value_70 = value_75
+						}
+						value_66 = value_70
+					}
+					value_60 = value_66
+				}
+				if value_60 {
+					var value_76 KssCursor = c
+					var value_77 KssCursor = KssParser_KssSkipSpace(value_76)
+					c = value_77
+					var value_78 KssCursor = c
+					p.Cursor = value_78
+					continue
+				} else {
+					var value_79 uint8 = byte
+					var value_80 uint8 = 40
+					var value_81 bool = value_79 == value_80
+					var value_82 bool = value_81
+					if !value_82 {
+						var value_83 uint8 = byte
+						var value_84 uint8 = 91
+						var value_85 bool = value_83 == value_84
+						value_82 = value_85
+					}
+					if value_82 {
+						var value_86 int32 = depth
+						var value_87 int32 = 1
+						var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 1))
+						depth = value_88
+					} else {
+						var value_89 uint8 = byte
+						var value_90 uint8 = 41
+						var value_91 bool = value_89 == value_90
+						var value_92 bool = value_91
+						if !value_92 {
+							var value_93 uint8 = byte
+							var value_94 uint8 = 93
+							var value_95 bool = value_93 == value_94
+							value_92 = value_95
+						}
+						if value_92 {
+							var value_96 int32 = depth
+							var value_97 int32 = 0
+							var value_98 bool = value_96 <= value_97
+							if value_98 {
+								var value_99 KssParser = p
+								var value_100 string = "unmatched declaration delimiter"
+								var value_101 KssParser = KssParser_KssFail(value_99, value_100)
+								result.Parser = value_101
+								var value_102 KssRuleResult = result
+								return value_102
+							}
+							var value_103 int32 = depth
+							var value_104 int32 = 1
+							var value_105 int32 = int32(number_runtime_bits(uint64(value_103), uint64(value_104), 32, true, 2))
+							depth = value_105
+						} else {
+							var value_106 int32 = depth
+							var value_107 int32 = 0
+							var value_108 bool = value_106 == value_107
+							var value_109 bool = value_108
+							if value_109 {
+								var value_110 uint8 = byte
+								var value_111 uint8 = 59
+								var value_112 bool = value_110 == value_111
+								var value_113 bool = value_112
+								if !value_113 {
+									var value_114 uint8 = byte
+									var value_115 uint8 = 125
+									var value_116 bool = value_114 == value_115
+									value_113 = value_116
+								}
+								value_109 = value_113
+							}
+							if value_109 {
+								var value_117 bool = false
+								running = value_117
+								continue
+							}
+						}
+					}
+				}
+			}
 		}
-		if value_29 {
-			var value_34 bool = false
-			running = value_34
-			continue
-		}
-		var value_35 KssCursor = c
-		var value_36 int32 = 1
-		var value_37 KssCursor = KssParser_KssAdvance(value_35, value_36)
-		c = value_37
-		var value_38 KssCursor = c
-		p.Cursor = value_38
+		var value_118 KssCursor = c
+		var value_119 int32 = 1
+		var value_120 KssCursor = KssParser_KssAdvance(value_118, value_119)
+		c = value_120
+		var value_121 KssCursor = c
+		p.Cursor = value_121
 	}
-	var value_39 int32 = p.Cursor.Pos
-	var value_40 int32 = entry.ValueStart
-	var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 2))
-	entry.ValueLength = value_41
+	var value_122 int32 = p.Cursor.Pos
+	var value_123 int32 = entry.ValueStart
+	var value_124 int32 = int32(number_runtime_bits(uint64(value_122), uint64(value_123), 32, true, 2))
+	entry.ValueLength = value_124
 	for {
-		var value_42 int32 = entry.ValueLength
-		var value_43 int32 = 0
-		var value_44 bool = value_42 > value_43
-		if !value_44 {
+		var value_125 int32 = entry.ValueLength
+		var value_126 int32 = 0
+		var value_127 bool = value_125 > value_126
+		if !value_127 {
 			break
 		}
-		var value_45 int32 = entry.ValueStart
-		var value_46 int32 = entry.ValueLength
-		var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 1))
-		var value_48 int32 = 1
-		var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 2))
-		var value_50 uint8 = p.Cursor.Source[value_49]
-		var byte uint8 = value_50
-		var value_51 uint8 = byte
-		var value_52 bool = KssParser_KssIsSpace(value_51)
-		var value_53 bool = !value_52
-		if value_53 {
+		var value_128 int32 = entry.ValueStart
+		var value_129 int32 = entry.ValueLength
+		var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 1))
+		var value_131 int32 = 1
+		var value_132 int32 = int32(number_runtime_bits(uint64(value_130), uint64(value_131), 32, true, 2))
+		var value_133 uint8 = p.Cursor.Source[value_132]
+		var byte uint8 = value_133
+		var value_134 uint8 = byte
+		var value_135 bool = KssParser_KssIsSpace(value_134)
+		var value_136 bool = !value_135
+		if value_136 {
 			break
 		}
-		var value_54 int32 = entry.ValueLength
-		var value_55 int32 = 1
-		var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 2))
-		entry.ValueLength = value_56
+		var value_137 int32 = entry.ValueLength
+		var value_138 int32 = 1
+		var value_139 int32 = int32(number_runtime_bits(uint64(value_137), uint64(value_138), 32, true, 2))
+		entry.ValueLength = value_139
 	}
-	var value_57 int32 = entry.ValueLength
-	var value_58 int32 = 0
-	var value_59 bool = value_57 <= value_58
-	if value_59 {
-		var value_60 KssParser = p
-		var value_61 string = "expected declaration value after '"
-		var value_62 KssName = name
-		var value_63 KssParser = KssParser_KssFailName(value_60, value_61, value_62)
-		result.Parser = value_63
-		var value_64 KssRuleResult = result
-		return value_64
+	var value_140 int32 = entry.ValueLength
+	var value_141 int32 = 0
+	var value_142 bool = value_140 <= value_141
+	if value_142 {
+		var value_143 KssParser = p
+		var value_144 string = "expected declaration value after '"
+		var value_145 KssName = name
+		var value_146 KssParser = KssParser_KssFailName(value_143, value_144, value_145)
+		result.Parser = value_146
+		var value_147 KssRuleResult = result
+		return value_147
 	}
-	var value_65 int32 = p.Cursor.Pos
-	var value_66 uint8 = p.Cursor.Source[value_65]
-	var value_67 uint8 = 59
-	var value_68 bool = value_66 == value_67
-	if value_68 {
-		var value_69 KssCursor = c
-		var value_70 int32 = 1
-		var value_71 KssCursor = KssParser_KssAdvance(value_69, value_70)
-		c = value_71
-		var value_72 KssCursor = c
-		p.Cursor = value_72
+	var value_148 int32 = p.Cursor.Pos
+	var value_149 uint8 = p.Cursor.Source[value_148]
+	var value_150 uint8 = 59
+	var value_151 bool = value_149 == value_150
+	if value_151 {
+		var value_152 KssCursor = c
+		var value_153 int32 = 1
+		var value_154 KssCursor = KssParser_KssAdvance(value_152, value_153)
+		c = value_154
+		var value_155 KssCursor = c
+		p.Cursor = value_155
 	}
-	var value_73 int32 = p.DeclarationCount
-	var value_74 KssDeclaration = entry
-	p.Declarations[value_73] = value_74
-	var value_75 int32 = p.DeclarationCount
-	var value_76 int32 = 1
-	var value_77 int32 = int32(number_runtime_bits(uint64(value_75), uint64(value_76), 32, true, 1))
-	p.DeclarationCount = value_77
-	var value_78 KssParser = p
-	result.Parser = value_78
-	var value_79 StyleRule = rule
-	result.Rule = value_79
-	var value_80 KssRuleResult = result
-	return value_80
+	var value_156 int32 = p.DeclarationCount
+	var value_157 KssDeclaration = entry
+	p.Declarations[value_156] = value_157
+	var value_158 int32 = p.DeclarationCount
+	var value_159 int32 = 1
+	var value_160 int32 = int32(number_runtime_bits(uint64(value_158), uint64(value_159), 32, true, 1))
+	p.DeclarationCount = value_160
+	var value_161 KssParser = p
+	result.Parser = value_161
+	var value_162 StyleRule = rule
+	result.Rule = value_162
+	var value_163 KssRuleResult = result
+	return value_163
 }
 
 func KssParser_KssCaptureForeign(p KssParser, name KssName) KssParser {
@@ -4338,7 +4563,14 @@ func KssParser_KssIsGroupName(name KssName) bool {
 		var value_10 bool = KssParser_KssNameEquals(value_8, value_9)
 		value_7 = value_10
 	}
-	return value_7
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 KssName = name
+		var value_13 string = "keyframes"
+		var value_14 bool = KssParser_KssNameEquals(value_12, value_13)
+		value_11 = value_14
+	}
+	return value_11
 }
 
 func (instance_host_0 *runtime) KssParser_KssParseGroupBlock(p KssParser, name KssName) KssParser {
@@ -8469,4 +8701,3349 @@ func (instance_host_0 *runtime) KssParser_KssStep(p KssParser) KssParser {
 	var value_124 KssParser = p
 	var value_125 KssParser = instance_host_0.KssParser_KssParseRule(value_124)
 	return value_125
+}
+
+func KssParser_KssCSSPropertyKind(name KssName) int32 {
+	var value_0 int32 = name.Length
+	var value_1 int32 = 2
+	var value_2 bool = value_0 > value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = 0
+		var value_5 uint8 = name.Bytes[value_4]
+		var value_6 uint8 = 45
+		var value_7 bool = value_5 == value_6
+		value_3 = value_7
+	}
+	var value_8 bool = value_3
+	if value_8 {
+		var value_9 int32 = 1
+		var value_10 uint8 = name.Bytes[value_9]
+		var value_11 uint8 = 45
+		var value_12 bool = value_10 == value_11
+		value_8 = value_12
+	}
+	if value_8 {
+		var value_13 int32 = -2
+		return value_13
+	}
+	var value_14 KssName = name
+	var value_15 string = "background"
+	var value_16 bool = KssParser_KssNameEquals(value_14, value_15)
+	var value_17 bool = value_16
+	if !value_17 {
+		var value_18 KssName = name
+		var value_19 string = "foreground"
+		var value_20 bool = KssParser_KssNameEquals(value_18, value_19)
+		value_17 = value_20
+	}
+	var value_21 bool = value_17
+	if !value_21 {
+		var value_22 KssName = name
+		var value_23 string = "border"
+		var value_24 bool = KssParser_KssNameEquals(value_22, value_23)
+		value_21 = value_24
+	}
+	var value_25 bool = value_21
+	if !value_25 {
+		var value_26 KssName = name
+		var value_27 string = "focus"
+		var value_28 bool = KssParser_KssNameEquals(value_26, value_27)
+		value_25 = value_28
+	}
+	var value_29 bool = value_25
+	if !value_29 {
+		var value_30 KssName = name
+		var value_31 string = "background-end"
+		var value_32 bool = KssParser_KssNameEquals(value_30, value_31)
+		value_29 = value_32
+	}
+	var value_33 bool = value_29
+	if !value_33 {
+		var value_34 KssName = name
+		var value_35 string = "color"
+		var value_36 bool = KssParser_KssNameEquals(value_34, value_35)
+		value_33 = value_36
+	}
+	var value_37 bool = value_33
+	if !value_37 {
+		var value_38 KssName = name
+		var value_39 string = "background-color"
+		var value_40 bool = KssParser_KssNameEquals(value_38, value_39)
+		value_37 = value_40
+	}
+	var value_41 bool = value_37
+	if !value_41 {
+		var value_42 KssName = name
+		var value_43 string = "accent-color"
+		var value_44 bool = KssParser_KssNameEquals(value_42, value_43)
+		value_41 = value_44
+	}
+	if value_41 {
+		var value_45 int32 = 0
+		return value_45
+	}
+	var value_46 KssName = name
+	var value_47 string = "caret-color"
+	var value_48 bool = KssParser_KssNameEquals(value_46, value_47)
+	var value_49 bool = value_48
+	if !value_49 {
+		var value_50 KssName = name
+		var value_51 string = "border-color"
+		var value_52 bool = KssParser_KssNameEquals(value_50, value_51)
+		value_49 = value_52
+	}
+	var value_53 bool = value_49
+	if !value_53 {
+		var value_54 KssName = name
+		var value_55 string = "border-top-color"
+		var value_56 bool = KssParser_KssNameEquals(value_54, value_55)
+		value_53 = value_56
+	}
+	var value_57 bool = value_53
+	if !value_57 {
+		var value_58 KssName = name
+		var value_59 string = "border-right-color"
+		var value_60 bool = KssParser_KssNameEquals(value_58, value_59)
+		value_57 = value_60
+	}
+	var value_61 bool = value_57
+	if !value_61 {
+		var value_62 KssName = name
+		var value_63 string = "border-bottom-color"
+		var value_64 bool = KssParser_KssNameEquals(value_62, value_63)
+		value_61 = value_64
+	}
+	var value_65 bool = value_61
+	if !value_65 {
+		var value_66 KssName = name
+		var value_67 string = "border-left-color"
+		var value_68 bool = KssParser_KssNameEquals(value_66, value_67)
+		value_65 = value_68
+	}
+	var value_69 bool = value_65
+	if !value_69 {
+		var value_70 KssName = name
+		var value_71 string = "border-inline-color"
+		var value_72 bool = KssParser_KssNameEquals(value_70, value_71)
+		value_69 = value_72
+	}
+	var value_73 bool = value_69
+	if !value_73 {
+		var value_74 KssName = name
+		var value_75 string = "border-block-color"
+		var value_76 bool = KssParser_KssNameEquals(value_74, value_75)
+		value_73 = value_76
+	}
+	if value_73 {
+		var value_77 int32 = 0
+		return value_77
+	}
+	var value_78 KssName = name
+	var value_79 string = "border-inline-start-color"
+	var value_80 bool = KssParser_KssNameEquals(value_78, value_79)
+	var value_81 bool = value_80
+	if !value_81 {
+		var value_82 KssName = name
+		var value_83 string = "border-inline-end-color"
+		var value_84 bool = KssParser_KssNameEquals(value_82, value_83)
+		value_81 = value_84
+	}
+	var value_85 bool = value_81
+	if !value_85 {
+		var value_86 KssName = name
+		var value_87 string = "border-block-start-color"
+		var value_88 bool = KssParser_KssNameEquals(value_86, value_87)
+		value_85 = value_88
+	}
+	var value_89 bool = value_85
+	if !value_89 {
+		var value_90 KssName = name
+		var value_91 string = "border-block-end-color"
+		var value_92 bool = KssParser_KssNameEquals(value_90, value_91)
+		value_89 = value_92
+	}
+	var value_93 bool = value_89
+	if !value_93 {
+		var value_94 KssName = name
+		var value_95 string = "outline-color"
+		var value_96 bool = KssParser_KssNameEquals(value_94, value_95)
+		value_93 = value_96
+	}
+	var value_97 bool = value_93
+	if !value_97 {
+		var value_98 KssName = name
+		var value_99 string = "text-decoration-color"
+		var value_100 bool = KssParser_KssNameEquals(value_98, value_99)
+		value_97 = value_100
+	}
+	var value_101 bool = value_97
+	if !value_101 {
+		var value_102 KssName = name
+		var value_103 string = "text-emphasis-color"
+		var value_104 bool = KssParser_KssNameEquals(value_102, value_103)
+		value_101 = value_104
+	}
+	var value_105 bool = value_101
+	if !value_105 {
+		var value_106 KssName = name
+		var value_107 string = "column-rule-color"
+		var value_108 bool = KssParser_KssNameEquals(value_106, value_107)
+		value_105 = value_108
+	}
+	if value_105 {
+		var value_109 int32 = 0
+		return value_109
+	}
+	var value_110 KssName = name
+	var value_111 string = "radius"
+	var value_112 bool = KssParser_KssNameEquals(value_110, value_111)
+	var value_113 bool = value_112
+	if !value_113 {
+		var value_114 KssName = name
+		var value_115 string = "border-radius"
+		var value_116 bool = KssParser_KssNameEquals(value_114, value_115)
+		value_113 = value_116
+	}
+	var value_117 bool = value_113
+	if !value_117 {
+		var value_118 KssName = name
+		var value_119 string = "border-width"
+		var value_120 bool = KssParser_KssNameEquals(value_118, value_119)
+		value_117 = value_120
+	}
+	var value_121 bool = value_117
+	if !value_121 {
+		var value_122 KssName = name
+		var value_123 string = "opacity"
+		var value_124 bool = KssParser_KssNameEquals(value_122, value_123)
+		value_121 = value_124
+	}
+	var value_125 bool = value_121
+	if !value_125 {
+		var value_126 KssName = name
+		var value_127 string = "border-top-width"
+		var value_128 bool = KssParser_KssNameEquals(value_126, value_127)
+		value_125 = value_128
+	}
+	var value_129 bool = value_125
+	if !value_129 {
+		var value_130 KssName = name
+		var value_131 string = "border-right-width"
+		var value_132 bool = KssParser_KssNameEquals(value_130, value_131)
+		value_129 = value_132
+	}
+	var value_133 bool = value_129
+	if !value_133 {
+		var value_134 KssName = name
+		var value_135 string = "border-bottom-width"
+		var value_136 bool = KssParser_KssNameEquals(value_134, value_135)
+		value_133 = value_136
+	}
+	var value_137 bool = value_133
+	if !value_137 {
+		var value_138 KssName = name
+		var value_139 string = "border-left-width"
+		var value_140 bool = KssParser_KssNameEquals(value_138, value_139)
+		value_137 = value_140
+	}
+	if value_137 {
+		var value_141 int32 = 1
+		return value_141
+	}
+	var value_142 KssName = name
+	var value_143 string = "border-inline-width"
+	var value_144 bool = KssParser_KssNameEquals(value_142, value_143)
+	var value_145 bool = value_144
+	if !value_145 {
+		var value_146 KssName = name
+		var value_147 string = "border-block-width"
+		var value_148 bool = KssParser_KssNameEquals(value_146, value_147)
+		value_145 = value_148
+	}
+	var value_149 bool = value_145
+	if !value_149 {
+		var value_150 KssName = name
+		var value_151 string = "border-inline-start-width"
+		var value_152 bool = KssParser_KssNameEquals(value_150, value_151)
+		value_149 = value_152
+	}
+	var value_153 bool = value_149
+	if !value_153 {
+		var value_154 KssName = name
+		var value_155 string = "border-inline-end-width"
+		var value_156 bool = KssParser_KssNameEquals(value_154, value_155)
+		value_153 = value_156
+	}
+	var value_157 bool = value_153
+	if !value_157 {
+		var value_158 KssName = name
+		var value_159 string = "border-block-start-width"
+		var value_160 bool = KssParser_KssNameEquals(value_158, value_159)
+		value_157 = value_160
+	}
+	var value_161 bool = value_157
+	if !value_161 {
+		var value_162 KssName = name
+		var value_163 string = "border-block-end-width"
+		var value_164 bool = KssParser_KssNameEquals(value_162, value_163)
+		value_161 = value_164
+	}
+	var value_165 bool = value_161
+	if !value_165 {
+		var value_166 KssName = name
+		var value_167 string = "border-top-left-radius"
+		var value_168 bool = KssParser_KssNameEquals(value_166, value_167)
+		value_165 = value_168
+	}
+	var value_169 bool = value_165
+	if !value_169 {
+		var value_170 KssName = name
+		var value_171 string = "border-top-right-radius"
+		var value_172 bool = KssParser_KssNameEquals(value_170, value_171)
+		value_169 = value_172
+	}
+	if value_169 {
+		var value_173 int32 = 1
+		return value_173
+	}
+	var value_174 KssName = name
+	var value_175 string = "border-bottom-right-radius"
+	var value_176 bool = KssParser_KssNameEquals(value_174, value_175)
+	var value_177 bool = value_176
+	if !value_177 {
+		var value_178 KssName = name
+		var value_179 string = "border-bottom-left-radius"
+		var value_180 bool = KssParser_KssNameEquals(value_178, value_179)
+		value_177 = value_180
+	}
+	var value_181 bool = value_177
+	if !value_181 {
+		var value_182 KssName = name
+		var value_183 string = "border-start-start-radius"
+		var value_184 bool = KssParser_KssNameEquals(value_182, value_183)
+		value_181 = value_184
+	}
+	var value_185 bool = value_181
+	if !value_185 {
+		var value_186 KssName = name
+		var value_187 string = "border-start-end-radius"
+		var value_188 bool = KssParser_KssNameEquals(value_186, value_187)
+		value_185 = value_188
+	}
+	var value_189 bool = value_185
+	if !value_189 {
+		var value_190 KssName = name
+		var value_191 string = "border-end-start-radius"
+		var value_192 bool = KssParser_KssNameEquals(value_190, value_191)
+		value_189 = value_192
+	}
+	var value_193 bool = value_189
+	if !value_193 {
+		var value_194 KssName = name
+		var value_195 string = "border-end-end-radius"
+		var value_196 bool = KssParser_KssNameEquals(value_194, value_195)
+		value_193 = value_196
+	}
+	var value_197 bool = value_193
+	if !value_197 {
+		var value_198 KssName = name
+		var value_199 string = "padding"
+		var value_200 bool = KssParser_KssNameEquals(value_198, value_199)
+		value_197 = value_200
+	}
+	var value_201 bool = value_197
+	if !value_201 {
+		var value_202 KssName = name
+		var value_203 string = "padding-x"
+		var value_204 bool = KssParser_KssNameEquals(value_202, value_203)
+		value_201 = value_204
+	}
+	if value_201 {
+		var value_205 int32 = 1
+		return value_205
+	}
+	var value_206 KssName = name
+	var value_207 string = "padding-y"
+	var value_208 bool = KssParser_KssNameEquals(value_206, value_207)
+	var value_209 bool = value_208
+	if !value_209 {
+		var value_210 KssName = name
+		var value_211 string = "padding-left"
+		var value_212 bool = KssParser_KssNameEquals(value_210, value_211)
+		value_209 = value_212
+	}
+	var value_213 bool = value_209
+	if !value_213 {
+		var value_214 KssName = name
+		var value_215 string = "padding-right"
+		var value_216 bool = KssParser_KssNameEquals(value_214, value_215)
+		value_213 = value_216
+	}
+	var value_217 bool = value_213
+	if !value_217 {
+		var value_218 KssName = name
+		var value_219 string = "padding-top"
+		var value_220 bool = KssParser_KssNameEquals(value_218, value_219)
+		value_217 = value_220
+	}
+	var value_221 bool = value_217
+	if !value_221 {
+		var value_222 KssName = name
+		var value_223 string = "padding-bottom"
+		var value_224 bool = KssParser_KssNameEquals(value_222, value_223)
+		value_221 = value_224
+	}
+	var value_225 bool = value_221
+	if !value_225 {
+		var value_226 KssName = name
+		var value_227 string = "padding-inline"
+		var value_228 bool = KssParser_KssNameEquals(value_226, value_227)
+		value_225 = value_228
+	}
+	var value_229 bool = value_225
+	if !value_229 {
+		var value_230 KssName = name
+		var value_231 string = "padding-block"
+		var value_232 bool = KssParser_KssNameEquals(value_230, value_231)
+		value_229 = value_232
+	}
+	var value_233 bool = value_229
+	if !value_233 {
+		var value_234 KssName = name
+		var value_235 string = "padding-inline-start"
+		var value_236 bool = KssParser_KssNameEquals(value_234, value_235)
+		value_233 = value_236
+	}
+	if value_233 {
+		var value_237 int32 = 1
+		return value_237
+	}
+	var value_238 KssName = name
+	var value_239 string = "padding-inline-end"
+	var value_240 bool = KssParser_KssNameEquals(value_238, value_239)
+	var value_241 bool = value_240
+	if !value_241 {
+		var value_242 KssName = name
+		var value_243 string = "padding-block-start"
+		var value_244 bool = KssParser_KssNameEquals(value_242, value_243)
+		value_241 = value_244
+	}
+	var value_245 bool = value_241
+	if !value_245 {
+		var value_246 KssName = name
+		var value_247 string = "padding-block-end"
+		var value_248 bool = KssParser_KssNameEquals(value_246, value_247)
+		value_245 = value_248
+	}
+	var value_249 bool = value_245
+	if !value_249 {
+		var value_250 KssName = name
+		var value_251 string = "margin"
+		var value_252 bool = KssParser_KssNameEquals(value_250, value_251)
+		value_249 = value_252
+	}
+	var value_253 bool = value_249
+	if !value_253 {
+		var value_254 KssName = name
+		var value_255 string = "margin-x"
+		var value_256 bool = KssParser_KssNameEquals(value_254, value_255)
+		value_253 = value_256
+	}
+	var value_257 bool = value_253
+	if !value_257 {
+		var value_258 KssName = name
+		var value_259 string = "margin-y"
+		var value_260 bool = KssParser_KssNameEquals(value_258, value_259)
+		value_257 = value_260
+	}
+	var value_261 bool = value_257
+	if !value_261 {
+		var value_262 KssName = name
+		var value_263 string = "margin-left"
+		var value_264 bool = KssParser_KssNameEquals(value_262, value_263)
+		value_261 = value_264
+	}
+	var value_265 bool = value_261
+	if !value_265 {
+		var value_266 KssName = name
+		var value_267 string = "margin-right"
+		var value_268 bool = KssParser_KssNameEquals(value_266, value_267)
+		value_265 = value_268
+	}
+	if value_265 {
+		var value_269 int32 = 1
+		return value_269
+	}
+	var value_270 KssName = name
+	var value_271 string = "margin-top"
+	var value_272 bool = KssParser_KssNameEquals(value_270, value_271)
+	var value_273 bool = value_272
+	if !value_273 {
+		var value_274 KssName = name
+		var value_275 string = "margin-bottom"
+		var value_276 bool = KssParser_KssNameEquals(value_274, value_275)
+		value_273 = value_276
+	}
+	var value_277 bool = value_273
+	if !value_277 {
+		var value_278 KssName = name
+		var value_279 string = "margin-inline"
+		var value_280 bool = KssParser_KssNameEquals(value_278, value_279)
+		value_277 = value_280
+	}
+	var value_281 bool = value_277
+	if !value_281 {
+		var value_282 KssName = name
+		var value_283 string = "margin-block"
+		var value_284 bool = KssParser_KssNameEquals(value_282, value_283)
+		value_281 = value_284
+	}
+	var value_285 bool = value_281
+	if !value_285 {
+		var value_286 KssName = name
+		var value_287 string = "margin-inline-start"
+		var value_288 bool = KssParser_KssNameEquals(value_286, value_287)
+		value_285 = value_288
+	}
+	var value_289 bool = value_285
+	if !value_289 {
+		var value_290 KssName = name
+		var value_291 string = "margin-inline-end"
+		var value_292 bool = KssParser_KssNameEquals(value_290, value_291)
+		value_289 = value_292
+	}
+	var value_293 bool = value_289
+	if !value_293 {
+		var value_294 KssName = name
+		var value_295 string = "margin-block-start"
+		var value_296 bool = KssParser_KssNameEquals(value_294, value_295)
+		value_293 = value_296
+	}
+	var value_297 bool = value_293
+	if !value_297 {
+		var value_298 KssName = name
+		var value_299 string = "margin-block-end"
+		var value_300 bool = KssParser_KssNameEquals(value_298, value_299)
+		value_297 = value_300
+	}
+	if value_297 {
+		var value_301 int32 = 1
+		return value_301
+	}
+	var value_302 KssName = name
+	var value_303 string = "width"
+	var value_304 bool = KssParser_KssNameEquals(value_302, value_303)
+	var value_305 bool = value_304
+	if !value_305 {
+		var value_306 KssName = name
+		var value_307 string = "height"
+		var value_308 bool = KssParser_KssNameEquals(value_306, value_307)
+		value_305 = value_308
+	}
+	var value_309 bool = value_305
+	if !value_309 {
+		var value_310 KssName = name
+		var value_311 string = "min-width"
+		var value_312 bool = KssParser_KssNameEquals(value_310, value_311)
+		value_309 = value_312
+	}
+	var value_313 bool = value_309
+	if !value_313 {
+		var value_314 KssName = name
+		var value_315 string = "max-width"
+		var value_316 bool = KssParser_KssNameEquals(value_314, value_315)
+		value_313 = value_316
+	}
+	var value_317 bool = value_313
+	if !value_317 {
+		var value_318 KssName = name
+		var value_319 string = "min-height"
+		var value_320 bool = KssParser_KssNameEquals(value_318, value_319)
+		value_317 = value_320
+	}
+	var value_321 bool = value_317
+	if !value_321 {
+		var value_322 KssName = name
+		var value_323 string = "max-height"
+		var value_324 bool = KssParser_KssNameEquals(value_322, value_323)
+		value_321 = value_324
+	}
+	var value_325 bool = value_321
+	if !value_325 {
+		var value_326 KssName = name
+		var value_327 string = "inline-size"
+		var value_328 bool = KssParser_KssNameEquals(value_326, value_327)
+		value_325 = value_328
+	}
+	var value_329 bool = value_325
+	if !value_329 {
+		var value_330 KssName = name
+		var value_331 string = "block-size"
+		var value_332 bool = KssParser_KssNameEquals(value_330, value_331)
+		value_329 = value_332
+	}
+	if value_329 {
+		var value_333 int32 = 1
+		return value_333
+	}
+	var value_334 KssName = name
+	var value_335 string = "min-inline-size"
+	var value_336 bool = KssParser_KssNameEquals(value_334, value_335)
+	var value_337 bool = value_336
+	if !value_337 {
+		var value_338 KssName = name
+		var value_339 string = "max-inline-size"
+		var value_340 bool = KssParser_KssNameEquals(value_338, value_339)
+		value_337 = value_340
+	}
+	var value_341 bool = value_337
+	if !value_341 {
+		var value_342 KssName = name
+		var value_343 string = "min-block-size"
+		var value_344 bool = KssParser_KssNameEquals(value_342, value_343)
+		value_341 = value_344
+	}
+	var value_345 bool = value_341
+	if !value_345 {
+		var value_346 KssName = name
+		var value_347 string = "max-block-size"
+		var value_348 bool = KssParser_KssNameEquals(value_346, value_347)
+		value_345 = value_348
+	}
+	var value_349 bool = value_345
+	if !value_349 {
+		var value_350 KssName = name
+		var value_351 string = "inset"
+		var value_352 bool = KssParser_KssNameEquals(value_350, value_351)
+		value_349 = value_352
+	}
+	var value_353 bool = value_349
+	if !value_353 {
+		var value_354 KssName = name
+		var value_355 string = "top"
+		var value_356 bool = KssParser_KssNameEquals(value_354, value_355)
+		value_353 = value_356
+	}
+	var value_357 bool = value_353
+	if !value_357 {
+		var value_358 KssName = name
+		var value_359 string = "right"
+		var value_360 bool = KssParser_KssNameEquals(value_358, value_359)
+		value_357 = value_360
+	}
+	var value_361 bool = value_357
+	if !value_361 {
+		var value_362 KssName = name
+		var value_363 string = "bottom"
+		var value_364 bool = KssParser_KssNameEquals(value_362, value_363)
+		value_361 = value_364
+	}
+	if value_361 {
+		var value_365 int32 = 1
+		return value_365
+	}
+	var value_366 KssName = name
+	var value_367 string = "left"
+	var value_368 bool = KssParser_KssNameEquals(value_366, value_367)
+	var value_369 bool = value_368
+	if !value_369 {
+		var value_370 KssName = name
+		var value_371 string = "inset-inline"
+		var value_372 bool = KssParser_KssNameEquals(value_370, value_371)
+		value_369 = value_372
+	}
+	var value_373 bool = value_369
+	if !value_373 {
+		var value_374 KssName = name
+		var value_375 string = "inset-block"
+		var value_376 bool = KssParser_KssNameEquals(value_374, value_375)
+		value_373 = value_376
+	}
+	var value_377 bool = value_373
+	if !value_377 {
+		var value_378 KssName = name
+		var value_379 string = "inset-inline-start"
+		var value_380 bool = KssParser_KssNameEquals(value_378, value_379)
+		value_377 = value_380
+	}
+	var value_381 bool = value_377
+	if !value_381 {
+		var value_382 KssName = name
+		var value_383 string = "inset-inline-end"
+		var value_384 bool = KssParser_KssNameEquals(value_382, value_383)
+		value_381 = value_384
+	}
+	var value_385 bool = value_381
+	if !value_385 {
+		var value_386 KssName = name
+		var value_387 string = "inset-block-start"
+		var value_388 bool = KssParser_KssNameEquals(value_386, value_387)
+		value_385 = value_388
+	}
+	var value_389 bool = value_385
+	if !value_389 {
+		var value_390 KssName = name
+		var value_391 string = "inset-block-end"
+		var value_392 bool = KssParser_KssNameEquals(value_390, value_391)
+		value_389 = value_392
+	}
+	var value_393 bool = value_389
+	if !value_393 {
+		var value_394 KssName = name
+		var value_395 string = "gap"
+		var value_396 bool = KssParser_KssNameEquals(value_394, value_395)
+		value_393 = value_396
+	}
+	if value_393 {
+		var value_397 int32 = 1
+		return value_397
+	}
+	var value_398 KssName = name
+	var value_399 string = "row-gap"
+	var value_400 bool = KssParser_KssNameEquals(value_398, value_399)
+	var value_401 bool = value_400
+	if !value_401 {
+		var value_402 KssName = name
+		var value_403 string = "column-gap"
+		var value_404 bool = KssParser_KssNameEquals(value_402, value_403)
+		value_401 = value_404
+	}
+	var value_405 bool = value_401
+	if !value_405 {
+		var value_406 KssName = name
+		var value_407 string = "font-size"
+		var value_408 bool = KssParser_KssNameEquals(value_406, value_407)
+		value_405 = value_408
+	}
+	var value_409 bool = value_405
+	if !value_409 {
+		var value_410 KssName = name
+		var value_411 string = "letter-spacing"
+		var value_412 bool = KssParser_KssNameEquals(value_410, value_411)
+		value_409 = value_412
+	}
+	var value_413 bool = value_409
+	if !value_413 {
+		var value_414 KssName = name
+		var value_415 string = "line-height"
+		var value_416 bool = KssParser_KssNameEquals(value_414, value_415)
+		value_413 = value_416
+	}
+	var value_417 bool = value_413
+	if !value_417 {
+		var value_418 KssName = name
+		var value_419 string = "flex-basis"
+		var value_420 bool = KssParser_KssNameEquals(value_418, value_419)
+		value_417 = value_420
+	}
+	var value_421 bool = value_417
+	if !value_421 {
+		var value_422 KssName = name
+		var value_423 string = "text-indent"
+		var value_424 bool = KssParser_KssNameEquals(value_422, value_423)
+		value_421 = value_424
+	}
+	var value_425 bool = value_421
+	if !value_425 {
+		var value_426 KssName = name
+		var value_427 string = "text-decoration-thickness"
+		var value_428 bool = KssParser_KssNameEquals(value_426, value_427)
+		value_425 = value_428
+	}
+	if value_425 {
+		var value_429 int32 = 1
+		return value_429
+	}
+	var value_430 KssName = name
+	var value_431 string = "text-underline-offset"
+	var value_432 bool = KssParser_KssNameEquals(value_430, value_431)
+	var value_433 bool = value_432
+	if !value_433 {
+		var value_434 KssName = name
+		var value_435 string = "vertical-align"
+		var value_436 bool = KssParser_KssNameEquals(value_434, value_435)
+		value_433 = value_436
+	}
+	var value_437 bool = value_433
+	if !value_437 {
+		var value_438 KssName = name
+		var value_439 string = "perspective"
+		var value_440 bool = KssParser_KssNameEquals(value_438, value_439)
+		value_437 = value_440
+	}
+	var value_441 bool = value_437
+	if !value_441 {
+		var value_442 KssName = name
+		var value_443 string = "offset-distance"
+		var value_444 bool = KssParser_KssNameEquals(value_442, value_443)
+		value_441 = value_444
+	}
+	var value_445 bool = value_441
+	if !value_445 {
+		var value_446 KssName = name
+		var value_447 string = "outline-width"
+		var value_448 bool = KssParser_KssNameEquals(value_446, value_447)
+		value_445 = value_448
+	}
+	var value_449 bool = value_445
+	if !value_449 {
+		var value_450 KssName = name
+		var value_451 string = "outline-offset"
+		var value_452 bool = KssParser_KssNameEquals(value_450, value_451)
+		value_449 = value_452
+	}
+	var value_453 bool = value_449
+	if !value_453 {
+		var value_454 KssName = name
+		var value_455 string = "tab-size"
+		var value_456 bool = KssParser_KssNameEquals(value_454, value_455)
+		value_453 = value_456
+	}
+	var value_457 bool = value_453
+	if !value_457 {
+		var value_458 KssName = name
+		var value_459 string = "column-count"
+		var value_460 bool = KssParser_KssNameEquals(value_458, value_459)
+		value_457 = value_460
+	}
+	if value_457 {
+		var value_461 int32 = 1
+		return value_461
+	}
+	var value_462 KssName = name
+	var value_463 string = "column-width"
+	var value_464 bool = KssParser_KssNameEquals(value_462, value_463)
+	var value_465 bool = value_464
+	if !value_465 {
+		var value_466 KssName = name
+		var value_467 string = "column-rule-width"
+		var value_468 bool = KssParser_KssNameEquals(value_466, value_467)
+		value_465 = value_468
+	}
+	var value_469 bool = value_465
+	if !value_469 {
+		var value_470 KssName = name
+		var value_471 string = "border-spacing"
+		var value_472 bool = KssParser_KssNameEquals(value_470, value_471)
+		value_469 = value_472
+	}
+	var value_473 bool = value_469
+	if !value_473 {
+		var value_474 KssName = name
+		var value_475 string = "contain-intrinsic-size"
+		var value_476 bool = KssParser_KssNameEquals(value_474, value_475)
+		value_473 = value_476
+	}
+	var value_477 bool = value_473
+	if !value_477 {
+		var value_478 KssName = name
+		var value_479 string = "contain-intrinsic-width"
+		var value_480 bool = KssParser_KssNameEquals(value_478, value_479)
+		value_477 = value_480
+	}
+	var value_481 bool = value_477
+	if !value_481 {
+		var value_482 KssName = name
+		var value_483 string = "contain-intrinsic-height"
+		var value_484 bool = KssParser_KssNameEquals(value_482, value_483)
+		value_481 = value_484
+	}
+	var value_485 bool = value_481
+	if !value_485 {
+		var value_486 KssName = name
+		var value_487 string = "contain-intrinsic-inline-size"
+		var value_488 bool = KssParser_KssNameEquals(value_486, value_487)
+		value_485 = value_488
+	}
+	var value_489 bool = value_485
+	if !value_489 {
+		var value_490 KssName = name
+		var value_491 string = "contain-intrinsic-block-size"
+		var value_492 bool = KssParser_KssNameEquals(value_490, value_491)
+		value_489 = value_492
+	}
+	if value_489 {
+		var value_493 int32 = 1
+		return value_493
+	}
+	var value_494 KssName = name
+	var value_495 string = "overflow-clip-margin"
+	var value_496 bool = KssParser_KssNameEquals(value_494, value_495)
+	var value_497 bool = value_496
+	if !value_497 {
+		var value_498 KssName = name
+		var value_499 string = "shape-margin"
+		var value_500 bool = KssParser_KssNameEquals(value_498, value_499)
+		value_497 = value_500
+	}
+	var value_501 bool = value_497
+	if !value_501 {
+		var value_502 KssName = name
+		var value_503 string = "scroll-margin"
+		var value_504 bool = KssParser_KssNameEquals(value_502, value_503)
+		value_501 = value_504
+	}
+	var value_505 bool = value_501
+	if !value_505 {
+		var value_506 KssName = name
+		var value_507 string = "scroll-margin-top"
+		var value_508 bool = KssParser_KssNameEquals(value_506, value_507)
+		value_505 = value_508
+	}
+	var value_509 bool = value_505
+	if !value_509 {
+		var value_510 KssName = name
+		var value_511 string = "scroll-margin-right"
+		var value_512 bool = KssParser_KssNameEquals(value_510, value_511)
+		value_509 = value_512
+	}
+	var value_513 bool = value_509
+	if !value_513 {
+		var value_514 KssName = name
+		var value_515 string = "scroll-margin-bottom"
+		var value_516 bool = KssParser_KssNameEquals(value_514, value_515)
+		value_513 = value_516
+	}
+	var value_517 bool = value_513
+	if !value_517 {
+		var value_518 KssName = name
+		var value_519 string = "scroll-margin-left"
+		var value_520 bool = KssParser_KssNameEquals(value_518, value_519)
+		value_517 = value_520
+	}
+	var value_521 bool = value_517
+	if !value_521 {
+		var value_522 KssName = name
+		var value_523 string = "scroll-margin-inline"
+		var value_524 bool = KssParser_KssNameEquals(value_522, value_523)
+		value_521 = value_524
+	}
+	if value_521 {
+		var value_525 int32 = 1
+		return value_525
+	}
+	var value_526 KssName = name
+	var value_527 string = "scroll-margin-block"
+	var value_528 bool = KssParser_KssNameEquals(value_526, value_527)
+	var value_529 bool = value_528
+	if !value_529 {
+		var value_530 KssName = name
+		var value_531 string = "scroll-margin-inline-start"
+		var value_532 bool = KssParser_KssNameEquals(value_530, value_531)
+		value_529 = value_532
+	}
+	var value_533 bool = value_529
+	if !value_533 {
+		var value_534 KssName = name
+		var value_535 string = "scroll-margin-inline-end"
+		var value_536 bool = KssParser_KssNameEquals(value_534, value_535)
+		value_533 = value_536
+	}
+	var value_537 bool = value_533
+	if !value_537 {
+		var value_538 KssName = name
+		var value_539 string = "scroll-margin-block-start"
+		var value_540 bool = KssParser_KssNameEquals(value_538, value_539)
+		value_537 = value_540
+	}
+	var value_541 bool = value_537
+	if !value_541 {
+		var value_542 KssName = name
+		var value_543 string = "scroll-margin-block-end"
+		var value_544 bool = KssParser_KssNameEquals(value_542, value_543)
+		value_541 = value_544
+	}
+	var value_545 bool = value_541
+	if !value_545 {
+		var value_546 KssName = name
+		var value_547 string = "scroll-padding"
+		var value_548 bool = KssParser_KssNameEquals(value_546, value_547)
+		value_545 = value_548
+	}
+	var value_549 bool = value_545
+	if !value_549 {
+		var value_550 KssName = name
+		var value_551 string = "scroll-padding-top"
+		var value_552 bool = KssParser_KssNameEquals(value_550, value_551)
+		value_549 = value_552
+	}
+	var value_553 bool = value_549
+	if !value_553 {
+		var value_554 KssName = name
+		var value_555 string = "scroll-padding-right"
+		var value_556 bool = KssParser_KssNameEquals(value_554, value_555)
+		value_553 = value_556
+	}
+	if value_553 {
+		var value_557 int32 = 1
+		return value_557
+	}
+	var value_558 KssName = name
+	var value_559 string = "scroll-padding-bottom"
+	var value_560 bool = KssParser_KssNameEquals(value_558, value_559)
+	var value_561 bool = value_560
+	if !value_561 {
+		var value_562 KssName = name
+		var value_563 string = "scroll-padding-left"
+		var value_564 bool = KssParser_KssNameEquals(value_562, value_563)
+		value_561 = value_564
+	}
+	var value_565 bool = value_561
+	if !value_565 {
+		var value_566 KssName = name
+		var value_567 string = "scroll-padding-inline"
+		var value_568 bool = KssParser_KssNameEquals(value_566, value_567)
+		value_565 = value_568
+	}
+	var value_569 bool = value_565
+	if !value_569 {
+		var value_570 KssName = name
+		var value_571 string = "scroll-padding-block"
+		var value_572 bool = KssParser_KssNameEquals(value_570, value_571)
+		value_569 = value_572
+	}
+	var value_573 bool = value_569
+	if !value_573 {
+		var value_574 KssName = name
+		var value_575 string = "scroll-padding-inline-start"
+		var value_576 bool = KssParser_KssNameEquals(value_574, value_575)
+		value_573 = value_576
+	}
+	var value_577 bool = value_573
+	if !value_577 {
+		var value_578 KssName = name
+		var value_579 string = "scroll-padding-inline-end"
+		var value_580 bool = KssParser_KssNameEquals(value_578, value_579)
+		value_577 = value_580
+	}
+	var value_581 bool = value_577
+	if !value_581 {
+		var value_582 KssName = name
+		var value_583 string = "scroll-padding-block-start"
+		var value_584 bool = KssParser_KssNameEquals(value_582, value_583)
+		value_581 = value_584
+	}
+	var value_585 bool = value_581
+	if !value_585 {
+		var value_586 KssName = name
+		var value_587 string = "scroll-padding-block-end"
+		var value_588 bool = KssParser_KssNameEquals(value_586, value_587)
+		value_585 = value_588
+	}
+	if value_585 {
+		var value_589 int32 = 1
+		return value_589
+	}
+	var value_590 KssName = name
+	var value_591 string = "icon-size"
+	var value_592 bool = KssParser_KssNameEquals(value_590, value_591)
+	var value_593 bool = value_592
+	if !value_593 {
+		var value_594 KssName = name
+		var value_595 string = "offset-x"
+		var value_596 bool = KssParser_KssNameEquals(value_594, value_595)
+		value_593 = value_596
+	}
+	var value_597 bool = value_593
+	if !value_597 {
+		var value_598 KssName = name
+		var value_599 string = "offset-y"
+		var value_600 bool = KssParser_KssNameEquals(value_598, value_599)
+		value_597 = value_600
+	}
+	var value_601 bool = value_597
+	if !value_601 {
+		var value_602 KssName = name
+		var value_603 string = "content-offset-x"
+		var value_604 bool = KssParser_KssNameEquals(value_602, value_603)
+		value_601 = value_604
+	}
+	var value_605 bool = value_601
+	if !value_605 {
+		var value_606 KssName = name
+		var value_607 string = "content-offset-y"
+		var value_608 bool = KssParser_KssNameEquals(value_606, value_607)
+		value_605 = value_608
+	}
+	if value_605 {
+		var value_609 int32 = 1
+		return value_609
+	}
+	var value_610 KssName = name
+	var value_611 string = "material"
+	var value_612 bool = KssParser_KssNameEquals(value_610, value_611)
+	if value_612 {
+		var value_613 int32 = 3
+		return value_613
+	}
+	var value_614 KssName = name
+	var value_615 string = "font"
+	var value_616 bool = KssParser_KssNameEquals(value_614, value_615)
+	var value_617 bool = value_616
+	if !value_617 {
+		var value_618 KssName = name
+		var value_619 string = "typeface"
+		var value_620 bool = KssParser_KssNameEquals(value_618, value_619)
+		value_617 = value_620
+	}
+	var value_621 bool = value_617
+	if !value_621 {
+		var value_622 KssName = name
+		var value_623 string = "font-family"
+		var value_624 bool = KssParser_KssNameEquals(value_622, value_623)
+		value_621 = value_624
+	}
+	var value_625 bool = value_621
+	if !value_625 {
+		var value_626 KssName = name
+		var value_627 string = "font-weight"
+		var value_628 bool = KssParser_KssNameEquals(value_626, value_627)
+		value_625 = value_628
+	}
+	var value_629 bool = value_625
+	if !value_629 {
+		var value_630 KssName = name
+		var value_631 string = "font-style"
+		var value_632 bool = KssParser_KssNameEquals(value_630, value_631)
+		value_629 = value_632
+	}
+	var value_633 bool = value_629
+	if !value_633 {
+		var value_634 KssName = name
+		var value_635 string = "font-variant"
+		var value_636 bool = KssParser_KssNameEquals(value_634, value_635)
+		value_633 = value_636
+	}
+	var value_637 bool = value_633
+	if !value_637 {
+		var value_638 KssName = name
+		var value_639 string = "font-stretch"
+		var value_640 bool = KssParser_KssNameEquals(value_638, value_639)
+		value_637 = value_640
+	}
+	var value_641 bool = value_637
+	if !value_641 {
+		var value_642 KssName = name
+		var value_643 string = "font-kerning"
+		var value_644 bool = KssParser_KssNameEquals(value_642, value_643)
+		value_641 = value_644
+	}
+	if value_641 {
+		var value_645 int32 = -2
+		return value_645
+	}
+	var value_646 KssName = name
+	var value_647 string = "font-optical-sizing"
+	var value_648 bool = KssParser_KssNameEquals(value_646, value_647)
+	var value_649 bool = value_648
+	if !value_649 {
+		var value_650 KssName = name
+		var value_651 string = "font-feature-settings"
+		var value_652 bool = KssParser_KssNameEquals(value_650, value_651)
+		value_649 = value_652
+	}
+	var value_653 bool = value_649
+	if !value_653 {
+		var value_654 KssName = name
+		var value_655 string = "font-variation-settings"
+		var value_656 bool = KssParser_KssNameEquals(value_654, value_655)
+		value_653 = value_656
+	}
+	var value_657 bool = value_653
+	if !value_657 {
+		var value_658 KssName = name
+		var value_659 string = "font-size-adjust"
+		var value_660 bool = KssParser_KssNameEquals(value_658, value_659)
+		value_657 = value_660
+	}
+	var value_661 bool = value_657
+	if !value_661 {
+		var value_662 KssName = name
+		var value_663 string = "font-synthesis"
+		var value_664 bool = KssParser_KssNameEquals(value_662, value_663)
+		value_661 = value_664
+	}
+	var value_665 bool = value_661
+	if !value_665 {
+		var value_666 KssName = name
+		var value_667 string = "font-synthesis-weight"
+		var value_668 bool = KssParser_KssNameEquals(value_666, value_667)
+		value_665 = value_668
+	}
+	var value_669 bool = value_665
+	if !value_669 {
+		var value_670 KssName = name
+		var value_671 string = "font-synthesis-style"
+		var value_672 bool = KssParser_KssNameEquals(value_670, value_671)
+		value_669 = value_672
+	}
+	var value_673 bool = value_669
+	if !value_673 {
+		var value_674 KssName = name
+		var value_675 string = "font-synthesis-small-caps"
+		var value_676 bool = KssParser_KssNameEquals(value_674, value_675)
+		value_673 = value_676
+	}
+	if value_673 {
+		var value_677 int32 = -2
+		return value_677
+	}
+	var value_678 KssName = name
+	var value_679 string = "font-synthesis-position"
+	var value_680 bool = KssParser_KssNameEquals(value_678, value_679)
+	var value_681 bool = value_680
+	if !value_681 {
+		var value_682 KssName = name
+		var value_683 string = "font-variant-alternates"
+		var value_684 bool = KssParser_KssNameEquals(value_682, value_683)
+		value_681 = value_684
+	}
+	var value_685 bool = value_681
+	if !value_685 {
+		var value_686 KssName = name
+		var value_687 string = "font-variant-caps"
+		var value_688 bool = KssParser_KssNameEquals(value_686, value_687)
+		value_685 = value_688
+	}
+	var value_689 bool = value_685
+	if !value_689 {
+		var value_690 KssName = name
+		var value_691 string = "font-variant-east-asian"
+		var value_692 bool = KssParser_KssNameEquals(value_690, value_691)
+		value_689 = value_692
+	}
+	var value_693 bool = value_689
+	if !value_693 {
+		var value_694 KssName = name
+		var value_695 string = "font-variant-ligatures"
+		var value_696 bool = KssParser_KssNameEquals(value_694, value_695)
+		value_693 = value_696
+	}
+	var value_697 bool = value_693
+	if !value_697 {
+		var value_698 KssName = name
+		var value_699 string = "font-variant-numeric"
+		var value_700 bool = KssParser_KssNameEquals(value_698, value_699)
+		value_697 = value_700
+	}
+	var value_701 bool = value_697
+	if !value_701 {
+		var value_702 KssName = name
+		var value_703 string = "font-variant-position"
+		var value_704 bool = KssParser_KssNameEquals(value_702, value_703)
+		value_701 = value_704
+	}
+	var value_705 bool = value_701
+	if !value_705 {
+		var value_706 KssName = name
+		var value_707 string = "font-language-override"
+		var value_708 bool = KssParser_KssNameEquals(value_706, value_707)
+		value_705 = value_708
+	}
+	if value_705 {
+		var value_709 int32 = -2
+		return value_709
+	}
+	var value_710 KssName = name
+	var value_711 string = "font-palette"
+	var value_712 bool = KssParser_KssNameEquals(value_710, value_711)
+	var value_713 bool = value_712
+	if !value_713 {
+		var value_714 KssName = name
+		var value_715 string = "text-align"
+		var value_716 bool = KssParser_KssNameEquals(value_714, value_715)
+		value_713 = value_716
+	}
+	var value_717 bool = value_713
+	if !value_717 {
+		var value_718 KssName = name
+		var value_719 string = "text-align-last"
+		var value_720 bool = KssParser_KssNameEquals(value_718, value_719)
+		value_717 = value_720
+	}
+	var value_721 bool = value_717
+	if !value_721 {
+		var value_722 KssName = name
+		var value_723 string = "text-rendering"
+		var value_724 bool = KssParser_KssNameEquals(value_722, value_723)
+		value_721 = value_724
+	}
+	var value_725 bool = value_721
+	if !value_725 {
+		var value_726 KssName = name
+		var value_727 string = "text-decoration"
+		var value_728 bool = KssParser_KssNameEquals(value_726, value_727)
+		value_725 = value_728
+	}
+	var value_729 bool = value_725
+	if !value_729 {
+		var value_730 KssName = name
+		var value_731 string = "text-decoration-line"
+		var value_732 bool = KssParser_KssNameEquals(value_730, value_731)
+		value_729 = value_732
+	}
+	var value_733 bool = value_729
+	if !value_733 {
+		var value_734 KssName = name
+		var value_735 string = "text-decoration-style"
+		var value_736 bool = KssParser_KssNameEquals(value_734, value_735)
+		value_733 = value_736
+	}
+	var value_737 bool = value_733
+	if !value_737 {
+		var value_738 KssName = name
+		var value_739 string = "text-decoration-skip"
+		var value_740 bool = KssParser_KssNameEquals(value_738, value_739)
+		value_737 = value_740
+	}
+	if value_737 {
+		var value_741 int32 = -2
+		return value_741
+	}
+	var value_742 KssName = name
+	var value_743 string = "text-decoration-skip-ink"
+	var value_744 bool = KssParser_KssNameEquals(value_742, value_743)
+	var value_745 bool = value_744
+	if !value_745 {
+		var value_746 KssName = name
+		var value_747 string = "text-underline-position"
+		var value_748 bool = KssParser_KssNameEquals(value_746, value_747)
+		value_745 = value_748
+	}
+	var value_749 bool = value_745
+	if !value_749 {
+		var value_750 KssName = name
+		var value_751 string = "text-shadow"
+		var value_752 bool = KssParser_KssNameEquals(value_750, value_751)
+		value_749 = value_752
+	}
+	var value_753 bool = value_749
+	if !value_753 {
+		var value_754 KssName = name
+		var value_755 string = "text-emphasis"
+		var value_756 bool = KssParser_KssNameEquals(value_754, value_755)
+		value_753 = value_756
+	}
+	var value_757 bool = value_753
+	if !value_757 {
+		var value_758 KssName = name
+		var value_759 string = "text-emphasis-style"
+		var value_760 bool = KssParser_KssNameEquals(value_758, value_759)
+		value_757 = value_760
+	}
+	var value_761 bool = value_757
+	if !value_761 {
+		var value_762 KssName = name
+		var value_763 string = "text-emphasis-position"
+		var value_764 bool = KssParser_KssNameEquals(value_762, value_763)
+		value_761 = value_764
+	}
+	var value_765 bool = value_761
+	if !value_765 {
+		var value_766 KssName = name
+		var value_767 string = "text-transform"
+		var value_768 bool = KssParser_KssNameEquals(value_766, value_767)
+		value_765 = value_768
+	}
+	var value_769 bool = value_765
+	if !value_769 {
+		var value_770 KssName = name
+		var value_771 string = "text-overflow"
+		var value_772 bool = KssParser_KssNameEquals(value_770, value_771)
+		value_769 = value_772
+	}
+	if value_769 {
+		var value_773 int32 = -2
+		return value_773
+	}
+	var value_774 KssName = name
+	var value_775 string = "white-space"
+	var value_776 bool = KssParser_KssNameEquals(value_774, value_775)
+	var value_777 bool = value_776
+	if !value_777 {
+		var value_778 KssName = name
+		var value_779 string = "text-size-adjust"
+		var value_780 bool = KssParser_KssNameEquals(value_778, value_779)
+		value_777 = value_780
+	}
+	var value_781 bool = value_777
+	if !value_781 {
+		var value_782 KssName = name
+		var value_783 string = "text-orientation"
+		var value_784 bool = KssParser_KssNameEquals(value_782, value_783)
+		value_781 = value_784
+	}
+	var value_785 bool = value_781
+	if !value_785 {
+		var value_786 KssName = name
+		var value_787 string = "text-wrap"
+		var value_788 bool = KssParser_KssNameEquals(value_786, value_787)
+		value_785 = value_788
+	}
+	var value_789 bool = value_785
+	if !value_789 {
+		var value_790 KssName = name
+		var value_791 string = "text-wrap-mode"
+		var value_792 bool = KssParser_KssNameEquals(value_790, value_791)
+		value_789 = value_792
+	}
+	var value_793 bool = value_789
+	if !value_793 {
+		var value_794 KssName = name
+		var value_795 string = "text-wrap-style"
+		var value_796 bool = KssParser_KssNameEquals(value_794, value_795)
+		value_793 = value_796
+	}
+	var value_797 bool = value_793
+	if !value_797 {
+		var value_798 KssName = name
+		var value_799 string = "text-justify"
+		var value_800 bool = KssParser_KssNameEquals(value_798, value_799)
+		value_797 = value_800
+	}
+	var value_801 bool = value_797
+	if !value_801 {
+		var value_802 KssName = name
+		var value_803 string = "line-break"
+		var value_804 bool = KssParser_KssNameEquals(value_802, value_803)
+		value_801 = value_804
+	}
+	if value_801 {
+		var value_805 int32 = -2
+		return value_805
+	}
+	var value_806 KssName = name
+	var value_807 string = "hanging-punctuation"
+	var value_808 bool = KssParser_KssNameEquals(value_806, value_807)
+	var value_809 bool = value_808
+	if !value_809 {
+		var value_810 KssName = name
+		var value_811 string = "text-combine-upright"
+		var value_812 bool = KssParser_KssNameEquals(value_810, value_811)
+		value_809 = value_812
+	}
+	var value_813 bool = value_809
+	if !value_813 {
+		var value_814 KssName = name
+		var value_815 string = "ruby-align"
+		var value_816 bool = KssParser_KssNameEquals(value_814, value_815)
+		value_813 = value_816
+	}
+	var value_817 bool = value_813
+	if !value_817 {
+		var value_818 KssName = name
+		var value_819 string = "ruby-position"
+		var value_820 bool = KssParser_KssNameEquals(value_818, value_819)
+		value_817 = value_820
+	}
+	var value_821 bool = value_817
+	if !value_821 {
+		var value_822 KssName = name
+		var value_823 string = "text-spacing-trim"
+		var value_824 bool = KssParser_KssNameEquals(value_822, value_823)
+		value_821 = value_824
+	}
+	var value_825 bool = value_821
+	if !value_825 {
+		var value_826 KssName = name
+		var value_827 string = "text-autospace"
+		var value_828 bool = KssParser_KssNameEquals(value_826, value_827)
+		value_825 = value_828
+	}
+	var value_829 bool = value_825
+	if !value_829 {
+		var value_830 KssName = name
+		var value_831 string = "text-box-trim"
+		var value_832 bool = KssParser_KssNameEquals(value_830, value_831)
+		value_829 = value_832
+	}
+	var value_833 bool = value_829
+	if !value_833 {
+		var value_834 KssName = name
+		var value_835 string = "text-box-edge"
+		var value_836 bool = KssParser_KssNameEquals(value_834, value_835)
+		value_833 = value_836
+	}
+	if value_833 {
+		var value_837 int32 = -2
+		return value_837
+	}
+	var value_838 KssName = name
+	var value_839 string = "word-break"
+	var value_840 bool = KssParser_KssNameEquals(value_838, value_839)
+	var value_841 bool = value_840
+	if !value_841 {
+		var value_842 KssName = name
+		var value_843 string = "overflow-wrap"
+		var value_844 bool = KssParser_KssNameEquals(value_842, value_843)
+		value_841 = value_844
+	}
+	var value_845 bool = value_841
+	if !value_845 {
+		var value_846 KssName = name
+		var value_847 string = "word-wrap"
+		var value_848 bool = KssParser_KssNameEquals(value_846, value_847)
+		value_845 = value_848
+	}
+	var value_849 bool = value_845
+	if !value_849 {
+		var value_850 KssName = name
+		var value_851 string = "display"
+		var value_852 bool = KssParser_KssNameEquals(value_850, value_851)
+		value_849 = value_852
+	}
+	var value_853 bool = value_849
+	if !value_853 {
+		var value_854 KssName = name
+		var value_855 string = "position"
+		var value_856 bool = KssParser_KssNameEquals(value_854, value_855)
+		value_853 = value_856
+	}
+	var value_857 bool = value_853
+	if !value_857 {
+		var value_858 KssName = name
+		var value_859 string = "z-index"
+		var value_860 bool = KssParser_KssNameEquals(value_858, value_859)
+		value_857 = value_860
+	}
+	var value_861 bool = value_857
+	if !value_861 {
+		var value_862 KssName = name
+		var value_863 string = "overflow"
+		var value_864 bool = KssParser_KssNameEquals(value_862, value_863)
+		value_861 = value_864
+	}
+	var value_865 bool = value_861
+	if !value_865 {
+		var value_866 KssName = name
+		var value_867 string = "overflow-inline"
+		var value_868 bool = KssParser_KssNameEquals(value_866, value_867)
+		value_865 = value_868
+	}
+	if value_865 {
+		var value_869 int32 = -2
+		return value_869
+	}
+	var value_870 KssName = name
+	var value_871 string = "overflow-block"
+	var value_872 bool = KssParser_KssNameEquals(value_870, value_871)
+	var value_873 bool = value_872
+	if !value_873 {
+		var value_874 KssName = name
+		var value_875 string = "border-top"
+		var value_876 bool = KssParser_KssNameEquals(value_874, value_875)
+		value_873 = value_876
+	}
+	var value_877 bool = value_873
+	if !value_877 {
+		var value_878 KssName = name
+		var value_879 string = "border-right"
+		var value_880 bool = KssParser_KssNameEquals(value_878, value_879)
+		value_877 = value_880
+	}
+	var value_881 bool = value_877
+	if !value_881 {
+		var value_882 KssName = name
+		var value_883 string = "border-bottom"
+		var value_884 bool = KssParser_KssNameEquals(value_882, value_883)
+		value_881 = value_884
+	}
+	var value_885 bool = value_881
+	if !value_885 {
+		var value_886 KssName = name
+		var value_887 string = "border-left"
+		var value_888 bool = KssParser_KssNameEquals(value_886, value_887)
+		value_885 = value_888
+	}
+	var value_889 bool = value_885
+	if !value_889 {
+		var value_890 KssName = name
+		var value_891 string = "border-inline"
+		var value_892 bool = KssParser_KssNameEquals(value_890, value_891)
+		value_889 = value_892
+	}
+	var value_893 bool = value_889
+	if !value_893 {
+		var value_894 KssName = name
+		var value_895 string = "border-block"
+		var value_896 bool = KssParser_KssNameEquals(value_894, value_895)
+		value_893 = value_896
+	}
+	var value_897 bool = value_893
+	if !value_897 {
+		var value_898 KssName = name
+		var value_899 string = "border-inline-start"
+		var value_900 bool = KssParser_KssNameEquals(value_898, value_899)
+		value_897 = value_900
+	}
+	if value_897 {
+		var value_901 int32 = -2
+		return value_901
+	}
+	var value_902 KssName = name
+	var value_903 string = "border-inline-end"
+	var value_904 bool = KssParser_KssNameEquals(value_902, value_903)
+	var value_905 bool = value_904
+	if !value_905 {
+		var value_906 KssName = name
+		var value_907 string = "border-block-start"
+		var value_908 bool = KssParser_KssNameEquals(value_906, value_907)
+		value_905 = value_908
+	}
+	var value_909 bool = value_905
+	if !value_909 {
+		var value_910 KssName = name
+		var value_911 string = "border-block-end"
+		var value_912 bool = KssParser_KssNameEquals(value_910, value_911)
+		value_909 = value_912
+	}
+	var value_913 bool = value_909
+	if !value_913 {
+		var value_914 KssName = name
+		var value_915 string = "border-style"
+		var value_916 bool = KssParser_KssNameEquals(value_914, value_915)
+		value_913 = value_916
+	}
+	var value_917 bool = value_913
+	if !value_917 {
+		var value_918 KssName = name
+		var value_919 string = "border-top-style"
+		var value_920 bool = KssParser_KssNameEquals(value_918, value_919)
+		value_917 = value_920
+	}
+	var value_921 bool = value_917
+	if !value_921 {
+		var value_922 KssName = name
+		var value_923 string = "border-right-style"
+		var value_924 bool = KssParser_KssNameEquals(value_922, value_923)
+		value_921 = value_924
+	}
+	var value_925 bool = value_921
+	if !value_925 {
+		var value_926 KssName = name
+		var value_927 string = "border-bottom-style"
+		var value_928 bool = KssParser_KssNameEquals(value_926, value_927)
+		value_925 = value_928
+	}
+	var value_929 bool = value_925
+	if !value_929 {
+		var value_930 KssName = name
+		var value_931 string = "border-left-style"
+		var value_932 bool = KssParser_KssNameEquals(value_930, value_931)
+		value_929 = value_932
+	}
+	if value_929 {
+		var value_933 int32 = -2
+		return value_933
+	}
+	var value_934 KssName = name
+	var value_935 string = "border-inline-style"
+	var value_936 bool = KssParser_KssNameEquals(value_934, value_935)
+	var value_937 bool = value_936
+	if !value_937 {
+		var value_938 KssName = name
+		var value_939 string = "border-block-style"
+		var value_940 bool = KssParser_KssNameEquals(value_938, value_939)
+		value_937 = value_940
+	}
+	var value_941 bool = value_937
+	if !value_941 {
+		var value_942 KssName = name
+		var value_943 string = "border-inline-start-style"
+		var value_944 bool = KssParser_KssNameEquals(value_942, value_943)
+		value_941 = value_944
+	}
+	var value_945 bool = value_941
+	if !value_945 {
+		var value_946 KssName = name
+		var value_947 string = "border-inline-end-style"
+		var value_948 bool = KssParser_KssNameEquals(value_946, value_947)
+		value_945 = value_948
+	}
+	var value_949 bool = value_945
+	if !value_949 {
+		var value_950 KssName = name
+		var value_951 string = "border-block-start-style"
+		var value_952 bool = KssParser_KssNameEquals(value_950, value_951)
+		value_949 = value_952
+	}
+	var value_953 bool = value_949
+	if !value_953 {
+		var value_954 KssName = name
+		var value_955 string = "border-block-end-style"
+		var value_956 bool = KssParser_KssNameEquals(value_954, value_955)
+		value_953 = value_956
+	}
+	var value_957 bool = value_953
+	if !value_957 {
+		var value_958 KssName = name
+		var value_959 string = "border-image"
+		var value_960 bool = KssParser_KssNameEquals(value_958, value_959)
+		value_957 = value_960
+	}
+	var value_961 bool = value_957
+	if !value_961 {
+		var value_962 KssName = name
+		var value_963 string = "border-image-source"
+		var value_964 bool = KssParser_KssNameEquals(value_962, value_963)
+		value_961 = value_964
+	}
+	if value_961 {
+		var value_965 int32 = -2
+		return value_965
+	}
+	var value_966 KssName = name
+	var value_967 string = "border-image-slice"
+	var value_968 bool = KssParser_KssNameEquals(value_966, value_967)
+	var value_969 bool = value_968
+	if !value_969 {
+		var value_970 KssName = name
+		var value_971 string = "border-image-width"
+		var value_972 bool = KssParser_KssNameEquals(value_970, value_971)
+		value_969 = value_972
+	}
+	var value_973 bool = value_969
+	if !value_973 {
+		var value_974 KssName = name
+		var value_975 string = "border-image-outset"
+		var value_976 bool = KssParser_KssNameEquals(value_974, value_975)
+		value_973 = value_976
+	}
+	var value_977 bool = value_973
+	if !value_977 {
+		var value_978 KssName = name
+		var value_979 string = "border-image-repeat"
+		var value_980 bool = KssParser_KssNameEquals(value_978, value_979)
+		value_977 = value_980
+	}
+	var value_981 bool = value_977
+	if !value_981 {
+		var value_982 KssName = name
+		var value_983 string = "overflow-x"
+		var value_984 bool = KssParser_KssNameEquals(value_982, value_983)
+		value_981 = value_984
+	}
+	var value_985 bool = value_981
+	if !value_985 {
+		var value_986 KssName = name
+		var value_987 string = "overflow-y"
+		var value_988 bool = KssParser_KssNameEquals(value_986, value_987)
+		value_985 = value_988
+	}
+	var value_989 bool = value_985
+	if !value_989 {
+		var value_990 KssName = name
+		var value_991 string = "box-sizing"
+		var value_992 bool = KssParser_KssNameEquals(value_990, value_991)
+		value_989 = value_992
+	}
+	var value_993 bool = value_989
+	if !value_993 {
+		var value_994 KssName = name
+		var value_995 string = "direction"
+		var value_996 bool = KssParser_KssNameEquals(value_994, value_995)
+		value_993 = value_996
+	}
+	if value_993 {
+		var value_997 int32 = -2
+		return value_997
+	}
+	var value_998 KssName = name
+	var value_999 string = "writing-mode"
+	var value_1000 bool = KssParser_KssNameEquals(value_998, value_999)
+	var value_1001 bool = value_1000
+	if !value_1001 {
+		var value_1002 KssName = name
+		var value_1003 string = "hyphens"
+		var value_1004 bool = KssParser_KssNameEquals(value_1002, value_1003)
+		value_1001 = value_1004
+	}
+	var value_1005 bool = value_1001
+	if !value_1005 {
+		var value_1006 KssName = name
+		var value_1007 string = "line-clamp"
+		var value_1008 bool = KssParser_KssNameEquals(value_1006, value_1007)
+		value_1005 = value_1008
+	}
+	var value_1009 bool = value_1005
+	if !value_1009 {
+		var value_1010 KssName = name
+		var value_1011 string = "list-style"
+		var value_1012 bool = KssParser_KssNameEquals(value_1010, value_1011)
+		value_1009 = value_1012
+	}
+	var value_1013 bool = value_1009
+	if !value_1013 {
+		var value_1014 KssName = name
+		var value_1015 string = "list-style-type"
+		var value_1016 bool = KssParser_KssNameEquals(value_1014, value_1015)
+		value_1013 = value_1016
+	}
+	var value_1017 bool = value_1013
+	if !value_1017 {
+		var value_1018 KssName = name
+		var value_1019 string = "list-style-position"
+		var value_1020 bool = KssParser_KssNameEquals(value_1018, value_1019)
+		value_1017 = value_1020
+	}
+	var value_1021 bool = value_1017
+	if !value_1021 {
+		var value_1022 KssName = name
+		var value_1023 string = "list-style-image"
+		var value_1024 bool = KssParser_KssNameEquals(value_1022, value_1023)
+		value_1021 = value_1024
+	}
+	var value_1025 bool = value_1021
+	if !value_1025 {
+		var value_1026 KssName = name
+		var value_1027 string = "counter-reset"
+		var value_1028 bool = KssParser_KssNameEquals(value_1026, value_1027)
+		value_1025 = value_1028
+	}
+	if value_1025 {
+		var value_1029 int32 = -2
+		return value_1029
+	}
+	var value_1030 KssName = name
+	var value_1031 string = "counter-increment"
+	var value_1032 bool = KssParser_KssNameEquals(value_1030, value_1031)
+	var value_1033 bool = value_1032
+	if !value_1033 {
+		var value_1034 KssName = name
+		var value_1035 string = "counter-set"
+		var value_1036 bool = KssParser_KssNameEquals(value_1034, value_1035)
+		value_1033 = value_1036
+	}
+	var value_1037 bool = value_1033
+	if !value_1037 {
+		var value_1038 KssName = name
+		var value_1039 string = "quotes"
+		var value_1040 bool = KssParser_KssNameEquals(value_1038, value_1039)
+		value_1037 = value_1040
+	}
+	var value_1041 bool = value_1037
+	if !value_1041 {
+		var value_1042 KssName = name
+		var value_1043 string = "marker-side"
+		var value_1044 bool = KssParser_KssNameEquals(value_1042, value_1043)
+		value_1041 = value_1044
+	}
+	var value_1045 bool = value_1041
+	if !value_1045 {
+		var value_1046 KssName = name
+		var value_1047 string = "marker-start"
+		var value_1048 bool = KssParser_KssNameEquals(value_1046, value_1047)
+		value_1045 = value_1048
+	}
+	var value_1049 bool = value_1045
+	if !value_1049 {
+		var value_1050 KssName = name
+		var value_1051 string = "marker-end"
+		var value_1052 bool = KssParser_KssNameEquals(value_1050, value_1051)
+		value_1049 = value_1052
+	}
+	var value_1053 bool = value_1049
+	if !value_1053 {
+		var value_1054 KssName = name
+		var value_1055 string = "orphans"
+		var value_1056 bool = KssParser_KssNameEquals(value_1054, value_1055)
+		value_1053 = value_1056
+	}
+	var value_1057 bool = value_1053
+	if !value_1057 {
+		var value_1058 KssName = name
+		var value_1059 string = "widows"
+		var value_1060 bool = KssParser_KssNameEquals(value_1058, value_1059)
+		value_1057 = value_1060
+	}
+	if value_1057 {
+		var value_1061 int32 = -2
+		return value_1061
+	}
+	var value_1062 KssName = name
+	var value_1063 string = "box-decoration-break"
+	var value_1064 bool = KssParser_KssNameEquals(value_1062, value_1063)
+	var value_1065 bool = value_1064
+	if !value_1065 {
+		var value_1066 KssName = name
+		var value_1067 string = "border-collapse"
+		var value_1068 bool = KssParser_KssNameEquals(value_1066, value_1067)
+		value_1065 = value_1068
+	}
+	var value_1069 bool = value_1065
+	if !value_1069 {
+		var value_1070 KssName = name
+		var value_1071 string = "table-layout"
+		var value_1072 bool = KssParser_KssNameEquals(value_1070, value_1071)
+		value_1069 = value_1072
+	}
+	var value_1073 bool = value_1069
+	if !value_1073 {
+		var value_1074 KssName = name
+		var value_1075 string = "caption-side"
+		var value_1076 bool = KssParser_KssNameEquals(value_1074, value_1075)
+		value_1073 = value_1076
+	}
+	var value_1077 bool = value_1073
+	if !value_1077 {
+		var value_1078 KssName = name
+		var value_1079 string = "empty-cells"
+		var value_1080 bool = KssParser_KssNameEquals(value_1078, value_1079)
+		value_1077 = value_1080
+	}
+	var value_1081 bool = value_1077
+	if !value_1081 {
+		var value_1082 KssName = name
+		var value_1083 string = "scroll-behavior"
+		var value_1084 bool = KssParser_KssNameEquals(value_1082, value_1083)
+		value_1081 = value_1084
+	}
+	var value_1085 bool = value_1081
+	if !value_1085 {
+		var value_1086 KssName = name
+		var value_1087 string = "overscroll-behavior"
+		var value_1088 bool = KssParser_KssNameEquals(value_1086, value_1087)
+		value_1085 = value_1088
+	}
+	var value_1089 bool = value_1085
+	if !value_1089 {
+		var value_1090 KssName = name
+		var value_1091 string = "overscroll-behavior-x"
+		var value_1092 bool = KssParser_KssNameEquals(value_1090, value_1091)
+		value_1089 = value_1092
+	}
+	if value_1089 {
+		var value_1093 int32 = -2
+		return value_1093
+	}
+	var value_1094 KssName = name
+	var value_1095 string = "overscroll-behavior-y"
+	var value_1096 bool = KssParser_KssNameEquals(value_1094, value_1095)
+	var value_1097 bool = value_1096
+	if !value_1097 {
+		var value_1098 KssName = name
+		var value_1099 string = "overscroll-behavior-inline"
+		var value_1100 bool = KssParser_KssNameEquals(value_1098, value_1099)
+		value_1097 = value_1100
+	}
+	var value_1101 bool = value_1097
+	if !value_1101 {
+		var value_1102 KssName = name
+		var value_1103 string = "overscroll-behavior-block"
+		var value_1104 bool = KssParser_KssNameEquals(value_1102, value_1103)
+		value_1101 = value_1104
+	}
+	var value_1105 bool = value_1101
+	if !value_1105 {
+		var value_1106 KssName = name
+		var value_1107 string = "scroll-snap-type"
+		var value_1108 bool = KssParser_KssNameEquals(value_1106, value_1107)
+		value_1105 = value_1108
+	}
+	var value_1109 bool = value_1105
+	if !value_1109 {
+		var value_1110 KssName = name
+		var value_1111 string = "scroll-snap-align"
+		var value_1112 bool = KssParser_KssNameEquals(value_1110, value_1111)
+		value_1109 = value_1112
+	}
+	var value_1113 bool = value_1109
+	if !value_1113 {
+		var value_1114 KssName = name
+		var value_1115 string = "scroll-snap-stop"
+		var value_1116 bool = KssParser_KssNameEquals(value_1114, value_1115)
+		value_1113 = value_1116
+	}
+	var value_1117 bool = value_1113
+	if !value_1117 {
+		var value_1118 KssName = name
+		var value_1119 string = "scrollbar-color"
+		var value_1120 bool = KssParser_KssNameEquals(value_1118, value_1119)
+		value_1117 = value_1120
+	}
+	var value_1121 bool = value_1117
+	if !value_1121 {
+		var value_1122 KssName = name
+		var value_1123 string = "scrollbar-width"
+		var value_1124 bool = KssParser_KssNameEquals(value_1122, value_1123)
+		value_1121 = value_1124
+	}
+	if value_1121 {
+		var value_1125 int32 = -2
+		return value_1125
+	}
+	var value_1126 KssName = name
+	var value_1127 string = "scrollbar-gutter"
+	var value_1128 bool = KssParser_KssNameEquals(value_1126, value_1127)
+	var value_1129 bool = value_1128
+	if !value_1129 {
+		var value_1130 KssName = name
+		var value_1131 string = "touch-action"
+		var value_1132 bool = KssParser_KssNameEquals(value_1130, value_1131)
+		value_1129 = value_1132
+	}
+	var value_1133 bool = value_1129
+	if !value_1133 {
+		var value_1134 KssName = name
+		var value_1135 string = "align-items"
+		var value_1136 bool = KssParser_KssNameEquals(value_1134, value_1135)
+		value_1133 = value_1136
+	}
+	var value_1137 bool = value_1133
+	if !value_1137 {
+		var value_1138 KssName = name
+		var value_1139 string = "justify-content"
+		var value_1140 bool = KssParser_KssNameEquals(value_1138, value_1139)
+		value_1137 = value_1140
+	}
+	var value_1141 bool = value_1137
+	if !value_1141 {
+		var value_1142 KssName = name
+		var value_1143 string = "align-self"
+		var value_1144 bool = KssParser_KssNameEquals(value_1142, value_1143)
+		value_1141 = value_1144
+	}
+	var value_1145 bool = value_1141
+	if !value_1145 {
+		var value_1146 KssName = name
+		var value_1147 string = "justify-self"
+		var value_1148 bool = KssParser_KssNameEquals(value_1146, value_1147)
+		value_1145 = value_1148
+	}
+	var value_1149 bool = value_1145
+	if !value_1149 {
+		var value_1150 KssName = name
+		var value_1151 string = "flex-direction"
+		var value_1152 bool = KssParser_KssNameEquals(value_1150, value_1151)
+		value_1149 = value_1152
+	}
+	var value_1153 bool = value_1149
+	if !value_1153 {
+		var value_1154 KssName = name
+		var value_1155 string = "flex-wrap"
+		var value_1156 bool = KssParser_KssNameEquals(value_1154, value_1155)
+		value_1153 = value_1156
+	}
+	if value_1153 {
+		var value_1157 int32 = -2
+		return value_1157
+	}
+	var value_1158 KssName = name
+	var value_1159 string = "flex-flow"
+	var value_1160 bool = KssParser_KssNameEquals(value_1158, value_1159)
+	var value_1161 bool = value_1160
+	if !value_1161 {
+		var value_1162 KssName = name
+		var value_1163 string = "flex"
+		var value_1164 bool = KssParser_KssNameEquals(value_1162, value_1163)
+		value_1161 = value_1164
+	}
+	var value_1165 bool = value_1161
+	if !value_1165 {
+		var value_1166 KssName = name
+		var value_1167 string = "flex-grow"
+		var value_1168 bool = KssParser_KssNameEquals(value_1166, value_1167)
+		value_1165 = value_1168
+	}
+	var value_1169 bool = value_1165
+	if !value_1169 {
+		var value_1170 KssName = name
+		var value_1171 string = "flex-shrink"
+		var value_1172 bool = KssParser_KssNameEquals(value_1170, value_1171)
+		value_1169 = value_1172
+	}
+	var value_1173 bool = value_1169
+	if !value_1173 {
+		var value_1174 KssName = name
+		var value_1175 string = "grid"
+		var value_1176 bool = KssParser_KssNameEquals(value_1174, value_1175)
+		value_1173 = value_1176
+	}
+	var value_1177 bool = value_1173
+	if !value_1177 {
+		var value_1178 KssName = name
+		var value_1179 string = "grid-template"
+		var value_1180 bool = KssParser_KssNameEquals(value_1178, value_1179)
+		value_1177 = value_1180
+	}
+	var value_1181 bool = value_1177
+	if !value_1181 {
+		var value_1182 KssName = name
+		var value_1183 string = "grid-template-columns"
+		var value_1184 bool = KssParser_KssNameEquals(value_1182, value_1183)
+		value_1181 = value_1184
+	}
+	var value_1185 bool = value_1181
+	if !value_1185 {
+		var value_1186 KssName = name
+		var value_1187 string = "grid-template-rows"
+		var value_1188 bool = KssParser_KssNameEquals(value_1186, value_1187)
+		value_1185 = value_1188
+	}
+	if value_1185 {
+		var value_1189 int32 = -2
+		return value_1189
+	}
+	var value_1190 KssName = name
+	var value_1191 string = "grid-template-areas"
+	var value_1192 bool = KssParser_KssNameEquals(value_1190, value_1191)
+	var value_1193 bool = value_1192
+	if !value_1193 {
+		var value_1194 KssName = name
+		var value_1195 string = "grid-auto-columns"
+		var value_1196 bool = KssParser_KssNameEquals(value_1194, value_1195)
+		value_1193 = value_1196
+	}
+	var value_1197 bool = value_1193
+	if !value_1197 {
+		var value_1198 KssName = name
+		var value_1199 string = "grid-auto-rows"
+		var value_1200 bool = KssParser_KssNameEquals(value_1198, value_1199)
+		value_1197 = value_1200
+	}
+	var value_1201 bool = value_1197
+	if !value_1201 {
+		var value_1202 KssName = name
+		var value_1203 string = "grid-auto-flow"
+		var value_1204 bool = KssParser_KssNameEquals(value_1202, value_1203)
+		value_1201 = value_1204
+	}
+	var value_1205 bool = value_1201
+	if !value_1205 {
+		var value_1206 KssName = name
+		var value_1207 string = "grid-column"
+		var value_1208 bool = KssParser_KssNameEquals(value_1206, value_1207)
+		value_1205 = value_1208
+	}
+	var value_1209 bool = value_1205
+	if !value_1209 {
+		var value_1210 KssName = name
+		var value_1211 string = "grid-column-start"
+		var value_1212 bool = KssParser_KssNameEquals(value_1210, value_1211)
+		value_1209 = value_1212
+	}
+	var value_1213 bool = value_1209
+	if !value_1213 {
+		var value_1214 KssName = name
+		var value_1215 string = "grid-column-end"
+		var value_1216 bool = KssParser_KssNameEquals(value_1214, value_1215)
+		value_1213 = value_1216
+	}
+	var value_1217 bool = value_1213
+	if !value_1217 {
+		var value_1218 KssName = name
+		var value_1219 string = "grid-area"
+		var value_1220 bool = KssParser_KssNameEquals(value_1218, value_1219)
+		value_1217 = value_1220
+	}
+	if value_1217 {
+		var value_1221 int32 = -2
+		return value_1221
+	}
+	var value_1222 KssName = name
+	var value_1223 string = "grid-row"
+	var value_1224 bool = KssParser_KssNameEquals(value_1222, value_1223)
+	var value_1225 bool = value_1224
+	if !value_1225 {
+		var value_1226 KssName = name
+		var value_1227 string = "grid-row-start"
+		var value_1228 bool = KssParser_KssNameEquals(value_1226, value_1227)
+		value_1225 = value_1228
+	}
+	var value_1229 bool = value_1225
+	if !value_1229 {
+		var value_1230 KssName = name
+		var value_1231 string = "grid-row-end"
+		var value_1232 bool = KssParser_KssNameEquals(value_1230, value_1231)
+		value_1229 = value_1232
+	}
+	var value_1233 bool = value_1229
+	if !value_1233 {
+		var value_1234 KssName = name
+		var value_1235 string = "align-content"
+		var value_1236 bool = KssParser_KssNameEquals(value_1234, value_1235)
+		value_1233 = value_1236
+	}
+	var value_1237 bool = value_1233
+	if !value_1237 {
+		var value_1238 KssName = name
+		var value_1239 string = "justify-items"
+		var value_1240 bool = KssParser_KssNameEquals(value_1238, value_1239)
+		value_1237 = value_1240
+	}
+	var value_1241 bool = value_1237
+	if !value_1241 {
+		var value_1242 KssName = name
+		var value_1243 string = "place-items"
+		var value_1244 bool = KssParser_KssNameEquals(value_1242, value_1243)
+		value_1241 = value_1244
+	}
+	var value_1245 bool = value_1241
+	if !value_1245 {
+		var value_1246 KssName = name
+		var value_1247 string = "place-content"
+		var value_1248 bool = KssParser_KssNameEquals(value_1246, value_1247)
+		value_1245 = value_1248
+	}
+	var value_1249 bool = value_1245
+	if !value_1249 {
+		var value_1250 KssName = name
+		var value_1251 string = "place-self"
+		var value_1252 bool = KssParser_KssNameEquals(value_1250, value_1251)
+		value_1249 = value_1252
+	}
+	if value_1249 {
+		var value_1253 int32 = -2
+		return value_1253
+	}
+	var value_1254 KssName = name
+	var value_1255 string = "align-tracks"
+	var value_1256 bool = KssParser_KssNameEquals(value_1254, value_1255)
+	var value_1257 bool = value_1256
+	if !value_1257 {
+		var value_1258 KssName = name
+		var value_1259 string = "justify-tracks"
+		var value_1260 bool = KssParser_KssNameEquals(value_1258, value_1259)
+		value_1257 = value_1260
+	}
+	var value_1261 bool = value_1257
+	if !value_1261 {
+		var value_1262 KssName = name
+		var value_1263 string = "object-fit"
+		var value_1264 bool = KssParser_KssNameEquals(value_1262, value_1263)
+		value_1261 = value_1264
+	}
+	var value_1265 bool = value_1261
+	if !value_1265 {
+		var value_1266 KssName = name
+		var value_1267 string = "object-position"
+		var value_1268 bool = KssParser_KssNameEquals(value_1266, value_1267)
+		value_1265 = value_1268
+	}
+	var value_1269 bool = value_1265
+	if !value_1269 {
+		var value_1270 KssName = name
+		var value_1271 string = "object-view-box"
+		var value_1272 bool = KssParser_KssNameEquals(value_1270, value_1271)
+		value_1269 = value_1272
+	}
+	var value_1273 bool = value_1269
+	if !value_1273 {
+		var value_1274 KssName = name
+		var value_1275 string = "aspect-ratio"
+		var value_1276 bool = KssParser_KssNameEquals(value_1274, value_1275)
+		value_1273 = value_1276
+	}
+	var value_1277 bool = value_1273
+	if !value_1277 {
+		var value_1278 KssName = name
+		var value_1279 string = "image-rendering"
+		var value_1280 bool = KssParser_KssNameEquals(value_1278, value_1279)
+		value_1277 = value_1280
+	}
+	var value_1281 bool = value_1277
+	if !value_1281 {
+		var value_1282 KssName = name
+		var value_1283 string = "image-orientation"
+		var value_1284 bool = KssParser_KssNameEquals(value_1282, value_1283)
+		value_1281 = value_1284
+	}
+	if value_1281 {
+		var value_1285 int32 = -2
+		return value_1285
+	}
+	var value_1286 KssName = name
+	var value_1287 string = "image-resolution"
+	var value_1288 bool = KssParser_KssNameEquals(value_1286, value_1287)
+	var value_1289 bool = value_1288
+	if !value_1289 {
+		var value_1290 KssName = name
+		var value_1291 string = "background-image"
+		var value_1292 bool = KssParser_KssNameEquals(value_1290, value_1291)
+		value_1289 = value_1292
+	}
+	var value_1293 bool = value_1289
+	if !value_1293 {
+		var value_1294 KssName = name
+		var value_1295 string = "background-size"
+		var value_1296 bool = KssParser_KssNameEquals(value_1294, value_1295)
+		value_1293 = value_1296
+	}
+	var value_1297 bool = value_1293
+	if !value_1297 {
+		var value_1298 KssName = name
+		var value_1299 string = "background-position"
+		var value_1300 bool = KssParser_KssNameEquals(value_1298, value_1299)
+		value_1297 = value_1300
+	}
+	var value_1301 bool = value_1297
+	if !value_1301 {
+		var value_1302 KssName = name
+		var value_1303 string = "background-position-x"
+		var value_1304 bool = KssParser_KssNameEquals(value_1302, value_1303)
+		value_1301 = value_1304
+	}
+	var value_1305 bool = value_1301
+	if !value_1305 {
+		var value_1306 KssName = name
+		var value_1307 string = "background-position-y"
+		var value_1308 bool = KssParser_KssNameEquals(value_1306, value_1307)
+		value_1305 = value_1308
+	}
+	var value_1309 bool = value_1305
+	if !value_1309 {
+		var value_1310 KssName = name
+		var value_1311 string = "background-repeat"
+		var value_1312 bool = KssParser_KssNameEquals(value_1310, value_1311)
+		value_1309 = value_1312
+	}
+	var value_1313 bool = value_1309
+	if !value_1313 {
+		var value_1314 KssName = name
+		var value_1315 string = "background-repeat-x"
+		var value_1316 bool = KssParser_KssNameEquals(value_1314, value_1315)
+		value_1313 = value_1316
+	}
+	if value_1313 {
+		var value_1317 int32 = -2
+		return value_1317
+	}
+	var value_1318 KssName = name
+	var value_1319 string = "background-repeat-y"
+	var value_1320 bool = KssParser_KssNameEquals(value_1318, value_1319)
+	var value_1321 bool = value_1320
+	if !value_1321 {
+		var value_1322 KssName = name
+		var value_1323 string = "background-clip"
+		var value_1324 bool = KssParser_KssNameEquals(value_1322, value_1323)
+		value_1321 = value_1324
+	}
+	var value_1325 bool = value_1321
+	if !value_1325 {
+		var value_1326 KssName = name
+		var value_1327 string = "background-origin"
+		var value_1328 bool = KssParser_KssNameEquals(value_1326, value_1327)
+		value_1325 = value_1328
+	}
+	var value_1329 bool = value_1325
+	if !value_1329 {
+		var value_1330 KssName = name
+		var value_1331 string = "background-attachment"
+		var value_1332 bool = KssParser_KssNameEquals(value_1330, value_1331)
+		value_1329 = value_1332
+	}
+	var value_1333 bool = value_1329
+	if !value_1333 {
+		var value_1334 KssName = name
+		var value_1335 string = "background-blend-mode"
+		var value_1336 bool = KssParser_KssNameEquals(value_1334, value_1335)
+		value_1333 = value_1336
+	}
+	var value_1337 bool = value_1333
+	if !value_1337 {
+		var value_1338 KssName = name
+		var value_1339 string = "visibility"
+		var value_1340 bool = KssParser_KssNameEquals(value_1338, value_1339)
+		value_1337 = value_1340
+	}
+	var value_1341 bool = value_1337
+	if !value_1341 {
+		var value_1342 KssName = name
+		var value_1343 string = "transition"
+		var value_1344 bool = KssParser_KssNameEquals(value_1342, value_1343)
+		value_1341 = value_1344
+	}
+	var value_1345 bool = value_1341
+	if !value_1345 {
+		var value_1346 KssName = name
+		var value_1347 string = "transition-property"
+		var value_1348 bool = KssParser_KssNameEquals(value_1346, value_1347)
+		value_1345 = value_1348
+	}
+	if value_1345 {
+		var value_1349 int32 = -2
+		return value_1349
+	}
+	var value_1350 KssName = name
+	var value_1351 string = "transition-duration"
+	var value_1352 bool = KssParser_KssNameEquals(value_1350, value_1351)
+	var value_1353 bool = value_1352
+	if !value_1353 {
+		var value_1354 KssName = name
+		var value_1355 string = "transition-timing-function"
+		var value_1356 bool = KssParser_KssNameEquals(value_1354, value_1355)
+		value_1353 = value_1356
+	}
+	var value_1357 bool = value_1353
+	if !value_1357 {
+		var value_1358 KssName = name
+		var value_1359 string = "transition-delay"
+		var value_1360 bool = KssParser_KssNameEquals(value_1358, value_1359)
+		value_1357 = value_1360
+	}
+	var value_1361 bool = value_1357
+	if !value_1361 {
+		var value_1362 KssName = name
+		var value_1363 string = "transition-behavior"
+		var value_1364 bool = KssParser_KssNameEquals(value_1362, value_1363)
+		value_1361 = value_1364
+	}
+	var value_1365 bool = value_1361
+	if !value_1365 {
+		var value_1366 KssName = name
+		var value_1367 string = "animation"
+		var value_1368 bool = KssParser_KssNameEquals(value_1366, value_1367)
+		value_1365 = value_1368
+	}
+	var value_1369 bool = value_1365
+	if !value_1369 {
+		var value_1370 KssName = name
+		var value_1371 string = "animation-name"
+		var value_1372 bool = KssParser_KssNameEquals(value_1370, value_1371)
+		value_1369 = value_1372
+	}
+	var value_1373 bool = value_1369
+	if !value_1373 {
+		var value_1374 KssName = name
+		var value_1375 string = "animation-duration"
+		var value_1376 bool = KssParser_KssNameEquals(value_1374, value_1375)
+		value_1373 = value_1376
+	}
+	var value_1377 bool = value_1373
+	if !value_1377 {
+		var value_1378 KssName = name
+		var value_1379 string = "animation-timing-function"
+		var value_1380 bool = KssParser_KssNameEquals(value_1378, value_1379)
+		value_1377 = value_1380
+	}
+	if value_1377 {
+		var value_1381 int32 = -2
+		return value_1381
+	}
+	var value_1382 KssName = name
+	var value_1383 string = "animation-delay"
+	var value_1384 bool = KssParser_KssNameEquals(value_1382, value_1383)
+	var value_1385 bool = value_1384
+	if !value_1385 {
+		var value_1386 KssName = name
+		var value_1387 string = "animation-iteration-count"
+		var value_1388 bool = KssParser_KssNameEquals(value_1386, value_1387)
+		value_1385 = value_1388
+	}
+	var value_1389 bool = value_1385
+	if !value_1389 {
+		var value_1390 KssName = name
+		var value_1391 string = "animation-direction"
+		var value_1392 bool = KssParser_KssNameEquals(value_1390, value_1391)
+		value_1389 = value_1392
+	}
+	var value_1393 bool = value_1389
+	if !value_1393 {
+		var value_1394 KssName = name
+		var value_1395 string = "animation-fill-mode"
+		var value_1396 bool = KssParser_KssNameEquals(value_1394, value_1395)
+		value_1393 = value_1396
+	}
+	var value_1397 bool = value_1393
+	if !value_1397 {
+		var value_1398 KssName = name
+		var value_1399 string = "animation-play-state"
+		var value_1400 bool = KssParser_KssNameEquals(value_1398, value_1399)
+		value_1397 = value_1400
+	}
+	var value_1401 bool = value_1397
+	if !value_1401 {
+		var value_1402 KssName = name
+		var value_1403 string = "animation-composition"
+		var value_1404 bool = KssParser_KssNameEquals(value_1402, value_1403)
+		value_1401 = value_1404
+	}
+	var value_1405 bool = value_1401
+	if !value_1405 {
+		var value_1406 KssName = name
+		var value_1407 string = "animation-timeline"
+		var value_1408 bool = KssParser_KssNameEquals(value_1406, value_1407)
+		value_1405 = value_1408
+	}
+	var value_1409 bool = value_1405
+	if !value_1409 {
+		var value_1410 KssName = name
+		var value_1411 string = "animation-range"
+		var value_1412 bool = KssParser_KssNameEquals(value_1410, value_1411)
+		value_1409 = value_1412
+	}
+	if value_1409 {
+		var value_1413 int32 = -2
+		return value_1413
+	}
+	var value_1414 KssName = name
+	var value_1415 string = "animation-range-start"
+	var value_1416 bool = KssParser_KssNameEquals(value_1414, value_1415)
+	var value_1417 bool = value_1416
+	if !value_1417 {
+		var value_1418 KssName = name
+		var value_1419 string = "animation-range-end"
+		var value_1420 bool = KssParser_KssNameEquals(value_1418, value_1419)
+		value_1417 = value_1420
+	}
+	var value_1421 bool = value_1417
+	if !value_1421 {
+		var value_1422 KssName = name
+		var value_1423 string = "scroll-timeline"
+		var value_1424 bool = KssParser_KssNameEquals(value_1422, value_1423)
+		value_1421 = value_1424
+	}
+	var value_1425 bool = value_1421
+	if !value_1425 {
+		var value_1426 KssName = name
+		var value_1427 string = "scroll-timeline-name"
+		var value_1428 bool = KssParser_KssNameEquals(value_1426, value_1427)
+		value_1425 = value_1428
+	}
+	var value_1429 bool = value_1425
+	if !value_1429 {
+		var value_1430 KssName = name
+		var value_1431 string = "scroll-timeline-axis"
+		var value_1432 bool = KssParser_KssNameEquals(value_1430, value_1431)
+		value_1429 = value_1432
+	}
+	var value_1433 bool = value_1429
+	if !value_1433 {
+		var value_1434 KssName = name
+		var value_1435 string = "view-timeline"
+		var value_1436 bool = KssParser_KssNameEquals(value_1434, value_1435)
+		value_1433 = value_1436
+	}
+	var value_1437 bool = value_1433
+	if !value_1437 {
+		var value_1438 KssName = name
+		var value_1439 string = "view-timeline-name"
+		var value_1440 bool = KssParser_KssNameEquals(value_1438, value_1439)
+		value_1437 = value_1440
+	}
+	var value_1441 bool = value_1437
+	if !value_1441 {
+		var value_1442 KssName = name
+		var value_1443 string = "view-timeline-axis"
+		var value_1444 bool = KssParser_KssNameEquals(value_1442, value_1443)
+		value_1441 = value_1444
+	}
+	if value_1441 {
+		var value_1445 int32 = -2
+		return value_1445
+	}
+	var value_1446 KssName = name
+	var value_1447 string = "view-timeline-inset"
+	var value_1448 bool = KssParser_KssNameEquals(value_1446, value_1447)
+	var value_1449 bool = value_1448
+	if !value_1449 {
+		var value_1450 KssName = name
+		var value_1451 string = "timeline-scope"
+		var value_1452 bool = KssParser_KssNameEquals(value_1450, value_1451)
+		value_1449 = value_1452
+	}
+	var value_1453 bool = value_1449
+	if !value_1453 {
+		var value_1454 KssName = name
+		var value_1455 string = "transform"
+		var value_1456 bool = KssParser_KssNameEquals(value_1454, value_1455)
+		value_1453 = value_1456
+	}
+	var value_1457 bool = value_1453
+	if !value_1457 {
+		var value_1458 KssName = name
+		var value_1459 string = "transform-origin"
+		var value_1460 bool = KssParser_KssNameEquals(value_1458, value_1459)
+		value_1457 = value_1460
+	}
+	var value_1461 bool = value_1457
+	if !value_1461 {
+		var value_1462 KssName = name
+		var value_1463 string = "transform-box"
+		var value_1464 bool = KssParser_KssNameEquals(value_1462, value_1463)
+		value_1461 = value_1464
+	}
+	var value_1465 bool = value_1461
+	if !value_1465 {
+		var value_1466 KssName = name
+		var value_1467 string = "transform-style"
+		var value_1468 bool = KssParser_KssNameEquals(value_1466, value_1467)
+		value_1465 = value_1468
+	}
+	var value_1469 bool = value_1465
+	if !value_1469 {
+		var value_1470 KssName = name
+		var value_1471 string = "translate"
+		var value_1472 bool = KssParser_KssNameEquals(value_1470, value_1471)
+		value_1469 = value_1472
+	}
+	var value_1473 bool = value_1469
+	if !value_1473 {
+		var value_1474 KssName = name
+		var value_1475 string = "rotate"
+		var value_1476 bool = KssParser_KssNameEquals(value_1474, value_1475)
+		value_1473 = value_1476
+	}
+	if value_1473 {
+		var value_1477 int32 = -2
+		return value_1477
+	}
+	var value_1478 KssName = name
+	var value_1479 string = "scale"
+	var value_1480 bool = KssParser_KssNameEquals(value_1478, value_1479)
+	var value_1481 bool = value_1480
+	if !value_1481 {
+		var value_1482 KssName = name
+		var value_1483 string = "perspective-origin"
+		var value_1484 bool = KssParser_KssNameEquals(value_1482, value_1483)
+		value_1481 = value_1484
+	}
+	var value_1485 bool = value_1481
+	if !value_1485 {
+		var value_1486 KssName = name
+		var value_1487 string = "backface-visibility"
+		var value_1488 bool = KssParser_KssNameEquals(value_1486, value_1487)
+		value_1485 = value_1488
+	}
+	var value_1489 bool = value_1485
+	if !value_1489 {
+		var value_1490 KssName = name
+		var value_1491 string = "offset-path"
+		var value_1492 bool = KssParser_KssNameEquals(value_1490, value_1491)
+		value_1489 = value_1492
+	}
+	var value_1493 bool = value_1489
+	if !value_1493 {
+		var value_1494 KssName = name
+		var value_1495 string = "offset-rotate"
+		var value_1496 bool = KssParser_KssNameEquals(value_1494, value_1495)
+		value_1493 = value_1496
+	}
+	var value_1497 bool = value_1493
+	if !value_1497 {
+		var value_1498 KssName = name
+		var value_1499 string = "offset-anchor"
+		var value_1500 bool = KssParser_KssNameEquals(value_1498, value_1499)
+		value_1497 = value_1500
+	}
+	var value_1501 bool = value_1497
+	if !value_1501 {
+		var value_1502 KssName = name
+		var value_1503 string = "offset-position"
+		var value_1504 bool = KssParser_KssNameEquals(value_1502, value_1503)
+		value_1501 = value_1504
+	}
+	var value_1505 bool = value_1501
+	if !value_1505 {
+		var value_1506 KssName = name
+		var value_1507 string = "filter"
+		var value_1508 bool = KssParser_KssNameEquals(value_1506, value_1507)
+		value_1505 = value_1508
+	}
+	if value_1505 {
+		var value_1509 int32 = -2
+		return value_1509
+	}
+	var value_1510 KssName = name
+	var value_1511 string = "backdrop-filter"
+	var value_1512 bool = KssParser_KssNameEquals(value_1510, value_1511)
+	var value_1513 bool = value_1512
+	if !value_1513 {
+		var value_1514 KssName = name
+		var value_1515 string = "clip-path"
+		var value_1516 bool = KssParser_KssNameEquals(value_1514, value_1515)
+		value_1513 = value_1516
+	}
+	var value_1517 bool = value_1513
+	if !value_1517 {
+		var value_1518 KssName = name
+		var value_1519 string = "mask"
+		var value_1520 bool = KssParser_KssNameEquals(value_1518, value_1519)
+		value_1517 = value_1520
+	}
+	var value_1521 bool = value_1517
+	if !value_1521 {
+		var value_1522 KssName = name
+		var value_1523 string = "mask-image"
+		var value_1524 bool = KssParser_KssNameEquals(value_1522, value_1523)
+		value_1521 = value_1524
+	}
+	var value_1525 bool = value_1521
+	if !value_1525 {
+		var value_1526 KssName = name
+		var value_1527 string = "mask-size"
+		var value_1528 bool = KssParser_KssNameEquals(value_1526, value_1527)
+		value_1525 = value_1528
+	}
+	var value_1529 bool = value_1525
+	if !value_1529 {
+		var value_1530 KssName = name
+		var value_1531 string = "mask-position"
+		var value_1532 bool = KssParser_KssNameEquals(value_1530, value_1531)
+		value_1529 = value_1532
+	}
+	var value_1533 bool = value_1529
+	if !value_1533 {
+		var value_1534 KssName = name
+		var value_1535 string = "mask-repeat"
+		var value_1536 bool = KssParser_KssNameEquals(value_1534, value_1535)
+		value_1533 = value_1536
+	}
+	var value_1537 bool = value_1533
+	if !value_1537 {
+		var value_1538 KssName = name
+		var value_1539 string = "mask-origin"
+		var value_1540 bool = KssParser_KssNameEquals(value_1538, value_1539)
+		value_1537 = value_1540
+	}
+	if value_1537 {
+		var value_1541 int32 = -2
+		return value_1541
+	}
+	var value_1542 KssName = name
+	var value_1543 string = "mask-clip"
+	var value_1544 bool = KssParser_KssNameEquals(value_1542, value_1543)
+	var value_1545 bool = value_1544
+	if !value_1545 {
+		var value_1546 KssName = name
+		var value_1547 string = "mask-composite"
+		var value_1548 bool = KssParser_KssNameEquals(value_1546, value_1547)
+		value_1545 = value_1548
+	}
+	var value_1549 bool = value_1545
+	if !value_1549 {
+		var value_1550 KssName = name
+		var value_1551 string = "mask-mode"
+		var value_1552 bool = KssParser_KssNameEquals(value_1550, value_1551)
+		value_1549 = value_1552
+	}
+	var value_1553 bool = value_1549
+	if !value_1553 {
+		var value_1554 KssName = name
+		var value_1555 string = "cursor"
+		var value_1556 bool = KssParser_KssNameEquals(value_1554, value_1555)
+		value_1553 = value_1556
+	}
+	var value_1557 bool = value_1553
+	if !value_1557 {
+		var value_1558 KssName = name
+		var value_1559 string = "pointer-events"
+		var value_1560 bool = KssParser_KssNameEquals(value_1558, value_1559)
+		value_1557 = value_1560
+	}
+	var value_1561 bool = value_1557
+	if !value_1561 {
+		var value_1562 KssName = name
+		var value_1563 string = "appearance"
+		var value_1564 bool = KssParser_KssNameEquals(value_1562, value_1563)
+		value_1561 = value_1564
+	}
+	var value_1565 bool = value_1561
+	if !value_1565 {
+		var value_1566 KssName = name
+		var value_1567 string = "user-select"
+		var value_1568 bool = KssParser_KssNameEquals(value_1566, value_1567)
+		value_1565 = value_1568
+	}
+	var value_1569 bool = value_1565
+	if !value_1569 {
+		var value_1570 KssName = name
+		var value_1571 string = "resize"
+		var value_1572 bool = KssParser_KssNameEquals(value_1570, value_1571)
+		value_1569 = value_1572
+	}
+	if value_1569 {
+		var value_1573 int32 = -2
+		return value_1573
+	}
+	var value_1574 KssName = name
+	var value_1575 string = "outline"
+	var value_1576 bool = KssParser_KssNameEquals(value_1574, value_1575)
+	var value_1577 bool = value_1576
+	if !value_1577 {
+		var value_1578 KssName = name
+		var value_1579 string = "outline-style"
+		var value_1580 bool = KssParser_KssNameEquals(value_1578, value_1579)
+		value_1577 = value_1580
+	}
+	var value_1581 bool = value_1577
+	if !value_1581 {
+		var value_1582 KssName = name
+		var value_1583 string = "box-shadow"
+		var value_1584 bool = KssParser_KssNameEquals(value_1582, value_1583)
+		value_1581 = value_1584
+	}
+	var value_1585 bool = value_1581
+	if !value_1585 {
+		var value_1586 KssName = name
+		var value_1587 string = "color-scheme"
+		var value_1588 bool = KssParser_KssNameEquals(value_1586, value_1587)
+		value_1585 = value_1588
+	}
+	var value_1589 bool = value_1585
+	if !value_1589 {
+		var value_1590 KssName = name
+		var value_1591 string = "field-sizing"
+		var value_1592 bool = KssParser_KssNameEquals(value_1590, value_1591)
+		value_1589 = value_1592
+	}
+	var value_1593 bool = value_1589
+	if !value_1593 {
+		var value_1594 KssName = name
+		var value_1595 string = "interpolate-size"
+		var value_1596 bool = KssParser_KssNameEquals(value_1594, value_1595)
+		value_1593 = value_1596
+	}
+	var value_1597 bool = value_1593
+	if !value_1597 {
+		var value_1598 KssName = name
+		var value_1599 string = "overlay"
+		var value_1600 bool = KssParser_KssNameEquals(value_1598, value_1599)
+		value_1597 = value_1600
+	}
+	var value_1601 bool = value_1597
+	if !value_1601 {
+		var value_1602 KssName = name
+		var value_1603 string = "forced-color-adjust"
+		var value_1604 bool = KssParser_KssNameEquals(value_1602, value_1603)
+		value_1601 = value_1604
+	}
+	if value_1601 {
+		var value_1605 int32 = -2
+		return value_1605
+	}
+	var value_1606 KssName = name
+	var value_1607 string = "print-color-adjust"
+	var value_1608 bool = KssParser_KssNameEquals(value_1606, value_1607)
+	var value_1609 bool = value_1608
+	if !value_1609 {
+		var value_1610 KssName = name
+		var value_1611 string = "color-interpolation"
+		var value_1612 bool = KssParser_KssNameEquals(value_1610, value_1611)
+		value_1609 = value_1612
+	}
+	var value_1613 bool = value_1609
+	if !value_1613 {
+		var value_1614 KssName = name
+		var value_1615 string = "color-interpolation-filters"
+		var value_1616 bool = KssParser_KssNameEquals(value_1614, value_1615)
+		value_1613 = value_1616
+	}
+	var value_1617 bool = value_1613
+	if !value_1617 {
+		var value_1618 KssName = name
+		var value_1619 string = "paint-order"
+		var value_1620 bool = KssParser_KssNameEquals(value_1618, value_1619)
+		value_1617 = value_1620
+	}
+	var value_1621 bool = value_1617
+	if !value_1621 {
+		var value_1622 KssName = name
+		var value_1623 string = "shape-outside"
+		var value_1624 bool = KssParser_KssNameEquals(value_1622, value_1623)
+		value_1621 = value_1624
+	}
+	var value_1625 bool = value_1621
+	if !value_1625 {
+		var value_1626 KssName = name
+		var value_1627 string = "shape-image-threshold"
+		var value_1628 bool = KssParser_KssNameEquals(value_1626, value_1627)
+		value_1625 = value_1628
+	}
+	var value_1629 bool = value_1625
+	if !value_1629 {
+		var value_1630 KssName = name
+		var value_1631 string = "contain"
+		var value_1632 bool = KssParser_KssNameEquals(value_1630, value_1631)
+		value_1629 = value_1632
+	}
+	var value_1633 bool = value_1629
+	if !value_1633 {
+		var value_1634 KssName = name
+		var value_1635 string = "content-visibility"
+		var value_1636 bool = KssParser_KssNameEquals(value_1634, value_1635)
+		value_1633 = value_1636
+	}
+	if value_1633 {
+		var value_1637 int32 = -2
+		return value_1637
+	}
+	var value_1638 KssName = name
+	var value_1639 string = "contain-intrinsic-size"
+	var value_1640 bool = KssParser_KssNameEquals(value_1638, value_1639)
+	var value_1641 bool = value_1640
+	if !value_1641 {
+		var value_1642 KssName = name
+		var value_1643 string = "contain-intrinsic-width"
+		var value_1644 bool = KssParser_KssNameEquals(value_1642, value_1643)
+		value_1641 = value_1644
+	}
+	var value_1645 bool = value_1641
+	if !value_1645 {
+		var value_1646 KssName = name
+		var value_1647 string = "contain-intrinsic-height"
+		var value_1648 bool = KssParser_KssNameEquals(value_1646, value_1647)
+		value_1645 = value_1648
+	}
+	var value_1649 bool = value_1645
+	if !value_1649 {
+		var value_1650 KssName = name
+		var value_1651 string = "contain-intrinsic-inline-size"
+		var value_1652 bool = KssParser_KssNameEquals(value_1650, value_1651)
+		value_1649 = value_1652
+	}
+	var value_1653 bool = value_1649
+	if !value_1653 {
+		var value_1654 KssName = name
+		var value_1655 string = "contain-intrinsic-block-size"
+		var value_1656 bool = KssParser_KssNameEquals(value_1654, value_1655)
+		value_1653 = value_1656
+	}
+	var value_1657 bool = value_1653
+	if !value_1657 {
+		var value_1658 KssName = name
+		var value_1659 string = "container"
+		var value_1660 bool = KssParser_KssNameEquals(value_1658, value_1659)
+		value_1657 = value_1660
+	}
+	var value_1661 bool = value_1657
+	if !value_1661 {
+		var value_1662 KssName = name
+		var value_1663 string = "container-type"
+		var value_1664 bool = KssParser_KssNameEquals(value_1662, value_1663)
+		value_1661 = value_1664
+	}
+	var value_1665 bool = value_1661
+	if !value_1665 {
+		var value_1666 KssName = name
+		var value_1667 string = "container-name"
+		var value_1668 bool = KssParser_KssNameEquals(value_1666, value_1667)
+		value_1665 = value_1668
+	}
+	if value_1665 {
+		var value_1669 int32 = -2
+		return value_1669
+	}
+	var value_1670 KssName = name
+	var value_1671 string = "will-change"
+	var value_1672 bool = KssParser_KssNameEquals(value_1670, value_1671)
+	var value_1673 bool = value_1672
+	if !value_1673 {
+		var value_1674 KssName = name
+		var value_1675 string = "anchor-name"
+		var value_1676 bool = KssParser_KssNameEquals(value_1674, value_1675)
+		value_1673 = value_1676
+	}
+	var value_1677 bool = value_1673
+	if !value_1677 {
+		var value_1678 KssName = name
+		var value_1679 string = "position-anchor"
+		var value_1680 bool = KssParser_KssNameEquals(value_1678, value_1679)
+		value_1677 = value_1680
+	}
+	var value_1681 bool = value_1677
+	if !value_1681 {
+		var value_1682 KssName = name
+		var value_1683 string = "position-area"
+		var value_1684 bool = KssParser_KssNameEquals(value_1682, value_1683)
+		value_1681 = value_1684
+	}
+	var value_1685 bool = value_1681
+	if !value_1685 {
+		var value_1686 KssName = name
+		var value_1687 string = "position-try"
+		var value_1688 bool = KssParser_KssNameEquals(value_1686, value_1687)
+		value_1685 = value_1688
+	}
+	var value_1689 bool = value_1685
+	if !value_1689 {
+		var value_1690 KssName = name
+		var value_1691 string = "position-try-fallbacks"
+		var value_1692 bool = KssParser_KssNameEquals(value_1690, value_1691)
+		value_1689 = value_1692
+	}
+	var value_1693 bool = value_1689
+	if !value_1693 {
+		var value_1694 KssName = name
+		var value_1695 string = "position-try-order"
+		var value_1696 bool = KssParser_KssNameEquals(value_1694, value_1695)
+		value_1693 = value_1696
+	}
+	var value_1697 bool = value_1693
+	if !value_1697 {
+		var value_1698 KssName = name
+		var value_1699 string = "position-visibility"
+		var value_1700 bool = KssParser_KssNameEquals(value_1698, value_1699)
+		value_1697 = value_1700
+	}
+	if value_1697 {
+		var value_1701 int32 = -2
+		return value_1701
+	}
+	var value_1702 KssName = name
+	var value_1703 string = "view-transition-name"
+	var value_1704 bool = KssParser_KssNameEquals(value_1702, value_1703)
+	var value_1705 bool = value_1704
+	if !value_1705 {
+		var value_1706 KssName = name
+		var value_1707 string = "isolation"
+		var value_1708 bool = KssParser_KssNameEquals(value_1706, value_1707)
+		value_1705 = value_1708
+	}
+	var value_1709 bool = value_1705
+	if !value_1709 {
+		var value_1710 KssName = name
+		var value_1711 string = "mix-blend-mode"
+		var value_1712 bool = KssParser_KssNameEquals(value_1710, value_1711)
+		value_1709 = value_1712
+	}
+	var value_1713 bool = value_1709
+	if !value_1713 {
+		var value_1714 KssName = name
+		var value_1715 string = "columns"
+		var value_1716 bool = KssParser_KssNameEquals(value_1714, value_1715)
+		value_1713 = value_1716
+	}
+	var value_1717 bool = value_1713
+	if !value_1717 {
+		var value_1718 KssName = name
+		var value_1719 string = "column-fill"
+		var value_1720 bool = KssParser_KssNameEquals(value_1718, value_1719)
+		value_1717 = value_1720
+	}
+	var value_1721 bool = value_1717
+	if !value_1721 {
+		var value_1722 KssName = name
+		var value_1723 string = "column-span"
+		var value_1724 bool = KssParser_KssNameEquals(value_1722, value_1723)
+		value_1721 = value_1724
+	}
+	var value_1725 bool = value_1721
+	if !value_1725 {
+		var value_1726 KssName = name
+		var value_1727 string = "column-rule"
+		var value_1728 bool = KssParser_KssNameEquals(value_1726, value_1727)
+		value_1725 = value_1728
+	}
+	var value_1729 bool = value_1725
+	if !value_1729 {
+		var value_1730 KssName = name
+		var value_1731 string = "column-rule-style"
+		var value_1732 bool = KssParser_KssNameEquals(value_1730, value_1731)
+		value_1729 = value_1732
+	}
+	if value_1729 {
+		var value_1733 int32 = -2
+		return value_1733
+	}
+	var value_1734 KssName = name
+	var value_1735 string = "break-before"
+	var value_1736 bool = KssParser_KssNameEquals(value_1734, value_1735)
+	var value_1737 bool = value_1736
+	if !value_1737 {
+		var value_1738 KssName = name
+		var value_1739 string = "break-after"
+		var value_1740 bool = KssParser_KssNameEquals(value_1738, value_1739)
+		value_1737 = value_1740
+	}
+	var value_1741 bool = value_1737
+	if !value_1741 {
+		var value_1742 KssName = name
+		var value_1743 string = "break-inside"
+		var value_1744 bool = KssParser_KssNameEquals(value_1742, value_1743)
+		value_1741 = value_1744
+	}
+	var value_1745 bool = value_1741
+	if !value_1745 {
+		var value_1746 KssName = name
+		var value_1747 string = "float"
+		var value_1748 bool = KssParser_KssNameEquals(value_1746, value_1747)
+		value_1745 = value_1748
+	}
+	var value_1749 bool = value_1745
+	if !value_1749 {
+		var value_1750 KssName = name
+		var value_1751 string = "clear"
+		var value_1752 bool = KssParser_KssNameEquals(value_1750, value_1751)
+		value_1749 = value_1752
+	}
+	var value_1753 bool = value_1749
+	if !value_1753 {
+		var value_1754 KssName = name
+		var value_1755 string = "order"
+		var value_1756 bool = KssParser_KssNameEquals(value_1754, value_1755)
+		value_1753 = value_1756
+	}
+	if value_1753 {
+		var value_1757 int32 = -2
+		return value_1757
+	}
+	var value_1758 int32 = -1
+	return value_1758
+}
+
+func (instance_host_0 *runtime) KssParser_KssCSSValueFromText(source string) KssCSSValue {
+	var result KssCSSValue = KssCSSValue{}
+	var value_0 bool = true
+	result.Valid = value_0
+	var value_1 int32 = 0
+	var start int32 = value_1
+	var value_2 int32 = int32(len(source))
+	var end int32 = value_2
+	for {
+		var value_3 int32 = start
+		var value_4 int32 = end
+		var value_5 bool = value_3 < value_4
+		var value_6 bool = value_5
+		if value_6 {
+			var value_7 int32 = start
+			var value_8 uint8 = source[value_7]
+			var value_9 bool = KssParser_KssIsSpace(value_8)
+			value_6 = value_9
+		}
+		if !value_6 {
+			break
+		}
+		var value_10 int32 = start
+		var value_11 int32 = 1
+		var value_12 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 1))
+		start = value_12
+	}
+	for {
+		var value_13 int32 = end
+		var value_14 int32 = start
+		var value_15 bool = value_13 > value_14
+		var value_16 bool = value_15
+		if value_16 {
+			var value_17 int32 = end
+			var value_18 int32 = 1
+			var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 2))
+			var value_20 uint8 = source[value_19]
+			var value_21 bool = KssParser_KssIsSpace(value_20)
+			value_16 = value_21
+		}
+		if !value_16 {
+			break
+		}
+		var value_22 int32 = end
+		var value_23 int32 = 1
+		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 2))
+		end = value_24
+	}
+	var value_25 string = source
+	var value_26 int32 = start
+	var value_27 int32 = end
+	var value_28 int32 = start
+	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 2))
+	var value_30 string = instance_host_0.StringSlice(value_25, value_26, value_29)
+	result.Text = value_30
+	var c KssCursor = KssCursor{}
+	var value_31 string = result.Text
+	c.Source = value_31
+	var value_32 KssCursor = c
+	var value_33 KssScalarResult = KssParser_KssReadScalar(value_32)
+	var scalar KssScalarResult = value_33
+	var value_34 bool = scalar.Ok
+	if value_34 {
+		var value_35 KssCursor = scalar.Parser
+		c = value_35
+		var value_36 KssCursor = c
+		var value_37 int32 = 0
+		var value_38 uint8 = KssParser_KssPeek(value_36, value_37)
+		var value_39 uint8 = 112
+		var value_40 bool = value_38 == value_39
+		var value_41 bool = value_40
+		if value_41 {
+			var value_42 KssCursor = c
+			var value_43 int32 = 1
+			var value_44 uint8 = KssParser_KssPeek(value_42, value_43)
+			var value_45 uint8 = 120
+			var value_46 bool = value_44 == value_45
+			value_41 = value_46
+		}
+		if value_41 {
+			var value_47 KssCursor = c
+			var value_48 int32 = 2
+			var value_49 KssCursor = KssParser_KssAdvance(value_47, value_48)
+			c = value_49
+		}
+		var value_50 KssCursor = c
+		var value_51 KssCursor = KssParser_KssSkipSpace(value_50)
+		c = value_51
+		var value_52 KssCursor = c
+		var value_53 bool = KssParser_KssAtEnd(value_52)
+		if value_53 {
+			var value_54 int32 = KssCSSValueKindKssCSSNumber
+			var value_55 int32 = int32(number_runtime_bits(uint64(value_54), uint64(0), 32, true, 0))
+			result.Kind = value_55
+			var value_56 float64 = scalar.Value
+			result.Number = value_56
+		}
+	}
+	var value_57 KssCSSValue = result
+	return value_57
+}
+
+func (instance_host_0 *runtime) KssParser_KssResolveCSSValue(p KssParser, property string, source string) KssCSSValue {
+	var value_0 string = source
+	var value_1 KssCSSValue = instance_host_0.KssParser_KssCSSValueFromText(value_0)
+	var result KssCSSValue = value_1
+	var value_2 string = property
+	var value_3 KssName = KssParser_KssMakeName(value_2)
+	var value_4 int32 = KssParser_KssCSSPropertyKind(value_3)
+	var property_kind int32 = value_4
+	var value_5 int32 = property_kind
+	var value_6 int32 = -1
+	var value_7 bool = value_5 == value_6
+	if value_7 {
+		var value_8 bool = false
+		result.Valid = value_8
+		var value_9 KssCSSValue = result
+		return value_9
+	}
+	var value_10 int32 = result.Kind
+	var value_11 int32 = KssCSSValueKindKssCSSNumber
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0))
+	var value_13 bool = value_10 == value_12
+	var value_14 bool = value_13
+	if !value_14 {
+		var value_15 int32 = property_kind
+		var value_16 int32 = -2
+		var value_17 bool = value_15 == value_16
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_18 KssCSSValue = result
+		return value_18
+	}
+	var c KssCursor = KssCursor{}
+	var value_19 string = result.Text
+	c.Source = value_19
+	var value_20 KssCursor = c
+	var value_21 KssNameResult = KssParser_KssReadName(value_20)
+	var reference KssNameResult = value_21
+	var value_22 KssCursor = reference.Parser
+	var value_23 KssCursor = KssParser_KssSkipSpace(value_22)
+	c = value_23
+	var value_24 bool = reference.Ok
+	var value_25 bool = !value_24
+	var value_26 bool = value_25
+	if !value_26 {
+		var value_27 KssCursor = c
+		var value_28 bool = KssParser_KssAtEnd(value_27)
+		var value_29 bool = !value_28
+		value_26 = value_29
+	}
+	if value_26 {
+		var value_30 KssCSSValue = result
+		return value_30
+	}
+	var value_31 int32 = -1
+	var index int32 = value_31
+	var value_32 int32 = property_kind
+	var value_33 int32 = KssTokenKindKssTokenLength
+	var value_34 int32 = int32(number_runtime_bits(uint64(value_33), uint64(0), 32, true, 0))
+	var value_35 bool = value_32 == value_34
+	if value_35 {
+		var value_36 KssParser = p
+		var value_37 KssName = reference.Name
+		var value_38 int32 = KssParser_KssFindNumberToken(value_36, value_37)
+		index = value_38
+	} else {
+		var value_39 KssParser = p
+		var value_40 KssName = reference.Name
+		var value_41 int32 = property_kind
+		var value_42 int32 = KssParser_KssFindToken(value_39, value_40, value_41)
+		index = value_42
+	}
+	var value_43 int32 = index
+	var value_44 int32 = 0
+	var value_45 bool = value_43 < value_44
+	if value_45 {
+		var value_46 KssCSSValue = result
+		return value_46
+	}
+	var value_47 bool = true
+	result.HasToken = value_47
+	var value_48 int32 = index
+	var value_49 KssToken = p.Tokens[value_48]
+	var value_50 KssName = value_49.Name
+	result.TokenName = value_50
+	var value_51 int32 = index
+	var value_52 KssToken = p.Tokens[value_51]
+	var value_53 int32 = value_52.Origin
+	result.TokenOrigin = value_53
+	var value_54 int32 = property_kind
+	var value_55 int32 = KssTokenKindKssTokenColor
+	var value_56 int32 = int32(number_runtime_bits(uint64(value_55), uint64(0), 32, true, 0))
+	var value_57 bool = value_54 == value_56
+	if value_57 {
+		var value_58 int32 = KssCSSValueKindKssCSSColor
+		var value_59 int32 = int32(number_runtime_bits(uint64(value_58), uint64(0), 32, true, 0))
+		result.Kind = value_59
+		var value_60 int32 = index
+		var value_61 KssToken = p.Tokens[value_60]
+		var value_62 uint32 = value_61.Color
+		result.Color = value_62
+	} else {
+		var value_63 int32 = property_kind
+		var value_64 int32 = KssTokenKindKssTokenMaterial
+		var value_65 int32 = int32(number_runtime_bits(uint64(value_64), uint64(0), 32, true, 0))
+		var value_66 bool = value_63 == value_65
+		if value_66 {
+			var value_67 int32 = KssCSSValueKindKssCSSMaterial
+			var value_68 int32 = int32(number_runtime_bits(uint64(value_67), uint64(0), 32, true, 0))
+			result.Kind = value_68
+			var value_69 int32 = index
+			var value_70 KssToken = p.Tokens[value_69]
+			var value_71 int32 = value_70.Material
+			result.Material = value_71
+		} else {
+			var value_72 int32 = KssCSSValueKindKssCSSNumber
+			var value_73 int32 = int32(number_runtime_bits(uint64(value_72), uint64(0), 32, true, 0))
+			result.Kind = value_73
+			var value_74 int32 = index
+			var value_75 KssToken = p.Tokens[value_74]
+			var value_76 float32 = value_75.Number
+			var value_77 float64 = float64(value_76)
+			result.Number = value_77
+		}
+	}
+	var value_78 KssCSSValue = result
+	return value_78
+}
+
+func (instance_host_0 *runtime) KssParser_KssOverrideCSSValue(value KssCSSValue, replacement string, provided bool) KssCSSValue {
+	var value_0 bool = provided
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if !value_2 {
+		var value_3 bool = value.HasToken
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	var value_5 bool = value_2
+	if !value_5 {
+		var value_6 int32 = value.Kind
+		var value_7 int32 = KssCSSValueKindKssCSSColor
+		var value_8 int32 = int32(number_runtime_bits(uint64(value_7), uint64(0), 32, true, 0))
+		var value_9 bool = value_6 != value_8
+		value_5 = value_9
+	}
+	if value_5 {
+		var value_10 KssCSSValue = value
+		return value_10
+	}
+	var value_11 string = replacement
+	var value_12 KssCSSValue = instance_host_0.KssParser_KssCSSValueFromText(value_11)
+	var parsed KssCSSValue = value_12
+	var value_13 int32 = parsed.Kind
+	value.Kind = value_13
+	var value_14 float64 = parsed.Number
+	value.Number = value_14
+	var value_15 string = parsed.Text
+	value.Text = value_15
+	var value_16 KssCSSValue = value
+	return value_16
 }

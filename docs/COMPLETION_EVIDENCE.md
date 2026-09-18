@@ -57,9 +57,7 @@ not applied. Go changes were formatted with gofmt; `git diff --check` passes.
 ## Remaining web KSS semantics identified by source audit
 
 The web host still owns selector parsing/specificity in `splitSelectorSequence`,
-`splitSelectorList`, `parseSimpleSelector`, and `parseSelector`; declaration value
-interpretation in `parseKssValue`, `parseKssDurationValue`,
-`parseKssDeclarationValue`, and `parseKssDeclarations`; and rule priority/winner
+`splitSelectorList`, `parseSimpleSelector`, and `parseSelector`; and rule priority/winner
 comparisons in `parseWebStyleSheet`, `resolveWebStyle`, and `traceWebStyle`.
 These are concrete migration candidates, not proof of an entirely shared KSS
 implementation. Native `runtime/style_sheet.kry` already owns typed
@@ -96,3 +94,36 @@ outputs. An isolated negative check modified a copy of `web/kss_formatter.js`;
 the gate rejected it. `make generated-provenance-check` passes on the real tree.
 All five style ownership/allowlist gates pass; their classified legacy counts
 remain debt rather than evidence of completed migration.
+
+## Shared CSS declaration interpretation
+
+CSS property classification, numeric parsing, token lookup, and explicit color
+substitution now live in `runtime/kss_parser.kry`. The JS adapter serializes
+`KssCSSValue` results and retains per-property token provenance. It resolves
+values when the parser yields each rule, so later overlays cannot retroactively
+change earlier rules or keyframes. Keyframes use the shared declaration stream;
+the host regex declaration parser and property vocabulary have been removed.
+
+`tests/fixtures/kss/css-values.kss` is consumed in C, Go, and JavaScript. It covers
+source-order overlays, token origins, quoted delimiters, Unicode, exponent/px
+numbers, keyframes, and color substitution. Numeric unknown properties are
+rejected. The fixture exposed UTF-16 indexing in structured JS generation;
+string indexing and length now use UTF-8 bytes, matching C/Go and StringSlice.
+
+This does not close selector, cascade, native registry, backend, or downstream
+requirements. All original task documents remain until their full requirements
+have evidence. Verification results for this slice are recorded below.
+
+Focused C parser/matched/formatter tests, the shared web strict fixture, Go
+runtime tests, `fast-test`, the existing generated-runtime parity subset,
+generated provenance checks, and all five style guards pass. Logs for this
+slice are under `/tmp/kryon-kss-declarations/`. The first Go run failed on
+incorrect generated enum names in the new test; the corrected rerun passes.
+The `.kry` formatter was run on a review copy; its unrelated continuation-indent
+rewrites were inspected and omitted. Generated Go and the Go test use gofmt.
+
+The full `k2js-syntax-test` also passes, including the web KSS suite and both
+Chromium DOM/inspector suites; `k2js-runtime-snapshot-test` passes. The aggregate
+`verify.log` retains its nonzero result from the first Go compile failure;
+`go-runtime-retry.log` records the successful corrected run. No original plan
+file is fully closed by this slice.

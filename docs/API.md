@@ -217,6 +217,14 @@ use the canonical widget names and props shown here.
 
 ### Style sheet classes
 
+Web KSS declaration values are interpreted by the shared `.kry` parser. Token
+references resolve at the rule's source position, including keyframes; later
+overlays affect later rules. `WebStyleRule.tokenOrigins` records the actual
+per-property token name and origin. Numeric CSS values accept signed decimals,
+exponents, and an optional `px` suffix. CSS function and quoted values remain
+opaque; delimiters inside them do not end a declaration. Unknown property names
+are rejected even when their values are numeric. Source spans use UTF-8 bytes.
+
 KSS tokens are grouped in one `tokens { ... }` block. Accepted groups are
 `color`, `length`, `number`, `duration`, and `material`; duration values are
 stored as milliseconds, so `80ms` is `80` and `0.14s` is `140`.

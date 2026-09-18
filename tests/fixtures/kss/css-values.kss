@@ -1,0 +1,19 @@
+@pack css.values;
+tokens {
+    color { accent: #112233; }
+    length { gap: 12; }
+}
+Button.before {
+    background: accent;
+    padding-x: gap;
+    opacity: 0.25;
+    width: 1.5e2px;
+    --caption: "café; }";
+    background-image: url(https://example.test/a;b);
+}
+@keyframes pulse {
+    from { background: accent; opacity: 0; }
+    to { opacity: 1; }
+}
+@theme dark { accent: #445566; }
+Button.after { background: accent; }

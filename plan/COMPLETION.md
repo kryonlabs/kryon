@@ -25,6 +25,12 @@ intent until rerun at the revision being delivered.
 The existing `plan/dom/` directory was untracked at review time. Its original
 requirements are preserved as the DOM planning baseline.
 
+Implementation constraint: keep KSS language and behavior in maintained `.kry`
+modules, including CSS-only declaration semantics. Hosts provide storage, I/O,
+DOM access, and serialization. Shared CSS declaration interpretation is now
+implemented; selector and cascade migration remain open (see the evidence
+ledger). Generated C, Go, and JavaScript are outputs, not policy owners.
+
 ## Execution order
 
 1. Establish the requirement, ownership, and coverage inventory (P0).

@@ -1032,6 +1032,8 @@ export interface WebStyleRule {
   style: Record<string, unknown>;
   /** Unresolved declaration text per property (token references). */
   raw?: Record<string, string>;
+  /** Token provenance at this rule's position in the sheet. */
+  tokenOrigins?: Record<string, WebStyleTokenOrigin>;
   layer: number;
   order: number;
   score: number;
@@ -1162,6 +1164,8 @@ export function endWebComposite(rt: Runtime,
   context?: WebCompositeContext | null): WebCompositeContext | null;
 export function statement(rt: Runtime, text: string): RuntimeItem;
 export function expr(text: string): { kind: "expr"; text: string };
+/** UTF-8 byte length used by generated .kry string operations. */
+export function StringByteLength(source: string): number;
 export function struct(type: string, value: unknown): { type: string; value: unknown };
 export function copyValue<T>(value: T): T;
 export function ResolveFont(requested: unknown, inherited: unknown, fallback: unknown): number;

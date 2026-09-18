@@ -6,8 +6,11 @@ runtime into downstream applications. It must not contain product behavior,
 branding, copy, assets, or fixtures from a downstream application.
 
 KSS grammar, environment-name interpretation, overlay decisions, cascade policy,
-and formatting belong to maintained `runtime/*.kry` modules. Host adapters own
-source/import storage, native string views, and publication of resolved sheets;
+and formatting belong to maintained `runtime/*.kry` modules. CSS declaration
+classification, scalar parsing, token lookup, and color overrides now run there
+as well. The web adapter serializes tagged values; its remaining selector and
+cascade decisions are migration debt tracked in the completion ledger. Host
+adapters own source/import storage, native string views, and publication of resolved sheets;
 they call generated code to interpret those sources. The Go pack registry retains
 source and variant identity for theme changes, staging all resolved sheets before
 publishing them. Browser DOM text-node creation and attachment remain host
