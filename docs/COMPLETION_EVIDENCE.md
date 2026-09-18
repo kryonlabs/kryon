@@ -372,3 +372,46 @@ replacement evidence. The Go fixture reader handles the generated `ID` acronym.
 Go uses gofmt; the Kry formatter ran on a review copy, with unrelated existing
 continuation-indent rewrites inspected and omitted. Generated sources were
 regenerated normally, and `git diff --check` passes.
+
+## Shared selector chain traversal and backtracking
+
+The previously recorded `.outer > .branch .leaf` failure is fixed.
+`KssSelectorChainBegin` and `KssSelectorChainStep` in `runtime/kss_parser.kry`
+own chain traversal decisions. The generated driver distinguishes immediate
+child/adjacent-sibling relations from descendant/general-sibling alternatives,
+and retries alternatives when a later condition fails. The web host only
+retains node references/frame storage, supplies parent/previous-sibling indices,
+and evaluates simple selectors. Its greedy combinator loop is removed.
+
+`selector-chains.tsv` supplies 17 shared C/Go/JS graph cases: positive/negative
+matches, child/adjacent no-skip rules, descendant/general-sibling skipping,
+ancestor and sibling backtracking, mixed relationships, missing nodes, empty
+chains, and default/unknown relation bytes. Fixture graphs supply parent,
+previous-sibling, and simple-part match masks; the same generated driver
+executes on each backend. Web integration repeats the original failure and
+the analogous sibling failure, and exercises a 70-part chain with dynamic
+frame storage. Browser coverage checks runtime traces and actual exported CSS
+on both ancestor and sibling trees.
+
+The driver assumes valid acyclic host relationships. This does not expand the
+closed native typed selector surface or finish relative `:has` discovery,
+functional specificity/dispatch, native/data/ARIA normalization, or CSS mapping.
+Those requirements remain open; no original plan is fully closed here.
+
+A follow-up relative-selector probe remains failing: `Column:has(> .branch
+.leaf)` does not match a Column with a direct `.branch` child containing a
+`.leaf` grandchild. The current host `:has` driver tests only direct children
+as final candidates after stripping `>`, so it cannot evaluate that full
+relative chain. This is separate from the ordinary chain backtracking fixed
+here and is the next concrete traversal case to migrate.
+
+Verification passes: generation, matched C/Go/JS traversal fixtures,
+`fast-test`, generated-runtime parity, Go runtime, C++/Go/JS syntax, strict KSS,
+Chromium DOM/inspector, generated provenance, and all five style guards. Logs
+live under `build/selector-chains/`. The initial aggregate log retains two
+test errors: unqualified Go enum constants and a self-parented browser fixture
+root. The fixture now uses generated Go enum names and an empty root parent;
+`go-runtime-final.log` and `browser-final.log` record the successful reruns.
+The production traversal code did not change during those corrections.
+Go uses gofmt; the Kry formatter ran on a review copy, with unrelated existing
+continuation-indent changes inspected and omitted. `git diff --check` passes.

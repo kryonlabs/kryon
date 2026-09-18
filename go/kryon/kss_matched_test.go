@@ -484,3 +484,68 @@ func TestKssSelectorGrammar(t *testing.T) {
 		}
 	}
 }
+
+func TestKssSelectorChains(t *testing.T) {
+	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/selector-chains.tsv"), "\n"), "\n")
+	if len(lines) != 17 {
+		t.Fatal(len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 5 {
+			t.Fatal(line)
+		}
+		number := func(value string) int32 {
+			parsed, err := strconv.ParseInt(value, 10, 32)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return int32(parsed)
+		}
+		nodes := [][3]int32{}
+		for _, text := range strings.Split(fields[2], ";") {
+			values := strings.Split(text, ",")
+			if len(values) != 3 {
+				t.Fatal(text)
+			}
+			nodes = append(nodes, [3]int32{number(values[0]), number(values[1]), number(values[2])})
+		}
+		stack := []KssSelectorChainFrame{KssParser_KssSelectorChainBegin(int32(len(fields[1])), number(fields[3]))}
+		actual := false
+		for steps := 0; len(stack) > 0 && steps < 512; steps++ {
+			frame := stack[len(stack)-1]
+			valid := frame.Cursor >= 0 && int(frame.Cursor) < len(nodes) && frame.Part >= 0
+			matched := valid && !frame.Entered && (nodes[frame.Cursor][2]&(1<<frame.Part)) != 0
+			relation, parent, previous := int32(0), int32(-1), int32(-1)
+			if frame.Part >= 0 {
+				relation = int32(fields[1][frame.Part])
+			}
+			if relation == 'D' {
+				relation = ' '
+			}
+			if relation == '0' {
+				relation = 0
+			}
+			if valid {
+				parent, previous = nodes[frame.Cursor][0], nodes[frame.Cursor][1]
+			}
+			result := KssParser_KssSelectorChainStep(frame, matched, relation, parent, previous)
+			if result.Action == int32(KssSelectorChainActionKssSelectorAccept) {
+				actual = true
+				break
+			}
+			if result.Action == int32(KssSelectorChainActionKssSelectorPush) {
+				stack[len(stack)-1] = result.Frame
+				stack = append(stack, result.Next)
+			} else {
+				if result.Action != int32(KssSelectorChainActionKssSelectorPop) {
+					t.Fatal(result.Action)
+				}
+				stack = stack[:len(stack)-1]
+			}
+		}
+		if (!actual && len(stack) > 0) || actual != (fields[4] == "1") {
+			t.Fatal(line, actual)
+		}
+	}
+}

@@ -64,6 +64,9 @@ export const KssCSSLiteral = 0;
 export const KssCSSNumber = 1;
 export const KssCSSColor = 2;
 export const KssCSSMaterial = 3;
+export const KssSelectorPop = 0;
+export const KssSelectorPush = 1;
+export const KssSelectorAccept = 2;
 export const KssSelectorKind = 0;
 export const KssSelectorId = 1;
 export const KssSelectorClass = 2;
@@ -20142,6 +20145,177 @@ export function KssParser_KssSelectorGroup($rt, $state = moduleState, $host = mo
     let value_193 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_192);
     let value_191 = value_193;
     return value_191;
+}
+
+export function KssParser_KssSelectorChainBegin($rt, $state = moduleState, $host = moduleHost, count, node) {
+  $state = $state || moduleState;
+    count = number_85173a94_value(count,32,true);
+    node = number_85173a94_value(node,32,true);
+    let value_0 = {part: 0, cursor: 0, entered: false};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_1);
+    let frame = value_2;
+    let value_3 = number_85173a94_value(count,32,true);
+    let value_4 = number_85173a94_value(1,32,true);
+    let value_5 = number_85173a94_value(number_85173a94_bits(value_3,value_4,32,true,2),32,true);
+    frame.part = value_5;
+    let value_6 = number_85173a94_value(node,32,true);
+    frame.cursor = value_6;
+    let value_8 = frame;
+    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_8);
+    let value_7 = value_9;
+    return value_7;
+}
+
+export function KssParser_KssSelectorChainStep($rt, $state = moduleState, $host = moduleHost, frame, matched, relation, parent, previous) {
+  $state = $state || moduleState;
+    let value_0 = frame;
+    let value_1 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_0);
+    frame = value_1;
+    matched = number_85173a94_bool(matched);
+    relation = number_85173a94_value(relation,32,true);
+    parent = number_85173a94_value(parent,32,true);
+    previous = number_85173a94_value(previous,32,true);
+    let value_2 = {frame: {part: 0, cursor: 0, entered: false}, next: {part: 0, cursor: 0, entered: false}, action: 0};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_3);
+    let result = value_4;
+    let value_6 = frame;
+    let value_7 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_6);
+    let value_5 = value_7;
+    let value_8 = value_5;
+    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_8);
+    result.frame = value_9;
+    let value_10 = number_85173a94_value(frame.part,32,true);
+    let value_11 = number_85173a94_value(0,32,true);
+    let value_12 = number_85173a94_bool(value_10 < value_11);
+    let value_13 = number_85173a94_bool(value_12);
+    if (!value_13) {
+        let value_14 = number_85173a94_value(frame.cursor,32,true);
+        let value_15 = number_85173a94_value(0,32,true);
+        let value_16 = number_85173a94_bool(value_14 < value_15);
+        value_13 = value_16;
+    }
+    if (value_13) {
+        let value_18 = result;
+        let value_19 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_18);
+        let value_17 = value_19;
+        return value_17;
+    }
+    let value_20 = number_85173a94_value(relation,32,true);
+    let value_21 = number_85173a94_value(0,32,true);
+    let value_22 = number_85173a94_bool(value_20 == value_21);
+    let value_23 = number_85173a94_bool(value_22);
+    if (!value_23) {
+        let value_24 = number_85173a94_value(relation,32,true);
+        let value_25 = number_85173a94_value(32,32,true);
+        let value_26 = number_85173a94_bool(value_24 == value_25);
+        value_23 = value_26;
+    }
+    let value_27 = number_85173a94_bool(value_23);
+    if (!value_27) {
+        let value_28 = number_85173a94_value(relation,32,true);
+        let value_29 = number_85173a94_value(126,32,true);
+        let value_30 = number_85173a94_bool(value_28 == value_29);
+        value_27 = value_30;
+    }
+    let repeated = number_85173a94_bool(value_27);
+    let value_31 = number_85173a94_bool(frame.entered);
+    if (value_31) {
+        let value_32 = number_85173a94_bool(repeated);
+        let value_33 = number_85173a94_bool(!value_32);
+        if (value_33) {
+            let value_35 = result;
+            let value_36 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_35);
+            let value_34 = value_36;
+            return value_34;
+        }
+    } else {
+        let value_37 = number_85173a94_bool(matched);
+        let value_38 = number_85173a94_bool(!value_37);
+        if (value_38) {
+            let value_40 = result;
+            let value_41 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_40);
+            let value_39 = value_41;
+            return value_39;
+        }
+        let value_42 = number_85173a94_value(frame.part,32,true);
+        let value_43 = number_85173a94_value(0,32,true);
+        let value_44 = number_85173a94_bool(value_42 == value_43);
+        if (value_44) {
+            let value_45 = number_85173a94_value(KssSelectorAccept,32,true);
+            let value_46 = number_85173a94_value(number_85173a94_bits(value_45,0,32,true,0),32,true);
+            result.action = value_46;
+            let value_48 = result;
+            let value_49 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_48);
+            let value_47 = value_49;
+            return value_47;
+        }
+    }
+    let value_50 = number_85173a94_value(-1,32,true);
+    let candidate = number_85173a94_value(value_50,32,true);
+    let value_51 = number_85173a94_value(relation,32,true);
+    let value_52 = number_85173a94_value(0,32,true);
+    let value_53 = number_85173a94_bool(value_51 == value_52);
+    let value_54 = number_85173a94_bool(value_53);
+    if (!value_54) {
+        let value_55 = number_85173a94_value(relation,32,true);
+        let value_56 = number_85173a94_value(32,32,true);
+        let value_57 = number_85173a94_bool(value_55 == value_56);
+        value_54 = value_57;
+    }
+    let value_58 = number_85173a94_bool(value_54);
+    if (!value_58) {
+        let value_59 = number_85173a94_value(relation,32,true);
+        let value_60 = number_85173a94_value(62,32,true);
+        let value_61 = number_85173a94_bool(value_59 == value_60);
+        value_58 = value_61;
+    }
+    if (value_58) {
+        let value_62 = number_85173a94_value(parent,32,true);
+        candidate = value_62;
+    } else {
+        let value_63 = number_85173a94_value(relation,32,true);
+        let value_64 = number_85173a94_value(43,32,true);
+        let value_65 = number_85173a94_bool(value_63 == value_64);
+        let value_66 = number_85173a94_bool(value_65);
+        if (!value_66) {
+            let value_67 = number_85173a94_value(relation,32,true);
+            let value_68 = number_85173a94_value(126,32,true);
+            let value_69 = number_85173a94_bool(value_67 == value_68);
+            value_66 = value_69;
+        }
+        if (value_66) {
+            let value_70 = number_85173a94_value(previous,32,true);
+            candidate = value_70;
+        }
+    }
+    let value_71 = number_85173a94_value(candidate,32,true);
+    let value_72 = number_85173a94_value(0,32,true);
+    let value_73 = number_85173a94_bool(value_71 < value_72);
+    if (value_73) {
+        let value_75 = result;
+        let value_76 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_75);
+        let value_74 = value_76;
+        return value_74;
+    }
+    let value_77 = number_85173a94_value(candidate,32,true);
+    result.frame.cursor = value_77;
+    let value_78 = number_85173a94_bool(true);
+    result.frame.entered = value_78;
+    let value_79 = number_85173a94_value(frame.part,32,true);
+    let value_80 = number_85173a94_value(1,32,true);
+    let value_81 = number_85173a94_value(number_85173a94_bits(value_79,value_80,32,true,2),32,true);
+    result.next.part = value_81;
+    let value_82 = number_85173a94_value(candidate,32,true);
+    result.next.cursor = value_82;
+    let value_83 = number_85173a94_value(KssSelectorPush,32,true);
+    let value_84 = number_85173a94_value(number_85173a94_bits(value_83,0,32,true,0),32,true);
+    result.action = value_84;
+    let value_86 = result;
+    let value_87 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_86);
+    let value_85 = value_87;
+    return value_85;
 }
 
 export function KssParser_KssSelectorGroupMatches($rt, $state = moduleState, $host = moduleHost, name, count, matching) {

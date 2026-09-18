@@ -2432,6 +2432,21 @@ fields retain the last value as a summary; prebuilt selectors without the new
 lists continue to use those older fields. To edit a parsed selector's conditions,
 edit the lists, rather than its summary fields.
 
+Selector chains search complete ancestor or sibling alternatives. A nearer
+candidate that satisfies one part does not prevent a farther candidate from
+satisfying the whole chain. Child (`>`) and adjacent-sibling (`+`) relations
+still require the immediate related node. Descendant and general-sibling (`~`)
+relations may retry earlier ancestors/siblings. This behavior applies to style
+resolution, traces, and Web Document selector queries.
+
+Generated hosts can use `KssSelectorChainBegin` and `KssSelectorChainStep` with
+host-managed frame stacks. Each step consumes the cursor node's parent and
+previous-sibling indices (`-1` means missing), a simple-match result for an
+unentered frame, and the relation byte. Pop discards the top frame; push replaces
+it with `result.frame` and appends `result.next`; accept completes the search.
+Hosts supply acyclic tree relationships and valid node indices. The driver adds
+no fixed chain-length limit and does not expand the typed native selector API.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

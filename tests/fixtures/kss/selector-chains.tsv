@@ -1,0 +1,17 @@
+single-match	_	-1,-1,1	0	1
+single-miss	_	-1,-1,0	0	0
+no-node	_	-1,-1,1	-1	0
+child	_>	-1,-1,1;0,-1,2	1	1
+child-no-skip	_>	-1,-1,1;0,-1,0;1,-1,2	2	0
+descendant-skip	_D	-1,-1,1;0,-1,0;1,-1,2	2	1
+ancestor-backtrack	_>D	-1,-1,1;0,-1,2;1,-1,2;2,-1,4	3	1
+ancestor-no-match	_>D	-1,-1,0;0,-1,2;1,-1,2;2,-1,4	3	0
+adjacent	_+	-1,-1,1;-1,0,2	1	1
+adjacent-no-skip	_+	-1,-1,1;-1,0,0;-1,1,2	2	0
+sibling-skip	_~	-1,-1,1;-1,0,0;-1,1,2	2	1
+sibling-backtrack	_+~	-1,-1,1;-1,0,2;-1,1,0;-1,2,2;-1,3,4	4	1
+sibling-no-match	_+~	-1,-1,0;-1,0,2;-1,1,0;-1,2,2;-1,3,4	4	0
+mixed	_>+D	-1,-1,1;0,-1,2;0,1,4;2,-1,8	3	1
+unknown-relation	_?	-1,-1,1;0,-1,2	1	0
+default-relation	_0	-1,-1,1;0,-1,0;1,-1,2	2	1
+empty-chain		-1,-1,1	0	0

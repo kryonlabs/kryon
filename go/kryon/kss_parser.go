@@ -337,6 +337,26 @@ type KssSelectorSpan struct {
 	Done       bool
 }
 
+type KssSelectorChainAction int32
+
+const (
+	KssSelectorChainActionKssSelectorPop    = 0
+	KssSelectorChainActionKssSelectorPush   = 1
+	KssSelectorChainActionKssSelectorAccept = 2
+)
+
+type KssSelectorChainFrame struct {
+	Part    int32
+	Cursor  int32
+	Entered bool
+}
+
+type KssSelectorChainResult struct {
+	Frame  KssSelectorChainFrame
+	Next   KssSelectorChainFrame
+	Action int32
+}
+
 type KssSelectorAtomKind int32
 
 const (
@@ -14096,6 +14116,142 @@ func KssParser_KssSelectorGroup(c KssCursor) KssSelectorSpan {
 	result.Parser = value_116
 	var value_117 KssSelectorSpan = result
 	return value_117
+}
+
+func KssParser_KssSelectorChainBegin(count int32, node int32) KssSelectorChainFrame {
+	var frame KssSelectorChainFrame = KssSelectorChainFrame{}
+	var value_0 int32 = count
+	var value_1 int32 = 1
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
+	frame.Part = value_2
+	var value_3 int32 = node
+	frame.Cursor = value_3
+	var value_4 KssSelectorChainFrame = frame
+	return value_4
+}
+
+func KssParser_KssSelectorChainStep(frame KssSelectorChainFrame, matched bool, relation int32, parent int32, previous int32) KssSelectorChainResult {
+	var result KssSelectorChainResult = KssSelectorChainResult{}
+	var value_0 KssSelectorChainFrame = frame
+	result.Frame = value_0
+	var value_1 int32 = frame.Part
+	var value_2 int32 = 0
+	var value_3 bool = value_1 < value_2
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 int32 = frame.Cursor
+		var value_6 int32 = 0
+		var value_7 bool = value_5 < value_6
+		value_4 = value_7
+	}
+	if value_4 {
+		var value_8 KssSelectorChainResult = result
+		return value_8
+	}
+	var value_9 int32 = relation
+	var value_10 int32 = 0
+	var value_11 bool = value_9 == value_10
+	var value_12 bool = value_11
+	if !value_12 {
+		var value_13 int32 = relation
+		var value_14 int32 = 32
+		var value_15 bool = value_13 == value_14
+		value_12 = value_15
+	}
+	var value_16 bool = value_12
+	if !value_16 {
+		var value_17 int32 = relation
+		var value_18 int32 = 126
+		var value_19 bool = value_17 == value_18
+		value_16 = value_19
+	}
+	var repeated bool = value_16
+	var value_20 bool = frame.Entered
+	if value_20 {
+		var value_21 bool = repeated
+		var value_22 bool = !value_21
+		if value_22 {
+			var value_23 KssSelectorChainResult = result
+			return value_23
+		}
+	} else {
+		var value_24 bool = matched
+		var value_25 bool = !value_24
+		if value_25 {
+			var value_26 KssSelectorChainResult = result
+			return value_26
+		}
+		var value_27 int32 = frame.Part
+		var value_28 int32 = 0
+		var value_29 bool = value_27 == value_28
+		if value_29 {
+			var value_30 int32 = KssSelectorChainActionKssSelectorAccept
+			var value_31 int32 = int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0))
+			result.Action = value_31
+			var value_32 KssSelectorChainResult = result
+			return value_32
+		}
+	}
+	var value_33 int32 = -1
+	var candidate int32 = value_33
+	var value_34 int32 = relation
+	var value_35 int32 = 0
+	var value_36 bool = value_34 == value_35
+	var value_37 bool = value_36
+	if !value_37 {
+		var value_38 int32 = relation
+		var value_39 int32 = 32
+		var value_40 bool = value_38 == value_39
+		value_37 = value_40
+	}
+	var value_41 bool = value_37
+	if !value_41 {
+		var value_42 int32 = relation
+		var value_43 int32 = 62
+		var value_44 bool = value_42 == value_43
+		value_41 = value_44
+	}
+	if value_41 {
+		var value_45 int32 = parent
+		candidate = value_45
+	} else {
+		var value_46 int32 = relation
+		var value_47 int32 = 43
+		var value_48 bool = value_46 == value_47
+		var value_49 bool = value_48
+		if !value_49 {
+			var value_50 int32 = relation
+			var value_51 int32 = 126
+			var value_52 bool = value_50 == value_51
+			value_49 = value_52
+		}
+		if value_49 {
+			var value_53 int32 = previous
+			candidate = value_53
+		}
+	}
+	var value_54 int32 = candidate
+	var value_55 int32 = 0
+	var value_56 bool = value_54 < value_55
+	if value_56 {
+		var value_57 KssSelectorChainResult = result
+		return value_57
+	}
+	var value_58 int32 = candidate
+	result.Frame.Cursor = value_58
+	var value_59 bool = true
+	result.Frame.Entered = value_59
+	var value_60 int32 = frame.Part
+	var value_61 int32 = 1
+	var value_62 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, true, 2))
+	result.Next.Part = value_62
+	var value_63 int32 = candidate
+	result.Next.Cursor = value_63
+	var value_64 int32 = KssSelectorChainActionKssSelectorPush
+	var value_65 int32 = int32(number_runtime_bits(uint64(value_64), uint64(0), 32, true, 0))
+	result.Action = value_65
+	var value_66 KssSelectorChainResult = result
+	return value_66
 }
 
 func KssParser_KssSelectorGroupMatches(name string, count int32, matching int32) bool {

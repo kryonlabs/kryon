@@ -575,6 +575,71 @@ test_selector_grammar(void)
     fclose(file);
 }
 
+static void
+test_selector_chains(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/selector-chains.tsv", "r");
+    char line[2048];
+    int cases = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        char *fields[5] = {line};
+        for(int i = 0; i < 4; i++) {
+            char *separator = strchr(fields[i], '\t');
+            assert(separator != NULL);
+            *separator = '\0';
+            fields[i + 1] = separator + 1;
+        }
+        struct {
+            int parent;
+            int previous;
+            unsigned mask;
+        } nodes[64];
+        int count = 0;
+        for(char *node = strtok(fields[2], ";"); node != NULL; node = strtok(NULL, ";")) {
+            assert(count < 64);
+            assert(sscanf(node, "%d,%d,%u", &nodes[count].parent,
+                &nodes[count].previous, &nodes[count].mask) == 3);
+            count++;
+        }
+        KssSelectorChainFrame stack[64];
+        int depth = 1;
+        stack[0] = KssSelectorChainBegin((int32_t)strlen(fields[1]), atoi(fields[3]));
+        bool actual = false;
+        for(int steps = 0; depth > 0 && steps < 512; steps++) {
+            KssSelectorChainFrame frame = stack[depth - 1];
+            bool valid = frame.cursor >= 0 && frame.cursor < count && frame.part >= 0;
+            bool matched = valid && !frame.entered &&
+                (nodes[frame.cursor].mask & (1u << frame.part)) != 0;
+            int relation = frame.part < 0 ? 0 : fields[1][frame.part];
+            if(relation == 'D')
+                relation = ' ';
+            if(relation == '0')
+                relation = 0;
+            KssSelectorChainResult result = KssSelectorChainStep(frame, matched, relation,
+                valid ? nodes[frame.cursor].parent : -1,
+                valid ? nodes[frame.cursor].previous : -1);
+            if(result.action == KssSelectorAccept) {
+                actual = true;
+                break;
+            }
+            if(result.action == KssSelectorPush) {
+                assert(depth < 64);
+                stack[depth - 1] = result.frame;
+                stack[depth++] = result.next;
+            } else {
+                assert(result.action == KssSelectorPop);
+                depth--;
+            }
+        }
+        assert(actual || depth == 0);
+        assert(actual == (atoi(fields[4]) != 0));
+        cases++;
+    }
+    assert(cases == 17);
+    fclose(file);
+}
+
 int
 main(void)
 {
@@ -586,6 +651,7 @@ main(void)
     test_selector_predicates();
     test_selector_facts();
     test_selector_grammar();
+    test_selector_chains();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

@@ -288,6 +288,59 @@ for (const line of grammarCases) {
   assert.deepEqual(runtime.resolveWebStyle(target, {rules: [{...sheet.rules[0], selector: legacy}]}), {radius: 9});
 }
 
+// The shared driver searches complete chains, including earlier alternatives.
+{
+  const cases = readFileSync(new URL("./fixtures/kss/selector-chains.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+  assert.equal(cases.length, 17);
+  for (const line of cases) {
+    const [name, relations, graph, target, expected] = line.split("\t");
+    const nodes = graph.split(";").map(text => text.split(",").map(Number));
+    const stack = [kss.KssParser_KssSelectorChainBegin(null, null, null, relations.length, Number(target))];
+    let actual = false;
+    for (let steps = 0; stack.length && steps < 512; steps++) {
+      const frame = stack.at(-1);
+      const node = nodes[frame.cursor];
+      const matched = !!node && frame.part >= 0 && !frame.entered && !!(node[2] & (1 << frame.part));
+      const relation = relations[frame.part] === "D" ? 32 : relations[frame.part] === "0" ? 0 :
+        (relations.charCodeAt(frame.part) || 0);
+      const result = kss.KssParser_KssSelectorChainStep(null, null, null, frame, matched,
+        relation, node?.[0] ?? -1, node?.[1] ?? -1);
+      if (result.action === kss.KssSelectorAccept) {
+        actual = true;
+        break;
+      }
+      if (result.action === kss.KssSelectorPush) {
+        stack[stack.length - 1] = result.frame;
+        stack.push(result.next);
+      } else {
+        assert.equal(result.action, kss.KssSelectorPop, name);
+        stack.pop();
+      }
+    }
+    assert.ok(actual || stack.length === 0, name + " terminates");
+    assert.equal(actual, expected === "1", name);
+  }
+  const nodes = [
+    {kind: "Column", path: "root", parentPath: "root", classes: ["outer"]},
+    {kind: "Column", path: "root/a", parentPath: "root", classes: ["branch"]},
+    {kind: "Column", path: "root/a/b", parentPath: "root/a", classes: ["branch"]},
+    {kind: "Button", path: "root/a/b/leaf", parentPath: "root/a/b", classes: ["leaf"]}
+  ];
+  for (const node of nodes) node.__kryFrameNodes = nodes;
+  const sheet = runtime.parseWebStyleSheet('.outer > .branch .leaf {radius: 7;}');
+  assert.deepEqual(runtime.resolveWebStyle(nodes[3], sheet), {radius: 7});
+  const siblings = ["anchor", "branch", "other", "branch", "leaf"].map((cls, index) =>
+    ({kind: "Button", path: "siblings/" + index, parentPath: "siblings", classes: [cls]}));
+  for (const node of siblings) node.__kryFrameNodes = siblings;
+  assert.deepEqual(runtime.resolveWebStyle(siblings[4],
+    runtime.parseWebStyleSheet('.anchor + .branch ~ .leaf {radius: 8;}')), {radius: 8});
+  const long = Array.from({length: 70}, (_, index) => ({kind: "Column", path: "long/" + index,
+    parentPath: index ? "long/" + (index - 1) : "", classes: ["branch"]}));
+  for (const node of long) node.__kryFrameNodes = long;
+  assert.deepEqual(runtime.resolveWebStyle(long.at(-1),
+    runtime.parseWebStyleSheet(Array(70).fill('.branch').join(' > ') + ' {radius: 9;}')), {radius: 9});
+}
+
 // Parsed and prebuilt rules take the same shared priority path. Ties choose
 // the later declaration, including across sheets; fields cascade independently.
 {

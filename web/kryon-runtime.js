@@ -4780,43 +4780,41 @@ function selectorMatchesSimpleWebNode(selector, node, scopeNode = null) {
 
 function selectorChainMatchesWebNode(selector, node, scopeNode = null) {
   const parts = selector?.parts || [];
-  if (!parts.length)
+  if (!parts.length || !node)
     return false;
-  let current = node;
-  for (let index = parts.length - 1; index >= 0; index--) {
-    const part = parts[index];
-    if (!current || !selectorMatchesSimpleWebNode(part, current, scopeNode))
-      return false;
-    if (index === 0)
+  const nodes = [];
+  const references = new Map();
+  const reference = (candidate) => {
+    if (!candidate)
+      return -1;
+    if (!references.has(candidate)) {
+      references.set(candidate, nodes.length);
+      nodes.push(candidate);
+    }
+    return references.get(candidate);
+  };
+  const stack = [webKssModule.KssParser_KssSelectorChainBegin(null, null, null,
+    parts.length, reference(node))];
+  while (stack.length) {
+    const frame = stack[stack.length - 1];
+    const candidate = nodes[frame.cursor];
+    const part = parts[frame.part];
+    const matched = !frame.entered && selectorMatchesSimpleWebNode(part, candidate, scopeNode);
+    const parent = reference(webNodeParentFromFrame(candidate));
+    const previous = reference(webNodePreviousSiblingFromFrame(candidate));
+    const relation = (part.combinator || " ").charCodeAt(0);
+    const result = webKssModule.KssParser_KssSelectorChainStep(null, null, null,
+      frame, matched, relation, parent, previous);
+    if (result.action === webKssModule.KssSelectorAccept)
       return true;
-    const relation = parts[index].combinator || " ";
-    if (relation === ">") {
-      current = webNodeParentFromFrame(current);
-      continue;
+    if (result.action === webKssModule.KssSelectorPush) {
+      stack[stack.length - 1] = result.frame;
+      stack.push(result.next);
+    } else {
+      stack.pop();
     }
-    if (relation === "+") {
-      current = webNodePreviousSiblingsFromFrame(current).pop() || null;
-      continue;
-    }
-    if (relation === "~") {
-      const siblingSelector = parts[index - 1];
-      const sibling = webNodePreviousSiblingsFromFrame(current)
-        .reverse()
-        .find((candidate) => selectorMatchesSimpleWebNode(siblingSelector, candidate, scopeNode));
-      if (!sibling)
-        return false;
-      current = sibling;
-      continue;
-    }
-    let ancestor = webNodeParentFromFrame(current);
-    const ancestorSelector = parts[index - 1];
-    while (ancestor && !selectorMatchesSimpleWebNode(ancestorSelector, ancestor, scopeNode))
-      ancestor = webNodeParentFromFrame(ancestor);
-    if (!ancestor)
-      return false;
-    current = ancestor;
   }
-  return true;
+  return false;
 }
 
 function selectorMatchesWebNode(selector, node, scopeNode = null) {

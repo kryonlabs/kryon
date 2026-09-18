@@ -43,6 +43,12 @@ Ordered ID/attribute condition lists likewise preserve repeated constraints.
 Hosts supply `KssIdentityFacts` to generated identity matching; existing generated
 attribute predicates evaluate each retained attribute condition. Summary maps
 are not the matching or serialization source for parsed selectors.
+`KssSelectorChainBegin`/`KssSelectorChainStep` drive a depth-first chain search
+through host-owned frame storage. The generated driver chooses parent versus
+previous sibling, restricts immediate relations, and retries descendant/general
+sibling alternatives after a later condition fails. The browser adapter supplies
+relationships and simple-selector observations; it no longer owns a greedy
+combinator loop. Relative `:has` candidate discovery remains separate work.
 
 ## Public API
 

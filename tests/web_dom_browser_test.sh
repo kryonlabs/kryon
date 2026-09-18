@@ -984,6 +984,44 @@ try {
     "render observer result missing");
   assert(observedRefs.some((entry) => entry[0] === "" && entry[1] === "kry-render"),
     "empty observer result after unmount missing");
+  const chainRuntime = kryon.createRuntime();
+  kryon.beginFrame(chainRuntime);
+  const chainSpecs = [
+    ["Chain", "", "chain-outer"],
+    ["Chain/a", "Chain", "chain-branch"],
+    ["Chain/a/b", "Chain/a", "chain-branch"],
+    ["Chain/a/b/leaf", "Chain/a/b", "chain-leaf"],
+    ["Chain/anchor", "Chain", "sib-anchor"],
+    ["Chain/first", "Chain", "sib-branch"],
+    ["Chain/other", "Chain", "sib-other"],
+    ["Chain/second", "Chain", "sib-branch"],
+    ["Chain/leaf", "Chain", "sib-leaf"]
+  ];
+  for (const [path, parentPath, className] of chainSpecs)
+    kryon.widget(chainRuntime, "Column", {class: className}, null, {path, parentPath});
+  kryon.endFrame(chainRuntime);
+  const chainSheet = kryon.parseWebStyleSheet(\`
+    .chain-outer > .chain-branch .chain-leaf { outline-style: dashed; }
+    .sib-anchor + .sib-branch ~ .sib-leaf { outline-style: dotted; }
+  \`);
+  kryon.setWebStyleSheets(chainRuntime, chainSheet);
+  const chainTarget = document.createElement("div");
+  document.body.appendChild(chainTarget);
+  kryon.renderWebDocument(chainRuntime, chainTarget);
+  const removeChainStyle = kryon.installWebStyleSheet(chainSheet, null, "chain-backtracking");
+  for (const [path, expectedStyle] of [["Chain/a/b/leaf", "dashed"], ["Chain/leaf", "dotted"]]) {
+    const element = kryon.findWebElement(chainTarget, path);
+    assert(kryon.webDOMStyleTrace(chainTarget, path).resolved["outline-style"] === expectedStyle,
+      "runtime selector chain did not backtrack: " + path);
+    element.style.removeProperty("outline-style");
+    assert(getComputedStyle(element).outlineStyle === expectedStyle,
+      "exported selector disagrees with runtime chain: " + path);
+  }
+  removeChainStyle();
+  kryon.beginFrame(chainRuntime);
+  kryon.endFrame(chainRuntime);
+  kryon.renderWebDocument(chainRuntime, chainTarget);
+  chainTarget.remove();
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

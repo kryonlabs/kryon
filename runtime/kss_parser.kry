@@ -4447,6 +4447,72 @@ KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     return result
 }
 
+# The host retains a stack of frames and supplies relationships for cursor.
+# A popped child means that candidate failed, so the resumed frame tries the
+# next ancestor/sibling only for descendant and general-sibling combinators.
+KssSelectorChainAction :: enum {
+    KssSelectorPop = 0
+    KssSelectorPush = 1
+    KssSelectorAccept = 2
+}
+
+KssSelectorChainFrame :: struct {
+    part: i32
+    cursor: i32
+    entered: bool
+}
+
+KssSelectorChainResult :: struct {
+    frame: KssSelectorChainFrame
+    next: KssSelectorChainFrame
+    action: i32
+}
+
+KssSelectorChainBegin :: (count: i32, node: i32) -> KssSelectorChainFrame #export {
+    frame: KssSelectorChainFrame
+    frame.part = count - 1
+    frame.cursor = node
+    return frame
+}
+
+KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
+    relation: i32, parent: i32, previous: i32) -> KssSelectorChainResult #export {
+    result: KssSelectorChainResult
+    result.frame = frame
+    if frame.part < 0 || frame.cursor < 0 {
+        return result
+    }
+    repeated: bool = relation == 0 || relation == 32 || relation == 126
+    if frame.entered {
+        if !repeated {
+            return result
+        }
+    } else {
+        if !matched {
+            return result
+        }
+        if frame.part == 0 {
+            result.action = (i32)KssSelectorAccept
+            return result
+        }
+    }
+    candidate: i32 = -1
+    if relation == 0 || relation == 32 || relation == 62 {
+        candidate = parent
+    } else if relation == 43 || relation == 126 {
+        candidate = previous
+    }
+    if candidate < 0 {
+        return result
+    }
+    result.frame.cursor = candidate
+    result.frame.entered = true
+    result.next.part = frame.part - 1
+    result.next.cursor = candidate
+    result.action = (i32)KssSelectorPush
+    return result
+}
+
 # Hosts count matching alternatives; this policy owns selector-list negation.
 KssSelectorGroupMatches :: (name: string, count: i32, matching: i32) -> bool #export {
     if count <= 0 || matching < 0 || matching > count {
