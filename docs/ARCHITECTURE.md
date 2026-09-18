@@ -55,6 +55,10 @@ child/sibling relative chains and prevents ancestry outside the subject from
 satisfying an implicit descendant prefix. Node paths canonicalize copied host
 node references. Shared lexing rejects nested `:has` without rejecting quoted
 attribute values or comments that merely contain the same text.
+`KssPseudoMatch` combines structural matching and nth-position policy behind
+one generated decision interface. The web adapter gathers sibling/type indices
+and content/focus facts, then handles the returned match/reject/traversal result;
+it no longer dispatches the four nth forms or chooses their traversal direction.
 
 ## Public API
 

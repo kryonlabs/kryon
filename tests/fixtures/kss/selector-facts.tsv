@@ -61,3 +61,25 @@ I	Save	id=save	0
 I	保存	name=保存	1
 I		-	0
 I	save	-	0
+P	root	has_parent=0	1
+P	root	has_parent=1	0
+P	root|x	has_parent=0	0
+P	has|.leaf	-	-1
+P	has	-	0
+P	unknown|x	-	0
+P	unknown	-	0
+P	nth-child|2	sibling_index=1,sibling_count=5,type_index=0,type_count=3	1
+P	nth-child|2	sibling_index=3,sibling_count=5,type_index=1,type_count=3	0
+P	nth-last-child|4	sibling_index=1,sibling_count=5	1
+P	nth-last-child|2	sibling_index=1,sibling_count=5	0
+P	nth-of-type|2	sibling_index=3,sibling_count=5,type_index=1,type_count=3	1
+P	nth-of-type|4	sibling_index=3,sibling_count=5,type_index=1,type_count=3	0
+P	nth-last-of-type|2	type_index=1,type_count=3	1
+P	nth-last-of-type|1	type_index=1,type_count=3	0
+P	nth-child|odd	sibling_index=2,sibling_count=5	1
+P	nth-last-child|-n+2	sibling_index=4,sibling_count=5	1
+P	nth-child|2n + 1	sibling_index=2,sibling_count=5	1
+P	nth-child|1	sibling_index=-1,sibling_count=5	0
+P	nth-of-type|1	type_index=0,type_count=0	0
+P	nth-child|n of .item	sibling_index=1,sibling_count=3	0
+P	nth-child	sibling_index=0,sibling_count=3	0

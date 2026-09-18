@@ -4197,8 +4197,8 @@ KssStructuralFacts :: struct {
     target: bool
 }
 
-# -1 leaves functional pseudos to the selector traversal driver. Zero and one
-# are complete decisions from the supplied relationship/content facts.
+# -1 means the name is not a basic structural pseudo. KssPseudoMatch handles
+# further dispatch; zero and one are complete decisions from these facts.
 KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> i32 #export {
     matched: bool = false
     if name == "root" {
@@ -4229,6 +4229,36 @@ KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> i32 #export {
         matched = facts.target
     } else {
         return -1
+    }
+    if matched {
+        return 1
+    }
+    return 0
+}
+
+# Names and arguments come from selector atoms. -1 requests relative :has
+# traversal; all other supported/unknown cases resolve to zero or one here.
+KssPseudoMatch :: (name: string, argument: string, functional: bool,
+    facts: KssStructuralFacts) -> i32 #export {
+    if !functional {
+        decision: i32 = KssStructuralMatch(name, facts)
+        if decision < 0 {
+            return 0
+        }
+        return decision
+    }
+    if name == "has" {
+        return -1
+    }
+    matched: bool = false
+    if name == "nth-child" {
+        matched = KssNthSiblingMatches(argument, facts.sibling_index, facts.sibling_count, false)
+    } else if name == "nth-last-child" {
+        matched = KssNthSiblingMatches(argument, facts.sibling_index, facts.sibling_count, true)
+    } else if name == "nth-of-type" {
+        matched = KssNthSiblingMatches(argument, facts.type_index, facts.type_count, false)
+    } else if name == "nth-last-of-type" {
+        matched = KssNthSiblingMatches(argument, facts.type_index, facts.type_count, true)
     }
     if matched {
         return 1

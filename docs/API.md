@@ -2460,6 +2460,13 @@ is rejected by the shared lexer, including inside `:is` or
 `:not` within a `:has` argument. Quoted attribute values and comments containing
 `:has(` remain literal content, not nested selectors.
 
+`KssPseudoMatch` consumes a canonical pseudo name, its argument and functional
+flag, and `KssStructuralFacts`. It evaluates basic structural and positional
+pseudos, choosing forward/reverse and all-sibling/same-type positions in shared
+policy. Results are zero for no match (including unknown or mismatched forms),
+one for a match, and minus one to request relative `:has` traversal. Parsing
+and argument validity remain the selector lexer's responsibility.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

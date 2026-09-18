@@ -13351,6 +13351,89 @@ func KssParser_KssStructuralMatch(name string, facts KssStructuralFacts) int32 {
 	return value_96
 }
 
+func KssParser_KssPseudoMatch(name string, argument string, functional bool, facts KssStructuralFacts) int32 {
+	var value_0 bool = functional
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 string = name
+		var value_3 KssStructuralFacts = facts
+		var value_4 int32 = KssParser_KssStructuralMatch(value_2, value_3)
+		var decision int32 = value_4
+		var value_5 int32 = decision
+		var value_6 int32 = 0
+		var value_7 bool = value_5 < value_6
+		if value_7 {
+			var value_8 int32 = 0
+			return value_8
+		}
+		var value_9 int32 = decision
+		return value_9
+	}
+	var value_10 string = name
+	var value_11 string = "has"
+	var value_12 bool = value_10 == value_11
+	if value_12 {
+		var value_13 int32 = -1
+		return value_13
+	}
+	var value_14 bool = false
+	var matched bool = value_14
+	var value_15 string = name
+	var value_16 string = "nth-child"
+	var value_17 bool = value_15 == value_16
+	if value_17 {
+		var value_18 string = argument
+		var value_19 int32 = facts.SiblingIndex
+		var value_20 int32 = facts.SiblingCount
+		var value_21 bool = false
+		var value_22 bool = KssParser_KssNthSiblingMatches(value_18, value_19, value_20, value_21)
+		matched = value_22
+	} else {
+		var value_23 string = name
+		var value_24 string = "nth-last-child"
+		var value_25 bool = value_23 == value_24
+		if value_25 {
+			var value_26 string = argument
+			var value_27 int32 = facts.SiblingIndex
+			var value_28 int32 = facts.SiblingCount
+			var value_29 bool = true
+			var value_30 bool = KssParser_KssNthSiblingMatches(value_26, value_27, value_28, value_29)
+			matched = value_30
+		} else {
+			var value_31 string = name
+			var value_32 string = "nth-of-type"
+			var value_33 bool = value_31 == value_32
+			if value_33 {
+				var value_34 string = argument
+				var value_35 int32 = facts.TypeIndex
+				var value_36 int32 = facts.TypeCount
+				var value_37 bool = false
+				var value_38 bool = KssParser_KssNthSiblingMatches(value_34, value_35, value_36, value_37)
+				matched = value_38
+			} else {
+				var value_39 string = name
+				var value_40 string = "nth-last-of-type"
+				var value_41 bool = value_39 == value_40
+				if value_41 {
+					var value_42 string = argument
+					var value_43 int32 = facts.TypeIndex
+					var value_44 int32 = facts.TypeCount
+					var value_45 bool = true
+					var value_46 bool = KssParser_KssNthSiblingMatches(value_42, value_43, value_44, value_45)
+					matched = value_46
+				}
+			}
+		}
+	}
+	var value_47 bool = matched
+	if value_47 {
+		var value_48 int32 = 1
+		return value_48
+	}
+	var value_49 int32 = 0
+	return value_49
+}
+
 func KssParser_KssSelectorComment(c KssCursor) KssExpectResult {
 	var result KssExpectResult = KssExpectResult{}
 	var value_0 KssCursor = c

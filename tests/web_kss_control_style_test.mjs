@@ -74,8 +74,9 @@ const factDefaults = {
     "target": false
   }
 };
+factDefaults.P = factDefaults.R;
 const factCases = readFileSync(new URL("./fixtures/kss/selector-facts.tsv", import.meta.url), "utf8").trimEnd().split("\n");
-assert.equal(factCases.length, 63);
+assert.equal(factCases.length, 85);
 for (const line of factCases) {
   const [kind, query, assignments, expected] = line.split("\t");
   const facts = {...factDefaults[kind]};
@@ -86,9 +87,19 @@ for (const line of factCases) {
       facts[key] = typeof facts[key] === "boolean" ? value === "1" : typeof facts[key] === "number" ? Number(value) : value;
     }
   }
-  const actual = kind === "S" ? Number(kss.KssParser_KssStateMatches(null, null, null, query, facts))
-    : kind === "I" ? Number(kss.KssParser_KssIdentityMatches(null, null, null, query, facts))
-      : kss.KssParser_KssStructuralMatch(null, null, null, query, facts);
+  let actual;
+  if (kind === "S") {
+    actual = Number(kss.KssParser_KssStateMatches(null, null, null, query, facts));
+  } else if (kind === "I") {
+    actual = Number(kss.KssParser_KssIdentityMatches(null, null, null, query, facts));
+  } else if (kind === "P") {
+    const separator = query.indexOf("|");
+    const name = separator < 0 ? query : query.slice(0, separator);
+    const argument = separator < 0 ? "" : query.slice(separator + 1);
+    actual = kss.KssParser_KssPseudoMatch(null, null, null, name, argument, separator >= 0, facts);
+  } else {
+    actual = kss.KssParser_KssStructuralMatch(null, null, null, query, facts);
+  }
   assert.equal(actual, Number(expected), line);
 }
 
@@ -153,6 +164,9 @@ for (const line of grammarCases) {
     Button:nth-of-type(2) { padding-x: 7; }
     Button:nth-last-of-type(2) { padding-y: 8; }
     Button:nth-child(0x3) { radius: 99; }
+    Button:nth-of-type { radius: 99; }
+    Button:first-child(1) { radius: 99; }
+    Button:unknown(2) { radius: 99; }
   `);
   assert.deepEqual(runtime.resolveWebStyle(nodes[2], sheet), {
     background: "#112233", foreground: "#445566", border: "#778899",

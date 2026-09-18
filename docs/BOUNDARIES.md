@@ -16,8 +16,9 @@ Main selector tokenization and atom parsing also live in `.kry`; the web adapter
 builds its selector objects from borrowed spans and tagged atoms. CSS export and
 structural matching also use those atoms to read functional pseudo arguments;
 they do not maintain separate regular-expression argument grammars. Remaining
-functional-pseudo dispatch, remaining compound matching, and CSS export decisions
-are tracked in the completion ledger. `KssSelectorGroupMatches` owns positive
+compound matching, specificity conformance, and CSS export decisions are tracked
+in the completion ledger. `KssPseudoMatch` owns structural/positional dispatch,
+including sibling-axis and direction selection and unknown-form rejection. `KssSelectorGroupMatches` owns positive
 and negative selector-list reduction; web storage retains separate groups and
 supplies their alternative-match counts. `KssIdentityMatches` owns ID/name/key
 comparison. The web adapter retains ordered ID and attribute conditions, rather

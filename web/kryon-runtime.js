@@ -4644,11 +4644,6 @@ function webNodeSameTypeSiblingsFromFrame(siblings, node) {
     String(candidate?.kind || "").toLowerCase() === kind);
 }
 
-function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
-  const index = siblings.indexOf(node);
-  return webKssModule.KssParser_KssNthSiblingMatches(null, null, null,
-    String(text || ""), index, siblings.length, fromEnd);
-}
 
 function webNodeHasFocusWithin(node) {
   if (!node)
@@ -4708,29 +4703,12 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
   };
   for (const pseudo of pseudos) {
     const parsed = parseSelectorPseudo(pseudo);
-    const decision = parsed.functional ? -1 :
-      webKssModule.KssParser_KssStructuralMatch(null, null, null, parsed.name, facts);
-    if (decision >= 0) {
-      if (decision === 0)
-        return false;
-    } else if (parsed.functional && parsed.name === "has") {
-      if (!selectorHasPseudoMatches(parsed, node))
-        return false;
-    } else if (parsed.functional && parsed.name === "nth-child") {
-      if (!nthChildPositionMatches(parsed.argument, siblings, node, false))
-        return false;
-    } else if (parsed.functional && parsed.name === "nth-last-child") {
-      if (!nthChildPositionMatches(parsed.argument, siblings, node, true))
-        return false;
-    } else if (parsed.functional && parsed.name === "nth-of-type") {
-      if (!nthChildPositionMatches(parsed.argument, typeSiblings, node, false))
-        return false;
-    } else if (parsed.functional && parsed.name === "nth-last-of-type") {
-      if (!nthChildPositionMatches(parsed.argument, typeSiblings, node, true))
-        return false;
-    } else {
+    const decision = webKssModule.KssParser_KssPseudoMatch(null, null, null,
+      parsed.name, parsed.argument, parsed.functional, facts);
+    if (decision === 0)
       return false;
-    }
+    if (decision < 0 && !selectorHasPseudoMatches(parsed, node))
+      return false;
   }
   return true;
 }

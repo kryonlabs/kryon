@@ -447,7 +447,8 @@ test_selector_facts(void)
         }
         bool state = strcmp(fields[0], "S") == 0;
         bool identity = strcmp(fields[0], "I") == 0;
-        assert(state || identity || strcmp(fields[0], "R") == 0);
+        bool pseudo = strcmp(fields[0], "P") == 0;
+        assert(state || identity || pseudo || strcmp(fields[0], "R") == 0);
         KssStateFacts state_facts = {0};
         KssStructuralFacts structural = {0};
         KssIdentityFacts identity_facts = {0};
@@ -487,12 +488,21 @@ test_selector_facts(void)
             actual = (int)KssStateMatches(query, state_facts);
         else if(identity)
             actual = (int)KssIdentityMatches(query, identity_facts);
-        else
+        else if(pseudo) {
+            char *argument = strchr(fields[1], '|');
+            bool functional = argument != NULL;
+            if(functional)
+                *argument++ = '\0';
+            else
+                argument = "";
+            actual = KssPseudoMatch(StringView(fields[1], strlen(fields[1])),
+                StringView(argument, strlen(argument)), functional, structural);
+        } else
             actual = KssStructuralMatch(query, structural);
         assert(actual == atoi(fields[3]));
         count++;
     }
-    assert(count == 63);
+    assert(count == 85);
     fclose(file);
 }
 

@@ -331,7 +331,7 @@ func TestKssSelectorPredicates(t *testing.T) {
 func TestKssSelectorFacts(t *testing.T) {
 	source := kssFixtureText(t, "../../tests/fixtures/kss/selector-facts.tsv")
 	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
-	if len(lines) != 63 {
+	if len(lines) != 85 {
 		t.Fatal(len(lines))
 	}
 	for _, line := range lines {
@@ -343,7 +343,7 @@ func TestKssSelectorFacts(t *testing.T) {
 		var structural KssStructuralFacts
 		var identity KssIdentityFacts
 		record := reflect.ValueOf(&state).Elem()
-		if fields[0] == "R" {
+		if fields[0] == "R" || fields[0] == "P" {
 			record = reflect.ValueOf(&structural).Elem()
 		}
 		if fields[0] == "I" {
@@ -391,6 +391,9 @@ func TestKssSelectorFacts(t *testing.T) {
 			if KssParser_KssIdentityMatches(fields[1], identity) {
 				actual = 1
 			}
+		} else if fields[0] == "P" {
+			name, argument, functional := strings.Cut(fields[1], "|")
+			actual = KssParser_KssPseudoMatch(name, argument, functional, structural)
 		} else {
 			actual = KssParser_KssStructuralMatch(fields[1], structural)
 		}

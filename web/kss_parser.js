@@ -19095,6 +19095,96 @@ export function KssParser_KssStructuralMatch($rt, $state = moduleState, $host = 
     return value_98;
 }
 
+export function KssParser_KssPseudoMatch($rt, $state = moduleState, $host = moduleHost, name, argument, functional, facts) {
+  $state = $state || moduleState;
+    functional = number_85173a94_bool(functional);
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({has_parent: record_source.has_parent, has_scope: record_source.has_scope, is_scope: record_source.is_scope, sibling_index: record_source.sibling_index, sibling_count: record_source.sibling_count, type_index: record_source.type_index, type_count: record_source.type_count, has_children: record_source.has_children, has_text: record_source.has_text, focus_within: record_source.focus_within, target: record_source.target}))(value_0);
+    facts = value_1;
+    let value_2 = number_85173a94_bool(functional);
+    let value_3 = number_85173a94_bool(!value_2);
+    if (value_3) {
+        let value_4 = name;
+        let value_6 = facts;
+        let value_7 = ((record_source) => ({has_parent: record_source.has_parent, has_scope: record_source.has_scope, is_scope: record_source.is_scope, sibling_index: record_source.sibling_index, sibling_count: record_source.sibling_count, type_index: record_source.type_index, type_count: record_source.type_count, has_children: record_source.has_children, has_text: record_source.has_text, focus_within: record_source.focus_within, target: record_source.target}))(value_6);
+        let value_5 = value_7;
+        let value_8 = number_85173a94_value(KssParser_KssStructuralMatch($rt, $state, $host, value_4, value_5),32,true);
+        let decision = number_85173a94_value(value_8,32,true);
+        let value_9 = number_85173a94_value(decision,32,true);
+        let value_10 = number_85173a94_value(0,32,true);
+        let value_11 = number_85173a94_bool(value_9 < value_10);
+        if (value_11) {
+            let value_12 = number_85173a94_value(0,32,true);
+            return value_12;
+        }
+        let value_13 = number_85173a94_value(decision,32,true);
+        return value_13;
+    }
+    let value_14 = name;
+    let value_15 = "has";
+    let value_16 = number_85173a94_bool(value_14 == value_15);
+    if (value_16) {
+        let value_17 = number_85173a94_value(-1,32,true);
+        return value_17;
+    }
+    let value_18 = number_85173a94_bool(false);
+    let matched = number_85173a94_bool(value_18);
+    let value_19 = name;
+    let value_20 = "nth-child";
+    let value_21 = number_85173a94_bool(value_19 == value_20);
+    if (value_21) {
+        let value_22 = argument;
+        let value_23 = number_85173a94_value(facts.sibling_index,32,true);
+        let value_24 = number_85173a94_value(facts.sibling_count,32,true);
+        let value_25 = number_85173a94_bool(false);
+        let value_26 = number_85173a94_bool(KssParser_KssNthSiblingMatches($rt, $state, $host, value_22, value_23, value_24, value_25));
+        matched = value_26;
+    } else {
+        let value_27 = name;
+        let value_28 = "nth-last-child";
+        let value_29 = number_85173a94_bool(value_27 == value_28);
+        if (value_29) {
+            let value_30 = argument;
+            let value_31 = number_85173a94_value(facts.sibling_index,32,true);
+            let value_32 = number_85173a94_value(facts.sibling_count,32,true);
+            let value_33 = number_85173a94_bool(true);
+            let value_34 = number_85173a94_bool(KssParser_KssNthSiblingMatches($rt, $state, $host, value_30, value_31, value_32, value_33));
+            matched = value_34;
+        } else {
+            let value_35 = name;
+            let value_36 = "nth-of-type";
+            let value_37 = number_85173a94_bool(value_35 == value_36);
+            if (value_37) {
+                let value_38 = argument;
+                let value_39 = number_85173a94_value(facts.type_index,32,true);
+                let value_40 = number_85173a94_value(facts.type_count,32,true);
+                let value_41 = number_85173a94_bool(false);
+                let value_42 = number_85173a94_bool(KssParser_KssNthSiblingMatches($rt, $state, $host, value_38, value_39, value_40, value_41));
+                matched = value_42;
+            } else {
+                let value_43 = name;
+                let value_44 = "nth-last-of-type";
+                let value_45 = number_85173a94_bool(value_43 == value_44);
+                if (value_45) {
+                    let value_46 = argument;
+                    let value_47 = number_85173a94_value(facts.type_index,32,true);
+                    let value_48 = number_85173a94_value(facts.type_count,32,true);
+                    let value_49 = number_85173a94_bool(true);
+                    let value_50 = number_85173a94_bool(KssParser_KssNthSiblingMatches($rt, $state, $host, value_46, value_47, value_48, value_49));
+                    matched = value_50;
+                }
+            }
+        }
+    }
+    let value_51 = number_85173a94_bool(matched);
+    if (value_51) {
+        let value_52 = number_85173a94_value(1,32,true);
+        return value_52;
+    }
+    let value_53 = number_85173a94_value(0,32,true);
+    return value_53;
+}
+
 export function KssParser_KssSelectorComment($rt, $state = moduleState, $host = moduleHost, c) {
   $state = $state || moduleState;
     let value_0 = c;

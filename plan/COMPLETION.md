@@ -36,8 +36,8 @@ shared positive/negative reduction. Ordered ID and attribute conditions preserve
 repeated constraints, with shared identity matching. Chain traversal and
 backtracking now use a shared `.kry` driver with host-owned frame storage.
 Relative `:has` chains also use shared anchored traversal and prefix parsing.
-Functional-pseudo dispatch, remaining compound matching, specificity conformance,
-and CSS export migration stay open (see the evidence ledger). Generated C, Go,
+Structural/positional pseudo dispatch also uses shared policy. Remaining compound
+matching, specificity conformance, and CSS export migration stay open (see the evidence ledger). Generated C, Go,
 and JavaScript are outputs, not policy owners.
 
 ## Execution order

@@ -455,3 +455,37 @@ provenance, and all five style guards pass. Go uses gofmt; the Kry formatter
 ran on a review copy, with unrelated existing continuation-indent rewrites
 inspected and omitted. Generated outputs were regenerated from maintained
 sources. `git diff --check` passes.
+
+## Shared structural and positional pseudo dispatch
+
+`KssPseudoMatch` in `runtime/kss_parser.kry` now owns the choice between basic
+structural predicates and the four nth-position forms. It selects sibling
+versus same-type indices and forward versus reverse counting, rejects unknown
+or mismatched forms, and returns a distinct request for relative `:has`
+traversal. The web adapter supplies observations and acts on that decision;
+its positional branch chain and forwarding helper are removed.
+
+Twenty-two new shared C/Go/JS fact cases bring `selector-facts.tsv` to 85 rows.
+They check structural/functional form gating, unknown forms, traversal requests,
+all four nth forms, positive/negative matches, formulas, missing sibling facts,
+and unsupported `of` syntax. Existing frame-node integration covers all four
+forms together; extra negative rules prove that missing arguments, functional
+basic pseudos, and unknown functional names do not override a valid rule.
+
+This closes the host positional-dispatch duplication. Specificity conformance,
+remaining compound/fact semantics, and CSS mappings remain open, alongside the
+other completion-plan phases. No original plan document is fully closed.
+
+Verification: `build/selector-dispatch/verify.log` ends with `RESULT 0`.
+Generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated
+provenance, and all five style guards pass. Go uses gofmt; the Kry formatter
+ran on a review copy, with unrelated continuation-indent rewrites inspected
+and omitted. Generated outputs were regenerated normally; `git diff --check`
+passes.
+
+A follow-up CSS-export probe identifies the next concrete mapping defect:
+`Button:nth-child(1.5)` exports as `:nth-child(15)`. Runtime matching correctly
+rejects the fractional formula, but the host CSS argument sanitizer removes
+the decimal point and changes its meaning. This remains open for shared
+formula validation/serialization; the dispatch migration does not fix it.
