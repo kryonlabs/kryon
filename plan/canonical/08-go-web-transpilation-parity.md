@@ -11,8 +11,9 @@ Remaining:
 - Execute menus, scroll_content, drag_drop, composition, and composed_popup in
   JS with matching native/Go event sequences. Extend Disabled/TableCell/Canvas
   scope restoration, nesting and early-exit coverage.
-- Remove placeholder expression lowering. Add scanner coverage that rejects
-  placeholders in fixtures advertised as executable parity.
+- Add real lowering for every supported expression form. Unsupported lowering
+  now fails visibly instead of emitting the removed `kryon.expr` runtime
+  placeholder, and executable fixture generation rejects any placeholder calls.
 - Report coverage per backend and fixture; distinguish generating, executing,
   comparing state, and checking rendered output.
 - Verify every policy change in C, Go, and JS; syntax and snapshots are useful

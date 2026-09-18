@@ -485,10 +485,6 @@ export function statement(rt, text) {
   return item;
 }
 
-export function expr(text) {
-  return { kind: "expr", text };
-}
-
 /* Byte-aware value index shared with generated KSS/strict code: string bases
  * yield byte numbers, array bases index normally. */
 const stringEncoder = new TextEncoder();

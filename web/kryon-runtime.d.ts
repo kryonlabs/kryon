@@ -1172,7 +1172,6 @@ export function beginWebComposite(rt: Runtime, name: string,
 export function endWebComposite(rt: Runtime,
   context?: WebCompositeContext | null): WebCompositeContext | null;
 export function statement(rt: Runtime, text: string): RuntimeItem;
-export function expr(text: string): { kind: "expr"; text: string };
 /** UTF-8 byte length used by generated .kry string operations. */
 export function StringByteLength(source: string): number;
 export function struct(type: string, value: unknown): { type: string; value: unknown };

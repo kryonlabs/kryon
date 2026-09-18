@@ -444,6 +444,11 @@ if grep -q 'TODO k2js' "$out"; then
     grep 'TODO k2js' "$out" >&2
     exit 1
 fi
+if grep -q 'kryon\.expr' "$out"; then
+    echo "k2js emitted an unresolved expression placeholder:" >&2
+    grep 'kryon\.expr' "$out" >&2
+    exit 1
+fi
 
 node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/out/kryon-runtime.js"
 
@@ -1585,5 +1590,24 @@ if "$k2js" --root "$work" -o "$work/out" "$work/src/assert_unknown.kry" 2>"$work
     exit 1
 fi
 grep -q 'unresolved #assert is not supported by the JS backend' "$work/assert_unknown.err"
+
+cat > "$work/src/unsupported_expr.kry" <<'EOF'
+#import "kryon.h"
+
+state {
+    label: [16] char = "hello"
+    count: int = 0
+}
+
+UnsupportedExpression :: () #ui {
+    count = sizeof(label)
+}
+EOF
+
+if "$k2js" --root "$work" -o "$work/out" "$work/src/unsupported_expr.kry" 2>"$work/unsupported_expr.err"; then
+    echo "unsupported expression placeholder did not fail during k2js lowering" >&2
+    exit 1
+fi
+grep -q 'unsupported JavaScript expression lowering' "$work/unsupported_expr.err"
 
 echo "k2js syntax ok"

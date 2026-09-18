@@ -790,6 +790,17 @@ consume_group(const char *p, char *raw, size_t raw_size)
  * rewrites apply to values only, never to the assignment target itself. */
 static int tx_destination_context = 0;
 
+static void
+k2js_unsupported_expression(const char *src)
+{
+    fprintf(stderr,
+            "k2js: unsupported JavaScript expression lowering: %s\n", src);
+    fprintf(stderr,
+            "k2js: add an explicit k2js lowering for this expression before "
+            "using it in executable web parity fixtures\n");
+    exit(1);
+}
+
 /* Find where the indexed primary begins in already-emitted translated text,
  * so 'base[index]' can be rewritten as a byte-aware runtime index. */
 static size_t
@@ -899,13 +910,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         free(parsed.exprs);
     }
     if(contains_top_level_compound(src) || strstr(src, "sizeof") != NULL) {
-        char q[K2JS_TEXT_MAX];
-
-        js_string_buf(src, q, sizeof(q));
-        snprintf(dst, dst_size, "kryon.expr(");
-        strncat(dst, q, dst_size - strlen(dst) - 1);
-        strncat(dst, ")", dst_size - strlen(dst) - 1);
-        return;
+        k2js_unsupported_expression(src);
     }
     while(*p != '\0' && dn + 16 < dst_size) {
         if(*p == ';' || *p == '\r' || *p == '\n') {
