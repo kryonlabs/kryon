@@ -2465,7 +2465,19 @@ flag, and `KssStructuralFacts`. It evaluates basic structural and positional
 pseudos, choosing forward/reverse and all-sibling/same-type positions in shared
 policy. Results are zero for no match (including unknown or mismatched forms),
 one for a match, and minus one to request relative `:has` traversal. Parsing
-and argument validity remain the selector lexer's responsibility.
+is the selector lexer's responsibility; positional argument validity is checked
+by the shared formula parser.
+
+`KssParseNth` returns `KssNthFormula { step, offset, ok }` for integers,
+`odd`/`even`, and `An+B` formulas. Coefficient and offset magnitudes are bounded
+by 2147483647. Zero and negative integers are valid formulas even though they
+match no positive position. Unsupported `of` clauses, fractions, overflow, and
+unterminated comments are invalid. `KssNthText` returns canonical CSS spelling
+in a `KssName`, or empty text for invalid input. It normalizes case, whitespace,
+and supported KSS comments; for example `odd// tail` becomes `2n+1`.
+CSS export represents invalid positional predicates as `:not(*)`, preserving
+runtime rejection even inside negation. `KssPseudoFunctionInfo` supplies shared
+classification and axis/direction flags for canonical functional pseudo names.
 
 ### Style field presence and structural metrics
 

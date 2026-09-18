@@ -489,3 +489,37 @@ A follow-up CSS-export probe identifies the next concrete mapping defect:
 rejects the fractional formula, but the host CSS argument sanitizer removes
 the decimal point and changes its meaning. This remains open for shared
 formula validation/serialization; the dispatch migration does not fix it.
+
+## Shared positional formula validation and CSS serialization
+
+The previously recorded `:nth-child(1.5)` export defect is fixed. Shared
+`KssParseNth` returns validated coefficients and `KssNthText` emits canonical
+CSS text. Matching consumes the same parsed formula. The web adapter uses the
+shared functional classification and emits `:not(*)` for invalid positional
+predicates, preserving runtime rejection inside positive and negated selectors.
+It no longer strips punctuation from positional arguments. KSS comments are
+normalized away before CSS output, including line comments unsupported by CSS.
+Unterminated block comments are rejected rather than accepted as trailing space.
+
+Thirty shared C/Go/JS fixture rows cover coefficients, offsets, odd/even, case,
+whitespace, comments, zero/negative integers, overflow, unsupported syntax, and
+canonical output. Web integration covers all four nth forms and nested negation.
+The Chromium fixture compares runtime traces with actual computed styles on
+15 sibling buttons after removing inline styles, including the formerly
+misinterpreted fractional input and a valid commented formula.
+
+The completion plan now explicitly assigns all KSS language decisions,
+including CSS conversion and text serialization, to maintained `.kry`. Its
+remaining migration sequence names current host functions and exit evidence.
+Generic functional argument sanitization, attribute/fact normalization, CSS
+state/property mappings, compound matching, specificity conformance, and
+remaining tooling policy are still open. No original plan is fully closed.
+
+Verification: `build/nth-export-final/verify.log` ends with `RESULT 0`.
+Generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated
+provenance, and all five style guards pass. The earlier `build/nth-export/`
+run was stopped when canonical comment serialization was added; its incomplete
+log is not passing evidence. Go uses gofmt. The Kry formatter ran on a review
+copy; unrelated continuation-indentation rewrites were inspected and omitted.
+`git diff --check` passes. All 26 original plans remain linked and present.

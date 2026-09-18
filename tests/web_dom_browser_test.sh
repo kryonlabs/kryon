@@ -1027,6 +1027,38 @@ try {
   kryon.endFrame(chainRuntime);
   kryon.renderWebDocument(chainRuntime, chainTarget);
   chainTarget.remove();
+  const nthRuntime = kryon.createRuntime();
+  kryon.beginFrame(nthRuntime);
+  kryon.widget(nthRuntime, "Column", {}, null, {path: "Nth"});
+  for (let index = 0; index < 15; index++)
+    kryon.widget(nthRuntime, "Button", {class: "nth-probe", label: "Position"}, null,
+      {path: "Nth/" + index, parentPath: "Nth"});
+  kryon.endFrame(nthRuntime);
+  const nthSheet = kryon.parseWebStyleSheet(\`
+    .nth-probe:not(:nth-child(1.5)) { outline-style: dashed; }
+    .nth-probe:nth-child(1.5) { outline-style: solid; }
+    .nth-probe:nth-last-child(1.5) { outline-style: solid; }
+    .nth-probe:nth-of-type(1.5) { outline-style: solid; }
+    .nth-probe:nth-last-of-type(1.5) { outline-style: solid; }
+    .nth-probe:nth-child(odd// comment) { outline-style: dotted; }
+  \`);
+  kryon.setWebStyleSheets(nthRuntime, nthSheet);
+  const nthTarget = document.createElement("div");
+  document.body.appendChild(nthTarget);
+  kryon.renderWebDocument(nthRuntime, nthTarget);
+  const removeNthStyle = kryon.installWebStyleSheet(nthSheet, null, "nth-validation");
+  for (let index = 0; index < 15; index++) {
+    const path = "Nth/" + index;
+    const element = kryon.findWebElement(nthTarget, path);
+    const expected = index % 2 === 0 ? "dotted" : "dashed";
+    assert(kryon.webDOMStyleTrace(nthTarget, path).resolved["outline-style"] === expected,
+      "invalid nth formula matched at runtime: " + path);
+    element.style.removeProperty("outline-style");
+    assert(getComputedStyle(element).outlineStyle === expected,
+      "invalid nth formula changed meaning in CSS export: " + path);
+  }
+  removeNthStyle();
+  nthTarget.remove();
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

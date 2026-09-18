@@ -3444,13 +3444,18 @@ function webStylePseudoToCSS(pseudo) {
   const name = cssEscapeIdent(parsed.name);
   if (!parsed.functional)
     return ":" + name;
-  if (parsed.name === "has") {
+  const kind = webKssModule.KssParser_KssPseudoFunctionInfo(null, null, null, parsed.name);
+  if (kind.relative) {
     const arg = splitSelectorList(parsed.argument).map((raw) => {
       const selector = parseRelativeSelector(raw);
       const relation = selector.parts[0].combinator;
       return (relation === " " ? "" : relation + " ") + webStyleSelectorToCSS(selector);
     }).join(",");
     return `:${name}(${arg})`;
+  }
+  if (kind.positional) {
+    const argument = webKssNameText(webKssModule.KssParser_KssNthText(null, null, null, parsed.argument));
+    return argument ? `:${name}(${argument})` : ":not(*)";
   }
   const arg = parsed.argument.trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
   return `:${name}(${arg})`;

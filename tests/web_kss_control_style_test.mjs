@@ -249,7 +249,7 @@ for (const line of grammarCases) {
   assert.equal(runtime.webStyleSelectorToCSS({...base, pseudos: ["read-only", "active"]}),
     '[data-kry-kind="Button"]:read-only:active');
   assert.equal(runtime.webStyleSelectorToCSS({...base, pseudos: ["nth_child(2n + 1)"]}),
-    '[data-kry-kind="Button"]:nth-child(2n + 1)');
+    '[data-kry-kind="Button"]:nth-child(2n+1)');
 }
 
 // Separate functional groups must all hold; alternatives within a group may vary.
@@ -391,6 +391,37 @@ for (const line of grammarCases) {
     '.kryon-node.subject:has(> .kryon-node.branch .kryon-node.leaf)');
   assert.throws(() => runtime.parseWebStyleSheet('.subject:has(:is(.x, :has(.leaf))) {radius:1;}'), /invalid KSS selector/);
   assert.throws(() => runtime.parseWebStyleSheet('> .leaf {radius:1;}'), /invalid KSS selector/);
+}
+
+// Formula validation is shared with matching; CSS export must not rewrite invalid input.
+{
+  const lines = readFileSync(new URL("./fixtures/kss/nth-formulas.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+  assert.equal(lines.length, 30);
+  for (const line of lines) {
+    const [source, ok, step, offset, expectedText] = line.split("\t");
+    const text = kss.KssParser_KssNthText(null, null, null, source);
+    assert.equal(String.fromCharCode(...text.bytes.slice(0, text.length)), expectedText === "-" ? "" : expectedText, line);
+    const formula = kss.KssParser_KssParseNth(null, null, null, source);
+    assert.deepEqual([formula.ok, Number(formula.step), Number(formula.offset)],
+      [ok === "1", Number(step), Number(offset)], line);
+  }
+  for (const name of ["nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type"]) {
+    for (const argument of ["1.5", "0x3", "1e2", "n+1.5", "n of .item", "2147483648"]) {
+      const sheet = runtime.parseWebStyleSheet(`Button:${name}(${argument}) {radius: 99;}`);
+      assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+        '[data-kry-kind="Button"]:not(*)', name + argument);
+    }
+    for (const [argument, canonical] of [["odd", "2n+1"], ["ODD", "2n+1"], ["2n + 1", "2n+1"],
+      ["-n+3", "-n+3"], ["0n+4", "4"], ["-3", "-3"], ["0", "0"], ["odd// tail", "2n+1"]]) {
+      const sheet = runtime.parseWebStyleSheet(`Button:${name}(${argument}) {radius: 7;}`);
+      assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+        `[data-kry-kind="Button"]:${name}(${canonical})`);
+    }
+  }
+  const sheet = runtime.parseWebStyleSheet('Button:not(:nth-child(1.5)) {radius: 7;}');
+  assert.deepEqual(runtime.resolveWebStyle({kind: "Button"}, sheet), {radius: 7});
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+    '[data-kry-kind="Button"]:not(.kryon-node:not(*))');
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose

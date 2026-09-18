@@ -26,8 +26,10 @@ The existing `plan/dom/` directory was untracked at review time. Its original
 requirements are preserved as the DOM planning baseline.
 
 Implementation constraint: keep KSS language and behavior in maintained `.kry`
-modules, including CSS-only declaration semantics. Hosts provide storage, I/O,
-DOM access, and serialization. Declaration interpretation, cascade comparisons,
+modules, including CSS-only declaration semantics. Hosts provide storage, I/O, DOM access, and output sinks. KSS serialization
+decisions also belong in `.kry`, along with parsing, matching, cascade,
+diagnostics, formatting, and CSS conversion. Most maintained runtime behavior
+should be `.kry`; generated C/Go/JS volume does not count as hand-written policy. Declaration interpretation, cascade comparisons,
 specificity weights, attribute operators, nth-position formulas, state predicates,
 and basic structural rules now use shared `.kry` policy. Main selector lexing
 and atom parsing are also shared, including functional argument parsing in web
@@ -36,7 +38,8 @@ shared positive/negative reduction. Ordered ID and attribute conditions preserve
 repeated constraints, with shared identity matching. Chain traversal and
 backtracking now use a shared `.kry` driver with host-owned frame storage.
 Relative `:has` chains also use shared anchored traversal and prefix parsing.
-Structural/positional pseudo dispatch also uses shared policy. Remaining compound
+Structural/positional pseudo dispatch also uses shared policy. Positional
+formula validation and canonical CSS text now share `.kry` implementations. Remaining compound
 matching, specificity conformance, and CSS export migration stay open (see the evidence ledger). Generated C, Go,
 and JavaScript are outputs, not policy owners.
 
@@ -171,7 +174,8 @@ Browser-only CSS features remain explicitly distinct from native StyleData.
 ## P4 — Finish style backend conformance
 
 - [ ] Verify all hosts/tools delegate grammar and shared semantic decisions to
-  maintained `.kry` sources. Remove any residual independent implementations
+  maintained `.kry` sources. Include all KSS formatting, diagnostics, selector
+  serialization, and CSS mapping decisions; output sinks remain host services. Remove any residual independent implementations
   discovered by the audit, not the thin I/O/generated-code shims.
 - [ ] Reconcile the declared value/selector contract and diagnostics across
   typed and web surfaces. Retain intentional web CSS extensions; resolve or
@@ -196,6 +200,27 @@ Browser-only CSS features remain explicitly distinct from native StyleData.
 
 Exit: declared support matches measured behavior; resolution equality and
 rendering correctness are recorded separately for every supported path.
+
+### KSS migration sequence within P4/P5
+
+These inspected host functions are concrete remaining migration targets, not
+an exhaustive completion inventory. Keep browser-specific semantics in shared
+`.kry` even when only the browser currently consumes them.
+
+| Order | Current host policy | Shared implementation and completion evidence |
+|---|---|---|
+| 1 | `webStylePseudoToCSS` generic functional argument sanitizer | Replace remaining argument rewriting with explicit shared validation/serialization; test unknown functions, malformed arguments, and nested negation. Positional formulas already use `KssNthText`. |
+| 2 | `selectorKindMatches`, `selectorNativeAttrValue`, `selectorDataAttrValue`, `selectorAriaAttrValue`, presence helpers | Separate raw DOM observations from shared naming, coercion, presence, and matching rules. Match absent/empty/false/native/data/ARIA cases across generated targets and mounted DOM. |
+| 3 | `webStyleSelectorAttrToCSS`, `webStyleStateSelectorToCSS` | Move alias and state mappings plus escaping/selector emission into shared KSS code. Compare runtime resolution with browser computed styles. |
+| 4 | `webStyleCSSValue`, `webStyleValueToCSS`, `webStyleRuleToCSS`, property maps | Move units, property aliases, shorthand/effect expansion, and CSS text decisions into shared code; retain only the output sink in hosts. Cover explicit zero, custom properties, and constrained-backend behavior. |
+| 5 | `selectorMatchesFacts` orchestration and existing shared specificity weights | Finish compound decisions and reconcile functional specificity with the declared contract. Preserve ordered repeated constraints and test conflicting rules against actual CSS results. |
+| 6 | `webKssDiagnostic`, source-pack adapters, inspector/formatter/release paths | Move remaining diagnostic and language decisions into `.kry`; retain file access, source ownership, publication, UI presentation, and allocation services in hosts. Verify atomic theme switching, source locations, formatting round trips, and compiled/dynamic equality. |
+
+For each row: add shared fixtures, implement in maintained `.kry`, regenerate,
+route callers through generated code, remove the superseded host policy, and
+run affected parity/browser gates. A forwarding wrapper alone does not close a
+row while it still contains language decisions. Record exact source owners and
+host-service exceptions in P0's ledger before declaring all KSS migrated.
 
 ## P5 — Complete style tooling
 

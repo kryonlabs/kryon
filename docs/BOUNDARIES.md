@@ -37,6 +37,12 @@ registry retains source and variant identity for theme changes, staging all
 resolved sheets before publishing them. Browser DOM text-node creation and attachment remain host
 services; they preserve the authored text alongside mounted child elements.
 
+Positional formula validation and canonical CSS text generation belong to
+`KssParseNth` and `KssNthText` in `.kry`. Hosts consume their results rather
+than sanitizing formula text. All KSS language decisions, including remaining
+CSS conversion, diagnostics, and formatting, are intended to live in `.kry`;
+platform adapters supply storage, I/O, DOM observations, and output sinks.
+
 ## Belongs In Kryon
 
 - reusable widgets, layout, text input, focus, theme, DPI, modal, scroll, and

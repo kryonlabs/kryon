@@ -558,3 +558,32 @@ func TestKssSelectorChains(t *testing.T) {
 		}
 	}
 }
+
+func TestKssNthFormulas(t *testing.T) {
+	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/nth-formulas.tsv"), "\n"), "\n")
+	if len(lines) != 30 {
+		t.Fatal(len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 5 {
+			t.Fatal(line)
+		}
+		step, stepErr := strconv.ParseInt(fields[2], 10, 64)
+		offset, offsetErr := strconv.ParseInt(fields[3], 10, 64)
+		if stepErr != nil || offsetErr != nil {
+			t.Fatal(line)
+		}
+		expectedText := fields[4]
+		if expectedText == "-" {
+			expectedText = ""
+		}
+		if text := kssNameText(KssParser_KssNthText(fields[0])); text != expectedText {
+			t.Fatal(line, text)
+		}
+		formula := KssParser_KssParseNth(fields[0])
+		if formula.Ok != (fields[1] == "1") || formula.Step != step || formula.Offset != offset {
+			t.Fatal(line, formula)
+		}
+	}
+}

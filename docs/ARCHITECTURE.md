@@ -60,6 +60,13 @@ one generated decision interface. The web adapter gathers sibling/type indices
 and content/focus facts, then handles the returned match/reject/traversal result;
 it no longer dispatches the four nth forms or chooses their traversal direction.
 
+`KssParseNth` is shared by matching and `KssNthText` canonical serialization.
+The CSS adapter no longer strips punctuation from positional arguments, which
+previously changed fractional input into a different integer selector. Shared
+serialization removes KSS comments and normalizes formulas before CSS emission;
+invalid formulas become always-false predicates. `KssPseudoFunctionInfo` keeps
+functional classification consistent between export and matching.
+
 ## Public API
 
 Public headers live in `include/`. They define the app-facing Kryon surface:

@@ -4002,20 +4002,34 @@ KssAttributeMatches :: (value: string, needle: string, operation: string, presen
     return false
 }
 
-KssNthMatches :: (source: string, position: i32) -> bool #export {
-    if position <= 0 {
-        return false
-    }
+KssNthFormula :: struct {
+    step: i64
+    offset: i64
+    ok: bool
+}
+
+KssParseNth :: (source: string) -> KssNthFormula #export {
+    result: KssNthFormula
     c: KssCursor
     c.source = source
-    c = KssSkipSpace(c)
+    space: KssExpectResult = KssSelectorSpace(c)
+    if !space.ok {
+        return result
+    }
+    c = space.parser
     word: KssNameResult = KssReadName(c)
-    if word.ok && KssAtEnd(KssSkipSpace(word.parser)) {
+    tail: KssExpectResult = KssSelectorSpace(word.parser)
+    if word.ok && tail.ok && KssAtEnd(tail.parser) {
         if KssNameEquals(word.name, "odd") {
-            return position % 2 == 1
+            result.step = 2
+            result.offset = 1
+            result.ok = true
+            return result
         }
         if KssNameEquals(word.name, "even") {
-            return position % 2 == 0
+            result.step = 2
+            result.ok = true
+            return result
         }
     }
     sign: i64 = 1
@@ -4030,47 +4044,117 @@ KssNthMatches :: (source: string, position: i32) -> bool #export {
     while KssIsDigit(KssPeek(c, 0)) {
         number = number * 10 + (i64)(KssPeek(c, 0) - 48)
         if number > 2147483647 {
-            return false
+            return result
         }
         digits = true
         c = KssAdvance(c, 1)
     }
     if KssLower(KssPeek(c, 0)) != 110 {
-        return digits && KssAtEnd(KssSkipSpace(c)) && (i64)position == sign * number
+        tail = KssSelectorSpace(c)
+        result.ok = digits && tail.ok && KssAtEnd(tail.parser)
+        if result.ok {
+            result.offset = sign * number
+        }
+        return result
     }
     if !digits {
         number = 1
     }
     step: i64 = sign * number
-    c = KssSkipSpace(KssAdvance(c, 1))
+    space = KssSelectorSpace(KssAdvance(c, 1))
+    if !space.ok {
+        return result
+    }
+    c = space.parser
     offset: i64 = 0
     if !KssAtEnd(c) {
         sign = 1
         if KssPeek(c, 0) == 45 {
             sign = -1
         } else if KssPeek(c, 0) != 43 {
-            return false
+            return result
         }
-        c = KssSkipSpace(KssAdvance(c, 1))
+        space = KssSelectorSpace(KssAdvance(c, 1))
+        if !space.ok {
+            return result
+        }
+        c = space.parser
         digits = false
         while KssIsDigit(KssPeek(c, 0)) {
             offset = offset * 10 + (i64)(KssPeek(c, 0) - 48)
             if offset > 2147483647 {
-                return false
+                return result
             }
             digits = true
             c = KssAdvance(c, 1)
         }
-        if !digits || !KssAtEnd(KssSkipSpace(c)) {
-            return false
+        tail = KssSelectorSpace(c)
+        if !digits || !tail.ok || !KssAtEnd(tail.parser) {
+            return result
         }
         offset = sign * offset
     }
-    if step == 0 {
-        return (i64)position == offset
+    result.step = step
+    result.offset = offset
+    result.ok = true
+    return result
+}
+
+KssNthAppendInteger :: (text: KssName, value: i64) -> KssName {
+    if value < 0 {
+        text = KssNameAppend(text, 45)
+        value = -value
     }
-    delta: i64 = (i64)position - offset
-    return delta % step == 0 && delta / step >= 0
+    divisor: i64 = 1
+    while value / divisor >= 10 {
+        divisor = divisor * 10
+    }
+    while divisor > 0 {
+        text = KssNameAppend(text, (u8)(48 + value / divisor))
+        value = value % divisor
+        divisor = divisor / 10
+    }
+    return text
+}
+
+# A bounded canonical CSS An+B spelling; invalid formulas produce empty text.
+KssNthText :: (source: string) -> KssName #export {
+    text: KssName
+    formula: KssNthFormula = KssParseNth(source)
+    if !formula.ok {
+        return text
+    }
+    if formula.step == 0 {
+        return KssNthAppendInteger(text, formula.offset)
+    }
+    if formula.step == -1 {
+        text = KssNameAppend(text, 45)
+    } else if formula.step != 1 {
+        text = KssNthAppendInteger(text, formula.step)
+    }
+    text = KssNameAppend(text, 110)
+    if formula.offset > 0 {
+        text = KssNameAppend(text, 43)
+    }
+    if formula.offset != 0 {
+        text = KssNthAppendInteger(text, formula.offset)
+    }
+    return text
+}
+
+KssNthMatches :: (source: string, position: i32) -> bool #export {
+    if position <= 0 {
+        return false
+    }
+    formula: KssNthFormula = KssParseNth(source)
+    if !formula.ok {
+        return false
+    }
+    if formula.step == 0 {
+        return (i64)position == formula.offset
+    }
+    delta: i64 = (i64)position - formula.offset
+    return delta % formula.step == 0 && delta / formula.step >= 0
 }
 
 KssNthSiblingMatches :: (source: string, index: i32, count: i32, from_end: bool) -> bool #export {
@@ -4236,6 +4320,23 @@ KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> i32 #export {
     return 0
 }
 
+KssPseudoFunction :: struct {
+    relative: bool
+    positional: bool
+    same_type: bool
+    from_end: bool
+}
+
+KssPseudoFunctionInfo :: (name: string) -> KssPseudoFunction #export {
+    result: KssPseudoFunction
+    result.relative = name == "has"
+    result.positional = name == "nth-child" || name == "nth-last-child" ||
+        name == "nth-of-type" || name == "nth-last-of-type"
+    result.same_type = name == "nth-of-type" || name == "nth-last-of-type"
+    result.from_end = name == "nth-last-child" || name == "nth-last-of-type"
+    return result
+}
+
 # Names and arguments come from selector atoms. -1 requests relative :has
 # traversal; all other supported/unknown cases resolve to zero or one here.
 KssPseudoMatch :: (name: string, argument: string, functional: bool,
@@ -4247,19 +4348,20 @@ KssPseudoMatch :: (name: string, argument: string, functional: bool,
         }
         return decision
     }
-    if name == "has" {
+    kind: KssPseudoFunction = KssPseudoFunctionInfo(name)
+    if kind.relative {
         return -1
     }
-    matched: bool = false
-    if name == "nth-child" {
-        matched = KssNthSiblingMatches(argument, facts.sibling_index, facts.sibling_count, false)
-    } else if name == "nth-last-child" {
-        matched = KssNthSiblingMatches(argument, facts.sibling_index, facts.sibling_count, true)
-    } else if name == "nth-of-type" {
-        matched = KssNthSiblingMatches(argument, facts.type_index, facts.type_count, false)
-    } else if name == "nth-last-of-type" {
-        matched = KssNthSiblingMatches(argument, facts.type_index, facts.type_count, true)
+    if !kind.positional {
+        return 0
     }
+    index: i32 = facts.sibling_index
+    count: i32 = facts.sibling_count
+    if kind.same_type {
+        index = facts.type_index
+        count = facts.type_count
+    }
+    matched: bool = KssNthSiblingMatches(argument, index, count, kind.from_end)
     if matched {
         return 1
     }

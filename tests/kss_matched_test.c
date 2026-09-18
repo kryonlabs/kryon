@@ -658,6 +658,36 @@ test_selector_chains(void)
     fclose(file);
 }
 
+static void
+test_nth_formulas(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/nth-formulas.tsv", "r");
+    char line[512];
+    int count = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *fields[5] = {line};
+        for(int i = 0; i < 4; i++) {
+            char *separator = strchr(fields[i], '\t');
+            assert(separator != NULL);
+            *separator = '\0';
+            fields[i + 1] = separator + 1;
+        }
+        KssNthFormula formula = KssParseNth(StringView(fields[0], strlen(fields[0])));
+        assert(formula.ok == (atoi(fields[1]) != 0));
+        assert(formula.step == strtoll(fields[2], NULL, 10));
+        assert(formula.offset == strtoll(fields[3], NULL, 10));
+        KssName text = KssNthText(StringView(fields[0], strlen(fields[0])));
+        const char *expected = strcmp(fields[4], "-") == 0 ? "" : fields[4];
+        assert(StringEqual(StringView((const char *)text.bytes, text.length),
+            StringView(expected, strlen(expected))));
+        count++;
+    }
+    assert(count == 30);
+    fclose(file);
+}
+
 int
 main(void)
 {
@@ -670,6 +700,7 @@ main(void)
     test_selector_facts();
     test_selector_grammar();
     test_selector_chains();
+    test_nth_formulas();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

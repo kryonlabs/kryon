@@ -285,6 +285,12 @@ type KssIdentityFacts struct {
 	Key  string
 }
 
+type KssNthFormula struct {
+	Step   int64
+	Offset int64
+	Ok     bool
+}
+
 type KssStateFacts struct {
 	Kind                  string
 	Tag                   string
@@ -322,6 +328,13 @@ type KssStructuralFacts struct {
 	HasText      bool
 	FocusWithin  bool
 	Target       bool
+}
+
+type KssPseudoFunction struct {
+	Relative   bool
+	Positional bool
+	SameType   bool
+	FromEnd    bool
 }
 
 type KssSelectorStack struct {
@@ -12504,52 +12517,63 @@ func KssParser_KssAttributeMatches(value string, needle string, operation string
 	return value_113
 }
 
-func KssParser_KssNthMatches(source string, position int32) bool {
-	var value_0 int32 = position
-	var value_1 int32 = 0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 bool = false
-		return value_3
-	}
+func KssParser_KssParseNth(source string) KssNthFormula {
+	var result KssNthFormula = KssNthFormula{}
 	var c KssCursor = KssCursor{}
-	var value_4 string = source
-	c.Source = value_4
-	var value_5 KssCursor = c
-	var value_6 KssCursor = KssParser_KssSkipSpace(value_5)
+	var value_0 string = source
+	c.Source = value_0
+	var value_1 KssCursor = c
+	var value_2 KssExpectResult = KssParser_KssSelectorSpace(value_1)
+	var space KssExpectResult = value_2
+	var value_3 bool = space.Ok
+	var value_4 bool = !value_3
+	if value_4 {
+		var value_5 KssNthFormula = result
+		return value_5
+	}
+	var value_6 KssCursor = space.Parser
 	c = value_6
 	var value_7 KssCursor = c
 	var value_8 KssNameResult = KssParser_KssReadName(value_7)
 	var word KssNameResult = value_8
-	var value_9 bool = word.Ok
-	var value_10 bool = value_9
-	if value_10 {
-		var value_11 KssCursor = word.Parser
-		var value_12 KssCursor = KssParser_KssSkipSpace(value_11)
-		var value_13 bool = KssParser_KssAtEnd(value_12)
-		value_10 = value_13
+	var value_9 KssCursor = word.Parser
+	var value_10 KssExpectResult = KssParser_KssSelectorSpace(value_9)
+	var tail KssExpectResult = value_10
+	var value_11 bool = word.Ok
+	var value_12 bool = value_11
+	if value_12 {
+		var value_13 bool = tail.Ok
+		value_12 = value_13
 	}
-	if value_10 {
-		var value_14 KssName = word.Name
-		var value_15 string = "odd"
-		var value_16 bool = KssParser_KssNameEquals(value_14, value_15)
-		if value_16 {
-			var value_17 int32 = position
-			var value_18 int32 = 2
-			var value_19 int32 = int32(number_runtime_bits(uint64(value_17), uint64(value_18), 32, true, 5))
-			var value_20 int32 = 1
-			var value_21 bool = value_19 == value_20
-			return value_21
+	var value_14 bool = value_12
+	if value_14 {
+		var value_15 KssCursor = tail.Parser
+		var value_16 bool = KssParser_KssAtEnd(value_15)
+		value_14 = value_16
+	}
+	if value_14 {
+		var value_17 KssName = word.Name
+		var value_18 string = "odd"
+		var value_19 bool = KssParser_KssNameEquals(value_17, value_18)
+		if value_19 {
+			var value_20 int64 = 2
+			result.Step = value_20
+			var value_21 int64 = 1
+			result.Offset = value_21
+			var value_22 bool = true
+			result.Ok = value_22
+			var value_23 KssNthFormula = result
+			return value_23
 		}
-		var value_22 KssName = word.Name
-		var value_23 string = "even"
-		var value_24 bool = KssParser_KssNameEquals(value_22, value_23)
-		if value_24 {
-			var value_25 int32 = position
-			var value_26 int32 = 2
-			var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 5))
-			var value_28 int32 = 0
-			var value_29 bool = value_27 == value_28
+		var value_24 KssName = word.Name
+		var value_25 string = "even"
+		var value_26 bool = KssParser_KssNameEquals(value_24, value_25)
+		if value_26 {
+			var value_27 int64 = 2
+			result.Step = value_27
+			var value_28 bool = true
+			result.Ok = value_28
+			var value_29 KssNthFormula = result
 			return value_29
 		}
 	}
@@ -12607,7 +12631,7 @@ func KssParser_KssNthMatches(source string, position int32) bool {
 		var value_65 int64 = 2147483647
 		var value_66 bool = value_64 > value_65
 		if value_66 {
-			var value_67 bool = false
+			var value_67 KssNthFormula = result
 			return value_67
 		}
 		var value_68 bool = true
@@ -12624,157 +12648,337 @@ func KssParser_KssNthMatches(source string, position int32) bool {
 	var value_76 uint8 = 110
 	var value_77 bool = value_75 != value_76
 	if value_77 {
-		var value_78 bool = digits
-		var value_79 bool = value_78
-		if value_79 {
-			var value_80 KssCursor = c
-			var value_81 KssCursor = KssParser_KssSkipSpace(value_80)
-			var value_82 bool = KssParser_KssAtEnd(value_81)
-			value_79 = value_82
+		var value_78 KssCursor = c
+		var value_79 KssExpectResult = KssParser_KssSelectorSpace(value_78)
+		tail = value_79
+		var value_80 bool = digits
+		var value_81 bool = value_80
+		if value_81 {
+			var value_82 bool = tail.Ok
+			value_81 = value_82
 		}
-		var value_83 bool = value_79
+		var value_83 bool = value_81
 		if value_83 {
-			var value_84 int32 = position
-			var value_85 int64 = int64(number_runtime_bits(uint64(value_84), uint64(0), 64, true, 0))
-			var value_86 int64 = sign
-			var value_87 int64 = number
-			var value_88 int64 = int64(number_runtime_bits(uint64(value_86), uint64(value_87), 64, true, 3))
-			var value_89 bool = value_85 == value_88
-			value_83 = value_89
+			var value_84 KssCursor = tail.Parser
+			var value_85 bool = KssParser_KssAtEnd(value_84)
+			value_83 = value_85
 		}
-		return value_83
+		result.Ok = value_83
+		var value_86 bool = result.Ok
+		if value_86 {
+			var value_87 int64 = sign
+			var value_88 int64 = number
+			var value_89 int64 = int64(number_runtime_bits(uint64(value_87), uint64(value_88), 64, true, 3))
+			result.Offset = value_89
+		}
+		var value_90 KssNthFormula = result
+		return value_90
 	}
-	var value_90 bool = digits
-	var value_91 bool = !value_90
-	if value_91 {
-		var value_92 int64 = 1
-		number = value_92
+	var value_91 bool = digits
+	var value_92 bool = !value_91
+	if value_92 {
+		var value_93 int64 = 1
+		number = value_93
 	}
-	var value_93 int64 = sign
-	var value_94 int64 = number
-	var value_95 int64 = int64(number_runtime_bits(uint64(value_93), uint64(value_94), 64, true, 3))
-	var step int64 = value_95
-	var value_96 KssCursor = c
-	var value_97 int32 = 1
-	var value_98 KssCursor = KssParser_KssAdvance(value_96, value_97)
-	var value_99 KssCursor = KssParser_KssSkipSpace(value_98)
-	c = value_99
-	var value_100 int64 = 0
-	var offset int64 = value_100
-	var value_101 KssCursor = c
-	var value_102 bool = KssParser_KssAtEnd(value_101)
-	var value_103 bool = !value_102
-	if value_103 {
-		var value_104 int64 = 1
-		sign = value_104
-		var value_105 KssCursor = c
-		var value_106 int32 = 0
-		var value_107 uint8 = KssParser_KssPeek(value_105, value_106)
-		var value_108 uint8 = 45
-		var value_109 bool = value_107 == value_108
-		if value_109 {
-			var value_110 int64 = -1
-			sign = value_110
+	var value_94 int64 = sign
+	var value_95 int64 = number
+	var value_96 int64 = int64(number_runtime_bits(uint64(value_94), uint64(value_95), 64, true, 3))
+	var step int64 = value_96
+	var value_97 KssCursor = c
+	var value_98 int32 = 1
+	var value_99 KssCursor = KssParser_KssAdvance(value_97, value_98)
+	var value_100 KssExpectResult = KssParser_KssSelectorSpace(value_99)
+	space = value_100
+	var value_101 bool = space.Ok
+	var value_102 bool = !value_101
+	if value_102 {
+		var value_103 KssNthFormula = result
+		return value_103
+	}
+	var value_104 KssCursor = space.Parser
+	c = value_104
+	var value_105 int64 = 0
+	var offset int64 = value_105
+	var value_106 KssCursor = c
+	var value_107 bool = KssParser_KssAtEnd(value_106)
+	var value_108 bool = !value_107
+	if value_108 {
+		var value_109 int64 = 1
+		sign = value_109
+		var value_110 KssCursor = c
+		var value_111 int32 = 0
+		var value_112 uint8 = KssParser_KssPeek(value_110, value_111)
+		var value_113 uint8 = 45
+		var value_114 bool = value_112 == value_113
+		if value_114 {
+			var value_115 int64 = -1
+			sign = value_115
 		} else {
-			var value_111 KssCursor = c
-			var value_112 int32 = 0
-			var value_113 uint8 = KssParser_KssPeek(value_111, value_112)
-			var value_114 uint8 = 43
-			var value_115 bool = value_113 != value_114
-			if value_115 {
-				var value_116 bool = false
-				return value_116
+			var value_116 KssCursor = c
+			var value_117 int32 = 0
+			var value_118 uint8 = KssParser_KssPeek(value_116, value_117)
+			var value_119 uint8 = 43
+			var value_120 bool = value_118 != value_119
+			if value_120 {
+				var value_121 KssNthFormula = result
+				return value_121
 			}
 		}
-		var value_117 KssCursor = c
-		var value_118 int32 = 1
-		var value_119 KssCursor = KssParser_KssAdvance(value_117, value_118)
-		var value_120 KssCursor = KssParser_KssSkipSpace(value_119)
-		c = value_120
-		var value_121 bool = false
-		digits = value_121
+		var value_122 KssCursor = c
+		var value_123 int32 = 1
+		var value_124 KssCursor = KssParser_KssAdvance(value_122, value_123)
+		var value_125 KssExpectResult = KssParser_KssSelectorSpace(value_124)
+		space = value_125
+		var value_126 bool = space.Ok
+		var value_127 bool = !value_126
+		if value_127 {
+			var value_128 KssNthFormula = result
+			return value_128
+		}
+		var value_129 KssCursor = space.Parser
+		c = value_129
+		var value_130 bool = false
+		digits = value_130
 		for {
-			var value_122 KssCursor = c
-			var value_123 int32 = 0
-			var value_124 uint8 = KssParser_KssPeek(value_122, value_123)
-			var value_125 bool = KssParser_KssIsDigit(value_124)
-			if !value_125 {
+			var value_131 KssCursor = c
+			var value_132 int32 = 0
+			var value_133 uint8 = KssParser_KssPeek(value_131, value_132)
+			var value_134 bool = KssParser_KssIsDigit(value_133)
+			if !value_134 {
 				break
 			}
-			var value_126 int64 = offset
-			var value_127 int64 = 10
-			var value_128 int64 = int64(number_runtime_bits(uint64(value_126), uint64(value_127), 64, true, 3))
-			var value_129 KssCursor = c
-			var value_130 int32 = 0
-			var value_131 uint8 = KssParser_KssPeek(value_129, value_130)
-			var value_132 uint8 = 48
-			var value_133 uint8 = uint8(number_runtime_bits(uint64(value_131), uint64(value_132), 8, false, 2))
-			var value_134 int64 = int64(number_runtime_bits(uint64(value_133), uint64(0), 64, true, 0))
-			var value_135 int64 = int64(number_runtime_bits(uint64(value_128), uint64(value_134), 64, true, 1))
-			offset = value_135
-			var value_136 int64 = offset
-			var value_137 int64 = 2147483647
-			var value_138 bool = value_136 > value_137
-			if value_138 {
-				var value_139 bool = false
-				return value_139
+			var value_135 int64 = offset
+			var value_136 int64 = 10
+			var value_137 int64 = int64(number_runtime_bits(uint64(value_135), uint64(value_136), 64, true, 3))
+			var value_138 KssCursor = c
+			var value_139 int32 = 0
+			var value_140 uint8 = KssParser_KssPeek(value_138, value_139)
+			var value_141 uint8 = 48
+			var value_142 uint8 = uint8(number_runtime_bits(uint64(value_140), uint64(value_141), 8, false, 2))
+			var value_143 int64 = int64(number_runtime_bits(uint64(value_142), uint64(0), 64, true, 0))
+			var value_144 int64 = int64(number_runtime_bits(uint64(value_137), uint64(value_143), 64, true, 1))
+			offset = value_144
+			var value_145 int64 = offset
+			var value_146 int64 = 2147483647
+			var value_147 bool = value_145 > value_146
+			if value_147 {
+				var value_148 KssNthFormula = result
+				return value_148
 			}
-			var value_140 bool = true
-			digits = value_140
-			var value_141 KssCursor = c
-			var value_142 int32 = 1
-			var value_143 KssCursor = KssParser_KssAdvance(value_141, value_142)
-			c = value_143
+			var value_149 bool = true
+			digits = value_149
+			var value_150 KssCursor = c
+			var value_151 int32 = 1
+			var value_152 KssCursor = KssParser_KssAdvance(value_150, value_151)
+			c = value_152
 		}
-		var value_144 bool = digits
-		var value_145 bool = !value_144
-		var value_146 bool = value_145
-		if !value_146 {
-			var value_147 KssCursor = c
-			var value_148 KssCursor = KssParser_KssSkipSpace(value_147)
-			var value_149 bool = KssParser_KssAtEnd(value_148)
-			var value_150 bool = !value_149
-			value_146 = value_150
+		var value_153 KssCursor = c
+		var value_154 KssExpectResult = KssParser_KssSelectorSpace(value_153)
+		tail = value_154
+		var value_155 bool = digits
+		var value_156 bool = !value_155
+		var value_157 bool = value_156
+		if !value_157 {
+			var value_158 bool = tail.Ok
+			var value_159 bool = !value_158
+			value_157 = value_159
 		}
-		if value_146 {
-			var value_151 bool = false
-			return value_151
+		var value_160 bool = value_157
+		if !value_160 {
+			var value_161 KssCursor = tail.Parser
+			var value_162 bool = KssParser_KssAtEnd(value_161)
+			var value_163 bool = !value_162
+			value_160 = value_163
 		}
-		var value_152 int64 = sign
-		var value_153 int64 = offset
-		var value_154 int64 = int64(number_runtime_bits(uint64(value_152), uint64(value_153), 64, true, 3))
-		offset = value_154
+		if value_160 {
+			var value_164 KssNthFormula = result
+			return value_164
+		}
+		var value_165 int64 = sign
+		var value_166 int64 = offset
+		var value_167 int64 = int64(number_runtime_bits(uint64(value_165), uint64(value_166), 64, true, 3))
+		offset = value_167
 	}
-	var value_155 int64 = step
-	var value_156 int64 = 0
-	var value_157 bool = value_155 == value_156
-	if value_157 {
-		var value_158 int32 = position
-		var value_159 int64 = int64(number_runtime_bits(uint64(value_158), uint64(0), 64, true, 0))
-		var value_160 int64 = offset
-		var value_161 bool = value_159 == value_160
-		return value_161
-	}
-	var value_162 int32 = position
-	var value_163 int64 = int64(number_runtime_bits(uint64(value_162), uint64(0), 64, true, 0))
-	var value_164 int64 = offset
-	var value_165 int64 = int64(number_runtime_bits(uint64(value_163), uint64(value_164), 64, true, 2))
-	var delta int64 = value_165
-	var value_166 int64 = delta
-	var value_167 int64 = step
-	var value_168 int64 = int64(number_runtime_bits(uint64(value_166), uint64(value_167), 64, true, 5))
-	var value_169 int64 = 0
-	var value_170 bool = value_168 == value_169
-	var value_171 bool = value_170
-	if value_171 {
-		var value_172 int64 = delta
-		var value_173 int64 = step
-		var value_174 int64 = int64(number_runtime_bits(uint64(value_172), uint64(value_173), 64, true, 4))
-		var value_175 int64 = 0
-		var value_176 bool = value_174 >= value_175
-		value_171 = value_176
-	}
+	var value_168 int64 = step
+	result.Step = value_168
+	var value_169 int64 = offset
+	result.Offset = value_169
+	var value_170 bool = true
+	result.Ok = value_170
+	var value_171 KssNthFormula = result
 	return value_171
+}
+
+func KssParser_KssNthAppendInteger(text KssName, value int64) KssName {
+	var value_0 int64 = value
+	var value_1 int64 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 KssName = text
+		var value_4 uint8 = 45
+		var value_5 KssName = KssParser_KssNameAppend(value_3, value_4)
+		text = value_5
+		var value_6 int64 = value
+		var value_7 int64 = int64(number_runtime_bits(uint64(0), uint64(value_6), 64, true, 2))
+		value = value_7
+	}
+	var value_8 int64 = 1
+	var divisor int64 = value_8
+	for {
+		var value_9 int64 = value
+		var value_10 int64 = divisor
+		var value_11 int64 = int64(number_runtime_bits(uint64(value_9), uint64(value_10), 64, true, 4))
+		var value_12 int64 = 10
+		var value_13 bool = value_11 >= value_12
+		if !value_13 {
+			break
+		}
+		var value_14 int64 = divisor
+		var value_15 int64 = 10
+		var value_16 int64 = int64(number_runtime_bits(uint64(value_14), uint64(value_15), 64, true, 3))
+		divisor = value_16
+	}
+	for {
+		var value_17 int64 = divisor
+		var value_18 int64 = 0
+		var value_19 bool = value_17 > value_18
+		if !value_19 {
+			break
+		}
+		var value_20 KssName = text
+		var value_21 int64 = 48
+		var value_22 int64 = value
+		var value_23 int64 = divisor
+		var value_24 int64 = int64(number_runtime_bits(uint64(value_22), uint64(value_23), 64, true, 4))
+		var value_25 int64 = int64(number_runtime_bits(uint64(value_21), uint64(value_24), 64, true, 1))
+		var value_26 uint8 = uint8(number_runtime_bits(uint64(value_25), uint64(0), 8, false, 0))
+		var value_27 KssName = KssParser_KssNameAppend(value_20, value_26)
+		text = value_27
+		var value_28 int64 = value
+		var value_29 int64 = divisor
+		var value_30 int64 = int64(number_runtime_bits(uint64(value_28), uint64(value_29), 64, true, 5))
+		value = value_30
+		var value_31 int64 = divisor
+		var value_32 int64 = 10
+		var value_33 int64 = int64(number_runtime_bits(uint64(value_31), uint64(value_32), 64, true, 4))
+		divisor = value_33
+	}
+	var value_34 KssName = text
+	return value_34
+}
+
+func KssParser_KssNthText(source string) KssName {
+	var text KssName = KssName{}
+	var value_0 string = source
+	var value_1 KssNthFormula = KssParser_KssParseNth(value_0)
+	var formula KssNthFormula = value_1
+	var value_2 bool = formula.Ok
+	var value_3 bool = !value_2
+	if value_3 {
+		var value_4 KssName = text
+		return value_4
+	}
+	var value_5 int64 = formula.Step
+	var value_6 int64 = 0
+	var value_7 bool = value_5 == value_6
+	if value_7 {
+		var value_8 KssName = text
+		var value_9 int64 = formula.Offset
+		var value_10 KssName = KssParser_KssNthAppendInteger(value_8, value_9)
+		return value_10
+	}
+	var value_11 int64 = formula.Step
+	var value_12 int64 = -1
+	var value_13 bool = value_11 == value_12
+	if value_13 {
+		var value_14 KssName = text
+		var value_15 uint8 = 45
+		var value_16 KssName = KssParser_KssNameAppend(value_14, value_15)
+		text = value_16
+	} else {
+		var value_17 int64 = formula.Step
+		var value_18 int64 = 1
+		var value_19 bool = value_17 != value_18
+		if value_19 {
+			var value_20 KssName = text
+			var value_21 int64 = formula.Step
+			var value_22 KssName = KssParser_KssNthAppendInteger(value_20, value_21)
+			text = value_22
+		}
+	}
+	var value_23 KssName = text
+	var value_24 uint8 = 110
+	var value_25 KssName = KssParser_KssNameAppend(value_23, value_24)
+	text = value_25
+	var value_26 int64 = formula.Offset
+	var value_27 int64 = 0
+	var value_28 bool = value_26 > value_27
+	if value_28 {
+		var value_29 KssName = text
+		var value_30 uint8 = 43
+		var value_31 KssName = KssParser_KssNameAppend(value_29, value_30)
+		text = value_31
+	}
+	var value_32 int64 = formula.Offset
+	var value_33 int64 = 0
+	var value_34 bool = value_32 != value_33
+	if value_34 {
+		var value_35 KssName = text
+		var value_36 int64 = formula.Offset
+		var value_37 KssName = KssParser_KssNthAppendInteger(value_35, value_36)
+		text = value_37
+	}
+	var value_38 KssName = text
+	return value_38
+}
+
+func KssParser_KssNthMatches(source string, position int32) bool {
+	var value_0 int32 = position
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 bool = false
+		return value_3
+	}
+	var value_4 string = source
+	var value_5 KssNthFormula = KssParser_KssParseNth(value_4)
+	var formula KssNthFormula = value_5
+	var value_6 bool = formula.Ok
+	var value_7 bool = !value_6
+	if value_7 {
+		var value_8 bool = false
+		return value_8
+	}
+	var value_9 int64 = formula.Step
+	var value_10 int64 = 0
+	var value_11 bool = value_9 == value_10
+	if value_11 {
+		var value_12 int32 = position
+		var value_13 int64 = int64(number_runtime_bits(uint64(value_12), uint64(0), 64, true, 0))
+		var value_14 int64 = formula.Offset
+		var value_15 bool = value_13 == value_14
+		return value_15
+	}
+	var value_16 int32 = position
+	var value_17 int64 = int64(number_runtime_bits(uint64(value_16), uint64(0), 64, true, 0))
+	var value_18 int64 = formula.Offset
+	var value_19 int64 = int64(number_runtime_bits(uint64(value_17), uint64(value_18), 64, true, 2))
+	var delta int64 = value_19
+	var value_20 int64 = delta
+	var value_21 int64 = formula.Step
+	var value_22 int64 = int64(number_runtime_bits(uint64(value_20), uint64(value_21), 64, true, 5))
+	var value_23 int64 = 0
+	var value_24 bool = value_22 == value_23
+	var value_25 bool = value_24
+	if value_25 {
+		var value_26 int64 = delta
+		var value_27 int64 = formula.Step
+		var value_28 int64 = int64(number_runtime_bits(uint64(value_26), uint64(value_27), 64, true, 4))
+		var value_29 int64 = 0
+		var value_30 bool = value_28 >= value_29
+		value_25 = value_30
+	}
+	return value_25
 }
 
 func KssParser_KssNthSiblingMatches(source string, index int32, count int32, from_end bool) bool {
@@ -13351,6 +13555,63 @@ func KssParser_KssStructuralMatch(name string, facts KssStructuralFacts) int32 {
 	return value_96
 }
 
+func KssParser_KssPseudoFunctionInfo(name string) KssPseudoFunction {
+	var result KssPseudoFunction = KssPseudoFunction{}
+	var value_0 string = name
+	var value_1 string = "has"
+	var value_2 bool = value_0 == value_1
+	result.Relative = value_2
+	var value_3 string = name
+	var value_4 string = "nth-child"
+	var value_5 bool = value_3 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 string = name
+		var value_8 string = "nth-last-child"
+		var value_9 bool = value_7 == value_8
+		value_6 = value_9
+	}
+	var value_10 bool = value_6
+	if !value_10 {
+		var value_11 string = name
+		var value_12 string = "nth-of-type"
+		var value_13 bool = value_11 == value_12
+		value_10 = value_13
+	}
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 string = name
+		var value_16 string = "nth-last-of-type"
+		var value_17 bool = value_15 == value_16
+		value_14 = value_17
+	}
+	result.Positional = value_14
+	var value_18 string = name
+	var value_19 string = "nth-of-type"
+	var value_20 bool = value_18 == value_19
+	var value_21 bool = value_20
+	if !value_21 {
+		var value_22 string = name
+		var value_23 string = "nth-last-of-type"
+		var value_24 bool = value_22 == value_23
+		value_21 = value_24
+	}
+	result.SameType = value_21
+	var value_25 string = name
+	var value_26 string = "nth-last-child"
+	var value_27 bool = value_25 == value_26
+	var value_28 bool = value_27
+	if !value_28 {
+		var value_29 string = name
+		var value_30 string = "nth-last-of-type"
+		var value_31 bool = value_29 == value_30
+		value_28 = value_31
+	}
+	result.FromEnd = value_28
+	var value_32 KssPseudoFunction = result
+	return value_32
+}
+
 func KssParser_KssPseudoMatch(name string, argument string, functional bool, facts KssStructuralFacts) int32 {
 	var value_0 bool = functional
 	var value_1 bool = !value_0
@@ -13370,68 +13631,43 @@ func KssParser_KssPseudoMatch(name string, argument string, functional bool, fac
 		return value_9
 	}
 	var value_10 string = name
-	var value_11 string = "has"
-	var value_12 bool = value_10 == value_11
+	var value_11 KssPseudoFunction = KssParser_KssPseudoFunctionInfo(value_10)
+	var kind KssPseudoFunction = value_11
+	var value_12 bool = kind.Relative
 	if value_12 {
 		var value_13 int32 = -1
 		return value_13
 	}
-	var value_14 bool = false
-	var matched bool = value_14
-	var value_15 string = name
-	var value_16 string = "nth-child"
-	var value_17 bool = value_15 == value_16
-	if value_17 {
-		var value_18 string = argument
-		var value_19 int32 = facts.SiblingIndex
-		var value_20 int32 = facts.SiblingCount
-		var value_21 bool = false
-		var value_22 bool = KssParser_KssNthSiblingMatches(value_18, value_19, value_20, value_21)
-		matched = value_22
-	} else {
-		var value_23 string = name
-		var value_24 string = "nth-last-child"
-		var value_25 bool = value_23 == value_24
-		if value_25 {
-			var value_26 string = argument
-			var value_27 int32 = facts.SiblingIndex
-			var value_28 int32 = facts.SiblingCount
-			var value_29 bool = true
-			var value_30 bool = KssParser_KssNthSiblingMatches(value_26, value_27, value_28, value_29)
-			matched = value_30
-		} else {
-			var value_31 string = name
-			var value_32 string = "nth-of-type"
-			var value_33 bool = value_31 == value_32
-			if value_33 {
-				var value_34 string = argument
-				var value_35 int32 = facts.TypeIndex
-				var value_36 int32 = facts.TypeCount
-				var value_37 bool = false
-				var value_38 bool = KssParser_KssNthSiblingMatches(value_34, value_35, value_36, value_37)
-				matched = value_38
-			} else {
-				var value_39 string = name
-				var value_40 string = "nth-last-of-type"
-				var value_41 bool = value_39 == value_40
-				if value_41 {
-					var value_42 string = argument
-					var value_43 int32 = facts.TypeIndex
-					var value_44 int32 = facts.TypeCount
-					var value_45 bool = true
-					var value_46 bool = KssParser_KssNthSiblingMatches(value_42, value_43, value_44, value_45)
-					matched = value_46
-				}
-			}
-		}
+	var value_14 bool = kind.Positional
+	var value_15 bool = !value_14
+	if value_15 {
+		var value_16 int32 = 0
+		return value_16
 	}
-	var value_47 bool = matched
-	if value_47 {
-		var value_48 int32 = 1
-		return value_48
+	var value_17 int32 = facts.SiblingIndex
+	var index int32 = value_17
+	var value_18 int32 = facts.SiblingCount
+	var count int32 = value_18
+	var value_19 bool = kind.SameType
+	if value_19 {
+		var value_20 int32 = facts.TypeIndex
+		index = value_20
+		var value_21 int32 = facts.TypeCount
+		count = value_21
 	}
-	var value_49 int32 = 0
-	return value_49
+	var value_22 string = argument
+	var value_23 int32 = index
+	var value_24 int32 = count
+	var value_25 bool = kind.FromEnd
+	var value_26 bool = KssParser_KssNthSiblingMatches(value_22, value_23, value_24, value_25)
+	var matched bool = value_26
+	var value_27 bool = matched
+	if value_27 {
+		var value_28 int32 = 1
+		return value_28
+	}
+	var value_29 int32 = 0
+	return value_29
 }
 
 func KssParser_KssSelectorComment(c KssCursor) KssExpectResult {
