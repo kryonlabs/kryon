@@ -17459,6 +17459,731 @@ export function KssParser_KssCSSPropertyKind($rt, $state = moduleState, $host = 
     return value_2632;
 }
 
+export function KssParser_KssCSSPropertyName($rt, $state = moduleState, $host = moduleHost, name) {
+  $state = $state || moduleState;
+    let value_0 = number_85173a94_value(kryon.StringByteLength(name),32,true);
+    let value_1 = number_85173a94_value(2,32,true);
+    let value_2 = number_85173a94_bool(value_0 >= value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (value_3) {
+        let value_4 = number_85173a94_value(0,32,true);
+        let value_5 = number_85173a94_value(kryon.index(name, value_4),8,false);
+        let value_6 = number_85173a94_value(45,8,false);
+        let value_7 = number_85173a94_bool(value_5 == value_6);
+        value_3 = value_7;
+    }
+    let value_8 = number_85173a94_bool(value_3);
+    if (value_8) {
+        let value_9 = number_85173a94_value(1,32,true);
+        let value_10 = number_85173a94_value(kryon.index(name, value_9),8,false);
+        let value_11 = number_85173a94_value(45,8,false);
+        let value_12 = number_85173a94_bool(value_10 == value_11);
+        value_8 = value_12;
+    }
+    if (value_8) {
+        let value_13 = name;
+        return value_13;
+    }
+    let value_14 = number_85173a94_value(kryon.StringByteLength(name),32,true);
+    let value_15 = number_85173a94_value(64,32,true);
+    let value_16 = number_85173a94_bool(value_14 > value_15);
+    if (value_16) {
+        let value_17 = "";
+        return value_17;
+    }
+    let value_18 = number_85173a94_value(0,32,true);
+    let index = number_85173a94_value(value_18,32,true);
+    while (true) {
+        let value_19 = number_85173a94_value(index,32,true);
+        let value_20 = number_85173a94_value(kryon.StringByteLength(name),32,true);
+        let value_21 = number_85173a94_bool(value_19 < value_20);
+        if (!value_21) { break; }
+        let value_22 = number_85173a94_value(index,32,true);
+        let value_23 = number_85173a94_value(kryon.index(name, value_22),8,false);
+        let value_24 = number_85173a94_value(index,32,true);
+        let value_25 = number_85173a94_value(kryon.index(name, value_24),8,false);
+        let value_26 = number_85173a94_value(KssParser_KssLower($rt, $state, $host, value_25),8,false);
+        let value_27 = number_85173a94_bool(value_23 != value_26);
+        if (value_27) {
+            let value_28 = "";
+            return value_28;
+        }
+        let value_29 = number_85173a94_value(index,32,true);
+        let value_30 = number_85173a94_value(1,32,true);
+        let value_31 = number_85173a94_value(number_85173a94_bits(value_29,value_30,32,true,1),32,true);
+        index = value_31;
+    }
+    let value_32 = name;
+    let value_33 = "foreground";
+    let value_34 = number_85173a94_bool(value_32 == value_33);
+    if (value_34) {
+        let value_35 = "color";
+        return value_35;
+    }
+    let value_36 = name;
+    let value_37 = "border";
+    let value_38 = number_85173a94_bool(value_36 == value_37);
+    if (value_38) {
+        let value_39 = "border-color";
+        return value_39;
+    }
+    let value_40 = name;
+    let value_41 = "radius";
+    let value_42 = number_85173a94_bool(value_40 == value_41);
+    if (value_42) {
+        let value_43 = "border-radius";
+        return value_43;
+    }
+    let value_44 = name;
+    let value_45 = "padding-x";
+    let value_46 = number_85173a94_bool(value_44 == value_45);
+    if (value_46) {
+        let value_47 = "padding-left";
+        return value_47;
+    }
+    let value_48 = name;
+    let value_49 = "padding-y";
+    let value_50 = number_85173a94_bool(value_48 == value_49);
+    if (value_50) {
+        let value_51 = "padding-top";
+        return value_51;
+    }
+    let value_52 = name;
+    let value_53 = "margin-x";
+    let value_54 = number_85173a94_bool(value_52 == value_53);
+    if (value_54) {
+        let value_55 = "margin-left";
+        return value_55;
+    }
+    let value_56 = name;
+    let value_57 = "margin-y";
+    let value_58 = number_85173a94_bool(value_56 == value_57);
+    if (value_58) {
+        let value_59 = "margin-top";
+        return value_59;
+    }
+    let value_60 = name;
+    let value_61 = "typeface";
+    let value_62 = number_85173a94_bool(value_60 == value_61);
+    if (value_62) {
+        let value_63 = "font-family";
+        return value_63;
+    }
+    let value_64 = name;
+    let value_65 = "focus";
+    let value_66 = number_85173a94_bool(value_64 == value_65);
+    if (value_66) {
+        let value_67 = "outline-color";
+        return value_67;
+    }
+    let value_68 = name;
+    let value_69 = "material";
+    let value_70 = number_85173a94_bool(value_68 == value_69);
+    let value_71 = number_85173a94_bool(value_70);
+    if (!value_71) {
+        let value_72 = name;
+        let value_73 = "content-offset-x";
+        let value_74 = number_85173a94_bool(value_72 == value_73);
+        value_71 = value_74;
+    }
+    let value_75 = number_85173a94_bool(value_71);
+    if (!value_75) {
+        let value_76 = name;
+        let value_77 = "content-offset-y";
+        let value_78 = number_85173a94_bool(value_76 == value_77);
+        value_75 = value_78;
+    }
+    let value_79 = number_85173a94_bool(value_75);
+    if (!value_79) {
+        let value_80 = name;
+        let value_81 = "icon-size";
+        let value_82 = number_85173a94_bool(value_80 == value_81);
+        value_79 = value_82;
+    }
+    let value_83 = number_85173a94_bool(value_79);
+    if (!value_83) {
+        let value_84 = name;
+        let value_85 = "background-end";
+        let value_86 = number_85173a94_bool(value_84 == value_85);
+        value_83 = value_86;
+    }
+    let value_87 = number_85173a94_bool(value_83);
+    if (!value_87) {
+        let value_88 = name;
+        let value_89 = "offset-x";
+        let value_90 = number_85173a94_bool(value_88 == value_89);
+        value_87 = value_90;
+    }
+    let value_91 = number_85173a94_bool(value_87);
+    if (!value_91) {
+        let value_92 = name;
+        let value_93 = "offset-y";
+        let value_94 = number_85173a94_bool(value_92 == value_93);
+        value_91 = value_94;
+    }
+    if (value_91) {
+        let value_95 = "";
+        return value_95;
+    }
+    let value_96 = name;
+    let value_98 = KssParser_KssMakeName($rt, $state, $host, value_96);
+    let value_99 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_98);
+    let value_97 = value_99;
+    let value_100 = number_85173a94_value(KssParser_KssCSSPropertyKind($rt, $state, $host, value_97),32,true);
+    let value_101 = number_85173a94_value(-1,32,true);
+    let value_102 = number_85173a94_bool(value_100 == value_101);
+    if (value_102) {
+        let value_103 = "";
+        return value_103;
+    }
+    let value_104 = name;
+    return value_104;
+}
+
+export function KssParser_KssCSSNeedsPixels($rt, $state = moduleState, $host = moduleHost, name) {
+  $state = $state || moduleState;
+    let value_0 = name;
+    let value_1 = "opacity";
+    let value_2 = number_85173a94_bool(value_0 == value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (!value_3) {
+        let value_4 = name;
+        let value_5 = "font-weight";
+        let value_6 = number_85173a94_bool(value_4 == value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_85173a94_bool(value_3);
+    if (!value_7) {
+        let value_8 = name;
+        let value_9 = "fontWeight";
+        let value_10 = number_85173a94_bool(value_8 == value_9);
+        value_7 = value_10;
+    }
+    let value_11 = number_85173a94_bool(value_7);
+    if (!value_11) {
+        let value_12 = name;
+        let value_13 = "line-height";
+        let value_14 = number_85173a94_bool(value_12 == value_13);
+        value_11 = value_14;
+    }
+    let value_15 = number_85173a94_bool(value_11);
+    if (!value_15) {
+        let value_16 = name;
+        let value_17 = "lineHeight";
+        let value_18 = number_85173a94_bool(value_16 == value_17);
+        value_15 = value_18;
+    }
+    let value_19 = number_85173a94_bool(value_15);
+    if (!value_19) {
+        let value_20 = name;
+        let value_21 = "z-index";
+        let value_22 = number_85173a94_bool(value_20 == value_21);
+        value_19 = value_22;
+    }
+    if (value_19) {
+        let value_23 = number_85173a94_bool(false);
+        return value_23;
+    }
+    let value_24 = name;
+    let value_25 = "zIndex";
+    let value_26 = number_85173a94_bool(value_24 == value_25);
+    let value_27 = number_85173a94_bool(value_26);
+    if (!value_27) {
+        let value_28 = name;
+        let value_29 = "tab-size";
+        let value_30 = number_85173a94_bool(value_28 == value_29);
+        value_27 = value_30;
+    }
+    let value_31 = number_85173a94_bool(value_27);
+    if (!value_31) {
+        let value_32 = name;
+        let value_33 = "tabSize";
+        let value_34 = number_85173a94_bool(value_32 == value_33);
+        value_31 = value_34;
+    }
+    let value_35 = number_85173a94_bool(value_31);
+    if (!value_35) {
+        let value_36 = name;
+        let value_37 = "font-size-adjust";
+        let value_38 = number_85173a94_bool(value_36 == value_37);
+        value_35 = value_38;
+    }
+    let value_39 = number_85173a94_bool(value_35);
+    if (!value_39) {
+        let value_40 = name;
+        let value_41 = "fontSizeAdjust";
+        let value_42 = number_85173a94_bool(value_40 == value_41);
+        value_39 = value_42;
+    }
+    let value_43 = number_85173a94_bool(value_39);
+    if (!value_43) {
+        let value_44 = name;
+        let value_45 = "column-count";
+        let value_46 = number_85173a94_bool(value_44 == value_45);
+        value_43 = value_46;
+    }
+    if (value_43) {
+        let value_47 = number_85173a94_bool(false);
+        return value_47;
+    }
+    let value_48 = name;
+    let value_49 = "columnCount";
+    let value_50 = number_85173a94_bool(value_48 == value_49);
+    let value_51 = number_85173a94_bool(value_50);
+    if (!value_51) {
+        let value_52 = name;
+        let value_53 = "order";
+        let value_54 = number_85173a94_bool(value_52 == value_53);
+        value_51 = value_54;
+    }
+    let value_55 = number_85173a94_bool(value_51);
+    if (!value_55) {
+        let value_56 = name;
+        let value_57 = "flex-grow";
+        let value_58 = number_85173a94_bool(value_56 == value_57);
+        value_55 = value_58;
+    }
+    let value_59 = number_85173a94_bool(value_55);
+    if (!value_59) {
+        let value_60 = name;
+        let value_61 = "flexGrow";
+        let value_62 = number_85173a94_bool(value_60 == value_61);
+        value_59 = value_62;
+    }
+    let value_63 = number_85173a94_bool(value_59);
+    if (!value_63) {
+        let value_64 = name;
+        let value_65 = "flex-shrink";
+        let value_66 = number_85173a94_bool(value_64 == value_65);
+        value_63 = value_66;
+    }
+    let value_67 = number_85173a94_bool(value_63);
+    if (!value_67) {
+        let value_68 = name;
+        let value_69 = "flexShrink";
+        let value_70 = number_85173a94_bool(value_68 == value_69);
+        value_67 = value_70;
+    }
+    if (value_67) {
+        let value_71 = number_85173a94_bool(false);
+        return value_71;
+    }
+    let value_72 = name;
+    let value_73 = "border-image-slice";
+    let value_74 = number_85173a94_bool(value_72 == value_73);
+    let value_75 = number_85173a94_bool(value_74);
+    if (!value_75) {
+        let value_76 = name;
+        let value_77 = "borderImageSlice";
+        let value_78 = number_85173a94_bool(value_76 == value_77);
+        value_75 = value_78;
+    }
+    let value_79 = number_85173a94_bool(value_75);
+    if (!value_79) {
+        let value_80 = name;
+        let value_81 = "border-image-width";
+        let value_82 = number_85173a94_bool(value_80 == value_81);
+        value_79 = value_82;
+    }
+    let value_83 = number_85173a94_bool(value_79);
+    if (!value_83) {
+        let value_84 = name;
+        let value_85 = "borderImageWidth";
+        let value_86 = number_85173a94_bool(value_84 == value_85);
+        value_83 = value_86;
+    }
+    let value_87 = number_85173a94_bool(value_83);
+    if (!value_87) {
+        let value_88 = name;
+        let value_89 = "border-image-outset";
+        let value_90 = number_85173a94_bool(value_88 == value_89);
+        value_87 = value_90;
+    }
+    let value_91 = number_85173a94_bool(value_87);
+    if (!value_91) {
+        let value_92 = name;
+        let value_93 = "borderImageOutset";
+        let value_94 = number_85173a94_bool(value_92 == value_93);
+        value_91 = value_94;
+    }
+    if (value_91) {
+        let value_95 = number_85173a94_bool(false);
+        return value_95;
+    }
+    let value_96 = name;
+    let value_97 = "grid-column-start";
+    let value_98 = number_85173a94_bool(value_96 == value_97);
+    let value_99 = number_85173a94_bool(value_98);
+    if (!value_99) {
+        let value_100 = name;
+        let value_101 = "gridColumnStart";
+        let value_102 = number_85173a94_bool(value_100 == value_101);
+        value_99 = value_102;
+    }
+    let value_103 = number_85173a94_bool(value_99);
+    if (!value_103) {
+        let value_104 = name;
+        let value_105 = "grid-column-end";
+        let value_106 = number_85173a94_bool(value_104 == value_105);
+        value_103 = value_106;
+    }
+    let value_107 = number_85173a94_bool(value_103);
+    if (!value_107) {
+        let value_108 = name;
+        let value_109 = "gridColumnEnd";
+        let value_110 = number_85173a94_bool(value_108 == value_109);
+        value_107 = value_110;
+    }
+    let value_111 = number_85173a94_bool(value_107);
+    if (!value_111) {
+        let value_112 = name;
+        let value_113 = "grid-row-start";
+        let value_114 = number_85173a94_bool(value_112 == value_113);
+        value_111 = value_114;
+    }
+    let value_115 = number_85173a94_bool(value_111);
+    if (!value_115) {
+        let value_116 = name;
+        let value_117 = "gridRowStart";
+        let value_118 = number_85173a94_bool(value_116 == value_117);
+        value_115 = value_118;
+    }
+    if (value_115) {
+        let value_119 = number_85173a94_bool(false);
+        return value_119;
+    }
+    let value_120 = name;
+    let value_121 = "grid-row-end";
+    let value_122 = number_85173a94_bool(value_120 == value_121);
+    let value_123 = number_85173a94_bool(value_122);
+    if (!value_123) {
+        let value_124 = name;
+        let value_125 = "gridRowEnd";
+        let value_126 = number_85173a94_bool(value_124 == value_125);
+        value_123 = value_126;
+    }
+    let value_127 = number_85173a94_bool(value_123);
+    if (!value_127) {
+        let value_128 = name;
+        let value_129 = "line-clamp";
+        let value_130 = number_85173a94_bool(value_128 == value_129);
+        value_127 = value_130;
+    }
+    let value_131 = number_85173a94_bool(value_127);
+    if (!value_131) {
+        let value_132 = name;
+        let value_133 = "lineClamp";
+        let value_134 = number_85173a94_bool(value_132 == value_133);
+        value_131 = value_134;
+    }
+    let value_135 = number_85173a94_bool(value_131);
+    if (!value_135) {
+        let value_136 = name;
+        let value_137 = "webkitLineClamp";
+        let value_138 = number_85173a94_bool(value_136 == value_137);
+        value_135 = value_138;
+    }
+    let value_139 = number_85173a94_bool(value_135);
+    if (!value_139) {
+        let value_140 = name;
+        let value_141 = "orphans";
+        let value_142 = number_85173a94_bool(value_140 == value_141);
+        value_139 = value_142;
+    }
+    if (value_139) {
+        let value_143 = number_85173a94_bool(false);
+        return value_143;
+    }
+    let value_144 = name;
+    let value_145 = "widows";
+    let value_146 = number_85173a94_bool(value_144 == value_145);
+    let value_147 = number_85173a94_bool(value_146);
+    if (!value_147) {
+        let value_148 = name;
+        let value_149 = "animation-iteration-count";
+        let value_150 = number_85173a94_bool(value_148 == value_149);
+        value_147 = value_150;
+    }
+    let value_151 = number_85173a94_bool(value_147);
+    if (!value_151) {
+        let value_152 = name;
+        let value_153 = "animationIterationCount";
+        let value_154 = number_85173a94_bool(value_152 == value_153);
+        value_151 = value_154;
+    }
+    let value_155 = number_85173a94_bool(value_151);
+    if (!value_155) {
+        let value_156 = name;
+        let value_157 = "shape-image-threshold";
+        let value_158 = number_85173a94_bool(value_156 == value_157);
+        value_155 = value_158;
+    }
+    let value_159 = number_85173a94_bool(value_155);
+    if (!value_159) {
+        let value_160 = name;
+        let value_161 = "shapeImageThreshold";
+        let value_162 = number_85173a94_bool(value_160 == value_161);
+        value_159 = value_162;
+    }
+    let value_163 = number_85173a94_bool(value_159);
+    if (!value_163) {
+        let value_164 = name;
+        let value_165 = "scale";
+        let value_166 = number_85173a94_bool(value_164 == value_165);
+        value_163 = value_166;
+    }
+    if (value_163) {
+        let value_167 = number_85173a94_bool(false);
+        return value_167;
+    }
+    let value_168 = number_85173a94_bool(true);
+    return value_168;
+}
+
+export function KssParser_KssCSSSpaceLength($rt, $state = moduleState, $host = moduleHost, value, index) {
+  $state = $state || moduleState;
+    index = number_85173a94_value(index,32,true);
+    let value_0 = number_85173a94_value(index,32,true);
+    let value_1 = number_85173a94_value(kryon.index(value, value_0),8,false);
+    let value_2 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_1));
+    if (value_2) {
+        let value_3 = number_85173a94_value(1,32,true);
+        return value_3;
+    }
+    let value_4 = number_85173a94_value(index,32,true);
+    let value_5 = number_85173a94_value(1,32,true);
+    let value_6 = number_85173a94_value(number_85173a94_bits(value_4,value_5,32,true,1),32,true);
+    let value_7 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+    let value_8 = number_85173a94_bool(value_6 < value_7);
+    let value_9 = number_85173a94_bool(value_8);
+    if (value_9) {
+        let value_10 = number_85173a94_value(index,32,true);
+        let value_11 = number_85173a94_value(kryon.index(value, value_10),8,false);
+        let value_12 = number_85173a94_value(194,8,false);
+        let value_13 = number_85173a94_bool(value_11 == value_12);
+        value_9 = value_13;
+    }
+    let value_14 = number_85173a94_bool(value_9);
+    if (value_14) {
+        let value_15 = number_85173a94_value(index,32,true);
+        let value_16 = number_85173a94_value(1,32,true);
+        let value_17 = number_85173a94_value(number_85173a94_bits(value_15,value_16,32,true,1),32,true);
+        let value_18 = number_85173a94_value(kryon.index(value, value_17),8,false);
+        let value_19 = number_85173a94_value(160,8,false);
+        let value_20 = number_85173a94_bool(value_18 == value_19);
+        value_14 = value_20;
+    }
+    if (value_14) {
+        let value_21 = number_85173a94_value(2,32,true);
+        return value_21;
+    }
+    let value_22 = number_85173a94_value(index,32,true);
+    let value_23 = number_85173a94_value(2,32,true);
+    let value_24 = number_85173a94_value(number_85173a94_bits(value_22,value_23,32,true,1),32,true);
+    let value_25 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+    let value_26 = number_85173a94_bool(value_24 >= value_25);
+    if (value_26) {
+        let value_27 = number_85173a94_value(0,32,true);
+        return value_27;
+    }
+    let value_28 = number_85173a94_value(index,32,true);
+    let value_29 = number_85173a94_value(kryon.index(value, value_28),8,false);
+    let first = number_85173a94_value(value_29,8,false);
+    let value_30 = number_85173a94_value(index,32,true);
+    let value_31 = number_85173a94_value(1,32,true);
+    let value_32 = number_85173a94_value(number_85173a94_bits(value_30,value_31,32,true,1),32,true);
+    let value_33 = number_85173a94_value(kryon.index(value, value_32),8,false);
+    let second = number_85173a94_value(value_33,8,false);
+    let value_34 = number_85173a94_value(index,32,true);
+    let value_35 = number_85173a94_value(2,32,true);
+    let value_36 = number_85173a94_value(number_85173a94_bits(value_34,value_35,32,true,1),32,true);
+    let value_37 = number_85173a94_value(kryon.index(value, value_36),8,false);
+    let third = number_85173a94_value(value_37,8,false);
+    let value_38 = number_85173a94_value(first,8,false);
+    let value_39 = number_85173a94_value(225,8,false);
+    let value_40 = number_85173a94_bool(value_38 == value_39);
+    let value_41 = number_85173a94_bool(value_40);
+    if (value_41) {
+        let value_42 = number_85173a94_value(second,8,false);
+        let value_43 = number_85173a94_value(154,8,false);
+        let value_44 = number_85173a94_bool(value_42 == value_43);
+        value_41 = value_44;
+    }
+    let value_45 = number_85173a94_bool(value_41);
+    if (value_45) {
+        let value_46 = number_85173a94_value(third,8,false);
+        let value_47 = number_85173a94_value(128,8,false);
+        let value_48 = number_85173a94_bool(value_46 == value_47);
+        value_45 = value_48;
+    }
+    if (value_45) {
+        let value_49 = number_85173a94_value(3,32,true);
+        return value_49;
+    }
+    let value_50 = number_85173a94_value(first,8,false);
+    let value_51 = number_85173a94_value(226,8,false);
+    let value_52 = number_85173a94_bool(value_50 == value_51);
+    let value_53 = number_85173a94_bool(value_52);
+    if (value_53) {
+        let value_54 = number_85173a94_value(second,8,false);
+        let value_55 = number_85173a94_value(128,8,false);
+        let value_56 = number_85173a94_bool(value_54 == value_55);
+        value_53 = value_56;
+    }
+    let value_57 = number_85173a94_bool(value_53);
+    if (value_57) {
+        let value_58 = number_85173a94_value(third,8,false);
+        let value_59 = number_85173a94_value(128,8,false);
+        let value_60 = number_85173a94_bool(value_58 >= value_59);
+        let value_61 = number_85173a94_bool(value_60);
+        if (value_61) {
+            let value_62 = number_85173a94_value(third,8,false);
+            let value_63 = number_85173a94_value(138,8,false);
+            let value_64 = number_85173a94_bool(value_62 <= value_63);
+            value_61 = value_64;
+        }
+        let value_65 = number_85173a94_bool(value_61);
+        if (!value_65) {
+            let value_66 = number_85173a94_value(third,8,false);
+            let value_67 = number_85173a94_value(168,8,false);
+            let value_68 = number_85173a94_bool(value_66 == value_67);
+            value_65 = value_68;
+        }
+        let value_69 = number_85173a94_bool(value_65);
+        if (!value_69) {
+            let value_70 = number_85173a94_value(third,8,false);
+            let value_71 = number_85173a94_value(169,8,false);
+            let value_72 = number_85173a94_bool(value_70 == value_71);
+            value_69 = value_72;
+        }
+        let value_73 = number_85173a94_bool(value_69);
+        if (!value_73) {
+            let value_74 = number_85173a94_value(third,8,false);
+            let value_75 = number_85173a94_value(175,8,false);
+            let value_76 = number_85173a94_bool(value_74 == value_75);
+            value_73 = value_76;
+        }
+        value_57 = value_73;
+    }
+    if (value_57) {
+        let value_77 = number_85173a94_value(3,32,true);
+        return value_77;
+    }
+    let value_78 = number_85173a94_value(first,8,false);
+    let value_79 = number_85173a94_value(226,8,false);
+    let value_80 = number_85173a94_bool(value_78 == value_79);
+    let value_81 = number_85173a94_bool(value_80);
+    if (value_81) {
+        let value_82 = number_85173a94_value(second,8,false);
+        let value_83 = number_85173a94_value(129,8,false);
+        let value_84 = number_85173a94_bool(value_82 == value_83);
+        value_81 = value_84;
+    }
+    let value_85 = number_85173a94_bool(value_81);
+    if (value_85) {
+        let value_86 = number_85173a94_value(third,8,false);
+        let value_87 = number_85173a94_value(159,8,false);
+        let value_88 = number_85173a94_bool(value_86 == value_87);
+        value_85 = value_88;
+    }
+    if (value_85) {
+        let value_89 = number_85173a94_value(3,32,true);
+        return value_89;
+    }
+    let value_90 = number_85173a94_value(first,8,false);
+    let value_91 = number_85173a94_value(227,8,false);
+    let value_92 = number_85173a94_bool(value_90 == value_91);
+    let value_93 = number_85173a94_bool(value_92);
+    if (value_93) {
+        let value_94 = number_85173a94_value(second,8,false);
+        let value_95 = number_85173a94_value(128,8,false);
+        let value_96 = number_85173a94_bool(value_94 == value_95);
+        value_93 = value_96;
+    }
+    let value_97 = number_85173a94_bool(value_93);
+    if (value_97) {
+        let value_98 = number_85173a94_value(third,8,false);
+        let value_99 = number_85173a94_value(128,8,false);
+        let value_100 = number_85173a94_bool(value_98 == value_99);
+        value_97 = value_100;
+    }
+    if (value_97) {
+        let value_101 = number_85173a94_value(3,32,true);
+        return value_101;
+    }
+    let value_102 = number_85173a94_value(first,8,false);
+    let value_103 = number_85173a94_value(239,8,false);
+    let value_104 = number_85173a94_bool(value_102 == value_103);
+    let value_105 = number_85173a94_bool(value_104);
+    if (value_105) {
+        let value_106 = number_85173a94_value(second,8,false);
+        let value_107 = number_85173a94_value(187,8,false);
+        let value_108 = number_85173a94_bool(value_106 == value_107);
+        value_105 = value_108;
+    }
+    let value_109 = number_85173a94_bool(value_105);
+    if (value_109) {
+        let value_110 = number_85173a94_value(third,8,false);
+        let value_111 = number_85173a94_value(191,8,false);
+        let value_112 = number_85173a94_bool(value_110 == value_111);
+        value_109 = value_112;
+    }
+    if (value_109) {
+        let value_113 = number_85173a94_value(3,32,true);
+        return value_113;
+    }
+    let value_114 = number_85173a94_value(0,32,true);
+    return value_114;
+}
+
+export function KssParser_KssCSSBorderShorthand($rt, $state = moduleState, $host = moduleHost, value) {
+  $state = $state || moduleState;
+    let value_0 = number_85173a94_value(0,32,true);
+    let index = number_85173a94_value(value_0,32,true);
+    let value_1 = number_85173a94_bool(false);
+    let content = number_85173a94_bool(value_1);
+    let value_2 = number_85173a94_bool(false);
+    let space_after_content = number_85173a94_bool(value_2);
+    while (true) {
+        let value_3 = number_85173a94_value(index,32,true);
+        let value_4 = number_85173a94_value(kryon.StringByteLength(value),32,true);
+        let value_5 = number_85173a94_bool(value_3 < value_4);
+        if (!value_5) { break; }
+        let value_6 = value;
+        let value_7 = number_85173a94_value(index,32,true);
+        let value_8 = number_85173a94_value(KssParser_KssCSSSpaceLength($rt, $state, $host, value_6, value_7),32,true);
+        let space = number_85173a94_value(value_8,32,true);
+        let value_9 = number_85173a94_value(space,32,true);
+        let value_10 = number_85173a94_value(0,32,true);
+        let value_11 = number_85173a94_bool(value_9 > value_10);
+        if (value_11) {
+            let value_12 = number_85173a94_bool(content);
+            if (value_12) {
+                let value_13 = number_85173a94_bool(true);
+                space_after_content = value_13;
+            }
+            let value_14 = number_85173a94_value(index,32,true);
+            let value_15 = number_85173a94_value(space,32,true);
+            let value_16 = number_85173a94_value(number_85173a94_bits(value_14,value_15,32,true,1),32,true);
+            index = value_16;
+        } else {
+            let value_17 = number_85173a94_bool(space_after_content);
+            if (value_17) {
+                let value_18 = number_85173a94_bool(true);
+                return value_18;
+            }
+            let value_19 = number_85173a94_bool(true);
+            content = value_19;
+            let value_20 = number_85173a94_value(index,32,true);
+            let value_21 = number_85173a94_value(1,32,true);
+            let value_22 = number_85173a94_value(number_85173a94_bits(value_20,value_21,32,true,1),32,true);
+            index = value_22;
+        }
+    }
+    let value_23 = number_85173a94_bool(false);
+    return value_23;
+}
+
 export function KssParser_KssCSSValueFromText($rt, $state = moduleState, $host = moduleHost, source) {
   $state = $state || moduleState;
     let value_0 = {valid: false, kind: 0, number: 0, color: 0, material: 0, text: "", has_token: false, token_name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, token_origin: 0};

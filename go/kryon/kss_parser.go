@@ -11975,6 +11975,728 @@ func KssParser_KssCSSPropertyKind(name KssName) int32 {
 	return value_1758
 }
 
+func KssParser_KssCSSPropertyName(name string) string {
+	var value_0 int32 = int32(len(name))
+	var value_1 int32 = 2
+	var value_2 bool = value_0 >= value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = 0
+		var value_5 uint8 = name[value_4]
+		var value_6 uint8 = 45
+		var value_7 bool = value_5 == value_6
+		value_3 = value_7
+	}
+	var value_8 bool = value_3
+	if value_8 {
+		var value_9 int32 = 1
+		var value_10 uint8 = name[value_9]
+		var value_11 uint8 = 45
+		var value_12 bool = value_10 == value_11
+		value_8 = value_12
+	}
+	if value_8 {
+		var value_13 string = name
+		return value_13
+	}
+	var value_14 int32 = int32(len(name))
+	var value_15 int32 = 64
+	var value_16 bool = value_14 > value_15
+	if value_16 {
+		var value_17 string = ""
+		return value_17
+	}
+	var value_18 int32 = 0
+	var index int32 = value_18
+	for {
+		var value_19 int32 = index
+		var value_20 int32 = int32(len(name))
+		var value_21 bool = value_19 < value_20
+		if !value_21 {
+			break
+		}
+		var value_22 int32 = index
+		var value_23 uint8 = name[value_22]
+		var value_24 int32 = index
+		var value_25 uint8 = name[value_24]
+		var value_26 uint8 = KssParser_KssLower(value_25)
+		var value_27 bool = value_23 != value_26
+		if value_27 {
+			var value_28 string = ""
+			return value_28
+		}
+		var value_29 int32 = index
+		var value_30 int32 = 1
+		var value_31 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
+		index = value_31
+	}
+	var value_32 string = name
+	var value_33 string = "foreground"
+	var value_34 bool = value_32 == value_33
+	if value_34 {
+		var value_35 string = "color"
+		return value_35
+	}
+	var value_36 string = name
+	var value_37 string = "border"
+	var value_38 bool = value_36 == value_37
+	if value_38 {
+		var value_39 string = "border-color"
+		return value_39
+	}
+	var value_40 string = name
+	var value_41 string = "radius"
+	var value_42 bool = value_40 == value_41
+	if value_42 {
+		var value_43 string = "border-radius"
+		return value_43
+	}
+	var value_44 string = name
+	var value_45 string = "padding-x"
+	var value_46 bool = value_44 == value_45
+	if value_46 {
+		var value_47 string = "padding-left"
+		return value_47
+	}
+	var value_48 string = name
+	var value_49 string = "padding-y"
+	var value_50 bool = value_48 == value_49
+	if value_50 {
+		var value_51 string = "padding-top"
+		return value_51
+	}
+	var value_52 string = name
+	var value_53 string = "margin-x"
+	var value_54 bool = value_52 == value_53
+	if value_54 {
+		var value_55 string = "margin-left"
+		return value_55
+	}
+	var value_56 string = name
+	var value_57 string = "margin-y"
+	var value_58 bool = value_56 == value_57
+	if value_58 {
+		var value_59 string = "margin-top"
+		return value_59
+	}
+	var value_60 string = name
+	var value_61 string = "typeface"
+	var value_62 bool = value_60 == value_61
+	if value_62 {
+		var value_63 string = "font-family"
+		return value_63
+	}
+	var value_64 string = name
+	var value_65 string = "focus"
+	var value_66 bool = value_64 == value_65
+	if value_66 {
+		var value_67 string = "outline-color"
+		return value_67
+	}
+	var value_68 string = name
+	var value_69 string = "material"
+	var value_70 bool = value_68 == value_69
+	var value_71 bool = value_70
+	if !value_71 {
+		var value_72 string = name
+		var value_73 string = "content-offset-x"
+		var value_74 bool = value_72 == value_73
+		value_71 = value_74
+	}
+	var value_75 bool = value_71
+	if !value_75 {
+		var value_76 string = name
+		var value_77 string = "content-offset-y"
+		var value_78 bool = value_76 == value_77
+		value_75 = value_78
+	}
+	var value_79 bool = value_75
+	if !value_79 {
+		var value_80 string = name
+		var value_81 string = "icon-size"
+		var value_82 bool = value_80 == value_81
+		value_79 = value_82
+	}
+	var value_83 bool = value_79
+	if !value_83 {
+		var value_84 string = name
+		var value_85 string = "background-end"
+		var value_86 bool = value_84 == value_85
+		value_83 = value_86
+	}
+	var value_87 bool = value_83
+	if !value_87 {
+		var value_88 string = name
+		var value_89 string = "offset-x"
+		var value_90 bool = value_88 == value_89
+		value_87 = value_90
+	}
+	var value_91 bool = value_87
+	if !value_91 {
+		var value_92 string = name
+		var value_93 string = "offset-y"
+		var value_94 bool = value_92 == value_93
+		value_91 = value_94
+	}
+	if value_91 {
+		var value_95 string = ""
+		return value_95
+	}
+	var value_96 string = name
+	var value_97 KssName = KssParser_KssMakeName(value_96)
+	var value_98 int32 = KssParser_KssCSSPropertyKind(value_97)
+	var value_99 int32 = -1
+	var value_100 bool = value_98 == value_99
+	if value_100 {
+		var value_101 string = ""
+		return value_101
+	}
+	var value_102 string = name
+	return value_102
+}
+
+func KssParser_KssCSSNeedsPixels(name string) bool {
+	var value_0 string = name
+	var value_1 string = "opacity"
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 string = name
+		var value_5 string = "font-weight"
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 string = name
+		var value_9 string = "fontWeight"
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	var value_11 bool = value_7
+	if !value_11 {
+		var value_12 string = name
+		var value_13 string = "line-height"
+		var value_14 bool = value_12 == value_13
+		value_11 = value_14
+	}
+	var value_15 bool = value_11
+	if !value_15 {
+		var value_16 string = name
+		var value_17 string = "lineHeight"
+		var value_18 bool = value_16 == value_17
+		value_15 = value_18
+	}
+	var value_19 bool = value_15
+	if !value_19 {
+		var value_20 string = name
+		var value_21 string = "z-index"
+		var value_22 bool = value_20 == value_21
+		value_19 = value_22
+	}
+	if value_19 {
+		var value_23 bool = false
+		return value_23
+	}
+	var value_24 string = name
+	var value_25 string = "zIndex"
+	var value_26 bool = value_24 == value_25
+	var value_27 bool = value_26
+	if !value_27 {
+		var value_28 string = name
+		var value_29 string = "tab-size"
+		var value_30 bool = value_28 == value_29
+		value_27 = value_30
+	}
+	var value_31 bool = value_27
+	if !value_31 {
+		var value_32 string = name
+		var value_33 string = "tabSize"
+		var value_34 bool = value_32 == value_33
+		value_31 = value_34
+	}
+	var value_35 bool = value_31
+	if !value_35 {
+		var value_36 string = name
+		var value_37 string = "font-size-adjust"
+		var value_38 bool = value_36 == value_37
+		value_35 = value_38
+	}
+	var value_39 bool = value_35
+	if !value_39 {
+		var value_40 string = name
+		var value_41 string = "fontSizeAdjust"
+		var value_42 bool = value_40 == value_41
+		value_39 = value_42
+	}
+	var value_43 bool = value_39
+	if !value_43 {
+		var value_44 string = name
+		var value_45 string = "column-count"
+		var value_46 bool = value_44 == value_45
+		value_43 = value_46
+	}
+	if value_43 {
+		var value_47 bool = false
+		return value_47
+	}
+	var value_48 string = name
+	var value_49 string = "columnCount"
+	var value_50 bool = value_48 == value_49
+	var value_51 bool = value_50
+	if !value_51 {
+		var value_52 string = name
+		var value_53 string = "order"
+		var value_54 bool = value_52 == value_53
+		value_51 = value_54
+	}
+	var value_55 bool = value_51
+	if !value_55 {
+		var value_56 string = name
+		var value_57 string = "flex-grow"
+		var value_58 bool = value_56 == value_57
+		value_55 = value_58
+	}
+	var value_59 bool = value_55
+	if !value_59 {
+		var value_60 string = name
+		var value_61 string = "flexGrow"
+		var value_62 bool = value_60 == value_61
+		value_59 = value_62
+	}
+	var value_63 bool = value_59
+	if !value_63 {
+		var value_64 string = name
+		var value_65 string = "flex-shrink"
+		var value_66 bool = value_64 == value_65
+		value_63 = value_66
+	}
+	var value_67 bool = value_63
+	if !value_67 {
+		var value_68 string = name
+		var value_69 string = "flexShrink"
+		var value_70 bool = value_68 == value_69
+		value_67 = value_70
+	}
+	if value_67 {
+		var value_71 bool = false
+		return value_71
+	}
+	var value_72 string = name
+	var value_73 string = "border-image-slice"
+	var value_74 bool = value_72 == value_73
+	var value_75 bool = value_74
+	if !value_75 {
+		var value_76 string = name
+		var value_77 string = "borderImageSlice"
+		var value_78 bool = value_76 == value_77
+		value_75 = value_78
+	}
+	var value_79 bool = value_75
+	if !value_79 {
+		var value_80 string = name
+		var value_81 string = "border-image-width"
+		var value_82 bool = value_80 == value_81
+		value_79 = value_82
+	}
+	var value_83 bool = value_79
+	if !value_83 {
+		var value_84 string = name
+		var value_85 string = "borderImageWidth"
+		var value_86 bool = value_84 == value_85
+		value_83 = value_86
+	}
+	var value_87 bool = value_83
+	if !value_87 {
+		var value_88 string = name
+		var value_89 string = "border-image-outset"
+		var value_90 bool = value_88 == value_89
+		value_87 = value_90
+	}
+	var value_91 bool = value_87
+	if !value_91 {
+		var value_92 string = name
+		var value_93 string = "borderImageOutset"
+		var value_94 bool = value_92 == value_93
+		value_91 = value_94
+	}
+	if value_91 {
+		var value_95 bool = false
+		return value_95
+	}
+	var value_96 string = name
+	var value_97 string = "grid-column-start"
+	var value_98 bool = value_96 == value_97
+	var value_99 bool = value_98
+	if !value_99 {
+		var value_100 string = name
+		var value_101 string = "gridColumnStart"
+		var value_102 bool = value_100 == value_101
+		value_99 = value_102
+	}
+	var value_103 bool = value_99
+	if !value_103 {
+		var value_104 string = name
+		var value_105 string = "grid-column-end"
+		var value_106 bool = value_104 == value_105
+		value_103 = value_106
+	}
+	var value_107 bool = value_103
+	if !value_107 {
+		var value_108 string = name
+		var value_109 string = "gridColumnEnd"
+		var value_110 bool = value_108 == value_109
+		value_107 = value_110
+	}
+	var value_111 bool = value_107
+	if !value_111 {
+		var value_112 string = name
+		var value_113 string = "grid-row-start"
+		var value_114 bool = value_112 == value_113
+		value_111 = value_114
+	}
+	var value_115 bool = value_111
+	if !value_115 {
+		var value_116 string = name
+		var value_117 string = "gridRowStart"
+		var value_118 bool = value_116 == value_117
+		value_115 = value_118
+	}
+	if value_115 {
+		var value_119 bool = false
+		return value_119
+	}
+	var value_120 string = name
+	var value_121 string = "grid-row-end"
+	var value_122 bool = value_120 == value_121
+	var value_123 bool = value_122
+	if !value_123 {
+		var value_124 string = name
+		var value_125 string = "gridRowEnd"
+		var value_126 bool = value_124 == value_125
+		value_123 = value_126
+	}
+	var value_127 bool = value_123
+	if !value_127 {
+		var value_128 string = name
+		var value_129 string = "line-clamp"
+		var value_130 bool = value_128 == value_129
+		value_127 = value_130
+	}
+	var value_131 bool = value_127
+	if !value_131 {
+		var value_132 string = name
+		var value_133 string = "lineClamp"
+		var value_134 bool = value_132 == value_133
+		value_131 = value_134
+	}
+	var value_135 bool = value_131
+	if !value_135 {
+		var value_136 string = name
+		var value_137 string = "webkitLineClamp"
+		var value_138 bool = value_136 == value_137
+		value_135 = value_138
+	}
+	var value_139 bool = value_135
+	if !value_139 {
+		var value_140 string = name
+		var value_141 string = "orphans"
+		var value_142 bool = value_140 == value_141
+		value_139 = value_142
+	}
+	if value_139 {
+		var value_143 bool = false
+		return value_143
+	}
+	var value_144 string = name
+	var value_145 string = "widows"
+	var value_146 bool = value_144 == value_145
+	var value_147 bool = value_146
+	if !value_147 {
+		var value_148 string = name
+		var value_149 string = "animation-iteration-count"
+		var value_150 bool = value_148 == value_149
+		value_147 = value_150
+	}
+	var value_151 bool = value_147
+	if !value_151 {
+		var value_152 string = name
+		var value_153 string = "animationIterationCount"
+		var value_154 bool = value_152 == value_153
+		value_151 = value_154
+	}
+	var value_155 bool = value_151
+	if !value_155 {
+		var value_156 string = name
+		var value_157 string = "shape-image-threshold"
+		var value_158 bool = value_156 == value_157
+		value_155 = value_158
+	}
+	var value_159 bool = value_155
+	if !value_159 {
+		var value_160 string = name
+		var value_161 string = "shapeImageThreshold"
+		var value_162 bool = value_160 == value_161
+		value_159 = value_162
+	}
+	var value_163 bool = value_159
+	if !value_163 {
+		var value_164 string = name
+		var value_165 string = "scale"
+		var value_166 bool = value_164 == value_165
+		value_163 = value_166
+	}
+	if value_163 {
+		var value_167 bool = false
+		return value_167
+	}
+	var value_168 bool = true
+	return value_168
+}
+
+func KssParser_KssCSSSpaceLength(value string, index int32) int32 {
+	var value_0 int32 = index
+	var value_1 uint8 = value[value_0]
+	var value_2 bool = KssParser_KssIsSpace(value_1)
+	if value_2 {
+		var value_3 int32 = 1
+		return value_3
+	}
+	var value_4 int32 = index
+	var value_5 int32 = 1
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	var value_7 int32 = int32(len(value))
+	var value_8 bool = value_6 < value_7
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 int32 = index
+		var value_11 uint8 = value[value_10]
+		var value_12 uint8 = 194
+		var value_13 bool = value_11 == value_12
+		value_9 = value_13
+	}
+	var value_14 bool = value_9
+	if value_14 {
+		var value_15 int32 = index
+		var value_16 int32 = 1
+		var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 1))
+		var value_18 uint8 = value[value_17]
+		var value_19 uint8 = 160
+		var value_20 bool = value_18 == value_19
+		value_14 = value_20
+	}
+	if value_14 {
+		var value_21 int32 = 2
+		return value_21
+	}
+	var value_22 int32 = index
+	var value_23 int32 = 2
+	var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
+	var value_25 int32 = int32(len(value))
+	var value_26 bool = value_24 >= value_25
+	if value_26 {
+		var value_27 int32 = 0
+		return value_27
+	}
+	var value_28 int32 = index
+	var value_29 uint8 = value[value_28]
+	var first uint8 = value_29
+	var value_30 int32 = index
+	var value_31 int32 = 1
+	var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 1))
+	var value_33 uint8 = value[value_32]
+	var second uint8 = value_33
+	var value_34 int32 = index
+	var value_35 int32 = 2
+	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
+	var value_37 uint8 = value[value_36]
+	var third uint8 = value_37
+	var value_38 uint8 = first
+	var value_39 uint8 = 225
+	var value_40 bool = value_38 == value_39
+	var value_41 bool = value_40
+	if value_41 {
+		var value_42 uint8 = second
+		var value_43 uint8 = 154
+		var value_44 bool = value_42 == value_43
+		value_41 = value_44
+	}
+	var value_45 bool = value_41
+	if value_45 {
+		var value_46 uint8 = third
+		var value_47 uint8 = 128
+		var value_48 bool = value_46 == value_47
+		value_45 = value_48
+	}
+	if value_45 {
+		var value_49 int32 = 3
+		return value_49
+	}
+	var value_50 uint8 = first
+	var value_51 uint8 = 226
+	var value_52 bool = value_50 == value_51
+	var value_53 bool = value_52
+	if value_53 {
+		var value_54 uint8 = second
+		var value_55 uint8 = 128
+		var value_56 bool = value_54 == value_55
+		value_53 = value_56
+	}
+	var value_57 bool = value_53
+	if value_57 {
+		var value_58 uint8 = third
+		var value_59 uint8 = 128
+		var value_60 bool = value_58 >= value_59
+		var value_61 bool = value_60
+		if value_61 {
+			var value_62 uint8 = third
+			var value_63 uint8 = 138
+			var value_64 bool = value_62 <= value_63
+			value_61 = value_64
+		}
+		var value_65 bool = value_61
+		if !value_65 {
+			var value_66 uint8 = third
+			var value_67 uint8 = 168
+			var value_68 bool = value_66 == value_67
+			value_65 = value_68
+		}
+		var value_69 bool = value_65
+		if !value_69 {
+			var value_70 uint8 = third
+			var value_71 uint8 = 169
+			var value_72 bool = value_70 == value_71
+			value_69 = value_72
+		}
+		var value_73 bool = value_69
+		if !value_73 {
+			var value_74 uint8 = third
+			var value_75 uint8 = 175
+			var value_76 bool = value_74 == value_75
+			value_73 = value_76
+		}
+		value_57 = value_73
+	}
+	if value_57 {
+		var value_77 int32 = 3
+		return value_77
+	}
+	var value_78 uint8 = first
+	var value_79 uint8 = 226
+	var value_80 bool = value_78 == value_79
+	var value_81 bool = value_80
+	if value_81 {
+		var value_82 uint8 = second
+		var value_83 uint8 = 129
+		var value_84 bool = value_82 == value_83
+		value_81 = value_84
+	}
+	var value_85 bool = value_81
+	if value_85 {
+		var value_86 uint8 = third
+		var value_87 uint8 = 159
+		var value_88 bool = value_86 == value_87
+		value_85 = value_88
+	}
+	if value_85 {
+		var value_89 int32 = 3
+		return value_89
+	}
+	var value_90 uint8 = first
+	var value_91 uint8 = 227
+	var value_92 bool = value_90 == value_91
+	var value_93 bool = value_92
+	if value_93 {
+		var value_94 uint8 = second
+		var value_95 uint8 = 128
+		var value_96 bool = value_94 == value_95
+		value_93 = value_96
+	}
+	var value_97 bool = value_93
+	if value_97 {
+		var value_98 uint8 = third
+		var value_99 uint8 = 128
+		var value_100 bool = value_98 == value_99
+		value_97 = value_100
+	}
+	if value_97 {
+		var value_101 int32 = 3
+		return value_101
+	}
+	var value_102 uint8 = first
+	var value_103 uint8 = 239
+	var value_104 bool = value_102 == value_103
+	var value_105 bool = value_104
+	if value_105 {
+		var value_106 uint8 = second
+		var value_107 uint8 = 187
+		var value_108 bool = value_106 == value_107
+		value_105 = value_108
+	}
+	var value_109 bool = value_105
+	if value_109 {
+		var value_110 uint8 = third
+		var value_111 uint8 = 191
+		var value_112 bool = value_110 == value_111
+		value_109 = value_112
+	}
+	if value_109 {
+		var value_113 int32 = 3
+		return value_113
+	}
+	var value_114 int32 = 0
+	return value_114
+}
+
+func KssParser_KssCSSBorderShorthand(value string) bool {
+	var value_0 int32 = 0
+	var index int32 = value_0
+	var value_1 bool = false
+	var content bool = value_1
+	var value_2 bool = false
+	var space_after_content bool = value_2
+	for {
+		var value_3 int32 = index
+		var value_4 int32 = int32(len(value))
+		var value_5 bool = value_3 < value_4
+		if !value_5 {
+			break
+		}
+		var value_6 string = value
+		var value_7 int32 = index
+		var value_8 int32 = KssParser_KssCSSSpaceLength(value_6, value_7)
+		var space int32 = value_8
+		var value_9 int32 = space
+		var value_10 int32 = 0
+		var value_11 bool = value_9 > value_10
+		if value_11 {
+			var value_12 bool = content
+			if value_12 {
+				var value_13 bool = true
+				space_after_content = value_13
+			}
+			var value_14 int32 = index
+			var value_15 int32 = space
+			var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
+			index = value_16
+		} else {
+			var value_17 bool = space_after_content
+			if value_17 {
+				var value_18 bool = true
+				return value_18
+			}
+			var value_19 bool = true
+			content = value_19
+			var value_20 int32 = index
+			var value_21 int32 = 1
+			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
+			index = value_22
+		}
+	}
+	var value_23 bool = false
+	return value_23
+}
+
 func (instance_host_0 *runtime) KssParser_KssCSSValueFromText(source string) KssCSSValue {
 	var result KssCSSValue = KssCSSValue{}
 	var value_0 bool = true

@@ -523,3 +523,41 @@ run was stopped when canonical comment serialization was added; its incomplete
 log is not passing evidence. Go uses gofmt. The Kry formatter ran on a review
 copy; unrelated continuation-indentation rewrites were inspected and omitted.
 `git diff --check` passes. All 26 original plans remain linked and present.
+
+## Shared CSS property vocabulary, units, and border classification
+
+`KssCSSPropertyName` reuses the shared declaration vocabulary and a small alias
+resolver, replacing the browser's duplicate 424-entry map. It rejects unknown
+and noncanonical ordinary names, preserves full custom property names, and
+leaves composite-only fields to their existing emitters. `KssCSSNeedsPixels`
+replaces the host unitless-property branch chain for both inline styles and CSS
+export. `KssCSSBorderShorthand` replaces the host trim/whitespace regular
+expression, including its Unicode whitespace behavior.
+
+The shared `css-properties.tsv` fixture has 512 rows executed by C, Go, and JS:
+every existing map entry, all prior unitless names, DOM camel-case spellings,
+unknown/composite names, a long custom property, and whitespace boundaries.
+Integration coverage checks ordinary rules and keyframes. The browser fixture
+checks aliases, border shorthand, dimensional and unitless values, and explicit
+zero in computed styles, then removes inline styles to verify exported rules.
+
+This retains the existing adapter's numeric-unit and border interpretation
+contract. It does not establish complete CSS value conformance. Composite
+expansion, effect generation, state/attribute mappings, remaining functional
+sanitization, and other plan phases stay open. No original plan is deleted.
+
+A follow-up probe identifies a concrete remaining composite-emission defect:
+`Button { padding-x: 3; }` exports both left and right padding, while
+`@keyframes probe { from { padding-x: 3; } }` exports only left padding.
+The ordinary-rule host has special axis expansion that the keyframe host lacks.
+Shared declaration expansion is the next action; the vocabulary migration does
+not claim to fix this mismatch.
+
+Verification: `build/css-properties/verify.log` ends with `RESULT 0`.
+Generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated
+provenance, and all five style guards pass. Browser verification checks inline
+values before installing the stylesheet, then checks exported CSS after removing
+inline styles. Go uses gofmt; the Kry formatter ran on a review copy, and its
+unrelated continuation-indentation rewrites were inspected and omitted.
+`git diff --check` passes.

@@ -659,6 +659,40 @@ test_selector_chains(void)
 }
 
 static void
+test_css_properties(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/css-properties.tsv", "r");
+    char line[512];
+    int count = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *value = strchr(line, '\t');
+        assert(value != NULL);
+        *value++ = '\0';
+        char *expected = strchr(value, '\t');
+        assert(expected != NULL);
+        *expected++ = '\0';
+        if(strcmp(value, "<empty>") == 0)
+            value = "";
+        if(strcmp(expected, "<empty>") == 0)
+            expected = "";
+        String input = StringView(value, strlen(value));
+        if(line[0] == 'P') {
+            assert(StringEqual(KssCSSPropertyName(input), StringView(expected, strlen(expected))));
+        } else if(line[0] == 'U') {
+            assert(KssCSSNeedsPixels(input) == (atoi(expected) != 0));
+        } else {
+            assert(line[0] == 'B');
+            assert(KssCSSBorderShorthand(input) == (atoi(expected) != 0));
+        }
+        count++;
+    }
+    assert(count == 512);
+    fclose(file);
+}
+
+static void
 test_nth_formulas(void)
 {
     FILE *file = fopen("tests/fixtures/kss/nth-formulas.tsv", "r");
@@ -701,6 +735,7 @@ main(void)
     test_selector_grammar();
     test_selector_chains();
     test_nth_formulas();
+    test_css_properties();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

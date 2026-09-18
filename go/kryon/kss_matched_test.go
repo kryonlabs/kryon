@@ -587,3 +587,39 @@ func TestKssNthFormulas(t *testing.T) {
 		}
 	}
 }
+
+func TestKssCSSProperties(t *testing.T) {
+	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/css-properties.tsv"), "\n"), "\n")
+	if len(lines) != 512 {
+		t.Fatal(len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 3 {
+			t.Fatal(line)
+		}
+		value, expected := fields[1], fields[2]
+		if value == "<empty>" {
+			value = ""
+		}
+		if expected == "<empty>" {
+			expected = ""
+		}
+		switch fields[0] {
+		case "P":
+			if actual := KssParser_KssCSSPropertyName(value); actual != expected {
+				t.Fatal(line, actual)
+			}
+		case "U":
+			if actual := KssParser_KssCSSNeedsPixels(value); actual != (expected == "1") {
+				t.Fatal(line, actual)
+			}
+		case "B":
+			if actual := KssParser_KssCSSBorderShorthand(value); actual != (expected == "1") {
+				t.Fatal(line, actual)
+			}
+		default:
+			t.Fatal(line)
+		}
+	}
+}

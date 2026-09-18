@@ -1059,6 +1059,37 @@ try {
   }
   removeNthStyle();
   nthTarget.remove();
+  const unitRuntime = kryon.createRuntime();
+  kryon.beginFrame(unitRuntime);
+  kryon.widget(unitRuntime, "Button", {class: "unit-probe", label: "Units"}, null,
+    {path: "Units"});
+  kryon.endFrame(unitRuntime);
+  const unitSheet = kryon.parseWebStyleSheet(\`
+    .unit-probe { foreground: #112233; radius: 0; opacity: 0;
+      border: 2px solid #223344; font-size: 10; line-height: 2;
+      font-weight: 400; letter-spacing: 3; }
+  \`);
+  kryon.setWebStyleSheets(unitRuntime, unitSheet);
+  const unitTarget = document.createElement("div");
+  document.body.appendChild(unitTarget);
+  kryon.renderWebDocument(unitRuntime, unitTarget);
+  const unitElement = kryon.findWebElement(unitTarget, "Units");
+  const unitExpected = {
+    color: "rgb(17, 34, 51)", "border-radius": "0px", opacity: "0",
+    "border-top-width": "2px", "border-top-style": "solid",
+    "font-size": "10px", "line-height": "20px", "font-weight": "400",
+    "letter-spacing": "3px"
+  };
+  for (const [property, expected] of Object.entries(unitExpected))
+    assert(getComputedStyle(unitElement).getPropertyValue(property) === expected,
+      "inline shared CSS property mismatch: " + property);
+  const removeUnitStyle = kryon.installWebStyleSheet(unitSheet, null, "css-unit-validation");
+  unitElement.removeAttribute("style");
+  for (const [property, expected] of Object.entries(unitExpected))
+    assert(getComputedStyle(unitElement).getPropertyValue(property) === expected,
+      "exported shared CSS property mismatch: " + property);
+  removeUnitStyle();
+  unitTarget.remove();
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

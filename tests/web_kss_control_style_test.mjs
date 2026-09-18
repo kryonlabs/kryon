@@ -21,6 +21,44 @@ for (const line of cases) {
 }
 
 const kss = await import(new URL("./kss_parser.js", pathToFileURL(runtimePath)));
+const properties = readFileSync(new URL("./fixtures/kss/css-properties.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+assert.equal(properties.length, 512);
+for (const line of properties) {
+  const [kind, raw, expectedRaw] = line.split("\t");
+  const value = raw === "<empty>" ? "" : raw;
+  const expected = expectedRaw === "<empty>" ? "" : expectedRaw;
+  if (kind === "P") {
+    assert.equal(kss.KssParser_KssCSSPropertyName(null, null, null, value), expected, line);
+  } else if (kind === "U") {
+    assert.equal(kss.KssParser_KssCSSNeedsPixels(null, null, null, value), expected === "1", line);
+  } else {
+    assert.equal(kind, "B");
+    assert.equal(kss.KssParser_KssCSSBorderShorthand(null, null, null, value), expected === "1", line);
+  }
+}
+
+// Property aliases and numeric units reach both ordinary rules and keyframes.
+{
+  const sheet = runtime.parseWebStyleSheet(`
+    Button { foreground: #112233; radius: 0; opacity: 0; line-height: 2;
+      border: 2px solid #223344; font-size: 10; --counter: 4; }
+    @keyframes unit-probe {
+      from { radius: 0; opacity: 0; line-height: 2; }
+      to { radius: 8; opacity: 1; line-height: 3; }
+    }
+  `);
+  const css = runtime.webStyleSheetToCSS(sheet);
+  assert.match(css, /color: #112233;/);
+  assert.match(css, /border-radius: 0px;/);
+  assert.match(css, /opacity: 0;/);
+  assert.match(css, /line-height: 2;/);
+  assert.match(css, /border: 2px solid #223344;/);
+  assert.match(css, /font-size: 10px;/);
+  assert.match(css, /--counter: 4px;/);
+  assert.match(css, /@keyframes unit-probe[\s\S]*border-radius: 8px;/);
+  assert.doesNotMatch(css, /(?:opacity|line-height): [0-9]+px/);
+}
+
 const predicates = readFileSync(new URL("./fixtures/kss/selector-predicates.tsv", import.meta.url), "utf8").trimEnd().split("\n");
 assert.equal(predicates.length, 53);
 for (const line of predicates) {

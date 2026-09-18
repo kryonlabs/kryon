@@ -2479,6 +2479,25 @@ CSS export represents invalid positional predicates as `:not(*)`, preserving
 runtime rejection even inside negation. `KssPseudoFunctionInfo` supplies shared
 classification and axis/direction flags for canonical functional pseudo names.
 
+`KssCSSPropertyName` resolves canonical KSS property names to CSS names,
+including `foreground` → `color`, `radius` → `border-radius`, and `typeface`
+→ `font-family`. It reuses declaration classification and returns empty text
+for unknown names or fields requiring composite handling (`material`, offsets,
+`icon-size`, and `background-end`). Custom property names are returned intact,
+including names longer than the bounded parser-name buffer. Ordinary names
+must use canonical lowercase spelling. Axis aliases return the first side;
+callers still expand their second side when emitting complete rules.
+
+`KssCSSNeedsPixels` owns the current numeric-unit policy for CSS names and the
+DOM camel-case spellings used by the adapter. String values retain their own
+units. Numeric opacity, line-height, font weight, and other existing unitless
+fields do not receive `px`; other numeric values do, including custom values
+under the existing adapter contract. This is not a general CSS value validator.
+`KssCSSBorderShorthand` preserves the existing border-color alias decision:
+internal whitespace in a trimmed value selects border shorthand. It recognizes
+the adapter's ASCII and Unicode whitespace. Composite values and effects still
+have separate host emission paths pending their shared migration.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

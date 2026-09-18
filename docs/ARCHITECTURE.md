@@ -67,6 +67,13 @@ serialization removes KSS comments and normalizes formulas before CSS emission;
 invalid formulas become always-false predicates. `KssPseudoFunctionInfo` keeps
 functional classification consistent between export and matching.
 
+CSS export's property vocabulary now reuses `KssCSSPropertyKind` through
+`KssCSSPropertyName`, replacing the separate browser property map. The generated
+module owns aliases, numeric-unit decisions (`KssCSSNeedsPixels`), and border
+shorthand classification (`KssCSSBorderShorthand`). Inline application and CSS
+export share the latter decisions. Hosts retain value storage and string output;
+composite property expansion and effect emission remain migration work.
+
 ## Public API
 
 Public headers live in `include/`. They define the app-facing Kryon surface:

@@ -3841,6 +3841,177 @@ KssCSSPropertyKind :: (name: KssName) -> i32 #export {
     return -1
 }
 
+# CSS property vocabulary reuses declaration classification. These names are
+# canonical KSS spellings; DOM camel-case names are only accepted by unit policy.
+KssCSSPropertyName :: (name: string) -> string #export {
+    if name.length >= 2 && name[0] == 45 && name[1] == 45 {
+        return name
+    }
+    if name.length > 64 {
+        return ""
+    }
+    index: i32 = 0
+    while index < name.length {
+        if name[index] != KssLower(name[index]) {
+            return ""
+        }
+        index = index + 1
+    }
+    if name == "foreground" {
+        return "color"
+    }
+    if name == "border" {
+        return "border-color"
+    }
+    if name == "radius" {
+        return "border-radius"
+    }
+    if name == "padding-x" {
+        return "padding-left"
+    }
+    if name == "padding-y" {
+        return "padding-top"
+    }
+    if name == "margin-x" {
+        return "margin-left"
+    }
+    if name == "margin-y" {
+        return "margin-top"
+    }
+    if name == "typeface" {
+        return "font-family"
+    }
+    if name == "focus" {
+        return "outline-color"
+    }
+    if name == "material" || name == "content-offset-x" ||
+        name == "content-offset-y" || name == "icon-size" ||
+        name == "background-end" || name == "offset-x" || name == "offset-y" {
+        return ""
+    }
+    if KssCSSPropertyKind(KssMakeName(name)) == -1 {
+        return ""
+    }
+    return name
+}
+
+# Whether a numeric host value receives px. String values keep their units.
+KssCSSNeedsPixels :: (name: string) -> bool #export {
+    if name == "opacity" ||
+        name == "font-weight" ||
+        name == "fontWeight" ||
+        name == "line-height" ||
+        name == "lineHeight" ||
+        name == "z-index" {
+        return false
+    }
+    if name == "zIndex" ||
+        name == "tab-size" ||
+        name == "tabSize" ||
+        name == "font-size-adjust" ||
+        name == "fontSizeAdjust" ||
+        name == "column-count" {
+        return false
+    }
+    if name == "columnCount" ||
+        name == "order" ||
+        name == "flex-grow" ||
+        name == "flexGrow" ||
+        name == "flex-shrink" ||
+        name == "flexShrink" {
+        return false
+    }
+    if name == "border-image-slice" ||
+        name == "borderImageSlice" ||
+        name == "border-image-width" ||
+        name == "borderImageWidth" ||
+        name == "border-image-outset" ||
+        name == "borderImageOutset" {
+        return false
+    }
+    if name == "grid-column-start" ||
+        name == "gridColumnStart" ||
+        name == "grid-column-end" ||
+        name == "gridColumnEnd" ||
+        name == "grid-row-start" ||
+        name == "gridRowStart" {
+        return false
+    }
+    if name == "grid-row-end" ||
+        name == "gridRowEnd" ||
+        name == "line-clamp" ||
+        name == "lineClamp" ||
+        name == "webkitLineClamp" ||
+        name == "orphans" {
+        return false
+    }
+    if name == "widows" ||
+        name == "animation-iteration-count" ||
+        name == "animationIterationCount" ||
+        name == "shape-image-threshold" ||
+        name == "shapeImageThreshold" ||
+        name == "scale" {
+        return false
+    }
+    return true
+}
+
+# UTF-8 whitespace accepted by the existing CSS text adapter.
+KssCSSSpaceLength :: (value: string, index: i32) -> i32 {
+    if KssIsSpace(value[index]) {
+        return 1
+    }
+    if index + 1 < value.length && value[index] == 194 && value[index + 1] == 160 {
+        return 2
+    }
+    if index + 2 >= value.length {
+        return 0
+    }
+    first: u8 = value[index]
+    second: u8 = value[index + 1]
+    third: u8 = value[index + 2]
+    if first == 225 && second == 154 && third == 128 {
+        return 3
+    }
+    if first == 226 && second == 128 &&
+        ((third >= 128 && third <= 138) || third == 168 || third == 169 || third == 175) {
+        return 3
+    }
+    if first == 226 && second == 129 && third == 159 {
+        return 3
+    }
+    if first == 227 && second == 128 && third == 128 {
+        return 3
+    }
+    if first == 239 && second == 187 && third == 191 {
+        return 3
+    }
+    return 0
+}
+
+# Preserve KSS border's color alias unless its trimmed value has whitespace.
+KssCSSBorderShorthand :: (value: string) -> bool #export {
+    index: i32 = 0
+    content: bool = false
+    space_after_content: bool = false
+    while index < value.length {
+        space: i32 = KssCSSSpaceLength(value, index)
+        if space > 0 {
+            if content {
+                space_after_content = true
+            }
+            index = index + space
+        } else {
+            if space_after_content {
+                return true
+            }
+            content = true
+            index = index + 1
+        }
+    }
+    return false
+}
+
 KssCSSValueFromText :: (source: string) -> KssCSSValue #export {
     result: KssCSSValue
     result.valid = true

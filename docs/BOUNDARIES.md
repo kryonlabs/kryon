@@ -43,6 +43,12 @@ than sanitizing formula text. All KSS language decisions, including remaining
 CSS conversion, diagnostics, and formatting, are intended to live in `.kry`;
 platform adapters supply storage, I/O, DOM observations, and output sinks.
 
+The CSS property allowlist and aliases use `KssCSSPropertyName`; numeric units
+and border shorthand classification use generated decisions too. Browser code
+must not restore its own property map, unitless list, or whitespace classifier.
+Composite declaration/effect expansion and complete emission still need to move
+into shared KSS code; consuming these helpers alone does not close that work.
+
 ## Belongs In Kryon
 
 - reusable widgets, layout, text input, focus, theme, DPI, modal, scroll, and
