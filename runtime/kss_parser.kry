@@ -4012,6 +4012,98 @@ KssCSSBorderShorthand :: (value: string) -> bool #export {
     return false
 }
 
+# Declaration expansion returns borrowed property names. Hosts emit the value
+# for each nonempty name, using the shared numeric-unit policy.
+KssCSSExpansion :: struct {
+    first: string
+    second: string
+}
+
+KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> KssCSSExpansion #export {
+    result: KssCSSExpansion
+    if value == "" || name == "offset-x" || name == "offset-y" {
+        return result
+    }
+    if name == "transform" && has_offsets {
+        return result
+    }
+    if name == "content-offset-x" {
+        result.first = "--kry-content-offset-x"
+    } else if name == "content-offset-y" {
+        result.first = "--kry-content-offset-y"
+    } else if name == "icon-size" {
+        result.first = "--kry-icon-size"
+    } else if name == "background-end" {
+        result.first = "--kry-background-end"
+    } else if name == "border" && KssCSSBorderShorthand(value) {
+        result.first = "border"
+    } else {
+        result.first = KssCSSPropertyName(name)
+    }
+    if name == "padding-x" {
+        result.second = "padding-right"
+    } else if name == "padding-y" {
+        result.second = "padding-bottom"
+    } else if name == "margin-x" {
+        result.second = "margin-right"
+    } else if name == "margin-y" {
+        result.second = "margin-bottom"
+    }
+    return result
+}
+
+# Values already have their CSS units. Empty text means absent, not zero.
+KssCSSEffectFacts :: struct {
+    background: string
+    background_end: string
+    offset_x: string
+    offset_y: string
+    transform: string
+}
+
+# A borrowed-fragment output recipe avoids a fixed output buffer or allocation.
+# Emit name: prefix + first + separator + second + suffix when name is nonempty.
+KssCSSOutput :: struct {
+    name: string
+    prefix: string
+    first: string
+    separator: string
+    second: string
+    suffix: string
+}
+
+KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool #export {
+    return facts.offset_x != "" || facts.offset_y != ""
+}
+
+# Slots 0..3 follow ordinary declarations: gradient, x, y, then transform.
+# An absent or out-of-range slot produces no output.
+KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: i32) -> KssCSSOutput #export {
+    result: KssCSSOutput
+    if index == 0 && facts.background != "" && facts.background_end != "" {
+        result.name = "background-image"
+        result.prefix = "linear-gradient("
+        result.first = facts.background
+        result.separator = ", "
+        result.second = facts.background_end
+        result.suffix = ")"
+    } else if index == 1 && facts.offset_x != "" {
+        result.name = "--kry-offset-x"
+        result.first = facts.offset_x
+    } else if index == 2 && facts.offset_y != "" {
+        result.name = "--kry-offset-y"
+        result.first = facts.offset_y
+    } else if index == 3 && KssCSSHasOffsets(facts) {
+        result.name = "transform"
+        result.prefix = "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))"
+        if facts.transform != "" {
+            result.separator = " "
+            result.second = facts.transform
+        }
+    }
+    return result
+}
+
 KssCSSValueFromText :: (source: string) -> KssCSSValue #export {
     result: KssCSSValue
     result.valid = true

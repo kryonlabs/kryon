@@ -18184,6 +18184,262 @@ export function KssParser_KssCSSBorderShorthand($rt, $state = moduleState, $host
     return value_23;
 }
 
+export function KssParser_KssCSSExpandDeclaration($rt, $state = moduleState, $host = moduleHost, name, value, has_offsets) {
+  $state = $state || moduleState;
+    has_offsets = number_85173a94_bool(has_offsets);
+    let value_0 = {first: "", second: ""};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({first: record_source.first, second: record_source.second}))(value_1);
+    let result = value_2;
+    let value_3 = value;
+    let value_4 = "";
+    let value_5 = number_85173a94_bool(value_3 == value_4);
+    let value_6 = number_85173a94_bool(value_5);
+    if (!value_6) {
+        let value_7 = name;
+        let value_8 = "offset-x";
+        let value_9 = number_85173a94_bool(value_7 == value_8);
+        value_6 = value_9;
+    }
+    let value_10 = number_85173a94_bool(value_6);
+    if (!value_10) {
+        let value_11 = name;
+        let value_12 = "offset-y";
+        let value_13 = number_85173a94_bool(value_11 == value_12);
+        value_10 = value_13;
+    }
+    if (value_10) {
+        let value_15 = result;
+        let value_16 = ((record_source) => ({first: record_source.first, second: record_source.second}))(value_15);
+        let value_14 = value_16;
+        return value_14;
+    }
+    let value_17 = name;
+    let value_18 = "transform";
+    let value_19 = number_85173a94_bool(value_17 == value_18);
+    let value_20 = number_85173a94_bool(value_19);
+    if (value_20) {
+        let value_21 = number_85173a94_bool(has_offsets);
+        value_20 = value_21;
+    }
+    if (value_20) {
+        let value_23 = result;
+        let value_24 = ((record_source) => ({first: record_source.first, second: record_source.second}))(value_23);
+        let value_22 = value_24;
+        return value_22;
+    }
+    let value_25 = name;
+    let value_26 = "content-offset-x";
+    let value_27 = number_85173a94_bool(value_25 == value_26);
+    if (value_27) {
+        let value_28 = "--kry-content-offset-x";
+        result.first = value_28;
+    } else {
+        let value_29 = name;
+        let value_30 = "content-offset-y";
+        let value_31 = number_85173a94_bool(value_29 == value_30);
+        if (value_31) {
+            let value_32 = "--kry-content-offset-y";
+            result.first = value_32;
+        } else {
+            let value_33 = name;
+            let value_34 = "icon-size";
+            let value_35 = number_85173a94_bool(value_33 == value_34);
+            if (value_35) {
+                let value_36 = "--kry-icon-size";
+                result.first = value_36;
+            } else {
+                let value_37 = name;
+                let value_38 = "background-end";
+                let value_39 = number_85173a94_bool(value_37 == value_38);
+                if (value_39) {
+                    let value_40 = "--kry-background-end";
+                    result.first = value_40;
+                } else {
+                    let value_41 = name;
+                    let value_42 = "border";
+                    let value_43 = number_85173a94_bool(value_41 == value_42);
+                    let value_44 = number_85173a94_bool(value_43);
+                    if (value_44) {
+                        let value_45 = value;
+                        let value_46 = number_85173a94_bool(KssParser_KssCSSBorderShorthand($rt, $state, $host, value_45));
+                        value_44 = value_46;
+                    }
+                    if (value_44) {
+                        let value_47 = "border";
+                        result.first = value_47;
+                    } else {
+                        let value_48 = name;
+                        let value_49 = KssParser_KssCSSPropertyName($rt, $state, $host, value_48);
+                        result.first = value_49;
+                    }
+                }
+            }
+        }
+    }
+    let value_50 = name;
+    let value_51 = "padding-x";
+    let value_52 = number_85173a94_bool(value_50 == value_51);
+    if (value_52) {
+        let value_53 = "padding-right";
+        result.second = value_53;
+    } else {
+        let value_54 = name;
+        let value_55 = "padding-y";
+        let value_56 = number_85173a94_bool(value_54 == value_55);
+        if (value_56) {
+            let value_57 = "padding-bottom";
+            result.second = value_57;
+        } else {
+            let value_58 = name;
+            let value_59 = "margin-x";
+            let value_60 = number_85173a94_bool(value_58 == value_59);
+            if (value_60) {
+                let value_61 = "margin-right";
+                result.second = value_61;
+            } else {
+                let value_62 = name;
+                let value_63 = "margin-y";
+                let value_64 = number_85173a94_bool(value_62 == value_63);
+                if (value_64) {
+                    let value_65 = "margin-bottom";
+                    result.second = value_65;
+                }
+            }
+        }
+    }
+    let value_67 = result;
+    let value_68 = ((record_source) => ({first: record_source.first, second: record_source.second}))(value_67);
+    let value_66 = value_68;
+    return value_66;
+}
+
+export function KssParser_KssCSSHasOffsets($rt, $state = moduleState, $host = moduleHost, facts) {
+  $state = $state || moduleState;
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({background: record_source.background, background_end: record_source.background_end, offset_x: record_source.offset_x, offset_y: record_source.offset_y, transform: record_source.transform}))(value_0);
+    facts = value_1;
+    let value_2 = facts.offset_x;
+    let value_3 = "";
+    let value_4 = number_85173a94_bool(value_2 != value_3);
+    let value_5 = number_85173a94_bool(value_4);
+    if (!value_5) {
+        let value_6 = facts.offset_y;
+        let value_7 = "";
+        let value_8 = number_85173a94_bool(value_6 != value_7);
+        value_5 = value_8;
+    }
+    return value_5;
+}
+
+export function KssParser_KssCSSEffectAt($rt, $state = moduleState, $host = moduleHost, facts, index) {
+  $state = $state || moduleState;
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({background: record_source.background, background_end: record_source.background_end, offset_x: record_source.offset_x, offset_y: record_source.offset_y, transform: record_source.transform}))(value_0);
+    facts = value_1;
+    index = number_85173a94_value(index,32,true);
+    let value_2 = {name: "", prefix: "", first: "", separator: "", second: "", suffix: ""};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({name: record_source.name, prefix: record_source.prefix, first: record_source.first, separator: record_source.separator, second: record_source.second, suffix: record_source.suffix}))(value_3);
+    let result = value_4;
+    let value_5 = number_85173a94_value(index,32,true);
+    let value_6 = number_85173a94_value(0,32,true);
+    let value_7 = number_85173a94_bool(value_5 == value_6);
+    let value_8 = number_85173a94_bool(value_7);
+    if (value_8) {
+        let value_9 = facts.background;
+        let value_10 = "";
+        let value_11 = number_85173a94_bool(value_9 != value_10);
+        value_8 = value_11;
+    }
+    let value_12 = number_85173a94_bool(value_8);
+    if (value_12) {
+        let value_13 = facts.background_end;
+        let value_14 = "";
+        let value_15 = number_85173a94_bool(value_13 != value_14);
+        value_12 = value_15;
+    }
+    if (value_12) {
+        let value_16 = "background-image";
+        result.name = value_16;
+        let value_17 = "linear-gradient(";
+        result.prefix = value_17;
+        let value_18 = facts.background;
+        result.first = value_18;
+        let value_19 = ", ";
+        result.separator = value_19;
+        let value_20 = facts.background_end;
+        result.second = value_20;
+        let value_21 = ")";
+        result.suffix = value_21;
+    } else {
+        let value_22 = number_85173a94_value(index,32,true);
+        let value_23 = number_85173a94_value(1,32,true);
+        let value_24 = number_85173a94_bool(value_22 == value_23);
+        let value_25 = number_85173a94_bool(value_24);
+        if (value_25) {
+            let value_26 = facts.offset_x;
+            let value_27 = "";
+            let value_28 = number_85173a94_bool(value_26 != value_27);
+            value_25 = value_28;
+        }
+        if (value_25) {
+            let value_29 = "--kry-offset-x";
+            result.name = value_29;
+            let value_30 = facts.offset_x;
+            result.first = value_30;
+        } else {
+            let value_31 = number_85173a94_value(index,32,true);
+            let value_32 = number_85173a94_value(2,32,true);
+            let value_33 = number_85173a94_bool(value_31 == value_32);
+            let value_34 = number_85173a94_bool(value_33);
+            if (value_34) {
+                let value_35 = facts.offset_y;
+                let value_36 = "";
+                let value_37 = number_85173a94_bool(value_35 != value_36);
+                value_34 = value_37;
+            }
+            if (value_34) {
+                let value_38 = "--kry-offset-y";
+                result.name = value_38;
+                let value_39 = facts.offset_y;
+                result.first = value_39;
+            } else {
+                let value_40 = number_85173a94_value(index,32,true);
+                let value_41 = number_85173a94_value(3,32,true);
+                let value_42 = number_85173a94_bool(value_40 == value_41);
+                let value_43 = number_85173a94_bool(value_42);
+                if (value_43) {
+                    let value_45 = facts;
+                    let value_46 = ((record_source) => ({background: record_source.background, background_end: record_source.background_end, offset_x: record_source.offset_x, offset_y: record_source.offset_y, transform: record_source.transform}))(value_45);
+                    let value_44 = value_46;
+                    let value_47 = number_85173a94_bool(KssParser_KssCSSHasOffsets($rt, $state, $host, value_44));
+                    value_43 = value_47;
+                }
+                if (value_43) {
+                    let value_48 = "transform";
+                    result.name = value_48;
+                    let value_49 = "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))";
+                    result.prefix = value_49;
+                    let value_50 = facts.transform;
+                    let value_51 = "";
+                    let value_52 = number_85173a94_bool(value_50 != value_51);
+                    if (value_52) {
+                        let value_53 = " ";
+                        result.separator = value_53;
+                        let value_54 = facts.transform;
+                        result.second = value_54;
+                    }
+                }
+            }
+        }
+    }
+    let value_56 = result;
+    let value_57 = ((record_source) => ({name: record_source.name, prefix: record_source.prefix, first: record_source.first, separator: record_source.separator, second: record_source.second, suffix: record_source.suffix}))(value_56);
+    let value_55 = value_57;
+    return value_55;
+}
+
 export function KssParser_KssCSSValueFromText($rt, $state = moduleState, $host = moduleHost, source) {
   $state = $state || moduleState;
     let value_0 = {valid: false, kind: 0, number: 0, color: 0, material: 0, text: "", has_token: false, token_name: {bytes: Array.from({length: 64}, (_, index) => 0), length: 0}, token_origin: 0};

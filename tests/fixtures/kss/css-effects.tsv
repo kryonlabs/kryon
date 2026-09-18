@@ -1,0 +1,12 @@
+<empty>	<empty>	<empty>	<empty>	<empty>	0	<empty>	<empty>
+red	blue	<empty>	<empty>	<empty>	0	background-image	linear-gradient(red, blue)
+red	<empty>	<empty>	<empty>	<empty>	0	<empty>	<empty>
+<empty>	blue	<empty>	<empty>	<empty>	0	<empty>	<empty>
+<empty>	<empty>	0px	<empty>	<empty>	1	--kry-offset-x	0px
+<empty>	<empty>	<empty>	2px	<empty>	2	--kry-offset-y	2px
+<empty>	<empty>	0px	<empty>	<empty>	3	transform	translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))
+<empty>	<empty>	<empty>	2px	rotate(10deg)	3	transform	translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px)) rotate(10deg)
+<empty>	<empty>	<empty>	<empty>	rotate(10deg)	3	<empty>	<empty>
+red	blue	2px	3px	rotate(10deg)	-1	<empty>	<empty>
+red	blue	2px	3px	rotate(10deg)	4	<empty>	<empty>
+<empty>	<empty>	<empty>	2px	<empty>	1	<empty>	<empty>

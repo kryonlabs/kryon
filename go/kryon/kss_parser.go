@@ -279,6 +279,28 @@ type KssCSSValue struct {
 	TokenOrigin int32
 }
 
+type KssCSSExpansion struct {
+	First  string
+	Second string
+}
+
+type KssCSSEffectFacts struct {
+	Background    string
+	BackgroundEnd string
+	OffsetX       string
+	OffsetY       string
+	Transform     string
+}
+
+type KssCSSOutput struct {
+	Name      string
+	Prefix    string
+	First     string
+	Separator string
+	Second    string
+	Suffix    string
+}
+
 type KssIdentityFacts struct {
 	ID   string
 	Name string
@@ -12695,6 +12717,235 @@ func KssParser_KssCSSBorderShorthand(value string) bool {
 	}
 	var value_23 bool = false
 	return value_23
+}
+
+func KssParser_KssCSSExpandDeclaration(name string, value string, has_offsets bool) KssCSSExpansion {
+	var result KssCSSExpansion = KssCSSExpansion{}
+	var value_0 string = value
+	var value_1 string = ""
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 string = name
+		var value_5 string = "offset-x"
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 string = name
+		var value_9 string = "offset-y"
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 KssCSSExpansion = result
+		return value_11
+	}
+	var value_12 string = name
+	var value_13 string = "transform"
+	var value_14 bool = value_12 == value_13
+	var value_15 bool = value_14
+	if value_15 {
+		var value_16 bool = has_offsets
+		value_15 = value_16
+	}
+	if value_15 {
+		var value_17 KssCSSExpansion = result
+		return value_17
+	}
+	var value_18 string = name
+	var value_19 string = "content-offset-x"
+	var value_20 bool = value_18 == value_19
+	if value_20 {
+		var value_21 string = "--kry-content-offset-x"
+		result.First = value_21
+	} else {
+		var value_22 string = name
+		var value_23 string = "content-offset-y"
+		var value_24 bool = value_22 == value_23
+		if value_24 {
+			var value_25 string = "--kry-content-offset-y"
+			result.First = value_25
+		} else {
+			var value_26 string = name
+			var value_27 string = "icon-size"
+			var value_28 bool = value_26 == value_27
+			if value_28 {
+				var value_29 string = "--kry-icon-size"
+				result.First = value_29
+			} else {
+				var value_30 string = name
+				var value_31 string = "background-end"
+				var value_32 bool = value_30 == value_31
+				if value_32 {
+					var value_33 string = "--kry-background-end"
+					result.First = value_33
+				} else {
+					var value_34 string = name
+					var value_35 string = "border"
+					var value_36 bool = value_34 == value_35
+					var value_37 bool = value_36
+					if value_37 {
+						var value_38 string = value
+						var value_39 bool = KssParser_KssCSSBorderShorthand(value_38)
+						value_37 = value_39
+					}
+					if value_37 {
+						var value_40 string = "border"
+						result.First = value_40
+					} else {
+						var value_41 string = name
+						var value_42 string = KssParser_KssCSSPropertyName(value_41)
+						result.First = value_42
+					}
+				}
+			}
+		}
+	}
+	var value_43 string = name
+	var value_44 string = "padding-x"
+	var value_45 bool = value_43 == value_44
+	if value_45 {
+		var value_46 string = "padding-right"
+		result.Second = value_46
+	} else {
+		var value_47 string = name
+		var value_48 string = "padding-y"
+		var value_49 bool = value_47 == value_48
+		if value_49 {
+			var value_50 string = "padding-bottom"
+			result.Second = value_50
+		} else {
+			var value_51 string = name
+			var value_52 string = "margin-x"
+			var value_53 bool = value_51 == value_52
+			if value_53 {
+				var value_54 string = "margin-right"
+				result.Second = value_54
+			} else {
+				var value_55 string = name
+				var value_56 string = "margin-y"
+				var value_57 bool = value_55 == value_56
+				if value_57 {
+					var value_58 string = "margin-bottom"
+					result.Second = value_58
+				}
+			}
+		}
+	}
+	var value_59 KssCSSExpansion = result
+	return value_59
+}
+
+func KssParser_KssCSSHasOffsets(facts KssCSSEffectFacts) bool {
+	var value_0 string = facts.OffsetX
+	var value_1 string = ""
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 string = facts.OffsetY
+		var value_5 string = ""
+		var value_6 bool = value_4 != value_5
+		value_3 = value_6
+	}
+	return value_3
+}
+
+func KssParser_KssCSSEffectAt(facts KssCSSEffectFacts, index int32) KssCSSOutput {
+	var result KssCSSOutput = KssCSSOutput{}
+	var value_0 int32 = index
+	var value_1 int32 = 0
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 string = facts.Background
+		var value_5 string = ""
+		var value_6 bool = value_4 != value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if value_7 {
+		var value_8 string = facts.BackgroundEnd
+		var value_9 string = ""
+		var value_10 bool = value_8 != value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 string = "background-image"
+		result.Name = value_11
+		var value_12 string = "linear-gradient("
+		result.Prefix = value_12
+		var value_13 string = facts.Background
+		result.First = value_13
+		var value_14 string = ", "
+		result.Separator = value_14
+		var value_15 string = facts.BackgroundEnd
+		result.Second = value_15
+		var value_16 string = ")"
+		result.Suffix = value_16
+	} else {
+		var value_17 int32 = index
+		var value_18 int32 = 1
+		var value_19 bool = value_17 == value_18
+		var value_20 bool = value_19
+		if value_20 {
+			var value_21 string = facts.OffsetX
+			var value_22 string = ""
+			var value_23 bool = value_21 != value_22
+			value_20 = value_23
+		}
+		if value_20 {
+			var value_24 string = "--kry-offset-x"
+			result.Name = value_24
+			var value_25 string = facts.OffsetX
+			result.First = value_25
+		} else {
+			var value_26 int32 = index
+			var value_27 int32 = 2
+			var value_28 bool = value_26 == value_27
+			var value_29 bool = value_28
+			if value_29 {
+				var value_30 string = facts.OffsetY
+				var value_31 string = ""
+				var value_32 bool = value_30 != value_31
+				value_29 = value_32
+			}
+			if value_29 {
+				var value_33 string = "--kry-offset-y"
+				result.Name = value_33
+				var value_34 string = facts.OffsetY
+				result.First = value_34
+			} else {
+				var value_35 int32 = index
+				var value_36 int32 = 3
+				var value_37 bool = value_35 == value_36
+				var value_38 bool = value_37
+				if value_38 {
+					var value_39 KssCSSEffectFacts = facts
+					var value_40 bool = KssParser_KssCSSHasOffsets(value_39)
+					value_38 = value_40
+				}
+				if value_38 {
+					var value_41 string = "transform"
+					result.Name = value_41
+					var value_42 string = "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))"
+					result.Prefix = value_42
+					var value_43 string = facts.Transform
+					var value_44 string = ""
+					var value_45 bool = value_43 != value_44
+					if value_45 {
+						var value_46 string = " "
+						result.Separator = value_46
+						var value_47 string = facts.Transform
+						result.Second = value_47
+					}
+				}
+			}
+		}
+	}
+	var value_48 KssCSSOutput = result
+	return value_48
 }
 
 func (instance_host_0 *runtime) KssParser_KssCSSValueFromText(source string) KssCSSValue {

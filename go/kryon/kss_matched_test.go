@@ -623,3 +623,45 @@ func TestKssCSSProperties(t *testing.T) {
 		}
 	}
 }
+
+func TestKssCSSExpansion(t *testing.T) {
+	for fixture, name := range []string{"css-expansion.tsv", "css-effects.tsv"} {
+		lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/"+name), "\n"), "\n")
+		totals := []int{26, 12}
+		columns := []int{5, 8}
+		if len(lines) != totals[fixture] {
+			t.Fatal(name, len(lines))
+		}
+		for _, line := range lines {
+			fields := strings.Split(line, "\t")
+			if len(fields) != columns[fixture] {
+				t.Fatal(line)
+			}
+			for i, value := range fields {
+				if value == "<empty>" {
+					fields[i] = ""
+				}
+			}
+			if fixture == 0 {
+				result := KssParser_KssCSSExpandDeclaration(fields[0], fields[1], fields[2] == "1")
+				if result.First != fields[3] || result.Second != fields[4] {
+					t.Fatal(line, result)
+				}
+			} else {
+				facts := KssCSSEffectFacts{Background: fields[0], BackgroundEnd: fields[1], OffsetX: fields[2], OffsetY: fields[3], Transform: fields[4]}
+				index, err := strconv.Atoi(fields[5])
+				if err != nil {
+					t.Fatal(line, err)
+				}
+				if KssParser_KssCSSHasOffsets(facts) != (fields[2] != "" || fields[3] != "") {
+					t.Fatal(line)
+				}
+				result := KssParser_KssCSSEffectAt(facts, int32(index))
+				text := result.Prefix + result.First + result.Separator + result.Second + result.Suffix
+				if result.Name != fields[6] || text != fields[7] {
+					t.Fatal(line, result)
+				}
+			}
+		}
+	}
+}

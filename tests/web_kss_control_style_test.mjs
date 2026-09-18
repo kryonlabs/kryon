@@ -59,6 +59,44 @@ for (const line of properties) {
   assert.doesNotMatch(css, /(?:opacity|line-height): [0-9]+px/);
 }
 
+for (const [file, count] of [["css-expansion.tsv", 26], ["css-effects.tsv", 12]]) {
+  const lines = readFileSync(new URL("./fixtures/kss/" + file, import.meta.url), "utf8").trimEnd().split("\n");
+  assert.equal(lines.length, count);
+  for (const line of lines) {
+    const fields = line.split("\t").map((value) => value === "<empty>" ? "" : value);
+    if (file === "css-expansion.tsv") {
+      const result = kss.KssParser_KssCSSExpandDeclaration(null, null, null, fields[0], fields[1], fields[2] === "1");
+      assert.deepEqual([result.first, result.second], fields.slice(3), line);
+    } else {
+      const facts = {background: fields[0], background_end: fields[1], offset_x: fields[2], offset_y: fields[3], transform: fields[4]};
+      assert.equal(kss.KssParser_KssCSSHasOffsets(null, null, null, facts), Boolean(fields[2] || fields[3]), line);
+      const result = kss.KssParser_KssCSSEffectAt(null, null, null, facts, Number(fields[5]));
+      assert.deepEqual([result.name, result.prefix + result.first + result.separator + result.second + result.suffix], fields.slice(6), line);
+    }
+  }
+}
+
+// Ordinary rules and keyframes must expand the same authored declarations.
+{
+  const declarations = `padding-x: 0; padding-y: 2; margin-x: 3; margin-y: 4;
+    content-offset-x: 0; content-offset-y: 3; icon-size: 12;
+    background: #112233; background-end: #445566;
+    offset-x: 0; offset-y: 5; transform: scale(2); border: 2px solid red;`;
+  const sheet = runtime.parseWebStyleSheet(`Button {${declarations}}
+    @keyframes expanded { from {${declarations}} }`);
+  const css = runtime.webStyleSheetToCSS(sheet);
+  const body = (text) => text.split("\n").slice(1, -1).map((line) => line.trim());
+  const keyframe = css.match(/  from \{\n([\s\S]*?)\n  \}/)[1].split("\n").map((line) => line.trim());
+  const ordinary = body(css.slice(css.indexOf('[data-kry-kind="Button"]')));
+  assert.deepEqual(keyframe, ordinary);
+  for (const line of ["padding-right: 0px;", "padding-bottom: 2px;", "margin-right: 3px;",
+    "margin-bottom: 4px;", "--kry-content-offset-x: 0px;", "--kry-content-offset-y: 3px;",
+    "--kry-icon-size: 12px;", "background-image: linear-gradient(#112233, #445566);",
+    "--kry-offset-x: 0px;", "--kry-offset-y: 5px;",
+    "transform: translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px)) scale(2);"])
+    assert.ok(keyframe.includes(line), line);
+}
+
 const predicates = readFileSync(new URL("./fixtures/kss/selector-predicates.tsv", import.meta.url), "utf8").trimEnd().split("\n");
 assert.equal(predicates.length, 53);
 for (const line of predicates) {

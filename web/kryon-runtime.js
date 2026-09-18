@@ -3549,93 +3549,45 @@ function webStyleCSSValue(name, value) {
     ? value + "px" : String(value);
 }
 
-function webStyleValueToCSS(name, value) {
-  if (value === undefined || value === null || value === "")
-    return "";
-  let prop = webKssModule.KssParser_KssCSSPropertyName(null, null, null, name);
-  if (name === "border" && isWebBorderShorthandValue(value))
-    prop = "border";
-  if (!prop)
-    return "";
-  const cssValue = webStyleCSSValue(prop, value);
-  return `  ${prop}: ${cssValue};`;
-}
-
 function isWebBorderShorthandValue(value) {
   return webKssModule.KssParser_KssCSSBorderShorthand(null, null, null, String(value ?? ""));
 }
 
+function webStyleDeclarationLines(style) {
+  const lines = [];
+  const cssValue = (name, value) => value === undefined || value === null || value === ""
+    ? "" : webStyleCSSValue(name, value);
+  const facts = {
+    background: cssValue("background", style.background),
+    background_end: cssValue("background", style["background-end"]),
+    offset_x: cssValue("--kry-offset-x", style["offset-x"]),
+    offset_y: cssValue("--kry-offset-y", style["offset-y"]),
+    transform: cssValue("transform", style.transform)
+  };
+  const hasOffsets = webKssModule.KssParser_KssCSSHasOffsets(null, null, null, facts);
+  for (const [name, value] of Object.entries(style)) {
+    if (value === undefined || value === null || value === "")
+      continue;
+    const expansion = webKssModule.KssParser_KssCSSExpandDeclaration(null, null, null,
+      name, String(value), hasOffsets);
+    for (const property of [expansion.first, expansion.second]) {
+      if (property)
+        lines.push(`  ${property}: ${webStyleCSSValue(property, value)};`);
+    }
+  }
+  for (let index = 0; index < 4; index++) {
+    const output = webKssModule.KssParser_KssCSSEffectAt(null, null, null, facts, index);
+    if (output.name) {
+      const value = output.prefix + output.first + output.separator + output.second + output.suffix;
+      lines.push(`  ${output.name}: ${value};`);
+    }
+  }
+  return lines;
+}
+
 function webStyleRuleToCSS(rule) {
   const selector = webStyleSelectorToCSS(rule.selector);
-  const lines = [];
-  const style = rule.style || {};
-  const offsetX = style["offset-x"];
-  const offsetY = style["offset-y"];
-  const backgroundStart = style.background;
-  const backgroundEnd = style["background-end"];
-  for (const [name, value] of Object.entries(rule.style || {})) {
-    if (name === "padding-x") {
-      const cssValue = webStyleCSSValue("padding-left", value);
-      lines.push(`  padding-left: ${cssValue};`);
-      lines.push(`  padding-right: ${cssValue};`);
-      continue;
-    }
-    if (name === "padding-y") {
-      const cssValue = webStyleCSSValue("padding-top", value);
-      lines.push(`  padding-top: ${cssValue};`);
-      lines.push(`  padding-bottom: ${cssValue};`);
-      continue;
-    }
-    if (name === "margin-x") {
-      const cssValue = webStyleCSSValue("margin-left", value);
-      lines.push(`  margin-left: ${cssValue};`);
-      lines.push(`  margin-right: ${cssValue};`);
-      continue;
-    }
-    if (name === "margin-y") {
-      const cssValue = webStyleCSSValue("margin-top", value);
-      lines.push(`  margin-top: ${cssValue};`);
-      lines.push(`  margin-bottom: ${cssValue};`);
-      continue;
-    }
-    if (name === "offset-x" || name === "offset-y")
-      continue;
-    if (name === "transform" &&
-        ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
-         (offsetY !== undefined && offsetY !== null && offsetY !== "")))
-      continue;
-    if (name === "content-offset-y") {
-      lines.push(`  --kry-content-offset-y: ${webStyleCSSValue("--kry-content-offset-y", value)};`);
-      continue;
-    }
-    if (name === "content-offset-x") {
-      lines.push(`  --kry-content-offset-x: ${webStyleCSSValue("--kry-content-offset-x", value)};`);
-      continue;
-    }
-    if (name === "icon-size") {
-      lines.push(`  --kry-icon-size: ${webStyleCSSValue("--kry-icon-size", value)};`);
-      continue;
-    }
-    if (name === "background-end") {
-      lines.push(`  --kry-background-end: ${webStyleCSSValue("--kry-background-end", value)};`);
-      continue;
-    }
-    const line = webStyleValueToCSS(name, value);
-    if (line)
-      lines.push(line);
-  }
-  if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
-      backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
-    lines.push(`  background-image: linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)});`);
-  if (offsetX !== undefined && offsetX !== null && offsetX !== "")
-    lines.push(`  --kry-offset-x: ${webStyleCSSValue("--kry-offset-x", offsetX)};`);
-  if (offsetY !== undefined && offsetY !== null && offsetY !== "")
-    lines.push(`  --kry-offset-y: ${webStyleCSSValue("--kry-offset-y", offsetY)};`);
-  if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
-      (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
-    const transform = style.transform ? ` ${webStyleCSSValue("transform", style.transform)}` : "";
-    lines.push(`  transform: translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))${transform};`);
-  }
+  const lines = webStyleDeclarationLines(rule.style || {});
   if (!lines.length)
     return "";
   return `${selector} {\n${lines.join("\n")}\n}`;
@@ -3656,12 +3608,7 @@ function webKeyframesToCSS(keyframes) {
     const selector = webKeyframeSelectorToCSS(frame.selector);
     if (!selector)
       continue;
-    const lines = [];
-    for (const [name, value] of Object.entries(frame.style || {})) {
-      const line = webStyleValueToCSS(name, value);
-      if (line)
-        lines.push("  " + line);
-    }
+    const lines = webStyleDeclarationLines(frame.style || {}).map((line) => "  " + line);
     if (lines.length)
       frames.push(`  ${selector} {\n${lines.join("\n")}\n  }`);
   }

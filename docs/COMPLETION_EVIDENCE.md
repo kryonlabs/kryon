@@ -561,3 +561,42 @@ values before installing the stylesheet, then checks exported CSS after removing
 inline styles. Go uses gofmt; the Kry formatter ran on a review copy, and its
 unrelated continuation-indentation rewrites were inspected and omitted.
 `git diff --check` passes.
+
+## Shared declaration expansion for rules and keyframes
+
+The recorded `padding-x` keyframe mismatch is fixed. `KssCSSExpandDeclaration`
+now decides paired padding/margin expansion, content offsets, icon-size and
+background-end storage, border shorthand, and deferred offset/transform output.
+`KssCSSEffectAt` owns gradient construction, offset variables, and composed
+transform recipes. Outputs borrow their value fragments rather than imposing
+an output-buffer length limit. `webStyleDeclarationLines` supplies values and
+emits those decisions for both ordinary rules and keyframes; the separate
+host axis/effect branch chain and single-property keyframe emitter are removed.
+
+Twenty-six expansion and twelve effect fixture rows execute on C, Go, and JS.
+They cover both sides of all axes, explicit zero, absent values, unsupported
+properties, aliases, deferred transforms, missing gradient endpoints, one-axis
+offsets, composed transforms, and invalid effect indices. Integration compares
+complete ordinary-rule and keyframe declarations, including content offsets
+and icon size. Chromium drives a paused animation to both endpoints and checks
+all padding/margin sides, offsets with scale, and gradient presence.
+
+Remaining work includes inline composite application and precedence, selector
+and state/attribute CSS mappings, specificity conformance, and the other plan
+phases. Inline currently resets a missing offset axis to zero while exported
+CSS omits that custom declaration and uses the transform's variable fallback;
+reconcile this deliberately when sharing inline emission. Inline also applies
+an explicit `background-image` after constructing its gradient, whereas CSS
+export appends the gradient after ordinary declarations. Resolve and test that
+precedence divergence during inline migration. The DOM style handoff now makes
+clear that browser-only availability still uses shared `.kry` implementation.
+No original plan is fully closed by this change.
+
+Verification: `build/css-expansion/verify.log` ends with `RESULT 0`.
+Generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated
+provenance, and all five style guards pass. The browser animation is paused
+and explicitly sampled at 0 and 10000 ms, verifying both authored endpoints.
+Go uses gofmt; the Kry formatter ran on a review copy, with unrelated
+continuation-indentation rewrites inspected and omitted. `git diff --check`
+passes. Original plan documents remain because required work is still open.

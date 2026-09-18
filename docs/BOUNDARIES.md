@@ -46,8 +46,10 @@ platform adapters supply storage, I/O, DOM observations, and output sinks.
 The CSS property allowlist and aliases use `KssCSSPropertyName`; numeric units
 and border shorthand classification use generated decisions too. Browser code
 must not restore its own property map, unitless list, or whitespace classifier.
-Composite declaration/effect expansion and complete emission still need to move
-into shared KSS code; consuming these helpers alone does not close that work.
+Ordinary-rule and keyframe declaration/effect decisions now come from
+`KssCSSExpandDeclaration` and `KssCSSEffectAt`; the host joins their fragments
+and writes CSS. Inline composite application, selector serialization, and other
+remaining CSS decisions still need migration; these helpers do not close all KSS work.
 
 ## Belongs In Kryon
 

@@ -1,0 +1,26 @@
+padding-x	3	0	padding-left	padding-right
+padding-x	0	0	padding-left	padding-right
+padding-x	<empty>	0	<empty>	<empty>
+padding-y	3	0	padding-top	padding-bottom
+padding-y	0	0	padding-top	padding-bottom
+padding-y	<empty>	0	<empty>	<empty>
+margin-x	3	0	margin-left	margin-right
+margin-x	0	0	margin-left	margin-right
+margin-x	<empty>	0	<empty>	<empty>
+margin-y	3	0	margin-top	margin-bottom
+margin-y	0	0	margin-top	margin-bottom
+margin-y	<empty>	0	<empty>	<empty>
+border	red	0	border-color	<empty>
+border	2px solid red	0	border	<empty>
+transform	rotate(10deg)	0	transform	<empty>
+transform	rotate(10deg)	1	<empty>	<empty>
+offset-x	0	0	<empty>	<empty>
+offset-y	3	1	<empty>	<empty>
+content-offset-x	3	0	--kry-content-offset-x	<empty>
+content-offset-y	0	0	--kry-content-offset-y	<empty>
+icon-size	12	0	--kry-icon-size	<empty>
+background-end	red	0	--kry-background-end	<empty>
+material	glass	0	<empty>	<empty>
+unknown	3	0	<empty>	<empty>
+--custom	0	0	--custom	<empty>
+foreground	red	0	color	<empty>

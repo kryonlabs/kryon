@@ -72,7 +72,11 @@ CSS export's property vocabulary now reuses `KssCSSPropertyKind` through
 module owns aliases, numeric-unit decisions (`KssCSSNeedsPixels`), and border
 shorthand classification (`KssCSSBorderShorthand`). Inline application and CSS
 export share the latter decisions. Hosts retain value storage and string output;
-composite property expansion and effect emission remain migration work.
+ordinary-rule and keyframe property expansion and effect recipes also run in
+shared code. `KssCSSExpandDeclaration` yields property names, and
+`KssCSSEffectAt` yields borrowed output fragments, avoiding fixed-buffer
+truncation. One browser output adapter consumes those results for both contexts.
+Inline composite application and its precedence rules remain migration work.
 
 ## Public API
 

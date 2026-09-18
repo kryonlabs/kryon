@@ -2495,8 +2495,23 @@ fields do not receive `px`; other numeric values do, including custom values
 under the existing adapter contract. This is not a general CSS value validator.
 `KssCSSBorderShorthand` preserves the existing border-color alias decision:
 internal whitespace in a trimmed value selects border shorthand. It recognizes
-the adapter's ASCII and Unicode whitespace. Composite values and effects still
-have separate host emission paths pending their shared migration.
+the adapter's ASCII and Unicode whitespace. `KssCSSExpandDeclaration` takes a property name, its nonempty value text,
+and whether the style has offsets. It returns up to two property names, expands
+paired padding/margin axes and content/icon fields, chooses border shorthand,
+and defers offset/composed-transform output to shared effect recipes.
+
+`KssCSSEffectFacts` contains already formatted background, background-end,
+offset-x, offset-y, and transform strings; empty text means absent and `0px`
+is present. `KssCSSHasOffsets` supplies the composition decision.
+`KssCSSEffectAt` returns `KssCSSOutput` for slots 0–3: gradient, x offset,
+y offset, composed transform. Empty and out-of-range slots have no name.
+Emit each nonempty output as its name and the concatenation of `prefix`,
+`first`, `separator`, `second`, and `suffix`. These are borrowed fragments,
+without a fixed-size result buffer. Inputs must remain valid while emitting.
+Emit effects after ordinary declarations in slot order. Ordinary rules and
+keyframes share this expansion, including axis pairs, gradients, and combined
+transforms. Inline application still has separate composite ordering pending
+its migration.
 
 ### Style field presence and structural metrics
 

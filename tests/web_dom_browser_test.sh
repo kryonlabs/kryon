@@ -1090,6 +1090,47 @@ try {
       "exported shared CSS property mismatch: " + property);
   removeUnitStyle();
   unitTarget.remove();
+  const expansionRuntime = kryon.createRuntime();
+  kryon.beginFrame(expansionRuntime);
+  kryon.widget(expansionRuntime, "Button", {class: "expansion-probe", label: "Expansion"}, null,
+    {path: "Expansion"});
+  kryon.endFrame(expansionRuntime);
+  const expansionSheet = kryon.parseWebStyleSheet(\`
+    .expansion-probe { animation: expansion-probe 10s linear paused both; }
+    @keyframes expansion-probe {
+      from { padding-x: 0; padding-y: 2; margin-x: 3; margin-y: 4;
+        offset-x: 0; offset-y: 5; transform: scale(2);
+        background: #112233; background-end: #445566; }
+      to { padding-x: 8; padding-y: 10; margin-x: 12; margin-y: 14;
+        offset-x: 6; offset-y: 7; transform: scale(3);
+        background: #112233; background-end: #445566; }
+    }
+  \`);
+  const expansionTarget = document.createElement("div");
+  document.body.appendChild(expansionTarget);
+  kryon.renderWebDocument(expansionRuntime, expansionTarget);
+  const removeExpansionStyle = kryon.installWebStyleSheet(expansionSheet, null, "css-expansion-validation");
+  const expansionElement = kryon.findWebElement(expansionTarget, "Expansion");
+  const animation = expansionElement.getAnimations()[0];
+  assert(animation, "expanded keyframes did not create a browser animation");
+  animation.pause();
+  for (const [time, expected] of [[0, [0, 2, 3, 4, "matrix(2, 0, 0, 2, 0, 5)"]],
+    [10000, [8, 10, 12, 14, "matrix(3, 0, 0, 3, 6, 7)"]]]) {
+    animation.currentTime = time;
+    const computed = getComputedStyle(expansionElement);
+    for (const [property, value] of Object.entries({
+      paddingLeft: expected[0], paddingRight: expected[0],
+      paddingTop: expected[1], paddingBottom: expected[1],
+      marginLeft: expected[2], marginRight: expected[2],
+      marginTop: expected[3], marginBottom: expected[3]
+    }))
+      assert(computed[property] === value + "px", "keyframe axis expansion mismatch: " + property);
+    assert(computed.transform === expected[4], "keyframe offset/transform expansion mismatch");
+    assert(computed.backgroundImage.includes("linear-gradient"), "keyframe gradient missing");
+  }
+  animation.cancel();
+  removeExpansionStyle();
+  expansionTarget.remove();
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

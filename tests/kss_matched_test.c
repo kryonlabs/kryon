@@ -659,6 +659,59 @@ test_selector_chains(void)
 }
 
 static void
+test_css_expansion(void)
+{
+    const char *paths[] = {"tests/fixtures/kss/css-expansion.tsv", "tests/fixtures/kss/css-effects.tsv"};
+    const int totals[] = {26, 12};
+    for(int fixture = 0; fixture < 2; fixture++) {
+        FILE *file = fopen(paths[fixture], "r");
+        char line[1024];
+        int count = 0;
+        assert(file != NULL);
+        while(fgets(line, sizeof(line), file) != NULL) {
+            line[strcspn(line, "\r\n")] = '\0';
+            char *fields[8] = {line};
+            int columns = fixture == 0 ? 5 : 8;
+            for(int i = 1; i < columns; i++) {
+                char *separator = strchr(fields[i - 1], '\t');
+                assert(separator != NULL);
+                *separator = '\0';
+                fields[i] = separator + 1;
+            }
+            String values[8] = {0};
+            for(int i = 0; i < columns; i++) {
+                if(strcmp(fields[i], "<empty>") == 0)
+                    fields[i] = "";
+                values[i] = StringView(fields[i], strlen(fields[i]));
+            }
+            if(fixture == 0) {
+                KssCSSExpansion expansion = KssCSSExpandDeclaration(values[0], values[1], atoi(fields[2]) != 0);
+                assert(StringEqual(expansion.first, values[3]));
+                assert(StringEqual(expansion.second, values[4]));
+            } else {
+                KssCSSEffectFacts facts = {values[0], values[1], values[2], values[3], values[4]};
+                assert(KssCSSHasOffsets(facts) == (values[2].length > 0 || values[3].length > 0));
+                KssCSSOutput output = KssCSSEffectAt(facts, atoi(fields[5]));
+                assert(StringEqual(output.name, values[6]));
+                String parts[] = {output.prefix, output.first, output.separator, output.second, output.suffix};
+                char text[512];
+                size_t length = 0;
+                for(int i = 0; i < 5; i++) {
+                    assert(length + parts[i].length <= sizeof(text));
+                    if(parts[i].length > 0)
+                        memcpy(text + length, parts[i].data, parts[i].length);
+                    length += parts[i].length;
+                }
+                assert(StringEqual(StringView(text, length), values[7]));
+            }
+            count++;
+        }
+        assert(count == totals[fixture]);
+        fclose(file);
+    }
+}
+
+static void
 test_css_properties(void)
 {
     FILE *file = fopen("tests/fixtures/kss/css-properties.tsv", "r");
@@ -736,6 +789,7 @@ main(void)
     test_selector_chains();
     test_nth_formulas();
     test_css_properties();
+    test_css_expansion();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

@@ -27,7 +27,9 @@ data attrs, ARIA attrs, and native attrs.
 
 - KSS agents should target DOM facts, not direct renderer internals.
 - DOM agents should expose facts first, then style support can consume them.
-- If a property only exists in browser CSS, keep it in the web CSS export layer.
+- If a property only exists in browser CSS, keep it in the web CSS contract,
+  implemented by shared `.kry` policy consumed by the export adapter. Browser-only
+  availability is not a reason to hand-write its language decisions in JavaScript.
 - If a property affects native backends too, define its Kry/KSS meaning before
   adding browser-only behavior.
 
@@ -38,3 +40,9 @@ data attrs, ARIA attrs, and native attrs.
 - Mounted `webDOMStyleFacts(...)` and `webDOMStyleTrace(...)` match pre-mount
   style facts and traces.
 - Browser tests show installed KSS affects real DOM nodes.
+
+Current progress and remaining divergences are recorded in
+[the completion evidence ledger](../../docs/COMPLETION_EVIDENCE.md). Shared
+`.kry` now owns ordinary-rule/keyframe declaration expansion and effect recipes.
+Inline precedence and mounted-fact alignment remain required before closing
+steps 2–4; passing export tests alone does not prove the whole contract.
