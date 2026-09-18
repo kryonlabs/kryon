@@ -44,25 +44,32 @@ type StyleSheet struct {
 	RuleCount int32
 }
 
+type StylePriority struct {
+	Present     bool
+	Layer       int32
+	Specificity int32
+	Order       int32
+}
+
 type StyleCascade struct {
-	Result             StyleData
-	BackgroundScore    int32
-	ForegroundScore    int32
-	BorderScore        int32
-	FocusScore         int32
-	RadiusScore        int32
-	BorderWidthScore   int32
-	OpacityScore       int32
-	PaddingXScore      int32
-	PaddingYScore      int32
-	GapScore           int32
-	FontSizeScore      int32
-	IconSizeScore      int32
-	ContentOffsetScore int32
-	BackgroundEndScore int32
-	MaterialScore      int32
-	TypefaceScore      int32
-	LetterSpacingScore int32
+	Result                StyleData
+	BackgroundPriority    StylePriority
+	ForegroundPriority    StylePriority
+	BorderPriority        StylePriority
+	FocusPriority         StylePriority
+	RadiusPriority        StylePriority
+	BorderWidthPriority   StylePriority
+	OpacityPriority       StylePriority
+	PaddingXPriority      StylePriority
+	PaddingYPriority      StylePriority
+	GapPriority           StylePriority
+	FontSizePriority      StylePriority
+	IconSizePriority      StylePriority
+	ContentOffsetPriority StylePriority
+	BackgroundEndPriority StylePriority
+	MaterialPriority      StylePriority
+	TypefacePriority      StylePriority
+	LetterSpacingPriority StylePriority
 }
 
 func StyleSheet_StyleAny() int32 {
@@ -620,113 +627,151 @@ func StyleSheet_StyleSelectorMatches(selector StyleSelector, facts StyleFacts) b
 	return value_64
 }
 
-func StyleSheet_StyleSelectorSpecificity(selector StyleSelector) int32 {
-	var value_0 int32 = 0
-	var score int32 = value_0
-	var value_1 int32 = selector.Kind
-	var value_2 int32 = StyleSheet_StyleKindAny()
-	var value_3 bool = value_1 != value_2
-	if value_3 {
-		var value_4 int32 = score
-		var value_5 int32 = 1
-		score = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
-	}
-	var value_6 int32 = selector.Role
-	var value_7 int32 = StyleSheet_StyleAny()
-	var value_8 bool = value_6 != value_7
-	if value_8 {
-		var value_9 int32 = score
-		var value_10 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 1))
-	}
-	var value_11 int32 = selector.Tone
-	var value_12 int32 = StyleSheet_StyleAny()
-	var value_13 bool = value_11 != value_12
-	if value_13 {
-		var value_14 int32 = score
-		var value_15 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 1))
-	}
-	var value_16 int32 = selector.Emphasis
-	var value_17 int32 = StyleSheet_StyleAny()
-	var value_18 bool = value_16 != value_17
-	if value_18 {
-		var value_19 int32 = score
-		var value_20 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_19), uint64(value_20), 32, true, 1))
-	}
-	var value_21 int32 = selector.Size
-	var value_22 int32 = StyleSheet_StyleAny()
-	var value_23 bool = value_21 != value_22
-	if value_23 {
-		var value_24 int32 = score
-		var value_25 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_24), uint64(value_25), 32, true, 1))
-	}
-	var value_26 int32 = selector.State
-	var value_27 int32 = StyleSheet_StyleAny()
-	var value_28 bool = value_26 != value_27
-	if value_28 {
-		var value_29 int32 = score
-		var value_30 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_29), uint64(value_30), 32, true, 1))
-	}
-	var value_31 int32 = selector.Validation
-	var value_32 int32 = StyleSheet_StyleAny()
-	var value_33 bool = value_31 != value_32
-	if value_33 {
-		var value_34 int32 = score
-		var value_35 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
-	}
-	var value_36 int32 = selector.Orientation
-	var value_37 int32 = StyleSheet_StyleAny()
-	var value_38 bool = value_36 != value_37
-	if value_38 {
-		var value_39 int32 = score
-		var value_40 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
-	}
-	var value_41 int32 = selector.Placement
-	var value_42 int32 = StyleSheet_StyleAny()
-	var value_43 bool = value_41 != value_42
-	if value_43 {
-		var value_44 int32 = score
-		var value_45 int32 = 10
-		score = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 1))
-	}
-	var value_46 int32 = selector.ClassName
-	var value_47 int32 = 0
-	var value_48 bool = value_46 != value_47
-	if value_48 {
-		var value_49 int32 = score
-		var value_50 int32 = 20
-		score = int32(number_runtime_bits(uint64(value_49), uint64(value_50), 32, true, 1))
-	}
-	var value_51 int32 = selector.Name
-	var value_52 int32 = 0
-	var value_53 bool = value_51 != value_52
-	if value_53 {
-		var value_54 int32 = score
-		var value_55 int32 = 100
-		score = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 1))
-	}
-	var value_56 int32 = score
-	return value_56
+func StyleSheet_StyleSpecificity(kinds int32, attributes int32, classes int32, names int32) int32 {
+	var value_0 int32 = kinds
+	var value_1 int32 = attributes
+	var value_2 int32 = 10
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, true, 3))
+	var value_4 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_3), 32, true, 1))
+	var value_5 int32 = classes
+	var value_6 int32 = 20
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_5), uint64(value_6), 32, true, 3))
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
+	var value_9 int32 = names
+	var value_10 int32 = 100
+	var value_11 int32 = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 3))
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_8), uint64(value_11), 32, true, 1))
+	return value_12
 }
 
-func StyleSheet_StyleRuleScore(rule StyleRule) int32 {
-	var value_0 int32 = rule.Layer
+func StyleSheet_StyleSelectorSpecificity(selector StyleSelector) int32 {
+	var value_0 int32 = 0
+	var kinds int32 = value_0
+	var value_1 int32 = 0
+	var attributes int32 = value_1
+	var value_2 int32 = 0
+	var classes int32 = value_2
+	var value_3 int32 = 0
+	var names int32 = value_3
+	var value_4 int32 = selector.Kind
+	var value_5 int32 = StyleSheet_StyleKindAny()
+	var value_6 bool = value_4 != value_5
+	if value_6 {
+		var value_7 int32 = 1
+		kinds = value_7
+	}
+	var value_8 int32 = selector.Role
+	var value_9 int32 = StyleSheet_StyleAny()
+	var value_10 bool = value_8 != value_9
+	if value_10 {
+		var value_11 int32 = attributes
+		var value_12 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
+	}
+	var value_13 int32 = selector.Tone
+	var value_14 int32 = StyleSheet_StyleAny()
+	var value_15 bool = value_13 != value_14
+	if value_15 {
+		var value_16 int32 = attributes
+		var value_17 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
+	}
+	var value_18 int32 = selector.Emphasis
+	var value_19 int32 = StyleSheet_StyleAny()
+	var value_20 bool = value_18 != value_19
+	if value_20 {
+		var value_21 int32 = attributes
+		var value_22 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_21), uint64(value_22), 32, true, 1))
+	}
+	var value_23 int32 = selector.Size
+	var value_24 int32 = StyleSheet_StyleAny()
+	var value_25 bool = value_23 != value_24
+	if value_25 {
+		var value_26 int32 = attributes
+		var value_27 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_26), uint64(value_27), 32, true, 1))
+	}
+	var value_28 int32 = selector.State
+	var value_29 int32 = StyleSheet_StyleAny()
+	var value_30 bool = value_28 != value_29
+	if value_30 {
+		var value_31 int32 = attributes
+		var value_32 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
+	}
+	var value_33 int32 = selector.Validation
+	var value_34 int32 = StyleSheet_StyleAny()
+	var value_35 bool = value_33 != value_34
+	if value_35 {
+		var value_36 int32 = attributes
+		var value_37 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 1))
+	}
+	var value_38 int32 = selector.Orientation
+	var value_39 int32 = StyleSheet_StyleAny()
+	var value_40 bool = value_38 != value_39
+	if value_40 {
+		var value_41 int32 = attributes
+		var value_42 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_41), uint64(value_42), 32, true, 1))
+	}
+	var value_43 int32 = selector.Placement
+	var value_44 int32 = StyleSheet_StyleAny()
+	var value_45 bool = value_43 != value_44
+	if value_45 {
+		var value_46 int32 = attributes
+		var value_47 int32 = 1
+		attributes = int32(number_runtime_bits(uint64(value_46), uint64(value_47), 32, true, 1))
+	}
+	var value_48 int32 = selector.ClassName
+	var value_49 int32 = 0
+	var value_50 bool = value_48 != value_49
+	if value_50 {
+		var value_51 int32 = 1
+		classes = value_51
+	}
+	var value_52 int32 = selector.Name
+	var value_53 int32 = 0
+	var value_54 bool = value_52 != value_53
+	if value_54 {
+		var value_55 int32 = 1
+		names = value_55
+	}
+	var value_56 int32 = kinds
+	var value_57 int32 = attributes
+	var value_58 int32 = classes
+	var value_59 int32 = names
+	var value_60 int32 = StyleSheet_StyleSpecificity(value_56, value_57, value_58, value_59)
+	return value_60
+}
+
+func StyleSheet_StylePriorityScore(layer int32, specificity int32, order int32) int32 {
+	var value_0 int32 = layer
 	var value_1 int32 = 1000000
 	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 3))
-	var value_3 StyleSelector = rule.Selector
-	var value_4 int32 = StyleSheet_StyleSelectorSpecificity(value_3)
-	var value_5 int32 = 1000
-	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 3))
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_6), 32, true, 1))
-	var value_8 int32 = rule.Order
-	var value_9 int32 = int32(number_runtime_bits(uint64(value_7), uint64(value_8), 32, true, 1))
-	return value_9
+	var value_3 int32 = specificity
+	var value_4 int32 = 1000
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 3))
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_5), 32, true, 1))
+	var value_7 int32 = order
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 1))
+	return value_8
+}
+
+func StyleSheet_StyleRulePriority(rule StyleRule) StylePriority {
+	var priority StylePriority = StylePriority{}
+	var value_0 bool = true
+	priority.Present = value_0
+	var value_1 int32 = rule.Layer
+	priority.Layer = value_1
+	var value_2 StyleSelector = rule.Selector
+	var value_3 int32 = StyleSheet_StyleSelectorSpecificity(value_2)
+	priority.Specificity = value_3
+	var value_4 int32 = rule.Order
+	priority.Order = value_4
+	var value_5 StylePriority = priority
+	return value_5
 }
 
 func StyleSheet_StyleRuleMatchesState(rule_state int32, active_state int32) bool {
@@ -765,11 +810,41 @@ func StyleSheet_StyleRuleMatches(rule StyleRule, facts StyleFacts, active_state 
 	return value_7
 }
 
-func StyleSheet_StyleWins(score int32, current int32) bool {
-	var value_0 int32 = score
-	var value_1 int32 = current
-	var value_2 bool = value_0 >= value_1
-	return value_2
+func StyleSheet_StylePriorityWins(priority StylePriority, current StylePriority) bool {
+	var value_0 bool = priority.Present
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 bool = false
+		return value_2
+	}
+	var value_3 bool = current.Present
+	var value_4 bool = !value_3
+	if value_4 {
+		var value_5 bool = true
+		return value_5
+	}
+	var value_6 int32 = priority.Layer
+	var value_7 int32 = current.Layer
+	var value_8 bool = value_6 != value_7
+	if value_8 {
+		var value_9 int32 = priority.Layer
+		var value_10 int32 = current.Layer
+		var value_11 bool = value_9 > value_10
+		return value_11
+	}
+	var value_12 int32 = priority.Specificity
+	var value_13 int32 = current.Specificity
+	var value_14 bool = value_12 != value_13
+	if value_14 {
+		var value_15 int32 = priority.Specificity
+		var value_16 int32 = current.Specificity
+		var value_17 bool = value_15 > value_16
+		return value_17
+	}
+	var value_18 int32 = priority.Order
+	var value_19 int32 = current.Order
+	var value_20 bool = value_18 >= value_19
+	return value_20
 }
 
 func StyleSheet_BeginStyleCascade(base StyleData) StyleCascade {
@@ -791,8 +866,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		return value_5
 	}
 	var value_6 StyleRule = rule
-	var value_7 int32 = StyleSheet_StyleRuleScore(value_6)
-	var score int32 = value_7
+	var value_7 StylePriority = StyleSheet_StyleRulePriority(value_6)
+	var priority StylePriority = value_7
 	var value_8 StyleData = rule.Style
 	var style StyleData = value_8
 	var value_9 uint32 = style.Fields
@@ -804,9 +879,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_15 bool = value_12 != value_14
 	var value_16 bool = value_15
 	if value_16 {
-		var value_17 int32 = score
-		var value_18 int32 = cascade.BackgroundScore
-		var value_19 bool = StyleSheet_StyleWins(value_17, value_18)
+		var value_17 StylePriority = priority
+		var value_18 StylePriority = cascade.BackgroundPriority
+		var value_19 bool = StyleSheet_StylePriorityWins(value_17, value_18)
 		value_16 = value_19
 	}
 	if value_16 {
@@ -817,8 +892,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
 		var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 9))
 		cascade.Result.Fields = value_24
-		var value_25 int32 = score
-		cascade.BackgroundScore = value_25
+		var value_25 StylePriority = priority
+		cascade.BackgroundPriority = value_25
 	}
 	var value_26 uint32 = style.Fields
 	var value_27 int32 = int32(StyleForeground)
@@ -829,9 +904,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_32 bool = value_29 != value_31
 	var value_33 bool = value_32
 	if value_33 {
-		var value_34 int32 = score
-		var value_35 int32 = cascade.ForegroundScore
-		var value_36 bool = StyleSheet_StyleWins(value_34, value_35)
+		var value_34 StylePriority = priority
+		var value_35 StylePriority = cascade.ForegroundPriority
+		var value_36 bool = StyleSheet_StylePriorityWins(value_34, value_35)
 		value_33 = value_36
 	}
 	if value_33 {
@@ -842,8 +917,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
 		var value_41 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(value_40), 32, false, 9))
 		cascade.Result.Fields = value_41
-		var value_42 int32 = score
-		cascade.ForegroundScore = value_42
+		var value_42 StylePriority = priority
+		cascade.ForegroundPriority = value_42
 	}
 	var value_43 uint32 = style.Fields
 	var value_44 int32 = int32(StyleBorder)
@@ -854,9 +929,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_49 bool = value_46 != value_48
 	var value_50 bool = value_49
 	if value_50 {
-		var value_51 int32 = score
-		var value_52 int32 = cascade.BorderScore
-		var value_53 bool = StyleSheet_StyleWins(value_51, value_52)
+		var value_51 StylePriority = priority
+		var value_52 StylePriority = cascade.BorderPriority
+		var value_53 bool = StyleSheet_StylePriorityWins(value_51, value_52)
 		value_50 = value_53
 	}
 	if value_50 {
@@ -867,8 +942,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_57 uint32 = uint32(number_runtime_bits(uint64(value_56), uint64(0), 32, false, 0))
 		var value_58 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(value_57), 32, false, 9))
 		cascade.Result.Fields = value_58
-		var value_59 int32 = score
-		cascade.BorderScore = value_59
+		var value_59 StylePriority = priority
+		cascade.BorderPriority = value_59
 	}
 	var value_60 uint32 = style.Fields
 	var value_61 int32 = int32(StyleFocus)
@@ -879,9 +954,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_66 bool = value_63 != value_65
 	var value_67 bool = value_66
 	if value_67 {
-		var value_68 int32 = score
-		var value_69 int32 = cascade.FocusScore
-		var value_70 bool = StyleSheet_StyleWins(value_68, value_69)
+		var value_68 StylePriority = priority
+		var value_69 StylePriority = cascade.FocusPriority
+		var value_70 bool = StyleSheet_StylePriorityWins(value_68, value_69)
 		value_67 = value_70
 	}
 	if value_67 {
@@ -892,8 +967,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_74 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(0), 32, false, 0))
 		var value_75 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(value_74), 32, false, 9))
 		cascade.Result.Fields = value_75
-		var value_76 int32 = score
-		cascade.FocusScore = value_76
+		var value_76 StylePriority = priority
+		cascade.FocusPriority = value_76
 	}
 	var value_77 uint32 = style.Fields
 	var value_78 int32 = int32(StyleRadius)
@@ -904,9 +979,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_83 bool = value_80 != value_82
 	var value_84 bool = value_83
 	if value_84 {
-		var value_85 int32 = score
-		var value_86 int32 = cascade.RadiusScore
-		var value_87 bool = StyleSheet_StyleWins(value_85, value_86)
+		var value_85 StylePriority = priority
+		var value_86 StylePriority = cascade.RadiusPriority
+		var value_87 bool = StyleSheet_StylePriorityWins(value_85, value_86)
 		value_84 = value_87
 	}
 	if value_84 {
@@ -917,8 +992,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_91 uint32 = uint32(number_runtime_bits(uint64(value_90), uint64(0), 32, false, 0))
 		var value_92 uint32 = uint32(number_runtime_bits(uint64(value_89), uint64(value_91), 32, false, 9))
 		cascade.Result.Fields = value_92
-		var value_93 int32 = score
-		cascade.RadiusScore = value_93
+		var value_93 StylePriority = priority
+		cascade.RadiusPriority = value_93
 	}
 	var value_94 uint32 = style.Fields
 	var value_95 int32 = int32(StyleBorderWidth)
@@ -929,9 +1004,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_100 bool = value_97 != value_99
 	var value_101 bool = value_100
 	if value_101 {
-		var value_102 int32 = score
-		var value_103 int32 = cascade.BorderWidthScore
-		var value_104 bool = StyleSheet_StyleWins(value_102, value_103)
+		var value_102 StylePriority = priority
+		var value_103 StylePriority = cascade.BorderWidthPriority
+		var value_104 bool = StyleSheet_StylePriorityWins(value_102, value_103)
 		value_101 = value_104
 	}
 	if value_101 {
@@ -942,8 +1017,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_108 uint32 = uint32(number_runtime_bits(uint64(value_107), uint64(0), 32, false, 0))
 		var value_109 uint32 = uint32(number_runtime_bits(uint64(value_106), uint64(value_108), 32, false, 9))
 		cascade.Result.Fields = value_109
-		var value_110 int32 = score
-		cascade.BorderWidthScore = value_110
+		var value_110 StylePriority = priority
+		cascade.BorderWidthPriority = value_110
 	}
 	var value_111 uint32 = style.Fields
 	var value_112 int32 = int32(StyleOpacity)
@@ -954,9 +1029,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_117 bool = value_114 != value_116
 	var value_118 bool = value_117
 	if value_118 {
-		var value_119 int32 = score
-		var value_120 int32 = cascade.OpacityScore
-		var value_121 bool = StyleSheet_StyleWins(value_119, value_120)
+		var value_119 StylePriority = priority
+		var value_120 StylePriority = cascade.OpacityPriority
+		var value_121 bool = StyleSheet_StylePriorityWins(value_119, value_120)
 		value_118 = value_121
 	}
 	if value_118 {
@@ -967,8 +1042,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
 		var value_126 uint32 = uint32(number_runtime_bits(uint64(value_123), uint64(value_125), 32, false, 9))
 		cascade.Result.Fields = value_126
-		var value_127 int32 = score
-		cascade.OpacityScore = value_127
+		var value_127 StylePriority = priority
+		cascade.OpacityPriority = value_127
 	}
 	var value_128 uint32 = style.Fields
 	var value_129 int32 = int32(StylePaddingX)
@@ -979,9 +1054,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_134 bool = value_131 != value_133
 	var value_135 bool = value_134
 	if value_135 {
-		var value_136 int32 = score
-		var value_137 int32 = cascade.PaddingXScore
-		var value_138 bool = StyleSheet_StyleWins(value_136, value_137)
+		var value_136 StylePriority = priority
+		var value_137 StylePriority = cascade.PaddingXPriority
+		var value_138 bool = StyleSheet_StylePriorityWins(value_136, value_137)
 		value_135 = value_138
 	}
 	if value_135 {
@@ -992,8 +1067,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_142 uint32 = uint32(number_runtime_bits(uint64(value_141), uint64(0), 32, false, 0))
 		var value_143 uint32 = uint32(number_runtime_bits(uint64(value_140), uint64(value_142), 32, false, 9))
 		cascade.Result.Fields = value_143
-		var value_144 int32 = score
-		cascade.PaddingXScore = value_144
+		var value_144 StylePriority = priority
+		cascade.PaddingXPriority = value_144
 	}
 	var value_145 uint32 = style.Fields
 	var value_146 int32 = int32(StylePaddingY)
@@ -1004,9 +1079,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_151 bool = value_148 != value_150
 	var value_152 bool = value_151
 	if value_152 {
-		var value_153 int32 = score
-		var value_154 int32 = cascade.PaddingYScore
-		var value_155 bool = StyleSheet_StyleWins(value_153, value_154)
+		var value_153 StylePriority = priority
+		var value_154 StylePriority = cascade.PaddingYPriority
+		var value_155 bool = StyleSheet_StylePriorityWins(value_153, value_154)
 		value_152 = value_155
 	}
 	if value_152 {
@@ -1017,8 +1092,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_159 uint32 = uint32(number_runtime_bits(uint64(value_158), uint64(0), 32, false, 0))
 		var value_160 uint32 = uint32(number_runtime_bits(uint64(value_157), uint64(value_159), 32, false, 9))
 		cascade.Result.Fields = value_160
-		var value_161 int32 = score
-		cascade.PaddingYScore = value_161
+		var value_161 StylePriority = priority
+		cascade.PaddingYPriority = value_161
 	}
 	var value_162 uint32 = style.Fields
 	var value_163 int32 = int32(StyleGap)
@@ -1029,9 +1104,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_168 bool = value_165 != value_167
 	var value_169 bool = value_168
 	if value_169 {
-		var value_170 int32 = score
-		var value_171 int32 = cascade.GapScore
-		var value_172 bool = StyleSheet_StyleWins(value_170, value_171)
+		var value_170 StylePriority = priority
+		var value_171 StylePriority = cascade.GapPriority
+		var value_172 bool = StyleSheet_StylePriorityWins(value_170, value_171)
 		value_169 = value_172
 	}
 	if value_169 {
@@ -1042,8 +1117,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_176 uint32 = uint32(number_runtime_bits(uint64(value_175), uint64(0), 32, false, 0))
 		var value_177 uint32 = uint32(number_runtime_bits(uint64(value_174), uint64(value_176), 32, false, 9))
 		cascade.Result.Fields = value_177
-		var value_178 int32 = score
-		cascade.GapScore = value_178
+		var value_178 StylePriority = priority
+		cascade.GapPriority = value_178
 	}
 	var value_179 uint32 = style.Fields
 	var value_180 int32 = int32(StyleFontSize)
@@ -1054,9 +1129,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_185 bool = value_182 != value_184
 	var value_186 bool = value_185
 	if value_186 {
-		var value_187 int32 = score
-		var value_188 int32 = cascade.FontSizeScore
-		var value_189 bool = StyleSheet_StyleWins(value_187, value_188)
+		var value_187 StylePriority = priority
+		var value_188 StylePriority = cascade.FontSizePriority
+		var value_189 bool = StyleSheet_StylePriorityWins(value_187, value_188)
 		value_186 = value_189
 	}
 	if value_186 {
@@ -1067,8 +1142,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_193 uint32 = uint32(number_runtime_bits(uint64(value_192), uint64(0), 32, false, 0))
 		var value_194 uint32 = uint32(number_runtime_bits(uint64(value_191), uint64(value_193), 32, false, 9))
 		cascade.Result.Fields = value_194
-		var value_195 int32 = score
-		cascade.FontSizeScore = value_195
+		var value_195 StylePriority = priority
+		cascade.FontSizePriority = value_195
 	}
 	var value_196 uint32 = style.Fields
 	var value_197 int32 = int32(StyleLetterSpacing)
@@ -1079,9 +1154,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_202 bool = value_199 != value_201
 	var value_203 bool = value_202
 	if value_203 {
-		var value_204 int32 = score
-		var value_205 int32 = cascade.LetterSpacingScore
-		var value_206 bool = StyleSheet_StyleWins(value_204, value_205)
+		var value_204 StylePriority = priority
+		var value_205 StylePriority = cascade.LetterSpacingPriority
+		var value_206 bool = StyleSheet_StylePriorityWins(value_204, value_205)
 		value_203 = value_206
 	}
 	if value_203 {
@@ -1092,8 +1167,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_210 uint32 = uint32(number_runtime_bits(uint64(value_209), uint64(0), 32, false, 0))
 		var value_211 uint32 = uint32(number_runtime_bits(uint64(value_208), uint64(value_210), 32, false, 9))
 		cascade.Result.Fields = value_211
-		var value_212 int32 = score
-		cascade.LetterSpacingScore = value_212
+		var value_212 StylePriority = priority
+		cascade.LetterSpacingPriority = value_212
 	}
 	var value_213 uint32 = style.Fields
 	var value_214 int32 = int32(StyleIconSize)
@@ -1104,9 +1179,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_219 bool = value_216 != value_218
 	var value_220 bool = value_219
 	if value_220 {
-		var value_221 int32 = score
-		var value_222 int32 = cascade.IconSizeScore
-		var value_223 bool = StyleSheet_StyleWins(value_221, value_222)
+		var value_221 StylePriority = priority
+		var value_222 StylePriority = cascade.IconSizePriority
+		var value_223 bool = StyleSheet_StylePriorityWins(value_221, value_222)
 		value_220 = value_223
 	}
 	if value_220 {
@@ -1117,8 +1192,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_227 uint32 = uint32(number_runtime_bits(uint64(value_226), uint64(0), 32, false, 0))
 		var value_228 uint32 = uint32(number_runtime_bits(uint64(value_225), uint64(value_227), 32, false, 9))
 		cascade.Result.Fields = value_228
-		var value_229 int32 = score
-		cascade.IconSizeScore = value_229
+		var value_229 StylePriority = priority
+		cascade.IconSizePriority = value_229
 	}
 	var value_230 uint32 = style.Fields
 	var value_231 int32 = int32(StyleContentOffset)
@@ -1129,9 +1204,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_236 bool = value_233 != value_235
 	var value_237 bool = value_236
 	if value_237 {
-		var value_238 int32 = score
-		var value_239 int32 = cascade.ContentOffsetScore
-		var value_240 bool = StyleSheet_StyleWins(value_238, value_239)
+		var value_238 StylePriority = priority
+		var value_239 StylePriority = cascade.ContentOffsetPriority
+		var value_240 bool = StyleSheet_StylePriorityWins(value_238, value_239)
 		value_237 = value_240
 	}
 	if value_237 {
@@ -1144,8 +1219,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_245 uint32 = uint32(number_runtime_bits(uint64(value_244), uint64(0), 32, false, 0))
 		var value_246 uint32 = uint32(number_runtime_bits(uint64(value_243), uint64(value_245), 32, false, 9))
 		cascade.Result.Fields = value_246
-		var value_247 int32 = score
-		cascade.ContentOffsetScore = value_247
+		var value_247 StylePriority = priority
+		cascade.ContentOffsetPriority = value_247
 	}
 	var value_248 uint32 = style.Fields
 	var value_249 int32 = int32(StyleBackgroundEnd)
@@ -1156,9 +1231,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_254 bool = value_251 != value_253
 	var value_255 bool = value_254
 	if value_255 {
-		var value_256 int32 = score
-		var value_257 int32 = cascade.BackgroundEndScore
-		var value_258 bool = StyleSheet_StyleWins(value_256, value_257)
+		var value_256 StylePriority = priority
+		var value_257 StylePriority = cascade.BackgroundEndPriority
+		var value_258 bool = StyleSheet_StylePriorityWins(value_256, value_257)
 		value_255 = value_258
 	}
 	if value_255 {
@@ -1169,8 +1244,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_262 uint32 = uint32(number_runtime_bits(uint64(value_261), uint64(0), 32, false, 0))
 		var value_263 uint32 = uint32(number_runtime_bits(uint64(value_260), uint64(value_262), 32, false, 9))
 		cascade.Result.Fields = value_263
-		var value_264 int32 = score
-		cascade.BackgroundEndScore = value_264
+		var value_264 StylePriority = priority
+		cascade.BackgroundEndPriority = value_264
 	}
 	var value_265 uint32 = style.Fields
 	var value_266 int32 = int32(StyleMaterial)
@@ -1181,9 +1256,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_271 bool = value_268 != value_270
 	var value_272 bool = value_271
 	if value_272 {
-		var value_273 int32 = score
-		var value_274 int32 = cascade.MaterialScore
-		var value_275 bool = StyleSheet_StyleWins(value_273, value_274)
+		var value_273 StylePriority = priority
+		var value_274 StylePriority = cascade.MaterialPriority
+		var value_275 bool = StyleSheet_StylePriorityWins(value_273, value_274)
 		value_272 = value_275
 	}
 	if value_272 {
@@ -1194,8 +1269,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_279 uint32 = uint32(number_runtime_bits(uint64(value_278), uint64(0), 32, false, 0))
 		var value_280 uint32 = uint32(number_runtime_bits(uint64(value_277), uint64(value_279), 32, false, 9))
 		cascade.Result.Fields = value_280
-		var value_281 int32 = score
-		cascade.MaterialScore = value_281
+		var value_281 StylePriority = priority
+		cascade.MaterialPriority = value_281
 	}
 	var value_282 uint32 = style.Fields
 	var value_283 int32 = int32(StyleTypeface)
@@ -1206,9 +1281,9 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_288 bool = value_285 != value_287
 	var value_289 bool = value_288
 	if value_289 {
-		var value_290 int32 = score
-		var value_291 int32 = cascade.TypefaceScore
-		var value_292 bool = StyleSheet_StyleWins(value_290, value_291)
+		var value_290 StylePriority = priority
+		var value_291 StylePriority = cascade.TypefacePriority
+		var value_292 bool = StyleSheet_StylePriorityWins(value_290, value_291)
 		value_289 = value_292
 	}
 	if value_289 {
@@ -1219,8 +1294,8 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		var value_296 uint32 = uint32(number_runtime_bits(uint64(value_295), uint64(0), 32, false, 0))
 		var value_297 uint32 = uint32(number_runtime_bits(uint64(value_294), uint64(value_296), 32, false, 9))
 		cascade.Result.Fields = value_297
-		var value_298 int32 = score
-		cascade.TypefaceScore = value_298
+		var value_298 StylePriority = priority
+		cascade.TypefacePriority = value_298
 	}
 	var value_299 StyleCascade = cascade
 	return value_299

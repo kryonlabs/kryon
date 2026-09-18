@@ -3,6 +3,7 @@ import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
 import * as webKssModule from "./kss_parser.js";
+import { StyleSheet_StyleSpecificity, StyleSheet_StylePriorityScore, StyleSheet_StylePriorityWins } from "./style_sheet.js";
 
 export const Text8 = 8;
 export const Text12 = 12;
@@ -2990,15 +2991,7 @@ function webDOMRole(node) {
     ? implicit : "";
 }
 
-const webStyleLayers = {
-  reset: 0,
-  base: 0,
-  defaults: 0,
-  components: 1,
-  widgets: 1,
-  app: 2,
-  overrides: 3
-};
+
 
 function stripKssComments(source) {
   return String(source || "")
@@ -3125,6 +3118,9 @@ function splitSelectorList(text) {
 }
 
 function parseSimpleSelector(text) {
+  let attributes = 0;
+  let classes = 0;
+  let names = 0;
   let source = String(text || "").trim();
   const selector = {
     kind: "*",
@@ -3142,7 +3138,7 @@ function parseSimpleSelector(text) {
   source = source.replace(/\[([A-Za-z_][\w.-]*)\s*([~|^$*]?=)\s*([^\]]+)\]/g, (_all, key, op, value) => {
     selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
     selector.attrOps[key] = op || "=";
-    selector.specificity += 10;
+    attributes++;
     return "";
   });
   source = source.replace(/:([A-Za-z_][\w-]*)(?:\(\s*([^)]*?)\s*\))?/g, (_all, name, arg) => {
@@ -3170,29 +3166,29 @@ function parseSimpleSelector(text) {
         selector.states.push(state);
     } else
       selector.pseudos.push(arg === undefined ? pseudo : `${pseudo}(${String(arg).trim()})`);
-    selector.specificity += 10;
+    attributes++;
     return "";
   });
   source = source.replace(/\[([A-Za-z_][\w.-]*)\]/g, (_all, key) => {
     selector.attrs[key] = null;
-    selector.specificity += 10;
+    attributes++;
     return "";
   });
   source = source.replace(/#([A-Za-z_][\w-]*)/g, (_all, id) => {
     selector.id = id;
-    selector.specificity += 100;
+    names++;
     return "";
   });
   source = source.replace(/\.([A-Za-z_][\w-]*)/g, (_all, name) => {
     selector.classes.push(name);
-    selector.specificity += 20;
+    classes++;
     return "";
   });
   source = source.trim();
   if (source)
     selector.kind = source;
-  if (selector.kind !== "*")
-    selector.specificity += 1;
+  selector.specificity = StyleSheet_StyleSpecificity(null, null, null,
+    selector.kind !== "*" ? 1 : 0, attributes, classes, names);
   return selector;
 }
 
@@ -3450,7 +3446,8 @@ export function parseWebStyleSheet(source, colors = {}, environment = defaultWeb
       target.push({
         ...mappedRule,
         order,
-        score: mappedRule.layer * 1000000 + mappedRule.selector.specificity * 1000 + order
+        score: StyleSheet_StylePriorityScore(null, null, null,
+          mappedRule.layer, mappedRule.selector.specificity, order)
       });
     }
   }
@@ -5008,19 +5005,28 @@ function selectorMatchesWebNode(selector, node, scopeNode = null) {
   return selectorMatchesSimpleWebNode(selector, node, scopeNode);
 }
 
+function webRulePriority(rule) {
+  return {
+    present: true,
+    layer: rule.layer || 0,
+    specificity: rule.selector?.specificity || 0,
+    order: rule.order || 0
+  };
+}
+
 export function resolveWebStyle(node, sheets = []) {
   const resolved = {};
-  const scores = {};
+  const priorities = {};
   const list = Array.isArray(sheets) ? sheets : [sheets];
   for (const sheet of list) {
     const rules = typeof sheet === "string" ? parseWebStyleSheet(sheet).rules : (sheet?.rules || []);
     for (const rule of rules) {
       if (!selectorMatchesWebNode(rule.selector, node))
         continue;
-      const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
+      const priority = webRulePriority(rule);
       for (const [name, value] of Object.entries(rule.style || {})) {
-        if (scores[name] === undefined || score >= scores[name]) {
-          scores[name] = score;
+        if (priorities[name] === undefined || StyleSheet_StylePriorityWins(null, null, null, priority, priorities[name])) {
+          priorities[name] = priority;
           resolved[name] = value;
         }
       }
@@ -5032,6 +5038,7 @@ export function resolveWebStyle(node, sheets = []) {
 export function traceWebStyle(node, sheets = []) {
   const resolved = {};
   const winners = {};
+  const priorities = {};
   const matchedRules = [];
   let environment = null;
   const list = Array.isArray(sheets) ? sheets : [sheets];
@@ -5044,7 +5051,9 @@ export function traceWebStyle(node, sheets = []) {
     for (const rule of rules) {
       if (!selectorMatchesWebNode(rule.selector, node))
         continue;
-      const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
+      const priority = webRulePriority(rule);
+      const score = StyleSheet_StylePriorityScore(null, null, null,
+        priority.layer, priority.specificity, priority.order);
       const selector = webStyleSelectorToCSS(rule.selector);
       const source = rule.sourceLine
         ? `${rule.sourceFile || "sheet"}:${rule.sourceLine}`
@@ -5065,8 +5074,9 @@ export function traceWebStyle(node, sheets = []) {
         const tokenOrigin = rule.tokenOrigins?.[name] || (tokenName && ruleTokens[tokenName]
           ? { name: tokenName, origin: ruleTokens[tokenName] }
           : null);
-        if (!winners[name] || score >= winners[name].score) {
+        if (!priorities[name] || StyleSheet_StylePriorityWins(null, null, null, priority, priorities[name])) {
           resolved[name] = value;
+          priorities[name] = priority;
           winners[name] = {
             value,
             selector,

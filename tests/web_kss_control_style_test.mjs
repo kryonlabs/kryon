@@ -6,6 +6,50 @@ assert.ok(runtimePath, "usage: node tests/web_kss_control_style_test.mjs web/kry
 
 const runtime = await import(pathToFileURL(runtimePath).href);
 
+// The same cascade decisions are checked in C and Go.
+const { readFileSync } = await import("node:fs");
+const sharedStyle = await import(new URL("./style_sheet.js", pathToFileURL(runtimePath)));
+const cases = readFileSync(new URL("./fixtures/kss/cascade.txt", import.meta.url), "utf8").trim().split("\n");
+assert.equal(cases.length, 11);
+for (const line of cases) {
+  const [kinds, attributes, classes, names, specificity, layer, order, score, currentLayer, currentSpecificity, currentOrder, present, wins] = line.split(/\s+/).map(Number);
+  assert.equal(sharedStyle.StyleSheet_StyleSpecificity(null, null, null, kinds, attributes, classes, names), specificity);
+  assert.equal(sharedStyle.StyleSheet_StylePriorityScore(null, null, null, layer, specificity, order), score);
+  const priority = {present: true, layer, specificity, order};
+  const current = {present: Boolean(present), layer: currentLayer, specificity: currentSpecificity, order: currentOrder};
+  assert.equal(sharedStyle.StyleSheet_StylePriorityWins(null, null, null, priority, current), Boolean(wins));
+}
+
+// Parsed and prebuilt rules take the same shared priority path. Ties choose
+// the later declaration, including across sheets; fields cascade independently.
+{
+  const target = {kind: "Button", classes: ["accent"]};
+  const layers = runtime.parseWebStyleSheet('@layer base; Button' + '.accent'.repeat(51) +
+    ' {background:#112233;} @layer components; Button {background:#445566;}');
+  assert.equal(runtime.resolveWebStyle(target, layers).background, "#445566");
+  assert.equal(runtime.traceWebStyle(target, layers).winners.background.layer, 1);
+
+  const parsed = runtime.parseWebStyleSheet(`
+    Button.accent { background: #112233; border: #445566; }
+    Button { background: #ffffff; foreground: #010203; }
+    Button.accent { background: #778899; }
+  `);
+  assert.equal(parsed.rules[0].selector.specificity, 21);
+  const prebuilt = {rules: parsed.rules.map(({score, ...rule}) => rule)};
+  const expected = {background: "#778899", border: "#445566", foreground: "#010203"};
+  assert.deepEqual(runtime.resolveWebStyle(target, parsed), expected);
+  assert.deepEqual(runtime.resolveWebStyle(target, prebuilt), expected);
+  assert.deepEqual(runtime.traceWebStyle(target, prebuilt).resolved, expected);
+  const misleadingScores = {rules: prebuilt.rules.map((rule, index) => ({
+    ...rule, score: index === 1 ? 2147483647 : 0
+  }))};
+  assert.deepEqual(runtime.resolveWebStyle(target, misleadingScores), expected);
+  assert.deepEqual(runtime.traceWebStyle(target, misleadingScores).resolved, expected);
+  const later = {rules: [{...prebuilt.rules[2], style: {background: "#aabbcc"}}]};
+  assert.equal(runtime.resolveWebStyle(target, [prebuilt, later]).background, "#aabbcc");
+  assert.equal(runtime.traceWebStyle(target, [prebuilt, later]).winners.background.value, "#aabbcc");
+}
+
 const sheet = runtime.parseWebStyleSheet(`
   @pack controls;
   tokens {

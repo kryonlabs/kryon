@@ -1036,7 +1036,8 @@ export interface WebStyleRule {
   tokenOrigins?: Record<string, WebStyleTokenOrigin>;
   layer: number;
   order: number;
-  score: number;
+  /** Diagnostic summary only; priority compares layer, specificity, then order. */
+  score?: number;
   /** Owning source file name for rules parsed with provenance. */
   sourceFile?: string;
   /** One-based source line for rules parsed with provenance. */
@@ -1048,6 +1049,7 @@ export interface WebStyleTraceRule {
   layer: number;
   order: number;
   specificity: number;
+  /** Diagnostic summary only; priority compares layer, specificity, then order. */
   score: number;
   style: Record<string, unknown>;
   raw: Record<string, string>;
@@ -1067,6 +1069,7 @@ export interface WebStyleTraceWinner {
   layer: number;
   order: number;
   specificity: number;
+  /** Diagnostic summary only; priority compares layer, specificity, then order. */
   score: number;
   /** "file:line" of the winning rule, or "" when unknown. */
   source: string;

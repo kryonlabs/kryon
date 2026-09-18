@@ -738,123 +738,175 @@ export function StyleSheet_StyleSelectorMatches($rt, $state = moduleState, $host
     return value_68;
 }
 
+export function StyleSheet_StyleSpecificity($rt, $state = moduleState, $host = moduleHost, kinds, attributes, classes, names) {
+  $state = $state || moduleState;
+    kinds = number_2de837a0_value(kinds,32,true);
+    attributes = number_2de837a0_value(attributes,32,true);
+    classes = number_2de837a0_value(classes,32,true);
+    names = number_2de837a0_value(names,32,true);
+    let value_0 = number_2de837a0_value(kinds,32,true);
+    let value_1 = number_2de837a0_value(attributes,32,true);
+    let value_2 = number_2de837a0_value(10,32,true);
+    let value_3 = number_2de837a0_value(number_2de837a0_bits(value_1,value_2,32,true,3),32,true);
+    let value_4 = number_2de837a0_value(number_2de837a0_bits(value_0,value_3,32,true,1),32,true);
+    let value_5 = number_2de837a0_value(classes,32,true);
+    let value_6 = number_2de837a0_value(20,32,true);
+    let value_7 = number_2de837a0_value(number_2de837a0_bits(value_5,value_6,32,true,3),32,true);
+    let value_8 = number_2de837a0_value(number_2de837a0_bits(value_4,value_7,32,true,1),32,true);
+    let value_9 = number_2de837a0_value(names,32,true);
+    let value_10 = number_2de837a0_value(100,32,true);
+    let value_11 = number_2de837a0_value(number_2de837a0_bits(value_9,value_10,32,true,3),32,true);
+    let value_12 = number_2de837a0_value(number_2de837a0_bits(value_8,value_11,32,true,1),32,true);
+    return value_12;
+}
+
 export function StyleSheet_StyleSelectorSpecificity($rt, $state = moduleState, $host = moduleHost, selector) {
   $state = $state || moduleState;
     let value_0 = selector;
     let value_1 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_0);
     selector = value_1;
     let value_2 = number_2de837a0_value(0,32,true);
-    let score = number_2de837a0_value(value_2,32,true);
-    let value_3 = number_2de837a0_value(selector.kind,32,true);
-    let value_4 = number_2de837a0_value(StyleSheet_StyleKindAny($rt, $state, $host),32,true);
-    let value_5 = number_2de837a0_bool(value_3 != value_4);
-    if (value_5) {
-        let value_6 = number_2de837a0_value(score,32,true);
-        let value_7 = number_2de837a0_value(1,32,true);
-        score = number_2de837a0_bits(value_6,value_7,32,true,1);
+    let kinds = number_2de837a0_value(value_2,32,true);
+    let value_3 = number_2de837a0_value(0,32,true);
+    let attributes = number_2de837a0_value(value_3,32,true);
+    let value_4 = number_2de837a0_value(0,32,true);
+    let classes = number_2de837a0_value(value_4,32,true);
+    let value_5 = number_2de837a0_value(0,32,true);
+    let names = number_2de837a0_value(value_5,32,true);
+    let value_6 = number_2de837a0_value(selector.kind,32,true);
+    let value_7 = number_2de837a0_value(StyleSheet_StyleKindAny($rt, $state, $host),32,true);
+    let value_8 = number_2de837a0_bool(value_6 != value_7);
+    if (value_8) {
+        let value_9 = number_2de837a0_value(1,32,true);
+        kinds = value_9;
     }
-    let value_8 = number_2de837a0_value(selector.role,32,true);
-    let value_9 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_10 = number_2de837a0_bool(value_8 != value_9);
-    if (value_10) {
-        let value_11 = number_2de837a0_value(score,32,true);
-        let value_12 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_11,value_12,32,true,1);
+    let value_10 = number_2de837a0_value(selector.role,32,true);
+    let value_11 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_12 = number_2de837a0_bool(value_10 != value_11);
+    if (value_12) {
+        let value_13 = number_2de837a0_value(attributes,32,true);
+        let value_14 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_13,value_14,32,true,1);
     }
-    let value_13 = number_2de837a0_value(selector.tone,32,true);
-    let value_14 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_15 = number_2de837a0_bool(value_13 != value_14);
-    if (value_15) {
-        let value_16 = number_2de837a0_value(score,32,true);
-        let value_17 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_16,value_17,32,true,1);
+    let value_15 = number_2de837a0_value(selector.tone,32,true);
+    let value_16 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_17 = number_2de837a0_bool(value_15 != value_16);
+    if (value_17) {
+        let value_18 = number_2de837a0_value(attributes,32,true);
+        let value_19 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_18,value_19,32,true,1);
     }
-    let value_18 = number_2de837a0_value(selector.emphasis,32,true);
-    let value_19 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_20 = number_2de837a0_bool(value_18 != value_19);
-    if (value_20) {
-        let value_21 = number_2de837a0_value(score,32,true);
-        let value_22 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_21,value_22,32,true,1);
+    let value_20 = number_2de837a0_value(selector.emphasis,32,true);
+    let value_21 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_22 = number_2de837a0_bool(value_20 != value_21);
+    if (value_22) {
+        let value_23 = number_2de837a0_value(attributes,32,true);
+        let value_24 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_23,value_24,32,true,1);
     }
-    let value_23 = number_2de837a0_value(selector.size,32,true);
-    let value_24 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_25 = number_2de837a0_bool(value_23 != value_24);
-    if (value_25) {
-        let value_26 = number_2de837a0_value(score,32,true);
-        let value_27 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_26,value_27,32,true,1);
+    let value_25 = number_2de837a0_value(selector.size,32,true);
+    let value_26 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_27 = number_2de837a0_bool(value_25 != value_26);
+    if (value_27) {
+        let value_28 = number_2de837a0_value(attributes,32,true);
+        let value_29 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_28,value_29,32,true,1);
     }
-    let value_28 = number_2de837a0_value(selector.state,32,true);
-    let value_29 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_30 = number_2de837a0_bool(value_28 != value_29);
-    if (value_30) {
-        let value_31 = number_2de837a0_value(score,32,true);
-        let value_32 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_31,value_32,32,true,1);
+    let value_30 = number_2de837a0_value(selector.state,32,true);
+    let value_31 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_32 = number_2de837a0_bool(value_30 != value_31);
+    if (value_32) {
+        let value_33 = number_2de837a0_value(attributes,32,true);
+        let value_34 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_33,value_34,32,true,1);
     }
-    let value_33 = number_2de837a0_value(selector.validation,32,true);
-    let value_34 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_35 = number_2de837a0_bool(value_33 != value_34);
-    if (value_35) {
-        let value_36 = number_2de837a0_value(score,32,true);
-        let value_37 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_36,value_37,32,true,1);
+    let value_35 = number_2de837a0_value(selector.validation,32,true);
+    let value_36 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_37 = number_2de837a0_bool(value_35 != value_36);
+    if (value_37) {
+        let value_38 = number_2de837a0_value(attributes,32,true);
+        let value_39 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_38,value_39,32,true,1);
     }
-    let value_38 = number_2de837a0_value(selector.orientation,32,true);
-    let value_39 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_40 = number_2de837a0_bool(value_38 != value_39);
-    if (value_40) {
-        let value_41 = number_2de837a0_value(score,32,true);
-        let value_42 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_41,value_42,32,true,1);
+    let value_40 = number_2de837a0_value(selector.orientation,32,true);
+    let value_41 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_42 = number_2de837a0_bool(value_40 != value_41);
+    if (value_42) {
+        let value_43 = number_2de837a0_value(attributes,32,true);
+        let value_44 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_43,value_44,32,true,1);
     }
-    let value_43 = number_2de837a0_value(selector.placement,32,true);
-    let value_44 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
-    let value_45 = number_2de837a0_bool(value_43 != value_44);
-    if (value_45) {
-        let value_46 = number_2de837a0_value(score,32,true);
-        let value_47 = number_2de837a0_value(10,32,true);
-        score = number_2de837a0_bits(value_46,value_47,32,true,1);
+    let value_45 = number_2de837a0_value(selector.placement,32,true);
+    let value_46 = number_2de837a0_value(StyleSheet_StyleAny($rt, $state, $host),32,true);
+    let value_47 = number_2de837a0_bool(value_45 != value_46);
+    if (value_47) {
+        let value_48 = number_2de837a0_value(attributes,32,true);
+        let value_49 = number_2de837a0_value(1,32,true);
+        attributes = number_2de837a0_bits(value_48,value_49,32,true,1);
     }
-    let value_48 = number_2de837a0_value(selector.class_name,32,true);
-    let value_49 = number_2de837a0_value(0,32,true);
-    let value_50 = number_2de837a0_bool(value_48 != value_49);
-    if (value_50) {
-        let value_51 = number_2de837a0_value(score,32,true);
-        let value_52 = number_2de837a0_value(20,32,true);
-        score = number_2de837a0_bits(value_51,value_52,32,true,1);
+    let value_50 = number_2de837a0_value(selector.class_name,32,true);
+    let value_51 = number_2de837a0_value(0,32,true);
+    let value_52 = number_2de837a0_bool(value_50 != value_51);
+    if (value_52) {
+        let value_53 = number_2de837a0_value(1,32,true);
+        classes = value_53;
     }
-    let value_53 = number_2de837a0_value(selector.name,32,true);
-    let value_54 = number_2de837a0_value(0,32,true);
-    let value_55 = number_2de837a0_bool(value_53 != value_54);
-    if (value_55) {
-        let value_56 = number_2de837a0_value(score,32,true);
-        let value_57 = number_2de837a0_value(100,32,true);
-        score = number_2de837a0_bits(value_56,value_57,32,true,1);
+    let value_54 = number_2de837a0_value(selector.name,32,true);
+    let value_55 = number_2de837a0_value(0,32,true);
+    let value_56 = number_2de837a0_bool(value_54 != value_55);
+    if (value_56) {
+        let value_57 = number_2de837a0_value(1,32,true);
+        names = value_57;
     }
-    let value_58 = number_2de837a0_value(score,32,true);
-    return value_58;
+    let value_58 = number_2de837a0_value(kinds,32,true);
+    let value_59 = number_2de837a0_value(attributes,32,true);
+    let value_60 = number_2de837a0_value(classes,32,true);
+    let value_61 = number_2de837a0_value(names,32,true);
+    let value_62 = number_2de837a0_value(StyleSheet_StyleSpecificity($rt, $state, $host, value_58, value_59, value_60, value_61),32,true);
+    return value_62;
 }
 
-export function StyleSheet_StyleRuleScore($rt, $state = moduleState, $host = moduleHost, rule) {
+export function StyleSheet_StylePriorityScore($rt, $state = moduleState, $host = moduleHost, layer, specificity, order) {
+  $state = $state || moduleState;
+    layer = number_2de837a0_value(layer,32,true);
+    specificity = number_2de837a0_value(specificity,32,true);
+    order = number_2de837a0_value(order,32,true);
+    let value_0 = number_2de837a0_value(layer,32,true);
+    let value_1 = number_2de837a0_value(1000000,32,true);
+    let value_2 = number_2de837a0_value(number_2de837a0_bits(value_0,value_1,32,true,3),32,true);
+    let value_3 = number_2de837a0_value(specificity,32,true);
+    let value_4 = number_2de837a0_value(1000,32,true);
+    let value_5 = number_2de837a0_value(number_2de837a0_bits(value_3,value_4,32,true,3),32,true);
+    let value_6 = number_2de837a0_value(number_2de837a0_bits(value_2,value_5,32,true,1),32,true);
+    let value_7 = number_2de837a0_value(order,32,true);
+    let value_8 = number_2de837a0_value(number_2de837a0_bits(value_6,value_7,32,true,1),32,true);
+    return value_8;
+}
+
+export function StyleSheet_StyleRulePriority($rt, $state = moduleState, $host = moduleHost, rule) {
   $state = $state || moduleState;
     let value_0 = rule;
     let value_1 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_0);
     rule = value_1;
-    let value_2 = number_2de837a0_value(rule.layer,32,true);
-    let value_3 = number_2de837a0_value(1000000,32,true);
-    let value_4 = number_2de837a0_value(number_2de837a0_bits(value_2,value_3,32,true,3),32,true);
-    let value_6 = rule.selector;
-    let value_7 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_6);
-    let value_5 = value_7;
-    let value_8 = number_2de837a0_value(StyleSheet_StyleSelectorSpecificity($rt, $state, $host, value_5),32,true);
-    let value_9 = number_2de837a0_value(1000,32,true);
-    let value_10 = number_2de837a0_value(number_2de837a0_bits(value_8,value_9,32,true,3),32,true);
-    let value_11 = number_2de837a0_value(number_2de837a0_bits(value_4,value_10,32,true,1),32,true);
-    let value_12 = number_2de837a0_value(rule.order,32,true);
-    let value_13 = number_2de837a0_value(number_2de837a0_bits(value_11,value_12,32,true,1),32,true);
-    return value_13;
+    let value_2 = {present: false, layer: 0, specificity: 0, order: 0};
+    let value_3 = value_2;
+    let value_4 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_3);
+    let priority = value_4;
+    let value_5 = number_2de837a0_bool(true);
+    priority.present = value_5;
+    let value_6 = number_2de837a0_value(rule.layer,32,true);
+    priority.layer = value_6;
+    let value_8 = rule.selector;
+    let value_9 = ((record_source) => ({kind: record_source.kind, name: record_source.name, class_name: record_source.class_name, role: record_source.role, tone: record_source.tone, emphasis: record_source.emphasis, size: record_source.size, state: record_source.state, validation: record_source.validation, orientation: record_source.orientation, placement: record_source.placement}))(value_8);
+    let value_7 = value_9;
+    let value_10 = number_2de837a0_value(StyleSheet_StyleSelectorSpecificity($rt, $state, $host, value_7),32,true);
+    priority.specificity = value_10;
+    let value_11 = number_2de837a0_value(rule.order,32,true);
+    priority.order = value_11;
+    let value_13 = priority;
+    let value_14 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_13);
+    let value_12 = value_14;
+    return value_12;
 }
 
 export function StyleSheet_StyleRuleMatchesState($rt, $state = moduleState, $host = moduleHost, rule_state, active_state) {
@@ -908,14 +960,48 @@ export function StyleSheet_StyleRuleMatches($rt, $state = moduleState, $host = m
     return value_15;
 }
 
-export function StyleSheet_StyleWins($rt, $state = moduleState, $host = moduleHost, score, current) {
+export function StyleSheet_StylePriorityWins($rt, $state = moduleState, $host = moduleHost, priority, current) {
   $state = $state || moduleState;
-    score = number_2de837a0_value(score,32,true);
-    current = number_2de837a0_value(current,32,true);
-    let value_0 = number_2de837a0_value(score,32,true);
-    let value_1 = number_2de837a0_value(current,32,true);
-    let value_2 = number_2de837a0_bool(value_0 >= value_1);
-    return value_2;
+    let value_0 = priority;
+    let value_1 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_0);
+    priority = value_1;
+    let value_2 = current;
+    let value_3 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_2);
+    current = value_3;
+    let value_4 = number_2de837a0_bool(priority.present);
+    let value_5 = number_2de837a0_bool(!value_4);
+    if (value_5) {
+        let value_6 = number_2de837a0_bool(false);
+        return value_6;
+    }
+    let value_7 = number_2de837a0_bool(current.present);
+    let value_8 = number_2de837a0_bool(!value_7);
+    if (value_8) {
+        let value_9 = number_2de837a0_bool(true);
+        return value_9;
+    }
+    let value_10 = number_2de837a0_value(priority.layer,32,true);
+    let value_11 = number_2de837a0_value(current.layer,32,true);
+    let value_12 = number_2de837a0_bool(value_10 != value_11);
+    if (value_12) {
+        let value_13 = number_2de837a0_value(priority.layer,32,true);
+        let value_14 = number_2de837a0_value(current.layer,32,true);
+        let value_15 = number_2de837a0_bool(value_13 > value_14);
+        return value_15;
+    }
+    let value_16 = number_2de837a0_value(priority.specificity,32,true);
+    let value_17 = number_2de837a0_value(current.specificity,32,true);
+    let value_18 = number_2de837a0_bool(value_16 != value_17);
+    if (value_18) {
+        let value_19 = number_2de837a0_value(priority.specificity,32,true);
+        let value_20 = number_2de837a0_value(current.specificity,32,true);
+        let value_21 = number_2de837a0_bool(value_19 > value_20);
+        return value_21;
+    }
+    let value_22 = number_2de837a0_value(priority.order,32,true);
+    let value_23 = number_2de837a0_value(current.order,32,true);
+    let value_24 = number_2de837a0_bool(value_22 >= value_23);
+    return value_24;
 }
 
 export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = moduleHost, base) {
@@ -923,9 +1009,9 @@ export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = 
     let value_0 = base;
     let value_1 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_0);
     base = value_1;
-    let value_2 = {result: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, background_score: 0, foreground_score: 0, border_score: 0, focus_score: 0, radius_score: 0, border_width_score: 0, opacity_score: 0, padding_x_score: 0, padding_y_score: 0, gap_score: 0, font_size_score: 0, icon_size_score: 0, content_offset_score: 0, background_end_score: 0, material_score: 0, typeface_score: 0, letter_spacing_score: 0};
+    let value_2 = {result: {fields: 0, background: 0, foreground: 0, border: 0, focus: 0, radius: 0, border_width: 0, opacity: 0, padding_x: 0, padding_y: 0, gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0, background_end: 0, material: 0, typeface: "", letter_spacing: 0}, background_priority: {present: false, layer: 0, specificity: 0, order: 0}, foreground_priority: {present: false, layer: 0, specificity: 0, order: 0}, border_priority: {present: false, layer: 0, specificity: 0, order: 0}, focus_priority: {present: false, layer: 0, specificity: 0, order: 0}, radius_priority: {present: false, layer: 0, specificity: 0, order: 0}, border_width_priority: {present: false, layer: 0, specificity: 0, order: 0}, opacity_priority: {present: false, layer: 0, specificity: 0, order: 0}, padding_x_priority: {present: false, layer: 0, specificity: 0, order: 0}, padding_y_priority: {present: false, layer: 0, specificity: 0, order: 0}, gap_priority: {present: false, layer: 0, specificity: 0, order: 0}, font_size_priority: {present: false, layer: 0, specificity: 0, order: 0}, icon_size_priority: {present: false, layer: 0, specificity: 0, order: 0}, content_offset_priority: {present: false, layer: 0, specificity: 0, order: 0}, background_end_priority: {present: false, layer: 0, specificity: 0, order: 0}, material_priority: {present: false, layer: 0, specificity: 0, order: 0}, typeface_priority: {present: false, layer: 0, specificity: 0, order: 0}, letter_spacing_priority: {present: false, layer: 0, specificity: 0, order: 0}};
     let value_3 = value_2;
-    let value_4 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_3);
+    let value_4 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_3);
     let cascade = value_4;
     let value_6 = base;
     let value_7 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_6);
@@ -934,7 +1020,7 @@ export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = 
     let value_9 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_8);
     cascade.result = value_9;
     let value_11 = cascade;
-    let value_12 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_11);
+    let value_12 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_11);
     let value_10 = value_12;
     return value_10;
 }
@@ -942,7 +1028,7 @@ export function StyleSheet_BeginStyleCascade($rt, $state = moduleState, $host = 
 export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = moduleHost, cascade, rule, facts, active_state) {
   $state = $state || moduleState;
     let value_0 = cascade;
-    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_0);
+    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_0);
     cascade = value_1;
     let value_2 = rule;
     let value_3 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_2);
@@ -962,323 +1048,291 @@ export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = mod
     let value_14 = number_2de837a0_bool(!value_13);
     if (value_14) {
         let value_16 = cascade;
-        let value_17 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_16);
+        let value_17 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_16);
         let value_15 = value_17;
         return value_15;
     }
     let value_19 = rule;
     let value_20 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_19);
     let value_18 = value_20;
-    let value_21 = number_2de837a0_value(StyleSheet_StyleRuleScore($rt, $state, $host, value_18),32,true);
-    let score = number_2de837a0_value(value_21,32,true);
-    let value_23 = rule.style;
-    let value_24 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_23);
-    let value_22 = value_24;
-    let value_25 = value_22;
-    let value_26 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_25);
-    let style = value_26;
-    let value_27 = number_2de837a0_value(style.fields,32,false);
-    let value_28 = number_2de837a0_value($enum0.StyleBackground,32,true);
-    let value_29 = number_2de837a0_value(number_2de837a0_bits(value_28,0,32,false,0),32,false);
-    let value_30 = number_2de837a0_value(number_2de837a0_bits(value_27,value_29,32,false,8),32,false);
-    let value_31 = number_2de837a0_value(0,32,true);
-    let value_32 = number_2de837a0_value(number_2de837a0_bits(value_31,0,32,false,0),32,false);
-    let value_33 = number_2de837a0_bool(value_30 != value_32);
-    let value_34 = number_2de837a0_bool(value_33);
-    if (value_34) {
-        let value_35 = number_2de837a0_value(score,32,true);
-        let value_36 = number_2de837a0_value(cascade.background_score,32,true);
-        let value_37 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_35, value_36));
-        value_34 = value_37;
+    let value_22 = StyleSheet_StyleRulePriority($rt, $state, $host, value_18);
+    let value_23 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_22);
+    let value_21 = value_23;
+    let value_24 = value_21;
+    let value_25 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_24);
+    let priority = value_25;
+    let value_27 = rule.style;
+    let value_28 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_27);
+    let value_26 = value_28;
+    let value_29 = value_26;
+    let value_30 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_29);
+    let style = value_30;
+    let value_31 = number_2de837a0_value(style.fields,32,false);
+    let value_32 = number_2de837a0_value($enum0.StyleBackground,32,true);
+    let value_33 = number_2de837a0_value(number_2de837a0_bits(value_32,0,32,false,0),32,false);
+    let value_34 = number_2de837a0_value(number_2de837a0_bits(value_31,value_33,32,false,8),32,false);
+    let value_35 = number_2de837a0_value(0,32,true);
+    let value_36 = number_2de837a0_value(number_2de837a0_bits(value_35,0,32,false,0),32,false);
+    let value_37 = number_2de837a0_bool(value_34 != value_36);
+    let value_38 = number_2de837a0_bool(value_37);
+    if (value_38) {
+        let value_40 = priority;
+        let value_41 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_40);
+        let value_39 = value_41;
+        let value_43 = cascade.background_priority;
+        let value_44 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_43);
+        let value_42 = value_44;
+        let value_45 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_39, value_42));
+        value_38 = value_45;
     }
-    if (value_34) {
-        let value_38 = number_2de837a0_value(style.background,32,false);
-        cascade.result.background = value_38;
-        let value_39 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_40 = number_2de837a0_value($enum0.StyleBackground,32,true);
-        let value_41 = number_2de837a0_value(number_2de837a0_bits(value_40,0,32,false,0),32,false);
-        let value_42 = number_2de837a0_value(number_2de837a0_bits(value_39,value_41,32,false,9),32,false);
-        cascade.result.fields = value_42;
-        let value_43 = number_2de837a0_value(score,32,true);
-        cascade.background_score = value_43;
+    if (value_38) {
+        let value_46 = number_2de837a0_value(style.background,32,false);
+        cascade.result.background = value_46;
+        let value_47 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_48 = number_2de837a0_value($enum0.StyleBackground,32,true);
+        let value_49 = number_2de837a0_value(number_2de837a0_bits(value_48,0,32,false,0),32,false);
+        let value_50 = number_2de837a0_value(number_2de837a0_bits(value_47,value_49,32,false,9),32,false);
+        cascade.result.fields = value_50;
+        let value_52 = priority;
+        let value_53 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_52);
+        let value_51 = value_53;
+        let value_54 = value_51;
+        let value_55 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_54);
+        cascade.background_priority = value_55;
     }
-    let value_44 = number_2de837a0_value(style.fields,32,false);
-    let value_45 = number_2de837a0_value($enum0.StyleForeground,32,true);
-    let value_46 = number_2de837a0_value(number_2de837a0_bits(value_45,0,32,false,0),32,false);
-    let value_47 = number_2de837a0_value(number_2de837a0_bits(value_44,value_46,32,false,8),32,false);
-    let value_48 = number_2de837a0_value(0,32,true);
-    let value_49 = number_2de837a0_value(number_2de837a0_bits(value_48,0,32,false,0),32,false);
-    let value_50 = number_2de837a0_bool(value_47 != value_49);
-    let value_51 = number_2de837a0_bool(value_50);
-    if (value_51) {
-        let value_52 = number_2de837a0_value(score,32,true);
-        let value_53 = number_2de837a0_value(cascade.foreground_score,32,true);
-        let value_54 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_52, value_53));
-        value_51 = value_54;
+    let value_56 = number_2de837a0_value(style.fields,32,false);
+    let value_57 = number_2de837a0_value($enum0.StyleForeground,32,true);
+    let value_58 = number_2de837a0_value(number_2de837a0_bits(value_57,0,32,false,0),32,false);
+    let value_59 = number_2de837a0_value(number_2de837a0_bits(value_56,value_58,32,false,8),32,false);
+    let value_60 = number_2de837a0_value(0,32,true);
+    let value_61 = number_2de837a0_value(number_2de837a0_bits(value_60,0,32,false,0),32,false);
+    let value_62 = number_2de837a0_bool(value_59 != value_61);
+    let value_63 = number_2de837a0_bool(value_62);
+    if (value_63) {
+        let value_65 = priority;
+        let value_66 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_65);
+        let value_64 = value_66;
+        let value_68 = cascade.foreground_priority;
+        let value_69 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_68);
+        let value_67 = value_69;
+        let value_70 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_64, value_67));
+        value_63 = value_70;
     }
-    if (value_51) {
-        let value_55 = number_2de837a0_value(style.foreground,32,false);
-        cascade.result.foreground = value_55;
-        let value_56 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_57 = number_2de837a0_value($enum0.StyleForeground,32,true);
-        let value_58 = number_2de837a0_value(number_2de837a0_bits(value_57,0,32,false,0),32,false);
-        let value_59 = number_2de837a0_value(number_2de837a0_bits(value_56,value_58,32,false,9),32,false);
-        cascade.result.fields = value_59;
-        let value_60 = number_2de837a0_value(score,32,true);
-        cascade.foreground_score = value_60;
+    if (value_63) {
+        let value_71 = number_2de837a0_value(style.foreground,32,false);
+        cascade.result.foreground = value_71;
+        let value_72 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_73 = number_2de837a0_value($enum0.StyleForeground,32,true);
+        let value_74 = number_2de837a0_value(number_2de837a0_bits(value_73,0,32,false,0),32,false);
+        let value_75 = number_2de837a0_value(number_2de837a0_bits(value_72,value_74,32,false,9),32,false);
+        cascade.result.fields = value_75;
+        let value_77 = priority;
+        let value_78 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_77);
+        let value_76 = value_78;
+        let value_79 = value_76;
+        let value_80 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_79);
+        cascade.foreground_priority = value_80;
     }
-    let value_61 = number_2de837a0_value(style.fields,32,false);
-    let value_62 = number_2de837a0_value($enum0.StyleBorder,32,true);
-    let value_63 = number_2de837a0_value(number_2de837a0_bits(value_62,0,32,false,0),32,false);
-    let value_64 = number_2de837a0_value(number_2de837a0_bits(value_61,value_63,32,false,8),32,false);
-    let value_65 = number_2de837a0_value(0,32,true);
-    let value_66 = number_2de837a0_value(number_2de837a0_bits(value_65,0,32,false,0),32,false);
-    let value_67 = number_2de837a0_bool(value_64 != value_66);
-    let value_68 = number_2de837a0_bool(value_67);
-    if (value_68) {
-        let value_69 = number_2de837a0_value(score,32,true);
-        let value_70 = number_2de837a0_value(cascade.border_score,32,true);
-        let value_71 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_69, value_70));
-        value_68 = value_71;
-    }
-    if (value_68) {
-        let value_72 = number_2de837a0_value(style.border,32,false);
-        cascade.result.border = value_72;
-        let value_73 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_74 = number_2de837a0_value($enum0.StyleBorder,32,true);
-        let value_75 = number_2de837a0_value(number_2de837a0_bits(value_74,0,32,false,0),32,false);
-        let value_76 = number_2de837a0_value(number_2de837a0_bits(value_73,value_75,32,false,9),32,false);
-        cascade.result.fields = value_76;
-        let value_77 = number_2de837a0_value(score,32,true);
-        cascade.border_score = value_77;
-    }
-    let value_78 = number_2de837a0_value(style.fields,32,false);
-    let value_79 = number_2de837a0_value($enum0.StyleFocus,32,true);
-    let value_80 = number_2de837a0_value(number_2de837a0_bits(value_79,0,32,false,0),32,false);
-    let value_81 = number_2de837a0_value(number_2de837a0_bits(value_78,value_80,32,false,8),32,false);
-    let value_82 = number_2de837a0_value(0,32,true);
+    let value_81 = number_2de837a0_value(style.fields,32,false);
+    let value_82 = number_2de837a0_value($enum0.StyleBorder,32,true);
     let value_83 = number_2de837a0_value(number_2de837a0_bits(value_82,0,32,false,0),32,false);
-    let value_84 = number_2de837a0_bool(value_81 != value_83);
-    let value_85 = number_2de837a0_bool(value_84);
-    if (value_85) {
-        let value_86 = number_2de837a0_value(score,32,true);
-        let value_87 = number_2de837a0_value(cascade.focus_score,32,true);
-        let value_88 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_86, value_87));
-        value_85 = value_88;
+    let value_84 = number_2de837a0_value(number_2de837a0_bits(value_81,value_83,32,false,8),32,false);
+    let value_85 = number_2de837a0_value(0,32,true);
+    let value_86 = number_2de837a0_value(number_2de837a0_bits(value_85,0,32,false,0),32,false);
+    let value_87 = number_2de837a0_bool(value_84 != value_86);
+    let value_88 = number_2de837a0_bool(value_87);
+    if (value_88) {
+        let value_90 = priority;
+        let value_91 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_90);
+        let value_89 = value_91;
+        let value_93 = cascade.border_priority;
+        let value_94 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_93);
+        let value_92 = value_94;
+        let value_95 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_89, value_92));
+        value_88 = value_95;
     }
-    if (value_85) {
-        let value_89 = number_2de837a0_value(style.focus,32,false);
-        cascade.result.focus = value_89;
-        let value_90 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_91 = number_2de837a0_value($enum0.StyleFocus,32,true);
-        let value_92 = number_2de837a0_value(number_2de837a0_bits(value_91,0,32,false,0),32,false);
-        let value_93 = number_2de837a0_value(number_2de837a0_bits(value_90,value_92,32,false,9),32,false);
-        cascade.result.fields = value_93;
-        let value_94 = number_2de837a0_value(score,32,true);
-        cascade.focus_score = value_94;
+    if (value_88) {
+        let value_96 = number_2de837a0_value(style.border,32,false);
+        cascade.result.border = value_96;
+        let value_97 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_98 = number_2de837a0_value($enum0.StyleBorder,32,true);
+        let value_99 = number_2de837a0_value(number_2de837a0_bits(value_98,0,32,false,0),32,false);
+        let value_100 = number_2de837a0_value(number_2de837a0_bits(value_97,value_99,32,false,9),32,false);
+        cascade.result.fields = value_100;
+        let value_102 = priority;
+        let value_103 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_102);
+        let value_101 = value_103;
+        let value_104 = value_101;
+        let value_105 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_104);
+        cascade.border_priority = value_105;
     }
-    let value_95 = number_2de837a0_value(style.fields,32,false);
-    let value_96 = number_2de837a0_value($enum0.StyleRadius,32,true);
-    let value_97 = number_2de837a0_value(number_2de837a0_bits(value_96,0,32,false,0),32,false);
-    let value_98 = number_2de837a0_value(number_2de837a0_bits(value_95,value_97,32,false,8),32,false);
-    let value_99 = number_2de837a0_value(0,32,true);
-    let value_100 = number_2de837a0_value(number_2de837a0_bits(value_99,0,32,false,0),32,false);
-    let value_101 = number_2de837a0_bool(value_98 != value_100);
-    let value_102 = number_2de837a0_bool(value_101);
-    if (value_102) {
-        let value_103 = number_2de837a0_value(score,32,true);
-        let value_104 = number_2de837a0_value(cascade.radius_score,32,true);
-        let value_105 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_103, value_104));
-        value_102 = value_105;
+    let value_106 = number_2de837a0_value(style.fields,32,false);
+    let value_107 = number_2de837a0_value($enum0.StyleFocus,32,true);
+    let value_108 = number_2de837a0_value(number_2de837a0_bits(value_107,0,32,false,0),32,false);
+    let value_109 = number_2de837a0_value(number_2de837a0_bits(value_106,value_108,32,false,8),32,false);
+    let value_110 = number_2de837a0_value(0,32,true);
+    let value_111 = number_2de837a0_value(number_2de837a0_bits(value_110,0,32,false,0),32,false);
+    let value_112 = number_2de837a0_bool(value_109 != value_111);
+    let value_113 = number_2de837a0_bool(value_112);
+    if (value_113) {
+        let value_115 = priority;
+        let value_116 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_115);
+        let value_114 = value_116;
+        let value_118 = cascade.focus_priority;
+        let value_119 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_118);
+        let value_117 = value_119;
+        let value_120 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_114, value_117));
+        value_113 = value_120;
     }
-    if (value_102) {
-        let value_106 = Math.fround(style.radius);
-        cascade.result.radius = value_106;
-        let value_107 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_108 = number_2de837a0_value($enum0.StyleRadius,32,true);
-        let value_109 = number_2de837a0_value(number_2de837a0_bits(value_108,0,32,false,0),32,false);
-        let value_110 = number_2de837a0_value(number_2de837a0_bits(value_107,value_109,32,false,9),32,false);
-        cascade.result.fields = value_110;
-        let value_111 = number_2de837a0_value(score,32,true);
-        cascade.radius_score = value_111;
+    if (value_113) {
+        let value_121 = number_2de837a0_value(style.focus,32,false);
+        cascade.result.focus = value_121;
+        let value_122 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_123 = number_2de837a0_value($enum0.StyleFocus,32,true);
+        let value_124 = number_2de837a0_value(number_2de837a0_bits(value_123,0,32,false,0),32,false);
+        let value_125 = number_2de837a0_value(number_2de837a0_bits(value_122,value_124,32,false,9),32,false);
+        cascade.result.fields = value_125;
+        let value_127 = priority;
+        let value_128 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_127);
+        let value_126 = value_128;
+        let value_129 = value_126;
+        let value_130 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_129);
+        cascade.focus_priority = value_130;
     }
-    let value_112 = number_2de837a0_value(style.fields,32,false);
-    let value_113 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
-    let value_114 = number_2de837a0_value(number_2de837a0_bits(value_113,0,32,false,0),32,false);
-    let value_115 = number_2de837a0_value(number_2de837a0_bits(value_112,value_114,32,false,8),32,false);
-    let value_116 = number_2de837a0_value(0,32,true);
-    let value_117 = number_2de837a0_value(number_2de837a0_bits(value_116,0,32,false,0),32,false);
-    let value_118 = number_2de837a0_bool(value_115 != value_117);
-    let value_119 = number_2de837a0_bool(value_118);
-    if (value_119) {
-        let value_120 = number_2de837a0_value(score,32,true);
-        let value_121 = number_2de837a0_value(cascade.border_width_score,32,true);
-        let value_122 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_120, value_121));
-        value_119 = value_122;
+    let value_131 = number_2de837a0_value(style.fields,32,false);
+    let value_132 = number_2de837a0_value($enum0.StyleRadius,32,true);
+    let value_133 = number_2de837a0_value(number_2de837a0_bits(value_132,0,32,false,0),32,false);
+    let value_134 = number_2de837a0_value(number_2de837a0_bits(value_131,value_133,32,false,8),32,false);
+    let value_135 = number_2de837a0_value(0,32,true);
+    let value_136 = number_2de837a0_value(number_2de837a0_bits(value_135,0,32,false,0),32,false);
+    let value_137 = number_2de837a0_bool(value_134 != value_136);
+    let value_138 = number_2de837a0_bool(value_137);
+    if (value_138) {
+        let value_140 = priority;
+        let value_141 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_140);
+        let value_139 = value_141;
+        let value_143 = cascade.radius_priority;
+        let value_144 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_143);
+        let value_142 = value_144;
+        let value_145 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_139, value_142));
+        value_138 = value_145;
     }
-    if (value_119) {
-        let value_123 = Math.fround(style.border_width);
-        cascade.result.border_width = value_123;
-        let value_124 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_125 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
-        let value_126 = number_2de837a0_value(number_2de837a0_bits(value_125,0,32,false,0),32,false);
-        let value_127 = number_2de837a0_value(number_2de837a0_bits(value_124,value_126,32,false,9),32,false);
-        cascade.result.fields = value_127;
-        let value_128 = number_2de837a0_value(score,32,true);
-        cascade.border_width_score = value_128;
+    if (value_138) {
+        let value_146 = Math.fround(style.radius);
+        cascade.result.radius = value_146;
+        let value_147 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_148 = number_2de837a0_value($enum0.StyleRadius,32,true);
+        let value_149 = number_2de837a0_value(number_2de837a0_bits(value_148,0,32,false,0),32,false);
+        let value_150 = number_2de837a0_value(number_2de837a0_bits(value_147,value_149,32,false,9),32,false);
+        cascade.result.fields = value_150;
+        let value_152 = priority;
+        let value_153 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_152);
+        let value_151 = value_153;
+        let value_154 = value_151;
+        let value_155 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_154);
+        cascade.radius_priority = value_155;
     }
-    let value_129 = number_2de837a0_value(style.fields,32,false);
-    let value_130 = number_2de837a0_value($enum0.StyleOpacity,32,true);
-    let value_131 = number_2de837a0_value(number_2de837a0_bits(value_130,0,32,false,0),32,false);
-    let value_132 = number_2de837a0_value(number_2de837a0_bits(value_129,value_131,32,false,8),32,false);
-    let value_133 = number_2de837a0_value(0,32,true);
-    let value_134 = number_2de837a0_value(number_2de837a0_bits(value_133,0,32,false,0),32,false);
-    let value_135 = number_2de837a0_bool(value_132 != value_134);
-    let value_136 = number_2de837a0_bool(value_135);
-    if (value_136) {
-        let value_137 = number_2de837a0_value(score,32,true);
-        let value_138 = number_2de837a0_value(cascade.opacity_score,32,true);
-        let value_139 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_137, value_138));
-        value_136 = value_139;
+    let value_156 = number_2de837a0_value(style.fields,32,false);
+    let value_157 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
+    let value_158 = number_2de837a0_value(number_2de837a0_bits(value_157,0,32,false,0),32,false);
+    let value_159 = number_2de837a0_value(number_2de837a0_bits(value_156,value_158,32,false,8),32,false);
+    let value_160 = number_2de837a0_value(0,32,true);
+    let value_161 = number_2de837a0_value(number_2de837a0_bits(value_160,0,32,false,0),32,false);
+    let value_162 = number_2de837a0_bool(value_159 != value_161);
+    let value_163 = number_2de837a0_bool(value_162);
+    if (value_163) {
+        let value_165 = priority;
+        let value_166 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_165);
+        let value_164 = value_166;
+        let value_168 = cascade.border_width_priority;
+        let value_169 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_168);
+        let value_167 = value_169;
+        let value_170 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_164, value_167));
+        value_163 = value_170;
     }
-    if (value_136) {
-        let value_140 = Math.fround(style.opacity);
-        cascade.result.opacity = value_140;
-        let value_141 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_142 = number_2de837a0_value($enum0.StyleOpacity,32,true);
-        let value_143 = number_2de837a0_value(number_2de837a0_bits(value_142,0,32,false,0),32,false);
-        let value_144 = number_2de837a0_value(number_2de837a0_bits(value_141,value_143,32,false,9),32,false);
-        cascade.result.fields = value_144;
-        let value_145 = number_2de837a0_value(score,32,true);
-        cascade.opacity_score = value_145;
+    if (value_163) {
+        let value_171 = Math.fround(style.border_width);
+        cascade.result.border_width = value_171;
+        let value_172 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_173 = number_2de837a0_value($enum0.StyleBorderWidth,32,true);
+        let value_174 = number_2de837a0_value(number_2de837a0_bits(value_173,0,32,false,0),32,false);
+        let value_175 = number_2de837a0_value(number_2de837a0_bits(value_172,value_174,32,false,9),32,false);
+        cascade.result.fields = value_175;
+        let value_177 = priority;
+        let value_178 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_177);
+        let value_176 = value_178;
+        let value_179 = value_176;
+        let value_180 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_179);
+        cascade.border_width_priority = value_180;
     }
-    let value_146 = number_2de837a0_value(style.fields,32,false);
-    let value_147 = number_2de837a0_value($enum0.StylePaddingX,32,true);
-    let value_148 = number_2de837a0_value(number_2de837a0_bits(value_147,0,32,false,0),32,false);
-    let value_149 = number_2de837a0_value(number_2de837a0_bits(value_146,value_148,32,false,8),32,false);
-    let value_150 = number_2de837a0_value(0,32,true);
-    let value_151 = number_2de837a0_value(number_2de837a0_bits(value_150,0,32,false,0),32,false);
-    let value_152 = number_2de837a0_bool(value_149 != value_151);
-    let value_153 = number_2de837a0_bool(value_152);
-    if (value_153) {
-        let value_154 = number_2de837a0_value(score,32,true);
-        let value_155 = number_2de837a0_value(cascade.padding_x_score,32,true);
-        let value_156 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_154, value_155));
-        value_153 = value_156;
+    let value_181 = number_2de837a0_value(style.fields,32,false);
+    let value_182 = number_2de837a0_value($enum0.StyleOpacity,32,true);
+    let value_183 = number_2de837a0_value(number_2de837a0_bits(value_182,0,32,false,0),32,false);
+    let value_184 = number_2de837a0_value(number_2de837a0_bits(value_181,value_183,32,false,8),32,false);
+    let value_185 = number_2de837a0_value(0,32,true);
+    let value_186 = number_2de837a0_value(number_2de837a0_bits(value_185,0,32,false,0),32,false);
+    let value_187 = number_2de837a0_bool(value_184 != value_186);
+    let value_188 = number_2de837a0_bool(value_187);
+    if (value_188) {
+        let value_190 = priority;
+        let value_191 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_190);
+        let value_189 = value_191;
+        let value_193 = cascade.opacity_priority;
+        let value_194 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_193);
+        let value_192 = value_194;
+        let value_195 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_189, value_192));
+        value_188 = value_195;
     }
-    if (value_153) {
-        let value_157 = Math.fround(style.padding_x);
-        cascade.result.padding_x = value_157;
-        let value_158 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_159 = number_2de837a0_value($enum0.StylePaddingX,32,true);
-        let value_160 = number_2de837a0_value(number_2de837a0_bits(value_159,0,32,false,0),32,false);
-        let value_161 = number_2de837a0_value(number_2de837a0_bits(value_158,value_160,32,false,9),32,false);
-        cascade.result.fields = value_161;
-        let value_162 = number_2de837a0_value(score,32,true);
-        cascade.padding_x_score = value_162;
+    if (value_188) {
+        let value_196 = Math.fround(style.opacity);
+        cascade.result.opacity = value_196;
+        let value_197 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_198 = number_2de837a0_value($enum0.StyleOpacity,32,true);
+        let value_199 = number_2de837a0_value(number_2de837a0_bits(value_198,0,32,false,0),32,false);
+        let value_200 = number_2de837a0_value(number_2de837a0_bits(value_197,value_199,32,false,9),32,false);
+        cascade.result.fields = value_200;
+        let value_202 = priority;
+        let value_203 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_202);
+        let value_201 = value_203;
+        let value_204 = value_201;
+        let value_205 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_204);
+        cascade.opacity_priority = value_205;
     }
-    let value_163 = number_2de837a0_value(style.fields,32,false);
-    let value_164 = number_2de837a0_value($enum0.StylePaddingY,32,true);
-    let value_165 = number_2de837a0_value(number_2de837a0_bits(value_164,0,32,false,0),32,false);
-    let value_166 = number_2de837a0_value(number_2de837a0_bits(value_163,value_165,32,false,8),32,false);
-    let value_167 = number_2de837a0_value(0,32,true);
-    let value_168 = number_2de837a0_value(number_2de837a0_bits(value_167,0,32,false,0),32,false);
-    let value_169 = number_2de837a0_bool(value_166 != value_168);
-    let value_170 = number_2de837a0_bool(value_169);
-    if (value_170) {
-        let value_171 = number_2de837a0_value(score,32,true);
-        let value_172 = number_2de837a0_value(cascade.padding_y_score,32,true);
-        let value_173 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_171, value_172));
-        value_170 = value_173;
+    let value_206 = number_2de837a0_value(style.fields,32,false);
+    let value_207 = number_2de837a0_value($enum0.StylePaddingX,32,true);
+    let value_208 = number_2de837a0_value(number_2de837a0_bits(value_207,0,32,false,0),32,false);
+    let value_209 = number_2de837a0_value(number_2de837a0_bits(value_206,value_208,32,false,8),32,false);
+    let value_210 = number_2de837a0_value(0,32,true);
+    let value_211 = number_2de837a0_value(number_2de837a0_bits(value_210,0,32,false,0),32,false);
+    let value_212 = number_2de837a0_bool(value_209 != value_211);
+    let value_213 = number_2de837a0_bool(value_212);
+    if (value_213) {
+        let value_215 = priority;
+        let value_216 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_215);
+        let value_214 = value_216;
+        let value_218 = cascade.padding_x_priority;
+        let value_219 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_218);
+        let value_217 = value_219;
+        let value_220 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_214, value_217));
+        value_213 = value_220;
     }
-    if (value_170) {
-        let value_174 = Math.fround(style.padding_y);
-        cascade.result.padding_y = value_174;
-        let value_175 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_176 = number_2de837a0_value($enum0.StylePaddingY,32,true);
-        let value_177 = number_2de837a0_value(number_2de837a0_bits(value_176,0,32,false,0),32,false);
-        let value_178 = number_2de837a0_value(number_2de837a0_bits(value_175,value_177,32,false,9),32,false);
-        cascade.result.fields = value_178;
-        let value_179 = number_2de837a0_value(score,32,true);
-        cascade.padding_y_score = value_179;
-    }
-    let value_180 = number_2de837a0_value(style.fields,32,false);
-    let value_181 = number_2de837a0_value($enum0.StyleGap,32,true);
-    let value_182 = number_2de837a0_value(number_2de837a0_bits(value_181,0,32,false,0),32,false);
-    let value_183 = number_2de837a0_value(number_2de837a0_bits(value_180,value_182,32,false,8),32,false);
-    let value_184 = number_2de837a0_value(0,32,true);
-    let value_185 = number_2de837a0_value(number_2de837a0_bits(value_184,0,32,false,0),32,false);
-    let value_186 = number_2de837a0_bool(value_183 != value_185);
-    let value_187 = number_2de837a0_bool(value_186);
-    if (value_187) {
-        let value_188 = number_2de837a0_value(score,32,true);
-        let value_189 = number_2de837a0_value(cascade.gap_score,32,true);
-        let value_190 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_188, value_189));
-        value_187 = value_190;
-    }
-    if (value_187) {
-        let value_191 = Math.fround(style.gap);
-        cascade.result.gap = value_191;
-        let value_192 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_193 = number_2de837a0_value($enum0.StyleGap,32,true);
-        let value_194 = number_2de837a0_value(number_2de837a0_bits(value_193,0,32,false,0),32,false);
-        let value_195 = number_2de837a0_value(number_2de837a0_bits(value_192,value_194,32,false,9),32,false);
-        cascade.result.fields = value_195;
-        let value_196 = number_2de837a0_value(score,32,true);
-        cascade.gap_score = value_196;
-    }
-    let value_197 = number_2de837a0_value(style.fields,32,false);
-    let value_198 = number_2de837a0_value($enum0.StyleFontSize,32,true);
-    let value_199 = number_2de837a0_value(number_2de837a0_bits(value_198,0,32,false,0),32,false);
-    let value_200 = number_2de837a0_value(number_2de837a0_bits(value_197,value_199,32,false,8),32,false);
-    let value_201 = number_2de837a0_value(0,32,true);
-    let value_202 = number_2de837a0_value(number_2de837a0_bits(value_201,0,32,false,0),32,false);
-    let value_203 = number_2de837a0_bool(value_200 != value_202);
-    let value_204 = number_2de837a0_bool(value_203);
-    if (value_204) {
-        let value_205 = number_2de837a0_value(score,32,true);
-        let value_206 = number_2de837a0_value(cascade.font_size_score,32,true);
-        let value_207 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_205, value_206));
-        value_204 = value_207;
-    }
-    if (value_204) {
-        let value_208 = Math.fround(style.font_size);
-        cascade.result.font_size = value_208;
-        let value_209 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_210 = number_2de837a0_value($enum0.StyleFontSize,32,true);
-        let value_211 = number_2de837a0_value(number_2de837a0_bits(value_210,0,32,false,0),32,false);
-        let value_212 = number_2de837a0_value(number_2de837a0_bits(value_209,value_211,32,false,9),32,false);
-        cascade.result.fields = value_212;
-        let value_213 = number_2de837a0_value(score,32,true);
-        cascade.font_size_score = value_213;
-    }
-    let value_214 = number_2de837a0_value(style.fields,32,false);
-    let value_215 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
-    let value_216 = number_2de837a0_value(number_2de837a0_bits(value_215,0,32,false,0),32,false);
-    let value_217 = number_2de837a0_value(number_2de837a0_bits(value_214,value_216,32,false,8),32,false);
-    let value_218 = number_2de837a0_value(0,32,true);
-    let value_219 = number_2de837a0_value(number_2de837a0_bits(value_218,0,32,false,0),32,false);
-    let value_220 = number_2de837a0_bool(value_217 != value_219);
-    let value_221 = number_2de837a0_bool(value_220);
-    if (value_221) {
-        let value_222 = number_2de837a0_value(score,32,true);
-        let value_223 = number_2de837a0_value(cascade.letter_spacing_score,32,true);
-        let value_224 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_222, value_223));
-        value_221 = value_224;
-    }
-    if (value_221) {
-        let value_225 = Math.fround(style.letter_spacing);
-        cascade.result.letter_spacing = value_225;
-        let value_226 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_227 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
-        let value_228 = number_2de837a0_value(number_2de837a0_bits(value_227,0,32,false,0),32,false);
-        let value_229 = number_2de837a0_value(number_2de837a0_bits(value_226,value_228,32,false,9),32,false);
-        cascade.result.fields = value_229;
-        let value_230 = number_2de837a0_value(score,32,true);
-        cascade.letter_spacing_score = value_230;
+    if (value_213) {
+        let value_221 = Math.fround(style.padding_x);
+        cascade.result.padding_x = value_221;
+        let value_222 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_223 = number_2de837a0_value($enum0.StylePaddingX,32,true);
+        let value_224 = number_2de837a0_value(number_2de837a0_bits(value_223,0,32,false,0),32,false);
+        let value_225 = number_2de837a0_value(number_2de837a0_bits(value_222,value_224,32,false,9),32,false);
+        cascade.result.fields = value_225;
+        let value_227 = priority;
+        let value_228 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_227);
+        let value_226 = value_228;
+        let value_229 = value_226;
+        let value_230 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_229);
+        cascade.padding_x_priority = value_230;
     }
     let value_231 = number_2de837a0_value(style.fields,32,false);
-    let value_232 = number_2de837a0_value($enum0.StyleIconSize,32,true);
+    let value_232 = number_2de837a0_value($enum0.StylePaddingY,32,true);
     let value_233 = number_2de837a0_value(number_2de837a0_bits(value_232,0,32,false,0),32,false);
     let value_234 = number_2de837a0_value(number_2de837a0_bits(value_231,value_233,32,false,8),32,false);
     let value_235 = number_2de837a0_value(0,32,true);
@@ -1286,134 +1340,306 @@ export function StyleSheet_ApplyStyleRule($rt, $state = moduleState, $host = mod
     let value_237 = number_2de837a0_bool(value_234 != value_236);
     let value_238 = number_2de837a0_bool(value_237);
     if (value_238) {
-        let value_239 = number_2de837a0_value(score,32,true);
-        let value_240 = number_2de837a0_value(cascade.icon_size_score,32,true);
-        let value_241 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_239, value_240));
-        value_238 = value_241;
+        let value_240 = priority;
+        let value_241 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_240);
+        let value_239 = value_241;
+        let value_243 = cascade.padding_y_priority;
+        let value_244 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_243);
+        let value_242 = value_244;
+        let value_245 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_239, value_242));
+        value_238 = value_245;
     }
     if (value_238) {
-        let value_242 = Math.fround(style.icon_size);
-        cascade.result.icon_size = value_242;
-        let value_243 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_244 = number_2de837a0_value($enum0.StyleIconSize,32,true);
-        let value_245 = number_2de837a0_value(number_2de837a0_bits(value_244,0,32,false,0),32,false);
-        let value_246 = number_2de837a0_value(number_2de837a0_bits(value_243,value_245,32,false,9),32,false);
-        cascade.result.fields = value_246;
-        let value_247 = number_2de837a0_value(score,32,true);
-        cascade.icon_size_score = value_247;
+        let value_246 = Math.fround(style.padding_y);
+        cascade.result.padding_y = value_246;
+        let value_247 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_248 = number_2de837a0_value($enum0.StylePaddingY,32,true);
+        let value_249 = number_2de837a0_value(number_2de837a0_bits(value_248,0,32,false,0),32,false);
+        let value_250 = number_2de837a0_value(number_2de837a0_bits(value_247,value_249,32,false,9),32,false);
+        cascade.result.fields = value_250;
+        let value_252 = priority;
+        let value_253 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_252);
+        let value_251 = value_253;
+        let value_254 = value_251;
+        let value_255 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_254);
+        cascade.padding_y_priority = value_255;
     }
-    let value_248 = number_2de837a0_value(style.fields,32,false);
-    let value_249 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
-    let value_250 = number_2de837a0_value(number_2de837a0_bits(value_249,0,32,false,0),32,false);
-    let value_251 = number_2de837a0_value(number_2de837a0_bits(value_248,value_250,32,false,8),32,false);
-    let value_252 = number_2de837a0_value(0,32,true);
-    let value_253 = number_2de837a0_value(number_2de837a0_bits(value_252,0,32,false,0),32,false);
-    let value_254 = number_2de837a0_bool(value_251 != value_253);
-    let value_255 = number_2de837a0_bool(value_254);
-    if (value_255) {
-        let value_256 = number_2de837a0_value(score,32,true);
-        let value_257 = number_2de837a0_value(cascade.content_offset_score,32,true);
-        let value_258 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_256, value_257));
-        value_255 = value_258;
+    let value_256 = number_2de837a0_value(style.fields,32,false);
+    let value_257 = number_2de837a0_value($enum0.StyleGap,32,true);
+    let value_258 = number_2de837a0_value(number_2de837a0_bits(value_257,0,32,false,0),32,false);
+    let value_259 = number_2de837a0_value(number_2de837a0_bits(value_256,value_258,32,false,8),32,false);
+    let value_260 = number_2de837a0_value(0,32,true);
+    let value_261 = number_2de837a0_value(number_2de837a0_bits(value_260,0,32,false,0),32,false);
+    let value_262 = number_2de837a0_bool(value_259 != value_261);
+    let value_263 = number_2de837a0_bool(value_262);
+    if (value_263) {
+        let value_265 = priority;
+        let value_266 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_265);
+        let value_264 = value_266;
+        let value_268 = cascade.gap_priority;
+        let value_269 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_268);
+        let value_267 = value_269;
+        let value_270 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_264, value_267));
+        value_263 = value_270;
     }
-    if (value_255) {
-        let value_259 = Math.fround(style.offset_x);
-        cascade.result.offset_x = value_259;
-        let value_260 = Math.fround(style.offset_y);
-        cascade.result.offset_y = value_260;
-        let value_261 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_262 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
-        let value_263 = number_2de837a0_value(number_2de837a0_bits(value_262,0,32,false,0),32,false);
-        let value_264 = number_2de837a0_value(number_2de837a0_bits(value_261,value_263,32,false,9),32,false);
-        cascade.result.fields = value_264;
-        let value_265 = number_2de837a0_value(score,32,true);
-        cascade.content_offset_score = value_265;
+    if (value_263) {
+        let value_271 = Math.fround(style.gap);
+        cascade.result.gap = value_271;
+        let value_272 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_273 = number_2de837a0_value($enum0.StyleGap,32,true);
+        let value_274 = number_2de837a0_value(number_2de837a0_bits(value_273,0,32,false,0),32,false);
+        let value_275 = number_2de837a0_value(number_2de837a0_bits(value_272,value_274,32,false,9),32,false);
+        cascade.result.fields = value_275;
+        let value_277 = priority;
+        let value_278 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_277);
+        let value_276 = value_278;
+        let value_279 = value_276;
+        let value_280 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_279);
+        cascade.gap_priority = value_280;
     }
-    let value_266 = number_2de837a0_value(style.fields,32,false);
-    let value_267 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
-    let value_268 = number_2de837a0_value(number_2de837a0_bits(value_267,0,32,false,0),32,false);
-    let value_269 = number_2de837a0_value(number_2de837a0_bits(value_266,value_268,32,false,8),32,false);
-    let value_270 = number_2de837a0_value(0,32,true);
-    let value_271 = number_2de837a0_value(number_2de837a0_bits(value_270,0,32,false,0),32,false);
-    let value_272 = number_2de837a0_bool(value_269 != value_271);
-    let value_273 = number_2de837a0_bool(value_272);
-    if (value_273) {
-        let value_274 = number_2de837a0_value(score,32,true);
-        let value_275 = number_2de837a0_value(cascade.background_end_score,32,true);
-        let value_276 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_274, value_275));
-        value_273 = value_276;
+    let value_281 = number_2de837a0_value(style.fields,32,false);
+    let value_282 = number_2de837a0_value($enum0.StyleFontSize,32,true);
+    let value_283 = number_2de837a0_value(number_2de837a0_bits(value_282,0,32,false,0),32,false);
+    let value_284 = number_2de837a0_value(number_2de837a0_bits(value_281,value_283,32,false,8),32,false);
+    let value_285 = number_2de837a0_value(0,32,true);
+    let value_286 = number_2de837a0_value(number_2de837a0_bits(value_285,0,32,false,0),32,false);
+    let value_287 = number_2de837a0_bool(value_284 != value_286);
+    let value_288 = number_2de837a0_bool(value_287);
+    if (value_288) {
+        let value_290 = priority;
+        let value_291 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_290);
+        let value_289 = value_291;
+        let value_293 = cascade.font_size_priority;
+        let value_294 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_293);
+        let value_292 = value_294;
+        let value_295 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_289, value_292));
+        value_288 = value_295;
     }
-    if (value_273) {
-        let value_277 = number_2de837a0_value(style.background_end,32,false);
-        cascade.result.background_end = value_277;
-        let value_278 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_279 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
-        let value_280 = number_2de837a0_value(number_2de837a0_bits(value_279,0,32,false,0),32,false);
-        let value_281 = number_2de837a0_value(number_2de837a0_bits(value_278,value_280,32,false,9),32,false);
-        cascade.result.fields = value_281;
-        let value_282 = number_2de837a0_value(score,32,true);
-        cascade.background_end_score = value_282;
+    if (value_288) {
+        let value_296 = Math.fround(style.font_size);
+        cascade.result.font_size = value_296;
+        let value_297 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_298 = number_2de837a0_value($enum0.StyleFontSize,32,true);
+        let value_299 = number_2de837a0_value(number_2de837a0_bits(value_298,0,32,false,0),32,false);
+        let value_300 = number_2de837a0_value(number_2de837a0_bits(value_297,value_299,32,false,9),32,false);
+        cascade.result.fields = value_300;
+        let value_302 = priority;
+        let value_303 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_302);
+        let value_301 = value_303;
+        let value_304 = value_301;
+        let value_305 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_304);
+        cascade.font_size_priority = value_305;
     }
-    let value_283 = number_2de837a0_value(style.fields,32,false);
-    let value_284 = number_2de837a0_value($enum0.StyleMaterial,32,true);
-    let value_285 = number_2de837a0_value(number_2de837a0_bits(value_284,0,32,false,0),32,false);
-    let value_286 = number_2de837a0_value(number_2de837a0_bits(value_283,value_285,32,false,8),32,false);
-    let value_287 = number_2de837a0_value(0,32,true);
-    let value_288 = number_2de837a0_value(number_2de837a0_bits(value_287,0,32,false,0),32,false);
-    let value_289 = number_2de837a0_bool(value_286 != value_288);
-    let value_290 = number_2de837a0_bool(value_289);
-    if (value_290) {
-        let value_291 = number_2de837a0_value(score,32,true);
-        let value_292 = number_2de837a0_value(cascade.material_score,32,true);
-        let value_293 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_291, value_292));
-        value_290 = value_293;
+    let value_306 = number_2de837a0_value(style.fields,32,false);
+    let value_307 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
+    let value_308 = number_2de837a0_value(number_2de837a0_bits(value_307,0,32,false,0),32,false);
+    let value_309 = number_2de837a0_value(number_2de837a0_bits(value_306,value_308,32,false,8),32,false);
+    let value_310 = number_2de837a0_value(0,32,true);
+    let value_311 = number_2de837a0_value(number_2de837a0_bits(value_310,0,32,false,0),32,false);
+    let value_312 = number_2de837a0_bool(value_309 != value_311);
+    let value_313 = number_2de837a0_bool(value_312);
+    if (value_313) {
+        let value_315 = priority;
+        let value_316 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_315);
+        let value_314 = value_316;
+        let value_318 = cascade.letter_spacing_priority;
+        let value_319 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_318);
+        let value_317 = value_319;
+        let value_320 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_314, value_317));
+        value_313 = value_320;
     }
-    if (value_290) {
-        let value_294 = number_2de837a0_value(style.material,32,true);
-        cascade.result.material = value_294;
-        let value_295 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_296 = number_2de837a0_value($enum0.StyleMaterial,32,true);
-        let value_297 = number_2de837a0_value(number_2de837a0_bits(value_296,0,32,false,0),32,false);
-        let value_298 = number_2de837a0_value(number_2de837a0_bits(value_295,value_297,32,false,9),32,false);
-        cascade.result.fields = value_298;
-        let value_299 = number_2de837a0_value(score,32,true);
-        cascade.material_score = value_299;
+    if (value_313) {
+        let value_321 = Math.fround(style.letter_spacing);
+        cascade.result.letter_spacing = value_321;
+        let value_322 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_323 = number_2de837a0_value($enum0.StyleLetterSpacing,32,true);
+        let value_324 = number_2de837a0_value(number_2de837a0_bits(value_323,0,32,false,0),32,false);
+        let value_325 = number_2de837a0_value(number_2de837a0_bits(value_322,value_324,32,false,9),32,false);
+        cascade.result.fields = value_325;
+        let value_327 = priority;
+        let value_328 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_327);
+        let value_326 = value_328;
+        let value_329 = value_326;
+        let value_330 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_329);
+        cascade.letter_spacing_priority = value_330;
     }
-    let value_300 = number_2de837a0_value(style.fields,32,false);
-    let value_301 = number_2de837a0_value($enum0.StyleTypeface,32,true);
-    let value_302 = number_2de837a0_value(number_2de837a0_bits(value_301,0,32,false,0),32,false);
-    let value_303 = number_2de837a0_value(number_2de837a0_bits(value_300,value_302,32,false,8),32,false);
-    let value_304 = number_2de837a0_value(0,32,true);
-    let value_305 = number_2de837a0_value(number_2de837a0_bits(value_304,0,32,false,0),32,false);
-    let value_306 = number_2de837a0_bool(value_303 != value_305);
-    let value_307 = number_2de837a0_bool(value_306);
-    if (value_307) {
-        let value_308 = number_2de837a0_value(score,32,true);
-        let value_309 = number_2de837a0_value(cascade.typeface_score,32,true);
-        let value_310 = number_2de837a0_bool(StyleSheet_StyleWins($rt, $state, $host, value_308, value_309));
-        value_307 = value_310;
+    let value_331 = number_2de837a0_value(style.fields,32,false);
+    let value_332 = number_2de837a0_value($enum0.StyleIconSize,32,true);
+    let value_333 = number_2de837a0_value(number_2de837a0_bits(value_332,0,32,false,0),32,false);
+    let value_334 = number_2de837a0_value(number_2de837a0_bits(value_331,value_333,32,false,8),32,false);
+    let value_335 = number_2de837a0_value(0,32,true);
+    let value_336 = number_2de837a0_value(number_2de837a0_bits(value_335,0,32,false,0),32,false);
+    let value_337 = number_2de837a0_bool(value_334 != value_336);
+    let value_338 = number_2de837a0_bool(value_337);
+    if (value_338) {
+        let value_340 = priority;
+        let value_341 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_340);
+        let value_339 = value_341;
+        let value_343 = cascade.icon_size_priority;
+        let value_344 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_343);
+        let value_342 = value_344;
+        let value_345 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_339, value_342));
+        value_338 = value_345;
     }
-    if (value_307) {
-        let value_311 = style.typeface;
-        cascade.result.typeface = value_311;
-        let value_312 = number_2de837a0_value(cascade.result.fields,32,false);
-        let value_313 = number_2de837a0_value($enum0.StyleTypeface,32,true);
-        let value_314 = number_2de837a0_value(number_2de837a0_bits(value_313,0,32,false,0),32,false);
-        let value_315 = number_2de837a0_value(number_2de837a0_bits(value_312,value_314,32,false,9),32,false);
-        cascade.result.fields = value_315;
-        let value_316 = number_2de837a0_value(score,32,true);
-        cascade.typeface_score = value_316;
+    if (value_338) {
+        let value_346 = Math.fround(style.icon_size);
+        cascade.result.icon_size = value_346;
+        let value_347 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_348 = number_2de837a0_value($enum0.StyleIconSize,32,true);
+        let value_349 = number_2de837a0_value(number_2de837a0_bits(value_348,0,32,false,0),32,false);
+        let value_350 = number_2de837a0_value(number_2de837a0_bits(value_347,value_349,32,false,9),32,false);
+        cascade.result.fields = value_350;
+        let value_352 = priority;
+        let value_353 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_352);
+        let value_351 = value_353;
+        let value_354 = value_351;
+        let value_355 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_354);
+        cascade.icon_size_priority = value_355;
     }
-    let value_318 = cascade;
-    let value_319 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_318);
-    let value_317 = value_319;
-    return value_317;
+    let value_356 = number_2de837a0_value(style.fields,32,false);
+    let value_357 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
+    let value_358 = number_2de837a0_value(number_2de837a0_bits(value_357,0,32,false,0),32,false);
+    let value_359 = number_2de837a0_value(number_2de837a0_bits(value_356,value_358,32,false,8),32,false);
+    let value_360 = number_2de837a0_value(0,32,true);
+    let value_361 = number_2de837a0_value(number_2de837a0_bits(value_360,0,32,false,0),32,false);
+    let value_362 = number_2de837a0_bool(value_359 != value_361);
+    let value_363 = number_2de837a0_bool(value_362);
+    if (value_363) {
+        let value_365 = priority;
+        let value_366 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_365);
+        let value_364 = value_366;
+        let value_368 = cascade.content_offset_priority;
+        let value_369 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_368);
+        let value_367 = value_369;
+        let value_370 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_364, value_367));
+        value_363 = value_370;
+    }
+    if (value_363) {
+        let value_371 = Math.fround(style.offset_x);
+        cascade.result.offset_x = value_371;
+        let value_372 = Math.fround(style.offset_y);
+        cascade.result.offset_y = value_372;
+        let value_373 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_374 = number_2de837a0_value($enum0.StyleContentOffset,32,true);
+        let value_375 = number_2de837a0_value(number_2de837a0_bits(value_374,0,32,false,0),32,false);
+        let value_376 = number_2de837a0_value(number_2de837a0_bits(value_373,value_375,32,false,9),32,false);
+        cascade.result.fields = value_376;
+        let value_378 = priority;
+        let value_379 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_378);
+        let value_377 = value_379;
+        let value_380 = value_377;
+        let value_381 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_380);
+        cascade.content_offset_priority = value_381;
+    }
+    let value_382 = number_2de837a0_value(style.fields,32,false);
+    let value_383 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
+    let value_384 = number_2de837a0_value(number_2de837a0_bits(value_383,0,32,false,0),32,false);
+    let value_385 = number_2de837a0_value(number_2de837a0_bits(value_382,value_384,32,false,8),32,false);
+    let value_386 = number_2de837a0_value(0,32,true);
+    let value_387 = number_2de837a0_value(number_2de837a0_bits(value_386,0,32,false,0),32,false);
+    let value_388 = number_2de837a0_bool(value_385 != value_387);
+    let value_389 = number_2de837a0_bool(value_388);
+    if (value_389) {
+        let value_391 = priority;
+        let value_392 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_391);
+        let value_390 = value_392;
+        let value_394 = cascade.background_end_priority;
+        let value_395 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_394);
+        let value_393 = value_395;
+        let value_396 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_390, value_393));
+        value_389 = value_396;
+    }
+    if (value_389) {
+        let value_397 = number_2de837a0_value(style.background_end,32,false);
+        cascade.result.background_end = value_397;
+        let value_398 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_399 = number_2de837a0_value($enum0.StyleBackgroundEnd,32,true);
+        let value_400 = number_2de837a0_value(number_2de837a0_bits(value_399,0,32,false,0),32,false);
+        let value_401 = number_2de837a0_value(number_2de837a0_bits(value_398,value_400,32,false,9),32,false);
+        cascade.result.fields = value_401;
+        let value_403 = priority;
+        let value_404 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_403);
+        let value_402 = value_404;
+        let value_405 = value_402;
+        let value_406 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_405);
+        cascade.background_end_priority = value_406;
+    }
+    let value_407 = number_2de837a0_value(style.fields,32,false);
+    let value_408 = number_2de837a0_value($enum0.StyleMaterial,32,true);
+    let value_409 = number_2de837a0_value(number_2de837a0_bits(value_408,0,32,false,0),32,false);
+    let value_410 = number_2de837a0_value(number_2de837a0_bits(value_407,value_409,32,false,8),32,false);
+    let value_411 = number_2de837a0_value(0,32,true);
+    let value_412 = number_2de837a0_value(number_2de837a0_bits(value_411,0,32,false,0),32,false);
+    let value_413 = number_2de837a0_bool(value_410 != value_412);
+    let value_414 = number_2de837a0_bool(value_413);
+    if (value_414) {
+        let value_416 = priority;
+        let value_417 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_416);
+        let value_415 = value_417;
+        let value_419 = cascade.material_priority;
+        let value_420 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_419);
+        let value_418 = value_420;
+        let value_421 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_415, value_418));
+        value_414 = value_421;
+    }
+    if (value_414) {
+        let value_422 = number_2de837a0_value(style.material,32,true);
+        cascade.result.material = value_422;
+        let value_423 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_424 = number_2de837a0_value($enum0.StyleMaterial,32,true);
+        let value_425 = number_2de837a0_value(number_2de837a0_bits(value_424,0,32,false,0),32,false);
+        let value_426 = number_2de837a0_value(number_2de837a0_bits(value_423,value_425,32,false,9),32,false);
+        cascade.result.fields = value_426;
+        let value_428 = priority;
+        let value_429 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_428);
+        let value_427 = value_429;
+        let value_430 = value_427;
+        let value_431 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_430);
+        cascade.material_priority = value_431;
+    }
+    let value_432 = number_2de837a0_value(style.fields,32,false);
+    let value_433 = number_2de837a0_value($enum0.StyleTypeface,32,true);
+    let value_434 = number_2de837a0_value(number_2de837a0_bits(value_433,0,32,false,0),32,false);
+    let value_435 = number_2de837a0_value(number_2de837a0_bits(value_432,value_434,32,false,8),32,false);
+    let value_436 = number_2de837a0_value(0,32,true);
+    let value_437 = number_2de837a0_value(number_2de837a0_bits(value_436,0,32,false,0),32,false);
+    let value_438 = number_2de837a0_bool(value_435 != value_437);
+    let value_439 = number_2de837a0_bool(value_438);
+    if (value_439) {
+        let value_441 = priority;
+        let value_442 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_441);
+        let value_440 = value_442;
+        let value_444 = cascade.typeface_priority;
+        let value_445 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_444);
+        let value_443 = value_445;
+        let value_446 = number_2de837a0_bool(StyleSheet_StylePriorityWins($rt, $state, $host, value_440, value_443));
+        value_439 = value_446;
+    }
+    if (value_439) {
+        let value_447 = style.typeface;
+        cascade.result.typeface = value_447;
+        let value_448 = number_2de837a0_value(cascade.result.fields,32,false);
+        let value_449 = number_2de837a0_value($enum0.StyleTypeface,32,true);
+        let value_450 = number_2de837a0_value(number_2de837a0_bits(value_449,0,32,false,0),32,false);
+        let value_451 = number_2de837a0_value(number_2de837a0_bits(value_448,value_450,32,false,9),32,false);
+        cascade.result.fields = value_451;
+        let value_453 = priority;
+        let value_454 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_453);
+        let value_452 = value_454;
+        let value_455 = value_452;
+        let value_456 = ((record_source) => ({present: record_source.present, layer: record_source.layer, specificity: record_source.specificity, order: record_source.order}))(value_455);
+        cascade.typeface_priority = value_456;
+    }
+    let value_458 = cascade;
+    let value_459 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_458);
+    let value_457 = value_459;
+    return value_457;
 }
 
 export function StyleSheet_FinishStyleCascade($rt, $state = moduleState, $host = moduleHost, cascade) {
   $state = $state || moduleState;
     let value_0 = cascade;
-    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_0);
+    let value_1 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_0);
     cascade = value_1;
     let value_3 = cascade.result;
     let value_4 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_3);
@@ -1437,13 +1663,13 @@ export function StyleSheet_ResolveStyleRule($rt, $state = moduleState, $host = m
     let value_8 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_7);
     let value_6 = value_8;
     let value_10 = StyleSheet_BeginStyleCascade($rt, $state, $host, value_6);
-    let value_11 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_10);
+    let value_11 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_10);
     let value_9 = value_11;
     let value_12 = value_9;
-    let value_13 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_12);
+    let value_13 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_12);
     let cascade = value_13;
     let value_15 = cascade;
-    let value_16 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_15);
+    let value_16 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_15);
     let value_14 = value_16;
     let value_18 = rule;
     let value_19 = ((record_source) => ({selector: {kind: record_source.selector.kind, name: record_source.selector.name, class_name: record_source.selector.class_name, role: record_source.selector.role, tone: record_source.selector.tone, emphasis: record_source.selector.emphasis, size: record_source.selector.size, state: record_source.selector.state, validation: record_source.selector.validation, orientation: record_source.selector.orientation, placement: record_source.selector.placement}, state: record_source.state, layer: record_source.layer, order: record_source.order, style: {fields: record_source.style.fields, background: record_source.style.background, foreground: record_source.style.foreground, border: record_source.style.border, focus: record_source.style.focus, radius: record_source.style.radius, border_width: record_source.style.border_width, opacity: record_source.style.opacity, padding_x: record_source.style.padding_x, padding_y: record_source.style.padding_y, gap: record_source.style.gap, font_size: record_source.style.font_size, icon_size: record_source.style.icon_size, offset_x: record_source.style.offset_x, offset_y: record_source.style.offset_y, background_end: record_source.style.background_end, material: record_source.style.material, typeface: record_source.style.typeface, letter_spacing: record_source.style.letter_spacing}}))(value_18);
@@ -1453,13 +1679,13 @@ export function StyleSheet_ResolveStyleRule($rt, $state = moduleState, $host = m
     let value_20 = value_22;
     let value_23 = number_2de837a0_value(active_state,32,true);
     let value_25 = StyleSheet_ApplyStyleRule($rt, $state, $host, value_14, value_17, value_20, value_23);
-    let value_26 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_25);
+    let value_26 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_25);
     let value_24 = value_26;
     let value_27 = value_24;
-    let value_28 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_27);
+    let value_28 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_27);
     cascade = value_28;
     let value_30 = cascade;
-    let value_31 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_score: record_source.background_score, foreground_score: record_source.foreground_score, border_score: record_source.border_score, focus_score: record_source.focus_score, radius_score: record_source.radius_score, border_width_score: record_source.border_width_score, opacity_score: record_source.opacity_score, padding_x_score: record_source.padding_x_score, padding_y_score: record_source.padding_y_score, gap_score: record_source.gap_score, font_size_score: record_source.font_size_score, icon_size_score: record_source.icon_size_score, content_offset_score: record_source.content_offset_score, background_end_score: record_source.background_end_score, material_score: record_source.material_score, typeface_score: record_source.typeface_score, letter_spacing_score: record_source.letter_spacing_score}))(value_30);
+    let value_31 = ((record_source) => ({result: {fields: record_source.result.fields, background: record_source.result.background, foreground: record_source.result.foreground, border: record_source.result.border, focus: record_source.result.focus, radius: record_source.result.radius, border_width: record_source.result.border_width, opacity: record_source.result.opacity, padding_x: record_source.result.padding_x, padding_y: record_source.result.padding_y, gap: record_source.result.gap, font_size: record_source.result.font_size, icon_size: record_source.result.icon_size, offset_x: record_source.result.offset_x, offset_y: record_source.result.offset_y, background_end: record_source.result.background_end, material: record_source.result.material, typeface: record_source.result.typeface, letter_spacing: record_source.result.letter_spacing}, background_priority: {present: record_source.background_priority.present, layer: record_source.background_priority.layer, specificity: record_source.background_priority.specificity, order: record_source.background_priority.order}, foreground_priority: {present: record_source.foreground_priority.present, layer: record_source.foreground_priority.layer, specificity: record_source.foreground_priority.specificity, order: record_source.foreground_priority.order}, border_priority: {present: record_source.border_priority.present, layer: record_source.border_priority.layer, specificity: record_source.border_priority.specificity, order: record_source.border_priority.order}, focus_priority: {present: record_source.focus_priority.present, layer: record_source.focus_priority.layer, specificity: record_source.focus_priority.specificity, order: record_source.focus_priority.order}, radius_priority: {present: record_source.radius_priority.present, layer: record_source.radius_priority.layer, specificity: record_source.radius_priority.specificity, order: record_source.radius_priority.order}, border_width_priority: {present: record_source.border_width_priority.present, layer: record_source.border_width_priority.layer, specificity: record_source.border_width_priority.specificity, order: record_source.border_width_priority.order}, opacity_priority: {present: record_source.opacity_priority.present, layer: record_source.opacity_priority.layer, specificity: record_source.opacity_priority.specificity, order: record_source.opacity_priority.order}, padding_x_priority: {present: record_source.padding_x_priority.present, layer: record_source.padding_x_priority.layer, specificity: record_source.padding_x_priority.specificity, order: record_source.padding_x_priority.order}, padding_y_priority: {present: record_source.padding_y_priority.present, layer: record_source.padding_y_priority.layer, specificity: record_source.padding_y_priority.specificity, order: record_source.padding_y_priority.order}, gap_priority: {present: record_source.gap_priority.present, layer: record_source.gap_priority.layer, specificity: record_source.gap_priority.specificity, order: record_source.gap_priority.order}, font_size_priority: {present: record_source.font_size_priority.present, layer: record_source.font_size_priority.layer, specificity: record_source.font_size_priority.specificity, order: record_source.font_size_priority.order}, icon_size_priority: {present: record_source.icon_size_priority.present, layer: record_source.icon_size_priority.layer, specificity: record_source.icon_size_priority.specificity, order: record_source.icon_size_priority.order}, content_offset_priority: {present: record_source.content_offset_priority.present, layer: record_source.content_offset_priority.layer, specificity: record_source.content_offset_priority.specificity, order: record_source.content_offset_priority.order}, background_end_priority: {present: record_source.background_end_priority.present, layer: record_source.background_end_priority.layer, specificity: record_source.background_end_priority.specificity, order: record_source.background_end_priority.order}, material_priority: {present: record_source.material_priority.present, layer: record_source.material_priority.layer, specificity: record_source.material_priority.specificity, order: record_source.material_priority.order}, typeface_priority: {present: record_source.typeface_priority.present, layer: record_source.typeface_priority.layer, specificity: record_source.typeface_priority.specificity, order: record_source.typeface_priority.order}, letter_spacing_priority: {present: record_source.letter_spacing_priority.present, layer: record_source.letter_spacing_priority.layer, specificity: record_source.letter_spacing_priority.specificity, order: record_source.letter_spacing_priority.order}}))(value_30);
     let value_29 = value_31;
     let value_33 = StyleSheet_FinishStyleCascade($rt, $state, $host, value_29);
     let value_34 = ((record_source) => ({fields: record_source.fields, background: record_source.background, foreground: record_source.foreground, border: record_source.border, focus: record_source.focus, radius: record_source.radius, border_width: record_source.border_width, opacity: record_source.opacity, padding_x: record_source.padding_x, padding_y: record_source.padding_y, gap: record_source.gap, font_size: record_source.font_size, icon_size: record_source.icon_size, offset_x: record_source.offset_x, offset_y: record_source.offset_y, background_end: record_source.background_end, material: record_source.material, typeface: record_source.typeface, letter_spacing: record_source.letter_spacing}))(value_33);

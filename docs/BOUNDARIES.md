@@ -8,10 +8,11 @@ branding, copy, assets, or fixtures from a downstream application.
 KSS grammar, environment-name interpretation, overlay decisions, cascade policy,
 and formatting belong to maintained `runtime/*.kry` modules. CSS declaration
 classification, scalar parsing, token lookup, and color overrides now run there
-as well. The web adapter serializes tagged values; its remaining selector and
-cascade decisions are migration debt tracked in the completion ledger. Host
-adapters own source/import storage, native string views, and publication of resolved sheets;
-they call generated code to interpret those sources. The Go pack registry retains
+as well. Specificity weights and priority comparisons are shared with web
+resolution and inspector traces. Web selector parsing/matching remains migration
+debt tracked in the completion ledger. The adapter serializes tagged values. Host
+adapters own source/import storage, native string views, and publication of
+resolved sheets; they call generated code to interpret those sources. The Go pack registry retains
 source and variant identity for theme changes, staging all resolved sheets before
 publishing them. Browser DOM text-node creation and attachment remain host
 services; they preserve the authored text alongside mounted child elements.

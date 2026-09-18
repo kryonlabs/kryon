@@ -225,6 +225,13 @@ exponents, and an optional `px` suffix. CSS function and quoted values remain
 opaque; delimiters inside them do not end a declaration. Unknown property names
 are rejected even when their values are numeric. Source spans use UTF-8 bytes.
 
+Style winners compare layer, selector specificity, and source order in that
+sequence; exact ties choose the later rule visited. These decisions and selector
+weights are shared `.kry` policy for native resolution, web resolution, and web
+inspector traces. High specificity cannot outrank a higher layer, and a large
+source position cannot outrank higher specificity. Web rule/trace `score` is a
+diagnostic summary, not a priority override. Prebuilt web rules may omit it.
+
 KSS tokens are grouped in one `tokens { ... }` block. Accepted groups are
 `color`, `length`, `number`, `duration`, and `material`; duration values are
 stored as milliseconds, so `80ms` is `80` and `0.14s` is `140`.

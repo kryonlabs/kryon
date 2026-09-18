@@ -610,7 +610,7 @@ style-policy-test: $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/run
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
 	$(BUILD_DIR)/style-policy-test
 
-style-sheet-policy-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
+style-sheet-policy-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c tests/fixtures/kss/cascade.txt
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_sheet_policy_test.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-sheet-policy-test
 	$(BUILD_DIR)/style-sheet-policy-test
 

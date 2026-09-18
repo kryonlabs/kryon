@@ -310,25 +310,32 @@ StyleSheet :: struct {
     rule_count: i32
 }
 
+StylePriority :: struct {
+    present: bool
+    layer: i32
+    specificity: i32
+    order: i32
+}
+
 StyleCascade :: struct {
     result: StyleData
-    background_score: i32
-    foreground_score: i32
-    border_score: i32
-    focus_score: i32
-    radius_score: i32
-    border_width_score: i32
-    opacity_score: i32
-    padding_x_score: i32
-    padding_y_score: i32
-    gap_score: i32
-    font_size_score: i32
-    icon_size_score: i32
-    content_offset_score: i32
-    background_end_score: i32
-    material_score: i32
-    typeface_score: i32
-    letter_spacing_score: i32
+    background_priority: StylePriority
+    foreground_priority: StylePriority
+    border_priority: StylePriority
+    focus_priority: StylePriority
+    radius_priority: StylePriority
+    border_width_priority: StylePriority
+    opacity_priority: StylePriority
+    padding_x_priority: StylePriority
+    padding_y_priority: StylePriority
+    gap_priority: StylePriority
+    font_size_priority: StylePriority
+    icon_size_priority: StylePriority
+    content_offset_priority: StylePriority
+    background_end_priority: StylePriority
+    material_priority: StylePriority
+    typeface_priority: StylePriority
+    letter_spacing_priority: StylePriority
 }
 
 StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
@@ -433,25 +440,64 @@ StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool #ex
     return true
 }
 
-StyleSelectorSpecificity :: (selector: StyleSelector) -> i32 #export {
-    score: i32 = 0
-    if selector.kind != StyleKindAny() { score += 1 }
-    if selector.role != StyleAny() { score += 10 }
-    if selector.tone != StyleAny() { score += 10 }
-    if selector.emphasis != StyleAny() { score += 10 }
-    if selector.size != StyleAny() { score += 10 }
-    if selector.state != StyleAny() { score += 10 }
-    if selector.validation != StyleAny() { score += 10 }
-    if selector.orientation != StyleAny() { score += 10 }
-    if selector.placement != StyleAny() { score += 10 }
-    if selector.class_name != 0 { score += 20 }
-    if selector.name != 0 { score += 100 }
-    return score
+# Selector parsers provide counts; weights and cascade ordering live here for
+# typed native selectors and the richer declarative web selector surface.
+StyleSpecificity :: (kinds: i32, attributes: i32, classes: i32, names: i32) -> i32 #export {
+    return kinds + attributes * 10 + classes * 20 + names * 100
 }
 
-StyleRuleScore :: (rule: StyleRule) -> i32 #export {
-    return rule.layer * 1000000 + StyleSelectorSpecificity(rule.selector) * 1000 +
-        rule.order
+StyleSelectorSpecificity :: (selector: StyleSelector) -> i32 #export {
+    kinds: i32 = 0
+    attributes: i32 = 0
+    classes: i32 = 0
+    names: i32 = 0
+    if selector.kind != StyleKindAny() {
+        kinds = 1
+    }
+    if selector.role != StyleAny() {
+        attributes += 1
+    }
+    if selector.tone != StyleAny() {
+        attributes += 1
+    }
+    if selector.emphasis != StyleAny() {
+        attributes += 1
+    }
+    if selector.size != StyleAny() {
+        attributes += 1
+    }
+    if selector.state != StyleAny() {
+        attributes += 1
+    }
+    if selector.validation != StyleAny() {
+        attributes += 1
+    }
+    if selector.orientation != StyleAny() {
+        attributes += 1
+    }
+    if selector.placement != StyleAny() {
+        attributes += 1
+    }
+    if selector.class_name != 0 {
+        classes = 1
+    }
+    if selector.name != 0 {
+        names = 1
+    }
+    return StyleSpecificity(kinds, attributes, classes, names)
+}
+
+StylePriorityScore :: (layer: i32, specificity: i32, order: i32) -> i32 #export {
+    return layer * 1000000 + specificity * 1000 + order
+}
+
+StyleRulePriority :: (rule: StyleRule) -> StylePriority #export {
+    priority: StylePriority
+    priority.present = true
+    priority.layer = rule.layer
+    priority.specificity = StyleSelectorSpecificity(rule.selector)
+    priority.order = rule.order
+    return priority
 }
 
 StyleRuleMatchesState :: (rule_state: i32, active_state: i32) -> bool #export {
@@ -467,8 +513,22 @@ StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: i32) -> b
     return StyleSelectorMatches(rule.selector, facts)
 }
 
-StyleWins :: (score: i32, current: i32) -> bool #export {
-    return score >= current
+# A scalar score is useful for display but cannot order arbitrary selector
+# counts or source positions without collisions. Compare each tier directly.
+StylePriorityWins :: (priority: StylePriority, current: StylePriority) -> bool #export {
+    if !priority.present {
+        return false
+    }
+    if !current.present {
+        return true
+    }
+    if priority.layer != current.layer {
+        return priority.layer > current.layer
+    }
+    if priority.specificity != current.specificity {
+        return priority.specificity > current.specificity
+    }
+    return priority.order >= current.order
 }
 
 BeginStyleCascade :: (base: StyleData) -> StyleCascade #export {
@@ -482,110 +542,110 @@ ApplyStyleRule :: (cascade: StyleCascade, rule: StyleRule,
     if !StyleRuleMatches(rule, facts, active_state) {
         return cascade
     }
-    score: i32 = StyleRuleScore(rule)
+    priority: StylePriority = StyleRulePriority(rule)
     style: StyleData = rule.style
     if (style.fields & (u32)StyleBackground) != (u32)0 &&
-       StyleWins(score, cascade.background_score) {
+       StylePriorityWins(priority, cascade.background_priority) {
         cascade.result.background = style.background
         cascade.result.fields = cascade.result.fields | (u32)StyleBackground
-        cascade.background_score = score
+        cascade.background_priority = priority
     }
     if (style.fields & (u32)StyleForeground) != (u32)0 &&
-       StyleWins(score, cascade.foreground_score) {
+       StylePriorityWins(priority, cascade.foreground_priority) {
         cascade.result.foreground = style.foreground
         cascade.result.fields = cascade.result.fields | (u32)StyleForeground
-        cascade.foreground_score = score
+        cascade.foreground_priority = priority
     }
     if (style.fields & (u32)StyleBorder) != (u32)0 &&
-       StyleWins(score, cascade.border_score) {
+       StylePriorityWins(priority, cascade.border_priority) {
         cascade.result.border = style.border
         cascade.result.fields = cascade.result.fields | (u32)StyleBorder
-        cascade.border_score = score
+        cascade.border_priority = priority
     }
     if (style.fields & (u32)StyleFocus) != (u32)0 &&
-       StyleWins(score, cascade.focus_score) {
+       StylePriorityWins(priority, cascade.focus_priority) {
         cascade.result.focus = style.focus
         cascade.result.fields = cascade.result.fields | (u32)StyleFocus
-        cascade.focus_score = score
+        cascade.focus_priority = priority
     }
     if (style.fields & (u32)StyleRadius) != (u32)0 &&
-       StyleWins(score, cascade.radius_score) {
+       StylePriorityWins(priority, cascade.radius_priority) {
         cascade.result.radius = style.radius
         cascade.result.fields = cascade.result.fields | (u32)StyleRadius
-        cascade.radius_score = score
+        cascade.radius_priority = priority
     }
     if (style.fields & (u32)StyleBorderWidth) != (u32)0 &&
-       StyleWins(score, cascade.border_width_score) {
+       StylePriorityWins(priority, cascade.border_width_priority) {
         cascade.result.border_width = style.border_width
         cascade.result.fields = cascade.result.fields | (u32)StyleBorderWidth
-        cascade.border_width_score = score
+        cascade.border_width_priority = priority
     }
     if (style.fields & (u32)StyleOpacity) != (u32)0 &&
-       StyleWins(score, cascade.opacity_score) {
+       StylePriorityWins(priority, cascade.opacity_priority) {
         cascade.result.opacity = style.opacity
         cascade.result.fields = cascade.result.fields | (u32)StyleOpacity
-        cascade.opacity_score = score
+        cascade.opacity_priority = priority
     }
     if (style.fields & (u32)StylePaddingX) != (u32)0 &&
-       StyleWins(score, cascade.padding_x_score) {
+       StylePriorityWins(priority, cascade.padding_x_priority) {
         cascade.result.padding_x = style.padding_x
         cascade.result.fields = cascade.result.fields | (u32)StylePaddingX
-        cascade.padding_x_score = score
+        cascade.padding_x_priority = priority
     }
     if (style.fields & (u32)StylePaddingY) != (u32)0 &&
-       StyleWins(score, cascade.padding_y_score) {
+       StylePriorityWins(priority, cascade.padding_y_priority) {
         cascade.result.padding_y = style.padding_y
         cascade.result.fields = cascade.result.fields | (u32)StylePaddingY
-        cascade.padding_y_score = score
+        cascade.padding_y_priority = priority
     }
     if (style.fields & (u32)StyleGap) != (u32)0 &&
-       StyleWins(score, cascade.gap_score) {
+       StylePriorityWins(priority, cascade.gap_priority) {
         cascade.result.gap = style.gap
         cascade.result.fields = cascade.result.fields | (u32)StyleGap
-        cascade.gap_score = score
+        cascade.gap_priority = priority
     }
     if (style.fields & (u32)StyleFontSize) != (u32)0 &&
-       StyleWins(score, cascade.font_size_score) {
+       StylePriorityWins(priority, cascade.font_size_priority) {
         cascade.result.font_size = style.font_size
         cascade.result.fields = cascade.result.fields | (u32)StyleFontSize
-        cascade.font_size_score = score
+        cascade.font_size_priority = priority
     }
     if (style.fields & (u32)StyleLetterSpacing) != (u32)0 &&
-       StyleWins(score, cascade.letter_spacing_score) {
+       StylePriorityWins(priority, cascade.letter_spacing_priority) {
         cascade.result.letter_spacing = style.letter_spacing
         cascade.result.fields = cascade.result.fields | (u32)StyleLetterSpacing
-        cascade.letter_spacing_score = score
+        cascade.letter_spacing_priority = priority
     }
     if (style.fields & (u32)StyleIconSize) != (u32)0 &&
-       StyleWins(score, cascade.icon_size_score) {
+       StylePriorityWins(priority, cascade.icon_size_priority) {
         cascade.result.icon_size = style.icon_size
         cascade.result.fields = cascade.result.fields | (u32)StyleIconSize
-        cascade.icon_size_score = score
+        cascade.icon_size_priority = priority
     }
     if (style.fields & (u32)StyleContentOffset) != (u32)0 &&
-       StyleWins(score, cascade.content_offset_score) {
+       StylePriorityWins(priority, cascade.content_offset_priority) {
         cascade.result.offset_x = style.offset_x
         cascade.result.offset_y = style.offset_y
         cascade.result.fields = cascade.result.fields | (u32)StyleContentOffset
-        cascade.content_offset_score = score
+        cascade.content_offset_priority = priority
     }
     if (style.fields & (u32)StyleBackgroundEnd) != (u32)0 &&
-       StyleWins(score, cascade.background_end_score) {
+       StylePriorityWins(priority, cascade.background_end_priority) {
         cascade.result.background_end = style.background_end
         cascade.result.fields = cascade.result.fields | (u32)StyleBackgroundEnd
-        cascade.background_end_score = score
+        cascade.background_end_priority = priority
     }
     if (style.fields & (u32)StyleMaterial) != (u32)0 &&
-       StyleWins(score, cascade.material_score) {
+       StylePriorityWins(priority, cascade.material_priority) {
         cascade.result.material = style.material
         cascade.result.fields = cascade.result.fields | (u32)StyleMaterial
-        cascade.material_score = score
+        cascade.material_priority = priority
     }
     if (style.fields & (u32)StyleTypeface) != (u32)0 &&
-       StyleWins(score, cascade.typeface_score) {
+       StylePriorityWins(priority, cascade.typeface_priority) {
         cascade.result.typeface = style.typeface
         cascade.result.fields = cascade.result.fields | (u32)StyleTypeface
-        cascade.typeface_score = score
+        cascade.typeface_priority = priority
     }
     return cascade
 }

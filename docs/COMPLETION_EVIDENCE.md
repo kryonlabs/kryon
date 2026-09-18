@@ -56,12 +56,11 @@ not applied. Go changes were formatted with gofmt; `git diff --check` passes.
 
 ## Remaining web KSS semantics identified by source audit
 
-The web host still owns selector parsing/specificity in `splitSelectorSequence`,
-`splitSelectorList`, `parseSimpleSelector`, and `parseSelector`; and rule priority/winner
-comparisons in `parseWebStyleSheet`, `resolveWebStyle`, and `traceWebStyle`.
-These are concrete migration candidates, not proof of an entirely shared KSS
-implementation. Native `runtime/style_sheet.kry` already owns typed
-`StyleRuleScore` and `StyleWins`; the web path duplicates their arithmetic.
+The web host still owns selector parsing in `splitSelectorSequence`,
+`splitSelectorList`, `parseSimpleSelector`, and `parseSelector`, and selector
+matching/traversal in its DOM-fact helpers. Specificity weights, declaration
+interpretation, and cascade winner decisions have moved into `.kry` (below).
+This is not proof of an entirely shared KSS implementation.
 
 Move those common decisions into shared `.kry`, extending its representation
 for supported web selectors/declarations as needed. Preserve CSS-only features
@@ -127,3 +126,45 @@ Chromium DOM/inspector suites; `k2js-runtime-snapshot-test` passes. The aggregat
 `verify.log` retains its nonzero result from the first Go compile failure;
 `go-runtime-retry.log` records the successful corrected run. No original plan
 file is fully closed by this slice.
+
+## Shared cascade priority and specificity
+
+`runtime/style_sheet.kry` now owns the selector weights used by both native and
+web paths, plus layer/specificity/order winner comparisons. Web resolution and
+inspector traces use that generated policy for parsed and prebuilt rules.
+Native field cascades retain `StylePriority` tuples instead of scalar scores.
+The obsolete host layer-name table and scalar winner comparisons were removed.
+
+The scalar priority encoding had a confirmed collision: a base-layer selector
+with 51 repeated matching classes beat a components-layer rule. Direct tuple
+comparison fixes that case and source-order spill into specificity. Equal
+priorities still choose the later visited rule. `score` remains diagnostic web
+metadata and cannot override a rule's priority fields.
+
+The C/Go/JS fixture `tests/fixtures/kss/cascade.txt` covers weights, priority
+tiers, ties, absence, and spill cases. Native resolution and web resolution/trace
+integration tests verify actual per-field winners. Web tests also cover prebuilt
+rules without scalar scores and equal priorities across sheets. Remaining web
+selector parsing and matching are not closed by this change.
+
+Focused native policy and web integration tests pass. The broader run has
+passed `kss-matched-test`, `fast-test`, the declared generated-runtime parity
+subset, `go-runtime-test`, and `k2go-syntax-test`. All five style guards pass.
+Logs are under `/tmp/kryon-cascade/`. The `.kry` formatter ran on a review copy;
+its unrelated continuation-indentation changes were inspected and omitted.
+Generated Go and the new Go test are gofmt-formatted.
+
+Remaining web selector ownership is more than its parser: `selectorKindMatches`,
+`selectorAttrValueMatches`, `selectorMatchesFacts`, `styleStateMatches`, nth-child
+formula evaluation, structural pseudo decisions, and combinator traversal rules
+still execute in JavaScript. DOM/frame relationship lookup, attribute retrieval,
+route reading, and property-map storage are host services; predicate/operator
+semantics and traversal decisions need shared `.kry` owners. Preserve support for
+attribute operators, state aliases, selector lists, combinators, `:not`/`:is`/
+`:where`, and structural pseudos while migrating. Add matched fixtures for these
+rather than treating the current browser smoke tests as full language coverage.
+
+The complete verification run finished with `RESULT 0`: `k2js-syntax-test`
+includes the KSS suites and both Chromium DOM/inspector suites, and generated
+provenance checks pass against the maintained `.kry` sources. No original plan
+file is fully closed by this cascade slice.

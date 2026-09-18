@@ -1,5 +1,29 @@
 #include "runtime/style_sheet.h"
 #include <assert.h>
+#include <stdio.h>
+
+static void
+test_cascade_fixture(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/cascade.txt", "r");
+    int kinds, attributes, classes, names, specificity, layer, order;
+    int score, current_layer, current_specificity, current_order, present, wins;
+    int count = 0;
+    assert(file != NULL);
+    while(fscanf(file, "%d %d %d %d %d %d %d %d %d %d %d %d %d", &kinds,
+        &attributes, &classes, &names, &specificity, &layer, &order,
+        &score, &current_layer, &current_specificity, &current_order,
+        &present, &wins) == 13) {
+        StylePriority priority = {true, layer, specificity, order};
+        StylePriority current = {present != 0, current_layer, current_specificity, current_order};
+        assert(StyleSpecificity(kinds, attributes, classes, names) == specificity);
+        assert(StylePriorityScore(layer, specificity, order) == score);
+        assert(StylePriorityWins(priority, current) == (wins != 0));
+        count++;
+    }
+    assert(count == 11 && feof(file));
+    fclose(file);
+}
 
 static StyleData
 color_style(unsigned int field, unsigned int value)
@@ -27,9 +51,31 @@ resolve(StyleData base, StyleFacts facts, const StyleRule *rules,
     return FinishStyleCascade(cascade);
 }
 
+static void
+test_priority_tiers(void)
+{
+    StyleFacts facts = StyleDefaultFacts(StyleKindButton());
+    StyleRule rules[2] = {0};
+    StyleData base = {0};
+    rules[0].selector = StyleDefaultSelector();
+    rules[0].selector.kind = StyleKindButton();
+    rules[0].style = color_style(StyleBackground, 0x112233ff);
+    rules[1].selector = StyleDefaultSelector();
+    rules[1].style = color_style(StyleBackground, 0x445566ff);
+    rules[1].order = 1001;
+    assert(resolve(base, facts, rules, 2, 0).background == 0x112233ff);
+    rules[0].layer = 1;
+    rules[1].order = 2000000;
+    assert(resolve(base, facts, rules, 2, 0).background == 0x112233ff);
+    rules[0].layer = -1;
+    assert(resolve(base, facts, rules, 1, 0).background == 0x112233ff);
+}
+
 int
 main(void)
 {
+    test_cascade_fixture();
+    test_priority_tiers();
     StyleSelector any = StyleDefaultSelector();
     StyleSelector button = StyleDefaultSelector();
     StyleSelector primary = StyleDefaultSelector();

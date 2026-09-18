@@ -18,6 +18,12 @@ rules retain their values and provenance when later overlays update tokens.
 Structured JavaScript string indexing and length use UTF-8 bytes, matching C/Go
 and the byte offsets consumed by `StringSlice`.
 
+`runtime/style_sheet.kry` owns specificity weights and per-field winner decisions.
+Native cascades retain a `StylePriority` tuple for each field; web hosts retain
+the same tuples in property maps. The shared comparison orders layer,
+specificity, and source order directly, avoiding collisions from scalar score
+arithmetic. Scalar web scores remain diagnostic metadata only.
+
 ## Public API
 
 Public headers live in `include/`. They define the app-facing Kryon surface:
