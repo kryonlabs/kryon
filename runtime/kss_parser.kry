@@ -3941,7 +3941,7 @@ KssCSSNeedsPixels :: (name: string) -> bool #export {
         name == "gridRowEnd" ||
         name == "line-clamp" ||
         name == "lineClamp" ||
-        name == "webkitLineClamp" ||
+        name == "webkitLineClamp" || name == "-webkit-line-clamp" ||
         name == "orphans" {
         return false
     }
@@ -4048,14 +4048,31 @@ KssCSSExpandDeclaration :: (name: string, value: string, has_offsets: bool) -> K
         result.second = "margin-right"
     } else if name == "margin-y" {
         result.second = "margin-bottom"
+    } else if name == "line-clamp" {
+        result.second = "-webkit-line-clamp"
+    } else if name == "box-decoration-break" {
+        result.second = "-webkit-box-decoration-break"
     }
     return result
+}
+
+# An authored nonzero border width or border paint requests a visible border.
+# Emit this before authored declarations so explicit styles and sides win.
+KssCSSBorderDefault :: (border: string, width: string) -> string #export {
+    paint: KssCSSValue = KssCSSValueFromText(border)
+    size: KssCSSValue = KssCSSValueFromText(width)
+    if (paint.text != "" && (paint.kind != (i32)KssCSSNumber || paint.number != 0)) ||
+        (size.text != "" && (size.kind != (i32)KssCSSNumber || size.number != 0)) {
+        return "solid"
+    }
+    return ""
 }
 
 # Values already have their CSS units. Empty text means absent, not zero.
 KssCSSEffectFacts :: struct {
     background: string
     background_end: string
+    background_image: string
     offset_x: string
     offset_y: string
     transform: string
@@ -4080,7 +4097,7 @@ KssCSSHasOffsets :: (facts: KssCSSEffectFacts) -> bool #export {
 # An absent or out-of-range slot produces no output.
 KssCSSEffectAt :: (facts: KssCSSEffectFacts, index: i32) -> KssCSSOutput #export {
     result: KssCSSOutput
-    if index == 0 && facts.background != "" && facts.background_end != "" {
+    if index == 0 && facts.background != "" && facts.background_end != "" && facts.background_image == "" {
         result.name = "background-image"
         result.prefix = "linear-gradient("
         result.first = facts.background

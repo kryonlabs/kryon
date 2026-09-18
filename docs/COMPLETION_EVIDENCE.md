@@ -600,3 +600,53 @@ and explicitly sampled at 0 and 10000 ms, verifying both authored endpoints.
 Go uses gofmt; the Kry formatter ran on a review copy, with unrelated
 continuation-indentation rewrites inspected and omitted. `git diff --check`
 passes. Original plan documents remain because required work is still open.
+
+## Shared inline and exported declaration application
+
+`applyResolvedWebStyle` now consumes the declaration stream used by ordinary
+rules and keyframes. Its roughly 470-line property/precedence/effect mapping is
+removed. The remaining DOM adapter maps names to DOM access, writes custom
+properties with `setProperty`, clears tracked styles, and reapplies explicit
+mounted inline overrides. Plain-object test hosts retain ordinary JavaScript
+property spelling. An initial focused test exposed the fake DOM's lack of
+CSS-name/camel-case reflection; the sink now uses standard ordinary DOM property
+access while reserving custom-property methods for `--` names.
+
+Shared declaration expansion also owns the former inline-only WebKit fallbacks
+for line-clamp and box-decoration-break. `KssCSSBorderDefault` emits `solid`
+before authored declarations when a nonzero border width or border paint
+requests it, allowing explicit whole-border and per-side styles to override.
+Zero alone does not request that default. Explicit background-image suppresses
+the generated gradient in shared effect policy. Missing offset axes no longer
+receive an inline-only zero reset: custom values can cascade, with the shared
+transform's zero fallback used when absent. Inline ordinary declarations now
+follow the resolved object's order, matching export for the same declaration set.
+
+Shared fixtures cover 28 expansions, 14 effects, and 8 border-default decisions.
+The browser test compares independent inline and exported snapshots for reversed
+alias/padding order, border defaults and explicit side styles, gradient override,
+custom offset axes, and zero values. It reuses the same DOM element across cases
+to verify removal of stale gradients, borders, offsets, and transforms.
+
+This does not establish equivalence for aliases/shorthands competing across
+multiple rules: the resolver's per-property winners and object insertion order
+still need a cascade audit. Selector/fact normalization, specificity, remaining
+CSS serialization, other completion phases, and original plans stay open.
+
+A concrete cross-rule alias reproducer remains: `.probe {color:#111111;}`,
+then `.probe {foreground:#222222;}`, then `.probe {color:#333333;}`. Resolution
+returns `{color:#333333, foreground:#222222}` in first-insertion order, so its
+merged declaration stream ends with `#222222`; exported separate rules end with
+`#333333`. This is a resolver/cascade-order defect, beyond aligning emission
+of the same input object. Carry priorities/declaration order into alias and
+shorthand conflict handling rather than restoring a host property table.
+
+Verification: generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime
+parity, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated provenance,
+and all five style guards pass in `build/css-inline/`. The aggregate log retains
+the initial Go fixture compile error (calling a generated runtime method as a
+package function); `go-runtime-final.log` records the corrected suite passing.
+No production code changed for that correction. Browser checks confirm retained
+node cleanup and independent inline/export snapshots. Go uses gofmt; the Kry
+formatter ran on a review copy, with unrelated indentation rewrites inspected
+and omitted. `git diff --check` passes. The full plan remains incomplete.

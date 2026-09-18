@@ -1131,6 +1131,46 @@ try {
   animation.cancel();
   removeExpansionStyle();
   expansionTarget.remove();
+  const inlineRuntime = kryon.createRuntime();
+  kryon.beginFrame(inlineRuntime);
+  kryon.widget(inlineRuntime, "Column", {class: "inline-parity"}, null, {path: "InlineParity"});
+  kryon.endFrame(inlineRuntime);
+  const inlineTarget = document.createElement("div");
+  document.body.appendChild(inlineTarget);
+  const inlineCases = [
+    ["color:#445566; foreground:#112233; padding-left:9; padding-x:2; border-width:2; border-top-style:dashed;",
+      {color:"rgb(17, 34, 51)", paddingLeft:"2px", paddingRight:"2px", borderTopStyle:"dashed", borderRightStyle:"solid"}],
+    ["foreground:#112233; color:#445566; padding-x:2; padding-left:9; border-width:0;",
+      {color:"rgb(68, 85, 102)", paddingLeft:"9px", paddingRight:"2px", borderTopWidth:"0px"}],
+    ["background:#112233; background-end:#445566; background-image:none; --kry-offset-y:9px; offset-x:2;",
+      {backgroundImage:"none", transform:"matrix(1, 0, 0, 1, 2, 9)"}],
+    ["background:#112233; background-end:#445566; offset-x:0;",
+      {backgroundImage:"linear-gradient(rgb(17, 34, 51), rgb(68, 85, 102))", transform:"matrix(1, 0, 0, 1, 0, 0)"}],
+    ["opacity:0;", {opacity:"0", backgroundImage:"none", transform:"none", borderTopWidth:"0px"}]
+  ];
+  let previousInlineElement = null;
+  for (const [declarations, expected] of inlineCases) {
+    const inlineSheet = kryon.parseWebStyleSheet(".inline-parity {" + declarations + "}");
+    kryon.setWebStyleSheets(inlineRuntime, inlineSheet);
+    kryon.renderWebDocument(inlineRuntime, inlineTarget);
+    const element = kryon.findWebElement(inlineTarget, "InlineParity");
+    if (previousInlineElement)
+      assert(element === previousInlineElement, "inline parity test did not exercise retained-node cleanup");
+    previousInlineElement = element;
+    const computed = getComputedStyle(element);
+    for (const [property, value] of Object.entries(expected))
+      assert(computed[property] === value, "inline parity mismatch: " + property + " got " + computed[property]);
+    const removeInlineSheet = kryon.installWebStyleSheet(inlineSheet, null, "inline-parity-validation");
+    const mirror = element.cloneNode(false);
+    mirror.removeAttribute("style");
+    document.body.appendChild(mirror);
+    const exported = getComputedStyle(mirror);
+    for (const [property, value] of Object.entries(expected))
+      assert(exported[property] === value, "export parity mismatch: " + property + " got " + exported[property]);
+    mirror.remove();
+    removeInlineSheet();
+  }
+  inlineTarget.remove();
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

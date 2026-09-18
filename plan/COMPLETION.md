@@ -43,7 +43,9 @@ formula validation and canonical CSS text now share `.kry` implementations.
 CSS property vocabulary/aliases, numeric units, and border shorthand detection
 also use shared code; the duplicate 424-entry browser property map is removed.
 Ordinary-rule and keyframe declaration expansion and effect recipes are shared.
-Inline composite application and precedence still require migration. Remaining compound
+Inline composite application now consumes the same declaration stream; its
+property table and border/effect decisions are removed. Cross-rule alias and
+shorthand cascade equivalence remains open. Remaining compound
 matching, specificity conformance, and CSS export migration stay open (see the evidence ledger). Generated C, Go,
 and JavaScript are outputs, not policy owners.
 
@@ -216,7 +218,7 @@ an exhaustive completion inventory. Keep browser-specific semantics in shared
 | 1 | `webStylePseudoToCSS` generic functional argument sanitizer | Replace remaining argument rewriting with explicit shared validation/serialization; test unknown functions, malformed arguments, and nested negation. Positional formulas already use `KssNthText`. |
 | 2 | `selectorKindMatches`, `selectorNativeAttrValue`, `selectorDataAttrValue`, `selectorAriaAttrValue`, presence helpers | Separate raw DOM observations from shared naming, coercion, presence, and matching rules. Match absent/empty/false/native/data/ARIA cases across generated targets and mounted DOM. |
 | 3 | `webStyleSelectorAttrToCSS`, `webStyleStateSelectorToCSS` | Move alias and state mappings plus escaping/selector emission into shared KSS code. Compare runtime resolution with browser computed styles. |
-| 4 | `webStyleCSSValue`, `webStyleDeclarationLines`, `applyResolvedWebStyle` | Property vocabulary/aliases, numeric units, and border shorthand classification now use shared code. Ordinary rules and keyframes now share axis/composite expansion and effect recipes. Finish inline composite application/precedence and remaining CSS text decisions; retain only the output sink in hosts. Cover explicit zero, custom properties, and constrained-backend behavior. |
+| 4 | `webStyleCSSValue`, `webStyleDeclarationLines`, `applyResolvedWebStyle` | Property vocabulary/aliases, numeric units, and border shorthand classification now use shared code. Ordinary rules and keyframes now share axis/composite expansion and effect recipes. Inline application now consumes the same stream, including shared border defaults and vendor fallbacks. Finish cross-rule alias/shorthand precedence and remaining CSS text decisions; retain only the output sink in hosts. Cover explicit zero, custom properties, and constrained-backend behavior. |
 | 5 | `selectorMatchesFacts` orchestration and existing shared specificity weights | Finish compound decisions and reconcile functional specificity with the declared contract. Preserve ordered repeated constraints and test conflicting rules against actual CSS results. |
 | 6 | `webKssDiagnostic`, source-pack adapters, inspector/formatter/release paths | Move remaining diagnostic and language decisions into `.kry`; retain file access, source ownership, publication, UI presentation, and allocation services in hosts. Verify atomic theme switching, source locations, formatting round trips, and compiled/dynamic equality. |
 

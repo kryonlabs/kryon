@@ -48,8 +48,11 @@ and border shorthand classification use generated decisions too. Browser code
 must not restore its own property map, unitless list, or whitespace classifier.
 Ordinary-rule and keyframe declaration/effect decisions now come from
 `KssCSSExpandDeclaration` and `KssCSSEffectAt`; the host joins their fragments
-and writes CSS. Inline composite application, selector serialization, and other
-remaining CSS decisions still need migration; these helpers do not close all KSS work.
+and writes CSS. Inline application consumes that same stream; it has no independent property
+map, composite effect builder, vendor-fallback list, or border-style policy.
+`KssCSSBorderDefault` owns the authored-border default, and effect facts include
+explicit background-image presence. Selector serialization and other remaining
+CSS decisions still need migration; these helpers do not close all KSS work.
 
 ## Belongs In Kryon
 

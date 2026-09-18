@@ -24,3 +24,5 @@ material	glass	0	<empty>	<empty>
 unknown	3	0	<empty>	<empty>
 --custom	0	0	--custom	<empty>
 foreground	red	0	color	<empty>
+line-clamp	2	0	line-clamp	-webkit-line-clamp
+box-decoration-break	clone	0	box-decoration-break	-webkit-box-decoration-break

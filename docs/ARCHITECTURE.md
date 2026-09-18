@@ -76,7 +76,12 @@ ordinary-rule and keyframe property expansion and effect recipes also run in
 shared code. `KssCSSExpandDeclaration` yields property names, and
 `KssCSSEffectAt` yields borrowed output fragments, avoiding fixed-buffer
 truncation. One browser output adapter consumes those results for both contexts.
-Inline composite application and its precedence rules remain migration work.
+The same declaration stream now feeds inline application, removing its separate
+property map and composite logic. The DOM sink handles property spelling, custom
+property methods, tracked cleanup, and mounted inline overrides. Shared policy
+selects explicit background-image over generated gradients and inserts an
+authored-border default before explicit style declarations. Cross-rule alias
+and shorthand cascade equivalence remains conformance work.
 
 ## Public API
 

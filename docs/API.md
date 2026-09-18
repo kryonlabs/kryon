@@ -2497,11 +2497,12 @@ under the existing adapter contract. This is not a general CSS value validator.
 internal whitespace in a trimmed value selects border shorthand. It recognizes
 the adapter's ASCII and Unicode whitespace. `KssCSSExpandDeclaration` takes a property name, its nonempty value text,
 and whether the style has offsets. It returns up to two property names, expands
-paired padding/margin axes and content/icon fields, chooses border shorthand,
+paired padding/margin axes and content/icon fields, emits the existing WebKit
+fallbacks for line-clamp and box-decoration-break, chooses border shorthand,
 and defers offset/composed-transform output to shared effect recipes.
 
 `KssCSSEffectFacts` contains already formatted background, background-end,
-offset-x, offset-y, and transform strings; empty text means absent and `0px`
+background-image, offset-x, offset-y, and transform strings; empty text means absent and `0px`
 is present. `KssCSSHasOffsets` supplies the composition decision.
 `KssCSSEffectAt` returns `KssCSSOutput` for slots 0–3: gradient, x offset,
 y offset, composed transform. Empty and out-of-range slots have no name.
@@ -2510,8 +2511,21 @@ Emit each nonempty output as its name and the concatenation of `prefix`,
 without a fixed-size result buffer. Inputs must remain valid while emitting.
 Emit effects after ordinary declarations in slot order. Ordinary rules and
 keyframes share this expansion, including axis pairs, gradients, and combined
-transforms. Inline application still has separate composite ordering pending
-its migration.
+transforms. An explicit nonempty background-image (including `none`) suppresses
+the generated gradient. A missing offset axis emits no reset; a custom value
+can cascade into it, and the transform uses `0px` when none is available.
+
+`KssCSSBorderDefault` returns `solid` when an authored border paint or nonzero
+width requests a border, otherwise empty text. Emit that default before authored
+declarations so explicit border styles and per-side styles override it. A zero
+width alone does not request a default. Inline application, ordinary CSS rules,
+and keyframes consume one declaration stream, including these shared decisions.
+Inline application preserves the resolved object's declaration order rather
+than imposing a separate property order. The host only translates CSS names
+into DOM property access, writes custom properties through `setProperty`, clears
+previously applied properties, and reapplies explicit mounted inline overrides.
+This aligns emission of a given resolved declaration set; cross-rule alias and
+shorthand cascade equivalence remains a separate conformance requirement.
 
 ### Style field presence and structural metrics
 

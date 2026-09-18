@@ -59,7 +59,7 @@ for (const line of properties) {
   assert.doesNotMatch(css, /(?:opacity|line-height): [0-9]+px/);
 }
 
-for (const [file, count] of [["css-expansion.tsv", 26], ["css-effects.tsv", 12]]) {
+for (const [file, count] of [["css-expansion.tsv", 28], ["css-effects.tsv", 14], ["css-border-default.tsv", 8]]) {
   const lines = readFileSync(new URL("./fixtures/kss/" + file, import.meta.url), "utf8").trimEnd().split("\n");
   assert.equal(lines.length, count);
   for (const line of lines) {
@@ -67,11 +67,13 @@ for (const [file, count] of [["css-expansion.tsv", 26], ["css-effects.tsv", 12]]
     if (file === "css-expansion.tsv") {
       const result = kss.KssParser_KssCSSExpandDeclaration(null, null, null, fields[0], fields[1], fields[2] === "1");
       assert.deepEqual([result.first, result.second], fields.slice(3), line);
+    } else if (file === "css-effects.tsv") {
+      const facts = {background: fields[0], background_end: fields[1], background_image: fields[2], offset_x: fields[3], offset_y: fields[4], transform: fields[5]};
+      assert.equal(kss.KssParser_KssCSSHasOffsets(null, null, null, facts), Boolean(fields[3] || fields[4]), line);
+      const result = kss.KssParser_KssCSSEffectAt(null, null, null, facts, Number(fields[6]));
+      assert.deepEqual([result.name, result.prefix + result.first + result.separator + result.second + result.suffix], fields.slice(7), line);
     } else {
-      const facts = {background: fields[0], background_end: fields[1], offset_x: fields[2], offset_y: fields[3], transform: fields[4]};
-      assert.equal(kss.KssParser_KssCSSHasOffsets(null, null, null, facts), Boolean(fields[2] || fields[3]), line);
-      const result = kss.KssParser_KssCSSEffectAt(null, null, null, facts, Number(fields[5]));
-      assert.deepEqual([result.name, result.prefix + result.first + result.separator + result.second + result.suffix], fields.slice(6), line);
+      assert.equal(kss.KssParser_KssCSSBorderDefault(null, null, null, fields[0], fields[1]), fields[2], line);
     }
   }
 }

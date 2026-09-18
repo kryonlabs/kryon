@@ -3549,21 +3549,22 @@ function webStyleCSSValue(name, value) {
     ? value + "px" : String(value);
 }
 
-function isWebBorderShorthandValue(value) {
-  return webKssModule.KssParser_KssCSSBorderShorthand(null, null, null, String(value ?? ""));
-}
-
-function webStyleDeclarationLines(style) {
-  const lines = [];
+function webStyleDeclarations(style) {
+  const declarations = [];
   const cssValue = (name, value) => value === undefined || value === null || value === ""
     ? "" : webStyleCSSValue(name, value);
   const facts = {
     background: cssValue("background", style.background),
     background_end: cssValue("background", style["background-end"]),
+    background_image: cssValue("background-image", style["background-image"]),
     offset_x: cssValue("--kry-offset-x", style["offset-x"]),
     offset_y: cssValue("--kry-offset-y", style["offset-y"]),
     transform: cssValue("transform", style.transform)
   };
+  const borderDefault = webKssModule.KssParser_KssCSSBorderDefault(null, null, null,
+    String(style.border ?? ""), String(style["border-width"] ?? ""));
+  if (borderDefault)
+    declarations.push(["border-style", borderDefault]);
   const hasOffsets = webKssModule.KssParser_KssCSSHasOffsets(null, null, null, facts);
   for (const [name, value] of Object.entries(style)) {
     if (value === undefined || value === null || value === "")
@@ -3572,17 +3573,21 @@ function webStyleDeclarationLines(style) {
       name, String(value), hasOffsets);
     for (const property of [expansion.first, expansion.second]) {
       if (property)
-        lines.push(`  ${property}: ${webStyleCSSValue(property, value)};`);
+        declarations.push([property, webStyleCSSValue(property, value)]);
     }
   }
   for (let index = 0; index < 4; index++) {
     const output = webKssModule.KssParser_KssCSSEffectAt(null, null, null, facts, index);
     if (output.name) {
       const value = output.prefix + output.first + output.separator + output.second + output.suffix;
-      lines.push(`  ${output.name}: ${value};`);
+      declarations.push([output.name, value]);
     }
   }
-  return lines;
+  return declarations;
+}
+
+function webStyleDeclarationLines(style) {
+  return webStyleDeclarations(style).map(([name, value]) => `  ${name}: ${value};`);
 }
 
 function webStyleRuleToCSS(rule) {
@@ -4387,475 +4392,31 @@ export function traceWebStyle(node, sheets = []) {
   };
 }
 
+// DOM property access is a host service. Ordinary properties use JavaScript
+// spelling; custom properties use CSSStyleDeclaration methods when available.
+function webStyleDOMName(name) {
+  if (name.startsWith("--"))
+    return name;
+  return name.replace(/^-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
 function applyResolvedWebStyle(el, style) {
   if (!el)
     return;
-  for (const name of el.__kryAppliedStyleProps || [])
-    el.style[name] = "";
+  const nativeStyle = typeof el.style.setProperty === "function";
+  for (const name of el.__kryAppliedStyleProps || []) {
+    if (nativeStyle && name.startsWith("--"))
+      el.style.removeProperty(name);
+    else
+      el.style[webStyleDOMName(name)] = "";
+  }
   const applied = new Set();
-  const set = (name, value) => {
-    if (value === undefined || value === null || value === "")
-      return;
-    el.style[name] = webStyleCSSValue(name, value);
+  for (const [name, value] of webStyleDeclarations(style || {})) {
+    if (nativeStyle && name.startsWith("--"))
+      el.style.setProperty(name, value);
+    else
+      el.style[webStyleDOMName(name)] = value;
     applied.add(name);
-  };
-  style = style || {};
-  for (const [name, value] of Object.entries(style)) {
-    if (name.startsWith("--"))
-      set(name, value);
-  }
-  const backgroundStart = style.background;
-  const backgroundEnd = style["background-end"];
-  const offsetX = style["offset-x"];
-  const offsetY = style["offset-y"];
-  set("background", backgroundStart);
-  set("backgroundColor", style["background-color"]);
-  set("--kry-background-end", backgroundEnd);
-  if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
-      backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
-    set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
-  set("backgroundImage", style["background-image"]);
-  set("color", style.foreground);
-  set("color", style.color);
-  set("accentColor", style["accent-color"]);
-  set("caretColor", style["caret-color"]);
-  if (isWebBorderShorthandValue(style.border))
-    set("border", style.border);
-  else
-    set("borderColor", style.border);
-  set("borderColor", style["border-color"]);
-  set("borderWidth", style["border-width"]);
-  set("borderTopWidth", style["border-top-width"]);
-  set("borderRightWidth", style["border-right-width"]);
-  set("borderBottomWidth", style["border-bottom-width"]);
-  set("borderLeftWidth", style["border-left-width"]);
-  set("borderTopColor", style["border-top-color"]);
-  set("borderRightColor", style["border-right-color"]);
-  set("borderBottomColor", style["border-bottom-color"]);
-  set("borderLeftColor", style["border-left-color"]);
-  set("borderInlineColor", style["border-inline-color"]);
-  set("borderBlockColor", style["border-block-color"]);
-  set("borderInlineStartColor", style["border-inline-start-color"]);
-  set("borderInlineEndColor", style["border-inline-end-color"]);
-  set("borderBlockStartColor", style["border-block-start-color"]);
-  set("borderBlockEndColor", style["border-block-end-color"]);
-  set("borderInlineWidth", style["border-inline-width"]);
-  set("borderBlockWidth", style["border-block-width"]);
-  set("borderInlineStartWidth", style["border-inline-start-width"]);
-  set("borderInlineEndWidth", style["border-inline-end-width"]);
-  set("borderBlockStartWidth", style["border-block-start-width"]);
-  set("borderBlockEndWidth", style["border-block-end-width"]);
-  set("borderTop", style["border-top"]);
-  set("borderRight", style["border-right"]);
-  set("borderBottom", style["border-bottom"]);
-  set("borderLeft", style["border-left"]);
-  set("borderInline", style["border-inline"]);
-  set("borderBlock", style["border-block"]);
-  set("borderInlineStart", style["border-inline-start"]);
-  set("borderInlineEnd", style["border-inline-end"]);
-  set("borderBlockStart", style["border-block-start"]);
-  set("borderBlockEnd", style["border-block-end"]);
-  set("borderImage", style["border-image"]);
-  set("borderImageSource", style["border-image-source"]);
-  set("borderImageSlice", style["border-image-slice"]);
-  set("borderImageWidth", style["border-image-width"]);
-  set("borderImageOutset", style["border-image-outset"]);
-  set("borderImageRepeat", style["border-image-repeat"]);
-  set("borderStyle", style["border-style"]);
-  set("borderTopStyle", style["border-top-style"]);
-  set("borderRightStyle", style["border-right-style"]);
-  set("borderBottomStyle", style["border-bottom-style"]);
-  set("borderLeftStyle", style["border-left-style"]);
-  set("borderInlineStyle", style["border-inline-style"]);
-  set("borderBlockStyle", style["border-block-style"]);
-  set("borderInlineStartStyle", style["border-inline-start-style"]);
-  set("borderInlineEndStyle", style["border-inline-end-style"]);
-  set("borderBlockStartStyle", style["border-block-start-style"]);
-  set("borderBlockEndStyle", style["border-block-end-style"]);
-  set("borderRadius", style.radius);
-  set("borderRadius", style["border-radius"]);
-  set("borderTopLeftRadius", style["border-top-left-radius"]);
-  set("borderTopRightRadius", style["border-top-right-radius"]);
-  set("borderBottomRightRadius", style["border-bottom-right-radius"]);
-  set("borderBottomLeftRadius", style["border-bottom-left-radius"]);
-  set("borderStartStartRadius", style["border-start-start-radius"]);
-  set("borderStartEndRadius", style["border-start-end-radius"]);
-  set("borderEndStartRadius", style["border-end-start-radius"]);
-  set("borderEndEndRadius", style["border-end-end-radius"]);
-  set("opacity", style.opacity);
-  set("padding", style.padding);
-  set("paddingLeft", style["padding-x"]);
-  set("paddingRight", style["padding-x"]);
-  set("paddingTop", style["padding-y"]);
-  set("paddingBottom", style["padding-y"]);
-  set("paddingLeft", style["padding-left"]);
-  set("paddingRight", style["padding-right"]);
-  set("paddingTop", style["padding-top"]);
-  set("paddingBottom", style["padding-bottom"]);
-  set("paddingInline", style["padding-inline"]);
-  set("paddingBlock", style["padding-block"]);
-  set("paddingInlineStart", style["padding-inline-start"]);
-  set("paddingInlineEnd", style["padding-inline-end"]);
-  set("paddingBlockStart", style["padding-block-start"]);
-  set("paddingBlockEnd", style["padding-block-end"]);
-  set("margin", style.margin);
-  set("marginLeft", style["margin-x"]);
-  set("marginRight", style["margin-x"]);
-  set("marginTop", style["margin-y"]);
-  set("marginBottom", style["margin-y"]);
-  set("marginLeft", style["margin-left"]);
-  set("marginRight", style["margin-right"]);
-  set("marginTop", style["margin-top"]);
-  set("marginBottom", style["margin-bottom"]);
-  set("marginInline", style["margin-inline"]);
-  set("marginBlock", style["margin-block"]);
-  set("marginInlineStart", style["margin-inline-start"]);
-  set("marginInlineEnd", style["margin-inline-end"]);
-  set("marginBlockStart", style["margin-block-start"]);
-  set("marginBlockEnd", style["margin-block-end"]);
-  set("width", style.width);
-  set("height", style.height);
-  set("minWidth", style["min-width"]);
-  set("maxWidth", style["max-width"]);
-  set("minHeight", style["min-height"]);
-  set("maxHeight", style["max-height"]);
-  set("inlineSize", style["inline-size"]);
-  set("blockSize", style["block-size"]);
-  set("minInlineSize", style["min-inline-size"]);
-  set("maxInlineSize", style["max-inline-size"]);
-  set("minBlockSize", style["min-block-size"]);
-  set("maxBlockSize", style["max-block-size"]);
-  set("inset", style.inset);
-  set("top", style.top);
-  set("right", style.right);
-  set("bottom", style.bottom);
-  set("left", style.left);
-  set("insetInline", style["inset-inline"]);
-  set("insetBlock", style["inset-block"]);
-  set("insetInlineStart", style["inset-inline-start"]);
-  set("insetInlineEnd", style["inset-inline-end"]);
-  set("insetBlockStart", style["inset-block-start"]);
-  set("insetBlockEnd", style["inset-block-end"]);
-  set("gap", style.gap);
-  set("rowGap", style["row-gap"]);
-  set("columnGap", style["column-gap"]);
-  set("font", style.font);
-  set("fontSize", style["font-size"]);
-  set("fontFamily", style.typeface);
-  set("fontFamily", style["font-family"]);
-  set("fontWeight", style["font-weight"]);
-  set("fontStyle", style["font-style"]);
-  set("fontVariant", style["font-variant"]);
-  set("fontStretch", style["font-stretch"]);
-  set("fontKerning", style["font-kerning"]);
-  set("fontOpticalSizing", style["font-optical-sizing"]);
-  set("fontFeatureSettings", style["font-feature-settings"]);
-  set("fontVariationSettings", style["font-variation-settings"]);
-  set("fontSizeAdjust", style["font-size-adjust"]);
-  set("fontSynthesis", style["font-synthesis"]);
-  set("fontSynthesisWeight", style["font-synthesis-weight"]);
-  set("fontSynthesisStyle", style["font-synthesis-style"]);
-  set("fontSynthesisSmallCaps", style["font-synthesis-small-caps"]);
-  set("fontSynthesisPosition", style["font-synthesis-position"]);
-  set("fontVariantAlternates", style["font-variant-alternates"]);
-  set("fontVariantCaps", style["font-variant-caps"]);
-  set("fontVariantEastAsian", style["font-variant-east-asian"]);
-  set("fontVariantLigatures", style["font-variant-ligatures"]);
-  set("fontVariantNumeric", style["font-variant-numeric"]);
-  set("fontVariantPosition", style["font-variant-position"]);
-  set("fontLanguageOverride", style["font-language-override"]);
-  set("fontPalette", style["font-palette"]);
-  set("letterSpacing", style["letter-spacing"]);
-  set("lineHeight", style["line-height"]);
-  set("textIndent", style["text-indent"]);
-  set("textAlign", style["text-align"]);
-  set("textAlignLast", style["text-align-last"]);
-  set("textRendering", style["text-rendering"]);
-  set("textDecoration", style["text-decoration"]);
-  set("textDecorationLine", style["text-decoration-line"]);
-  set("textDecorationColor", style["text-decoration-color"]);
-  set("textDecorationStyle", style["text-decoration-style"]);
-  set("textDecorationSkip", style["text-decoration-skip"]);
-  set("textDecorationSkipInk", style["text-decoration-skip-ink"]);
-  set("textDecorationThickness", style["text-decoration-thickness"]);
-  set("textUnderlineOffset", style["text-underline-offset"]);
-  set("textUnderlinePosition", style["text-underline-position"]);
-  set("textShadow", style["text-shadow"]);
-  set("textEmphasis", style["text-emphasis"]);
-  set("textEmphasisColor", style["text-emphasis-color"]);
-  set("textEmphasisStyle", style["text-emphasis-style"]);
-  set("textEmphasisPosition", style["text-emphasis-position"]);
-  set("textTransform", style["text-transform"]);
-  set("textOverflow", style["text-overflow"]);
-  set("whiteSpace", style["white-space"]);
-  set("textSizeAdjust", style["text-size-adjust"]);
-  set("textOrientation", style["text-orientation"]);
-  set("textWrap", style["text-wrap"]);
-  set("textWrapMode", style["text-wrap-mode"]);
-  set("textWrapStyle", style["text-wrap-style"]);
-  set("textJustify", style["text-justify"]);
-  set("textCombineUpright", style["text-combine-upright"]);
-  set("rubyAlign", style["ruby-align"]);
-  set("rubyPosition", style["ruby-position"]);
-  set("textSpacingTrim", style["text-spacing-trim"]);
-  set("textAutospace", style["text-autospace"]);
-  set("textBoxTrim", style["text-box-trim"]);
-  set("textBoxEdge", style["text-box-edge"]);
-  set("wordBreak", style["word-break"]);
-  set("overflowWrap", style["overflow-wrap"]);
-  set("wordWrap", style["word-wrap"]);
-  set("lineBreak", style["line-break"]);
-  set("hangingPunctuation", style["hanging-punctuation"]);
-  set("verticalAlign", style["vertical-align"]);
-  set("display", style.display);
-  set("position", style.position);
-  set("zIndex", style["z-index"]);
-  set("overflow", style.overflow);
-  set("overflowInline", style["overflow-inline"]);
-  set("overflowBlock", style["overflow-block"]);
-  set("overflowX", style["overflow-x"]);
-  set("overflowY", style["overflow-y"]);
-  set("boxSizing", style["box-sizing"]);
-  set("direction", style.direction);
-  set("writingMode", style["writing-mode"]);
-  set("tabSize", style["tab-size"]);
-  set("hyphens", style.hyphens);
-  set("lineClamp", style["line-clamp"]);
-  set("webkitLineClamp", style["line-clamp"]);
-  set("listStyle", style["list-style"]);
-  set("listStyleType", style["list-style-type"]);
-  set("listStylePosition", style["list-style-position"]);
-  set("listStyleImage", style["list-style-image"]);
-  set("counterReset", style["counter-reset"]);
-  set("counterIncrement", style["counter-increment"]);
-  set("counterSet", style["counter-set"]);
-  set("quotes", style.quotes);
-  set("markerSide", style["marker-side"]);
-  set("markerStart", style["marker-start"]);
-  set("markerEnd", style["marker-end"]);
-  set("orphans", style.orphans);
-  set("widows", style.widows);
-  set("boxDecorationBreak", style["box-decoration-break"]);
-  set("webkitBoxDecorationBreak", style["box-decoration-break"]);
-  set("borderCollapse", style["border-collapse"]);
-  set("borderSpacing", style["border-spacing"]);
-  set("tableLayout", style["table-layout"]);
-  set("captionSide", style["caption-side"]);
-  set("emptyCells", style["empty-cells"]);
-  set("scrollBehavior", style["scroll-behavior"]);
-  set("overscrollBehavior", style["overscroll-behavior"]);
-  set("overscrollBehaviorX", style["overscroll-behavior-x"]);
-  set("overscrollBehaviorY", style["overscroll-behavior-y"]);
-  set("overscrollBehaviorInline", style["overscroll-behavior-inline"]);
-  set("overscrollBehaviorBlock", style["overscroll-behavior-block"]);
-  set("scrollSnapType", style["scroll-snap-type"]);
-  set("scrollSnapAlign", style["scroll-snap-align"]);
-  set("scrollSnapStop", style["scroll-snap-stop"]);
-  set("scrollTimeline", style["scroll-timeline"]);
-  set("scrollTimelineName", style["scroll-timeline-name"]);
-  set("scrollTimelineAxis", style["scroll-timeline-axis"]);
-  set("viewTimeline", style["view-timeline"]);
-  set("viewTimelineName", style["view-timeline-name"]);
-  set("viewTimelineAxis", style["view-timeline-axis"]);
-  set("viewTimelineInset", style["view-timeline-inset"]);
-  set("timelineScope", style["timeline-scope"]);
-  set("scrollbarColor", style["scrollbar-color"]);
-  set("scrollbarWidth", style["scrollbar-width"]);
-  set("scrollbarGutter", style["scrollbar-gutter"]);
-  set("overflowClipMargin", style["overflow-clip-margin"]);
-  set("scrollMargin", style["scroll-margin"]);
-  set("scrollMarginTop", style["scroll-margin-top"]);
-  set("scrollMarginRight", style["scroll-margin-right"]);
-  set("scrollMarginBottom", style["scroll-margin-bottom"]);
-  set("scrollMarginLeft", style["scroll-margin-left"]);
-  set("scrollMarginInline", style["scroll-margin-inline"]);
-  set("scrollMarginBlock", style["scroll-margin-block"]);
-  set("scrollMarginInlineStart", style["scroll-margin-inline-start"]);
-  set("scrollMarginInlineEnd", style["scroll-margin-inline-end"]);
-  set("scrollMarginBlockStart", style["scroll-margin-block-start"]);
-  set("scrollMarginBlockEnd", style["scroll-margin-block-end"]);
-  set("scrollPadding", style["scroll-padding"]);
-  set("scrollPaddingTop", style["scroll-padding-top"]);
-  set("scrollPaddingRight", style["scroll-padding-right"]);
-  set("scrollPaddingBottom", style["scroll-padding-bottom"]);
-  set("scrollPaddingLeft", style["scroll-padding-left"]);
-  set("scrollPaddingInline", style["scroll-padding-inline"]);
-  set("scrollPaddingBlock", style["scroll-padding-block"]);
-  set("scrollPaddingInlineStart", style["scroll-padding-inline-start"]);
-  set("scrollPaddingInlineEnd", style["scroll-padding-inline-end"]);
-  set("scrollPaddingBlockStart", style["scroll-padding-block-start"]);
-  set("scrollPaddingBlockEnd", style["scroll-padding-block-end"]);
-  set("touchAction", style["touch-action"]);
-  set("alignItems", style["align-items"]);
-  set("justifyContent", style["justify-content"]);
-  set("alignSelf", style["align-self"]);
-  set("justifySelf", style["justify-self"]);
-  set("flexDirection", style["flex-direction"]);
-  set("flexWrap", style["flex-wrap"]);
-  set("flex", style.flex);
-  set("flexGrow", style["flex-grow"]);
-  set("flexShrink", style["flex-shrink"]);
-  set("flexBasis", style["flex-basis"]);
-  set("gridTemplateColumns", style["grid-template-columns"]);
-  set("gridTemplateRows", style["grid-template-rows"]);
-  set("gridTemplateAreas", style["grid-template-areas"]);
-  set("gridAutoColumns", style["grid-auto-columns"]);
-  set("gridAutoRows", style["grid-auto-rows"]);
-  set("gridAutoFlow", style["grid-auto-flow"]);
-  set("gridColumn", style["grid-column"]);
-  set("gridColumnStart", style["grid-column-start"]);
-  set("gridColumnEnd", style["grid-column-end"]);
-  set("gridArea", style["grid-area"]);
-  set("gridRow", style["grid-row"]);
-  set("gridRowStart", style["grid-row-start"]);
-  set("gridRowEnd", style["grid-row-end"]);
-  set("alignContent", style["align-content"]);
-  set("justifyItems", style["justify-items"]);
-  set("placeItems", style["place-items"]);
-  set("placeContent", style["place-content"]);
-  set("placeSelf", style["place-self"]);
-  set("objectFit", style["object-fit"]);
-  set("objectPosition", style["object-position"]);
-  set("objectViewBox", style["object-view-box"]);
-  set("aspectRatio", style["aspect-ratio"]);
-  set("imageRendering", style["image-rendering"]);
-  set("imageOrientation", style["image-orientation"]);
-  set("imageResolution", style["image-resolution"]);
-  set("backgroundImage", style["background-image"]);
-  set("backgroundSize", style["background-size"]);
-  set("backgroundPosition", style["background-position"]);
-  set("backgroundPositionX", style["background-position-x"]);
-  set("backgroundPositionY", style["background-position-y"]);
-  set("backgroundRepeat", style["background-repeat"]);
-  set("backgroundRepeatX", style["background-repeat-x"]);
-  set("backgroundRepeatY", style["background-repeat-y"]);
-  set("backgroundClip", style["background-clip"]);
-  set("backgroundOrigin", style["background-origin"]);
-  set("backgroundAttachment", style["background-attachment"]);
-  set("backgroundBlendMode", style["background-blend-mode"]);
-  set("visibility", style.visibility);
-  set("transition", style.transition);
-  set("transitionProperty", style["transition-property"]);
-  set("transitionDuration", style["transition-duration"]);
-  set("transitionTimingFunction", style["transition-timing-function"]);
-  set("transitionDelay", style["transition-delay"]);
-  set("transitionBehavior", style["transition-behavior"]);
-  set("animation", style.animation);
-  set("animationName", style["animation-name"]);
-  set("animationDuration", style["animation-duration"]);
-  set("animationTimingFunction", style["animation-timing-function"]);
-  set("animationDelay", style["animation-delay"]);
-  set("animationIterationCount", style["animation-iteration-count"]);
-  set("animationDirection", style["animation-direction"]);
-  set("animationFillMode", style["animation-fill-mode"]);
-  set("animationPlayState", style["animation-play-state"]);
-  set("animationComposition", style["animation-composition"]);
-  set("animationTimeline", style["animation-timeline"]);
-  set("animationRange", style["animation-range"]);
-  set("animationRangeStart", style["animation-range-start"]);
-  set("animationRangeEnd", style["animation-range-end"]);
-  if (!((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
-        (offsetY !== undefined && offsetY !== null && offsetY !== "")))
-    set("transform", style.transform);
-  set("transformOrigin", style["transform-origin"]);
-  set("transformBox", style["transform-box"]);
-  set("transformStyle", style["transform-style"]);
-  set("translate", style.translate);
-  set("rotate", style.rotate);
-  set("scale", style.scale);
-  set("perspective", style.perspective);
-  set("perspectiveOrigin", style["perspective-origin"]);
-  set("backfaceVisibility", style["backface-visibility"]);
-  set("offsetPath", style["offset-path"]);
-  set("offsetDistance", style["offset-distance"]);
-  set("offsetRotate", style["offset-rotate"]);
-  set("offsetAnchor", style["offset-anchor"]);
-  set("offsetPosition", style["offset-position"]);
-  set("filter", style.filter);
-  set("backdropFilter", style["backdrop-filter"]);
-  set("clipPath", style["clip-path"]);
-  set("mask", style.mask);
-  set("maskImage", style["mask-image"]);
-  set("maskSize", style["mask-size"]);
-  set("maskPosition", style["mask-position"]);
-  set("maskRepeat", style["mask-repeat"]);
-  set("maskOrigin", style["mask-origin"]);
-  set("maskClip", style["mask-clip"]);
-  set("maskComposite", style["mask-composite"]);
-  set("maskMode", style["mask-mode"]);
-  set("cursor", style.cursor);
-  set("pointerEvents", style["pointer-events"]);
-  set("appearance", style.appearance);
-  set("userSelect", style["user-select"]);
-  set("resize", style.resize);
-  set("fieldSizing", style["field-sizing"]);
-  set("interpolateSize", style["interpolate-size"]);
-  set("overlay", style.overlay);
-  set("outline", style.outline);
-  set("outlineWidth", style["outline-width"]);
-  set("outlineOffset", style["outline-offset"]);
-  set("outlineStyle", style["outline-style"]);
-  set("outlineColor", style["outline-color"]);
-  set("boxShadow", style["box-shadow"]);
-  set("colorScheme", style["color-scheme"]);
-  set("forcedColorAdjust", style["forced-color-adjust"]);
-  set("printColorAdjust", style["print-color-adjust"]);
-  set("colorInterpolation", style["color-interpolation"]);
-  set("colorInterpolationFilters", style["color-interpolation-filters"]);
-  set("paintOrder", style["paint-order"]);
-  set("shapeOutside", style["shape-outside"]);
-  set("shapeMargin", style["shape-margin"]);
-  set("shapeImageThreshold", style["shape-image-threshold"]);
-  set("contain", style.contain);
-  set("contentVisibility", style["content-visibility"]);
-  set("containIntrinsicSize", style["contain-intrinsic-size"]);
-  set("containIntrinsicWidth", style["contain-intrinsic-width"]);
-  set("containIntrinsicHeight", style["contain-intrinsic-height"]);
-  set("containIntrinsicInlineSize", style["contain-intrinsic-inline-size"]);
-  set("containIntrinsicBlockSize", style["contain-intrinsic-block-size"]);
-  set("container", style.container);
-  set("containerType", style["container-type"]);
-  set("containerName", style["container-name"]);
-  set("anchorName", style["anchor-name"]);
-  set("positionAnchor", style["position-anchor"]);
-  set("positionArea", style["position-area"]);
-  set("positionTry", style["position-try"]);
-  set("positionTryFallbacks", style["position-try-fallbacks"]);
-  set("positionTryOrder", style["position-try-order"]);
-  set("positionVisibility", style["position-visibility"]);
-  set("willChange", style["will-change"]);
-  set("viewTransitionName", style["view-transition-name"]);
-  set("isolation", style.isolation);
-  set("mixBlendMode", style["mix-blend-mode"]);
-  set("columns", style.columns);
-  set("columnCount", style["column-count"]);
-  set("columnWidth", style["column-width"]);
-  set("columnFill", style["column-fill"]);
-  set("columnSpan", style["column-span"]);
-  set("columnRule", style["column-rule"]);
-  set("columnRuleColor", style["column-rule-color"]);
-  set("columnRuleStyle", style["column-rule-style"]);
-  set("columnRuleWidth", style["column-rule-width"]);
-  set("breakBefore", style["break-before"]);
-  set("breakAfter", style["break-after"]);
-  set("breakInside", style["break-inside"]);
-  set("float", style.float);
-  set("clear", style.clear);
-  set("order", style.order);
-  set("--kry-content-offset-x", style["content-offset-x"]);
-  set("--kry-content-offset-y", style["content-offset-y"]);
-  set("--kry-icon-size", style["icon-size"]);
-  if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
-      (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
-    set("--kry-offset-x", offsetX ?? "0px");
-    set("--kry-offset-y", offsetY ?? "0px");
-    const transform = style.transform ? ` ${webStyleCSSValue("transform", style.transform)}` : "";
-    set("transform", `translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))${transform}`);
-  }
-  set("outlineColor", style["outline-color"] ?? style.focus);
-  if (style.border || style["border-width"]) {
-    el.style.borderStyle = el.style.borderStyle || "solid";
-    applied.add("borderStyle");
   }
   el.__kryAppliedStyleProps = applied;
   applyWebInlineStyles(el);

@@ -661,24 +661,24 @@ test_selector_chains(void)
 static void
 test_css_expansion(void)
 {
-    const char *paths[] = {"tests/fixtures/kss/css-expansion.tsv", "tests/fixtures/kss/css-effects.tsv"};
-    const int totals[] = {26, 12};
-    for(int fixture = 0; fixture < 2; fixture++) {
+    const char *paths[] = {"tests/fixtures/kss/css-expansion.tsv", "tests/fixtures/kss/css-effects.tsv", "tests/fixtures/kss/css-border-default.tsv"};
+    const int totals[] = {28, 14, 8};
+    for(int fixture = 0; fixture < 3; fixture++) {
         FILE *file = fopen(paths[fixture], "r");
         char line[1024];
         int count = 0;
         assert(file != NULL);
         while(fgets(line, sizeof(line), file) != NULL) {
             line[strcspn(line, "\r\n")] = '\0';
-            char *fields[8] = {line};
-            int columns = fixture == 0 ? 5 : 8;
+            char *fields[9] = {line};
+            int columns = fixture == 0 ? 5 : (fixture == 1 ? 9 : 3);
             for(int i = 1; i < columns; i++) {
                 char *separator = strchr(fields[i - 1], '\t');
                 assert(separator != NULL);
                 *separator = '\0';
                 fields[i] = separator + 1;
             }
-            String values[8] = {0};
+            String values[9] = {0};
             for(int i = 0; i < columns; i++) {
                 if(strcmp(fields[i], "<empty>") == 0)
                     fields[i] = "";
@@ -688,11 +688,11 @@ test_css_expansion(void)
                 KssCSSExpansion expansion = KssCSSExpandDeclaration(values[0], values[1], atoi(fields[2]) != 0);
                 assert(StringEqual(expansion.first, values[3]));
                 assert(StringEqual(expansion.second, values[4]));
-            } else {
-                KssCSSEffectFacts facts = {values[0], values[1], values[2], values[3], values[4]};
-                assert(KssCSSHasOffsets(facts) == (values[2].length > 0 || values[3].length > 0));
-                KssCSSOutput output = KssCSSEffectAt(facts, atoi(fields[5]));
-                assert(StringEqual(output.name, values[6]));
+            } else if(fixture == 1) {
+                KssCSSEffectFacts facts = {values[0], values[1], values[2], values[3], values[4], values[5]};
+                assert(KssCSSHasOffsets(facts) == (values[3].length > 0 || values[4].length > 0));
+                KssCSSOutput output = KssCSSEffectAt(facts, atoi(fields[6]));
+                assert(StringEqual(output.name, values[7]));
                 String parts[] = {output.prefix, output.first, output.separator, output.second, output.suffix};
                 char text[512];
                 size_t length = 0;
@@ -702,7 +702,9 @@ test_css_expansion(void)
                         memcpy(text + length, parts[i].data, parts[i].length);
                     length += parts[i].length;
                 }
-                assert(StringEqual(StringView(text, length), values[7]));
+                assert(StringEqual(StringView(text, length), values[8]));
+            } else {
+                assert(StringEqual(KssCSSBorderDefault(values[0], values[1]), values[2]));
             }
             count++;
         }
