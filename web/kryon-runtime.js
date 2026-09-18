@@ -4270,48 +4270,32 @@ export function installAppWebStyleSheets(app, target = null, id = "kryon-app") {
 }
 
 function styleStateMatches(name, state, facts = {}) {
-  if (!name || name === "any")
-    return true;
-  const key = String(name).toLowerCase();
-  if (key === "normal")
-    return !Object.values(state || {}).some(Boolean) && !facts.readOnly && !facts.required;
-  if (key === "hover" || key === "pressed" || key === "active" ||
-      key === "focus" || key === "focused" || key === "focus-visible") {
-    const stateKey = key === "active" ? "pressed" :
-      (key === "focused" || key === "focus-visible" ? "focus" : key);
-    return !!state?.[key] || !!state?.[stateKey];
-  }
-  if (key === "enabled")
-    return !state?.disabled && !facts.disabled;
-  if (key === "readonly" || key === "read-only")
-    return !!facts.readOnly || !!state?.readonly || !!state?.readOnly;
-  if (key === "required")
-    return !!facts.required || !!state?.required;
-  if (key === "optional")
-    return !facts.required && !state?.required;
-  if (key === "valid") {
-    if (state?.valid)
-      return true;
-    const invalid = !!state?.invalid || facts.ariaAttrs?.invalid === "true" ||
-      facts.extraAttrs?.["aria-invalid"] === "true";
-    const formControl = webStyleFactsDescribeFormControl(facts);
-    return formControl && !invalid;
-  }
-  if (key === "indeterminate" || key === "default" || key === "autofill")
-    return !!state?.[key];
-  if (key === "placeholder-shown" || key === "placeholder_shown") {
-    if (state?.["placeholder-shown"] || state?.placeholderShown)
-      return true;
-    return webStyleFactsDescribeFormControl(facts) && !!facts.placeholder &&
-      !String(facts.domValue || facts.value || "");
-  }
-  return !!state?.[key];
-}
-
-function webStyleFactsDescribeFormControl(facts) {
-  return facts.tag === "input" || facts.tag === "select" || facts.tag === "textarea" ||
-    ["TextField", "Input", "TextArea", "ColorPicker", "Slider", "Spinbox", "Dropdown",
-     "ListBox", "Checkbox", "Toggle", "Radio"].includes(facts.kind);
+  const source = String(name || "");
+  const key = webKssNameText(webKssModule.KssParser_KssStateName(null, null, null, source));
+  return webKssModule.KssParser_KssStateMatches(null, null, null, source, {
+    kind: String(facts.kind || ""),
+    tag: String(facts.tag || ""),
+    any_active: Object.values(state || {}).some(Boolean),
+    requested: !!state?.[key],
+    hover: !!state?.hover,
+    pressed: !!state?.pressed,
+    focus: !!state?.focus,
+    disabled: !!state?.disabled,
+    node_disabled: !!facts.disabled,
+    readonly: !!state?.readonly,
+    readonly_camel: !!state?.readOnly,
+    node_readonly: !!facts.readOnly,
+    required: !!state?.required,
+    node_required: !!facts.required,
+    valid: !!state?.valid,
+    invalid: !!state?.invalid,
+    aria_invalid: facts.ariaAttrs?.invalid === "true",
+    extra_invalid: facts.extraAttrs?.["aria-invalid"] === "true",
+    placeholder_shown: !!state?.["placeholder-shown"],
+    placeholder_shown_camel: !!state?.placeholderShown,
+    placeholder_present: !!facts.placeholder,
+    value_present: !!String(facts.domValue || facts.value || "")
+  });
 }
 
 function selectorDataAttrValue(key, facts) {
@@ -4843,46 +4827,28 @@ function selectorHasPseudoMatches(pseudo, node, scopeNode = null) {
 }
 
 function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
-  for (const pseudo of selector?.pseudos || []) {
-    const siblings = webNodeSiblingsFromFrame(node);
-    const typeSiblings = webNodeSameTypeSiblingsFromFrame(siblings, node);
-    if (pseudo === "root") {
-      if (webNodeParentFromFrame(node))
-        return false;
-    } else if (pseudo === "scope") {
-      if (scopeNode) {
-        if (node !== scopeNode && node?.path !== scopeNode.path)
-          return false;
-      } else if (webNodeParentFromFrame(node))
-        return false;
-    } else if (pseudo === "first-child") {
-      if (siblings[0] !== node)
-        return false;
-    } else if (pseudo === "last-child") {
-      if (siblings[siblings.length - 1] !== node)
-        return false;
-    } else if (pseudo === "only-child") {
-      if (siblings.length !== 1 || siblings[0] !== node)
-        return false;
-    } else if (pseudo === "first-of-type") {
-      if (typeSiblings[0] !== node)
-        return false;
-    } else if (pseudo === "last-of-type") {
-      if (typeSiblings[typeSiblings.length - 1] !== node)
-        return false;
-    } else if (pseudo === "only-of-type") {
-      if (typeSiblings.length !== 1 || typeSiblings[0] !== node)
-        return false;
-    } else if (pseudo === "empty") {
-      const hasChildren = (node.__kryFrameNodes || []).some((candidate) =>
-        candidate && candidate.parentPath === node.path && candidate.path !== node.path);
-      if (hasChildren || String(node.text || node.domValue || "").length > 0)
-        return false;
-    } else if (pseudo === "focus-within") {
-      if (!webNodeHasFocusWithin(node))
-        return false;
-    } else if (pseudo === "target") {
-      if (!webNodeMatchesRouteTarget(node))
+  const pseudos = selector?.pseudos || [];
+  if (!pseudos.length)
+    return true;
+  const siblings = webNodeSiblingsFromFrame(node);
+  const typeSiblings = webNodeSameTypeSiblingsFromFrame(siblings, node);
+  const facts = {
+    has_parent: !!webNodeParentFromFrame(node),
+    has_scope: !!scopeNode,
+    is_scope: !!scopeNode && (node === scopeNode || node?.path === scopeNode.path),
+    sibling_index: siblings.indexOf(node),
+    sibling_count: siblings.length,
+    type_index: typeSiblings.indexOf(node),
+    type_count: typeSiblings.length,
+    has_children: webNodeChildrenFromFrame(node).length > 0,
+    has_text: String(node.text || node.domValue || "").length > 0,
+    focus_within: webNodeHasFocusWithin(node),
+    target: webNodeMatchesRouteTarget(node)
+  };
+  for (const pseudo of pseudos) {
+    const decision = webKssModule.KssParser_KssStructuralMatch(null, null, null, String(pseudo), facts);
+    if (decision >= 0) {
+      if (decision === 0)
         return false;
     } else if (String(pseudo).startsWith("has(")) {
       if (!selectorHasPseudoMatches(pseudo, node, scopeNode))

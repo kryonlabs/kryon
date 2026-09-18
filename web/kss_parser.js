@@ -18361,6 +18361,599 @@ export function KssParser_KssNthSiblingMatches($rt, $state = moduleState, $host 
     return value_17;
 }
 
+export function KssParser_KssStateName($rt, $state = moduleState, $host = moduleHost, source) {
+  $state = $state || moduleState;
+    let value_0 = {bytes: Array.from({length: 64}, (_, index) => 0), length: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_1);
+    let name = value_2;
+    let value_3 = number_85173a94_value(kryon.StringByteLength(source),32,true);
+    let value_4 = number_85173a94_value(64,32,true);
+    let value_5 = number_85173a94_bool(value_3 > value_4);
+    if (value_5) {
+        let value_7 = name;
+        let value_8 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_7);
+        let value_6 = value_8;
+        return value_6;
+    }
+    while (true) {
+        let value_9 = number_85173a94_value(name.length,32,true);
+        let value_10 = number_85173a94_value(kryon.StringByteLength(source),32,true);
+        let value_11 = number_85173a94_bool(value_9 < value_10);
+        if (!value_11) { break; }
+        let value_12 = number_85173a94_value(name.length,32,true);
+        let value_13 = number_85173a94_value(name.length,32,true);
+        let value_14 = number_85173a94_value(kryon.index(source, value_13),8,false);
+        let value_15 = number_85173a94_value(KssParser_KssLower($rt, $state, $host, value_14),8,false);
+        name.bytes[value_12] = value_15;
+        let value_16 = number_85173a94_value(name.length,32,true);
+        let value_17 = number_85173a94_value(1,32,true);
+        let value_18 = number_85173a94_value(number_85173a94_bits(value_16,value_17,32,true,1),32,true);
+        name.length = value_18;
+    }
+    let value_20 = name;
+    let value_21 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_20);
+    let value_19 = value_21;
+    return value_19;
+}
+
+export function KssParser_KssIsFormControl($rt, $state = moduleState, $host = moduleHost, kind, tag) {
+  $state = $state || moduleState;
+    let value_0 = tag;
+    let value_1 = "input";
+    let value_2 = number_85173a94_bool(value_0 == value_1);
+    let value_3 = number_85173a94_bool(value_2);
+    if (!value_3) {
+        let value_4 = tag;
+        let value_5 = "select";
+        let value_6 = number_85173a94_bool(value_4 == value_5);
+        value_3 = value_6;
+    }
+    let value_7 = number_85173a94_bool(value_3);
+    if (!value_7) {
+        let value_8 = tag;
+        let value_9 = "textarea";
+        let value_10 = number_85173a94_bool(value_8 == value_9);
+        value_7 = value_10;
+    }
+    if (value_7) {
+        let value_11 = number_85173a94_bool(true);
+        return value_11;
+    }
+    let value_12 = kind;
+    let value_13 = "TextField";
+    let value_14 = number_85173a94_bool(value_12 == value_13);
+    let value_15 = number_85173a94_bool(value_14);
+    if (!value_15) {
+        let value_16 = kind;
+        let value_17 = "Input";
+        let value_18 = number_85173a94_bool(value_16 == value_17);
+        value_15 = value_18;
+    }
+    let value_19 = number_85173a94_bool(value_15);
+    if (!value_19) {
+        let value_20 = kind;
+        let value_21 = "TextArea";
+        let value_22 = number_85173a94_bool(value_20 == value_21);
+        value_19 = value_22;
+    }
+    let value_23 = number_85173a94_bool(value_19);
+    if (!value_23) {
+        let value_24 = kind;
+        let value_25 = "ColorPicker";
+        let value_26 = number_85173a94_bool(value_24 == value_25);
+        value_23 = value_26;
+    }
+    let value_27 = number_85173a94_bool(value_23);
+    if (!value_27) {
+        let value_28 = kind;
+        let value_29 = "Slider";
+        let value_30 = number_85173a94_bool(value_28 == value_29);
+        value_27 = value_30;
+    }
+    let value_31 = number_85173a94_bool(value_27);
+    if (!value_31) {
+        let value_32 = kind;
+        let value_33 = "Spinbox";
+        let value_34 = number_85173a94_bool(value_32 == value_33);
+        value_31 = value_34;
+    }
+    if (value_31) {
+        let value_35 = number_85173a94_bool(true);
+        return value_35;
+    }
+    let value_36 = kind;
+    let value_37 = "Dropdown";
+    let value_38 = number_85173a94_bool(value_36 == value_37);
+    let value_39 = number_85173a94_bool(value_38);
+    if (!value_39) {
+        let value_40 = kind;
+        let value_41 = "ListBox";
+        let value_42 = number_85173a94_bool(value_40 == value_41);
+        value_39 = value_42;
+    }
+    let value_43 = number_85173a94_bool(value_39);
+    if (!value_43) {
+        let value_44 = kind;
+        let value_45 = "Checkbox";
+        let value_46 = number_85173a94_bool(value_44 == value_45);
+        value_43 = value_46;
+    }
+    let value_47 = number_85173a94_bool(value_43);
+    if (!value_47) {
+        let value_48 = kind;
+        let value_49 = "Toggle";
+        let value_50 = number_85173a94_bool(value_48 == value_49);
+        value_47 = value_50;
+    }
+    let value_51 = number_85173a94_bool(value_47);
+    if (!value_51) {
+        let value_52 = kind;
+        let value_53 = "Radio";
+        let value_54 = number_85173a94_bool(value_52 == value_53);
+        value_51 = value_54;
+    }
+    return value_51;
+}
+
+export function KssParser_KssStateMatches($rt, $state = moduleState, $host = moduleHost, source, facts) {
+  $state = $state || moduleState;
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({kind: record_source.kind, tag: record_source.tag, any_active: record_source.any_active, requested: record_source.requested, hover: record_source.hover, pressed: record_source.pressed, focus: record_source.focus, disabled: record_source.disabled, node_disabled: record_source.node_disabled, readonly: record_source.readonly, readonly_camel: record_source.readonly_camel, node_readonly: record_source.node_readonly, required: record_source.required, node_required: record_source.node_required, valid: record_source.valid, invalid: record_source.invalid, aria_invalid: record_source.aria_invalid, extra_invalid: record_source.extra_invalid, placeholder_shown: record_source.placeholder_shown, placeholder_shown_camel: record_source.placeholder_shown_camel, placeholder_present: record_source.placeholder_present, value_present: record_source.value_present}))(value_0);
+    facts = value_1;
+    let value_2 = number_85173a94_value(kryon.StringByteLength(source),32,true);
+    let value_3 = number_85173a94_value(64,32,true);
+    let value_4 = number_85173a94_bool(value_2 > value_3);
+    if (value_4) {
+        let value_5 = number_85173a94_bool(false);
+        return value_5;
+    }
+    let value_6 = source;
+    let value_8 = KssParser_KssStateName($rt, $state, $host, value_6);
+    let value_9 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_8);
+    let value_7 = value_9;
+    let value_10 = value_7;
+    let value_11 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_10);
+    let name = value_11;
+    let value_12 = number_85173a94_value(name.length,32,true);
+    let value_13 = number_85173a94_value(0,32,true);
+    let value_14 = number_85173a94_bool(value_12 == value_13);
+    let value_15 = number_85173a94_bool(value_14);
+    if (!value_15) {
+        let value_17 = name;
+        let value_18 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_17);
+        let value_16 = value_18;
+        let value_19 = "any";
+        let value_20 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_16, value_19));
+        value_15 = value_20;
+    }
+    if (value_15) {
+        let value_21 = number_85173a94_bool(true);
+        return value_21;
+    }
+    let value_23 = name;
+    let value_24 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_23);
+    let value_22 = value_24;
+    let value_25 = "normal";
+    let value_26 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_22, value_25));
+    if (value_26) {
+        let value_27 = number_85173a94_bool(facts.any_active);
+        let value_28 = number_85173a94_bool(!value_27);
+        let value_29 = number_85173a94_bool(value_28);
+        if (value_29) {
+            let value_30 = number_85173a94_bool(facts.node_readonly);
+            let value_31 = number_85173a94_bool(!value_30);
+            value_29 = value_31;
+        }
+        let value_32 = number_85173a94_bool(value_29);
+        if (value_32) {
+            let value_33 = number_85173a94_bool(facts.node_required);
+            let value_34 = number_85173a94_bool(!value_33);
+            value_32 = value_34;
+        }
+        return value_32;
+    }
+    let value_36 = name;
+    let value_37 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_36);
+    let value_35 = value_37;
+    let value_38 = "hover";
+    let value_39 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_35, value_38));
+    if (value_39) {
+        let value_40 = number_85173a94_bool(facts.requested);
+        let value_41 = number_85173a94_bool(value_40);
+        if (!value_41) {
+            let value_42 = number_85173a94_bool(facts.hover);
+            value_41 = value_42;
+        }
+        return value_41;
+    }
+    let value_44 = name;
+    let value_45 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_44);
+    let value_43 = value_45;
+    let value_46 = "pressed";
+    let value_47 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_43, value_46));
+    let value_48 = number_85173a94_bool(value_47);
+    if (!value_48) {
+        let value_50 = name;
+        let value_51 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_50);
+        let value_49 = value_51;
+        let value_52 = "active";
+        let value_53 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_49, value_52));
+        value_48 = value_53;
+    }
+    if (value_48) {
+        let value_54 = number_85173a94_bool(facts.requested);
+        let value_55 = number_85173a94_bool(value_54);
+        if (!value_55) {
+            let value_56 = number_85173a94_bool(facts.pressed);
+            value_55 = value_56;
+        }
+        return value_55;
+    }
+    let value_58 = name;
+    let value_59 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_58);
+    let value_57 = value_59;
+    let value_60 = "focus";
+    let value_61 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_57, value_60));
+    let value_62 = number_85173a94_bool(value_61);
+    if (!value_62) {
+        let value_64 = name;
+        let value_65 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_64);
+        let value_63 = value_65;
+        let value_66 = "focused";
+        let value_67 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_63, value_66));
+        value_62 = value_67;
+    }
+    let value_68 = number_85173a94_bool(value_62);
+    if (!value_68) {
+        let value_70 = name;
+        let value_71 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_70);
+        let value_69 = value_71;
+        let value_72 = "focus-visible";
+        let value_73 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_69, value_72));
+        value_68 = value_73;
+    }
+    if (value_68) {
+        let value_74 = number_85173a94_bool(facts.requested);
+        let value_75 = number_85173a94_bool(value_74);
+        if (!value_75) {
+            let value_76 = number_85173a94_bool(facts.focus);
+            value_75 = value_76;
+        }
+        return value_75;
+    }
+    let value_78 = name;
+    let value_79 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_78);
+    let value_77 = value_79;
+    let value_80 = "enabled";
+    let value_81 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_77, value_80));
+    if (value_81) {
+        let value_82 = number_85173a94_bool(facts.disabled);
+        let value_83 = number_85173a94_bool(!value_82);
+        let value_84 = number_85173a94_bool(value_83);
+        if (value_84) {
+            let value_85 = number_85173a94_bool(facts.node_disabled);
+            let value_86 = number_85173a94_bool(!value_85);
+            value_84 = value_86;
+        }
+        return value_84;
+    }
+    let value_88 = name;
+    let value_89 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_88);
+    let value_87 = value_89;
+    let value_90 = "readonly";
+    let value_91 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_87, value_90));
+    let value_92 = number_85173a94_bool(value_91);
+    if (!value_92) {
+        let value_94 = name;
+        let value_95 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_94);
+        let value_93 = value_95;
+        let value_96 = "read-only";
+        let value_97 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_93, value_96));
+        value_92 = value_97;
+    }
+    if (value_92) {
+        let value_98 = number_85173a94_bool(facts.node_readonly);
+        let value_99 = number_85173a94_bool(value_98);
+        if (!value_99) {
+            let value_100 = number_85173a94_bool(facts.readonly);
+            value_99 = value_100;
+        }
+        let value_101 = number_85173a94_bool(value_99);
+        if (!value_101) {
+            let value_102 = number_85173a94_bool(facts.readonly_camel);
+            value_101 = value_102;
+        }
+        return value_101;
+    }
+    let value_104 = name;
+    let value_105 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_104);
+    let value_103 = value_105;
+    let value_106 = "required";
+    let value_107 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_103, value_106));
+    if (value_107) {
+        let value_108 = number_85173a94_bool(facts.node_required);
+        let value_109 = number_85173a94_bool(value_108);
+        if (!value_109) {
+            let value_110 = number_85173a94_bool(facts.required);
+            value_109 = value_110;
+        }
+        return value_109;
+    }
+    let value_112 = name;
+    let value_113 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_112);
+    let value_111 = value_113;
+    let value_114 = "optional";
+    let value_115 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_111, value_114));
+    if (value_115) {
+        let value_116 = number_85173a94_bool(facts.node_required);
+        let value_117 = number_85173a94_bool(!value_116);
+        let value_118 = number_85173a94_bool(value_117);
+        if (value_118) {
+            let value_119 = number_85173a94_bool(facts.required);
+            let value_120 = number_85173a94_bool(!value_119);
+            value_118 = value_120;
+        }
+        return value_118;
+    }
+    let value_122 = name;
+    let value_123 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_122);
+    let value_121 = value_123;
+    let value_124 = "valid";
+    let value_125 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_121, value_124));
+    if (value_125) {
+        let value_126 = number_85173a94_bool(facts.valid);
+        if (value_126) {
+            let value_127 = number_85173a94_bool(true);
+            return value_127;
+        }
+        let value_128 = facts.kind;
+        let value_129 = facts.tag;
+        let value_130 = number_85173a94_bool(KssParser_KssIsFormControl($rt, $state, $host, value_128, value_129));
+        let value_131 = number_85173a94_bool(value_130);
+        if (value_131) {
+            let value_132 = number_85173a94_bool(facts.invalid);
+            let value_133 = number_85173a94_bool(!value_132);
+            value_131 = value_133;
+        }
+        let value_134 = number_85173a94_bool(value_131);
+        if (value_134) {
+            let value_135 = number_85173a94_bool(facts.aria_invalid);
+            let value_136 = number_85173a94_bool(!value_135);
+            value_134 = value_136;
+        }
+        let value_137 = number_85173a94_bool(value_134);
+        if (value_137) {
+            let value_138 = number_85173a94_bool(facts.extra_invalid);
+            let value_139 = number_85173a94_bool(!value_138);
+            value_137 = value_139;
+        }
+        return value_137;
+    }
+    let value_141 = name;
+    let value_142 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_141);
+    let value_140 = value_142;
+    let value_143 = "placeholder-shown";
+    let value_144 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_140, value_143));
+    let value_145 = number_85173a94_bool(value_144);
+    if (!value_145) {
+        let value_147 = name;
+        let value_148 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_147);
+        let value_146 = value_148;
+        let value_149 = "placeholder_shown";
+        let value_150 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_146, value_149));
+        value_145 = value_150;
+    }
+    if (value_145) {
+        let value_151 = number_85173a94_bool(facts.placeholder_shown);
+        let value_152 = number_85173a94_bool(value_151);
+        if (!value_152) {
+            let value_153 = number_85173a94_bool(facts.placeholder_shown_camel);
+            value_152 = value_153;
+        }
+        if (value_152) {
+            let value_154 = number_85173a94_bool(true);
+            return value_154;
+        }
+        let value_155 = facts.kind;
+        let value_156 = facts.tag;
+        let value_157 = number_85173a94_bool(KssParser_KssIsFormControl($rt, $state, $host, value_155, value_156));
+        let value_158 = number_85173a94_bool(value_157);
+        if (value_158) {
+            let value_159 = number_85173a94_bool(facts.placeholder_present);
+            value_158 = value_159;
+        }
+        let value_160 = number_85173a94_bool(value_158);
+        if (value_160) {
+            let value_161 = number_85173a94_bool(facts.value_present);
+            let value_162 = number_85173a94_bool(!value_161);
+            value_160 = value_162;
+        }
+        return value_160;
+    }
+    let value_163 = number_85173a94_bool(facts.requested);
+    return value_163;
+}
+
+export function KssParser_KssStructuralMatch($rt, $state = moduleState, $host = moduleHost, name, facts) {
+  $state = $state || moduleState;
+    let value_0 = facts;
+    let value_1 = ((record_source) => ({has_parent: record_source.has_parent, has_scope: record_source.has_scope, is_scope: record_source.is_scope, sibling_index: record_source.sibling_index, sibling_count: record_source.sibling_count, type_index: record_source.type_index, type_count: record_source.type_count, has_children: record_source.has_children, has_text: record_source.has_text, focus_within: record_source.focus_within, target: record_source.target}))(value_0);
+    facts = value_1;
+    let value_2 = number_85173a94_bool(false);
+    let matched = number_85173a94_bool(value_2);
+    let value_3 = name;
+    let value_4 = "root";
+    let value_5 = number_85173a94_bool(value_3 == value_4);
+    if (value_5) {
+        let value_6 = number_85173a94_bool(facts.has_parent);
+        let value_7 = number_85173a94_bool(!value_6);
+        matched = value_7;
+    } else {
+        let value_8 = name;
+        let value_9 = "scope";
+        let value_10 = number_85173a94_bool(value_8 == value_9);
+        if (value_10) {
+            let value_11 = number_85173a94_bool(facts.has_scope);
+            if (value_11) {
+                let value_12 = number_85173a94_bool(facts.is_scope);
+                matched = value_12;
+            } else {
+                let value_13 = number_85173a94_bool(facts.has_parent);
+                let value_14 = number_85173a94_bool(!value_13);
+                matched = value_14;
+            }
+        } else {
+            let value_15 = name;
+            let value_16 = "first-child";
+            let value_17 = number_85173a94_bool(value_15 == value_16);
+            if (value_17) {
+                let value_18 = number_85173a94_value(facts.sibling_index,32,true);
+                let value_19 = number_85173a94_value(0,32,true);
+                let value_20 = number_85173a94_bool(value_18 == value_19);
+                let value_21 = number_85173a94_bool(value_20);
+                if (value_21) {
+                    let value_22 = number_85173a94_value(facts.sibling_count,32,true);
+                    let value_23 = number_85173a94_value(0,32,true);
+                    let value_24 = number_85173a94_bool(value_22 > value_23);
+                    value_21 = value_24;
+                }
+                matched = value_21;
+            } else {
+                let value_25 = name;
+                let value_26 = "last-child";
+                let value_27 = number_85173a94_bool(value_25 == value_26);
+                if (value_27) {
+                    let value_28 = number_85173a94_value(facts.sibling_index,32,true);
+                    let value_29 = number_85173a94_value(0,32,true);
+                    let value_30 = number_85173a94_bool(value_28 >= value_29);
+                    let value_31 = number_85173a94_bool(value_30);
+                    if (value_31) {
+                        let value_32 = number_85173a94_value(facts.sibling_index,32,true);
+                        let value_33 = number_85173a94_value(facts.sibling_count,32,true);
+                        let value_34 = number_85173a94_value(1,32,true);
+                        let value_35 = number_85173a94_value(number_85173a94_bits(value_33,value_34,32,true,2),32,true);
+                        let value_36 = number_85173a94_bool(value_32 == value_35);
+                        value_31 = value_36;
+                    }
+                    matched = value_31;
+                } else {
+                    let value_37 = name;
+                    let value_38 = "only-child";
+                    let value_39 = number_85173a94_bool(value_37 == value_38);
+                    if (value_39) {
+                        let value_40 = number_85173a94_value(facts.sibling_index,32,true);
+                        let value_41 = number_85173a94_value(0,32,true);
+                        let value_42 = number_85173a94_bool(value_40 == value_41);
+                        let value_43 = number_85173a94_bool(value_42);
+                        if (value_43) {
+                            let value_44 = number_85173a94_value(facts.sibling_count,32,true);
+                            let value_45 = number_85173a94_value(1,32,true);
+                            let value_46 = number_85173a94_bool(value_44 == value_45);
+                            value_43 = value_46;
+                        }
+                        matched = value_43;
+                    } else {
+                        let value_47 = name;
+                        let value_48 = "first-of-type";
+                        let value_49 = number_85173a94_bool(value_47 == value_48);
+                        if (value_49) {
+                            let value_50 = number_85173a94_value(facts.type_index,32,true);
+                            let value_51 = number_85173a94_value(0,32,true);
+                            let value_52 = number_85173a94_bool(value_50 == value_51);
+                            let value_53 = number_85173a94_bool(value_52);
+                            if (value_53) {
+                                let value_54 = number_85173a94_value(facts.type_count,32,true);
+                                let value_55 = number_85173a94_value(0,32,true);
+                                let value_56 = number_85173a94_bool(value_54 > value_55);
+                                value_53 = value_56;
+                            }
+                            matched = value_53;
+                        } else {
+                            let value_57 = name;
+                            let value_58 = "last-of-type";
+                            let value_59 = number_85173a94_bool(value_57 == value_58);
+                            if (value_59) {
+                                let value_60 = number_85173a94_value(facts.type_index,32,true);
+                                let value_61 = number_85173a94_value(0,32,true);
+                                let value_62 = number_85173a94_bool(value_60 >= value_61);
+                                let value_63 = number_85173a94_bool(value_62);
+                                if (value_63) {
+                                    let value_64 = number_85173a94_value(facts.type_index,32,true);
+                                    let value_65 = number_85173a94_value(facts.type_count,32,true);
+                                    let value_66 = number_85173a94_value(1,32,true);
+                                    let value_67 = number_85173a94_value(number_85173a94_bits(value_65,value_66,32,true,2),32,true);
+                                    let value_68 = number_85173a94_bool(value_64 == value_67);
+                                    value_63 = value_68;
+                                }
+                                matched = value_63;
+                            } else {
+                                let value_69 = name;
+                                let value_70 = "only-of-type";
+                                let value_71 = number_85173a94_bool(value_69 == value_70);
+                                if (value_71) {
+                                    let value_72 = number_85173a94_value(facts.type_index,32,true);
+                                    let value_73 = number_85173a94_value(0,32,true);
+                                    let value_74 = number_85173a94_bool(value_72 == value_73);
+                                    let value_75 = number_85173a94_bool(value_74);
+                                    if (value_75) {
+                                        let value_76 = number_85173a94_value(facts.type_count,32,true);
+                                        let value_77 = number_85173a94_value(1,32,true);
+                                        let value_78 = number_85173a94_bool(value_76 == value_77);
+                                        value_75 = value_78;
+                                    }
+                                    matched = value_75;
+                                } else {
+                                    let value_79 = name;
+                                    let value_80 = "empty";
+                                    let value_81 = number_85173a94_bool(value_79 == value_80);
+                                    if (value_81) {
+                                        let value_82 = number_85173a94_bool(facts.has_children);
+                                        let value_83 = number_85173a94_bool(!value_82);
+                                        let value_84 = number_85173a94_bool(value_83);
+                                        if (value_84) {
+                                            let value_85 = number_85173a94_bool(facts.has_text);
+                                            let value_86 = number_85173a94_bool(!value_85);
+                                            value_84 = value_86;
+                                        }
+                                        matched = value_84;
+                                    } else {
+                                        let value_87 = name;
+                                        let value_88 = "focus-within";
+                                        let value_89 = number_85173a94_bool(value_87 == value_88);
+                                        if (value_89) {
+                                            let value_90 = number_85173a94_bool(facts.focus_within);
+                                            matched = value_90;
+                                        } else {
+                                            let value_91 = name;
+                                            let value_92 = "target";
+                                            let value_93 = number_85173a94_bool(value_91 == value_92);
+                                            if (value_93) {
+                                                let value_94 = number_85173a94_bool(facts.target);
+                                                matched = value_94;
+                                            } else {
+                                                let value_95 = number_85173a94_value(-1,32,true);
+                                                return value_95;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let value_96 = number_85173a94_bool(matched);
+    if (value_96) {
+        let value_97 = number_85173a94_value(1,32,true);
+        return value_97;
+    }
+    let value_98 = number_85173a94_value(0,32,true);
+    return value_98;
+}
+
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {
   kryon.beginFrame(rt);
   const result = KssParser_KssDefaultEnvironment(rt, state, host);

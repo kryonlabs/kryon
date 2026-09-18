@@ -26,6 +26,9 @@ arithmetic. Scalar web scores remain diagnostic metadata only.
 The shared KSS parser module also owns attribute operator predicates and
 nth-position formula evaluation. Browser adapters provide attribute strings,
 sibling indices/counts, and traversal direction; generated code decides matches.
+`KssStateFacts` and `KssStructuralFacts` carry host observations into generated
+state and structural predicates. The web adapter collects structural facts once
+per selector/node match; it no longer reimplements the rules for those pseudos.
 
 ## Public API
 

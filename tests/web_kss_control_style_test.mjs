@@ -32,6 +32,62 @@ for (const line of predicates) {
   assert.equal(actual, expected === "1", line);
 }
 
+const factDefaults = {
+  "S": {
+    "kind": "",
+    "tag": "",
+    "any_active": false,
+    "requested": false,
+    "hover": false,
+    "pressed": false,
+    "focus": false,
+    "disabled": false,
+    "node_disabled": false,
+    "readonly": false,
+    "readonly_camel": false,
+    "node_readonly": false,
+    "required": false,
+    "node_required": false,
+    "valid": false,
+    "invalid": false,
+    "aria_invalid": false,
+    "extra_invalid": false,
+    "placeholder_shown": false,
+    "placeholder_shown_camel": false,
+    "placeholder_present": false,
+    "value_present": false
+  },
+  "R": {
+    "has_parent": false,
+    "has_scope": false,
+    "is_scope": false,
+    "sibling_index": 0,
+    "sibling_count": 0,
+    "type_index": 0,
+    "type_count": 0,
+    "has_children": false,
+    "has_text": false,
+    "focus_within": false,
+    "target": false
+  }
+};
+const factCases = readFileSync(new URL("./fixtures/kss/selector-facts.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+assert.equal(factCases.length, 55);
+for (const line of factCases) {
+  const [kind, query, assignments, expected] = line.split("\t");
+  const facts = {...factDefaults[kind]};
+  if (assignments !== "-") {
+    for (const assignment of assignments.split(",")) {
+      const [key, value] = assignment.split("=");
+      assert.ok(Object.hasOwn(facts, key), key);
+      facts[key] = typeof facts[key] === "boolean" ? value === "1" : typeof facts[key] === "number" ? Number(value) : value;
+    }
+  }
+  const actual = kind === "S" ? Number(kss.KssParser_KssStateMatches(null, null, null, query, facts))
+    : kss.KssParser_KssStructuralMatch(null, null, null, query, facts);
+  assert.equal(actual, Number(expected), line);
+}
+
 // Exercise the actual host adapters, including reverse and same-type indices.
 {
   const nodes = ["Button", "Text", "Button", "Button"].map((kind, index) => ({
@@ -55,6 +111,40 @@ for (const line of predicates) {
     radius: 4, "padding-x": 7, "padding-y": 8
   });
   assert.equal(runtime.resolveWebStyle(nodes[3], sheet).border, undefined);
+}
+
+// State and structural facts are collected from real frame nodes, then matched
+// by the same generated functions used in the C/Go fixtures above.
+{
+  const root = {kind: "Column", path: "root", parentPath: "root"};
+  const field = {kind: "TextField", tag: "input", path: "root/field", parentPath: "root",
+    readOnly: true, required: true, placeholder: "Type here", state: {focus: true, custom: true}};
+  const label = {kind: "Text", path: "root/label", parentPath: "root", text: "Label"};
+  const nodes = [root, field, label];
+  for (const node of nodes)
+    node.__kryFrameNodes = nodes;
+  const sheet = runtime.parseWebStyleSheet(`
+    TextField[state=FOCUSED] { border: #112233; }
+    TextField:read-only { radius: 5; }
+    TextField:required { padding-x: 7; }
+    TextField:placeholder-shown { foreground: #445566; }
+    TextField:first-child { padding-y: 8; }
+    TextField:only-of-type { gap: 9; }
+    TextField:valid { opacity: 0.5; }
+    TextField[state=custom] { font-size: 16; }
+    TextField:normal { radius: 99; }
+    TextField:empty { icon-size: 18; }
+    Column:scope { radius: 2; }
+    Column:focus-within { border-width: 3; }
+    Text:last-child { radius: 4; }
+    Text:empty { radius: 99; }
+  `);
+  assert.deepEqual(runtime.resolveWebStyle(field, sheet), {
+    border: "#112233", radius: 5, "padding-x": 7, foreground: "#445566",
+    "padding-y": 8, gap: 9, opacity: 0.5, "font-size": 16, "icon-size": 18
+  });
+  assert.deepEqual(runtime.resolveWebStyle(root, sheet), {radius: 2, "border-width": 3});
+  assert.deepEqual(runtime.resolveWebStyle(label, sheet), {radius: 4});
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose

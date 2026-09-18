@@ -10,13 +10,16 @@ and formatting belong to maintained `runtime/*.kry` modules. CSS declaration
 classification, scalar parsing, token lookup, and color overrides now run there
 as well. Specificity weights and priority comparisons are shared with web
 resolution and inspector traces. Attribute operators and nth-position formulas
-also run in `.kry`; hosts provide values and sibling lists. The remaining web
-selector grammar, state predicates, and traversal decisions are migration
-debt tracked in the completion ledger. The adapter serializes tagged values. Host
+also run in `.kry`, as do state predicates and basic structural pseudo rules;
+hosts provide values, sibling lists, and relationship/content/focus facts.
+Remaining web selector grammar and traversal decisions are migration debt tracked
+in the completion ledger. The adapter serializes tagged values.
+
+Host
 adapters own source/import storage, native string views, and publication of
 resolved sheets; they call generated code to interpret those sources. The Go pack
-registry retains source and variant identity for theme changes, staging all resolved sheets before
-publishing them. Browser DOM text-node creation and attachment remain host
+registry retains source and variant identity for theme changes, staging all
+resolved sheets before publishing them. Browser DOM text-node creation and attachment remain host
 services; they preserve the authored text alongside mounted child elements.
 
 ## Belongs In Kryon

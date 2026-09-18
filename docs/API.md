@@ -241,6 +241,15 @@ number spellings do not match. Coefficient and offset magnitudes are limited to
 2147483647, with 64-bit intermediate arithmetic. Missing sibling positions do
 not match. Hosts provide attributes and sibling identity/order.
 
+Selector state aliases, form-control classification, validity, placeholder, and
+required/read-only decisions also use generated KSS policy. State names use
+ASCII case folding and the shared 64-byte name limit; unknown names read their
+named state flag. Basic structural pseudos (`root`, `scope`, first/last/only
+child or type, `empty`, `focus-within`, and `target`) evaluate shared facts.
+Hosts collect relationship, content, focus, and route facts; functional selector
+parsing and traversal remain separate migration work.
+
+
 
 KSS tokens are grouped in one `tokens { ... }` block. Accepted groups are
 `color`, `length`, `number`, `duration`, and `material`; duration values are

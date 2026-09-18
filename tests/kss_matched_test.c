@@ -6,6 +6,7 @@
 #include "runtime/kss_parser.h"
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -379,6 +380,100 @@ test_selector_predicates(void)
     fclose(file);
 }
 
+typedef struct FactField { const char *name; size_t offset; char type; } FactField;
+
+static const FactField selector_S_fields[] = {
+    {"kind", offsetof(KssStateFacts, kind), 's'},
+    {"tag", offsetof(KssStateFacts, tag), 's'},
+    {"any_active", offsetof(KssStateFacts, any_active), 'b'},
+    {"requested", offsetof(KssStateFacts, requested), 'b'},
+    {"hover", offsetof(KssStateFacts, hover), 'b'},
+    {"pressed", offsetof(KssStateFacts, pressed), 'b'},
+    {"focus", offsetof(KssStateFacts, focus), 'b'},
+    {"disabled", offsetof(KssStateFacts, disabled), 'b'},
+    {"node_disabled", offsetof(KssStateFacts, node_disabled), 'b'},
+    {"readonly", offsetof(KssStateFacts, readonly), 'b'},
+    {"readonly_camel", offsetof(KssStateFacts, readonly_camel), 'b'},
+    {"node_readonly", offsetof(KssStateFacts, node_readonly), 'b'},
+    {"required", offsetof(KssStateFacts, required), 'b'},
+    {"node_required", offsetof(KssStateFacts, node_required), 'b'},
+    {"valid", offsetof(KssStateFacts, valid), 'b'},
+    {"invalid", offsetof(KssStateFacts, invalid), 'b'},
+    {"aria_invalid", offsetof(KssStateFacts, aria_invalid), 'b'},
+    {"extra_invalid", offsetof(KssStateFacts, extra_invalid), 'b'},
+    {"placeholder_shown", offsetof(KssStateFacts, placeholder_shown), 'b'},
+    {"placeholder_shown_camel", offsetof(KssStateFacts, placeholder_shown_camel), 'b'},
+    {"placeholder_present", offsetof(KssStateFacts, placeholder_present), 'b'},
+    {"value_present", offsetof(KssStateFacts, value_present), 'b'},
+};
+
+static const FactField selector_R_fields[] = {
+    {"has_parent", offsetof(KssStructuralFacts, has_parent), 'b'},
+    {"has_scope", offsetof(KssStructuralFacts, has_scope), 'b'},
+    {"is_scope", offsetof(KssStructuralFacts, is_scope), 'b'},
+    {"sibling_index", offsetof(KssStructuralFacts, sibling_index), 'i'},
+    {"sibling_count", offsetof(KssStructuralFacts, sibling_count), 'i'},
+    {"type_index", offsetof(KssStructuralFacts, type_index), 'i'},
+    {"type_count", offsetof(KssStructuralFacts, type_count), 'i'},
+    {"has_children", offsetof(KssStructuralFacts, has_children), 'b'},
+    {"has_text", offsetof(KssStructuralFacts, has_text), 'b'},
+    {"focus_within", offsetof(KssStructuralFacts, focus_within), 'b'},
+    {"target", offsetof(KssStructuralFacts, target), 'b'},
+};
+
+static void
+test_selector_facts(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/selector-facts.tsv", "r");
+    char line[1024];
+    int count = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        char *fields[4] = {line};
+        for(int i = 0; i < 3; i++) {
+            char *separator = strchr(fields[i], '\t');
+            assert(separator != NULL);
+            *separator = '\0';
+            fields[i + 1] = separator + 1;
+        }
+        bool state = strcmp(fields[0], "S") == 0;
+        assert(state || strcmp(fields[0], "R") == 0);
+        KssStateFacts state_facts = {0};
+        KssStructuralFacts structural = {0};
+        char *record = state ? (char *)&state_facts : (char *)&structural;
+        const FactField *table = state ? selector_S_fields : selector_R_fields;
+        size_t length = state ? sizeof(selector_S_fields) / sizeof(*table) : sizeof(selector_R_fields) / sizeof(*table);
+        char *assignment = strtok(fields[2], ",");
+        while(assignment != NULL && strcmp(assignment, "-") != 0) {
+            char *value = strchr(assignment, '=');
+            assert(value != NULL);
+            *value++ = '\0';
+            bool found = false;
+            for(size_t i = 0; i < length; i++) {
+                if(strcmp(table[i].name, assignment) != 0)
+                    continue;
+                void *field = record + table[i].offset;
+                if(table[i].type == 'b')
+                    *(bool *)field = atoi(value) != 0;
+                else if(table[i].type == 'i')
+                    *(int32_t *)field = atoi(value);
+                else
+                    *(String *)field = StringView(value, strlen(value));
+                found = true;
+                break;
+            }
+            assert(found);
+            assignment = strtok(NULL, ",");
+        }
+        String query = StringView(fields[1], strlen(fields[1]));
+        int actual = state ? (int)KssStateMatches(query, state_facts) : KssStructuralMatch(query, structural);
+        assert(actual == atoi(fields[3]));
+        count++;
+    }
+    assert(count == 55);
+    fclose(file);
+}
+
 int
 main(void)
 {
@@ -388,6 +483,7 @@ main(void)
     test_environment_names();
     test_css_values();
     test_selector_predicates();
+    test_selector_facts();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

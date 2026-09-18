@@ -2,6 +2,7 @@ package kryon
 
 import (
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -316,6 +317,68 @@ func TestKssSelectorPredicates(t *testing.T) {
 		}
 		if actual != (fields[4] == "1") {
 			t.Fatalf("predicate %q returned %v", line, actual)
+		}
+	}
+}
+
+func TestKssSelectorFacts(t *testing.T) {
+	source := kssFixtureText(t, "../../tests/fixtures/kss/selector-facts.tsv")
+	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
+	if len(lines) != 55 {
+		t.Fatal(len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 4 {
+			t.Fatal(line)
+		}
+		var state KssStateFacts
+		var structural KssStructuralFacts
+		record := reflect.ValueOf(&state).Elem()
+		if fields[0] == "R" {
+			record = reflect.ValueOf(&structural).Elem()
+		}
+		if fields[2] != "-" {
+			for _, entry := range strings.Split(fields[2], ",") {
+				parts := strings.SplitN(entry, "=", 2)
+				if len(parts) != 2 {
+					t.Fatal(entry)
+				}
+				words := strings.Split(parts[0], "_")
+				for i, word := range words {
+					words[i] = strings.ToUpper(word[:1]) + word[1:]
+				}
+				field := record.FieldByName(strings.Join(words, ""))
+				if !field.IsValid() {
+					t.Fatal(parts[0])
+				}
+				switch field.Kind() {
+				case reflect.Bool:
+					field.SetBool(parts[1] == "1")
+				case reflect.String:
+					field.SetString(parts[1])
+				case reflect.Int32:
+					value, err := strconv.ParseInt(parts[1], 10, 32)
+					if err != nil {
+						t.Fatal(err)
+					}
+					field.SetInt(value)
+				default:
+					t.Fatal(field.Kind())
+				}
+			}
+		}
+		actual := int32(0)
+		if fields[0] == "S" {
+			if KssParser_KssStateMatches(fields[1], state) {
+				actual = 1
+			}
+		} else {
+			actual = KssParser_KssStructuralMatch(fields[1], structural)
+		}
+		expected, err := strconv.Atoi(fields[3])
+		if err != nil || actual != int32(expected) {
+			t.Fatalf("%s: got %d", line, actual)
 		}
 	}
 }

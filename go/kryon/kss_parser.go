@@ -279,6 +279,45 @@ type KssCSSValue struct {
 	TokenOrigin int32
 }
 
+type KssStateFacts struct {
+	Kind                  string
+	Tag                   string
+	AnyActive             bool
+	Requested             bool
+	Hover                 bool
+	Pressed               bool
+	Focus                 bool
+	Disabled              bool
+	NodeDisabled          bool
+	Readonly              bool
+	ReadonlyCamel         bool
+	NodeReadonly          bool
+	Required              bool
+	NodeRequired          bool
+	Valid                 bool
+	Invalid               bool
+	AriaInvalid           bool
+	ExtraInvalid          bool
+	PlaceholderShown      bool
+	PlaceholderShownCamel bool
+	PlaceholderPresent    bool
+	ValuePresent          bool
+}
+
+type KssStructuralFacts struct {
+	HasParent    bool
+	HasScope     bool
+	IsScope      bool
+	SiblingIndex int32
+	SiblingCount int32
+	TypeIndex    int32
+	TypeCount    int32
+	HasChildren  bool
+	HasText      bool
+	FocusWithin  bool
+	Target       bool
+}
+
 func KssParser_KssDefaultEnvironment() KssEnvironment {
 	var env KssEnvironment = KssEnvironment{}
 	var value_0 int32 = KssThemeNone
@@ -12600,4 +12639,546 @@ func KssParser_KssNthSiblingMatches(source string, index int32, count int32, fro
 	var value_16 int32 = position
 	var value_17 bool = KssParser_KssNthMatches(value_15, value_16)
 	return value_17
+}
+
+func KssParser_KssStateName(source string) KssName {
+	var name KssName = KssName{}
+	var value_0 int32 = int32(len(source))
+	var value_1 int32 = 64
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 KssName = name
+		return value_3
+	}
+	for {
+		var value_4 int32 = name.Length
+		var value_5 int32 = int32(len(source))
+		var value_6 bool = value_4 < value_5
+		if !value_6 {
+			break
+		}
+		var value_7 int32 = name.Length
+		var value_8 int32 = name.Length
+		var value_9 uint8 = source[value_8]
+		var value_10 uint8 = KssParser_KssLower(value_9)
+		name.Bytes[value_7] = value_10
+		var value_11 int32 = name.Length
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 1))
+		name.Length = value_13
+	}
+	var value_14 KssName = name
+	return value_14
+}
+
+func KssParser_KssIsFormControl(kind string, tag string) bool {
+	var value_0 string = tag
+	var value_1 string = "input"
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 string = tag
+		var value_5 string = "select"
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 string = tag
+		var value_9 string = "textarea"
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 bool = true
+		return value_11
+	}
+	var value_12 string = kind
+	var value_13 string = "TextField"
+	var value_14 bool = value_12 == value_13
+	var value_15 bool = value_14
+	if !value_15 {
+		var value_16 string = kind
+		var value_17 string = "Input"
+		var value_18 bool = value_16 == value_17
+		value_15 = value_18
+	}
+	var value_19 bool = value_15
+	if !value_19 {
+		var value_20 string = kind
+		var value_21 string = "TextArea"
+		var value_22 bool = value_20 == value_21
+		value_19 = value_22
+	}
+	var value_23 bool = value_19
+	if !value_23 {
+		var value_24 string = kind
+		var value_25 string = "ColorPicker"
+		var value_26 bool = value_24 == value_25
+		value_23 = value_26
+	}
+	var value_27 bool = value_23
+	if !value_27 {
+		var value_28 string = kind
+		var value_29 string = "Slider"
+		var value_30 bool = value_28 == value_29
+		value_27 = value_30
+	}
+	var value_31 bool = value_27
+	if !value_31 {
+		var value_32 string = kind
+		var value_33 string = "Spinbox"
+		var value_34 bool = value_32 == value_33
+		value_31 = value_34
+	}
+	if value_31 {
+		var value_35 bool = true
+		return value_35
+	}
+	var value_36 string = kind
+	var value_37 string = "Dropdown"
+	var value_38 bool = value_36 == value_37
+	var value_39 bool = value_38
+	if !value_39 {
+		var value_40 string = kind
+		var value_41 string = "ListBox"
+		var value_42 bool = value_40 == value_41
+		value_39 = value_42
+	}
+	var value_43 bool = value_39
+	if !value_43 {
+		var value_44 string = kind
+		var value_45 string = "Checkbox"
+		var value_46 bool = value_44 == value_45
+		value_43 = value_46
+	}
+	var value_47 bool = value_43
+	if !value_47 {
+		var value_48 string = kind
+		var value_49 string = "Toggle"
+		var value_50 bool = value_48 == value_49
+		value_47 = value_50
+	}
+	var value_51 bool = value_47
+	if !value_51 {
+		var value_52 string = kind
+		var value_53 string = "Radio"
+		var value_54 bool = value_52 == value_53
+		value_51 = value_54
+	}
+	return value_51
+}
+
+func KssParser_KssStateMatches(source string, facts KssStateFacts) bool {
+	var value_0 int32 = int32(len(source))
+	var value_1 int32 = 64
+	var value_2 bool = value_0 > value_1
+	if value_2 {
+		var value_3 bool = false
+		return value_3
+	}
+	var value_4 string = source
+	var value_5 KssName = KssParser_KssStateName(value_4)
+	var name KssName = value_5
+	var value_6 int32 = name.Length
+	var value_7 int32 = 0
+	var value_8 bool = value_6 == value_7
+	var value_9 bool = value_8
+	if !value_9 {
+		var value_10 KssName = name
+		var value_11 string = "any"
+		var value_12 bool = KssParser_KssNameEquals(value_10, value_11)
+		value_9 = value_12
+	}
+	if value_9 {
+		var value_13 bool = true
+		return value_13
+	}
+	var value_14 KssName = name
+	var value_15 string = "normal"
+	var value_16 bool = KssParser_KssNameEquals(value_14, value_15)
+	if value_16 {
+		var value_17 bool = facts.AnyActive
+		var value_18 bool = !value_17
+		var value_19 bool = value_18
+		if value_19 {
+			var value_20 bool = facts.NodeReadonly
+			var value_21 bool = !value_20
+			value_19 = value_21
+		}
+		var value_22 bool = value_19
+		if value_22 {
+			var value_23 bool = facts.NodeRequired
+			var value_24 bool = !value_23
+			value_22 = value_24
+		}
+		return value_22
+	}
+	var value_25 KssName = name
+	var value_26 string = "hover"
+	var value_27 bool = KssParser_KssNameEquals(value_25, value_26)
+	if value_27 {
+		var value_28 bool = facts.Requested
+		var value_29 bool = value_28
+		if !value_29 {
+			var value_30 bool = facts.Hover
+			value_29 = value_30
+		}
+		return value_29
+	}
+	var value_31 KssName = name
+	var value_32 string = "pressed"
+	var value_33 bool = KssParser_KssNameEquals(value_31, value_32)
+	var value_34 bool = value_33
+	if !value_34 {
+		var value_35 KssName = name
+		var value_36 string = "active"
+		var value_37 bool = KssParser_KssNameEquals(value_35, value_36)
+		value_34 = value_37
+	}
+	if value_34 {
+		var value_38 bool = facts.Requested
+		var value_39 bool = value_38
+		if !value_39 {
+			var value_40 bool = facts.Pressed
+			value_39 = value_40
+		}
+		return value_39
+	}
+	var value_41 KssName = name
+	var value_42 string = "focus"
+	var value_43 bool = KssParser_KssNameEquals(value_41, value_42)
+	var value_44 bool = value_43
+	if !value_44 {
+		var value_45 KssName = name
+		var value_46 string = "focused"
+		var value_47 bool = KssParser_KssNameEquals(value_45, value_46)
+		value_44 = value_47
+	}
+	var value_48 bool = value_44
+	if !value_48 {
+		var value_49 KssName = name
+		var value_50 string = "focus-visible"
+		var value_51 bool = KssParser_KssNameEquals(value_49, value_50)
+		value_48 = value_51
+	}
+	if value_48 {
+		var value_52 bool = facts.Requested
+		var value_53 bool = value_52
+		if !value_53 {
+			var value_54 bool = facts.Focus
+			value_53 = value_54
+		}
+		return value_53
+	}
+	var value_55 KssName = name
+	var value_56 string = "enabled"
+	var value_57 bool = KssParser_KssNameEquals(value_55, value_56)
+	if value_57 {
+		var value_58 bool = facts.Disabled
+		var value_59 bool = !value_58
+		var value_60 bool = value_59
+		if value_60 {
+			var value_61 bool = facts.NodeDisabled
+			var value_62 bool = !value_61
+			value_60 = value_62
+		}
+		return value_60
+	}
+	var value_63 KssName = name
+	var value_64 string = "readonly"
+	var value_65 bool = KssParser_KssNameEquals(value_63, value_64)
+	var value_66 bool = value_65
+	if !value_66 {
+		var value_67 KssName = name
+		var value_68 string = "read-only"
+		var value_69 bool = KssParser_KssNameEquals(value_67, value_68)
+		value_66 = value_69
+	}
+	if value_66 {
+		var value_70 bool = facts.NodeReadonly
+		var value_71 bool = value_70
+		if !value_71 {
+			var value_72 bool = facts.Readonly
+			value_71 = value_72
+		}
+		var value_73 bool = value_71
+		if !value_73 {
+			var value_74 bool = facts.ReadonlyCamel
+			value_73 = value_74
+		}
+		return value_73
+	}
+	var value_75 KssName = name
+	var value_76 string = "required"
+	var value_77 bool = KssParser_KssNameEquals(value_75, value_76)
+	if value_77 {
+		var value_78 bool = facts.NodeRequired
+		var value_79 bool = value_78
+		if !value_79 {
+			var value_80 bool = facts.Required
+			value_79 = value_80
+		}
+		return value_79
+	}
+	var value_81 KssName = name
+	var value_82 string = "optional"
+	var value_83 bool = KssParser_KssNameEquals(value_81, value_82)
+	if value_83 {
+		var value_84 bool = facts.NodeRequired
+		var value_85 bool = !value_84
+		var value_86 bool = value_85
+		if value_86 {
+			var value_87 bool = facts.Required
+			var value_88 bool = !value_87
+			value_86 = value_88
+		}
+		return value_86
+	}
+	var value_89 KssName = name
+	var value_90 string = "valid"
+	var value_91 bool = KssParser_KssNameEquals(value_89, value_90)
+	if value_91 {
+		var value_92 bool = facts.Valid
+		if value_92 {
+			var value_93 bool = true
+			return value_93
+		}
+		var value_94 string = facts.Kind
+		var value_95 string = facts.Tag
+		var value_96 bool = KssParser_KssIsFormControl(value_94, value_95)
+		var value_97 bool = value_96
+		if value_97 {
+			var value_98 bool = facts.Invalid
+			var value_99 bool = !value_98
+			value_97 = value_99
+		}
+		var value_100 bool = value_97
+		if value_100 {
+			var value_101 bool = facts.AriaInvalid
+			var value_102 bool = !value_101
+			value_100 = value_102
+		}
+		var value_103 bool = value_100
+		if value_103 {
+			var value_104 bool = facts.ExtraInvalid
+			var value_105 bool = !value_104
+			value_103 = value_105
+		}
+		return value_103
+	}
+	var value_106 KssName = name
+	var value_107 string = "placeholder-shown"
+	var value_108 bool = KssParser_KssNameEquals(value_106, value_107)
+	var value_109 bool = value_108
+	if !value_109 {
+		var value_110 KssName = name
+		var value_111 string = "placeholder_shown"
+		var value_112 bool = KssParser_KssNameEquals(value_110, value_111)
+		value_109 = value_112
+	}
+	if value_109 {
+		var value_113 bool = facts.PlaceholderShown
+		var value_114 bool = value_113
+		if !value_114 {
+			var value_115 bool = facts.PlaceholderShownCamel
+			value_114 = value_115
+		}
+		if value_114 {
+			var value_116 bool = true
+			return value_116
+		}
+		var value_117 string = facts.Kind
+		var value_118 string = facts.Tag
+		var value_119 bool = KssParser_KssIsFormControl(value_117, value_118)
+		var value_120 bool = value_119
+		if value_120 {
+			var value_121 bool = facts.PlaceholderPresent
+			value_120 = value_121
+		}
+		var value_122 bool = value_120
+		if value_122 {
+			var value_123 bool = facts.ValuePresent
+			var value_124 bool = !value_123
+			value_122 = value_124
+		}
+		return value_122
+	}
+	var value_125 bool = facts.Requested
+	return value_125
+}
+
+func KssParser_KssStructuralMatch(name string, facts KssStructuralFacts) int32 {
+	var value_0 bool = false
+	var matched bool = value_0
+	var value_1 string = name
+	var value_2 string = "root"
+	var value_3 bool = value_1 == value_2
+	if value_3 {
+		var value_4 bool = facts.HasParent
+		var value_5 bool = !value_4
+		matched = value_5
+	} else {
+		var value_6 string = name
+		var value_7 string = "scope"
+		var value_8 bool = value_6 == value_7
+		if value_8 {
+			var value_9 bool = facts.HasScope
+			if value_9 {
+				var value_10 bool = facts.IsScope
+				matched = value_10
+			} else {
+				var value_11 bool = facts.HasParent
+				var value_12 bool = !value_11
+				matched = value_12
+			}
+		} else {
+			var value_13 string = name
+			var value_14 string = "first-child"
+			var value_15 bool = value_13 == value_14
+			if value_15 {
+				var value_16 int32 = facts.SiblingIndex
+				var value_17 int32 = 0
+				var value_18 bool = value_16 == value_17
+				var value_19 bool = value_18
+				if value_19 {
+					var value_20 int32 = facts.SiblingCount
+					var value_21 int32 = 0
+					var value_22 bool = value_20 > value_21
+					value_19 = value_22
+				}
+				matched = value_19
+			} else {
+				var value_23 string = name
+				var value_24 string = "last-child"
+				var value_25 bool = value_23 == value_24
+				if value_25 {
+					var value_26 int32 = facts.SiblingIndex
+					var value_27 int32 = 0
+					var value_28 bool = value_26 >= value_27
+					var value_29 bool = value_28
+					if value_29 {
+						var value_30 int32 = facts.SiblingIndex
+						var value_31 int32 = facts.SiblingCount
+						var value_32 int32 = 1
+						var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 2))
+						var value_34 bool = value_30 == value_33
+						value_29 = value_34
+					}
+					matched = value_29
+				} else {
+					var value_35 string = name
+					var value_36 string = "only-child"
+					var value_37 bool = value_35 == value_36
+					if value_37 {
+						var value_38 int32 = facts.SiblingIndex
+						var value_39 int32 = 0
+						var value_40 bool = value_38 == value_39
+						var value_41 bool = value_40
+						if value_41 {
+							var value_42 int32 = facts.SiblingCount
+							var value_43 int32 = 1
+							var value_44 bool = value_42 == value_43
+							value_41 = value_44
+						}
+						matched = value_41
+					} else {
+						var value_45 string = name
+						var value_46 string = "first-of-type"
+						var value_47 bool = value_45 == value_46
+						if value_47 {
+							var value_48 int32 = facts.TypeIndex
+							var value_49 int32 = 0
+							var value_50 bool = value_48 == value_49
+							var value_51 bool = value_50
+							if value_51 {
+								var value_52 int32 = facts.TypeCount
+								var value_53 int32 = 0
+								var value_54 bool = value_52 > value_53
+								value_51 = value_54
+							}
+							matched = value_51
+						} else {
+							var value_55 string = name
+							var value_56 string = "last-of-type"
+							var value_57 bool = value_55 == value_56
+							if value_57 {
+								var value_58 int32 = facts.TypeIndex
+								var value_59 int32 = 0
+								var value_60 bool = value_58 >= value_59
+								var value_61 bool = value_60
+								if value_61 {
+									var value_62 int32 = facts.TypeIndex
+									var value_63 int32 = facts.TypeCount
+									var value_64 int32 = 1
+									var value_65 int32 = int32(number_runtime_bits(uint64(value_63), uint64(value_64), 32, true, 2))
+									var value_66 bool = value_62 == value_65
+									value_61 = value_66
+								}
+								matched = value_61
+							} else {
+								var value_67 string = name
+								var value_68 string = "only-of-type"
+								var value_69 bool = value_67 == value_68
+								if value_69 {
+									var value_70 int32 = facts.TypeIndex
+									var value_71 int32 = 0
+									var value_72 bool = value_70 == value_71
+									var value_73 bool = value_72
+									if value_73 {
+										var value_74 int32 = facts.TypeCount
+										var value_75 int32 = 1
+										var value_76 bool = value_74 == value_75
+										value_73 = value_76
+									}
+									matched = value_73
+								} else {
+									var value_77 string = name
+									var value_78 string = "empty"
+									var value_79 bool = value_77 == value_78
+									if value_79 {
+										var value_80 bool = facts.HasChildren
+										var value_81 bool = !value_80
+										var value_82 bool = value_81
+										if value_82 {
+											var value_83 bool = facts.HasText
+											var value_84 bool = !value_83
+											value_82 = value_84
+										}
+										matched = value_82
+									} else {
+										var value_85 string = name
+										var value_86 string = "focus-within"
+										var value_87 bool = value_85 == value_86
+										if value_87 {
+											var value_88 bool = facts.FocusWithin
+											matched = value_88
+										} else {
+											var value_89 string = name
+											var value_90 string = "target"
+											var value_91 bool = value_89 == value_90
+											if value_91 {
+												var value_92 bool = facts.Target
+												matched = value_92
+											} else {
+												var value_93 int32 = -1
+												return value_93
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	var value_94 bool = matched
+	if value_94 {
+		var value_95 int32 = 1
+		return value_95
+	}
+	var value_96 int32 = 0
+	return value_96
 }

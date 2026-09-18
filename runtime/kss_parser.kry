@@ -4056,3 +4056,155 @@ KssNthSiblingMatches :: (source: string, index: i32, count: i32, from_end: bool)
     }
     return KssNthMatches(source, position)
 }
+
+KssStateFacts :: struct {
+    kind: string
+    tag: string
+    any_active: bool
+    requested: bool
+    hover: bool
+    pressed: bool
+    focus: bool
+    disabled: bool
+    node_disabled: bool
+    readonly: bool
+    readonly_camel: bool
+    node_readonly: bool
+    required: bool
+    node_required: bool
+    valid: bool
+    invalid: bool
+    aria_invalid: bool
+    extra_invalid: bool
+    placeholder_shown: bool
+    placeholder_shown_camel: bool
+    placeholder_present: bool
+    value_present: bool
+}
+
+KssStateName :: (source: string) -> KssName #export {
+    name: KssName
+    if source.length > 64 {
+        return name
+    }
+    while name.length < source.length {
+        name.bytes[name.length] = KssLower(source[name.length])
+        name.length = name.length + 1
+    }
+    return name
+}
+
+KssIsFormControl :: (kind: string, tag: string) -> bool {
+    if tag == "input" || tag == "select" || tag == "textarea" {
+        return true
+    }
+    if kind == "TextField" || kind == "Input" || kind == "TextArea" ||
+        kind == "ColorPicker" || kind == "Slider" || kind == "Spinbox" {
+        return true
+    }
+    return kind == "Dropdown" || kind == "ListBox" || kind == "Checkbox" ||
+        kind == "Toggle" || kind == "Radio"
+}
+
+KssStateMatches :: (source: string, facts: KssStateFacts) -> bool #export {
+    if source.length > 64 {
+        return false
+    }
+    name: KssName = KssStateName(source)
+    if name.length == 0 || KssNameEquals(name, "any") {
+        return true
+    }
+    if KssNameEquals(name, "normal") {
+        return !facts.any_active && !facts.node_readonly && !facts.node_required
+    }
+    if KssNameEquals(name, "hover") {
+        return facts.requested || facts.hover
+    }
+    if KssNameEquals(name, "pressed") || KssNameEquals(name, "active") {
+        return facts.requested || facts.pressed
+    }
+    if KssNameEquals(name, "focus") || KssNameEquals(name, "focused") ||
+        KssNameEquals(name, "focus-visible") {
+        return facts.requested || facts.focus
+    }
+    if KssNameEquals(name, "enabled") {
+        return !facts.disabled && !facts.node_disabled
+    }
+    if KssNameEquals(name, "readonly") || KssNameEquals(name, "read-only") {
+        return facts.node_readonly || facts.readonly || facts.readonly_camel
+    }
+    if KssNameEquals(name, "required") {
+        return facts.node_required || facts.required
+    }
+    if KssNameEquals(name, "optional") {
+        return !facts.node_required && !facts.required
+    }
+    if KssNameEquals(name, "valid") {
+        if facts.valid {
+            return true
+        }
+        return KssIsFormControl(facts.kind, facts.tag) && !facts.invalid &&
+            !facts.aria_invalid && !facts.extra_invalid
+    }
+    if KssNameEquals(name, "placeholder-shown") || KssNameEquals(name, "placeholder_shown") {
+        if facts.placeholder_shown || facts.placeholder_shown_camel {
+            return true
+        }
+        return KssIsFormControl(facts.kind, facts.tag) && facts.placeholder_present &&
+            !facts.value_present
+    }
+    return facts.requested
+}
+
+KssStructuralFacts :: struct {
+    has_parent: bool
+    has_scope: bool
+    is_scope: bool
+    sibling_index: i32
+    sibling_count: i32
+    type_index: i32
+    type_count: i32
+    has_children: bool
+    has_text: bool
+    focus_within: bool
+    target: bool
+}
+
+# -1 leaves functional pseudos to the selector traversal driver. Zero and one
+# are complete decisions from the supplied relationship/content facts.
+KssStructuralMatch :: (name: string, facts: KssStructuralFacts) -> i32 #export {
+    matched: bool = false
+    if name == "root" {
+        matched = !facts.has_parent
+    } else if name == "scope" {
+        if facts.has_scope {
+            matched = facts.is_scope
+        } else {
+            matched = !facts.has_parent
+        }
+    } else if name == "first-child" {
+        matched = facts.sibling_index == 0 && facts.sibling_count > 0
+    } else if name == "last-child" {
+        matched = facts.sibling_index >= 0 && facts.sibling_index == facts.sibling_count - 1
+    } else if name == "only-child" {
+        matched = facts.sibling_index == 0 && facts.sibling_count == 1
+    } else if name == "first-of-type" {
+        matched = facts.type_index == 0 && facts.type_count > 0
+    } else if name == "last-of-type" {
+        matched = facts.type_index >= 0 && facts.type_index == facts.type_count - 1
+    } else if name == "only-of-type" {
+        matched = facts.type_index == 0 && facts.type_count == 1
+    } else if name == "empty" {
+        matched = !facts.has_children && !facts.has_text
+    } else if name == "focus-within" {
+        matched = facts.focus_within
+    } else if name == "target" {
+        matched = facts.target
+    } else {
+        return -1
+    }
+    if matched {
+        return 1
+    }
+    return 0
+}

@@ -155,8 +155,7 @@ its unrelated continuation-indentation changes were inspected and omitted.
 Generated Go and the new Go test are gofmt-formatted.
 
 Remaining web selector ownership is more than its parser: `selectorKindMatches`,
-`selectorMatchesFacts`, `styleStateMatches`, structural pseudo dispatch, and
-combinator traversal rules
+`selectorMatchesFacts`, functional pseudo dispatch, and combinator traversal rules
 still execute in JavaScript. DOM/frame relationship lookup, attribute retrieval,
 route reading, and property-map storage are host services; predicate/operator
 semantics and traversal decisions need shared `.kry` owners. Preserve support for
@@ -203,3 +202,37 @@ missing-value fixture. Logs are in `/tmp/kryon-selectors/`; both verification
 scripts finish with `RESULT 0`. Go was formatted with gofmt. The `.kry` formatter
 ran on a review copy; unrelated continuation rewrites were inspected and omitted.
 No original plan file is fully closed by this predicate migration.
+
+## Shared state and structural predicates
+
+`KssStateFacts` and `KssStructuralFacts` in `runtime/kss_parser.kry` now drive
+state aliases, form-control classification, normal/enabled/required/read-only,
+validity and placeholder decisions, plus root/scope/child/type/content/focus/
+target structural matching. The browser adapter supplies observations and looks
+up custom state flags using the shared name normalizer. It collects structural
+facts once per selector/node match. Its former state switch, form-control list,
+and basic structural branches have been removed.
+
+`tests/fixtures/kss/selector-facts.tsv` drives 55 matched C/Go/JS cases. Actual
+web frame-node integration covers uppercase state queries, custom flags,
+read-only/required/valid/placeholder behavior, first/last and same-type siblings,
+empty content, scope, and focus-within. State names follow shared ASCII folding
+and a 64-byte bound; `ANY` now follows the same normalization as other names.
+
+Remaining host-owned work includes selector grammar and parser alias handling,
+compound-selector combination, native/data/ARIA fact normalization and presence,
+`:has`/functional-pseudo dispatch, combinator traversal, and focus/route discovery.
+This slice does not close the entire KSS language or any original plan document.
+
+These fixtures execute the generated predicates directly; they do not establish
+complete conformance between typed native selectors and the declarative web
+selector surface. That broader backend comparison remains in the plan.
+
+Verification: focused fixtures/integration, `kss-matched-test`, `fast-test`, the
+declared generated-runtime parity subset, Go runtime, full `k2js-syntax-test`
+(including strict KSS and both Chromium DOM/inspector suites), generated
+provenance, and all five style guards pass. `/tmp/kryon-selector-state/verify.log`
+ends with `RESULT 0`. The first focused Go attempt hit a sandbox read-only cache;
+the permitted rerun and full suite passed. Go uses gofmt; the `.kry` formatter
+ran on a review copy and unrelated continuation rewrites were inspected and
+omitted. No original plan file is fully closed by this migration.
