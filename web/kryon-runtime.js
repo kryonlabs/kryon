@@ -2993,12 +2993,14 @@ function webDOMRole(node) {
 
 
 
-function selectorParts(text, sequence) {
+function selectorParts(text, sequence, relative = false) {
   const source = String(text || "");
   let cursor = {source, pos: 0, line: 1, column: 1, file: 0};
   const parts = [];
   for (;;) {
-    const part = webKssModule.KssParser_KssSelectorPart(null, null, null, cursor, sequence);
+    const part = relative
+      ? webKssModule.KssParser_KssRelativeSelectorPart(null, null, null, cursor)
+      : webKssModule.KssParser_KssSelectorPart(null, null, null, cursor, sequence);
     if (!part.ok)
       throw new Error(`invalid KSS selector at byte ${part.parser.pos}`);
     if (part.done)
@@ -3068,6 +3070,15 @@ function parseSimpleSelector(text) {
         break;
     }
   }
+}
+
+function parseRelativeSelector(text) {
+  const parts = selectorParts(text, true, true).map(part => ({
+    ...parseSimpleSelector(part.text), combinator: part.combinator
+  }));
+  if (!parts.length)
+    throw new Error("invalid empty relative KSS selector");
+  return {parts};
 }
 
 function parseSelector(text) {
@@ -3435,12 +3446,10 @@ function webStylePseudoToCSS(pseudo) {
     return ":" + name;
   if (parsed.name === "has") {
     const arg = splitSelectorList(parsed.argument).map((raw) => {
-      let text = String(raw || "").trim();
-      const relation = /^[>+~]/.test(text) ? text[0] : "";
-      if (relation)
-        text = text.slice(1).trim();
-      return (relation ? relation + " " : "") + webStyleSelectorToCSS(parseSelector(text));
-    }).filter(Boolean).join(",");
+      const selector = parseRelativeSelector(raw);
+      const relation = selector.parts[0].combinator;
+      return (relation === " " ? "" : relation + " ") + webStyleSelectorToCSS(selector);
+    }).join(",");
     return `:${name}(${arg})`;
   }
   const arg = parsed.argument.trim().replace(/[^0-9nN+\-\sA-Za-z]/g, "");
@@ -4628,13 +4637,6 @@ function webNodeChildrenFromFrame(node) {
     candidate && candidate.path !== node.path && candidate.parentPath === node.path);
 }
 
-function webNodeDescendantsFromFrame(node) {
-  const path = node?.path || "";
-  if (!path)
-    return [];
-  return (node.__kryFrameNodes || []).filter((candidate) =>
-    candidate && candidate.path !== path && candidate.path?.startsWith(path + "/"));
-}
 
 function webNodeSameTypeSiblingsFromFrame(siblings, node) {
   const kind = String(node?.kind || "").toLowerCase();
@@ -4679,30 +4681,10 @@ function webNodeMatchesRouteTarget(node) {
   return targets.has(webDOMGeneratedId({ node, ref: identity.ref }));
 }
 
-function selectorHasPseudoMatches(pseudo, node, scopeNode = null) {
-  return splitSelectorList(pseudo.argument).some((rawSelector) => {
-    const raw = String(rawSelector || "").trim();
-    if (!raw || /:has\s*\(/i.test(raw))
-      return false;
-    let selectorText = raw;
-    let candidates = webNodeDescendantsFromFrame(node);
-    if (raw.startsWith(">")) {
-      selectorText = raw.slice(1).trim();
-      candidates = webNodeChildrenFromFrame(node);
-    } else if (raw.startsWith("+")) {
-      selectorText = raw.slice(1).trim();
-      candidates = [webNodeNextSiblingFromFrame(node)].filter(Boolean);
-    } else if (raw.startsWith("~")) {
-      selectorText = raw.slice(1).trim();
-      const siblings = webNodeSiblingsFromFrame(node);
-      const index = siblings.indexOf(node);
-      candidates = index < 0 ? [] : siblings.slice(index + 1);
-    }
-    if (!selectorText)
-      return false;
-    const parsed = parseSelector(selectorText);
-    return candidates.some((candidate) => selectorMatchesWebNode(parsed, candidate, scopeNode));
-  });
+function selectorHasPseudoMatches(pseudo, node) {
+  const selectors = splitSelectorList(pseudo.argument).map(parseRelativeSelector);
+  return selectors.some((selector) => (node.__kryFrameNodes || []).some((candidate) =>
+    selectorChainMatchesWebNode(selector, candidate, node, node)));
 }
 
 function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
@@ -4732,7 +4714,7 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
       if (decision === 0)
         return false;
     } else if (parsed.functional && parsed.name === "has") {
-      if (!selectorHasPseudoMatches(parsed, node, scopeNode))
+      if (!selectorHasPseudoMatches(parsed, node))
         return false;
     } else if (parsed.functional && parsed.name === "nth-child") {
       if (!nthChildPositionMatches(parsed.argument, siblings, node, false))
@@ -4778,7 +4760,7 @@ function selectorMatchesSimpleWebNode(selector, node, scopeNode = null) {
   return true;
 }
 
-function selectorChainMatchesWebNode(selector, node, scopeNode = null) {
+function selectorChainMatchesWebNode(selector, node, scopeNode = null, anchorNode = null) {
   const parts = selector?.parts || [];
   if (!parts.length || !node)
     return false;
@@ -4787,22 +4769,26 @@ function selectorChainMatchesWebNode(selector, node, scopeNode = null) {
   const reference = (candidate) => {
     if (!candidate)
       return -1;
-    if (!references.has(candidate)) {
-      references.set(candidate, nodes.length);
+    const key = candidate.path || candidate;
+    if (!references.has(key)) {
+      references.set(key, nodes.length);
       nodes.push(candidate);
     }
-    return references.get(candidate);
+    return references.get(key);
   };
-  const stack = [webKssModule.KssParser_KssSelectorChainBegin(null, null, null,
-    parts.length, reference(node))];
+  const initial = anchorNode
+    ? webKssModule.KssParser_KssRelativeSelectorBegin(null, null, null,
+      parts.length, reference(node), reference(anchorNode))
+    : webKssModule.KssParser_KssSelectorChainBegin(null, null, null, parts.length, reference(node));
+  const stack = [initial];
   while (stack.length) {
     const frame = stack[stack.length - 1];
     const candidate = nodes[frame.cursor];
     const part = parts[frame.part];
-    const matched = !frame.entered && selectorMatchesSimpleWebNode(part, candidate, scopeNode);
+    const matched = !!part && !frame.entered && selectorMatchesSimpleWebNode(part, candidate, scopeNode);
     const parent = reference(webNodeParentFromFrame(candidate));
     const previous = reference(webNodePreviousSiblingFromFrame(candidate));
-    const relation = (part.combinator || " ").charCodeAt(0);
+    const relation = (part?.combinator || " ").charCodeAt(0);
     const result = webKssModule.KssParser_KssSelectorChainStep(null, null, null,
       frame, matched, relation, parent, previous);
     if (result.action === webKssModule.KssSelectorAccept)

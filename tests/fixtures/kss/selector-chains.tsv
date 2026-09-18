@@ -15,3 +15,13 @@ mixed	_>+D	-1,-1,1;0,-1,2;0,1,4;2,-1,8	3	1
 unknown-relation	_?	-1,-1,1;0,-1,2	1	0
 default-relation	_0	-1,-1,1;0,-1,0;1,-1,2	2	1
 empty-chain		-1,-1,1	0	0
+relative-child-chain	>D	-1,-1,0;0,-1,1;1,-1,2	2	1	0
+relative-child-no-skip	>	-1,-1,0;0,-1,0;1,-1,1	2	0	0
+relative-descendant	D	-1,-1,0;0,-1,0;1,-1,1	2	1	0
+relative-adjacent-descendant	+D	-1,-1,0;-1,0,1;1,-1,2	2	1	0
+relative-sibling-chain	~>	-1,-1,0;-1,0,0;-1,1,1;2,-1,2	3	1	0
+relative-anchor-outside	DD	-1,-1,1;0,-1,0;1,-1,2	2	0	1
+relative-no-self	D	-1,-1,1	0	0	0
+relative-no-previous	+	-1,-1,1;-1,0,0	0	0	1
+relative-missing-anchor	D	-1,-1,1	0	0	-1
+relative-empty		-1,-1,1	0	0	0

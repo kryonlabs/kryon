@@ -30,3 +30,13 @@ A	Button:is()	0	0	0	-	-	-	-
 A	Button:not(/*comment*/)	0	0	0	-	-	-	-
 A	Button[state=hover /* note */]	1	2	11	state	hover	-	=
 A	Button[title=two words]	0	0	0	-	-	-	-
+R	> .branch .leaf	1	2	0	.leaf	space	-	-
+R	.branch	1	1	0	.branch	space	-	-
+R	/*lead*/ + /*next*/ .branch	1	1	0	.branch	+	-	-
+R	~ .branch > .leaf	1	2	0	.leaf	>	-	-
+R	> > .leaf	0	0	0	-	-	-	-
+S	> .leaf	0	0	0	-	-	-	-
+A	Column:has([title=":has("])	1	2	11	has	-	[title=":has("]	-
+A	Column:has(/* :has( */ .leaf)	1	2	11	has	-	/* :has( */ .leaf	-
+A	Column:has(:has(.leaf))	0	0	0	-	-	-	-
+A	Column:has(:is(.a, :HAS(.leaf)))	0	0	0	-	-	-	-

@@ -4293,7 +4293,7 @@ KssSelectorSpace :: (c: KssCursor) -> KssExpectResult {
     return result
 }
 
-KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan #export {
+KssSelectorPartMode :: (c: KssCursor, sequence: bool, relative: bool) -> KssSelectorSpan {
     result: KssSelectorSpan
     initial: i32 = c.pos
     skipped: KssExpectResult = KssSelectorSpace(c)
@@ -4313,6 +4313,9 @@ KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan #export {
         }
         byte: u8 = KssPeek(c, 0)
         if byte == 62 || byte == 43 || byte == 126 {
+            if initial == 0 && !relative {
+                return result
+            }
             result.combinator = (i32)byte
             skipped = KssSelectorSpace(KssAdvance(c, 1))
             c = skipped.parser
@@ -4391,6 +4394,18 @@ KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan #export {
     return result
 }
 
+KssSelectorPart :: (c: KssCursor, sequence: bool) -> KssSelectorSpan #export {
+    return KssSelectorPartMode(c, sequence, false)
+}
+
+KssRelativeSelectorPart :: (c: KssCursor) -> KssSelectorSpan #export {
+    result: KssSelectorSpan = KssSelectorPartMode(c, true, true)
+    if c.pos == 0 && result.ok && !result.done && result.combinator == 0 {
+        result.combinator = 32
+    }
+    return result
+}
+
 KssSelectorGroup :: (c: KssCursor) -> KssSelectorSpan {
     result: KssSelectorSpan
     opening: u8 = KssPeek(c, 0)
@@ -4460,6 +4475,8 @@ KssSelectorChainFrame :: struct {
     part: i32
     cursor: i32
     entered: bool
+    anchored: bool
+    anchor: i32
 }
 
 KssSelectorChainResult :: struct {
@@ -4475,11 +4492,27 @@ KssSelectorChainBegin :: (count: i32, node: i32) -> KssSelectorChainFrame #expor
     return frame
 }
 
+KssRelativeSelectorBegin :: (count: i32, node: i32, anchor: i32) -> KssSelectorChainFrame #export {
+    frame: KssSelectorChainFrame = KssSelectorChainBegin(count, node)
+    frame.anchored = count > 0 && anchor >= 0
+    frame.anchor = anchor
+    if !frame.anchored {
+        frame.cursor = -1
+    }
+    return frame
+}
+
 KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
     relation: i32, parent: i32, previous: i32) -> KssSelectorChainResult #export {
     result: KssSelectorChainResult
     result.frame = frame
-    if frame.part < 0 || frame.cursor < 0 {
+    if frame.cursor < 0 {
+        return result
+    }
+    if frame.part < 0 {
+        if frame.part == -1 && frame.anchored && frame.cursor == frame.anchor {
+            result.action = (i32)KssSelectorAccept
+        }
         return result
     }
     repeated: bool = relation == 0 || relation == 32 || relation == 126
@@ -4491,7 +4524,7 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
         if !matched {
             return result
         }
-        if frame.part == 0 {
+        if frame.part == 0 && !frame.anchored {
             result.action = (i32)KssSelectorAccept
             return result
         }
@@ -4509,6 +4542,8 @@ KssSelectorChainStep :: (frame: KssSelectorChainFrame, matched: bool,
     result.frame.entered = true
     result.next.part = frame.part - 1
     result.next.cursor = candidate
+    result.next.anchored = frame.anchored
+    result.next.anchor = frame.anchor
     result.action = (i32)KssSelectorPush
     return result
 }
@@ -4681,6 +4716,56 @@ KssSelectorAttributeAtom :: (result: KssSelectorAtom, group: KssSelectorSpan) ->
     return result
 }
 
+# Nested :has is outside the supported selector language. Inspect tokens,
+# excluding quoted values, attributes, and comments, rather than searching text.
+KssHasArgumentAllowed :: (source: string) -> bool {
+    c: KssCursor
+    c.source = source
+    while !KssAtEnd(c) {
+        skipped: KssExpectResult = KssSelectorSpace(c)
+        c = skipped.parser
+        if !skipped.ok {
+            return false
+        }
+        byte: u8 = KssPeek(c, 0)
+        if byte == 91 {
+            group: KssSelectorSpan = KssSelectorGroup(c)
+            if !group.ok {
+                return false
+            }
+            c = group.parser
+        } else if byte == 34 || byte == 39 {
+            c = KssAdvance(c, 1)
+            while !KssAtEnd(c) && KssPeek(c, 0) != byte {
+                if KssPeek(c, 0) == 92 {
+                    c = KssAdvance(c, 2)
+                } else {
+                    c = KssAdvance(c, 1)
+                }
+            }
+            if KssAtEnd(c) {
+                return false
+            }
+            c = KssAdvance(c, 1)
+        } else if byte == 58 {
+            c = KssAdvance(c, 1)
+            start: i32 = c.pos
+            name: KssNameResult = KssReadSelectorName(c)
+            if !name.ok {
+                return false
+            }
+            c = name.parser
+            canonical: KssName = KssPseudoName(StringSlice(source, start, c.pos - start))
+            if KssNameEquals(canonical, "has") && KssPeek(c, 0) == 40 {
+                return false
+            }
+        } else {
+            c = KssAdvance(c, 1)
+        }
+    }
+    return true
+}
+
 KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
     result: KssSelectorAtom
     result.parser = parser
@@ -4749,6 +4834,9 @@ KssSelectorNext :: (parser: KssSelectorCursor) -> KssSelectorAtom #export {
                     if !argument_space.ok || KssAtEnd(argument_space.parser) {
                         return result
                     }
+                }
+                if KssNameEquals(result.canonical, "has") && !KssHasArgumentAllowed(result.argument) {
+                    return result
                 }
                 if KssNameEquals(result.canonical, "not") {
                     result.kind = (i32)KssSelectorNot

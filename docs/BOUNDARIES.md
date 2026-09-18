@@ -16,8 +16,7 @@ Main selector tokenization and atom parsing also live in `.kry`; the web adapter
 builds its selector objects from borrowed spans and tagged atoms. CSS export and
 structural matching also use those atoms to read functional pseudo arguments;
 they do not maintain separate regular-expression argument grammars. Remaining
-functional-pseudo dispatch, remaining compound matching, relative `:has`
-traversal, and CSS export decisions
+functional-pseudo dispatch, remaining compound matching, and CSS export decisions
 are tracked in the completion ledger. `KssSelectorGroupMatches` owns positive
 and negative selector-list reduction; web storage retains separate groups and
 supplies their alternative-match counts. `KssIdentityMatches` owns ID/name/key
@@ -26,6 +25,9 @@ than letting storage keyed by attribute name discard repeated constraints.
 `KssSelectorChainStep` owns chain traversal, retry, and acceptance decisions.
 Hosts retain node references and a dynamic frame stack, report actual parent
 and previous-sibling relationships, and evaluate requested simple selectors.
+Relative `:has` matching uses the same driver with a subject anchor; hosts
+provide frame candidates without selecting the relationship axis themselves.
+Relative-prefix parsing and nested-`:has` rejection also belong to `.kry`.
 
 Host
 adapters own source/import storage, native string views, and publication of

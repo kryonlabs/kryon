@@ -95,7 +95,7 @@ for (const line of factCases) {
 // Streaming selector grammar: byte spans and atom values match C and Go.
 kss.setHost({StringSlice: runtime.StringSlice});
 const grammarCases = readFileSync(new URL("./fixtures/kss/selector-grammar.tsv", import.meta.url), "utf8").trimEnd().split("\n");
-assert.equal(grammarCases.length, 32);
+assert.equal(grammarCases.length, 42);
 for (const line of grammarCases) {
   const [mode, source, expectedValid, expectedCount, expectedScore, ...expectedValues] = line.split("\t");
   let parser = kss.KssParser_KssBeginSelector(null, null, null, source);
@@ -105,7 +105,8 @@ for (const line of grammarCases) {
   let count = 0;
   for (let steps = 0; steps <= runtime.StringByteLength(source) + 1; steps++) {
     const result = mode === "A" ? kss.KssParser_KssSelectorNext(null, null, null, parser)
-      : kss.KssParser_KssSelectorPart(null, null, null, cursor, mode === "S");
+      : mode === "R" ? kss.KssParser_KssRelativeSelectorPart(null, null, null, cursor)
+        : kss.KssParser_KssSelectorPart(null, null, null, cursor, mode === "S");
     if (!result.ok)
       break;
     if (result.done) {
@@ -291,11 +292,13 @@ for (const line of grammarCases) {
 // The shared driver searches complete chains, including earlier alternatives.
 {
   const cases = readFileSync(new URL("./fixtures/kss/selector-chains.tsv", import.meta.url), "utf8").trimEnd().split("\n");
-  assert.equal(cases.length, 17);
+  assert.equal(cases.length, 27);
   for (const line of cases) {
-    const [name, relations, graph, target, expected] = line.split("\t");
+    const [name, relations, graph, target, expected, anchor] = line.split("\t");
     const nodes = graph.split(";").map(text => text.split(",").map(Number));
     const stack = [kss.KssParser_KssSelectorChainBegin(null, null, null, relations.length, Number(target))];
+    if (anchor !== undefined)
+      stack[0] = kss.KssParser_KssRelativeSelectorBegin(null, null, null, relations.length, Number(target), Number(anchor));
     let actual = false;
     for (let steps = 0; stack.length && steps < 512; steps++) {
       const frame = stack.at(-1);
@@ -339,6 +342,41 @@ for (const line of grammarCases) {
   for (const node of long) node.__kryFrameNodes = long;
   assert.deepEqual(runtime.resolveWebStyle(long.at(-1),
     runtime.parseWebStyleSheet(Array(70).fill('.branch').join(' > ') + ' {radius: 9;}')), {radius: 9});
+}
+
+// Relative :has chains are anchored to their subject, including sibling chains.
+{
+  const nodes = [
+    {kind: "Section", path: "outer", parentPath: "", classes: ["outside"]},
+    {kind: "Column", path: "outer/subject", parentPath: "outer", classes: ["subject"]},
+    {kind: "Column", path: "outer/subject/branch", parentPath: "outer/subject", classes: ["branch"]},
+    {kind: "Button", path: "outer/subject/branch/leaf", parentPath: "outer/subject/branch",
+      classes: ["leaf"], title: ":has("},
+    {kind: "Column", path: "outer/peer", parentPath: "outer", classes: ["peer"]},
+    {kind: "Button", path: "outer/peer/leaf", parentPath: "outer/peer", classes: ["leaf"]}
+  ];
+  for (const node of nodes)
+    node.__kryFrameNodes = nodes;
+  const sheet = runtime.parseWebStyleSheet(`
+    .subject:has(> .branch .leaf) {radius: 7;}
+    .subject:has(+ .peer > .leaf) {padding-x: 8;}
+    .subject:has(~ .peer .leaf) {gap: 9;}
+    .subject:has([title=":has("]) {foreground: #123456;}
+    .subject:has(/* :has( */ > .branch .leaf) {border: #abcdef;}
+    .subject:has(.missing, > .branch .leaf) {padding-y: 10;}
+    .subject:has(.outside .leaf) {radius: 99;}
+    .subject:has(> .leaf) {gap: 99;}
+  `);
+  const expected = {radius: 7, "padding-x": 8, gap: 9, foreground: "#123456",
+    border: "#abcdef", "padding-y": 10};
+  assert.deepEqual(runtime.resolveWebStyle(nodes[1], sheet), expected);
+  assert.deepEqual(runtime.resolveWebStyle({...nodes[1]}, sheet), expected);
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[0].selector),
+    '.kryon-node.subject:has(> .kryon-node.branch .kryon-node.leaf)');
+  assert.equal(runtime.webStyleSelectorToCSS(sheet.rules[4].selector),
+    '.kryon-node.subject:has(> .kryon-node.branch .kryon-node.leaf)');
+  assert.throws(() => runtime.parseWebStyleSheet('.subject:has(:is(.x, :has(.leaf))) {radius:1;}'), /invalid KSS selector/);
+  assert.throws(() => runtime.parseWebStyleSheet('> .leaf {radius:1;}'), /invalid KSS selector/);
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose

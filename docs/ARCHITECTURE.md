@@ -48,7 +48,13 @@ through host-owned frame storage. The generated driver chooses parent versus
 previous sibling, restricts immediate relations, and retries descendant/general
 sibling alternatives after a later condition fails. The browser adapter supplies
 relationships and simple-selector observations; it no longer owns a greedy
-combinator loop. Relative `:has` candidate discovery remains separate work.
+combinator loop. `KssRelativeSelectorBegin` extends the same traversal with a
+subject anchor. `KssRelativeSelectorPart` supplies explicit or implicit leading
+relationships, while the host enumerates frame candidates. This handles full
+child/sibling relative chains and prevents ancestry outside the subject from
+satisfying an implicit descendant prefix. Node paths canonicalize copied host
+node references. Shared lexing rejects nested `:has` without rejecting quoted
+attribute values or comments that merely contain the same text.
 
 ## Public API
 

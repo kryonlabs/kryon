@@ -1003,13 +1003,16 @@ try {
   const chainSheet = kryon.parseWebStyleSheet(\`
     .chain-outer > .chain-branch .chain-leaf { outline-style: dashed; }
     .sib-anchor + .sib-branch ~ .sib-leaf { outline-style: dotted; }
+    .chain-outer:has(> .chain-branch .chain-leaf) { outline-style: solid; }
+    .sib-anchor:has(+ .sib-branch ~ .sib-leaf) { outline-style: double; }
   \`);
   kryon.setWebStyleSheets(chainRuntime, chainSheet);
   const chainTarget = document.createElement("div");
   document.body.appendChild(chainTarget);
   kryon.renderWebDocument(chainRuntime, chainTarget);
   const removeChainStyle = kryon.installWebStyleSheet(chainSheet, null, "chain-backtracking");
-  for (const [path, expectedStyle] of [["Chain/a/b/leaf", "dashed"], ["Chain/leaf", "dotted"]]) {
+  for (const [path, expectedStyle] of [["Chain/a/b/leaf", "dashed"], ["Chain/leaf", "dotted"],
+    ["Chain", "solid"], ["Chain/anchor", "double"]]) {
     const element = kryon.findWebElement(chainTarget, path);
     assert(kryon.webDOMStyleTrace(chainTarget, path).resolved["outline-style"] === expectedStyle,
       "runtime selector chain did not backtrack: " + path);
@@ -1017,6 +1020,8 @@ try {
     assert(getComputedStyle(element).outlineStyle === expectedStyle,
       "exported selector disagrees with runtime chain: " + path);
   }
+  assert(kryon.webDOMQueryAll(chainTarget, ".chain-branch:has(.chain-outer .chain-leaf)").length === 0,
+    "relative selector escaped its subject");
   removeChainStyle();
   kryon.beginFrame(chainRuntime);
   kryon.endFrame(chainRuntime);

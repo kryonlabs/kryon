@@ -19328,12 +19328,13 @@ export function KssParser_KssSelectorSpace($rt, $state = moduleState, $host = mo
     return value_72;
 }
 
-export function KssParser_KssSelectorPart($rt, $state = moduleState, $host = moduleHost, c, sequence) {
+export function KssParser_KssSelectorPartMode($rt, $state = moduleState, $host = moduleHost, c, sequence, relative) {
   $state = $state || moduleState;
     let value_0 = c;
     let value_1 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_0);
     c = value_1;
     sequence = number_85173a94_bool(sequence);
+    relative = number_85173a94_bool(relative);
     let value_2 = {parser: {source: "", pos: 0, line: 0, column: 0, file: 0}, start: 0, length: 0, combinator: 0, ok: false, done: false};
     let value_3 = value_2;
     let value_4 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_3);
@@ -19429,336 +19430,351 @@ export function KssParser_KssSelectorPart($rt, $state = moduleState, $host = mod
             value_65 = value_68;
         }
         if (value_65) {
-            let value_69 = number_85173a94_value(byte,8,false);
-            let value_70 = number_85173a94_value(number_85173a94_bits(value_69,0,32,true,0),32,true);
-            result.combinator = value_70;
-            let value_72 = c;
-            let value_73 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_72);
-            let value_71 = value_73;
-            let value_74 = number_85173a94_value(1,32,true);
-            let value_76 = KssParser_KssAdvance($rt, $state, $host, value_71, value_74);
-            let value_77 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_76);
-            let value_75 = value_77;
-            let value_79 = KssParser_KssSelectorSpace($rt, $state, $host, value_75);
-            let value_80 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_79);
-            let value_78 = value_80;
-            let value_81 = value_78;
-            let value_82 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_81);
-            skipped = value_82;
-            let value_84 = skipped.parser;
-            let value_85 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_84);
-            let value_83 = value_85;
-            let value_86 = value_83;
-            let value_87 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_86);
-            c = value_87;
-            let value_89 = c;
-            let value_90 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_89);
-            let value_88 = value_90;
-            let value_91 = value_88;
-            let value_92 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_91);
-            result.parser = value_92;
-            let value_93 = number_85173a94_bool(skipped.ok);
-            let value_94 = number_85173a94_bool(!value_93);
-            let value_95 = number_85173a94_bool(value_94);
-            if (!value_95) {
-                let value_97 = c;
-                let value_98 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_97);
-                let value_96 = value_98;
-                let value_99 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_96));
-                value_95 = value_99;
+            let value_69 = number_85173a94_value(initial,32,true);
+            let value_70 = number_85173a94_value(0,32,true);
+            let value_71 = number_85173a94_bool(value_69 == value_70);
+            let value_72 = number_85173a94_bool(value_71);
+            if (value_72) {
+                let value_73 = number_85173a94_bool(relative);
+                let value_74 = number_85173a94_bool(!value_73);
+                value_72 = value_74;
             }
-            if (value_95) {
-                let value_101 = result;
-                let value_102 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_101);
-                let value_100 = value_102;
-                return value_100;
+            if (value_72) {
+                let value_76 = result;
+                let value_77 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_76);
+                let value_75 = value_77;
+                return value_75;
+            }
+            let value_78 = number_85173a94_value(byte,8,false);
+            let value_79 = number_85173a94_value(number_85173a94_bits(value_78,0,32,true,0),32,true);
+            result.combinator = value_79;
+            let value_81 = c;
+            let value_82 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_81);
+            let value_80 = value_82;
+            let value_83 = number_85173a94_value(1,32,true);
+            let value_85 = KssParser_KssAdvance($rt, $state, $host, value_80, value_83);
+            let value_86 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_85);
+            let value_84 = value_86;
+            let value_88 = KssParser_KssSelectorSpace($rt, $state, $host, value_84);
+            let value_89 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_88);
+            let value_87 = value_89;
+            let value_90 = value_87;
+            let value_91 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_90);
+            skipped = value_91;
+            let value_93 = skipped.parser;
+            let value_94 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_93);
+            let value_92 = value_94;
+            let value_95 = value_92;
+            let value_96 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_95);
+            c = value_96;
+            let value_98 = c;
+            let value_99 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_98);
+            let value_97 = value_99;
+            let value_100 = value_97;
+            let value_101 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_100);
+            result.parser = value_101;
+            let value_102 = number_85173a94_bool(skipped.ok);
+            let value_103 = number_85173a94_bool(!value_102);
+            let value_104 = number_85173a94_bool(value_103);
+            if (!value_104) {
+                let value_106 = c;
+                let value_107 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_106);
+                let value_105 = value_107;
+                let value_108 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_105));
+                value_104 = value_108;
+            }
+            if (value_104) {
+                let value_110 = result;
+                let value_111 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_110);
+                let value_109 = value_111;
+                return value_109;
             }
         }
     }
-    let value_103 = number_85173a94_value(c.pos,32,true);
-    result.start = value_103;
-    let value_104 = number_85173a94_value(c.pos,32,true);
-    let end = number_85173a94_value(value_104,32,true);
-    let value_105 = {bytes: Array.from({length: 64}, (_, index) => 0)};
-    let value_106 = value_105;
-    let value_107 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index])}))(value_106);
-    let stack = value_107;
-    let value_108 = number_85173a94_value(0,32,true);
-    let depth = number_85173a94_value(value_108,32,true);
-    let value_109 = number_85173a94_value(0,8,false);
-    let quote = number_85173a94_value(value_109,8,false);
+    let value_112 = number_85173a94_value(c.pos,32,true);
+    result.start = value_112;
+    let value_113 = number_85173a94_value(c.pos,32,true);
+    let end = number_85173a94_value(value_113,32,true);
+    let value_114 = {bytes: Array.from({length: 64}, (_, index) => 0)};
+    let value_115 = value_114;
+    let value_116 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index])}))(value_115);
+    let stack = value_116;
+    let value_117 = number_85173a94_value(0,32,true);
+    let depth = number_85173a94_value(value_117,32,true);
+    let value_118 = number_85173a94_value(0,8,false);
+    let quote = number_85173a94_value(value_118,8,false);
     while (true) {
-        let value_111 = c;
-        let value_112 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_111);
-        let value_110 = value_112;
-        let value_113 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_110));
-        let value_114 = number_85173a94_bool(!value_113);
-        if (!value_114) { break; }
-        let value_116 = c;
-        let value_117 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_116);
-        let value_115 = value_117;
-        let value_118 = number_85173a94_value(0,32,true);
-        let value_119 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_115, value_118),8,false);
-        let byte = number_85173a94_value(value_119,8,false);
-        let value_120 = number_85173a94_value(quote,8,false);
-        let value_121 = number_85173a94_value(0,8,false);
-        let value_122 = number_85173a94_bool(value_120 != value_121);
-        if (value_122) {
-            let value_123 = number_85173a94_value(byte,8,false);
-            let value_124 = number_85173a94_value(92,8,false);
-            let value_125 = number_85173a94_bool(value_123 == value_124);
-            if (value_125) {
-                let value_127 = c;
-                let value_128 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_127);
-                let value_126 = value_128;
-                let value_129 = number_85173a94_value(2,32,true);
-                let value_131 = KssParser_KssAdvance($rt, $state, $host, value_126, value_129);
-                let value_132 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_131);
-                let value_130 = value_132;
-                let value_133 = value_130;
-                let value_134 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_133);
-                c = value_134;
-                let value_135 = number_85173a94_value(c.pos,32,true);
-                end = value_135;
+        let value_120 = c;
+        let value_121 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_120);
+        let value_119 = value_121;
+        let value_122 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_119));
+        let value_123 = number_85173a94_bool(!value_122);
+        if (!value_123) { break; }
+        let value_125 = c;
+        let value_126 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_125);
+        let value_124 = value_126;
+        let value_127 = number_85173a94_value(0,32,true);
+        let value_128 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_124, value_127),8,false);
+        let byte = number_85173a94_value(value_128,8,false);
+        let value_129 = number_85173a94_value(quote,8,false);
+        let value_130 = number_85173a94_value(0,8,false);
+        let value_131 = number_85173a94_bool(value_129 != value_130);
+        if (value_131) {
+            let value_132 = number_85173a94_value(byte,8,false);
+            let value_133 = number_85173a94_value(92,8,false);
+            let value_134 = number_85173a94_bool(value_132 == value_133);
+            if (value_134) {
+                let value_136 = c;
+                let value_137 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_136);
+                let value_135 = value_137;
+                let value_138 = number_85173a94_value(2,32,true);
+                let value_140 = KssParser_KssAdvance($rt, $state, $host, value_135, value_138);
+                let value_141 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_140);
+                let value_139 = value_141;
+                let value_142 = value_139;
+                let value_143 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_142);
+                c = value_143;
+                let value_144 = number_85173a94_value(c.pos,32,true);
+                end = value_144;
                 continue;
             }
-            let value_136 = number_85173a94_value(byte,8,false);
-            let value_137 = number_85173a94_value(quote,8,false);
-            let value_138 = number_85173a94_bool(value_136 == value_137);
-            if (value_138) {
-                let value_139 = number_85173a94_value(0,8,false);
-                quote = value_139;
+            let value_145 = number_85173a94_value(byte,8,false);
+            let value_146 = number_85173a94_value(quote,8,false);
+            let value_147 = number_85173a94_bool(value_145 == value_146);
+            if (value_147) {
+                let value_148 = number_85173a94_value(0,8,false);
+                quote = value_148;
             }
         } else {
-            let value_140 = number_85173a94_value(byte,8,false);
-            let value_141 = number_85173a94_value(34,8,false);
-            let value_142 = number_85173a94_bool(value_140 == value_141);
-            let value_143 = number_85173a94_bool(value_142);
-            if (!value_143) {
-                let value_144 = number_85173a94_value(byte,8,false);
-                let value_145 = number_85173a94_value(39,8,false);
-                let value_146 = number_85173a94_bool(value_144 == value_145);
-                value_143 = value_146;
+            let value_149 = number_85173a94_value(byte,8,false);
+            let value_150 = number_85173a94_value(34,8,false);
+            let value_151 = number_85173a94_bool(value_149 == value_150);
+            let value_152 = number_85173a94_bool(value_151);
+            if (!value_152) {
+                let value_153 = number_85173a94_value(byte,8,false);
+                let value_154 = number_85173a94_value(39,8,false);
+                let value_155 = number_85173a94_bool(value_153 == value_154);
+                value_152 = value_155;
             }
-            if (value_143) {
-                let value_147 = number_85173a94_value(byte,8,false);
-                quote = value_147;
+            if (value_152) {
+                let value_156 = number_85173a94_value(byte,8,false);
+                quote = value_156;
             } else {
-                let value_148 = number_85173a94_value(byte,8,false);
-                let value_149 = number_85173a94_value(47,8,false);
-                let value_150 = number_85173a94_bool(value_148 == value_149);
-                let value_151 = number_85173a94_bool(value_150);
-                if (value_151) {
-                    let value_153 = c;
-                    let value_154 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_153);
-                    let value_152 = value_154;
-                    let value_155 = number_85173a94_value(1,32,true);
-                    let value_156 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_152, value_155),8,false);
-                    let value_157 = number_85173a94_value(42,8,false);
-                    let value_158 = number_85173a94_bool(value_156 == value_157);
-                    let value_159 = number_85173a94_bool(value_158);
-                    if (!value_159) {
-                        let value_160 = number_85173a94_value(depth,32,true);
-                        let value_161 = number_85173a94_value(0,32,true);
-                        let value_162 = number_85173a94_bool(value_160 == value_161);
-                        let value_163 = number_85173a94_bool(value_162);
-                        if (value_163) {
-                            let value_165 = c;
-                            let value_166 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_165);
-                            let value_164 = value_166;
-                            let value_167 = number_85173a94_value(1,32,true);
-                            let value_168 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_164, value_167),8,false);
-                            let value_169 = number_85173a94_value(47,8,false);
-                            let value_170 = number_85173a94_bool(value_168 == value_169);
-                            value_163 = value_170;
+                let value_157 = number_85173a94_value(byte,8,false);
+                let value_158 = number_85173a94_value(47,8,false);
+                let value_159 = number_85173a94_bool(value_157 == value_158);
+                let value_160 = number_85173a94_bool(value_159);
+                if (value_160) {
+                    let value_162 = c;
+                    let value_163 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_162);
+                    let value_161 = value_163;
+                    let value_164 = number_85173a94_value(1,32,true);
+                    let value_165 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_161, value_164),8,false);
+                    let value_166 = number_85173a94_value(42,8,false);
+                    let value_167 = number_85173a94_bool(value_165 == value_166);
+                    let value_168 = number_85173a94_bool(value_167);
+                    if (!value_168) {
+                        let value_169 = number_85173a94_value(depth,32,true);
+                        let value_170 = number_85173a94_value(0,32,true);
+                        let value_171 = number_85173a94_bool(value_169 == value_170);
+                        let value_172 = number_85173a94_bool(value_171);
+                        if (value_172) {
+                            let value_174 = c;
+                            let value_175 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_174);
+                            let value_173 = value_175;
+                            let value_176 = number_85173a94_value(1,32,true);
+                            let value_177 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_173, value_176),8,false);
+                            let value_178 = number_85173a94_value(47,8,false);
+                            let value_179 = number_85173a94_bool(value_177 == value_178);
+                            value_172 = value_179;
                         }
-                        value_159 = value_163;
+                        value_168 = value_172;
                     }
-                    value_151 = value_159;
+                    value_160 = value_168;
                 }
-                if (value_151) {
-                    let value_172 = c;
-                    let value_173 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_172);
-                    let value_171 = value_173;
-                    let value_175 = KssParser_KssSelectorComment($rt, $state, $host, value_171);
-                    let value_176 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_175);
-                    let value_174 = value_176;
-                    let value_177 = value_174;
-                    let value_178 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_177);
-                    let comment = value_178;
-                    let value_180 = comment.parser;
-                    let value_181 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_180);
-                    let value_179 = value_181;
-                    let value_182 = value_179;
-                    let value_183 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_182);
-                    c = value_183;
-                    let value_184 = number_85173a94_bool(comment.ok);
-                    let value_185 = number_85173a94_bool(!value_184);
-                    if (value_185) {
-                        let value_187 = c;
-                        let value_188 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_187);
-                        let value_186 = value_188;
-                        let value_189 = value_186;
-                        let value_190 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_189);
-                        result.parser = value_190;
-                        let value_192 = result;
-                        let value_193 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_192);
-                        let value_191 = value_193;
-                        return value_191;
+                if (value_160) {
+                    let value_181 = c;
+                    let value_182 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_181);
+                    let value_180 = value_182;
+                    let value_184 = KssParser_KssSelectorComment($rt, $state, $host, value_180);
+                    let value_185 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_184);
+                    let value_183 = value_185;
+                    let value_186 = value_183;
+                    let value_187 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_186);
+                    let comment = value_187;
+                    let value_189 = comment.parser;
+                    let value_190 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_189);
+                    let value_188 = value_190;
+                    let value_191 = value_188;
+                    let value_192 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_191);
+                    c = value_192;
+                    let value_193 = number_85173a94_bool(comment.ok);
+                    let value_194 = number_85173a94_bool(!value_193);
+                    if (value_194) {
+                        let value_196 = c;
+                        let value_197 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_196);
+                        let value_195 = value_197;
+                        let value_198 = value_195;
+                        let value_199 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_198);
+                        result.parser = value_199;
+                        let value_201 = result;
+                        let value_202 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_201);
+                        let value_200 = value_202;
+                        return value_200;
                     }
                     continue;
                 } else {
-                    let value_194 = number_85173a94_value(byte,8,false);
-                    let value_195 = number_85173a94_value(40,8,false);
-                    let value_196 = number_85173a94_bool(value_194 == value_195);
-                    let value_197 = number_85173a94_bool(value_196);
-                    if (!value_197) {
-                        let value_198 = number_85173a94_value(byte,8,false);
-                        let value_199 = number_85173a94_value(91,8,false);
-                        let value_200 = number_85173a94_bool(value_198 == value_199);
-                        value_197 = value_200;
+                    let value_203 = number_85173a94_value(byte,8,false);
+                    let value_204 = number_85173a94_value(40,8,false);
+                    let value_205 = number_85173a94_bool(value_203 == value_204);
+                    let value_206 = number_85173a94_bool(value_205);
+                    if (!value_206) {
+                        let value_207 = number_85173a94_value(byte,8,false);
+                        let value_208 = number_85173a94_value(91,8,false);
+                        let value_209 = number_85173a94_bool(value_207 == value_208);
+                        value_206 = value_209;
                     }
-                    if (value_197) {
-                        let value_201 = number_85173a94_value(depth,32,true);
-                        let value_202 = number_85173a94_value(64,32,true);
-                        let value_203 = number_85173a94_bool(value_201 >= value_202);
-                        if (value_203) {
-                            let value_205 = c;
-                            let value_206 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_205);
-                            let value_204 = value_206;
-                            let value_207 = value_204;
-                            let value_208 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_207);
-                            result.parser = value_208;
-                            let value_210 = result;
-                            let value_211 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_210);
-                            let value_209 = value_211;
-                            return value_209;
+                    if (value_206) {
+                        let value_210 = number_85173a94_value(depth,32,true);
+                        let value_211 = number_85173a94_value(64,32,true);
+                        let value_212 = number_85173a94_bool(value_210 >= value_211);
+                        if (value_212) {
+                            let value_214 = c;
+                            let value_215 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_214);
+                            let value_213 = value_215;
+                            let value_216 = value_213;
+                            let value_217 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_216);
+                            result.parser = value_217;
+                            let value_219 = result;
+                            let value_220 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_219);
+                            let value_218 = value_220;
+                            return value_218;
                         }
-                        let value_212 = number_85173a94_value(depth,32,true);
-                        let value_213 = number_85173a94_value(byte,8,false);
-                        stack.bytes[value_212] = value_213;
-                        let value_214 = number_85173a94_value(depth,32,true);
-                        let value_215 = number_85173a94_value(1,32,true);
-                        let value_216 = number_85173a94_value(number_85173a94_bits(value_214,value_215,32,true,1),32,true);
-                        depth = value_216;
+                        let value_221 = number_85173a94_value(depth,32,true);
+                        let value_222 = number_85173a94_value(byte,8,false);
+                        stack.bytes[value_221] = value_222;
+                        let value_223 = number_85173a94_value(depth,32,true);
+                        let value_224 = number_85173a94_value(1,32,true);
+                        let value_225 = number_85173a94_value(number_85173a94_bits(value_223,value_224,32,true,1),32,true);
+                        depth = value_225;
                     } else {
-                        let value_217 = number_85173a94_value(byte,8,false);
-                        let value_218 = number_85173a94_value(41,8,false);
-                        let value_219 = number_85173a94_bool(value_217 == value_218);
-                        let value_220 = number_85173a94_bool(value_219);
-                        if (!value_220) {
-                            let value_221 = number_85173a94_value(byte,8,false);
-                            let value_222 = number_85173a94_value(93,8,false);
-                            let value_223 = number_85173a94_bool(value_221 == value_222);
-                            value_220 = value_223;
+                        let value_226 = number_85173a94_value(byte,8,false);
+                        let value_227 = number_85173a94_value(41,8,false);
+                        let value_228 = number_85173a94_bool(value_226 == value_227);
+                        let value_229 = number_85173a94_bool(value_228);
+                        if (!value_229) {
+                            let value_230 = number_85173a94_value(byte,8,false);
+                            let value_231 = number_85173a94_value(93,8,false);
+                            let value_232 = number_85173a94_bool(value_230 == value_231);
+                            value_229 = value_232;
                         }
-                        if (value_220) {
-                            let value_224 = number_85173a94_value(depth,32,true);
-                            let value_225 = number_85173a94_value(0,32,true);
-                            let value_226 = number_85173a94_bool(value_224 == value_225);
-                            if (value_226) {
-                                let value_228 = c;
-                                let value_229 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_228);
-                                let value_227 = value_229;
-                                let value_230 = value_227;
-                                let value_231 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_230);
-                                result.parser = value_231;
-                                let value_233 = result;
-                                let value_234 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_233);
-                                let value_232 = value_234;
-                                return value_232;
+                        if (value_229) {
+                            let value_233 = number_85173a94_value(depth,32,true);
+                            let value_234 = number_85173a94_value(0,32,true);
+                            let value_235 = number_85173a94_bool(value_233 == value_234);
+                            if (value_235) {
+                                let value_237 = c;
+                                let value_238 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_237);
+                                let value_236 = value_238;
+                                let value_239 = value_236;
+                                let value_240 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_239);
+                                result.parser = value_240;
+                                let value_242 = result;
+                                let value_243 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_242);
+                                let value_241 = value_243;
+                                return value_241;
                             }
-                            let value_235 = number_85173a94_value(depth,32,true);
-                            let value_236 = number_85173a94_value(1,32,true);
-                            let value_237 = number_85173a94_value(number_85173a94_bits(value_235,value_236,32,true,2),32,true);
-                            let value_238 = number_85173a94_value(stack.bytes[value_237],8,false);
-                            let opening = number_85173a94_value(value_238,8,false);
-                            let value_239 = number_85173a94_value(byte,8,false);
-                            let value_240 = number_85173a94_value(41,8,false);
-                            let value_241 = number_85173a94_bool(value_239 == value_240);
-                            let value_242 = number_85173a94_bool(value_241);
-                            if (value_242) {
-                                let value_243 = number_85173a94_value(opening,8,false);
-                                let value_244 = number_85173a94_value(40,8,false);
-                                let value_245 = number_85173a94_bool(value_243 != value_244);
-                                value_242 = value_245;
+                            let value_244 = number_85173a94_value(depth,32,true);
+                            let value_245 = number_85173a94_value(1,32,true);
+                            let value_246 = number_85173a94_value(number_85173a94_bits(value_244,value_245,32,true,2),32,true);
+                            let value_247 = number_85173a94_value(stack.bytes[value_246],8,false);
+                            let opening = number_85173a94_value(value_247,8,false);
+                            let value_248 = number_85173a94_value(byte,8,false);
+                            let value_249 = number_85173a94_value(41,8,false);
+                            let value_250 = number_85173a94_bool(value_248 == value_249);
+                            let value_251 = number_85173a94_bool(value_250);
+                            if (value_251) {
+                                let value_252 = number_85173a94_value(opening,8,false);
+                                let value_253 = number_85173a94_value(40,8,false);
+                                let value_254 = number_85173a94_bool(value_252 != value_253);
+                                value_251 = value_254;
                             }
-                            let value_246 = number_85173a94_bool(value_242);
-                            if (!value_246) {
-                                let value_247 = number_85173a94_value(byte,8,false);
-                                let value_248 = number_85173a94_value(93,8,false);
-                                let value_249 = number_85173a94_bool(value_247 == value_248);
-                                let value_250 = number_85173a94_bool(value_249);
-                                if (value_250) {
-                                    let value_251 = number_85173a94_value(opening,8,false);
-                                    let value_252 = number_85173a94_value(91,8,false);
-                                    let value_253 = number_85173a94_bool(value_251 != value_252);
-                                    value_250 = value_253;
+                            let value_255 = number_85173a94_bool(value_251);
+                            if (!value_255) {
+                                let value_256 = number_85173a94_value(byte,8,false);
+                                let value_257 = number_85173a94_value(93,8,false);
+                                let value_258 = number_85173a94_bool(value_256 == value_257);
+                                let value_259 = number_85173a94_bool(value_258);
+                                if (value_259) {
+                                    let value_260 = number_85173a94_value(opening,8,false);
+                                    let value_261 = number_85173a94_value(91,8,false);
+                                    let value_262 = number_85173a94_bool(value_260 != value_261);
+                                    value_259 = value_262;
                                 }
-                                value_246 = value_250;
+                                value_255 = value_259;
                             }
-                            if (value_246) {
-                                let value_255 = c;
-                                let value_256 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_255);
-                                let value_254 = value_256;
-                                let value_257 = value_254;
-                                let value_258 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_257);
-                                result.parser = value_258;
-                                let value_260 = result;
-                                let value_261 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_260);
-                                let value_259 = value_261;
-                                return value_259;
+                            if (value_255) {
+                                let value_264 = c;
+                                let value_265 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_264);
+                                let value_263 = value_265;
+                                let value_266 = value_263;
+                                let value_267 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_266);
+                                result.parser = value_267;
+                                let value_269 = result;
+                                let value_270 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_269);
+                                let value_268 = value_270;
+                                return value_268;
                             }
-                            let value_262 = number_85173a94_value(depth,32,true);
-                            let value_263 = number_85173a94_value(1,32,true);
-                            let value_264 = number_85173a94_value(number_85173a94_bits(value_262,value_263,32,true,2),32,true);
-                            depth = value_264;
+                            let value_271 = number_85173a94_value(depth,32,true);
+                            let value_272 = number_85173a94_value(1,32,true);
+                            let value_273 = number_85173a94_value(number_85173a94_bits(value_271,value_272,32,true,2),32,true);
+                            depth = value_273;
                         } else {
-                            let value_265 = number_85173a94_value(depth,32,true);
-                            let value_266 = number_85173a94_value(0,32,true);
-                            let value_267 = number_85173a94_bool(value_265 == value_266);
-                            if (value_267) {
-                                let value_268 = number_85173a94_bool(sequence);
-                                let value_269 = number_85173a94_bool(!value_268);
-                                let value_270 = number_85173a94_bool(value_269);
-                                if (value_270) {
-                                    let value_271 = number_85173a94_value(byte,8,false);
-                                    let value_272 = number_85173a94_value(44,8,false);
-                                    let value_273 = number_85173a94_bool(value_271 == value_272);
-                                    value_270 = value_273;
+                            let value_274 = number_85173a94_value(depth,32,true);
+                            let value_275 = number_85173a94_value(0,32,true);
+                            let value_276 = number_85173a94_bool(value_274 == value_275);
+                            if (value_276) {
+                                let value_277 = number_85173a94_bool(sequence);
+                                let value_278 = number_85173a94_bool(!value_277);
+                                let value_279 = number_85173a94_bool(value_278);
+                                if (value_279) {
+                                    let value_280 = number_85173a94_value(byte,8,false);
+                                    let value_281 = number_85173a94_value(44,8,false);
+                                    let value_282 = number_85173a94_bool(value_280 == value_281);
+                                    value_279 = value_282;
                                 }
-                                if (value_270) {
+                                if (value_279) {
                                     break;
                                 }
-                                let value_274 = number_85173a94_bool(sequence);
-                                let value_275 = number_85173a94_bool(value_274);
-                                if (value_275) {
-                                    let value_276 = number_85173a94_value(byte,8,false);
-                                    let value_277 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_276));
-                                    let value_278 = number_85173a94_bool(value_277);
-                                    if (!value_278) {
-                                        let value_279 = number_85173a94_value(byte,8,false);
-                                        let value_280 = number_85173a94_value(62,8,false);
-                                        let value_281 = number_85173a94_bool(value_279 == value_280);
-                                        value_278 = value_281;
+                                let value_283 = number_85173a94_bool(sequence);
+                                let value_284 = number_85173a94_bool(value_283);
+                                if (value_284) {
+                                    let value_285 = number_85173a94_value(byte,8,false);
+                                    let value_286 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_285));
+                                    let value_287 = number_85173a94_bool(value_286);
+                                    if (!value_287) {
+                                        let value_288 = number_85173a94_value(byte,8,false);
+                                        let value_289 = number_85173a94_value(62,8,false);
+                                        let value_290 = number_85173a94_bool(value_288 == value_289);
+                                        value_287 = value_290;
                                     }
-                                    let value_282 = number_85173a94_bool(value_278);
-                                    if (!value_282) {
-                                        let value_283 = number_85173a94_value(byte,8,false);
-                                        let value_284 = number_85173a94_value(43,8,false);
-                                        let value_285 = number_85173a94_bool(value_283 == value_284);
-                                        value_282 = value_285;
+                                    let value_291 = number_85173a94_bool(value_287);
+                                    if (!value_291) {
+                                        let value_292 = number_85173a94_value(byte,8,false);
+                                        let value_293 = number_85173a94_value(43,8,false);
+                                        let value_294 = number_85173a94_bool(value_292 == value_293);
+                                        value_291 = value_294;
                                     }
-                                    let value_286 = number_85173a94_bool(value_282);
-                                    if (!value_286) {
-                                        let value_287 = number_85173a94_value(byte,8,false);
-                                        let value_288 = number_85173a94_value(126,8,false);
-                                        let value_289 = number_85173a94_bool(value_287 == value_288);
-                                        value_286 = value_289;
+                                    let value_295 = number_85173a94_bool(value_291);
+                                    if (!value_295) {
+                                        let value_296 = number_85173a94_value(byte,8,false);
+                                        let value_297 = number_85173a94_value(126,8,false);
+                                        let value_298 = number_85173a94_bool(value_296 == value_297);
+                                        value_295 = value_298;
                                     }
-                                    value_275 = value_286;
+                                    value_284 = value_295;
                                 }
-                                if (value_275) {
+                                if (value_284) {
                                     break;
                                 }
                             }
@@ -19767,102 +19783,166 @@ export function KssParser_KssSelectorPart($rt, $state = moduleState, $host = mod
                 }
             }
         }
-        let value_291 = c;
-        let value_292 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_291);
-        let value_290 = value_292;
-        let value_293 = number_85173a94_value(1,32,true);
-        let value_295 = KssParser_KssAdvance($rt, $state, $host, value_290, value_293);
-        let value_296 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_295);
-        let value_294 = value_296;
-        let value_297 = value_294;
-        let value_298 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_297);
-        c = value_298;
-        let value_299 = number_85173a94_value(byte,8,false);
-        let value_300 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_299));
-        let value_301 = number_85173a94_bool(!value_300);
-        let value_302 = number_85173a94_bool(value_301);
-        if (!value_302) {
-            let value_303 = number_85173a94_value(depth,32,true);
-            let value_304 = number_85173a94_value(0,32,true);
-            let value_305 = number_85173a94_bool(value_303 > value_304);
-            value_302 = value_305;
+        let value_300 = c;
+        let value_301 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_300);
+        let value_299 = value_301;
+        let value_302 = number_85173a94_value(1,32,true);
+        let value_304 = KssParser_KssAdvance($rt, $state, $host, value_299, value_302);
+        let value_305 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_304);
+        let value_303 = value_305;
+        let value_306 = value_303;
+        let value_307 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_306);
+        c = value_307;
+        let value_308 = number_85173a94_value(byte,8,false);
+        let value_309 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_308));
+        let value_310 = number_85173a94_bool(!value_309);
+        let value_311 = number_85173a94_bool(value_310);
+        if (!value_311) {
+            let value_312 = number_85173a94_value(depth,32,true);
+            let value_313 = number_85173a94_value(0,32,true);
+            let value_314 = number_85173a94_bool(value_312 > value_313);
+            value_311 = value_314;
         }
-        let value_306 = number_85173a94_bool(value_302);
-        if (!value_306) {
-            let value_307 = number_85173a94_value(quote,8,false);
-            let value_308 = number_85173a94_value(0,8,false);
-            let value_309 = number_85173a94_bool(value_307 != value_308);
-            value_306 = value_309;
+        let value_315 = number_85173a94_bool(value_311);
+        if (!value_315) {
+            let value_316 = number_85173a94_value(quote,8,false);
+            let value_317 = number_85173a94_value(0,8,false);
+            let value_318 = number_85173a94_bool(value_316 != value_317);
+            value_315 = value_318;
         }
-        if (value_306) {
-            let value_310 = number_85173a94_value(c.pos,32,true);
-            end = value_310;
+        if (value_315) {
+            let value_319 = number_85173a94_value(c.pos,32,true);
+            end = value_319;
         }
     }
-    let value_312 = c;
-    let value_313 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_312);
-    let value_311 = value_313;
-    let value_314 = value_311;
-    let value_315 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_314);
-    result.parser = value_315;
-    let value_316 = number_85173a94_value(depth,32,true);
-    let value_317 = number_85173a94_value(0,32,true);
-    let value_318 = number_85173a94_bool(value_316 != value_317);
-    let value_319 = number_85173a94_bool(value_318);
-    if (!value_319) {
-        let value_320 = number_85173a94_value(quote,8,false);
-        let value_321 = number_85173a94_value(0,8,false);
-        let value_322 = number_85173a94_bool(value_320 != value_321);
-        value_319 = value_322;
+    let value_321 = c;
+    let value_322 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_321);
+    let value_320 = value_322;
+    let value_323 = value_320;
+    let value_324 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_323);
+    result.parser = value_324;
+    let value_325 = number_85173a94_value(depth,32,true);
+    let value_326 = number_85173a94_value(0,32,true);
+    let value_327 = number_85173a94_bool(value_325 != value_326);
+    let value_328 = number_85173a94_bool(value_327);
+    if (!value_328) {
+        let value_329 = number_85173a94_value(quote,8,false);
+        let value_330 = number_85173a94_value(0,8,false);
+        let value_331 = number_85173a94_bool(value_329 != value_330);
+        value_328 = value_331;
     }
-    let value_323 = number_85173a94_bool(value_319);
-    if (!value_323) {
-        let value_324 = number_85173a94_value(end,32,true);
-        let value_325 = number_85173a94_value(result.start,32,true);
-        let value_326 = number_85173a94_bool(value_324 <= value_325);
-        value_323 = value_326;
+    let value_332 = number_85173a94_bool(value_328);
+    if (!value_332) {
+        let value_333 = number_85173a94_value(end,32,true);
+        let value_334 = number_85173a94_value(result.start,32,true);
+        let value_335 = number_85173a94_bool(value_333 <= value_334);
+        value_332 = value_335;
     }
-    if (value_323) {
-        let value_328 = result;
-        let value_329 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_328);
-        let value_327 = value_329;
-        return value_327;
-    }
-    let value_330 = number_85173a94_value(end,32,true);
-    let value_331 = number_85173a94_value(result.start,32,true);
-    let value_332 = number_85173a94_value(number_85173a94_bits(value_330,value_331,32,true,2),32,true);
-    result.length = value_332;
-    let value_333 = number_85173a94_bool(sequence);
-    let value_334 = number_85173a94_bool(!value_333);
-    let value_335 = number_85173a94_bool(value_334);
-    if (value_335) {
-        let value_337 = c;
-        let value_338 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_337);
+    if (value_332) {
+        let value_337 = result;
+        let value_338 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_337);
         let value_336 = value_338;
-        let value_339 = number_85173a94_value(0,32,true);
-        let value_340 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_336, value_339),8,false);
-        let value_341 = number_85173a94_value(44,8,false);
-        let value_342 = number_85173a94_bool(value_340 == value_341);
-        value_335 = value_342;
+        return value_336;
     }
-    if (value_335) {
-        let value_344 = c;
-        let value_345 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_344);
-        let value_343 = value_345;
-        let value_346 = number_85173a94_value(1,32,true);
-        let value_348 = KssParser_KssAdvance($rt, $state, $host, value_343, value_346);
-        let value_349 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_348);
-        let value_347 = value_349;
-        let value_350 = value_347;
-        let value_351 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_350);
-        result.parser = value_351;
+    let value_339 = number_85173a94_value(end,32,true);
+    let value_340 = number_85173a94_value(result.start,32,true);
+    let value_341 = number_85173a94_value(number_85173a94_bits(value_339,value_340,32,true,2),32,true);
+    result.length = value_341;
+    let value_342 = number_85173a94_bool(sequence);
+    let value_343 = number_85173a94_bool(!value_342);
+    let value_344 = number_85173a94_bool(value_343);
+    if (value_344) {
+        let value_346 = c;
+        let value_347 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_346);
+        let value_345 = value_347;
+        let value_348 = number_85173a94_value(0,32,true);
+        let value_349 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_345, value_348),8,false);
+        let value_350 = number_85173a94_value(44,8,false);
+        let value_351 = number_85173a94_bool(value_349 == value_350);
+        value_344 = value_351;
     }
-    let value_352 = number_85173a94_bool(true);
-    result.ok = value_352;
-    let value_354 = result;
-    let value_355 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_354);
-    let value_353 = value_355;
-    return value_353;
+    if (value_344) {
+        let value_353 = c;
+        let value_354 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_353);
+        let value_352 = value_354;
+        let value_355 = number_85173a94_value(1,32,true);
+        let value_357 = KssParser_KssAdvance($rt, $state, $host, value_352, value_355);
+        let value_358 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_357);
+        let value_356 = value_358;
+        let value_359 = value_356;
+        let value_360 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_359);
+        result.parser = value_360;
+    }
+    let value_361 = number_85173a94_bool(true);
+    result.ok = value_361;
+    let value_363 = result;
+    let value_364 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_363);
+    let value_362 = value_364;
+    return value_362;
+}
+
+export function KssParser_KssSelectorPart($rt, $state = moduleState, $host = moduleHost, c, sequence) {
+  $state = $state || moduleState;
+    let value_0 = c;
+    let value_1 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_0);
+    c = value_1;
+    sequence = number_85173a94_bool(sequence);
+    let value_3 = c;
+    let value_4 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_3);
+    let value_2 = value_4;
+    let value_5 = number_85173a94_bool(sequence);
+    let value_6 = number_85173a94_bool(false);
+    let value_8 = KssParser_KssSelectorPartMode($rt, $state, $host, value_2, value_5, value_6);
+    let value_9 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_8);
+    let value_7 = value_9;
+    return value_7;
+}
+
+export function KssParser_KssRelativeSelectorPart($rt, $state = moduleState, $host = moduleHost, c) {
+  $state = $state || moduleState;
+    let value_0 = c;
+    let value_1 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_0);
+    c = value_1;
+    let value_3 = c;
+    let value_4 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_3);
+    let value_2 = value_4;
+    let value_5 = number_85173a94_bool(true);
+    let value_6 = number_85173a94_bool(true);
+    let value_8 = KssParser_KssSelectorPartMode($rt, $state, $host, value_2, value_5, value_6);
+    let value_9 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_8);
+    let value_7 = value_9;
+    let value_10 = value_7;
+    let value_11 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_10);
+    let result = value_11;
+    let value_12 = number_85173a94_value(c.pos,32,true);
+    let value_13 = number_85173a94_value(0,32,true);
+    let value_14 = number_85173a94_bool(value_12 == value_13);
+    let value_15 = number_85173a94_bool(value_14);
+    if (value_15) {
+        let value_16 = number_85173a94_bool(result.ok);
+        value_15 = value_16;
+    }
+    let value_17 = number_85173a94_bool(value_15);
+    if (value_17) {
+        let value_18 = number_85173a94_bool(result.done);
+        let value_19 = number_85173a94_bool(!value_18);
+        value_17 = value_19;
+    }
+    let value_20 = number_85173a94_bool(value_17);
+    if (value_20) {
+        let value_21 = number_85173a94_value(result.combinator,32,true);
+        let value_22 = number_85173a94_value(0,32,true);
+        let value_23 = number_85173a94_bool(value_21 == value_22);
+        value_20 = value_23;
+    }
+    if (value_20) {
+        let value_24 = number_85173a94_value(32,32,true);
+        result.combinator = value_24;
+    }
+    let value_26 = result;
+    let value_27 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_26);
+    let value_25 = value_27;
+    return value_25;
 }
 
 export function KssParser_KssSelectorGroup($rt, $state = moduleState, $host = moduleHost, c) {
@@ -20151,9 +20231,9 @@ export function KssParser_KssSelectorChainBegin($rt, $state = moduleState, $host
   $state = $state || moduleState;
     count = number_85173a94_value(count,32,true);
     node = number_85173a94_value(node,32,true);
-    let value_0 = {part: 0, cursor: 0, entered: false};
+    let value_0 = {part: 0, cursor: 0, entered: false, anchored: false, anchor: 0};
     let value_1 = value_0;
-    let value_2 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_1);
+    let value_2 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_1);
     let frame = value_2;
     let value_3 = number_85173a94_value(count,32,true);
     let value_4 = number_85173a94_value(1,32,true);
@@ -20162,160 +20242,230 @@ export function KssParser_KssSelectorChainBegin($rt, $state = moduleState, $host
     let value_6 = number_85173a94_value(node,32,true);
     frame.cursor = value_6;
     let value_8 = frame;
-    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_8);
+    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_8);
     let value_7 = value_9;
     return value_7;
+}
+
+export function KssParser_KssRelativeSelectorBegin($rt, $state = moduleState, $host = moduleHost, count, node, anchor) {
+  $state = $state || moduleState;
+    count = number_85173a94_value(count,32,true);
+    node = number_85173a94_value(node,32,true);
+    anchor = number_85173a94_value(anchor,32,true);
+    let value_0 = number_85173a94_value(count,32,true);
+    let value_1 = number_85173a94_value(node,32,true);
+    let value_3 = KssParser_KssSelectorChainBegin($rt, $state, $host, value_0, value_1);
+    let value_4 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_3);
+    let value_2 = value_4;
+    let value_5 = value_2;
+    let value_6 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_5);
+    let frame = value_6;
+    let value_7 = number_85173a94_value(count,32,true);
+    let value_8 = number_85173a94_value(0,32,true);
+    let value_9 = number_85173a94_bool(value_7 > value_8);
+    let value_10 = number_85173a94_bool(value_9);
+    if (value_10) {
+        let value_11 = number_85173a94_value(anchor,32,true);
+        let value_12 = number_85173a94_value(0,32,true);
+        let value_13 = number_85173a94_bool(value_11 >= value_12);
+        value_10 = value_13;
+    }
+    frame.anchored = value_10;
+    let value_14 = number_85173a94_value(anchor,32,true);
+    frame.anchor = value_14;
+    let value_15 = number_85173a94_bool(frame.anchored);
+    let value_16 = number_85173a94_bool(!value_15);
+    if (value_16) {
+        let value_17 = number_85173a94_value(-1,32,true);
+        frame.cursor = value_17;
+    }
+    let value_19 = frame;
+    let value_20 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_19);
+    let value_18 = value_20;
+    return value_18;
 }
 
 export function KssParser_KssSelectorChainStep($rt, $state = moduleState, $host = moduleHost, frame, matched, relation, parent, previous) {
   $state = $state || moduleState;
     let value_0 = frame;
-    let value_1 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_0);
+    let value_1 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_0);
     frame = value_1;
     matched = number_85173a94_bool(matched);
     relation = number_85173a94_value(relation,32,true);
     parent = number_85173a94_value(parent,32,true);
     previous = number_85173a94_value(previous,32,true);
-    let value_2 = {frame: {part: 0, cursor: 0, entered: false}, next: {part: 0, cursor: 0, entered: false}, action: 0};
+    let value_2 = {frame: {part: 0, cursor: 0, entered: false, anchored: false, anchor: 0}, next: {part: 0, cursor: 0, entered: false, anchored: false, anchor: 0}, action: 0};
     let value_3 = value_2;
-    let value_4 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_3);
+    let value_4 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_3);
     let result = value_4;
     let value_6 = frame;
-    let value_7 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_6);
+    let value_7 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_6);
     let value_5 = value_7;
     let value_8 = value_5;
-    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered}))(value_8);
+    let value_9 = ((record_source) => ({part: record_source.part, cursor: record_source.cursor, entered: record_source.entered, anchored: record_source.anchored, anchor: record_source.anchor}))(value_8);
     result.frame = value_9;
-    let value_10 = number_85173a94_value(frame.part,32,true);
+    let value_10 = number_85173a94_value(frame.cursor,32,true);
     let value_11 = number_85173a94_value(0,32,true);
     let value_12 = number_85173a94_bool(value_10 < value_11);
-    let value_13 = number_85173a94_bool(value_12);
-    if (!value_13) {
-        let value_14 = number_85173a94_value(frame.cursor,32,true);
-        let value_15 = number_85173a94_value(0,32,true);
-        let value_16 = number_85173a94_bool(value_14 < value_15);
-        value_13 = value_16;
+    if (value_12) {
+        let value_14 = result;
+        let value_15 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_14);
+        let value_13 = value_15;
+        return value_13;
     }
-    if (value_13) {
-        let value_18 = result;
-        let value_19 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_18);
-        let value_17 = value_19;
-        return value_17;
-    }
-    let value_20 = number_85173a94_value(relation,32,true);
-    let value_21 = number_85173a94_value(0,32,true);
-    let value_22 = number_85173a94_bool(value_20 == value_21);
-    let value_23 = number_85173a94_bool(value_22);
-    if (!value_23) {
-        let value_24 = number_85173a94_value(relation,32,true);
-        let value_25 = number_85173a94_value(32,32,true);
-        let value_26 = number_85173a94_bool(value_24 == value_25);
-        value_23 = value_26;
-    }
-    let value_27 = number_85173a94_bool(value_23);
-    if (!value_27) {
-        let value_28 = number_85173a94_value(relation,32,true);
-        let value_29 = number_85173a94_value(126,32,true);
-        let value_30 = number_85173a94_bool(value_28 == value_29);
-        value_27 = value_30;
-    }
-    let repeated = number_85173a94_bool(value_27);
-    let value_31 = number_85173a94_bool(frame.entered);
-    if (value_31) {
-        let value_32 = number_85173a94_bool(repeated);
-        let value_33 = number_85173a94_bool(!value_32);
-        if (value_33) {
-            let value_35 = result;
-            let value_36 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_35);
-            let value_34 = value_36;
-            return value_34;
+    let value_16 = number_85173a94_value(frame.part,32,true);
+    let value_17 = number_85173a94_value(0,32,true);
+    let value_18 = number_85173a94_bool(value_16 < value_17);
+    if (value_18) {
+        let value_19 = number_85173a94_value(frame.part,32,true);
+        let value_20 = number_85173a94_value(-1,32,true);
+        let value_21 = number_85173a94_bool(value_19 == value_20);
+        let value_22 = number_85173a94_bool(value_21);
+        if (value_22) {
+            let value_23 = number_85173a94_bool(frame.anchored);
+            value_22 = value_23;
         }
-    } else {
-        let value_37 = number_85173a94_bool(matched);
-        let value_38 = number_85173a94_bool(!value_37);
-        if (value_38) {
-            let value_40 = result;
-            let value_41 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_40);
-            let value_39 = value_41;
-            return value_39;
+        let value_24 = number_85173a94_bool(value_22);
+        if (value_24) {
+            let value_25 = number_85173a94_value(frame.cursor,32,true);
+            let value_26 = number_85173a94_value(frame.anchor,32,true);
+            let value_27 = number_85173a94_bool(value_25 == value_26);
+            value_24 = value_27;
         }
-        let value_42 = number_85173a94_value(frame.part,32,true);
-        let value_43 = number_85173a94_value(0,32,true);
-        let value_44 = number_85173a94_bool(value_42 == value_43);
-        if (value_44) {
-            let value_45 = number_85173a94_value(KssSelectorAccept,32,true);
-            let value_46 = number_85173a94_value(number_85173a94_bits(value_45,0,32,true,0),32,true);
-            result.action = value_46;
+        if (value_24) {
+            let value_28 = number_85173a94_value(KssSelectorAccept,32,true);
+            let value_29 = number_85173a94_value(number_85173a94_bits(value_28,0,32,true,0),32,true);
+            result.action = value_29;
+        }
+        let value_31 = result;
+        let value_32 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_31);
+        let value_30 = value_32;
+        return value_30;
+    }
+    let value_33 = number_85173a94_value(relation,32,true);
+    let value_34 = number_85173a94_value(0,32,true);
+    let value_35 = number_85173a94_bool(value_33 == value_34);
+    let value_36 = number_85173a94_bool(value_35);
+    if (!value_36) {
+        let value_37 = number_85173a94_value(relation,32,true);
+        let value_38 = number_85173a94_value(32,32,true);
+        let value_39 = number_85173a94_bool(value_37 == value_38);
+        value_36 = value_39;
+    }
+    let value_40 = number_85173a94_bool(value_36);
+    if (!value_40) {
+        let value_41 = number_85173a94_value(relation,32,true);
+        let value_42 = number_85173a94_value(126,32,true);
+        let value_43 = number_85173a94_bool(value_41 == value_42);
+        value_40 = value_43;
+    }
+    let repeated = number_85173a94_bool(value_40);
+    let value_44 = number_85173a94_bool(frame.entered);
+    if (value_44) {
+        let value_45 = number_85173a94_bool(repeated);
+        let value_46 = number_85173a94_bool(!value_45);
+        if (value_46) {
             let value_48 = result;
-            let value_49 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_48);
+            let value_49 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_48);
             let value_47 = value_49;
             return value_47;
         }
-    }
-    let value_50 = number_85173a94_value(-1,32,true);
-    let candidate = number_85173a94_value(value_50,32,true);
-    let value_51 = number_85173a94_value(relation,32,true);
-    let value_52 = number_85173a94_value(0,32,true);
-    let value_53 = number_85173a94_bool(value_51 == value_52);
-    let value_54 = number_85173a94_bool(value_53);
-    if (!value_54) {
-        let value_55 = number_85173a94_value(relation,32,true);
-        let value_56 = number_85173a94_value(32,32,true);
-        let value_57 = number_85173a94_bool(value_55 == value_56);
-        value_54 = value_57;
-    }
-    let value_58 = number_85173a94_bool(value_54);
-    if (!value_58) {
-        let value_59 = number_85173a94_value(relation,32,true);
-        let value_60 = number_85173a94_value(62,32,true);
-        let value_61 = number_85173a94_bool(value_59 == value_60);
-        value_58 = value_61;
-    }
-    if (value_58) {
-        let value_62 = number_85173a94_value(parent,32,true);
-        candidate = value_62;
     } else {
-        let value_63 = number_85173a94_value(relation,32,true);
-        let value_64 = number_85173a94_value(43,32,true);
-        let value_65 = number_85173a94_bool(value_63 == value_64);
-        let value_66 = number_85173a94_bool(value_65);
-        if (!value_66) {
-            let value_67 = number_85173a94_value(relation,32,true);
-            let value_68 = number_85173a94_value(126,32,true);
-            let value_69 = number_85173a94_bool(value_67 == value_68);
-            value_66 = value_69;
+        let value_50 = number_85173a94_bool(matched);
+        let value_51 = number_85173a94_bool(!value_50);
+        if (value_51) {
+            let value_53 = result;
+            let value_54 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_53);
+            let value_52 = value_54;
+            return value_52;
         }
-        if (value_66) {
-            let value_70 = number_85173a94_value(previous,32,true);
-            candidate = value_70;
+        let value_55 = number_85173a94_value(frame.part,32,true);
+        let value_56 = number_85173a94_value(0,32,true);
+        let value_57 = number_85173a94_bool(value_55 == value_56);
+        let value_58 = number_85173a94_bool(value_57);
+        if (value_58) {
+            let value_59 = number_85173a94_bool(frame.anchored);
+            let value_60 = number_85173a94_bool(!value_59);
+            value_58 = value_60;
+        }
+        if (value_58) {
+            let value_61 = number_85173a94_value(KssSelectorAccept,32,true);
+            let value_62 = number_85173a94_value(number_85173a94_bits(value_61,0,32,true,0),32,true);
+            result.action = value_62;
+            let value_64 = result;
+            let value_65 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_64);
+            let value_63 = value_65;
+            return value_63;
         }
     }
-    let value_71 = number_85173a94_value(candidate,32,true);
-    let value_72 = number_85173a94_value(0,32,true);
-    let value_73 = number_85173a94_bool(value_71 < value_72);
-    if (value_73) {
-        let value_75 = result;
-        let value_76 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_75);
-        let value_74 = value_76;
-        return value_74;
+    let value_66 = number_85173a94_value(-1,32,true);
+    let candidate = number_85173a94_value(value_66,32,true);
+    let value_67 = number_85173a94_value(relation,32,true);
+    let value_68 = number_85173a94_value(0,32,true);
+    let value_69 = number_85173a94_bool(value_67 == value_68);
+    let value_70 = number_85173a94_bool(value_69);
+    if (!value_70) {
+        let value_71 = number_85173a94_value(relation,32,true);
+        let value_72 = number_85173a94_value(32,32,true);
+        let value_73 = number_85173a94_bool(value_71 == value_72);
+        value_70 = value_73;
     }
-    let value_77 = number_85173a94_value(candidate,32,true);
-    result.frame.cursor = value_77;
-    let value_78 = number_85173a94_bool(true);
-    result.frame.entered = value_78;
-    let value_79 = number_85173a94_value(frame.part,32,true);
-    let value_80 = number_85173a94_value(1,32,true);
-    let value_81 = number_85173a94_value(number_85173a94_bits(value_79,value_80,32,true,2),32,true);
-    result.next.part = value_81;
-    let value_82 = number_85173a94_value(candidate,32,true);
-    result.next.cursor = value_82;
-    let value_83 = number_85173a94_value(KssSelectorPush,32,true);
-    let value_84 = number_85173a94_value(number_85173a94_bits(value_83,0,32,true,0),32,true);
-    result.action = value_84;
-    let value_86 = result;
-    let value_87 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered}, action: record_source.action}))(value_86);
-    let value_85 = value_87;
-    return value_85;
+    let value_74 = number_85173a94_bool(value_70);
+    if (!value_74) {
+        let value_75 = number_85173a94_value(relation,32,true);
+        let value_76 = number_85173a94_value(62,32,true);
+        let value_77 = number_85173a94_bool(value_75 == value_76);
+        value_74 = value_77;
+    }
+    if (value_74) {
+        let value_78 = number_85173a94_value(parent,32,true);
+        candidate = value_78;
+    } else {
+        let value_79 = number_85173a94_value(relation,32,true);
+        let value_80 = number_85173a94_value(43,32,true);
+        let value_81 = number_85173a94_bool(value_79 == value_80);
+        let value_82 = number_85173a94_bool(value_81);
+        if (!value_82) {
+            let value_83 = number_85173a94_value(relation,32,true);
+            let value_84 = number_85173a94_value(126,32,true);
+            let value_85 = number_85173a94_bool(value_83 == value_84);
+            value_82 = value_85;
+        }
+        if (value_82) {
+            let value_86 = number_85173a94_value(previous,32,true);
+            candidate = value_86;
+        }
+    }
+    let value_87 = number_85173a94_value(candidate,32,true);
+    let value_88 = number_85173a94_value(0,32,true);
+    let value_89 = number_85173a94_bool(value_87 < value_88);
+    if (value_89) {
+        let value_91 = result;
+        let value_92 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_91);
+        let value_90 = value_92;
+        return value_90;
+    }
+    let value_93 = number_85173a94_value(candidate,32,true);
+    result.frame.cursor = value_93;
+    let value_94 = number_85173a94_bool(true);
+    result.frame.entered = value_94;
+    let value_95 = number_85173a94_value(frame.part,32,true);
+    let value_96 = number_85173a94_value(1,32,true);
+    let value_97 = number_85173a94_value(number_85173a94_bits(value_95,value_96,32,true,2),32,true);
+    result.next.part = value_97;
+    let value_98 = number_85173a94_value(candidate,32,true);
+    result.next.cursor = value_98;
+    let value_99 = number_85173a94_bool(frame.anchored);
+    result.next.anchored = value_99;
+    let value_100 = number_85173a94_value(frame.anchor,32,true);
+    result.next.anchor = value_100;
+    let value_101 = number_85173a94_value(KssSelectorPush,32,true);
+    let value_102 = number_85173a94_value(number_85173a94_bits(value_101,0,32,true,0),32,true);
+    result.action = value_102;
+    let value_104 = result;
+    let value_105 = ((record_source) => ({frame: {part: record_source.frame.part, cursor: record_source.frame.cursor, entered: record_source.frame.entered, anchored: record_source.frame.anchored, anchor: record_source.frame.anchor}, next: {part: record_source.next.part, cursor: record_source.next.cursor, entered: record_source.next.entered, anchored: record_source.next.anchored, anchor: record_source.next.anchor}, action: record_source.action}))(value_104);
+    let value_103 = value_105;
+    return value_103;
 }
 
 export function KssParser_KssSelectorGroupMatches($rt, $state = moduleState, $host = moduleHost, name, count, matching) {
@@ -21100,6 +21250,251 @@ export function KssParser_KssSelectorAttributeAtom($rt, $state = moduleState, $h
     return value_313;
 }
 
+export function KssParser_KssHasArgumentAllowed($rt, $state = moduleState, $host = moduleHost, source) {
+  $state = $state || moduleState;
+    let value_0 = {source: "", pos: 0, line: 0, column: 0, file: 0};
+    let value_1 = value_0;
+    let value_2 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_1);
+    let c = value_2;
+    let value_3 = source;
+    c.source = value_3;
+    while (true) {
+        let value_5 = c;
+        let value_6 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_5);
+        let value_4 = value_6;
+        let value_7 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_4));
+        let value_8 = number_85173a94_bool(!value_7);
+        if (!value_8) { break; }
+        let value_10 = c;
+        let value_11 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_10);
+        let value_9 = value_11;
+        let value_13 = KssParser_KssSelectorSpace($rt, $state, $host, value_9);
+        let value_14 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_13);
+        let value_12 = value_14;
+        let value_15 = value_12;
+        let value_16 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, ok: record_source.ok}))(value_15);
+        let skipped = value_16;
+        let value_18 = skipped.parser;
+        let value_19 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_18);
+        let value_17 = value_19;
+        let value_20 = value_17;
+        let value_21 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_20);
+        c = value_21;
+        let value_22 = number_85173a94_bool(skipped.ok);
+        let value_23 = number_85173a94_bool(!value_22);
+        if (value_23) {
+            let value_24 = number_85173a94_bool(false);
+            return value_24;
+        }
+        let value_26 = c;
+        let value_27 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_26);
+        let value_25 = value_27;
+        let value_28 = number_85173a94_value(0,32,true);
+        let value_29 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_25, value_28),8,false);
+        let byte = number_85173a94_value(value_29,8,false);
+        let value_30 = number_85173a94_value(byte,8,false);
+        let value_31 = number_85173a94_value(91,8,false);
+        let value_32 = number_85173a94_bool(value_30 == value_31);
+        if (value_32) {
+            let value_34 = c;
+            let value_35 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_34);
+            let value_33 = value_35;
+            let value_37 = KssParser_KssSelectorGroup($rt, $state, $host, value_33);
+            let value_38 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_37);
+            let value_36 = value_38;
+            let value_39 = value_36;
+            let value_40 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, start: record_source.start, length: record_source.length, combinator: record_source.combinator, ok: record_source.ok, done: record_source.done}))(value_39);
+            let group = value_40;
+            let value_41 = number_85173a94_bool(group.ok);
+            let value_42 = number_85173a94_bool(!value_41);
+            if (value_42) {
+                let value_43 = number_85173a94_bool(false);
+                return value_43;
+            }
+            let value_45 = group.parser;
+            let value_46 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_45);
+            let value_44 = value_46;
+            let value_47 = value_44;
+            let value_48 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_47);
+            c = value_48;
+        } else {
+            let value_49 = number_85173a94_value(byte,8,false);
+            let value_50 = number_85173a94_value(34,8,false);
+            let value_51 = number_85173a94_bool(value_49 == value_50);
+            let value_52 = number_85173a94_bool(value_51);
+            if (!value_52) {
+                let value_53 = number_85173a94_value(byte,8,false);
+                let value_54 = number_85173a94_value(39,8,false);
+                let value_55 = number_85173a94_bool(value_53 == value_54);
+                value_52 = value_55;
+            }
+            if (value_52) {
+                let value_57 = c;
+                let value_58 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_57);
+                let value_56 = value_58;
+                let value_59 = number_85173a94_value(1,32,true);
+                let value_61 = KssParser_KssAdvance($rt, $state, $host, value_56, value_59);
+                let value_62 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_61);
+                let value_60 = value_62;
+                let value_63 = value_60;
+                let value_64 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_63);
+                c = value_64;
+                while (true) {
+                    let value_66 = c;
+                    let value_67 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_66);
+                    let value_65 = value_67;
+                    let value_68 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_65));
+                    let value_69 = number_85173a94_bool(!value_68);
+                    let value_70 = number_85173a94_bool(value_69);
+                    if (value_70) {
+                        let value_72 = c;
+                        let value_73 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_72);
+                        let value_71 = value_73;
+                        let value_74 = number_85173a94_value(0,32,true);
+                        let value_75 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_71, value_74),8,false);
+                        let value_76 = number_85173a94_value(byte,8,false);
+                        let value_77 = number_85173a94_bool(value_75 != value_76);
+                        value_70 = value_77;
+                    }
+                    if (!value_70) { break; }
+                    let value_79 = c;
+                    let value_80 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_79);
+                    let value_78 = value_80;
+                    let value_81 = number_85173a94_value(0,32,true);
+                    let value_82 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_78, value_81),8,false);
+                    let value_83 = number_85173a94_value(92,8,false);
+                    let value_84 = number_85173a94_bool(value_82 == value_83);
+                    if (value_84) {
+                        let value_86 = c;
+                        let value_87 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_86);
+                        let value_85 = value_87;
+                        let value_88 = number_85173a94_value(2,32,true);
+                        let value_90 = KssParser_KssAdvance($rt, $state, $host, value_85, value_88);
+                        let value_91 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_90);
+                        let value_89 = value_91;
+                        let value_92 = value_89;
+                        let value_93 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_92);
+                        c = value_93;
+                    } else {
+                        let value_95 = c;
+                        let value_96 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_95);
+                        let value_94 = value_96;
+                        let value_97 = number_85173a94_value(1,32,true);
+                        let value_99 = KssParser_KssAdvance($rt, $state, $host, value_94, value_97);
+                        let value_100 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_99);
+                        let value_98 = value_100;
+                        let value_101 = value_98;
+                        let value_102 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_101);
+                        c = value_102;
+                    }
+                }
+                let value_104 = c;
+                let value_105 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_104);
+                let value_103 = value_105;
+                let value_106 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_103));
+                if (value_106) {
+                    let value_107 = number_85173a94_bool(false);
+                    return value_107;
+                }
+                let value_109 = c;
+                let value_110 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_109);
+                let value_108 = value_110;
+                let value_111 = number_85173a94_value(1,32,true);
+                let value_113 = KssParser_KssAdvance($rt, $state, $host, value_108, value_111);
+                let value_114 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_113);
+                let value_112 = value_114;
+                let value_115 = value_112;
+                let value_116 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_115);
+                c = value_116;
+            } else {
+                let value_117 = number_85173a94_value(byte,8,false);
+                let value_118 = number_85173a94_value(58,8,false);
+                let value_119 = number_85173a94_bool(value_117 == value_118);
+                if (value_119) {
+                    let value_121 = c;
+                    let value_122 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_121);
+                    let value_120 = value_122;
+                    let value_123 = number_85173a94_value(1,32,true);
+                    let value_125 = KssParser_KssAdvance($rt, $state, $host, value_120, value_123);
+                    let value_126 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_125);
+                    let value_124 = value_126;
+                    let value_127 = value_124;
+                    let value_128 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_127);
+                    c = value_128;
+                    let value_129 = number_85173a94_value(c.pos,32,true);
+                    let start = number_85173a94_value(value_129,32,true);
+                    let value_131 = c;
+                    let value_132 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_131);
+                    let value_130 = value_132;
+                    let value_134 = KssParser_KssReadSelectorName($rt, $state, $host, value_130);
+                    let value_135 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, ok: record_source.ok}))(value_134);
+                    let value_133 = value_135;
+                    let value_136 = value_133;
+                    let value_137 = ((record_source) => ({parser: {source: record_source.parser.source, pos: record_source.parser.pos, line: record_source.parser.line, column: record_source.parser.column, file: record_source.parser.file}, name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, ok: record_source.ok}))(value_136);
+                    let name = value_137;
+                    let value_138 = number_85173a94_bool(name.ok);
+                    let value_139 = number_85173a94_bool(!value_138);
+                    if (value_139) {
+                        let value_140 = number_85173a94_bool(false);
+                        return value_140;
+                    }
+                    let value_142 = name.parser;
+                    let value_143 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_142);
+                    let value_141 = value_143;
+                    let value_144 = value_141;
+                    let value_145 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_144);
+                    c = value_145;
+                    let value_146 = source;
+                    let value_147 = number_85173a94_value(start,32,true);
+                    let value_148 = number_85173a94_value(c.pos,32,true);
+                    let value_149 = number_85173a94_value(start,32,true);
+                    let value_150 = number_85173a94_value(number_85173a94_bits(value_148,value_149,32,true,2),32,true);
+                    let value_151 = kryon.hostCall($host || moduleHost, "StringSlice", [value_146, value_147, value_150]);
+                    let value_153 = KssParser_KssPseudoName($rt, $state, $host, value_151);
+                    let value_154 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_153);
+                    let value_152 = value_154;
+                    let value_155 = value_152;
+                    let value_156 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_155);
+                    let canonical = value_156;
+                    let value_158 = canonical;
+                    let value_159 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_158);
+                    let value_157 = value_159;
+                    let value_160 = "has";
+                    let value_161 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_157, value_160));
+                    let value_162 = number_85173a94_bool(value_161);
+                    if (value_162) {
+                        let value_164 = c;
+                        let value_165 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_164);
+                        let value_163 = value_165;
+                        let value_166 = number_85173a94_value(0,32,true);
+                        let value_167 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_163, value_166),8,false);
+                        let value_168 = number_85173a94_value(40,8,false);
+                        let value_169 = number_85173a94_bool(value_167 == value_168);
+                        value_162 = value_169;
+                    }
+                    if (value_162) {
+                        let value_170 = number_85173a94_bool(false);
+                        return value_170;
+                    }
+                } else {
+                    let value_172 = c;
+                    let value_173 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_172);
+                    let value_171 = value_173;
+                    let value_174 = number_85173a94_value(1,32,true);
+                    let value_176 = KssParser_KssAdvance($rt, $state, $host, value_171, value_174);
+                    let value_177 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_176);
+                    let value_175 = value_177;
+                    let value_178 = value_175;
+                    let value_179 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_178);
+                    c = value_179;
+                }
+            }
+        }
+    }
+    let value_180 = number_85173a94_bool(true);
+    return value_180;
+}
+
 export function KssParser_KssSelectorNext($rt, $state = moduleState, $host = moduleHost, parser) {
   $state = $state || moduleState;
     let value_0 = parser;
@@ -21466,256 +21861,274 @@ export function KssParser_KssSelectorNext($rt, $state = moduleState, $host = mod
                     let value_272 = result.canonical;
                     let value_273 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_272);
                     let value_271 = value_273;
-                    let value_274 = "not";
+                    let value_274 = "has";
                     let value_275 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_271, value_274));
-                    if (value_275) {
-                        let value_276 = number_85173a94_value(KssSelectorNot,32,true);
-                        let value_277 = number_85173a94_value(number_85173a94_bits(value_276,0,32,true,0),32,true);
-                        result.kind = value_277;
+                    let value_276 = number_85173a94_bool(value_275);
+                    if (value_276) {
+                        let value_277 = result.argument;
+                        let value_278 = number_85173a94_bool(KssParser_KssHasArgumentAllowed($rt, $state, $host, value_277));
+                        let value_279 = number_85173a94_bool(!value_278);
+                        value_276 = value_279;
+                    }
+                    if (value_276) {
+                        let value_281 = result;
+                        let value_282 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_281);
+                        let value_280 = value_282;
+                        return value_280;
+                    }
+                    let value_284 = result.canonical;
+                    let value_285 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_284);
+                    let value_283 = value_285;
+                    let value_286 = "not";
+                    let value_287 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_283, value_286));
+                    if (value_287) {
+                        let value_288 = number_85173a94_value(KssSelectorNot,32,true);
+                        let value_289 = number_85173a94_value(number_85173a94_bits(value_288,0,32,true,0),32,true);
+                        result.kind = value_289;
                     } else {
-                        let value_279 = result.canonical;
-                        let value_280 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_279);
-                        let value_278 = value_280;
-                        let value_281 = "is";
-                        let value_282 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_278, value_281));
-                        let value_283 = number_85173a94_bool(value_282);
-                        if (!value_283) {
-                            let value_285 = result.canonical;
-                            let value_286 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_285);
-                            let value_284 = value_286;
-                            let value_287 = "where";
-                            let value_288 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_284, value_287));
-                            value_283 = value_288;
+                        let value_291 = result.canonical;
+                        let value_292 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_291);
+                        let value_290 = value_292;
+                        let value_293 = "is";
+                        let value_294 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_290, value_293));
+                        let value_295 = number_85173a94_bool(value_294);
+                        if (!value_295) {
+                            let value_297 = result.canonical;
+                            let value_298 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_297);
+                            let value_296 = value_298;
+                            let value_299 = "where";
+                            let value_300 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_296, value_299));
+                            value_295 = value_300;
                         }
-                        if (value_283) {
-                            let value_289 = number_85173a94_value(KssSelectorMatches,32,true);
-                            let value_290 = number_85173a94_value(number_85173a94_bits(value_289,0,32,true,0),32,true);
-                            result.kind = value_290;
+                        if (value_295) {
+                            let value_301 = number_85173a94_value(KssSelectorMatches,32,true);
+                            let value_302 = number_85173a94_value(number_85173a94_bits(value_301,0,32,true,0),32,true);
+                            result.kind = value_302;
                         }
                     }
                 } else {
-                    let value_292 = result.canonical;
-                    let value_293 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_292);
-                    let value_291 = value_293;
-                    let value_295 = KssParser_KssPseudoState($rt, $state, $host, value_291);
-                    let value_296 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_295);
-                    let value_294 = value_296;
-                    let value_297 = value_294;
-                    let value_298 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_297);
-                    let state = value_298;
-                    let value_299 = number_85173a94_value(state.length,32,true);
-                    let value_300 = number_85173a94_value(0,32,true);
-                    let value_301 = number_85173a94_bool(value_299 > value_300);
-                    if (value_301) {
-                        let value_302 = number_85173a94_value(KssSelectorState,32,true);
-                        let value_303 = number_85173a94_value(number_85173a94_bits(value_302,0,32,true,0),32,true);
-                        result.kind = value_303;
-                        let value_305 = state;
-                        let value_306 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_305);
-                        let value_304 = value_306;
-                        let value_307 = value_304;
-                        let value_308 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_307);
-                        result.canonical = value_308;
+                    let value_304 = result.canonical;
+                    let value_305 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_304);
+                    let value_303 = value_305;
+                    let value_307 = KssParser_KssPseudoState($rt, $state, $host, value_303);
+                    let value_308 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_307);
+                    let value_306 = value_308;
+                    let value_309 = value_306;
+                    let value_310 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_309);
+                    let state = value_310;
+                    let value_311 = number_85173a94_value(state.length,32,true);
+                    let value_312 = number_85173a94_value(0,32,true);
+                    let value_313 = number_85173a94_bool(value_311 > value_312);
+                    if (value_313) {
+                        let value_314 = number_85173a94_value(KssSelectorState,32,true);
+                        let value_315 = number_85173a94_value(number_85173a94_bits(value_314,0,32,true,0),32,true);
+                        result.kind = value_315;
+                        let value_317 = state;
+                        let value_318 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_317);
+                        let value_316 = value_318;
+                        let value_319 = value_316;
+                        let value_320 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_319);
+                        result.canonical = value_320;
                     }
                 }
             }
         }
     } else {
-        let value_309 = number_85173a94_bool(parser.has_kind);
-        let value_310 = number_85173a94_bool(value_309);
-        if (!value_310) {
-            let value_311 = number_85173a94_value(byte,8,false);
-            let value_312 = number_85173a94_bool(KssParser_KssIdentStart($rt, $state, $host, value_311));
-            let value_313 = number_85173a94_bool(!value_312);
-            let value_314 = number_85173a94_bool(value_313);
-            if (value_314) {
-                let value_315 = number_85173a94_value(byte,8,false);
-                let value_316 = number_85173a94_value(42,8,false);
-                let value_317 = number_85173a94_bool(value_315 != value_316);
-                value_314 = value_317;
+        let value_321 = number_85173a94_bool(parser.has_kind);
+        let value_322 = number_85173a94_bool(value_321);
+        if (!value_322) {
+            let value_323 = number_85173a94_value(byte,8,false);
+            let value_324 = number_85173a94_bool(KssParser_KssIdentStart($rt, $state, $host, value_323));
+            let value_325 = number_85173a94_bool(!value_324);
+            let value_326 = number_85173a94_bool(value_325);
+            if (value_326) {
+                let value_327 = number_85173a94_value(byte,8,false);
+                let value_328 = number_85173a94_value(42,8,false);
+                let value_329 = number_85173a94_bool(value_327 != value_328);
+                value_326 = value_329;
             }
-            value_310 = value_314;
+            value_322 = value_326;
         }
-        if (value_310) {
-            let value_319 = result;
-            let value_320 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_319);
-            let value_318 = value_320;
-            return value_318;
+        if (value_322) {
+            let value_331 = result;
+            let value_332 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_331);
+            let value_330 = value_332;
+            return value_330;
         }
         while (true) {
-            let value_322 = c;
-            let value_323 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_322);
-            let value_321 = value_323;
-            let value_324 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_321));
-            let value_325 = number_85173a94_bool(!value_324);
-            if (!value_325) { break; }
-            let value_327 = c;
-            let value_328 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_327);
-            let value_326 = value_328;
-            let value_329 = number_85173a94_value(0,32,true);
-            let value_330 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_326, value_329),8,false);
-            byte = value_330;
-            let value_331 = number_85173a94_value(byte,8,false);
-            let value_332 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_331));
-            let value_333 = number_85173a94_bool(value_332);
-            if (!value_333) {
-                let value_334 = number_85173a94_value(byte,8,false);
-                let value_335 = number_85173a94_value(46,8,false);
-                let value_336 = number_85173a94_bool(value_334 == value_335);
-                value_333 = value_336;
-            }
-            let value_337 = number_85173a94_bool(value_333);
-            if (!value_337) {
-                let value_338 = number_85173a94_value(byte,8,false);
-                let value_339 = number_85173a94_value(35,8,false);
-                let value_340 = number_85173a94_bool(value_338 == value_339);
-                value_337 = value_340;
-            }
-            let value_341 = number_85173a94_bool(value_337);
-            if (!value_341) {
-                let value_342 = number_85173a94_value(byte,8,false);
-                let value_343 = number_85173a94_value(91,8,false);
-                let value_344 = number_85173a94_bool(value_342 == value_343);
-                value_341 = value_344;
-            }
-            let value_345 = number_85173a94_bool(value_341);
+            let value_334 = c;
+            let value_335 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_334);
+            let value_333 = value_335;
+            let value_336 = number_85173a94_bool(KssParser_KssAtEnd($rt, $state, $host, value_333));
+            let value_337 = number_85173a94_bool(!value_336);
+            if (!value_337) { break; }
+            let value_339 = c;
+            let value_340 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_339);
+            let value_338 = value_340;
+            let value_341 = number_85173a94_value(0,32,true);
+            let value_342 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_338, value_341),8,false);
+            byte = value_342;
+            let value_343 = number_85173a94_value(byte,8,false);
+            let value_344 = number_85173a94_bool(KssParser_KssIsSpace($rt, $state, $host, value_343));
+            let value_345 = number_85173a94_bool(value_344);
             if (!value_345) {
                 let value_346 = number_85173a94_value(byte,8,false);
-                let value_347 = number_85173a94_value(58,8,false);
+                let value_347 = number_85173a94_value(46,8,false);
                 let value_348 = number_85173a94_bool(value_346 == value_347);
                 value_345 = value_348;
             }
-            if (value_345) {
+            let value_349 = number_85173a94_bool(value_345);
+            if (!value_349) {
+                let value_350 = number_85173a94_value(byte,8,false);
+                let value_351 = number_85173a94_value(35,8,false);
+                let value_352 = number_85173a94_bool(value_350 == value_351);
+                value_349 = value_352;
+            }
+            let value_353 = number_85173a94_bool(value_349);
+            if (!value_353) {
+                let value_354 = number_85173a94_value(byte,8,false);
+                let value_355 = number_85173a94_value(91,8,false);
+                let value_356 = number_85173a94_bool(value_354 == value_355);
+                value_353 = value_356;
+            }
+            let value_357 = number_85173a94_bool(value_353);
+            if (!value_357) {
+                let value_358 = number_85173a94_value(byte,8,false);
+                let value_359 = number_85173a94_value(58,8,false);
+                let value_360 = number_85173a94_bool(value_358 == value_359);
+                value_357 = value_360;
+            }
+            if (value_357) {
                 break;
             }
-            let value_349 = number_85173a94_value(byte,8,false);
-            let value_350 = number_85173a94_value(47,8,false);
-            let value_351 = number_85173a94_bool(value_349 == value_350);
-            let value_352 = number_85173a94_bool(value_351);
-            if (value_352) {
-                let value_354 = c;
-                let value_355 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_354);
-                let value_353 = value_355;
-                let value_356 = number_85173a94_value(1,32,true);
-                let value_357 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_353, value_356),8,false);
-                let value_358 = number_85173a94_value(42,8,false);
-                let value_359 = number_85173a94_bool(value_357 == value_358);
-                let value_360 = number_85173a94_bool(value_359);
-                if (!value_360) {
-                    let value_362 = c;
-                    let value_363 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_362);
-                    let value_361 = value_363;
-                    let value_364 = number_85173a94_value(1,32,true);
-                    let value_365 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_361, value_364),8,false);
-                    let value_366 = number_85173a94_value(47,8,false);
-                    let value_367 = number_85173a94_bool(value_365 == value_366);
-                    value_360 = value_367;
+            let value_361 = number_85173a94_value(byte,8,false);
+            let value_362 = number_85173a94_value(47,8,false);
+            let value_363 = number_85173a94_bool(value_361 == value_362);
+            let value_364 = number_85173a94_bool(value_363);
+            if (value_364) {
+                let value_366 = c;
+                let value_367 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_366);
+                let value_365 = value_367;
+                let value_368 = number_85173a94_value(1,32,true);
+                let value_369 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_365, value_368),8,false);
+                let value_370 = number_85173a94_value(42,8,false);
+                let value_371 = number_85173a94_bool(value_369 == value_370);
+                let value_372 = number_85173a94_bool(value_371);
+                if (!value_372) {
+                    let value_374 = c;
+                    let value_375 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_374);
+                    let value_373 = value_375;
+                    let value_376 = number_85173a94_value(1,32,true);
+                    let value_377 = number_85173a94_value(KssParser_KssPeek($rt, $state, $host, value_373, value_376),8,false);
+                    let value_378 = number_85173a94_value(47,8,false);
+                    let value_379 = number_85173a94_bool(value_377 == value_378);
+                    value_372 = value_379;
                 }
-                value_352 = value_360;
+                value_364 = value_372;
             }
-            if (value_352) {
+            if (value_364) {
                 break;
             }
-            let value_368 = number_85173a94_value(byte,8,false);
-            let value_369 = number_85173a94_value(44,8,false);
-            let value_370 = number_85173a94_bool(value_368 == value_369);
-            let value_371 = number_85173a94_bool(value_370);
-            if (!value_371) {
-                let value_372 = number_85173a94_value(byte,8,false);
-                let value_373 = number_85173a94_value(40,8,false);
-                let value_374 = number_85173a94_bool(value_372 == value_373);
-                value_371 = value_374;
-            }
-            let value_375 = number_85173a94_bool(value_371);
-            if (!value_375) {
-                let value_376 = number_85173a94_value(byte,8,false);
-                let value_377 = number_85173a94_value(41,8,false);
-                let value_378 = number_85173a94_bool(value_376 == value_377);
-                value_375 = value_378;
-            }
-            let value_379 = number_85173a94_bool(value_375);
-            if (!value_379) {
-                let value_380 = number_85173a94_value(byte,8,false);
-                let value_381 = number_85173a94_value(93,8,false);
-                let value_382 = number_85173a94_bool(value_380 == value_381);
-                value_379 = value_382;
-            }
-            let value_383 = number_85173a94_bool(value_379);
+            let value_380 = number_85173a94_value(byte,8,false);
+            let value_381 = number_85173a94_value(44,8,false);
+            let value_382 = number_85173a94_bool(value_380 == value_381);
+            let value_383 = number_85173a94_bool(value_382);
             if (!value_383) {
                 let value_384 = number_85173a94_value(byte,8,false);
-                let value_385 = number_85173a94_value(62,8,false);
+                let value_385 = number_85173a94_value(40,8,false);
                 let value_386 = number_85173a94_bool(value_384 == value_385);
                 value_383 = value_386;
             }
             let value_387 = number_85173a94_bool(value_383);
             if (!value_387) {
                 let value_388 = number_85173a94_value(byte,8,false);
-                let value_389 = number_85173a94_value(43,8,false);
+                let value_389 = number_85173a94_value(41,8,false);
                 let value_390 = number_85173a94_bool(value_388 == value_389);
                 value_387 = value_390;
             }
             let value_391 = number_85173a94_bool(value_387);
             if (!value_391) {
                 let value_392 = number_85173a94_value(byte,8,false);
-                let value_393 = number_85173a94_value(126,8,false);
+                let value_393 = number_85173a94_value(93,8,false);
                 let value_394 = number_85173a94_bool(value_392 == value_393);
                 value_391 = value_394;
             }
-            if (value_391) {
-                let value_396 = result;
-                let value_397 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_396);
-                let value_395 = value_397;
-                return value_395;
+            let value_395 = number_85173a94_bool(value_391);
+            if (!value_395) {
+                let value_396 = number_85173a94_value(byte,8,false);
+                let value_397 = number_85173a94_value(62,8,false);
+                let value_398 = number_85173a94_bool(value_396 == value_397);
+                value_395 = value_398;
             }
-            let value_399 = c;
-            let value_400 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_399);
-            let value_398 = value_400;
-            let value_401 = number_85173a94_value(1,32,true);
-            let value_403 = KssParser_KssAdvance($rt, $state, $host, value_398, value_401);
-            let value_404 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_403);
-            let value_402 = value_404;
-            let value_405 = value_402;
-            let value_406 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_405);
-            c = value_406;
+            let value_399 = number_85173a94_bool(value_395);
+            if (!value_399) {
+                let value_400 = number_85173a94_value(byte,8,false);
+                let value_401 = number_85173a94_value(43,8,false);
+                let value_402 = number_85173a94_bool(value_400 == value_401);
+                value_399 = value_402;
+            }
+            let value_403 = number_85173a94_bool(value_399);
+            if (!value_403) {
+                let value_404 = number_85173a94_value(byte,8,false);
+                let value_405 = number_85173a94_value(126,8,false);
+                let value_406 = number_85173a94_bool(value_404 == value_405);
+                value_403 = value_406;
+            }
+            if (value_403) {
+                let value_408 = result;
+                let value_409 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_408);
+                let value_407 = value_409;
+                return value_407;
+            }
+            let value_411 = c;
+            let value_412 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_411);
+            let value_410 = value_412;
+            let value_413 = number_85173a94_value(1,32,true);
+            let value_415 = KssParser_KssAdvance($rt, $state, $host, value_410, value_413);
+            let value_416 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_415);
+            let value_414 = value_416;
+            let value_417 = value_414;
+            let value_418 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_417);
+            c = value_418;
         }
-        let value_407 = c.source;
-        let value_408 = number_85173a94_value(start,32,true);
-        let value_409 = number_85173a94_value(c.pos,32,true);
-        let value_410 = number_85173a94_value(start,32,true);
-        let value_411 = number_85173a94_value(number_85173a94_bits(value_409,value_410,32,true,2),32,true);
-        let value_412 = kryon.hostCall($host || moduleHost, "StringSlice", [value_407, value_408, value_411]);
-        result.name = value_412;
-        let value_413 = number_85173a94_value(KssSelectorKind,32,true);
-        let value_414 = number_85173a94_value(number_85173a94_bits(value_413,0,32,true,0),32,true);
-        result.kind = value_414;
-        let value_415 = number_85173a94_bool(true);
-        result.parser.has_kind = value_415;
-        let value_416 = result.name;
-        let value_417 = "*";
-        let value_418 = number_85173a94_bool(value_416 != value_417);
-        if (value_418) {
-            let value_419 = number_85173a94_value(result.parser.specificity,32,true);
-            let value_420 = number_85173a94_value(1,32,true);
-            let value_421 = number_85173a94_value(0,32,true);
-            let value_422 = number_85173a94_value(0,32,true);
-            let value_423 = number_85173a94_value(0,32,true);
-            let value_424 = number_85173a94_value(StyleSheet_StyleSpecificity($rt, undefined, $host, value_420, value_421, value_422, value_423),32,true);
-            let value_425 = number_85173a94_value(number_85173a94_bits(value_419,value_424,32,true,1),32,true);
-            result.parser.specificity = value_425;
+        let value_419 = c.source;
+        let value_420 = number_85173a94_value(start,32,true);
+        let value_421 = number_85173a94_value(c.pos,32,true);
+        let value_422 = number_85173a94_value(start,32,true);
+        let value_423 = number_85173a94_value(number_85173a94_bits(value_421,value_422,32,true,2),32,true);
+        let value_424 = kryon.hostCall($host || moduleHost, "StringSlice", [value_419, value_420, value_423]);
+        result.name = value_424;
+        let value_425 = number_85173a94_value(KssSelectorKind,32,true);
+        let value_426 = number_85173a94_value(number_85173a94_bits(value_425,0,32,true,0),32,true);
+        result.kind = value_426;
+        let value_427 = number_85173a94_bool(true);
+        result.parser.has_kind = value_427;
+        let value_428 = result.name;
+        let value_429 = "*";
+        let value_430 = number_85173a94_bool(value_428 != value_429);
+        if (value_430) {
+            let value_431 = number_85173a94_value(result.parser.specificity,32,true);
+            let value_432 = number_85173a94_value(1,32,true);
+            let value_433 = number_85173a94_value(0,32,true);
+            let value_434 = number_85173a94_value(0,32,true);
+            let value_435 = number_85173a94_value(0,32,true);
+            let value_436 = number_85173a94_value(StyleSheet_StyleSpecificity($rt, undefined, $host, value_432, value_433, value_434, value_435),32,true);
+            let value_437 = number_85173a94_value(number_85173a94_bits(value_431,value_436,32,true,1),32,true);
+            result.parser.specificity = value_437;
         }
     }
-    let value_427 = c;
-    let value_428 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_427);
-    let value_426 = value_428;
-    let value_429 = value_426;
-    let value_430 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_429);
-    result.parser.cursor = value_430;
-    let value_431 = number_85173a94_bool(true);
-    result.ok = value_431;
-    let value_433 = result;
-    let value_434 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_433);
-    let value_432 = value_434;
-    return value_432;
+    let value_439 = c;
+    let value_440 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_439);
+    let value_438 = value_440;
+    let value_441 = value_438;
+    let value_442 = ((record_source) => ({source: record_source.source, pos: record_source.pos, line: record_source.line, column: record_source.column, file: record_source.file}))(value_441);
+    result.parser.cursor = value_442;
+    let value_443 = number_85173a94_bool(true);
+    result.ok = value_443;
+    let value_445 = result;
+    let value_446 = ((record_source) => ({parser: {cursor: {source: record_source.parser.cursor.source, pos: record_source.parser.cursor.pos, line: record_source.parser.cursor.line, column: record_source.parser.cursor.column, file: record_source.parser.cursor.file}, specificity: record_source.parser.specificity, has_kind: record_source.parser.has_kind}, kind: record_source.kind, name: record_source.name, value: record_source.value, operation: record_source.operation, argument: record_source.argument, canonical: {bytes: Array.from({length: 64}, (_, index) => record_source.canonical.bytes[index]), length: record_source.canonical.length}, has_value: record_source.has_value, has_argument: record_source.has_argument, ok: record_source.ok, done: record_source.done}))(value_445);
+    let value_444 = value_446;
+    return value_444;
 }
 
 export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {

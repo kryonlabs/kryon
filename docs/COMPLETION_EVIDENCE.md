@@ -415,3 +415,43 @@ root. The fixture now uses generated Go enum names and an empty root parent;
 The production traversal code did not change during those corrections.
 Go uses gofmt; the Kry formatter ran on a review copy, with unrelated existing
 continuation-indent changes inspected and omitted. `git diff --check` passes.
+
+## Shared relative selectors and anchored `:has` matching
+
+The recorded `Column:has(> .branch .leaf)` failure is fixed. Relative arguments
+now use `KssRelativeSelectorPart`, including leading comments and an implicit
+descendant relationship. Ordinary sequence parsing rejects leading combinators.
+`KssRelativeSelectorBegin` adds the subject's stable index to chain frames;
+`KssSelectorChainStep` accepts only after the first relationship reaches that
+anchor. The web host enumerates frame candidates and supplies facts, replacing
+its separate child/descendant/following-sibling candidate-selection rules.
+This also prevents an unrelated ancestor from satisfying a relative argument.
+Node-path identity keeps copied subjects consistent with their frame nodes.
+
+The shared lexer now rejects nested `:has`, including inside other functional
+arguments, while skipping quoted values, attributes, and comments. The old
+JavaScript substring check incorrectly rejected literal `:has(` text in an
+attribute; it is removed along with the CSS-export leading-combinator regex
+and the unused descendant-discovery helper.
+
+Shared fixtures now contain 42 grammar cases and 27 traversal cases. Added
+cases cover relative prefixes/comments, ordinary-prefix rejection, quoted and
+nested `:has`, child/descendant/sibling relative chains, anchor boundaries,
+missing anchors, self/previous-node rejection, and empty relative chains.
+Web integration checks the original failure, following-sibling descendants,
+selector lists, subject copies, literal/comment text, exported selectors, and
+negative cases. Chromium coverage compares runtime traces and exported CSS
+for child-relative and sibling-relative chains on mounted nodes.
+
+Remaining KSS work includes functional-pseudo dispatch, specificity conformance,
+native/data/ARIA fact normalization, and CSS mappings. The typed native selector
+surface is not expanded by this generated traversal helper. No original plan
+document is fully closed by this change.
+
+Verification: `build/selector-relative/verify.log` ends with `RESULT 0`.
+Generation, matched C/Go/JS fixtures, `fast-test`, generated-runtime parity,
+Go runtime, C++/Go/JS syntax, strict KSS, Chromium DOM/inspector, generated
+provenance, and all five style guards pass. Go uses gofmt; the Kry formatter
+ran on a review copy, with unrelated existing continuation-indent rewrites
+inspected and omitted. Generated outputs were regenerated from maintained
+sources. `git diff --check` passes.

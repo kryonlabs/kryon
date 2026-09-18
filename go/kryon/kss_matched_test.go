@@ -404,7 +404,7 @@ func TestKssSelectorFacts(t *testing.T) {
 func TestKssSelectorGrammar(t *testing.T) {
 	host := active().(*runtime)
 	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/selector-grammar.tsv"), "\n"), "\n")
-	if len(lines) != 32 {
+	if len(lines) != 42 {
 		t.Fatal(len(lines))
 	}
 	for _, line := range lines {
@@ -434,6 +434,9 @@ func TestKssSelectorGrammar(t *testing.T) {
 				parser, last = atom.Parser, atom
 			} else {
 				part := KssParser_KssSelectorPart(cursor, fields[0] == "S")
+				if fields[0] == "R" {
+					part = KssParser_KssRelativeSelectorPart(cursor)
+				}
 				if !part.Ok {
 					break
 				}
@@ -487,12 +490,12 @@ func TestKssSelectorGrammar(t *testing.T) {
 
 func TestKssSelectorChains(t *testing.T) {
 	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/selector-chains.tsv"), "\n"), "\n")
-	if len(lines) != 17 {
+	if len(lines) != 27 {
 		t.Fatal(len(lines))
 	}
 	for _, line := range lines {
 		fields := strings.Split(line, "\t")
-		if len(fields) != 5 {
+		if len(fields) != 5 && len(fields) != 6 {
 			t.Fatal(line)
 		}
 		number := func(value string) int32 {
@@ -511,6 +514,9 @@ func TestKssSelectorChains(t *testing.T) {
 			nodes = append(nodes, [3]int32{number(values[0]), number(values[1]), number(values[2])})
 		}
 		stack := []KssSelectorChainFrame{KssParser_KssSelectorChainBegin(int32(len(fields[1])), number(fields[3]))}
+		if len(fields) == 6 {
+			stack[0] = KssParser_KssRelativeSelectorBegin(int32(len(fields[1])), number(fields[3]), number(fields[5]))
+		}
 		actual := false
 		for steps := 0; len(stack) > 0 && steps < 512; steps++ {
 			frame := stack[len(stack)-1]

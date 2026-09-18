@@ -2447,6 +2447,19 @@ it with `result.frame` and appends `result.next`; accept completes the search.
 Hosts supply acyclic tree relationships and valid node indices. The driver adds
 no fixed chain-length limit and does not expand the typed native selector API.
 
+Relative `:has(...)` selectors use `KssRelativeSelectorPart` for their leading
+relationship and `KssRelativeSelectorBegin` to anchor traversal to the subject.
+Child or sibling prefixes constrain the first part of the relative chain, not
+its final candidate: `:has(> .branch .leaf)` can match a leaf below a direct
+branch child. Unprefixed arguments imply a descendant relationship. Ordinary
+selectors reject leading combinators. Hosts enumerate frame candidates and
+provide stable node identities; the generated driver checks the full anchored
+chain. An anchored frame with `part == -1` checks anchor identity directly;
+the host does not evaluate a simple selector for that frame. Nested `:has`
+is rejected by the shared lexer, including inside `:is` or
+`:not` within a `:has` argument. Quoted attribute values and comments containing
+`:has(` remain literal content, not nested selectors.
+
 ### Style field presence and structural metrics
 
 Widgets resolve product appearance from style rules with no hidden visual base.

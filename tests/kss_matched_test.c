@@ -534,7 +534,9 @@ test_selector_grammar(void)
                 parser = atom.parser;
                 last = atom;
             } else {
-                KssSelectorSpan part = KssSelectorPart(cursor, strcmp(fields[0], "S") == 0);
+                KssSelectorSpan part = strcmp(fields[0], "R") == 0
+                    ? KssRelativeSelectorPart(cursor)
+                    : KssSelectorPart(cursor, strcmp(fields[0], "S") == 0);
                 if(!part.ok)
                     break;
                 if(part.done) {
@@ -571,7 +573,7 @@ test_selector_grammar(void)
         }
         cases++;
     }
-    assert(cases == 32);
+    assert(cases == 42);
     fclose(file);
 }
 
@@ -604,7 +606,13 @@ test_selector_chains(void)
         }
         KssSelectorChainFrame stack[64];
         int depth = 1;
-        stack[0] = KssSelectorChainBegin((int32_t)strlen(fields[1]), atoi(fields[3]));
+        char *anchor = strchr(fields[4], '\t');
+        if(anchor != NULL) {
+            *anchor++ = '\0';
+            stack[0] = KssRelativeSelectorBegin((int32_t)strlen(fields[1]), atoi(fields[3]), atoi(anchor));
+        } else {
+            stack[0] = KssSelectorChainBegin((int32_t)strlen(fields[1]), atoi(fields[3]));
+        }
         bool actual = false;
         for(int steps = 0; depth > 0 && steps < 512; steps++) {
             KssSelectorChainFrame frame = stack[depth - 1];
@@ -636,7 +644,7 @@ test_selector_chains(void)
         assert(actual == (atoi(fields[4]) != 0));
         cases++;
     }
-    assert(cases == 17);
+    assert(cases == 27);
     fclose(file);
 }
 

@@ -346,9 +346,11 @@ const (
 )
 
 type KssSelectorChainFrame struct {
-	Part    int32
-	Cursor  int32
-	Entered bool
+	Part     int32
+	Cursor   int32
+	Entered  bool
+	Anchored bool
+	Anchor   int32
 }
 
 type KssSelectorChainResult struct {
@@ -13496,7 +13498,7 @@ func KssParser_KssSelectorSpace(c KssCursor) KssExpectResult {
 	return value_35
 }
 
-func KssParser_KssSelectorPart(c KssCursor, sequence bool) KssSelectorSpan {
+func KssParser_KssSelectorPartMode(c KssCursor, sequence bool, relative bool) KssSelectorSpan {
 	var result KssSelectorSpan = KssSelectorSpan{}
 	var value_0 int32 = c.Pos
 	var initial int32 = value_0
@@ -13567,267 +13569,280 @@ func KssParser_KssSelectorPart(c KssCursor, sequence bool) KssSelectorSpan {
 			value_38 = value_41
 		}
 		if value_38 {
-			var value_42 uint8 = byte
-			var value_43 int32 = int32(number_runtime_bits(uint64(value_42), uint64(0), 32, true, 0))
-			result.Combinator = value_43
-			var value_44 KssCursor = c
-			var value_45 int32 = 1
-			var value_46 KssCursor = KssParser_KssAdvance(value_44, value_45)
-			var value_47 KssExpectResult = KssParser_KssSelectorSpace(value_46)
-			skipped = value_47
-			var value_48 KssCursor = skipped.Parser
-			c = value_48
-			var value_49 KssCursor = c
-			result.Parser = value_49
-			var value_50 bool = skipped.Ok
-			var value_51 bool = !value_50
-			var value_52 bool = value_51
-			if !value_52 {
-				var value_53 KssCursor = c
-				var value_54 bool = KssParser_KssAtEnd(value_53)
-				value_52 = value_54
+			var value_42 int32 = initial
+			var value_43 int32 = 0
+			var value_44 bool = value_42 == value_43
+			var value_45 bool = value_44
+			if value_45 {
+				var value_46 bool = relative
+				var value_47 bool = !value_46
+				value_45 = value_47
 			}
-			if value_52 {
-				var value_55 KssSelectorSpan = result
-				return value_55
+			if value_45 {
+				var value_48 KssSelectorSpan = result
+				return value_48
+			}
+			var value_49 uint8 = byte
+			var value_50 int32 = int32(number_runtime_bits(uint64(value_49), uint64(0), 32, true, 0))
+			result.Combinator = value_50
+			var value_51 KssCursor = c
+			var value_52 int32 = 1
+			var value_53 KssCursor = KssParser_KssAdvance(value_51, value_52)
+			var value_54 KssExpectResult = KssParser_KssSelectorSpace(value_53)
+			skipped = value_54
+			var value_55 KssCursor = skipped.Parser
+			c = value_55
+			var value_56 KssCursor = c
+			result.Parser = value_56
+			var value_57 bool = skipped.Ok
+			var value_58 bool = !value_57
+			var value_59 bool = value_58
+			if !value_59 {
+				var value_60 KssCursor = c
+				var value_61 bool = KssParser_KssAtEnd(value_60)
+				value_59 = value_61
+			}
+			if value_59 {
+				var value_62 KssSelectorSpan = result
+				return value_62
 			}
 		}
 	}
-	var value_56 int32 = c.Pos
-	result.Start = value_56
-	var value_57 int32 = c.Pos
-	var end int32 = value_57
+	var value_63 int32 = c.Pos
+	result.Start = value_63
+	var value_64 int32 = c.Pos
+	var end int32 = value_64
 	var stack KssSelectorStack = KssSelectorStack{}
-	var value_58 int32 = 0
-	var depth int32 = value_58
-	var value_59 uint8 = 0
-	var quote uint8 = value_59
+	var value_65 int32 = 0
+	var depth int32 = value_65
+	var value_66 uint8 = 0
+	var quote uint8 = value_66
 	for {
-		var value_60 KssCursor = c
-		var value_61 bool = KssParser_KssAtEnd(value_60)
-		var value_62 bool = !value_61
-		if !value_62 {
+		var value_67 KssCursor = c
+		var value_68 bool = KssParser_KssAtEnd(value_67)
+		var value_69 bool = !value_68
+		if !value_69 {
 			break
 		}
-		var value_63 KssCursor = c
-		var value_64 int32 = 0
-		var value_65 uint8 = KssParser_KssPeek(value_63, value_64)
-		var byte uint8 = value_65
-		var value_66 uint8 = quote
-		var value_67 uint8 = 0
-		var value_68 bool = value_66 != value_67
-		if value_68 {
-			var value_69 uint8 = byte
-			var value_70 uint8 = 92
-			var value_71 bool = value_69 == value_70
-			if value_71 {
-				var value_72 KssCursor = c
-				var value_73 int32 = 2
-				var value_74 KssCursor = KssParser_KssAdvance(value_72, value_73)
-				c = value_74
-				var value_75 int32 = c.Pos
-				end = value_75
-				continue
-			}
+		var value_70 KssCursor = c
+		var value_71 int32 = 0
+		var value_72 uint8 = KssParser_KssPeek(value_70, value_71)
+		var byte uint8 = value_72
+		var value_73 uint8 = quote
+		var value_74 uint8 = 0
+		var value_75 bool = value_73 != value_74
+		if value_75 {
 			var value_76 uint8 = byte
-			var value_77 uint8 = quote
+			var value_77 uint8 = 92
 			var value_78 bool = value_76 == value_77
 			if value_78 {
-				var value_79 uint8 = 0
-				quote = value_79
+				var value_79 KssCursor = c
+				var value_80 int32 = 2
+				var value_81 KssCursor = KssParser_KssAdvance(value_79, value_80)
+				c = value_81
+				var value_82 int32 = c.Pos
+				end = value_82
+				continue
+			}
+			var value_83 uint8 = byte
+			var value_84 uint8 = quote
+			var value_85 bool = value_83 == value_84
+			if value_85 {
+				var value_86 uint8 = 0
+				quote = value_86
 			}
 		} else {
-			var value_80 uint8 = byte
-			var value_81 uint8 = 34
-			var value_82 bool = value_80 == value_81
-			var value_83 bool = value_82
-			if !value_83 {
-				var value_84 uint8 = byte
-				var value_85 uint8 = 39
-				var value_86 bool = value_84 == value_85
-				value_83 = value_86
+			var value_87 uint8 = byte
+			var value_88 uint8 = 34
+			var value_89 bool = value_87 == value_88
+			var value_90 bool = value_89
+			if !value_90 {
+				var value_91 uint8 = byte
+				var value_92 uint8 = 39
+				var value_93 bool = value_91 == value_92
+				value_90 = value_93
 			}
-			if value_83 {
-				var value_87 uint8 = byte
-				quote = value_87
+			if value_90 {
+				var value_94 uint8 = byte
+				quote = value_94
 			} else {
-				var value_88 uint8 = byte
-				var value_89 uint8 = 47
-				var value_90 bool = value_88 == value_89
-				var value_91 bool = value_90
-				if value_91 {
-					var value_92 KssCursor = c
-					var value_93 int32 = 1
-					var value_94 uint8 = KssParser_KssPeek(value_92, value_93)
-					var value_95 uint8 = 42
-					var value_96 bool = value_94 == value_95
-					var value_97 bool = value_96
-					if !value_97 {
-						var value_98 int32 = depth
-						var value_99 int32 = 0
-						var value_100 bool = value_98 == value_99
-						var value_101 bool = value_100
-						if value_101 {
-							var value_102 KssCursor = c
-							var value_103 int32 = 1
-							var value_104 uint8 = KssParser_KssPeek(value_102, value_103)
-							var value_105 uint8 = 47
-							var value_106 bool = value_104 == value_105
-							value_101 = value_106
+				var value_95 uint8 = byte
+				var value_96 uint8 = 47
+				var value_97 bool = value_95 == value_96
+				var value_98 bool = value_97
+				if value_98 {
+					var value_99 KssCursor = c
+					var value_100 int32 = 1
+					var value_101 uint8 = KssParser_KssPeek(value_99, value_100)
+					var value_102 uint8 = 42
+					var value_103 bool = value_101 == value_102
+					var value_104 bool = value_103
+					if !value_104 {
+						var value_105 int32 = depth
+						var value_106 int32 = 0
+						var value_107 bool = value_105 == value_106
+						var value_108 bool = value_107
+						if value_108 {
+							var value_109 KssCursor = c
+							var value_110 int32 = 1
+							var value_111 uint8 = KssParser_KssPeek(value_109, value_110)
+							var value_112 uint8 = 47
+							var value_113 bool = value_111 == value_112
+							value_108 = value_113
 						}
-						value_97 = value_101
+						value_104 = value_108
 					}
-					value_91 = value_97
+					value_98 = value_104
 				}
-				if value_91 {
-					var value_107 KssCursor = c
-					var value_108 KssExpectResult = KssParser_KssSelectorComment(value_107)
-					var comment KssExpectResult = value_108
-					var value_109 KssCursor = comment.Parser
-					c = value_109
-					var value_110 bool = comment.Ok
-					var value_111 bool = !value_110
-					if value_111 {
-						var value_112 KssCursor = c
-						result.Parser = value_112
-						var value_113 KssSelectorSpan = result
-						return value_113
+				if value_98 {
+					var value_114 KssCursor = c
+					var value_115 KssExpectResult = KssParser_KssSelectorComment(value_114)
+					var comment KssExpectResult = value_115
+					var value_116 KssCursor = comment.Parser
+					c = value_116
+					var value_117 bool = comment.Ok
+					var value_118 bool = !value_117
+					if value_118 {
+						var value_119 KssCursor = c
+						result.Parser = value_119
+						var value_120 KssSelectorSpan = result
+						return value_120
 					}
 					continue
 				} else {
-					var value_114 uint8 = byte
-					var value_115 uint8 = 40
-					var value_116 bool = value_114 == value_115
-					var value_117 bool = value_116
-					if !value_117 {
-						var value_118 uint8 = byte
-						var value_119 uint8 = 91
-						var value_120 bool = value_118 == value_119
-						value_117 = value_120
+					var value_121 uint8 = byte
+					var value_122 uint8 = 40
+					var value_123 bool = value_121 == value_122
+					var value_124 bool = value_123
+					if !value_124 {
+						var value_125 uint8 = byte
+						var value_126 uint8 = 91
+						var value_127 bool = value_125 == value_126
+						value_124 = value_127
 					}
-					if value_117 {
-						var value_121 int32 = depth
-						var value_122 int32 = 64
-						var value_123 bool = value_121 >= value_122
-						if value_123 {
-							var value_124 KssCursor = c
-							result.Parser = value_124
-							var value_125 KssSelectorSpan = result
-							return value_125
-						}
-						var value_126 int32 = depth
-						var value_127 uint8 = byte
-						stack.Bytes[value_126] = value_127
+					if value_124 {
 						var value_128 int32 = depth
-						var value_129 int32 = 1
-						var value_130 int32 = int32(number_runtime_bits(uint64(value_128), uint64(value_129), 32, true, 1))
-						depth = value_130
-					} else {
-						var value_131 uint8 = byte
-						var value_132 uint8 = 41
-						var value_133 bool = value_131 == value_132
-						var value_134 bool = value_133
-						if !value_134 {
-							var value_135 uint8 = byte
-							var value_136 uint8 = 93
-							var value_137 bool = value_135 == value_136
-							value_134 = value_137
+						var value_129 int32 = 64
+						var value_130 bool = value_128 >= value_129
+						if value_130 {
+							var value_131 KssCursor = c
+							result.Parser = value_131
+							var value_132 KssSelectorSpan = result
+							return value_132
 						}
-						if value_134 {
-							var value_138 int32 = depth
-							var value_139 int32 = 0
-							var value_140 bool = value_138 == value_139
-							if value_140 {
-								var value_141 KssCursor = c
-								result.Parser = value_141
-								var value_142 KssSelectorSpan = result
-								return value_142
+						var value_133 int32 = depth
+						var value_134 uint8 = byte
+						stack.Bytes[value_133] = value_134
+						var value_135 int32 = depth
+						var value_136 int32 = 1
+						var value_137 int32 = int32(number_runtime_bits(uint64(value_135), uint64(value_136), 32, true, 1))
+						depth = value_137
+					} else {
+						var value_138 uint8 = byte
+						var value_139 uint8 = 41
+						var value_140 bool = value_138 == value_139
+						var value_141 bool = value_140
+						if !value_141 {
+							var value_142 uint8 = byte
+							var value_143 uint8 = 93
+							var value_144 bool = value_142 == value_143
+							value_141 = value_144
+						}
+						if value_141 {
+							var value_145 int32 = depth
+							var value_146 int32 = 0
+							var value_147 bool = value_145 == value_146
+							if value_147 {
+								var value_148 KssCursor = c
+								result.Parser = value_148
+								var value_149 KssSelectorSpan = result
+								return value_149
 							}
-							var value_143 int32 = depth
-							var value_144 int32 = 1
-							var value_145 int32 = int32(number_runtime_bits(uint64(value_143), uint64(value_144), 32, true, 2))
-							var value_146 uint8 = stack.Bytes[value_145]
-							var opening uint8 = value_146
-							var value_147 uint8 = byte
-							var value_148 uint8 = 41
-							var value_149 bool = value_147 == value_148
-							var value_150 bool = value_149
-							if value_150 {
-								var value_151 uint8 = opening
-								var value_152 uint8 = 40
-								var value_153 bool = value_151 != value_152
-								value_150 = value_153
+							var value_150 int32 = depth
+							var value_151 int32 = 1
+							var value_152 int32 = int32(number_runtime_bits(uint64(value_150), uint64(value_151), 32, true, 2))
+							var value_153 uint8 = stack.Bytes[value_152]
+							var opening uint8 = value_153
+							var value_154 uint8 = byte
+							var value_155 uint8 = 41
+							var value_156 bool = value_154 == value_155
+							var value_157 bool = value_156
+							if value_157 {
+								var value_158 uint8 = opening
+								var value_159 uint8 = 40
+								var value_160 bool = value_158 != value_159
+								value_157 = value_160
 							}
-							var value_154 bool = value_150
-							if !value_154 {
-								var value_155 uint8 = byte
-								var value_156 uint8 = 93
-								var value_157 bool = value_155 == value_156
-								var value_158 bool = value_157
-								if value_158 {
-									var value_159 uint8 = opening
-									var value_160 uint8 = 91
-									var value_161 bool = value_159 != value_160
-									value_158 = value_161
+							var value_161 bool = value_157
+							if !value_161 {
+								var value_162 uint8 = byte
+								var value_163 uint8 = 93
+								var value_164 bool = value_162 == value_163
+								var value_165 bool = value_164
+								if value_165 {
+									var value_166 uint8 = opening
+									var value_167 uint8 = 91
+									var value_168 bool = value_166 != value_167
+									value_165 = value_168
 								}
-								value_154 = value_158
+								value_161 = value_165
 							}
-							if value_154 {
-								var value_162 KssCursor = c
-								result.Parser = value_162
-								var value_163 KssSelectorSpan = result
-								return value_163
+							if value_161 {
+								var value_169 KssCursor = c
+								result.Parser = value_169
+								var value_170 KssSelectorSpan = result
+								return value_170
 							}
-							var value_164 int32 = depth
-							var value_165 int32 = 1
-							var value_166 int32 = int32(number_runtime_bits(uint64(value_164), uint64(value_165), 32, true, 2))
-							depth = value_166
+							var value_171 int32 = depth
+							var value_172 int32 = 1
+							var value_173 int32 = int32(number_runtime_bits(uint64(value_171), uint64(value_172), 32, true, 2))
+							depth = value_173
 						} else {
-							var value_167 int32 = depth
-							var value_168 int32 = 0
-							var value_169 bool = value_167 == value_168
-							if value_169 {
-								var value_170 bool = sequence
-								var value_171 bool = !value_170
-								var value_172 bool = value_171
-								if value_172 {
-									var value_173 uint8 = byte
-									var value_174 uint8 = 44
-									var value_175 bool = value_173 == value_174
-									value_172 = value_175
+							var value_174 int32 = depth
+							var value_175 int32 = 0
+							var value_176 bool = value_174 == value_175
+							if value_176 {
+								var value_177 bool = sequence
+								var value_178 bool = !value_177
+								var value_179 bool = value_178
+								if value_179 {
+									var value_180 uint8 = byte
+									var value_181 uint8 = 44
+									var value_182 bool = value_180 == value_181
+									value_179 = value_182
 								}
-								if value_172 {
+								if value_179 {
 									break
 								}
-								var value_176 bool = sequence
-								var value_177 bool = value_176
-								if value_177 {
-									var value_178 uint8 = byte
-									var value_179 bool = KssParser_KssIsSpace(value_178)
-									var value_180 bool = value_179
-									if !value_180 {
-										var value_181 uint8 = byte
-										var value_182 uint8 = 62
-										var value_183 bool = value_181 == value_182
-										value_180 = value_183
+								var value_183 bool = sequence
+								var value_184 bool = value_183
+								if value_184 {
+									var value_185 uint8 = byte
+									var value_186 bool = KssParser_KssIsSpace(value_185)
+									var value_187 bool = value_186
+									if !value_187 {
+										var value_188 uint8 = byte
+										var value_189 uint8 = 62
+										var value_190 bool = value_188 == value_189
+										value_187 = value_190
 									}
-									var value_184 bool = value_180
-									if !value_184 {
-										var value_185 uint8 = byte
-										var value_186 uint8 = 43
-										var value_187 bool = value_185 == value_186
-										value_184 = value_187
+									var value_191 bool = value_187
+									if !value_191 {
+										var value_192 uint8 = byte
+										var value_193 uint8 = 43
+										var value_194 bool = value_192 == value_193
+										value_191 = value_194
 									}
-									var value_188 bool = value_184
-									if !value_188 {
-										var value_189 uint8 = byte
-										var value_190 uint8 = 126
-										var value_191 bool = value_189 == value_190
-										value_188 = value_191
+									var value_195 bool = value_191
+									if !value_195 {
+										var value_196 uint8 = byte
+										var value_197 uint8 = 126
+										var value_198 bool = value_196 == value_197
+										value_195 = value_198
 									}
-									value_177 = value_188
+									value_184 = value_195
 								}
-								if value_177 {
+								if value_184 {
 									break
 								}
 							}
@@ -13836,80 +13851,123 @@ func KssParser_KssSelectorPart(c KssCursor, sequence bool) KssSelectorSpan {
 				}
 			}
 		}
-		var value_192 KssCursor = c
-		var value_193 int32 = 1
-		var value_194 KssCursor = KssParser_KssAdvance(value_192, value_193)
-		c = value_194
-		var value_195 uint8 = byte
-		var value_196 bool = KssParser_KssIsSpace(value_195)
-		var value_197 bool = !value_196
-		var value_198 bool = value_197
-		if !value_198 {
-			var value_199 int32 = depth
-			var value_200 int32 = 0
-			var value_201 bool = value_199 > value_200
-			value_198 = value_201
+		var value_199 KssCursor = c
+		var value_200 int32 = 1
+		var value_201 KssCursor = KssParser_KssAdvance(value_199, value_200)
+		c = value_201
+		var value_202 uint8 = byte
+		var value_203 bool = KssParser_KssIsSpace(value_202)
+		var value_204 bool = !value_203
+		var value_205 bool = value_204
+		if !value_205 {
+			var value_206 int32 = depth
+			var value_207 int32 = 0
+			var value_208 bool = value_206 > value_207
+			value_205 = value_208
 		}
-		var value_202 bool = value_198
-		if !value_202 {
-			var value_203 uint8 = quote
-			var value_204 uint8 = 0
-			var value_205 bool = value_203 != value_204
-			value_202 = value_205
+		var value_209 bool = value_205
+		if !value_209 {
+			var value_210 uint8 = quote
+			var value_211 uint8 = 0
+			var value_212 bool = value_210 != value_211
+			value_209 = value_212
 		}
-		if value_202 {
-			var value_206 int32 = c.Pos
-			end = value_206
+		if value_209 {
+			var value_213 int32 = c.Pos
+			end = value_213
 		}
 	}
-	var value_207 KssCursor = c
-	result.Parser = value_207
-	var value_208 int32 = depth
-	var value_209 int32 = 0
-	var value_210 bool = value_208 != value_209
-	var value_211 bool = value_210
-	if !value_211 {
-		var value_212 uint8 = quote
-		var value_213 uint8 = 0
-		var value_214 bool = value_212 != value_213
-		value_211 = value_214
+	var value_214 KssCursor = c
+	result.Parser = value_214
+	var value_215 int32 = depth
+	var value_216 int32 = 0
+	var value_217 bool = value_215 != value_216
+	var value_218 bool = value_217
+	if !value_218 {
+		var value_219 uint8 = quote
+		var value_220 uint8 = 0
+		var value_221 bool = value_219 != value_220
+		value_218 = value_221
 	}
-	var value_215 bool = value_211
-	if !value_215 {
-		var value_216 int32 = end
-		var value_217 int32 = result.Start
-		var value_218 bool = value_216 <= value_217
-		value_215 = value_218
+	var value_222 bool = value_218
+	if !value_222 {
+		var value_223 int32 = end
+		var value_224 int32 = result.Start
+		var value_225 bool = value_223 <= value_224
+		value_222 = value_225
 	}
-	if value_215 {
-		var value_219 KssSelectorSpan = result
-		return value_219
+	if value_222 {
+		var value_226 KssSelectorSpan = result
+		return value_226
 	}
-	var value_220 int32 = end
-	var value_221 int32 = result.Start
-	var value_222 int32 = int32(number_runtime_bits(uint64(value_220), uint64(value_221), 32, true, 2))
-	result.Length = value_222
-	var value_223 bool = sequence
-	var value_224 bool = !value_223
-	var value_225 bool = value_224
-	if value_225 {
-		var value_226 KssCursor = c
-		var value_227 int32 = 0
-		var value_228 uint8 = KssParser_KssPeek(value_226, value_227)
-		var value_229 uint8 = 44
-		var value_230 bool = value_228 == value_229
-		value_225 = value_230
+	var value_227 int32 = end
+	var value_228 int32 = result.Start
+	var value_229 int32 = int32(number_runtime_bits(uint64(value_227), uint64(value_228), 32, true, 2))
+	result.Length = value_229
+	var value_230 bool = sequence
+	var value_231 bool = !value_230
+	var value_232 bool = value_231
+	if value_232 {
+		var value_233 KssCursor = c
+		var value_234 int32 = 0
+		var value_235 uint8 = KssParser_KssPeek(value_233, value_234)
+		var value_236 uint8 = 44
+		var value_237 bool = value_235 == value_236
+		value_232 = value_237
 	}
-	if value_225 {
-		var value_231 KssCursor = c
-		var value_232 int32 = 1
-		var value_233 KssCursor = KssParser_KssAdvance(value_231, value_232)
-		result.Parser = value_233
+	if value_232 {
+		var value_238 KssCursor = c
+		var value_239 int32 = 1
+		var value_240 KssCursor = KssParser_KssAdvance(value_238, value_239)
+		result.Parser = value_240
 	}
-	var value_234 bool = true
-	result.Ok = value_234
-	var value_235 KssSelectorSpan = result
-	return value_235
+	var value_241 bool = true
+	result.Ok = value_241
+	var value_242 KssSelectorSpan = result
+	return value_242
+}
+
+func KssParser_KssSelectorPart(c KssCursor, sequence bool) KssSelectorSpan {
+	var value_0 KssCursor = c
+	var value_1 bool = sequence
+	var value_2 bool = false
+	var value_3 KssSelectorSpan = KssParser_KssSelectorPartMode(value_0, value_1, value_2)
+	return value_3
+}
+
+func KssParser_KssRelativeSelectorPart(c KssCursor) KssSelectorSpan {
+	var value_0 KssCursor = c
+	var value_1 bool = true
+	var value_2 bool = true
+	var value_3 KssSelectorSpan = KssParser_KssSelectorPartMode(value_0, value_1, value_2)
+	var result KssSelectorSpan = value_3
+	var value_4 int32 = c.Pos
+	var value_5 int32 = 0
+	var value_6 bool = value_4 == value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = result.Ok
+		value_7 = value_8
+	}
+	var value_9 bool = value_7
+	if value_9 {
+		var value_10 bool = result.Done
+		var value_11 bool = !value_10
+		value_9 = value_11
+	}
+	var value_12 bool = value_9
+	if value_12 {
+		var value_13 int32 = result.Combinator
+		var value_14 int32 = 0
+		var value_15 bool = value_13 == value_14
+		value_12 = value_15
+	}
+	if value_12 {
+		var value_16 int32 = 32
+		result.Combinator = value_16
+	}
+	var value_17 KssSelectorSpan = result
+	return value_17
 }
 
 func KssParser_KssSelectorGroup(c KssCursor) KssSelectorSpan {
@@ -14130,128 +14188,186 @@ func KssParser_KssSelectorChainBegin(count int32, node int32) KssSelectorChainFr
 	return value_4
 }
 
+func KssParser_KssRelativeSelectorBegin(count int32, node int32, anchor int32) KssSelectorChainFrame {
+	var value_0 int32 = count
+	var value_1 int32 = node
+	var value_2 KssSelectorChainFrame = KssParser_KssSelectorChainBegin(value_0, value_1)
+	var frame KssSelectorChainFrame = value_2
+	var value_3 int32 = count
+	var value_4 int32 = 0
+	var value_5 bool = value_3 > value_4
+	var value_6 bool = value_5
+	if value_6 {
+		var value_7 int32 = anchor
+		var value_8 int32 = 0
+		var value_9 bool = value_7 >= value_8
+		value_6 = value_9
+	}
+	frame.Anchored = value_6
+	var value_10 int32 = anchor
+	frame.Anchor = value_10
+	var value_11 bool = frame.Anchored
+	var value_12 bool = !value_11
+	if value_12 {
+		var value_13 int32 = -1
+		frame.Cursor = value_13
+	}
+	var value_14 KssSelectorChainFrame = frame
+	return value_14
+}
+
 func KssParser_KssSelectorChainStep(frame KssSelectorChainFrame, matched bool, relation int32, parent int32, previous int32) KssSelectorChainResult {
 	var result KssSelectorChainResult = KssSelectorChainResult{}
 	var value_0 KssSelectorChainFrame = frame
 	result.Frame = value_0
-	var value_1 int32 = frame.Part
+	var value_1 int32 = frame.Cursor
 	var value_2 int32 = 0
 	var value_3 bool = value_1 < value_2
-	var value_4 bool = value_3
-	if !value_4 {
-		var value_5 int32 = frame.Cursor
-		var value_6 int32 = 0
-		var value_7 bool = value_5 < value_6
-		value_4 = value_7
+	if value_3 {
+		var value_4 KssSelectorChainResult = result
+		return value_4
 	}
-	if value_4 {
-		var value_8 KssSelectorChainResult = result
-		return value_8
+	var value_5 int32 = frame.Part
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = frame.Part
+		var value_9 int32 = -1
+		var value_10 bool = value_8 == value_9
+		var value_11 bool = value_10
+		if value_11 {
+			var value_12 bool = frame.Anchored
+			value_11 = value_12
+		}
+		var value_13 bool = value_11
+		if value_13 {
+			var value_14 int32 = frame.Cursor
+			var value_15 int32 = frame.Anchor
+			var value_16 bool = value_14 == value_15
+			value_13 = value_16
+		}
+		if value_13 {
+			var value_17 int32 = KssSelectorChainActionKssSelectorAccept
+			var value_18 int32 = int32(number_runtime_bits(uint64(value_17), uint64(0), 32, true, 0))
+			result.Action = value_18
+		}
+		var value_19 KssSelectorChainResult = result
+		return value_19
 	}
-	var value_9 int32 = relation
-	var value_10 int32 = 0
-	var value_11 bool = value_9 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 int32 = relation
-		var value_14 int32 = 32
-		var value_15 bool = value_13 == value_14
-		value_12 = value_15
+	var value_20 int32 = relation
+	var value_21 int32 = 0
+	var value_22 bool = value_20 == value_21
+	var value_23 bool = value_22
+	if !value_23 {
+		var value_24 int32 = relation
+		var value_25 int32 = 32
+		var value_26 bool = value_24 == value_25
+		value_23 = value_26
 	}
-	var value_16 bool = value_12
-	if !value_16 {
-		var value_17 int32 = relation
-		var value_18 int32 = 126
-		var value_19 bool = value_17 == value_18
-		value_16 = value_19
+	var value_27 bool = value_23
+	if !value_27 {
+		var value_28 int32 = relation
+		var value_29 int32 = 126
+		var value_30 bool = value_28 == value_29
+		value_27 = value_30
 	}
-	var repeated bool = value_16
-	var value_20 bool = frame.Entered
-	if value_20 {
-		var value_21 bool = repeated
-		var value_22 bool = !value_21
-		if value_22 {
-			var value_23 KssSelectorChainResult = result
-			return value_23
+	var repeated bool = value_27
+	var value_31 bool = frame.Entered
+	if value_31 {
+		var value_32 bool = repeated
+		var value_33 bool = !value_32
+		if value_33 {
+			var value_34 KssSelectorChainResult = result
+			return value_34
 		}
 	} else {
-		var value_24 bool = matched
-		var value_25 bool = !value_24
-		if value_25 {
-			var value_26 KssSelectorChainResult = result
-			return value_26
+		var value_35 bool = matched
+		var value_36 bool = !value_35
+		if value_36 {
+			var value_37 KssSelectorChainResult = result
+			return value_37
 		}
-		var value_27 int32 = frame.Part
-		var value_28 int32 = 0
-		var value_29 bool = value_27 == value_28
-		if value_29 {
-			var value_30 int32 = KssSelectorChainActionKssSelectorAccept
-			var value_31 int32 = int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0))
-			result.Action = value_31
-			var value_32 KssSelectorChainResult = result
-			return value_32
-		}
-	}
-	var value_33 int32 = -1
-	var candidate int32 = value_33
-	var value_34 int32 = relation
-	var value_35 int32 = 0
-	var value_36 bool = value_34 == value_35
-	var value_37 bool = value_36
-	if !value_37 {
-		var value_38 int32 = relation
-		var value_39 int32 = 32
+		var value_38 int32 = frame.Part
+		var value_39 int32 = 0
 		var value_40 bool = value_38 == value_39
-		value_37 = value_40
+		var value_41 bool = value_40
+		if value_41 {
+			var value_42 bool = frame.Anchored
+			var value_43 bool = !value_42
+			value_41 = value_43
+		}
+		if value_41 {
+			var value_44 int32 = KssSelectorChainActionKssSelectorAccept
+			var value_45 int32 = int32(number_runtime_bits(uint64(value_44), uint64(0), 32, true, 0))
+			result.Action = value_45
+			var value_46 KssSelectorChainResult = result
+			return value_46
+		}
 	}
-	var value_41 bool = value_37
-	if !value_41 {
-		var value_42 int32 = relation
-		var value_43 int32 = 62
-		var value_44 bool = value_42 == value_43
-		value_41 = value_44
+	var value_47 int32 = -1
+	var candidate int32 = value_47
+	var value_48 int32 = relation
+	var value_49 int32 = 0
+	var value_50 bool = value_48 == value_49
+	var value_51 bool = value_50
+	if !value_51 {
+		var value_52 int32 = relation
+		var value_53 int32 = 32
+		var value_54 bool = value_52 == value_53
+		value_51 = value_54
 	}
-	if value_41 {
-		var value_45 int32 = parent
-		candidate = value_45
+	var value_55 bool = value_51
+	if !value_55 {
+		var value_56 int32 = relation
+		var value_57 int32 = 62
+		var value_58 bool = value_56 == value_57
+		value_55 = value_58
+	}
+	if value_55 {
+		var value_59 int32 = parent
+		candidate = value_59
 	} else {
-		var value_46 int32 = relation
-		var value_47 int32 = 43
-		var value_48 bool = value_46 == value_47
-		var value_49 bool = value_48
-		if !value_49 {
-			var value_50 int32 = relation
-			var value_51 int32 = 126
-			var value_52 bool = value_50 == value_51
-			value_49 = value_52
+		var value_60 int32 = relation
+		var value_61 int32 = 43
+		var value_62 bool = value_60 == value_61
+		var value_63 bool = value_62
+		if !value_63 {
+			var value_64 int32 = relation
+			var value_65 int32 = 126
+			var value_66 bool = value_64 == value_65
+			value_63 = value_66
 		}
-		if value_49 {
-			var value_53 int32 = previous
-			candidate = value_53
+		if value_63 {
+			var value_67 int32 = previous
+			candidate = value_67
 		}
 	}
-	var value_54 int32 = candidate
-	var value_55 int32 = 0
-	var value_56 bool = value_54 < value_55
-	if value_56 {
-		var value_57 KssSelectorChainResult = result
-		return value_57
+	var value_68 int32 = candidate
+	var value_69 int32 = 0
+	var value_70 bool = value_68 < value_69
+	if value_70 {
+		var value_71 KssSelectorChainResult = result
+		return value_71
 	}
-	var value_58 int32 = candidate
-	result.Frame.Cursor = value_58
-	var value_59 bool = true
-	result.Frame.Entered = value_59
-	var value_60 int32 = frame.Part
-	var value_61 int32 = 1
-	var value_62 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, true, 2))
-	result.Next.Part = value_62
-	var value_63 int32 = candidate
-	result.Next.Cursor = value_63
-	var value_64 int32 = KssSelectorChainActionKssSelectorPush
-	var value_65 int32 = int32(number_runtime_bits(uint64(value_64), uint64(0), 32, true, 0))
-	result.Action = value_65
-	var value_66 KssSelectorChainResult = result
-	return value_66
+	var value_72 int32 = candidate
+	result.Frame.Cursor = value_72
+	var value_73 bool = true
+	result.Frame.Entered = value_73
+	var value_74 int32 = frame.Part
+	var value_75 int32 = 1
+	var value_76 int32 = int32(number_runtime_bits(uint64(value_74), uint64(value_75), 32, true, 2))
+	result.Next.Part = value_76
+	var value_77 int32 = candidate
+	result.Next.Cursor = value_77
+	var value_78 bool = frame.Anchored
+	result.Next.Anchored = value_78
+	var value_79 int32 = frame.Anchor
+	result.Next.Anchor = value_79
+	var value_80 int32 = KssSelectorChainActionKssSelectorPush
+	var value_81 int32 = int32(number_runtime_bits(uint64(value_80), uint64(0), 32, true, 0))
+	result.Action = value_81
+	var value_82 KssSelectorChainResult = result
+	return value_82
 }
 
 func KssParser_KssSelectorGroupMatches(name string, count int32, matching int32) bool {
@@ -14813,6 +14929,165 @@ func (instance_host_0 *runtime) KssParser_KssSelectorAttributeAtom(result KssSel
 	return value_174
 }
 
+func (instance_host_0 *runtime) KssParser_KssHasArgumentAllowed(source string) bool {
+	var c KssCursor = KssCursor{}
+	var value_0 string = source
+	c.Source = value_0
+	for {
+		var value_1 KssCursor = c
+		var value_2 bool = KssParser_KssAtEnd(value_1)
+		var value_3 bool = !value_2
+		if !value_3 {
+			break
+		}
+		var value_4 KssCursor = c
+		var value_5 KssExpectResult = KssParser_KssSelectorSpace(value_4)
+		var skipped KssExpectResult = value_5
+		var value_6 KssCursor = skipped.Parser
+		c = value_6
+		var value_7 bool = skipped.Ok
+		var value_8 bool = !value_7
+		if value_8 {
+			var value_9 bool = false
+			return value_9
+		}
+		var value_10 KssCursor = c
+		var value_11 int32 = 0
+		var value_12 uint8 = KssParser_KssPeek(value_10, value_11)
+		var byte uint8 = value_12
+		var value_13 uint8 = byte
+		var value_14 uint8 = 91
+		var value_15 bool = value_13 == value_14
+		if value_15 {
+			var value_16 KssCursor = c
+			var value_17 KssSelectorSpan = KssParser_KssSelectorGroup(value_16)
+			var group KssSelectorSpan = value_17
+			var value_18 bool = group.Ok
+			var value_19 bool = !value_18
+			if value_19 {
+				var value_20 bool = false
+				return value_20
+			}
+			var value_21 KssCursor = group.Parser
+			c = value_21
+		} else {
+			var value_22 uint8 = byte
+			var value_23 uint8 = 34
+			var value_24 bool = value_22 == value_23
+			var value_25 bool = value_24
+			if !value_25 {
+				var value_26 uint8 = byte
+				var value_27 uint8 = 39
+				var value_28 bool = value_26 == value_27
+				value_25 = value_28
+			}
+			if value_25 {
+				var value_29 KssCursor = c
+				var value_30 int32 = 1
+				var value_31 KssCursor = KssParser_KssAdvance(value_29, value_30)
+				c = value_31
+				for {
+					var value_32 KssCursor = c
+					var value_33 bool = KssParser_KssAtEnd(value_32)
+					var value_34 bool = !value_33
+					var value_35 bool = value_34
+					if value_35 {
+						var value_36 KssCursor = c
+						var value_37 int32 = 0
+						var value_38 uint8 = KssParser_KssPeek(value_36, value_37)
+						var value_39 uint8 = byte
+						var value_40 bool = value_38 != value_39
+						value_35 = value_40
+					}
+					if !value_35 {
+						break
+					}
+					var value_41 KssCursor = c
+					var value_42 int32 = 0
+					var value_43 uint8 = KssParser_KssPeek(value_41, value_42)
+					var value_44 uint8 = 92
+					var value_45 bool = value_43 == value_44
+					if value_45 {
+						var value_46 KssCursor = c
+						var value_47 int32 = 2
+						var value_48 KssCursor = KssParser_KssAdvance(value_46, value_47)
+						c = value_48
+					} else {
+						var value_49 KssCursor = c
+						var value_50 int32 = 1
+						var value_51 KssCursor = KssParser_KssAdvance(value_49, value_50)
+						c = value_51
+					}
+				}
+				var value_52 KssCursor = c
+				var value_53 bool = KssParser_KssAtEnd(value_52)
+				if value_53 {
+					var value_54 bool = false
+					return value_54
+				}
+				var value_55 KssCursor = c
+				var value_56 int32 = 1
+				var value_57 KssCursor = KssParser_KssAdvance(value_55, value_56)
+				c = value_57
+			} else {
+				var value_58 uint8 = byte
+				var value_59 uint8 = 58
+				var value_60 bool = value_58 == value_59
+				if value_60 {
+					var value_61 KssCursor = c
+					var value_62 int32 = 1
+					var value_63 KssCursor = KssParser_KssAdvance(value_61, value_62)
+					c = value_63
+					var value_64 int32 = c.Pos
+					var start int32 = value_64
+					var value_65 KssCursor = c
+					var value_66 KssNameResult = KssParser_KssReadSelectorName(value_65)
+					var name KssNameResult = value_66
+					var value_67 bool = name.Ok
+					var value_68 bool = !value_67
+					if value_68 {
+						var value_69 bool = false
+						return value_69
+					}
+					var value_70 KssCursor = name.Parser
+					c = value_70
+					var value_71 string = source
+					var value_72 int32 = start
+					var value_73 int32 = c.Pos
+					var value_74 int32 = start
+					var value_75 int32 = int32(number_runtime_bits(uint64(value_73), uint64(value_74), 32, true, 2))
+					var value_76 string = instance_host_0.StringSlice(value_71, value_72, value_75)
+					var value_77 KssName = KssParser_KssPseudoName(value_76)
+					var canonical KssName = value_77
+					var value_78 KssName = canonical
+					var value_79 string = "has"
+					var value_80 bool = KssParser_KssNameEquals(value_78, value_79)
+					var value_81 bool = value_80
+					if value_81 {
+						var value_82 KssCursor = c
+						var value_83 int32 = 0
+						var value_84 uint8 = KssParser_KssPeek(value_82, value_83)
+						var value_85 uint8 = 40
+						var value_86 bool = value_84 == value_85
+						value_81 = value_86
+					}
+					if value_81 {
+						var value_87 bool = false
+						return value_87
+					}
+				} else {
+					var value_88 KssCursor = c
+					var value_89 int32 = 1
+					var value_90 KssCursor = KssParser_KssAdvance(value_88, value_89)
+					c = value_90
+				}
+			}
+		}
+	}
+	var value_91 bool = true
+	return value_91
+}
+
 func (instance_host_0 *runtime) KssParser_KssSelectorNext(parser KssSelectorCursor) KssSelectorAtom {
 	var result KssSelectorAtom = KssSelectorAtom{}
 	var value_0 KssSelectorCursor = parser
@@ -15057,218 +15332,232 @@ func (instance_host_0 *runtime) KssParser_KssSelectorNext(parser KssSelectorCurs
 						}
 					}
 					var value_153 KssName = result.Canonical
-					var value_154 string = "not"
+					var value_154 string = "has"
 					var value_155 bool = KssParser_KssNameEquals(value_153, value_154)
-					if value_155 {
-						var value_156 int32 = KssSelectorAtomKindKssSelectorNot
-						var value_157 int32 = int32(number_runtime_bits(uint64(value_156), uint64(0), 32, true, 0))
-						result.Kind = value_157
+					var value_156 bool = value_155
+					if value_156 {
+						var value_157 string = result.Argument
+						var value_158 bool = instance_host_0.KssParser_KssHasArgumentAllowed(value_157)
+						var value_159 bool = !value_158
+						value_156 = value_159
+					}
+					if value_156 {
+						var value_160 KssSelectorAtom = result
+						return value_160
+					}
+					var value_161 KssName = result.Canonical
+					var value_162 string = "not"
+					var value_163 bool = KssParser_KssNameEquals(value_161, value_162)
+					if value_163 {
+						var value_164 int32 = KssSelectorAtomKindKssSelectorNot
+						var value_165 int32 = int32(number_runtime_bits(uint64(value_164), uint64(0), 32, true, 0))
+						result.Kind = value_165
 					} else {
-						var value_158 KssName = result.Canonical
-						var value_159 string = "is"
-						var value_160 bool = KssParser_KssNameEquals(value_158, value_159)
-						var value_161 bool = value_160
-						if !value_161 {
-							var value_162 KssName = result.Canonical
-							var value_163 string = "where"
-							var value_164 bool = KssParser_KssNameEquals(value_162, value_163)
-							value_161 = value_164
+						var value_166 KssName = result.Canonical
+						var value_167 string = "is"
+						var value_168 bool = KssParser_KssNameEquals(value_166, value_167)
+						var value_169 bool = value_168
+						if !value_169 {
+							var value_170 KssName = result.Canonical
+							var value_171 string = "where"
+							var value_172 bool = KssParser_KssNameEquals(value_170, value_171)
+							value_169 = value_172
 						}
-						if value_161 {
-							var value_165 int32 = KssSelectorAtomKindKssSelectorMatches
-							var value_166 int32 = int32(number_runtime_bits(uint64(value_165), uint64(0), 32, true, 0))
-							result.Kind = value_166
+						if value_169 {
+							var value_173 int32 = KssSelectorAtomKindKssSelectorMatches
+							var value_174 int32 = int32(number_runtime_bits(uint64(value_173), uint64(0), 32, true, 0))
+							result.Kind = value_174
 						}
 					}
 				} else {
-					var value_167 KssName = result.Canonical
-					var value_168 KssName = KssParser_KssPseudoState(value_167)
-					var state KssName = value_168
-					var value_169 int32 = state.Length
-					var value_170 int32 = 0
-					var value_171 bool = value_169 > value_170
-					if value_171 {
-						var value_172 int32 = KssSelectorAtomKindKssSelectorState
-						var value_173 int32 = int32(number_runtime_bits(uint64(value_172), uint64(0), 32, true, 0))
-						result.Kind = value_173
-						var value_174 KssName = state
-						result.Canonical = value_174
+					var value_175 KssName = result.Canonical
+					var value_176 KssName = KssParser_KssPseudoState(value_175)
+					var state KssName = value_176
+					var value_177 int32 = state.Length
+					var value_178 int32 = 0
+					var value_179 bool = value_177 > value_178
+					if value_179 {
+						var value_180 int32 = KssSelectorAtomKindKssSelectorState
+						var value_181 int32 = int32(number_runtime_bits(uint64(value_180), uint64(0), 32, true, 0))
+						result.Kind = value_181
+						var value_182 KssName = state
+						result.Canonical = value_182
 					}
 				}
 			}
 		}
 	} else {
-		var value_175 bool = parser.HasKind
-		var value_176 bool = value_175
-		if !value_176 {
-			var value_177 uint8 = byte
-			var value_178 bool = KssParser_KssIdentStart(value_177)
-			var value_179 bool = !value_178
-			var value_180 bool = value_179
-			if value_180 {
-				var value_181 uint8 = byte
-				var value_182 uint8 = 42
-				var value_183 bool = value_181 != value_182
-				value_180 = value_183
+		var value_183 bool = parser.HasKind
+		var value_184 bool = value_183
+		if !value_184 {
+			var value_185 uint8 = byte
+			var value_186 bool = KssParser_KssIdentStart(value_185)
+			var value_187 bool = !value_186
+			var value_188 bool = value_187
+			if value_188 {
+				var value_189 uint8 = byte
+				var value_190 uint8 = 42
+				var value_191 bool = value_189 != value_190
+				value_188 = value_191
 			}
-			value_176 = value_180
+			value_184 = value_188
 		}
-		if value_176 {
-			var value_184 KssSelectorAtom = result
-			return value_184
+		if value_184 {
+			var value_192 KssSelectorAtom = result
+			return value_192
 		}
 		for {
-			var value_185 KssCursor = c
-			var value_186 bool = KssParser_KssAtEnd(value_185)
-			var value_187 bool = !value_186
-			if !value_187 {
+			var value_193 KssCursor = c
+			var value_194 bool = KssParser_KssAtEnd(value_193)
+			var value_195 bool = !value_194
+			if !value_195 {
 				break
 			}
-			var value_188 KssCursor = c
-			var value_189 int32 = 0
-			var value_190 uint8 = KssParser_KssPeek(value_188, value_189)
-			byte = value_190
-			var value_191 uint8 = byte
-			var value_192 bool = KssParser_KssIsSpace(value_191)
-			var value_193 bool = value_192
-			if !value_193 {
-				var value_194 uint8 = byte
-				var value_195 uint8 = 46
-				var value_196 bool = value_194 == value_195
-				value_193 = value_196
-			}
-			var value_197 bool = value_193
-			if !value_197 {
-				var value_198 uint8 = byte
-				var value_199 uint8 = 35
-				var value_200 bool = value_198 == value_199
-				value_197 = value_200
-			}
-			var value_201 bool = value_197
+			var value_196 KssCursor = c
+			var value_197 int32 = 0
+			var value_198 uint8 = KssParser_KssPeek(value_196, value_197)
+			byte = value_198
+			var value_199 uint8 = byte
+			var value_200 bool = KssParser_KssIsSpace(value_199)
+			var value_201 bool = value_200
 			if !value_201 {
 				var value_202 uint8 = byte
-				var value_203 uint8 = 91
+				var value_203 uint8 = 46
 				var value_204 bool = value_202 == value_203
 				value_201 = value_204
 			}
 			var value_205 bool = value_201
 			if !value_205 {
 				var value_206 uint8 = byte
-				var value_207 uint8 = 58
+				var value_207 uint8 = 35
 				var value_208 bool = value_206 == value_207
 				value_205 = value_208
 			}
-			if value_205 {
+			var value_209 bool = value_205
+			if !value_209 {
+				var value_210 uint8 = byte
+				var value_211 uint8 = 91
+				var value_212 bool = value_210 == value_211
+				value_209 = value_212
+			}
+			var value_213 bool = value_209
+			if !value_213 {
+				var value_214 uint8 = byte
+				var value_215 uint8 = 58
+				var value_216 bool = value_214 == value_215
+				value_213 = value_216
+			}
+			if value_213 {
 				break
 			}
-			var value_209 uint8 = byte
-			var value_210 uint8 = 47
-			var value_211 bool = value_209 == value_210
-			var value_212 bool = value_211
-			if value_212 {
-				var value_213 KssCursor = c
-				var value_214 int32 = 1
-				var value_215 uint8 = KssParser_KssPeek(value_213, value_214)
-				var value_216 uint8 = 42
-				var value_217 bool = value_215 == value_216
-				var value_218 bool = value_217
-				if !value_218 {
-					var value_219 KssCursor = c
-					var value_220 int32 = 1
-					var value_221 uint8 = KssParser_KssPeek(value_219, value_220)
-					var value_222 uint8 = 47
-					var value_223 bool = value_221 == value_222
-					value_218 = value_223
+			var value_217 uint8 = byte
+			var value_218 uint8 = 47
+			var value_219 bool = value_217 == value_218
+			var value_220 bool = value_219
+			if value_220 {
+				var value_221 KssCursor = c
+				var value_222 int32 = 1
+				var value_223 uint8 = KssParser_KssPeek(value_221, value_222)
+				var value_224 uint8 = 42
+				var value_225 bool = value_223 == value_224
+				var value_226 bool = value_225
+				if !value_226 {
+					var value_227 KssCursor = c
+					var value_228 int32 = 1
+					var value_229 uint8 = KssParser_KssPeek(value_227, value_228)
+					var value_230 uint8 = 47
+					var value_231 bool = value_229 == value_230
+					value_226 = value_231
 				}
-				value_212 = value_218
+				value_220 = value_226
 			}
-			if value_212 {
+			if value_220 {
 				break
 			}
-			var value_224 uint8 = byte
-			var value_225 uint8 = 44
-			var value_226 bool = value_224 == value_225
-			var value_227 bool = value_226
-			if !value_227 {
-				var value_228 uint8 = byte
-				var value_229 uint8 = 40
-				var value_230 bool = value_228 == value_229
-				value_227 = value_230
-			}
-			var value_231 bool = value_227
-			if !value_231 {
-				var value_232 uint8 = byte
-				var value_233 uint8 = 41
-				var value_234 bool = value_232 == value_233
-				value_231 = value_234
-			}
-			var value_235 bool = value_231
+			var value_232 uint8 = byte
+			var value_233 uint8 = 44
+			var value_234 bool = value_232 == value_233
+			var value_235 bool = value_234
 			if !value_235 {
 				var value_236 uint8 = byte
-				var value_237 uint8 = 93
+				var value_237 uint8 = 40
 				var value_238 bool = value_236 == value_237
 				value_235 = value_238
 			}
 			var value_239 bool = value_235
 			if !value_239 {
 				var value_240 uint8 = byte
-				var value_241 uint8 = 62
+				var value_241 uint8 = 41
 				var value_242 bool = value_240 == value_241
 				value_239 = value_242
 			}
 			var value_243 bool = value_239
 			if !value_243 {
 				var value_244 uint8 = byte
-				var value_245 uint8 = 43
+				var value_245 uint8 = 93
 				var value_246 bool = value_244 == value_245
 				value_243 = value_246
 			}
 			var value_247 bool = value_243
 			if !value_247 {
 				var value_248 uint8 = byte
-				var value_249 uint8 = 126
+				var value_249 uint8 = 62
 				var value_250 bool = value_248 == value_249
 				value_247 = value_250
 			}
-			if value_247 {
-				var value_251 KssSelectorAtom = result
-				return value_251
+			var value_251 bool = value_247
+			if !value_251 {
+				var value_252 uint8 = byte
+				var value_253 uint8 = 43
+				var value_254 bool = value_252 == value_253
+				value_251 = value_254
 			}
-			var value_252 KssCursor = c
-			var value_253 int32 = 1
-			var value_254 KssCursor = KssParser_KssAdvance(value_252, value_253)
-			c = value_254
+			var value_255 bool = value_251
+			if !value_255 {
+				var value_256 uint8 = byte
+				var value_257 uint8 = 126
+				var value_258 bool = value_256 == value_257
+				value_255 = value_258
+			}
+			if value_255 {
+				var value_259 KssSelectorAtom = result
+				return value_259
+			}
+			var value_260 KssCursor = c
+			var value_261 int32 = 1
+			var value_262 KssCursor = KssParser_KssAdvance(value_260, value_261)
+			c = value_262
 		}
-		var value_255 string = c.Source
-		var value_256 int32 = start
-		var value_257 int32 = c.Pos
-		var value_258 int32 = start
-		var value_259 int32 = int32(number_runtime_bits(uint64(value_257), uint64(value_258), 32, true, 2))
-		var value_260 string = instance_host_0.StringSlice(value_255, value_256, value_259)
-		result.Name = value_260
-		var value_261 int32 = KssSelectorAtomKindKssSelectorKind
-		var value_262 int32 = int32(number_runtime_bits(uint64(value_261), uint64(0), 32, true, 0))
-		result.Kind = value_262
-		var value_263 bool = true
-		result.Parser.HasKind = value_263
-		var value_264 string = result.Name
-		var value_265 string = "*"
-		var value_266 bool = value_264 != value_265
-		if value_266 {
-			var value_267 int32 = result.Parser.Specificity
-			var value_268 int32 = 1
-			var value_269 int32 = 0
-			var value_270 int32 = 0
-			var value_271 int32 = 0
-			var value_272 int32 = StyleSheet_StyleSpecificity(value_268, value_269, value_270, value_271)
-			var value_273 int32 = int32(number_runtime_bits(uint64(value_267), uint64(value_272), 32, true, 1))
-			result.Parser.Specificity = value_273
+		var value_263 string = c.Source
+		var value_264 int32 = start
+		var value_265 int32 = c.Pos
+		var value_266 int32 = start
+		var value_267 int32 = int32(number_runtime_bits(uint64(value_265), uint64(value_266), 32, true, 2))
+		var value_268 string = instance_host_0.StringSlice(value_263, value_264, value_267)
+		result.Name = value_268
+		var value_269 int32 = KssSelectorAtomKindKssSelectorKind
+		var value_270 int32 = int32(number_runtime_bits(uint64(value_269), uint64(0), 32, true, 0))
+		result.Kind = value_270
+		var value_271 bool = true
+		result.Parser.HasKind = value_271
+		var value_272 string = result.Name
+		var value_273 string = "*"
+		var value_274 bool = value_272 != value_273
+		if value_274 {
+			var value_275 int32 = result.Parser.Specificity
+			var value_276 int32 = 1
+			var value_277 int32 = 0
+			var value_278 int32 = 0
+			var value_279 int32 = 0
+			var value_280 int32 = StyleSheet_StyleSpecificity(value_276, value_277, value_278, value_279)
+			var value_281 int32 = int32(number_runtime_bits(uint64(value_275), uint64(value_280), 32, true, 1))
+			result.Parser.Specificity = value_281
 		}
 	}
-	var value_274 KssCursor = c
-	result.Parser.Cursor = value_274
-	var value_275 bool = true
-	result.Ok = value_275
-	var value_276 KssSelectorAtom = result
-	return value_276
+	var value_282 KssCursor = c
+	result.Parser.Cursor = value_282
+	var value_283 bool = true
+	result.Ok = value_283
+	var value_284 KssSelectorAtom = result
+	return value_284
 }
