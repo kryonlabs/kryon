@@ -2,6 +2,7 @@ package kryon
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -33,9 +34,7 @@ func kssCollectFixture(t *testing.T, source, module, variant string) kssCollecte
 		t.Fatal("no concrete runtime host")
 	}
 	env := KssParser_KssDefaultEnvironment()
-	env.Theme = KssThemeDark
-	env.Contrast = KssContrastHigh
-	env.Density = KssDensityComfortable
+	env = KssParser_KssEnvironmentWithNames(env, "dark", "high", "comfortable", "mouse", "desktop", variant)
 	parser := KssParser_KssBegin(source, "matched.kss", env)
 	if variant != "" {
 		parser = KssParser_KssSetVariant(parser, KssParser_KssMakeName(variant))
@@ -190,6 +189,36 @@ func TestKssInvalidInputSweep(t *testing.T) {
 				mutated[index] = byte(seed >> 16)
 			}
 			_, _, _ = ParseStyleSheet(string(mutated))
+		}
+	}
+}
+
+func TestKssEnvironmentNames(t *testing.T) {
+	source := kssFixtureText(t, "../../tests/fixtures/kss/environments.txt")
+	cases := strings.Split(strings.TrimSpace(source), "\n")
+	if len(cases) != 7 {
+		t.Fatal("missing environment cases")
+	}
+	for _, line := range cases {
+		fields := strings.Fields(line)
+		if len(fields) != 11 {
+			t.Fatalf("invalid case %q", line)
+		}
+		for i := 0; i < 6; i++ {
+			if fields[i] == "-" {
+				fields[i] = ""
+			}
+		}
+		env := KssParser_KssEnvironmentWithNames(KssParser_KssDefaultEnvironment(),
+			fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])
+		for i, value := range []int32{env.Theme, env.Contrast, env.Density, env.Pointer, env.Platform} {
+			expected, err := strconv.Atoi(fields[i+6])
+			if err != nil || value != int32(expected) {
+				t.Fatalf("case %q axis %d = %d", line, i, value)
+			}
+		}
+		if kssNameText(env.Variant) != fields[5] {
+			t.Fatalf("variant for %q", line)
 		}
 	}
 }

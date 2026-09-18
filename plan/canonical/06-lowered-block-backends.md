@@ -3,12 +3,14 @@
 Public Scroll/Popup/Disabled/TableCell/Canvas names are canonical and native/Go
 scope helpers are private. Native and Go have substantial executable coverage.
 
-Confirmed web gaps from the 2026-09-14 audit:
+Web gaps reconciled against source and parity output on 2026-09-18:
 
-- `tests/generated_runtime_parity_test.sh` generates scroll_content, drag_drop,
-  composition and composed_popup but its JS runner does not execute them.
-- The web input test driver lacks pointer down/move/up, wheel and composition
-  events, so drag/release and IME parity cannot currently be claimed.
+- `tests/generated_runtime_parity_test.sh` generates menus, scroll_content,
+  drag_drop, and composed_popup but its JS runner does not execute them.
+  Composition executes partially in JS; the report correctly marks it partial.
+- The web input test driver lacks pointer down/move/up and wheel events.
+  `SubmitTextComposition` exists, but the remaining layout/pointer scenarios
+  still prevent a full IME parity claim.
 - `k2js` can emit `kryon.expr(...)` for unresolved expressions in composed popup
   fixtures. `web/kryon-runtime.js:expr` returns an object, not an evaluated
   condition; a truthy object is not valid activation behavior.

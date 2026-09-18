@@ -1695,6 +1695,7 @@ include/ui_style_sheet.h function GetActiveStylePackId
 include/ui_style_sheet.h function GetStylePackAt
 include/ui_style_sheet.h function GetStylePackCount
 include/ui_style_sheet.h function GetStylePackOptions
+include/ui_style_sheet.h function ReapplyBuiltInStyleTheme
 include/ui_style_sheet.h function RegisterBuiltInStylePacks
 include/ui_style_sheet.h function RegisterStylePack
 include/ui_style_sheet.h function RegisterStylePackSource
@@ -1702,6 +1703,7 @@ include/ui_style_sheet.h function RegisterStylePackVariant
 include/ui_style_sheet.h function ResolveActiveStyle
 include/ui_style_sheet.h function ResolveStyle
 include/ui_style_sheet.h function SetActiveStylePack
+include/ui_style_sheet.h function SetStyleTheme
 include/ui_style_sheet.h function StyleClassId
 include/ui_style_sheet.h function StylePackVersion
 include/ui_style_sheet.h function StylePicker

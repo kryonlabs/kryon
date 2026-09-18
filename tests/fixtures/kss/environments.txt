@@ -1,0 +1,7 @@
+- - - - - - 0 0 0 0 0
+light normal comfortable mouse desktop - 1 0 0 0 0
+dark high compact touch android glow 2 1 1 1 1
+LIGHT HIGH touch mixed web glow 1 1 2 2 2
+dark normal comfortable mouse plan9 - 2 0 0 0 3
+light normal compact mixed terminal - 1 0 1 2 4
+unknown unknown unknown unknown unknown - 0 0 0 0 0

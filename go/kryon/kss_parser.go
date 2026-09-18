@@ -273,6 +273,141 @@ func KssParser_KssDefaultEnvironment() KssEnvironment {
 	return value_10
 }
 
+func KssParser_KssEnvironmentWithNames(env KssEnvironment, theme string, contrast string, density string, pointer string, platform string, variant string) KssEnvironment {
+	var value_0 int32 = KssThemeNone
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
+	env.Theme = value_1
+	var value_2 string = theme
+	var value_3 KssName = KssParser_KssMakeName(value_2)
+	var value_4 string = "light"
+	var value_5 bool = KssParser_KssNameEquals(value_3, value_4)
+	if value_5 {
+		var value_6 int32 = KssThemeLight
+		var value_7 int32 = int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0))
+		env.Theme = value_7
+	} else {
+		var value_8 string = theme
+		var value_9 KssName = KssParser_KssMakeName(value_8)
+		var value_10 string = "dark"
+		var value_11 bool = KssParser_KssNameEquals(value_9, value_10)
+		if value_11 {
+			var value_12 int32 = KssThemeDark
+			var value_13 int32 = int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0))
+			env.Theme = value_13
+		}
+	}
+	var value_14 int32 = KssContrastNormal
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_14), uint64(0), 32, true, 0))
+	env.Contrast = value_15
+	var value_16 string = contrast
+	var value_17 KssName = KssParser_KssMakeName(value_16)
+	var value_18 string = "high"
+	var value_19 bool = KssParser_KssNameEquals(value_17, value_18)
+	if value_19 {
+		var value_20 int32 = KssContrastHigh
+		var value_21 int32 = int32(number_runtime_bits(uint64(value_20), uint64(0), 32, true, 0))
+		env.Contrast = value_21
+	}
+	var value_22 int32 = KssDensityComfortable
+	var value_23 int32 = int32(number_runtime_bits(uint64(value_22), uint64(0), 32, true, 0))
+	env.Density = value_23
+	var value_24 string = density
+	var value_25 KssName = KssParser_KssMakeName(value_24)
+	var value_26 string = "compact"
+	var value_27 bool = KssParser_KssNameEquals(value_25, value_26)
+	if value_27 {
+		var value_28 int32 = KssDensityCompact
+		var value_29 int32 = int32(number_runtime_bits(uint64(value_28), uint64(0), 32, true, 0))
+		env.Density = value_29
+	} else {
+		var value_30 string = density
+		var value_31 KssName = KssParser_KssMakeName(value_30)
+		var value_32 string = "touch"
+		var value_33 bool = KssParser_KssNameEquals(value_31, value_32)
+		if value_33 {
+			var value_34 int32 = KssDensityTouch
+			var value_35 int32 = int32(number_runtime_bits(uint64(value_34), uint64(0), 32, true, 0))
+			env.Density = value_35
+		}
+	}
+	var value_36 int32 = KssPointerMouse
+	var value_37 int32 = int32(number_runtime_bits(uint64(value_36), uint64(0), 32, true, 0))
+	env.Pointer = value_37
+	var value_38 string = pointer
+	var value_39 KssName = KssParser_KssMakeName(value_38)
+	var value_40 string = "touch"
+	var value_41 bool = KssParser_KssNameEquals(value_39, value_40)
+	if value_41 {
+		var value_42 int32 = KssPointerTouch
+		var value_43 int32 = int32(number_runtime_bits(uint64(value_42), uint64(0), 32, true, 0))
+		env.Pointer = value_43
+	} else {
+		var value_44 string = pointer
+		var value_45 KssName = KssParser_KssMakeName(value_44)
+		var value_46 string = "mixed"
+		var value_47 bool = KssParser_KssNameEquals(value_45, value_46)
+		if value_47 {
+			var value_48 int32 = KssPointerMixed
+			var value_49 int32 = int32(number_runtime_bits(uint64(value_48), uint64(0), 32, true, 0))
+			env.Pointer = value_49
+		}
+	}
+	var value_50 string = platform
+	var value_51 KssName = KssParser_KssMakeName(value_50)
+	var value_52 string = "desktop"
+	var value_53 bool = KssParser_KssNameEquals(value_51, value_52)
+	if value_53 {
+		var value_54 int32 = KssPlatformDesktop
+		var value_55 int32 = int32(number_runtime_bits(uint64(value_54), uint64(0), 32, true, 0))
+		env.Platform = value_55
+	} else {
+		var value_56 string = platform
+		var value_57 KssName = KssParser_KssMakeName(value_56)
+		var value_58 string = "android"
+		var value_59 bool = KssParser_KssNameEquals(value_57, value_58)
+		if value_59 {
+			var value_60 int32 = KssPlatformAndroid
+			var value_61 int32 = int32(number_runtime_bits(uint64(value_60), uint64(0), 32, true, 0))
+			env.Platform = value_61
+		} else {
+			var value_62 string = platform
+			var value_63 KssName = KssParser_KssMakeName(value_62)
+			var value_64 string = "web"
+			var value_65 bool = KssParser_KssNameEquals(value_63, value_64)
+			if value_65 {
+				var value_66 int32 = KssPlatformWeb
+				var value_67 int32 = int32(number_runtime_bits(uint64(value_66), uint64(0), 32, true, 0))
+				env.Platform = value_67
+			} else {
+				var value_68 string = platform
+				var value_69 KssName = KssParser_KssMakeName(value_68)
+				var value_70 string = "plan9"
+				var value_71 bool = KssParser_KssNameEquals(value_69, value_70)
+				if value_71 {
+					var value_72 int32 = KssPlatformPlan9
+					var value_73 int32 = int32(number_runtime_bits(uint64(value_72), uint64(0), 32, true, 0))
+					env.Platform = value_73
+				} else {
+					var value_74 string = platform
+					var value_75 KssName = KssParser_KssMakeName(value_74)
+					var value_76 string = "terminal"
+					var value_77 bool = KssParser_KssNameEquals(value_75, value_76)
+					if value_77 {
+						var value_78 int32 = KssPlatformTerminal
+						var value_79 int32 = int32(number_runtime_bits(uint64(value_78), uint64(0), 32, true, 0))
+						env.Platform = value_79
+					}
+				}
+			}
+		}
+	}
+	var value_80 string = variant
+	var value_81 KssName = KssParser_KssMakeName(value_80)
+	env.Variant = value_81
+	var value_82 KssEnvironment = env
+	return value_82
+}
+
 func KssParser_KssBegin(source string, path string, env KssEnvironment) KssParser {
 	var p KssParser = KssParser{}
 	var value_0 string = source
@@ -6603,6 +6738,13 @@ func KssParser_KssRecordBlock(p KssParser, kind int32, start int32, end_pos int3
 func KssParser_KssSetVariant(p KssParser, name KssName) KssParser {
 	var value_0 KssName = name
 	p.Env.Variant = value_0
+	var value_1 KssParser = p
+	return value_1
+}
+
+func KssParser_KssSetTheme(p KssParser, theme int32) KssParser {
+	var value_0 int32 = theme
+	p.Env.Theme = value_0
 	var value_1 KssParser = p
 	return value_1
 }

@@ -893,6 +893,40 @@ try {
   lifecycleTarget.addEventListener("kry-render", (event) => {
     renderCounts.push(event.detail?.objects?.length || 0);
   });
+  // Authored text and native children coexist through repeated updates.
+  const textTarget = document.createElement("div");
+  document.body.appendChild(textTarget);
+  const textRt = kryon.createRuntime();
+  const drawTextParent = (text, child = true) => {
+    kryon.beginFrame(textRt);
+    kryon.widget(textRt, "Ruby", {text}, null, {path: "Text/ruby"});
+    if (child) {
+      kryon.widget(textRt, "RubyText", {text: "kan"}, null,
+        {path: "Text/ruby/reading", parentPath: "Text/ruby"});
+    }
+    kryon.endFrame(textRt);
+    kryon.renderWebDocument(textRt, textTarget);
+    return kryon.findWebElement(textTarget, "Text/ruby");
+  };
+  const ruby = drawTextParent("漢");
+  const reading = ruby.querySelector("rt");
+  assert(ruby.textContent === "漢kan", "parent text lost beside native child");
+  assert(ruby.firstChild.nodeType === Node.TEXT_NODE, "parent text must precede children");
+  drawTextParent("字");
+  assert(ruby.textContent === "字kan" && ruby.querySelector("rt") === reading,
+    "parent text update replaced a mounted child");
+  drawTextParent("");
+  assert(ruby.textContent === "kan" && ruby.firstChild === reading,
+    "clearing parent text removed its child");
+  drawTextParent("語");
+  assert(ruby.textContent === "語kan" && ruby.querySelector("rt") === reading,
+    "restoring parent text replaced its child");
+  drawTextParent("単", false);
+  assert(ruby.textContent === "単" && ruby.children.length === 0,
+    "removing children lost parent text");
+  drawTextParent("漢");
+  assert(ruby.textContent === "漢kan", "adding children duplicated parent text");
+
   const lifecycleRt = kryon.createRuntime();
   kryon.beginFrame(lifecycleRt);
   kryon.widget(lifecycleRt, "Screen", {}, null, { nodeName: "root", path: "Life/root" });

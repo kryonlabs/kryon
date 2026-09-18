@@ -6,6 +6,22 @@ assert.ok(runtimePath, "usage: node tests/web_kss_strict_test.mjs web/kryon-runt
 
 const runtime = await import(pathToFileURL(runtimePath).href);
 
+// All generated parsers consume the same named environment contract.
+const { readFileSync: readEnvironmentFixture } = await import("node:fs");
+const kss = await import(new URL("./kss_parser.js", pathToFileURL(runtimePath)));
+const environmentCases = readEnvironmentFixture(new URL("./fixtures/kss/environments.txt", import.meta.url), "utf8").trim().split("\n");
+assert.equal(environmentCases.length, 7);
+for (const line of environmentCases) {
+  const fields = line.split(/\s+/);
+  assert.equal(fields.length, 11);
+  const names = fields.slice(0, 6).map(value => value === "-" ? "" : value);
+  const environment = kss.KssParser_KssEnvironmentWithNames(null, null, null,
+    kss.KssParser_KssDefaultEnvironment(null, null, null), ...names);
+  assert.deepEqual([environment.theme, environment.contrast, environment.density,
+    environment.pointer, environment.platform], fields.slice(6).map(Number), line);
+  assert.equal(String.fromCharCode(...environment.variant.bytes.slice(0, environment.variant.length)), names[5]);
+}
+
 // Theme overlays, environment blocks, and imports all flow through the
 // generated runtime/kss_parser.kry module; this layer only maps to CSS.
 

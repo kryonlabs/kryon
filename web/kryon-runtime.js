@@ -3463,32 +3463,12 @@ export function defaultWebStyleEnvironment() {
 
 function webKssEnvironment(environment) {
   const env = { ...defaultWebStyleEnvironment(), ...(environment || {}) };
-  const theme = env.theme === "light" ? webKssModule.KssThemeLight :
-    env.theme === "dark" ? webKssModule.KssThemeDark : webKssModule.KssThemeNone;
-  const contrast = env.contrast === "high" ?
-    webKssModule.KssContrastHigh : webKssModule.KssContrastNormal;
-  const density = env.density === "compact" ? webKssModule.KssDensityCompact :
-    env.density === "touch" ? webKssModule.KssDensityTouch :
-      webKssModule.KssDensityComfortable;
-  const pointer = env.pointer === "touch" ? webKssModule.KssPointerTouch :
-    env.pointer === "mixed" ? webKssModule.KssPointerMixed :
-      webKssModule.KssPointerMouse;
-  const platform = env.platform === "android" ? webKssModule.KssPlatformAndroid :
-    env.platform === "plan9" ? webKssModule.KssPlatformPlan9 :
-      env.platform === "terminal" ? webKssModule.KssPlatformTerminal :
-        env.platform === "desktop" ? webKssModule.KssPlatformDesktop :
-          webKssModule.KssPlatformWeb;
-  const variant = webKssNameFromText(env.variant);
-  return { theme, contrast, density, pointer, platform, variant };
-}
-
-function webKssNameFromText(text) {
-  const bytes = new Array(64).fill(0);
-  const source = String(text || "");
-  const length = Math.min(source.length, 64);
-  for (let i = 0; i < length; i++)
-    bytes[i] = source.charCodeAt(i) & 0xff;
-  return { bytes, length };
+  const defaults = webKssModule.KssParser_KssDefaultEnvironment(null, null, null);
+  defaults.platform = webKssModule.KssPlatformWeb;
+  return webKssModule.KssParser_KssEnvironmentWithNames(null, null, null,
+    defaults, String(env.theme || ""), String(env.contrast || ""),
+    String(env.density || ""), String(env.pointer || ""),
+    String(env.platform || ""), String(env.variant || ""));
 }
 
 let webKssHostInstalled = false;
@@ -8879,8 +8859,27 @@ function applyWebNode(el, docNode, rt) {
     if (!el.__kryTextComposing) el.value = docNode.value;
   } else if (docNode.tag === "fieldset") {
     syncWebFieldsetLegend(el, docNode);
-  } else if (!el.__kryOwnsChildren && el.textContent !== docNode.text) {
-    el.textContent = docNode.text;
+  } else if (el.__kryOwnsChildren) {
+    // Keep authored text separate from child elements so updating a parent's
+    // text never replaces mounted controls or their browser-owned state.
+    let text = el.__kryTextNode;
+    if (docNode.text) {
+      if (!text || text.parentNode !== el) {
+        text = document.createTextNode(docNode.text);
+        el.insertBefore(text, el.firstChild || null);
+        el.__kryTextNode = text;
+      } else if (text.data !== docNode.text) {
+        text.data = docNode.text;
+      }
+    } else if (text) {
+      if (text.parentNode === el)
+        el.removeChild(text);
+      el.__kryTextNode = null;
+    }
+  } else {
+    if (el.textContent !== docNode.text)
+      el.textContent = docNode.text;
+    el.__kryTextNode = el.firstChild?.nodeType === 3 ? el.firstChild : null;
   }
 }
 
@@ -9526,7 +9525,8 @@ export function renderWebDocument(rt, target) {
       ? elementsByPath.get(docNode.parentPath)
       : root;
     const previous = previousChildren.get(parent);
-    const expected = previous ? previous.nextSibling : parent.firstChild;
+    const expected = previous ? previous.nextSibling :
+      (parent.__kryTextNode ? parent.__kryTextNode.nextSibling : parent.firstChild);
     if (el !== expected) parent.insertBefore(el, expected || null);
     previousChildren.set(parent, el);
     live.add(identity);

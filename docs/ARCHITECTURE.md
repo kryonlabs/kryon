@@ -5,6 +5,14 @@ backend implementations, format/tooling paths, and conformance tests. The
 runtime should expose primitives; downstream applications compose those
 primitives into product behavior.
 
+The KSS parser and formatter are generated from `runtime/kss_parser.kry` and
+`runtime/kss_formatter.kry` for C, Go, and JavaScript. Named parse environments
+also pass through the shared parser module; hosts supply their platform default
+and import sources. Go's source pack registry retains source/variant identities
+and stages theme re-resolution before replacing published sheets, so a missing
+import cannot partially apply a theme change. Generated provenance checks cover
+both KSS modules, including byte equality for checked-in JavaScript outputs.
+
 ## Public API
 
 Public headers live in `include/`. They define the app-facing Kryon surface:

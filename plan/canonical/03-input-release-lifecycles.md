@@ -12,8 +12,8 @@ Remaining:
 - Bring handwritten Go context-menu activation/outside-close handling and other
   event-loop decisions under the same generated policies as C.
 - Inventory the web event path: `createRuntime` currently queues taps, text,
-  keys and shortcuts, but lacks the native-style down/move/up, wheel, and
-  composition test drivers needed for matching lifecycle tests.
+  keys, shortcuts, and composition. Native-style down/move/up and wheel
+  drivers are still missing; composition has partial executable coverage.
 - Verify release-without-press, drag cancellation, disabled controls, popup
   capture, focus loss, and nested scope restoration across generated backends.
 

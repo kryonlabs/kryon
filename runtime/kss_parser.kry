@@ -77,6 +77,47 @@ KssDefaultEnvironment :: () -> KssEnvironment #export {
     return env
 }
 
+# Hosts supply platform defaults; interpretation of KSS names stays here.
+KssEnvironmentWithNames :: (env: KssEnvironment, theme: string,
+    contrast: string, density: string, pointer: string, platform: string,
+    variant: string) -> KssEnvironment #export {
+    env.theme = (i32)KssThemeNone
+    if KssNameEquals(KssMakeName(theme), "light") {
+        env.theme = (i32)KssThemeLight
+    } else if KssNameEquals(KssMakeName(theme), "dark") {
+        env.theme = (i32)KssThemeDark
+    }
+    env.contrast = (i32)KssContrastNormal
+    if KssNameEquals(KssMakeName(contrast), "high") {
+        env.contrast = (i32)KssContrastHigh
+    }
+    env.density = (i32)KssDensityComfortable
+    if KssNameEquals(KssMakeName(density), "compact") {
+        env.density = (i32)KssDensityCompact
+    } else if KssNameEquals(KssMakeName(density), "touch") {
+        env.density = (i32)KssDensityTouch
+    }
+    env.pointer = (i32)KssPointerMouse
+    if KssNameEquals(KssMakeName(pointer), "touch") {
+        env.pointer = (i32)KssPointerTouch
+    } else if KssNameEquals(KssMakeName(pointer), "mixed") {
+        env.pointer = (i32)KssPointerMixed
+    }
+    if KssNameEquals(KssMakeName(platform), "desktop") {
+        env.platform = (i32)KssPlatformDesktop
+    } else if KssNameEquals(KssMakeName(platform), "android") {
+        env.platform = (i32)KssPlatformAndroid
+    } else if KssNameEquals(KssMakeName(platform), "web") {
+        env.platform = (i32)KssPlatformWeb
+    } else if KssNameEquals(KssMakeName(platform), "plan9") {
+        env.platform = (i32)KssPlatformPlan9
+    } else if KssNameEquals(KssMakeName(platform), "terminal") {
+        env.platform = (i32)KssPlatformTerminal
+    }
+    env.variant = KssMakeName(variant)
+    return env
+}
+
 KssCursor :: struct {
     source: string
     pos: i32
@@ -3154,4 +3195,3 @@ KssStep :: (p: KssParser) -> KssParser #export {
     }
     return KssParseRule(p)
 }
-

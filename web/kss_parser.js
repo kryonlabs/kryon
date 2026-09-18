@@ -116,6 +116,175 @@ export function KssParser_KssDefaultEnvironment($rt, $state = moduleState, $host
     return value_13;
 }
 
+export function KssParser_KssEnvironmentWithNames($rt, $state = moduleState, $host = moduleHost, env, theme, contrast, density, pointer, platform, variant) {
+  $state = $state || moduleState;
+    let value_0 = env;
+    let value_1 = ((record_source) => ({theme: record_source.theme, contrast: record_source.contrast, density: record_source.density, pointer: record_source.pointer, platform: record_source.platform, variant: {bytes: Array.from({length: 64}, (_, index) => record_source.variant.bytes[index]), length: record_source.variant.length}}))(value_0);
+    env = value_1;
+    let value_2 = number_85173a94_value(KssThemeNone,32,true);
+    let value_3 = number_85173a94_value(number_85173a94_bits(value_2,0,32,true,0),32,true);
+    env.theme = value_3;
+    let value_4 = theme;
+    let value_6 = KssParser_KssMakeName($rt, $state, $host, value_4);
+    let value_7 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_6);
+    let value_5 = value_7;
+    let value_8 = "light";
+    let value_9 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_5, value_8));
+    if (value_9) {
+        let value_10 = number_85173a94_value(KssThemeLight,32,true);
+        let value_11 = number_85173a94_value(number_85173a94_bits(value_10,0,32,true,0),32,true);
+        env.theme = value_11;
+    } else {
+        let value_12 = theme;
+        let value_14 = KssParser_KssMakeName($rt, $state, $host, value_12);
+        let value_15 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_14);
+        let value_13 = value_15;
+        let value_16 = "dark";
+        let value_17 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_13, value_16));
+        if (value_17) {
+            let value_18 = number_85173a94_value(KssThemeDark,32,true);
+            let value_19 = number_85173a94_value(number_85173a94_bits(value_18,0,32,true,0),32,true);
+            env.theme = value_19;
+        }
+    }
+    let value_20 = number_85173a94_value(KssContrastNormal,32,true);
+    let value_21 = number_85173a94_value(number_85173a94_bits(value_20,0,32,true,0),32,true);
+    env.contrast = value_21;
+    let value_22 = contrast;
+    let value_24 = KssParser_KssMakeName($rt, $state, $host, value_22);
+    let value_25 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_24);
+    let value_23 = value_25;
+    let value_26 = "high";
+    let value_27 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_23, value_26));
+    if (value_27) {
+        let value_28 = number_85173a94_value(KssContrastHigh,32,true);
+        let value_29 = number_85173a94_value(number_85173a94_bits(value_28,0,32,true,0),32,true);
+        env.contrast = value_29;
+    }
+    let value_30 = number_85173a94_value(KssDensityComfortable,32,true);
+    let value_31 = number_85173a94_value(number_85173a94_bits(value_30,0,32,true,0),32,true);
+    env.density = value_31;
+    let value_32 = density;
+    let value_34 = KssParser_KssMakeName($rt, $state, $host, value_32);
+    let value_35 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_34);
+    let value_33 = value_35;
+    let value_36 = "compact";
+    let value_37 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_33, value_36));
+    if (value_37) {
+        let value_38 = number_85173a94_value(KssDensityCompact,32,true);
+        let value_39 = number_85173a94_value(number_85173a94_bits(value_38,0,32,true,0),32,true);
+        env.density = value_39;
+    } else {
+        let value_40 = density;
+        let value_42 = KssParser_KssMakeName($rt, $state, $host, value_40);
+        let value_43 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_42);
+        let value_41 = value_43;
+        let value_44 = "touch";
+        let value_45 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_41, value_44));
+        if (value_45) {
+            let value_46 = number_85173a94_value(KssDensityTouch,32,true);
+            let value_47 = number_85173a94_value(number_85173a94_bits(value_46,0,32,true,0),32,true);
+            env.density = value_47;
+        }
+    }
+    let value_48 = number_85173a94_value(KssPointerMouse,32,true);
+    let value_49 = number_85173a94_value(number_85173a94_bits(value_48,0,32,true,0),32,true);
+    env.pointer = value_49;
+    let value_50 = pointer;
+    let value_52 = KssParser_KssMakeName($rt, $state, $host, value_50);
+    let value_53 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_52);
+    let value_51 = value_53;
+    let value_54 = "touch";
+    let value_55 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_51, value_54));
+    if (value_55) {
+        let value_56 = number_85173a94_value(KssPointerTouch,32,true);
+        let value_57 = number_85173a94_value(number_85173a94_bits(value_56,0,32,true,0),32,true);
+        env.pointer = value_57;
+    } else {
+        let value_58 = pointer;
+        let value_60 = KssParser_KssMakeName($rt, $state, $host, value_58);
+        let value_61 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_60);
+        let value_59 = value_61;
+        let value_62 = "mixed";
+        let value_63 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_59, value_62));
+        if (value_63) {
+            let value_64 = number_85173a94_value(KssPointerMixed,32,true);
+            let value_65 = number_85173a94_value(number_85173a94_bits(value_64,0,32,true,0),32,true);
+            env.pointer = value_65;
+        }
+    }
+    let value_66 = platform;
+    let value_68 = KssParser_KssMakeName($rt, $state, $host, value_66);
+    let value_69 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_68);
+    let value_67 = value_69;
+    let value_70 = "desktop";
+    let value_71 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_67, value_70));
+    if (value_71) {
+        let value_72 = number_85173a94_value(KssPlatformDesktop,32,true);
+        let value_73 = number_85173a94_value(number_85173a94_bits(value_72,0,32,true,0),32,true);
+        env.platform = value_73;
+    } else {
+        let value_74 = platform;
+        let value_76 = KssParser_KssMakeName($rt, $state, $host, value_74);
+        let value_77 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_76);
+        let value_75 = value_77;
+        let value_78 = "android";
+        let value_79 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_75, value_78));
+        if (value_79) {
+            let value_80 = number_85173a94_value(KssPlatformAndroid,32,true);
+            let value_81 = number_85173a94_value(number_85173a94_bits(value_80,0,32,true,0),32,true);
+            env.platform = value_81;
+        } else {
+            let value_82 = platform;
+            let value_84 = KssParser_KssMakeName($rt, $state, $host, value_82);
+            let value_85 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_84);
+            let value_83 = value_85;
+            let value_86 = "web";
+            let value_87 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_83, value_86));
+            if (value_87) {
+                let value_88 = number_85173a94_value(KssPlatformWeb,32,true);
+                let value_89 = number_85173a94_value(number_85173a94_bits(value_88,0,32,true,0),32,true);
+                env.platform = value_89;
+            } else {
+                let value_90 = platform;
+                let value_92 = KssParser_KssMakeName($rt, $state, $host, value_90);
+                let value_93 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_92);
+                let value_91 = value_93;
+                let value_94 = "plan9";
+                let value_95 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_91, value_94));
+                if (value_95) {
+                    let value_96 = number_85173a94_value(KssPlatformPlan9,32,true);
+                    let value_97 = number_85173a94_value(number_85173a94_bits(value_96,0,32,true,0),32,true);
+                    env.platform = value_97;
+                } else {
+                    let value_98 = platform;
+                    let value_100 = KssParser_KssMakeName($rt, $state, $host, value_98);
+                    let value_101 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_100);
+                    let value_99 = value_101;
+                    let value_102 = "terminal";
+                    let value_103 = number_85173a94_bool(KssParser_KssNameEquals($rt, $state, $host, value_99, value_102));
+                    if (value_103) {
+                        let value_104 = number_85173a94_value(KssPlatformTerminal,32,true);
+                        let value_105 = number_85173a94_value(number_85173a94_bits(value_104,0,32,true,0),32,true);
+                        env.platform = value_105;
+                    }
+                }
+            }
+        }
+    }
+    let value_106 = variant;
+    let value_108 = KssParser_KssMakeName($rt, $state, $host, value_106);
+    let value_109 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_108);
+    let value_107 = value_109;
+    let value_110 = value_107;
+    let value_111 = ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(value_110);
+    env.variant = value_111;
+    let value_113 = env;
+    let value_114 = ((record_source) => ({theme: record_source.theme, contrast: record_source.contrast, density: record_source.density, pointer: record_source.pointer, platform: record_source.platform, variant: {bytes: Array.from({length: 64}, (_, index) => record_source.variant.bytes[index]), length: record_source.variant.length}}))(value_113);
+    let value_112 = value_114;
+    return value_112;
+}
+
 export function KssParser_KssBegin($rt, $state = moduleState, $host = moduleHost, source, path, env) {
   $state = $state || moduleState;
     let value_0 = env;
@@ -9852,6 +10021,20 @@ export function KssParser_KssSetVariant($rt, $state = moduleState, $host = modul
     let value_11 = ((record_source) => ({cursor: {source: record_source.cursor.source, pos: record_source.cursor.pos, line: record_source.cursor.line, column: record_source.cursor.column, file: record_source.cursor.file}, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform, variant: {bytes: Array.from({length: 64}, (_, index) => record_source.env.variant.bytes[index]), length: record_source.env.variant.length}}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group, end: record_source.rule_span.end}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, variants: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, label: {bytes: Array.from({length: 64}, (_, index) => record_source.label.bytes[index]), length: record_source.label.length}}))(record_source.variants[index])), variant_count: record_source.variant_count, in_variant: record_source.in_variant, variant_label: {bytes: Array.from({length: 64}, (_, index) => record_source.variant_label.bytes[index]), length: record_source.variant_label.length}, blocks: Array.from({length: 32}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, length: record_source.length}))(record_source.blocks[index])), block_count: record_source.block_count, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(value_10);
     let value_9 = value_11;
     return value_9;
+}
+
+export function KssParser_KssSetTheme($rt, $state = moduleState, $host = moduleHost, p, theme) {
+  $state = $state || moduleState;
+    let value_0 = p;
+    let value_1 = ((record_source) => ({cursor: {source: record_source.cursor.source, pos: record_source.cursor.pos, line: record_source.cursor.line, column: record_source.cursor.column, file: record_source.cursor.file}, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform, variant: {bytes: Array.from({length: 64}, (_, index) => record_source.env.variant.bytes[index]), length: record_source.env.variant.length}}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group, end: record_source.rule_span.end}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, variants: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, label: {bytes: Array.from({length: 64}, (_, index) => record_source.label.bytes[index]), length: record_source.label.length}}))(record_source.variants[index])), variant_count: record_source.variant_count, in_variant: record_source.in_variant, variant_label: {bytes: Array.from({length: 64}, (_, index) => record_source.variant_label.bytes[index]), length: record_source.variant_label.length}, blocks: Array.from({length: 32}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, length: record_source.length}))(record_source.blocks[index])), block_count: record_source.block_count, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(value_0);
+    p = value_1;
+    theme = number_85173a94_value(theme,32,true);
+    let value_2 = number_85173a94_value(theme,32,true);
+    p.env.theme = value_2;
+    let value_4 = p;
+    let value_5 = ((record_source) => ({cursor: {source: record_source.cursor.source, pos: record_source.cursor.pos, line: record_source.cursor.line, column: record_source.cursor.column, file: record_source.cursor.file}, files: Array.from({length: 8}, (_, index) => ((record_source) => ({name: Array.from({length: 96}, (_, index) => record_source.name[index]), length: record_source.length}))(record_source.files[index])), file_count: record_source.file_count, imports: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, outer_source: record_source.outer_source, outer_pos: record_source.outer_pos, outer_line: record_source.outer_line, outer_column: record_source.outer_column, outer_file: record_source.outer_file}))(record_source.imports[index])), import_depth: record_source.import_depth, tokens: Array.from({length: 128}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, kind: record_source.kind, color: record_source.color, number: record_source.number, material: record_source.material, origin: record_source.origin, file: record_source.file, line: record_source.line, column: record_source.column}))(record_source.tokens[index])), token_count: record_source.token_count, overrides: Array.from({length: 16}, (_, index) => ((record_source) => ({name: record_source.name, color: record_source.color}))(record_source.overrides[index])), override_count: record_source.override_count, layer: record_source.layer, layer_names: Array.from({length: 12}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.layer_names[index])), layer_count: record_source.layer_count, layer_declared: record_source.layer_declared, pack: {bytes: Array.from({length: 64}, (_, index) => record_source.pack.bytes[index]), length: record_source.pack.length}, env: {theme: record_source.env.theme, contrast: record_source.env.contrast, density: record_source.env.density, pointer: record_source.env.pointer, platform: record_source.env.platform, variant: {bytes: Array.from({length: 64}, (_, index) => record_source.env.variant.bytes[index]), length: record_source.env.variant.length}}, themes: Array.from({length: 16}, (_, index) => ((record_source) => ({bytes: Array.from({length: 64}, (_, index) => record_source.bytes[index]), length: record_source.length}))(record_source.themes[index])), theme_count: record_source.theme_count, version_seen: record_source.version_seen, status: record_source.status, rule: {selector: {kind: record_source.rule.selector.kind, name: record_source.rule.selector.name, class_name: record_source.rule.selector.class_name, role: record_source.rule.selector.role, tone: record_source.rule.selector.tone, emphasis: record_source.rule.selector.emphasis, size: record_source.rule.selector.size, state: record_source.rule.selector.state, validation: record_source.rule.selector.validation, orientation: record_source.rule.selector.orientation, placement: record_source.rule.selector.placement}, state: record_source.rule.state, layer: record_source.rule.layer, order: record_source.rule.order, style: {fields: record_source.rule.style.fields, background: record_source.rule.style.background, foreground: record_source.rule.style.foreground, border: record_source.rule.style.border, focus: record_source.rule.style.focus, radius: record_source.rule.style.radius, border_width: record_source.rule.style.border_width, opacity: record_source.rule.style.opacity, padding_x: record_source.rule.style.padding_x, padding_y: record_source.rule.style.padding_y, gap: record_source.rule.style.gap, font_size: record_source.rule.style.font_size, icon_size: record_source.rule.style.icon_size, offset_x: record_source.rule.style.offset_x, offset_y: record_source.rule.style.offset_y, background_end: record_source.rule.style.background_end, material: record_source.rule.style.material, typeface: record_source.rule.style.typeface, letter_spacing: record_source.rule.style.letter_spacing}}, origin: {file: record_source.origin.file, line: record_source.origin.line, column: record_source.origin.column}, rule_span: {file: record_source.rule_span.file, selector_start: record_source.rule_span.selector_start, selector_length: record_source.rule_span.selector_length, body_start: record_source.rule_span.body_start, body_length: record_source.rule_span.body_length, group: record_source.rule_span.group, end: record_source.rule_span.end}, pending_import: {bytes: Array.from({length: 64}, (_, index) => record_source.pending_import.bytes[index]), length: record_source.pending_import.length}, in_env: record_source.in_env, variants: Array.from({length: 8}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, label: {bytes: Array.from({length: 64}, (_, index) => record_source.label.bytes[index]), length: record_source.label.length}}))(record_source.variants[index])), variant_count: record_source.variant_count, in_variant: record_source.in_variant, variant_label: {bytes: Array.from({length: 64}, (_, index) => record_source.variant_label.bytes[index]), length: record_source.variant_label.length}, blocks: Array.from({length: 32}, (_, index) => ((record_source) => ({kind: record_source.kind, start: record_source.start, length: record_source.length}))(record_source.blocks[index])), block_count: record_source.block_count, resume_group: record_source.resume_group, declarative: record_source.declarative, declarations: Array.from({length: 1024}, (_, index) => ((record_source) => ({rule: record_source.rule, name_start: record_source.name_start, name_length: record_source.name_length, value_start: record_source.value_start, value_length: record_source.value_length}))(record_source.declarations[index])), declaration_count: record_source.declaration_count, foreign: Array.from({length: 16}, (_, index) => ((record_source) => ({name: {bytes: Array.from({length: 64}, (_, index) => record_source.name.bytes[index]), length: record_source.name.length}, query_start: record_source.query_start, query_length: record_source.query_length, body_start: record_source.body_start, body_length: record_source.body_length, file: record_source.file}))(record_source.foreign[index])), foreign_count: record_source.foreign_count, diagnostic: Array.from({length: 256}, (_, index) => record_source.diagnostic[index]), diagnostic_length: record_source.diagnostic_length, rule_total: record_source.rule_total}))(value_4);
+    let value_3 = value_5;
+    return value_3;
 }
 
 export function KssParser_KssVariantActive($rt, $state = moduleState, $host = moduleHost, p, name) {

@@ -2277,9 +2277,21 @@ select it with `SetActiveStylePack`.
 `SetStyleTheme(theme)` re-resolves every registered pack - built-ins, source
 packs, and their declared variants - under a theme overlay ("light", "dark",
 or empty), preserving the active pack; `kryon-preview --theme NAME` exposes
-it for captures. Go and web hosts select themes through their parse
-environments (the Go registry's source-retaining counterpart is a recorded
-follow-up).
+it for captures. Go also exposes `SetStyleTheme(theme)`: its source registry
+retains sources and declared variant names, re-parses through generated KSS,
+and publishes the new sheets only after all parses succeed. Failed imports
+leave Go's registry, version, selection, and active theme unchanged. Directly
+registered typed sheets and explicit color-substitution variants do not change.
+`ClearStylePacks` resets the Go registry and its theme; selecting a theme before
+registering sources applies it to subsequent registrations. Web hosts select
+themes through their parse environments.
+
+`KssEnvironmentWithNames` in `runtime/kss_parser.kry` interprets environment
+names for all three generated targets. Names follow KSS's case-insensitive
+matching. Unrecognized theme/contrast/density/pointer names select their
+ordinary defaults; an unrecognized platform preserves the host's supplied
+platform default (desktop for C/Go and web for the browser). Variant names
+use the shared bounded UTF-8 name representation.
 
 Go accepts `[]StyleColorToken` without a count. `ParseStyleVariants(source)`
 reports the sheet's declared `@variant` names with labels, and

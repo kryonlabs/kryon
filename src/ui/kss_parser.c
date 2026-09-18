@@ -106,18 +106,6 @@ kss_copy_diagnostic(char *diagnostic, size_t diagnostic_size,
     diagnostic[length] = '\0';
 }
 
-static int
-kss_theme_value(const char *theme)
-{
-    if(theme == NULL)
-        return 0;
-    if(strcmp(theme, "light") == 0)
-        return KssThemeLight;
-    if(strcmp(theme, "dark") == 0)
-        return KssThemeDark;
-    return KssThemeNone;
-}
-
 static bool
 kss_collect(const char *source, const StyleColorToken *colors, int color_count,
             const char *variant, const char *theme, StyleRule *rules,
@@ -125,20 +113,19 @@ kss_collect(const char *source, const StyleColorToken *colors, int color_count,
             size_t diagnostic_size)
 {
     KssEnvironment environment = KssDefaultEnvironment();
+    String empty = StringView(NULL, 0);
+    environment = KssEnvironmentWithNames(environment,
+        StringView(theme, theme != NULL ? strlen(theme) : 0),
+        empty, empty, empty, empty,
+        StringView(variant, variant != NULL ? strlen(variant) : 0));
     KssParser parser = KssBegin(StringView(source, strlen(source)),
                                 StringView(NULL, 0),
                                 environment);
-    if(theme != NULL && theme[0] != '\0')
-        parser = KssSetTheme(parser, kss_theme_value(theme));
 
     int rule_count = 0;
 
     if(diagnostic != NULL && diagnostic_size > 0)
         diagnostic[0] = '\0';
-    if(variant != NULL && variant[0] != '\0')
-        parser = KssSetVariant(parser,
-                               kss_parser_KssMakeName(StringView(variant,
-                                                                  strlen(variant))));
     for(int i = 0; i < color_count; i++)
         parser = KssAddColorOverride(parser,
                                      StringView(colors[i].name,

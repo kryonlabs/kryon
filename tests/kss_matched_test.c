@@ -45,9 +45,10 @@ collect(const char *source, const char *path, const char *module_source,
     KssParser p;
 
     memset(out, 0, sizeof(*out));
-    env.theme = KssThemeDark;
-    env.contrast = KssContrastHigh;
-    env.density = KssDensityComfortable;
+    env = KssEnvironmentWithNames(env, StringView("dark", 4),
+        StringView("high", 4), StringView("comfortable", 11),
+        StringView("mouse", 5), StringView("desktop", 7),
+        StringView(variant, variant != NULL ? strlen(variant) : 0));
     p = KssBegin(StringView(source, strlen(source)),
                  StringView(path, strlen(path)), env);
     if(variant != NULL)
@@ -251,12 +252,48 @@ test_mutation(const char *source)
     free(copy);
 }
 
+static void
+test_environment_names(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/environments.txt", "r");
+    char names[6][64];
+    int expected[5];
+    int fields;
+    int cases = 0;
+
+    assert(file != NULL);
+    while((fields = fscanf(file, "%63s %63s %63s %63s %63s %63s %d %d %d %d %d",
+        names[0], names[1], names[2], names[3], names[4], names[5],
+        &expected[0], &expected[1], &expected[2], &expected[3], &expected[4])) != EOF) {
+        String values[6];
+        assert(fields == 11);
+        for(int i = 0; i < 6; i++) {
+            if(strcmp(names[i], "-") == 0)
+                names[i][0] = '\0';
+            values[i] = StringView(names[i], strlen(names[i]));
+        }
+        KssEnvironment env = KssEnvironmentWithNames(KssDefaultEnvironment(),
+            values[0], values[1], values[2], values[3], values[4], values[5]);
+        assert(env.theme == expected[0]);
+        assert(env.contrast == expected[1]);
+        assert(env.density == expected[2]);
+        assert(env.pointer == expected[3]);
+        assert(env.platform == expected[4]);
+        assert(env.variant.length == (int)strlen(names[5]));
+        assert(memcmp(env.variant.bytes, names[5], env.variant.length) == 0);
+        cases++;
+    }
+    assert(cases == 7);
+    fclose(file);
+}
+
 int
 main(void)
 {
     char *source = read_file("tests/fixtures/kss/matched.kss");
 
     ClearStyleModules();
+    test_environment_names();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

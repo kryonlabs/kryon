@@ -60,8 +60,12 @@
   built-ins, and declared variants) through SetStyleTheme before `--style`
   applies, so captures can combine any pack with either theme overlay.
   Pack options were already selectable through `--style <pack>.<variant>`.
-  Remaining: the Go host's source-retaining SetStyleTheme counterpart.
-  becomes available.
+  The Go source-retaining `SetStyleTheme` counterpart is implemented, with
+  atomic failure recovery, preserved selection/variants, and late-registration
+  tests in `go/kryon/style_theme_test.go`. Both hosts and web now use the shared
+  `.kry` environment-name interpretation. C registry lifecycle equivalence
+  still needs the follow-up recorded in `docs/COMPLETION_EVIDENCE.md`.
+  Live-host reload and invalid-source recovery remain open.
 - Finish release-time compilation of imports/overlays into typed style tables;
   keep parsing and allocation out of render hot paths. Verify generated and
   dynamically loaded styles produce matching results.

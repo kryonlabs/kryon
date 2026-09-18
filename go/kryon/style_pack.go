@@ -7,14 +7,22 @@ type StylePack struct {
 	Sheet       []StyleRule
 }
 
+type stylePackSource struct {
+	source  string
+	variant string
+}
+
 var stylePacks []StylePack
+var stylePackSources map[string]stylePackSource
 var activeStylePack = -1
 var stylePackVersion uint64
+var activeStyleTheme string
 
 func RegisterStylePack(pack StylePack) bool {
 	if pack.ID == "" || pack.Sheet == nil {
 		return false
 	}
+	delete(stylePackSources, pack.ID)
 	for i := range stylePacks {
 		if stylePacks[i].ID == pack.ID {
 			stylePacks[i] = pack
@@ -30,47 +38,74 @@ func RegisterStylePack(pack StylePack) bool {
 	return true
 }
 
+// RegisterStylePackSource retains source for theme re-resolution. Parsing and
+// overlay decisions are owned by the generated KSS module.
 func RegisterStylePackSource(source, label, description string) bool {
-	id, rules, err := ParseStyleSheet(source)
+	id, rules, err := parseStyleEnvironment(source, nil, "", activeStyleTheme)
 	if err != nil || id == "" || len(rules) == 0 {
 		return false
 	}
 	if label == "" {
 		label = id
 	}
-	copied := append([]StyleRule(nil), rules...)
-	if !RegisterStylePack(StylePack{
-		ID:          id,
-		Label:       label,
-		Description: description,
-		Sheet:       copied,
-	}) {
-		return false
-	}
-	/* Declared '@variant' blocks become selectable packs under
-	 * '<pack>.<variant>'; each re-parses the source with that variant active
-	 * so base and variant rules resolve together. */
+	packs := []StylePack{{
+		ID: id, Label: label, Description: description, Sheet: rules,
+	}}
+	sources := []stylePackSource{{source: source}}
 	for _, variant := range ParseStyleVariants(source) {
 		if variant.Name == "" {
 			continue
 		}
-		_, variantRules, variantErr := ParseStyleSheetVariant(source, variant.Name)
+		_, variantRules, variantErr := parseStyleEnvironment(source, nil, variant.Name, activeStyleTheme)
 		if variantErr != nil || len(variantRules) == 0 {
 			return false
 		}
-		variantCopied := append([]StyleRule(nil), variantRules...)
-		RegisterStylePack(StylePack{
-			ID:          id + "." + variant.Name,
-			Label:       variant.Label,
-			Description: description,
-			Sheet:       variantCopied,
+		packs = append(packs, StylePack{
+			ID: id + "." + variant.Name, Label: variant.Label, Description: description,
+			Sheet: variantRules,
 		})
+		sources = append(sources, stylePackSource{source: source, variant: variant.Name})
+	}
+	if stylePackSources == nil {
+		stylePackSources = make(map[string]stylePackSource)
+	}
+	for i, pack := range packs {
+		RegisterStylePack(pack)
+		stylePackSources[pack.ID] = sources[i]
 	}
 	return true
 }
 
+// SetStyleTheme re-resolves source packs and their declared variants without
+// changing selection. Typed sheets and explicit color substitutions stay as
+// registered. A failed parse leaves all packs and the active theme unchanged.
+func SetStyleTheme(theme string) bool {
+	if theme == activeStyleTheme {
+		return true
+	}
+	packs := append([]StylePack(nil), stylePacks...)
+	for i := range packs {
+		pack := &packs[i]
+		stored, ok := stylePackSources[pack.ID]
+		if !ok {
+			continue
+		}
+		_, rules, err := parseStyleEnvironment(stored.source, nil, stored.variant, theme)
+		if err != nil || len(rules) == 0 {
+			return false
+		}
+		pack.Sheet = rules
+	}
+	stylePacks = packs
+	activeStyleTheme = theme
+	stylePackVersion++
+	return true
+}
+
 func ClearStylePacks() {
+	activeStyleTheme = ""
 	stylePacks = nil
+	stylePackSources = nil
 	activeStylePack = -1
 	stylePackVersion++
 }

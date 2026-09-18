@@ -1003,8 +1003,8 @@ NativeAliasExpressionNodes :: () #ui {
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/native_alias_expression_nodes.kry"
 native_alias_expression_out="$work/out/src/native_alias_expression_nodes.js"
-grep -q 'let node = kryon.copyValue(kryon.widget(\$rt, "Article"' "$native_alias_expression_out"
-grep -q 'node = kryon.copyValue(kryon.widget(\$rt, "Form"' "$native_alias_expression_out"
+grep -q 'let node = kryon.widget(\$rt, "Article"' "$native_alias_expression_out"
+grep -q 'node = kryon.widget(\$rt, "Form"' "$native_alias_expression_out"
 grep -q 'if (kryon.widget(\$rt, "Table"' "$native_alias_expression_out"
 grep -Eq '"path": "NativeAliasExpressionNodes/Article@[0-9]+(-[0-9]+)?"' "$native_alias_expression_out"
 grep -Eq '"path": "NativeAliasExpressionNodes/Form@[0-9]+(-[0-9]+)?"' "$native_alias_expression_out"

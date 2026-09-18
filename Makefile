@@ -1071,15 +1071,15 @@ public-headers-compile-changed-check: | $(BUILD_DIR)
 examples-manifest-check:
 	sh tests/examples_manifest_test.sh .
 
-generated-provenance-check:
+generated-provenance-check: $(K2JS)
 	sh tests/generated_provenance_test.sh .
-	sh tests/web_generated_check.sh .
+	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
 
 # The web runtime modules are k2js output of runtime/*.kry; hand edits in
 # web/*.js drift from the .kry source of truth and are caught here.
 .PHONY: web-generated-check
-web-generated-check: $(BUILD_DIR)/web-text/kss_parser.js
-	sh tests/web_generated_check.sh .
+web-generated-check: $(K2JS)
+	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
 
 backend-capabilities-check:
 	sh tests/backend_capabilities_test.sh .

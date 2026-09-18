@@ -5,6 +5,14 @@ generic examples, generic test fixtures, and documentation for integrating the
 runtime into downstream applications. It must not contain product behavior,
 branding, copy, assets, or fixtures from a downstream application.
 
+KSS grammar, environment-name interpretation, overlay decisions, cascade policy,
+and formatting belong to maintained `runtime/*.kry` modules. Host adapters own
+source/import storage, native string views, and publication of resolved sheets;
+they call generated code to interpret those sources. The Go pack registry retains
+source and variant identity for theme changes, staging all resolved sheets before
+publishing them. Browser DOM text-node creation and attachment remain host
+services; they preserve the authored text alongside mounted child elements.
+
 ## Belongs In Kryon
 
 - reusable widgets, layout, text input, focus, theme, DPI, modal, scroll, and

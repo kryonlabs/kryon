@@ -43,14 +43,16 @@ func kssNameText(name KssName) string {
 }
 
 func kssRunParser(source string, colors []StyleColorToken, variant string) (KssParser, []StyleRule, bool) {
+	return kssRunParserEnvironment(source, colors, variant, "")
+}
+
+func kssRunParserEnvironment(source string, colors []StyleColorToken, variant, theme string) (KssParser, []StyleRule, bool) {
 	host, ok := active().(*runtime)
 	if !ok {
 		host = New(AppConfig{}).(*runtime)
 	}
-	parser := KssParser_KssBegin(source, "", KssParser_KssDefaultEnvironment())
-	if variant != "" {
-		parser = KssParser_KssSetVariant(parser, KssParser_KssMakeName(variant))
-	}
+	environment := KssParser_KssEnvironmentWithNames(KssParser_KssDefaultEnvironment(), theme, "", "", "", "", variant)
+	parser := KssParser_KssBegin(source, "", environment)
 	for _, color := range colors {
 		parser = KssParser_KssAddColorOverride(parser, color.Name, color.Color)
 	}
@@ -114,7 +116,11 @@ func ParseStyleSheetVariant(source, variant string) (string, []StyleRule, error)
 }
 
 func parseStyleVariant(source string, colors []StyleColorToken, variant string) (string, []StyleRule, error) {
-	parser, rules, ok := kssRunParser(source, colors, variant)
+	return parseStyleEnvironment(source, colors, variant, "")
+}
+
+func parseStyleEnvironment(source string, colors []StyleColorToken, variant, theme string) (string, []StyleRule, error) {
+	parser, rules, ok := kssRunParserEnvironment(source, colors, variant, theme)
 	if !ok {
 		text := strings.TrimSpace(string(parser.Diagnostic[:parser.DiagnosticLength]))
 		if text == "" {

@@ -2010,17 +2010,42 @@ function fakeDocument() {
       getData(type) { return values[type] || ""; }
     };
   };
+  const makeText = (text) => ({
+    nodeType: 3,
+    data: String(text),
+    parentNode: null,
+    get textContent() { return this.data; },
+    set textContent(value) { this.data = String(value); },
+    get nextSibling() {
+      const siblings = this.parentNode?.childNodes || [];
+      return siblings[siblings.indexOf(this) + 1] || null;
+    }
+  });
   const makeElement = (tag) => {
     const element = {
       tagName: tag.toUpperCase(),
-      children: [],
+      nodeType: 1,
+      childNodes: [],
+      get children() { return this.childNodes.filter(child => child.nodeType === 1); },
+      get firstChild() { return this.childNodes[0] || null; },
+      get nextSibling() {
+        const siblings = this.parentNode?.childNodes || [];
+        return siblings[siblings.indexOf(this) + 1] || null;
+      },
       parentNode: null,
       dataset: {},
       style: {},
       attributes: {},
       listeners: {},
       className: "",
-      textContent: "",
+      get textContent() { return this.childNodes.map(child => child.textContent).join(""); },
+      set textContent(value) {
+        for (const child of this.childNodes)
+          child.parentNode = null;
+        this.childNodes = [];
+        if (String(value))
+          this.appendChild(makeText(value));
+      },
       checked: false,
       indeterminate: false,
       open: false,
@@ -2061,7 +2086,7 @@ function fakeDocument() {
         if (child.parentNode)
           child.parentNode.removeChild(child);
         child.parentNode = this;
-        this.children.push(child);
+        this.childNodes.push(child);
       },
       insertBefore(child, reference) {
         if (child === reference)
@@ -2070,18 +2095,18 @@ function fakeDocument() {
           this.appendChild(child);
           return child;
         }
-        if (!this.children.includes(reference))
+        if (!this.childNodes.includes(reference))
           throw new Error("Reference is not a child");
         if (child.parentNode)
           child.parentNode.removeChild(child);
-        this.children.splice(this.children.indexOf(reference), 0, child);
+        this.childNodes.splice(this.childNodes.indexOf(reference), 0, child);
         child.parentNode = this;
         return child;
       },
       removeChild(child) {
-        const index = this.children.indexOf(child);
+        const index = this.childNodes.indexOf(child);
         if (index >= 0)
-          this.children.splice(index, 1);
+          this.childNodes.splice(index, 1);
         child.parentNode = null;
       },
       addEventListener(type, fn) {
@@ -2270,6 +2295,7 @@ function fakeDocument() {
     title: "",
     head,
     createElement: makeElement,
+    createTextNode: makeText,
     querySelector(selector) {
       if (selector === 'meta[name="description"]')
         return head.children.find((child) => child.tagName === "META" && child.attributes.name === "description") || null;
@@ -3797,7 +3823,7 @@ function fakeDocument() {
     assert.equal(nativeSmall.tagName, "SMALL");
     assert.equal(nativeSmall.textContent, "Fine print");
     assert.equal(nativeRuby.tagName, "RUBY");
-    assert.equal(nativeRuby.textContent, "\u6f22");
+    assert.equal(nativeRuby.textContent, "\u6f22kan(");
     assert.equal(nativeRubyText.tagName, "RT");
     assert.equal(nativeRubyText.textContent, "kan");
     assert.equal(nativeRubyParenthesis.tagName, "RP");
