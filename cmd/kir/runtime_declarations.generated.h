@@ -1383,6 +1383,8 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "TextProps :: struct {\n"
         "    bounds: Rectangle\n"
         "    text: const char*\n"
+        "    font: i32\n"
+        "    color: Color\n"
         "    class_name: i32\n"
         "    wrap: TextWrap\n"
         "    align: TextAlign\n"

@@ -2562,15 +2562,18 @@ Text(TextProps props)
         StyleTextFacts(0, props.class_name, StyleKindText(),
             props.disabled ? ButtonStateDisabled : ButtonStateNormal),
         props.disabled ? ButtonStateDisabled : ButtonStateNormal));
-    requested_font = StyleFontValue(style.fields, style.font_size);
+    requested_font = props.font > 0 ? props.font :
+        StyleFontValue(style.fields, style.font_size);
     if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
     if((style.fields & StyleLetterSpacing) != 0)
         letter_spacing = (int)(style.letter_spacing + 0.5f);
     previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(requested_font, inherited_font, GetFontSize(),
-        ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,
-        inherited_color_set, (style.fields & StyleForeground) != 0,
+        props.color.a != 0 ? ColorToInt(props.color) : ColorToInt(style.foreground),
+        ColorToInt(inherited_color), 0xffffffffu,
+        inherited_color_set,
+        props.color.a != 0 || (style.fields & StyleForeground) != 0,
         props.disabled, inherited_disabled, letter_spacing);
     font = appearance.font;
     color = GetColor(Opacity(appearance.color, style.opacity));

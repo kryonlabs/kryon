@@ -34,6 +34,7 @@ main(void)
     ModalDismissal dismissal;
     ModalPromptInput prompt_input;
     ModalResultDecision result_decision;
+    StyleFrame action_button;
 
     panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
                          StyleIconSize | StyleContentOffset;
@@ -107,6 +108,11 @@ main(void)
     assert(ModalContentWidth(840, metrics) == 768);
     assert(ModalActionWidth(10, metrics) == 176);
     assert(ModalActionWidth(280, metrics) == 300);
+    action_button = ModalActionButtonFrame(action);
+    assert(action.value.offset_x == 88.0f);
+    assert(action.value.offset_y == 150.0f);
+    assert(action_button.value.offset_x == 0.0f);
+    assert(action_button.value.offset_y == 0.0f);
     assert(ModalActionRowsStep(176, 1, 176, 320, 16) == 2);
     assert(ModalActionRowWidthStep(176, 176, 320, 16) == 176);
     assert(ModalActionRowsStep(176, 1, 100, 320, 16) == 1);

@@ -1197,8 +1197,14 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 		textState))
 	colorSet := style.Fields&StyleForeground != 0
 	requestedFont := int32(0)
-	if style.Fields&StyleFontSize != 0 {
+	if props.Font > 0 {
+		requestedFont = props.Font
+	} else if style.Fields&StyleFontSize != 0 {
 		requestedFont = int32(style.FontSize)
+	}
+	if props.Color.A != 0 {
+		style.Foreground = props.Color
+		colorSet = true
 	}
 	if style.Fields&StyleTypeface != 0 {
 		if selected := registeredTypeface(style.Typeface); selected != 0 {
@@ -1656,6 +1662,9 @@ func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds
 	appearance := resolveMinimalControlRoleFrame(props, ButtonState(input.Interaction.State),
 		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value,
 		motion.Focus.Value, styleKind, role)
+	if styleKind == StyleSheet_StyleKindModal() && role == Modal_ModalActionRole() {
+		appearance = Modal_ModalActionButtonFrame(appearance)
+	}
 	resolved := Button_BuildFrame(props, input, appearance, motion,
 		surfaceBounds, packRGBA(r.appAmbientColor()), 1,
 		int32(appearance.Value.FontSize), Text16)

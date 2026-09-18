@@ -36,6 +36,8 @@ typedef enum TextAlign {
 typedef struct TextProps {
     Rectangle bounds;
     const char* text;
+    int32_t font;
+    Color color;
     int32_t class_name;
     TextWrap wrap;
     TextAlign align;

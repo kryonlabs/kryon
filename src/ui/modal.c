@@ -60,23 +60,24 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 
     button.props = props;
     button.style.normal = ui_unpack_style(
-        ui_control_style_frame_role_kind(
+        ModalActionButtonFrame(ui_control_style_frame_role_kind(
             props, disabled ? ButtonStateDisabled : ButtonStateNormal,
-            0, 0.0f, 0.0f, 0.0f, StyleKindModal(), ModalActionRole()).value);
+            0, 0.0f, 0.0f, 0.0f,
+            StyleKindModal(), ModalActionRole())).value);
     button.style.normal.font_size = (float)font;
     button.style.normal.fields |= StyleFontSize;
     button.style.hover = ui_unpack_style(
-        ui_control_style_frame_role_kind(
+        ModalActionButtonFrame(ui_control_style_frame_role_kind(
             props, ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
-            StyleKindModal(), ModalActionRole()).value);
+            StyleKindModal(), ModalActionRole())).value);
     button.style.pressed = ui_unpack_style(
-        ui_control_style_frame_role_kind(
+        ModalActionButtonFrame(ui_control_style_frame_role_kind(
             props, ButtonStatePressed, 0, 0.0f, 0.0f, 0.0f,
-            StyleKindModal(), ModalActionRole()).value);
+            StyleKindModal(), ModalActionRole())).value);
     button.style.disabled = ui_unpack_style(
-        ui_control_style_frame_role_kind(
+        ModalActionButtonFrame(ui_control_style_frame_role_kind(
             props, ButtonStateDisabled, 0, 0.0f, 0.0f, 0.0f,
-            StyleKindModal(), ModalActionRole()).value);
+            StyleKindModal(), ModalActionRole())).value);
     button.style_kind = StyleKindModal();
     button.style_resolved = 1;
     if(ui_button_render(button))

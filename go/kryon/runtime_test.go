@@ -2159,6 +2159,9 @@ Toast.chrome[role=Label] { foreground: toast-ink; font-size: 18; opacity: 0.67; 
 			if style.Background != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) || style.FontSize != 16 {
 				t.Fatalf("modal class action op = %+v", op)
 			}
+			if op.Button.Appearance.Value.OffsetX != 0 || op.Button.Appearance.Value.OffsetY != 0 {
+				t.Fatalf("modal class action leaked metric offsets into content paint: %+v", op.Button.Appearance.Value)
+			}
 		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 0, Y: 0, Width: 360, Height: 44}):
 			sawTitleBar = true
 			if op.Color != (Color{R: 0x20, G: 0x38, B: 0x20, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
@@ -3617,17 +3620,34 @@ Text { foreground: ink; font-size: 21; opacity: 0.62; }
 		Bounds: Rectangle{X: 12, Y: 14, Width: 120, Height: 26},
 		Text:   "Styled",
 	})
+	rt.Text(TextProps{
+		Bounds: Rectangle{X: 12, Y: 48, Width: 120, Height: 30},
+		Text:   "Explicit",
+		Font:   24,
+		Color:  Color{R: 0x90, G: 0x20, B: 0x10, A: 0xff},
+	})
 
+	var sawStyled, sawExplicit bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind == FrameOpText && op.Text == "Styled" {
+		switch {
+		case op.Kind == FrameOpText && op.Text == "Styled":
+			sawStyled = true
 			if op.FontSize != 21 || op.Opacity != 0 ||
 				op.Color != (Color{R: 0x26, G: 0x38, B: 0x4a, A: 0x9e}) {
 				t.Fatalf("text style op = %+v", op)
 			}
-			return
+		case op.Kind == FrameOpText && op.Text == "Explicit":
+			sawExplicit = true
+			if op.FontSize != 24 ||
+				op.Color != (Color{R: 0x90, G: 0x20, B: 0x10, A: 0x9e}) {
+				t.Fatalf("explicit text props op = %+v", op)
+			}
 		}
 	}
-	t.Fatalf("missing styled text op: %+v", rt.FrameOps())
+	if !sawStyled || !sawExplicit {
+		t.Fatalf("missing styled=%v explicit=%v text ops: %+v",
+			sawStyled, sawExplicit, rt.FrameOps())
+	}
 }
 
 func TestParagraphColorUsesParagraphStyleSheet(t *testing.T) {

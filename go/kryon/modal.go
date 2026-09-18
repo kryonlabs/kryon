@@ -151,6 +151,15 @@ func Modal_ModalMetric(fields uint32, field uint32, value float32, fallback floa
 	return value_19
 }
 
+func Modal_ModalActionButtonFrame(action StyleFrame) StyleFrame {
+	var value_0 float32 = 0.0
+	action.Value.OffsetX = value_0
+	var value_1 float32 = 0.0
+	action.Value.OffsetY = value_1
+	var value_2 StyleFrame = action
+	return value_2
+}
+
 func Modal_ModalMetricsFor(scale float32, panel StyleFrame, title StyleFrame, message StyleFrame, action StyleFrame, close StyleFrame) ModalMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
