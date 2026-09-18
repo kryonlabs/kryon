@@ -56,11 +56,11 @@ not applied. Go changes were formatted with gofmt; `git diff --check` passes.
 
 ## Remaining web KSS semantics identified by source audit
 
-The web host still owns selector parsing in `splitSelectorSequence`,
-`splitSelectorList`, `parseSimpleSelector`, and `parseSelector`, and selector
-matching/traversal in its DOM-fact helpers. Specificity weights, declaration
-interpretation, and cascade winner decisions have moved into `.kry` (below).
-This is not proof of an entirely shared KSS implementation.
+The main selector list/chain lexer and atom parser now live in `.kry` (below).
+The web host still owns functional-pseudo dispatch, selector object composition,
+compound matching/traversal, and CSS export interpretation. Specificity weights,
+declaration interpretation, and cascade decisions are generated. This is not
+proof of an entirely shared KSS implementation.
 
 Move those common decisions into shared `.kry`, extending its representation
 for supported web selectors/declarations as needed. Preserve CSS-only features
@@ -236,3 +236,46 @@ ends with `RESULT 0`. The first focused Go attempt hit a sandbox read-only cache
 the permitted rerun and full suite passed. Go uses gofmt; the `.kry` formatter
 ran on a review copy and unrelated continuation rewrites were inspected and
 omitted. No original plan file is fully closed by this migration.
+
+## Shared declarative selector lexer
+
+`KssSelectorPart` streams lists and combinator chains, while `KssSelectorNext`
+streams kinds, IDs, classes, attributes, canonical states, and functional pseudo
+arguments. They live in `runtime/kss_parser.kry`. The web builder now maps these
+tagged results into its selector object; its two handwritten splitters, regex
+atom parser, state alias list, and blanket comment stripping are removed.
+
+The lexer retains quoted commas/brackets/braces/URLs, escaped quote boundaries,
+and nested functional arguments. Declarative rule capture now skips comments
+and escaped quotes consistently. Nested argument selectors use full chain
+matching. Empty selector-list pseudo arguments, malformed separators/groups,
+unterminated selector comments, unsupported attribute flags, and unquoted
+multiword values are rejected. Nesting is bounded at 64 delimiter levels.
+CSS identifier escapes and quoted-value escape decoding remain unsupported;
+retaining raw escape bytes is not a claim of browser escape conformance.
+
+`tests/fixtures/kss/selector-grammar.tsv` supplies 32 C/Go/JS cases, checking
+validity, progress, counts, specificity, and final atom/span values. Web
+integration covers quoted URLs and delimiters, comments, nested `:not(:is(...))`,
+compound selectors inside `:is`, and malformed input. This does not close
+compound-selector Boolean semantics, functional-pseudo dispatch, CSS export
+mapping, fact normalization/presence, traversal, or backend conformance.
+
+The C++ syntax gate exposed a pre-existing linkage conflict: `ui_tk.h` declared
+C functions with C++ linkage, conflicting with `Menu` in `ui_tree.h`. The header
+now declares its C API with `extern "C"`. The C++ test also compiles the public
+headers with the generated KSS header, catching both linkage conflicts and
+C++-reserved field names. The new selector atom uses `operation`, not the C++
+keyword `operator`; the existing attribute predicate's parameter was renamed
+accordingly without changing its call contract.
+
+Verification passes: focused C/JS grammar fixtures and integration, Go runtime
+(including the matched grammar fixture), `fast-test`, the declared generated
+parity subset, Go and C++ syntax, full JS syntax/runtime plus strict KSS and
+Chromium DOM/inspector suites, generated provenance, and all five style guards.
+Logs are in `/tmp/kryon-selector-grammar/`. The initial aggregate log retains
+its C++ linkage failure; `cpp-final.log` and `final-checks.log` record the corrected
+passes, with the latter ending `RESULT 0`. Checks affected by the final comment
+and header corrections were rerun. Go uses gofmt; the `.kry` formatter ran on a
+review copy and unrelated continuation rewrites were inspected and omitted.
+No original plan file is fully closed by this lexer migration.

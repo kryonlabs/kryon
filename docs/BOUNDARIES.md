@@ -12,8 +12,10 @@ as well. Specificity weights and priority comparisons are shared with web
 resolution and inspector traces. Attribute operators and nth-position formulas
 also run in `.kry`, as do state predicates and basic structural pseudo rules;
 hosts provide values, sibling lists, and relationship/content/focus facts.
-Remaining web selector grammar and traversal decisions are migration debt tracked
-in the completion ledger. The adapter serializes tagged values.
+Main selector tokenization and atom parsing also live in `.kry`; the web adapter
+builds its selector objects from borrowed spans and tagged atoms. Remaining
+functional-pseudo dispatch, compound matching, traversal, and CSS export decisions
+are tracked in the completion ledger.
 
 Host
 adapters own source/import storage, native string views, and publication of

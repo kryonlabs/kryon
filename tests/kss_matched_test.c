@@ -474,6 +474,85 @@ test_selector_facts(void)
     fclose(file);
 }
 
+static void
+test_selector_grammar(void)
+{
+    FILE *file = fopen("tests/fixtures/kss/selector-grammar.tsv", "r");
+    char line[4096];
+    int cases = 0;
+    assert(file != NULL);
+    while(fgets(line, sizeof(line), file) != NULL) {
+        line[strcspn(line, "\r\n")] = '\0';
+        char *fields[9] = {line};
+        for(int i = 0; i < 8; i++) {
+            char *separator = strchr(fields[i], '\t');
+            assert(separator != NULL);
+            *separator = '\0';
+            fields[i + 1] = separator + 1;
+        }
+        String source = StringView(fields[1], strlen(fields[1]));
+        KssSelectorCursor parser = KssBeginSelector(source);
+        KssSelectorAtom last = {0};
+        KssSelectorSpan last_part = {0};
+        KssCursor cursor = {0};
+        cursor.source = source;
+        bool atom_mode = strcmp(fields[0], "A") == 0;
+        bool valid = false;
+        int count = 0;
+        for(size_t steps = 0; steps <= source.length + 1; steps++) {
+            if(atom_mode) {
+                KssSelectorAtom atom = KssSelectorNext(parser);
+                if(!atom.ok)
+                    break;
+                if(atom.done) {
+                    valid = true;
+                    break;
+                }
+                assert(atom.parser.cursor.pos > parser.cursor.pos);
+                parser = atom.parser;
+                last = atom;
+            } else {
+                KssSelectorSpan part = KssSelectorPart(cursor, strcmp(fields[0], "S") == 0);
+                if(!part.ok)
+                    break;
+                if(part.done) {
+                    valid = true;
+                    break;
+                }
+                assert(part.parser.pos > cursor.pos);
+                cursor = part.parser;
+                last_part = part;
+            }
+            count++;
+        }
+        assert(valid == (atoi(fields[2]) != 0));
+        if(valid) {
+            assert(count == atoi(fields[3]));
+            assert(parser.specificity == atoi(fields[4]));
+            String actual[4] = {{0}};
+            char relation[2] = {(char)last_part.combinator, '\0'};
+            if(atom_mode) {
+                actual[0] = last.canonical.length > 0
+                    ? StringView((const char *)last.canonical.bytes, last.canonical.length) : last.name;
+                actual[1] = last.value;
+                actual[2] = last.argument;
+                actual[3] = last.operation;
+            } else {
+                actual[0] = StringView(source.data + last_part.start, last_part.length);
+                actual[1] = last_part.combinator == 32 ? StringView("space", 5)
+                    : StringView(relation, last_part.combinator != 0 ? 1 : 0);
+            }
+            for(int i = 0; i < 4; i++) {
+                const char *expected = strcmp(fields[i + 5], "-") == 0 ? "" : fields[i + 5];
+                assert(StringEqual(actual[i], StringView(expected, strlen(expected))));
+            }
+        }
+        cases++;
+    }
+    assert(cases == 32);
+    fclose(file);
+}
+
 int
 main(void)
 {
@@ -484,6 +563,7 @@ main(void)
     test_css_values();
     test_selector_predicates();
     test_selector_facts();
+    test_selector_grammar();
     test_matched_fixture();
     test_truncation(source);
     test_mutation(source);

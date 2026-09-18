@@ -382,3 +382,87 @@ func TestKssSelectorFacts(t *testing.T) {
 		}
 	}
 }
+
+func TestKssSelectorGrammar(t *testing.T) {
+	host := active().(*runtime)
+	lines := strings.Split(strings.TrimSuffix(kssFixtureText(t, "../../tests/fixtures/kss/selector-grammar.tsv"), "\n"), "\n")
+	if len(lines) != 32 {
+		t.Fatal(len(lines))
+	}
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) != 9 {
+			t.Fatal(line)
+		}
+		source := fields[1]
+		parser := KssParser_KssBeginSelector(source)
+		cursor := KssCursor{Source: source}
+		var last KssSelectorAtom
+		var lastPart KssSelectorSpan
+		valid, count := false, 0
+		for steps := 0; steps <= len(source)+1; steps++ {
+			if fields[0] == "A" {
+				atom := host.KssParser_KssSelectorNext(parser)
+				if !atom.Ok {
+					break
+				}
+				if atom.Done {
+					valid = true
+					break
+				}
+				if atom.Parser.Cursor.Pos <= parser.Cursor.Pos {
+					t.Fatal("selector did not advance", line)
+				}
+				parser, last = atom.Parser, atom
+			} else {
+				part := KssParser_KssSelectorPart(cursor, fields[0] == "S")
+				if !part.Ok {
+					break
+				}
+				if part.Done {
+					valid = true
+					break
+				}
+				if part.Parser.Pos <= cursor.Pos {
+					t.Fatal("part did not advance", line)
+				}
+				cursor, lastPart = part.Parser, part
+			}
+			count++
+		}
+		if valid != (fields[2] == "1") {
+			t.Fatalf("validity %q: %v", line, valid)
+		}
+		if !valid {
+			continue
+		}
+		expectedCount, _ := strconv.Atoi(fields[3])
+		expectedScore, _ := strconv.Atoi(fields[4])
+		if count != expectedCount || parser.Specificity != int32(expectedScore) {
+			t.Fatalf("counts %q: %d/%d", line, count, parser.Specificity)
+		}
+		actual := [4]string{}
+		if fields[0] == "A" {
+			actual = [4]string{last.Name, last.Value, last.Argument, last.Operation}
+			if last.Canonical.Length > 0 {
+				actual[0] = kssNameText(last.Canonical)
+			}
+		} else {
+			actual[0] = source[lastPart.Start : lastPart.Start+lastPart.Length]
+			if lastPart.Combinator == 32 {
+				actual[1] = "space"
+			} else if lastPart.Combinator != 0 {
+				actual[1] = string(rune(lastPart.Combinator))
+			}
+		}
+		for i, value := range actual {
+			expected := fields[i+5]
+			if expected == "-" {
+				expected = ""
+			}
+			if value != expected {
+				t.Fatalf("value %q field %d: %q, want %q", line, i, value, expected)
+			}
+		}
+	}
+}

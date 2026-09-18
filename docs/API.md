@@ -247,7 +247,18 @@ ASCII case folding and the shared 64-byte name limit; unknown names read their
 named state flag. Basic structural pseudos (`root`, `scope`, first/last/only
 child or type, `empty`, `focus-within`, and `target`) evaluate shared facts.
 Hosts collect relationship, content, focus, and route facts; functional selector
-parsing and traversal remain separate migration work.
+dispatch and traversal remain separate migration work.
+
+Declarative selectors now use the shared streaming KSS lexer for lists,
+combinators, kinds, IDs, classes, attributes, state aliases, and functional
+pseudo arguments. It preserves quoted delimiters and nested argument spans,
+handles comments without stripping quoted URLs, and bounds delimiter nesting
+at 64 levels. Malformed delimiters, trailing/empty list items, empty selector-list
+pseudo arguments, and unsupported attribute flags report selector errors.
+Attribute values containing spaces must be quoted. CSS identifier escapes and
+quoted escape decoding are not implemented by this lexer; quoted escapes remain
+raw. Parsing does not establish full native/web selector conformance.
+
 
 
 

@@ -630,7 +630,7 @@ kss-formatter-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_D
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_formatter_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-formatter-test
 	$(BUILD_DIR)/kss-formatter-test
 
-kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss tests/fixtures/kss/css-values.kss tests/fixtures/kss/selector-predicates.tsv tests/fixtures/kss/selector-facts.tsv
+kss-matched-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c $(GENERATED_SRC_DIR)/runtime/kss_parser.h src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h tests/fixtures/kss/matched.kss tests/fixtures/kss/matched_module.kss tests/fixtures/kss/css-values.kss tests/fixtures/kss/selector-predicates.tsv tests/fixtures/kss/selector-facts.tsv tests/fixtures/kss/selector-grammar.tsv
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_matched_test.c src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-matched-test
 	$(BUILD_DIR)/kss-matched-test
 
@@ -923,7 +923,7 @@ go-runtime-test:
 k2c-syntax-test: $(K2C)
 	sh tests/k2c_syntax_test.sh $(K2C)
 
-k2cpp-syntax-test: $(K2CPP)
+k2cpp-syntax-test: $(K2CPP) $(GENERATED_SRC_DIR)/runtime/kss_parser.h
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
 
 k2go-syntax-test: $(K2GO)

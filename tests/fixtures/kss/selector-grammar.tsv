@@ -1,0 +1,32 @@
+L	Button, Text	1	2	0	Text	-	-	-
+L	Button[title="a,b"], :is(Text, Button)	1	2	0	:is(Text, Button)	-	-	-
+L	Button[title="a\\\",b"], Text	1	2	0	Text	-	-	-
+L	Button/* , { } */, Text	1	2	0	Text	-	-	-
+S	Column > Button.accent + Text	1	3	0	Text	+	-	-
+S	Column Button[title="a > b"]	1	2	0	Button[title="a > b"]	space	-	-
+S	Button:is(.a, :not(.b)) ~ Text	1	2	0	Text	~	-	-
+A	Button.accent#save:hover	1	4	131	hover	-	-	-
+A	Button:focus_visible	1	2	11	focus	-	-	-
+A	Button:active	1	2	11	pressed	-	-	-
+A	Button:read-only	1	2	11	readonly	-	-	-
+A	Button[title="café ], >"]	1	2	11	title	café ], >	-	=
+A	Button[data.label^="https://x/y"]	1	2	11	data.label	https://x/y	-	^=
+A	Button[required]	1	2	11	required	-	-	-
+A	Button/* comment */.accent	1	2	21	accent	-	-	-
+A	Button:not(:is(.a, .b))	1	2	11	not	-	:is(.a, .b)	-
+A	Button:has(> Row > Button:hover)	1	2	11	has	-	> Row > Button:hover	-
+A	*	1	1	0	*	-	-	-
+L	Button,	0	0	0	-	-	-	-
+L	Button,,Text	0	0	0	-	-	-	-
+L	Button[title="unfinished]	0	0	0	-	-	-	-
+S	Button >	0	0	0	-	-	-	-
+S	Button > > Text	0	0	0	-	-	-	-
+A	Button[title="x" i]	0	0	0	-	-	-	-
+A	Button[title!=x]	0	0	0	-	-	-	-
+L	Button/*unfinished	0	0	0	-	-	-	-
+A	Button:is([title=x))	0	0	0	-	-	-	-
+L	Button:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(:is(.a)))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))	0	0	0	-	-	-	-
+A	Button:is()	0	0	0	-	-	-	-
+A	Button:not(/*comment*/)	0	0	0	-	-	-	-
+A	Button[state=hover /* note */]	1	2	11	state	hover	-	=
+A	Button[title=two words]	0	0	0	-	-	-	-

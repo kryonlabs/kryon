@@ -468,4 +468,14 @@ EOF
 "$k2cpp" --no-main --root "$work" -o "$work/indexing" "$work/src/indexing.kry"
 c++ -fsyntax-only -std=c++17 -Werror -DKRYON_BOUNDS_CHECK -I"$root/include" -I"$work/indexing" "$work/indexing/src/indexing.cpp"
 
+# C API headers must also be consumable together from C++. This catches
+# conflicting linkage and C++ keywords in generated KSS record fields.
+cat > "$work/public_headers.cpp" <<'EOF'
+#include "kryon.h"
+#include "ui_tk.h"
+#include "ui_tree.h"
+#include "runtime/kss_parser.h"
+EOF
+c++ -fsyntax-only -std=c++17 -Werror -I"$root/include" -I"$generated_include" "$work/public_headers.cpp"
+
 echo "k2cpp ok"

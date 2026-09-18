@@ -28,6 +28,10 @@
 #include "ui_controls.h"
 #include "ui_menu_types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define CLIPBOARD_BUFFER_SIZE 4096
 
 typedef struct {
@@ -105,4 +109,8 @@ const char *GetClipboardBufferText(const ClipboardBuffer *buffer);
 int ClipboardBufferHasPendingWrite(const ClipboardBuffer *buffer);
 int SyncClipboardBufferFromHost(ClipboardBuffer *buffer);
 int FlushClipboardBufferToHost(ClipboardBuffer *buffer);
+#ifdef __cplusplus
+}
+#endif
+
 #endif

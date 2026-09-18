@@ -3,7 +3,7 @@ import { editTextEvent } from "./text_edit.js";
 // Kryon web runtime for k2js-generated ESM.
 import { Instance_InstanceExpired } from "./instance.js";
 import * as webKssModule from "./kss_parser.js";
-import { StyleSheet_StyleSpecificity, StyleSheet_StylePriorityScore, StyleSheet_StylePriorityWins } from "./style_sheet.js";
+import { StyleSheet_StylePriorityScore, StyleSheet_StylePriorityWins } from "./style_sheet.js";
 
 export const Text8 = 8;
 export const Text12 = 12;
@@ -2993,203 +2993,78 @@ function webDOMRole(node) {
 
 
 
-function stripKssComments(source) {
-  return String(source || "")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "");
+function selectorParts(text, sequence) {
+  const source = String(text || "");
+  let cursor = {source, pos: 0, line: 1, column: 1, file: 0};
+  const parts = [];
+  for (;;) {
+    const part = webKssModule.KssParser_KssSelectorPart(null, null, null, cursor, sequence);
+    if (!part.ok)
+      throw new Error(`invalid KSS selector at byte ${part.parser.pos}`);
+    if (part.done)
+      return parts;
+    parts.push({text: StringSlice(source, part.start, part.length),
+      combinator: part.combinator ? String.fromCharCode(part.combinator) : ""});
+    cursor = part.parser;
+  }
 }
 
 function splitSelectorSequence(text) {
-  const parts = [];
-  let token = "";
-  let bracketDepth = 0;
-  let parenDepth = 0;
-  let quote = "";
-  let pendingCombinator = "";
-  const push = () => {
-    const value = token.trim();
-    if (!value)
-      return;
-    parts.push({ combinator: pendingCombinator || (parts.length ? " " : ""), text: value });
-    token = "";
-    pendingCombinator = "";
-  };
-  for (const ch of String(text || "")) {
-    if (quote) {
-      token += ch;
-      if (ch === quote)
-        quote = "";
-      continue;
-    }
-    if (ch === "\"" || ch === "'") {
-      token += ch;
-      quote = ch;
-      continue;
-    }
-    if (ch === "[") {
-      bracketDepth++;
-      token += ch;
-      continue;
-    }
-    if (ch === "]" && bracketDepth > 0) {
-      bracketDepth--;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && ch === "(") {
-      parenDepth++;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && ch === ")" && parenDepth > 0) {
-      parenDepth--;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && !parenDepth && (ch === ">" || ch === "+" || ch === "~")) {
-      push();
-      pendingCombinator = ch;
-      continue;
-    }
-    if (!bracketDepth && !parenDepth && /\s/.test(ch)) {
-      push();
-      if (!pendingCombinator)
-        pendingCombinator = " ";
-      continue;
-    }
-    token += ch;
-  }
-  push();
-  return parts;
+  return selectorParts(text, true);
 }
 
 function splitSelectorList(text) {
-  const parts = [];
-  let token = "";
-  let bracketDepth = 0;
-  let parenDepth = 0;
-  let quote = "";
-  const push = () => {
-    const value = token.trim();
-    if (value)
-      parts.push(value);
-    token = "";
-  };
-  for (const ch of String(text || "")) {
-    if (quote) {
-      token += ch;
-      if (ch === quote)
-        quote = "";
-      continue;
-    }
-    if (ch === "\"" || ch === "'") {
-      token += ch;
-      quote = ch;
-      continue;
-    }
-    if (ch === "[") {
-      bracketDepth++;
-      token += ch;
-      continue;
-    }
-    if (ch === "]" && bracketDepth > 0) {
-      bracketDepth--;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && ch === "(") {
-      parenDepth++;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && ch === ")" && parenDepth > 0) {
-      parenDepth--;
-      token += ch;
-      continue;
-    }
-    if (!bracketDepth && !parenDepth && ch === ",") {
-      push();
-      continue;
-    }
-    token += ch;
-  }
-  push();
-  return parts;
+  return selectorParts(text, false).map(part => part.text);
 }
 
 function parseSimpleSelector(text) {
-  let attributes = 0;
-  let classes = 0;
-  let names = 0;
-  let source = String(text || "").trim();
+  ensureWebKssHost();
+  let parser = webKssModule.KssParser_KssBeginSelector(null, null, null, String(text || ""));
   const selector = {
-    kind: "*",
-    id: "",
-    classes: [],
-    attrs: {},
-    attrOps: {},
-    pseudos: [],
-    not: [],
-    matches: [],
-    state: "",
-    states: [],
-    specificity: 0
+    kind: "*", id: "", classes: [], attrs: {}, attrOps: {}, pseudos: [],
+    not: [], matches: [], state: "", states: [], specificity: 0
   };
-  source = source.replace(/\[([A-Za-z_][\w.-]*)\s*([~|^$*]?=)\s*([^\]]+)\]/g, (_all, key, op, value) => {
-    selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
-    selector.attrOps[key] = op || "=";
-    attributes++;
-    return "";
-  });
-  source = source.replace(/:([A-Za-z_][\w-]*)(?:\(\s*([^)]*?)\s*\))?/g, (_all, name, arg) => {
-    const pseudo = name.replace(/_/g, "-").toLowerCase();
-    if (arg !== undefined && (pseudo === "not" || pseudo === "is" || pseudo === "where")) {
-      const selectors = splitSelectorList(arg).map(parseSimpleSelector);
-      if (pseudo === "not")
-        selector.not.push(...selectors);
-      else
-        selector.matches.push(...selectors);
-    } else if (arg === undefined && (pseudo === "hover" || pseudo === "pressed" || pseudo === "active" ||
-        pseudo === "focus" || pseudo === "focused" || pseudo === "focus-visible" ||
-        pseudo === "normal" || pseudo === "disabled" ||
-        pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
-        pseudo === "invalid" || pseudo === "valid" || pseudo === "indeterminate" ||
-        pseudo === "default" || pseudo === "autofill" || pseudo === "placeholder-shown" ||
-        pseudo === "expanded" || pseudo === "open" ||
-        pseudo === "readonly" || pseudo === "read-only" || pseudo === "required" ||
-        pseudo === "enabled" || pseudo === "optional")) {
-      const state = pseudo === "active" ? "pressed" :
-        (pseudo === "focused" || pseudo === "focus-visible" ? "focus" :
-        (pseudo === "read-only" ? "readonly" : pseudo));
-      selector.state = state;
-      if (!selector.states.includes(state))
-        selector.states.push(state);
-    } else
-      selector.pseudos.push(arg === undefined ? pseudo : `${pseudo}(${String(arg).trim()})`);
-    attributes++;
-    return "";
-  });
-  source = source.replace(/\[([A-Za-z_][\w.-]*)\]/g, (_all, key) => {
-    selector.attrs[key] = null;
-    attributes++;
-    return "";
-  });
-  source = source.replace(/#([A-Za-z_][\w-]*)/g, (_all, id) => {
-    selector.id = id;
-    names++;
-    return "";
-  });
-  source = source.replace(/\.([A-Za-z_][\w-]*)/g, (_all, name) => {
-    selector.classes.push(name);
-    classes++;
-    return "";
-  });
-  source = source.trim();
-  if (source)
-    selector.kind = source;
-  selector.specificity = StyleSheet_StyleSpecificity(null, null, null,
-    selector.kind !== "*" ? 1 : 0, attributes, classes, names);
-  return selector;
+  for (;;) {
+    const atom = webKssModule.KssParser_KssSelectorNext(null, null, null, parser);
+    if (!atom.ok)
+      throw new Error(`invalid KSS selector at byte ${atom.parser.cursor.pos}`);
+    parser = atom.parser;
+    if (atom.done) {
+      selector.specificity = parser.specificity;
+      return selector;
+    }
+    const name = webKssNameText(atom.canonical);
+    switch (atom.kind) {
+      case webKssModule.KssSelectorKind:
+        selector.kind = atom.name;
+        break;
+      case webKssModule.KssSelectorId:
+        selector.id = atom.name;
+        break;
+      case webKssModule.KssSelectorClass:
+        selector.classes.push(atom.name);
+        break;
+      case webKssModule.KssSelectorAttribute:
+        selector.attrs[atom.name] = atom.has_value ? atom.value : null;
+        if (atom.has_value)
+          selector.attrOps[atom.name] = atom.operation;
+        break;
+      case webKssModule.KssSelectorState:
+        selector.state = name;
+        if (!selector.states.includes(name))
+          selector.states.push(name);
+        break;
+      case webKssModule.KssSelectorNot:
+        selector.not.push(...splitSelectorList(atom.argument).map(parseSelector));
+        break;
+      case webKssModule.KssSelectorMatches:
+        selector.matches.push(...splitSelectorList(atom.argument).map(parseSelector));
+        break;
+      case webKssModule.KssSelectorPseudo:
+        selector.pseudos.push(atom.has_argument ? `${name}(${atom.argument.trim()})` : name);
+        break;
+    }
+  }
 }
 
 function parseSelector(text) {
@@ -3252,11 +3127,15 @@ function webKssEnvironment(environment) {
 
 let webKssHostInstalled = false;
 
-function webKssStep(p) {
+function ensureWebKssHost() {
   if (!webKssHostInstalled) {
     webKssModule.setHost({ StringSlice });
     webKssHostInstalled = true;
   }
+}
+
+function webKssStep(p) {
+  ensureWebKssHost();
   return webKssModule.KssParser_KssStep(null, undefined, undefined, p);
 }
 
@@ -3387,8 +3266,8 @@ function webDeclarationsForRule(item, p, colors) {
 
 function webRulesFromItem(item, sourceFiles) {
   const mapped = [];
-  const selectorText = stripKssComments(StringSlice(item.source,
-    item.span.selector_start, item.span.selector_length)).trim();
+  const selectorText = StringSlice(item.source,
+    item.span.selector_start, item.span.selector_length);
   const {style, raw, tokenOrigins} = item;
   const sourceFile = sourceFiles[(item.origin ? item.origin.file : item.span.file)] || "";
   const sourceLine = item.origin ? item.origin.line : 0;
@@ -4878,11 +4757,11 @@ function selectorMatchesSimpleWebNode(selector, node, scopeNode = null) {
       !selectorStructuralPseudosMatch(selector, node, scopeNode))
     return false;
   if ((selector.not || []).some((notSelector) =>
-      selectorMatchesSimpleWebNode(notSelector, node, scopeNode)))
+      selectorMatchesWebNode(notSelector, node, scopeNode)))
     return false;
   if (selector.matches?.length &&
       !selector.matches.some((matchSelector) =>
-        selectorMatchesSimpleWebNode(matchSelector, node, scopeNode)))
+        selectorMatchesWebNode(matchSelector, node, scopeNode)))
     return false;
   return true;
 }

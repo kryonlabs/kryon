@@ -88,6 +88,49 @@ for (const line of factCases) {
   assert.equal(actual, Number(expected), line);
 }
 
+// Streaming selector grammar: byte spans and atom values match C and Go.
+kss.setHost({StringSlice: runtime.StringSlice});
+const grammarCases = readFileSync(new URL("./fixtures/kss/selector-grammar.tsv", import.meta.url), "utf8").trimEnd().split("\n");
+assert.equal(grammarCases.length, 32);
+for (const line of grammarCases) {
+  const [mode, source, expectedValid, expectedCount, expectedScore, ...expectedValues] = line.split("\t");
+  let parser = kss.KssParser_KssBeginSelector(null, null, null, source);
+  let cursor = {source, pos: 0, line: 0, column: 0, file: 0};
+  let last;
+  let valid = false;
+  let count = 0;
+  for (let steps = 0; steps <= runtime.StringByteLength(source) + 1; steps++) {
+    const result = mode === "A" ? kss.KssParser_KssSelectorNext(null, null, null, parser)
+      : kss.KssParser_KssSelectorPart(null, null, null, cursor, mode === "S");
+    if (!result.ok)
+      break;
+    if (result.done) {
+      valid = true;
+      break;
+    }
+    if (mode === "A") {
+      assert.ok(result.parser.cursor.pos > parser.cursor.pos);
+      parser = result.parser;
+    } else {
+      assert.ok(result.parser.pos > cursor.pos);
+      cursor = result.parser;
+    }
+    last = result;
+    count++;
+  }
+  assert.equal(valid, expectedValid === "1", line);
+  if (!valid)
+    continue;
+  assert.equal(count, Number(expectedCount), line);
+  assert.equal(parser.specificity, Number(expectedScore), line);
+  const values = mode === "A"
+    ? [last.canonical.length ? String.fromCharCode(...last.canonical.bytes.slice(0, last.canonical.length)) : last.name,
+      last.value, last.argument, last.operation]
+    : [runtime.StringSlice(source, last.start, last.length),
+      last.combinator === 32 ? "space" : last.combinator ? String.fromCharCode(last.combinator) : "", "", ""];
+  assert.deepEqual(values, expectedValues.map(value => value === "-" ? "" : value), line);
+}
+
 // Exercise the actual host adapters, including reverse and same-type indices.
 {
   const nodes = ["Button", "Text", "Button", "Button"].map((kind, index) => ({
@@ -145,6 +188,27 @@ for (const line of factCases) {
   });
   assert.deepEqual(runtime.resolveWebStyle(root, sheet), {radius: 2, "border-width": 3});
   assert.deepEqual(runtime.resolveWebStyle(label, sheet), {radius: 4});
+}
+
+// Parsed arguments keep quoted delimiters and nested selector groups intact.
+{
+  const parent = {kind: "Column", path: "root", parentPath: "root"};
+  const button = {kind: "Button", path: "root/button", parentPath: "root",
+    classes: ["accent"], title: "https://example.test/a,b] { café }"};
+  parent.__kryFrameNodes = button.__kryFrameNodes = [parent, button];
+  const sheet = runtime.parseWebStyleSheet(`
+    Button[title="https://example.test/a,b] { café }"] { radius: 7; }
+    Button/* comma, brace { and > */.accent { border: #112233; }
+    Button:not(:is(.quiet, .disabled)) { foreground: #445566; }
+    Button:is(Column > Button.accent, Text) { padding-x: 9; }
+  `);
+  assert.deepEqual(runtime.resolveWebStyle(button, sheet), {
+    radius: 7, border: "#112233", foreground: "#445566", "padding-x": 9
+  });
+  assert.equal(sheet.rules[0].selector.attrs.title, button.title);
+  assert.throws(() => runtime.parseWebStyleSheet('Button[title="x" i] {radius: 1;}'), /invalid KSS selector/);
+  assert.throws(() => runtime.parseWebStyleSheet('Button:is() {radius: 1;}'), /invalid KSS selector/);
+  assert.throws(() => runtime.parseWebStyleSheet('Button/* unfinished {radius: 1;}'), /unterminated selector comment/);
 }
 
 // Parsed and prebuilt rules take the same shared priority path. Ties choose
