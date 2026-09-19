@@ -253,7 +253,9 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         g_ui_slider_active_id == id,
         CheckCollisionPointRec(mouse_world, hit) != 0,
         InputCapturesClick(mouse_world) != 0,
-        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        (ui_input_captures_click_internal(mouse_world, 0) ||
+         (ui_pointer_dragged_this_click() &&
+          g_ui_pointer_owner != POINTER_OWNER_HORIZONTAL_SLIDER)) != 0,
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, false,
@@ -378,7 +380,9 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
         g_ui_slider_active_id == id,
         CheckCollisionPointRec(mouse_world, hit) != 0,
         InputCapturesClick(mouse_world) != 0,
-        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        (ui_input_captures_click_internal(mouse_world, 0) ||
+         (ui_pointer_dragged_this_click() &&
+          g_ui_pointer_owner != POINTER_OWNER_VERTICAL_SLIDER)) != 0,
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, true,
@@ -495,7 +499,9 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         g_ui_slider_active_id == id,
         CheckCollisionPointRec(mouse_world, hit) != 0,
         InputCapturesClick(mouse_world) != 0,
-        ui_input_captures_click_internal(mouse_world, 0) != 0,
+        (ui_input_captures_click_internal(mouse_world, 0) ||
+         (ui_pointer_dragged_this_click() &&
+          g_ui_pointer_owner != POINTER_OWNER_VERTICAL_SLIDER)) != 0,
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, true,

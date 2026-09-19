@@ -295,6 +295,7 @@ void MarkCursor(int cursor);
 void MarkClickable(void);
 void MarkDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
+int ui_pointer_dragged_this_click(void);
 int HoverEffectsEnabled(void);
 const char *ui_inspect_control_id(char *buf, size_t buf_size,
                                   const char *kind, int numeric_id,

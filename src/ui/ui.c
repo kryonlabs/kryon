@@ -668,6 +668,7 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
             g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
             g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER;
         int content_delta_y = (int)pointer.y - content_drag_start_y;
+        int capture_scroll_input = 0;
         ScrollContentDragDecision content_drag;
 
 #if ANDROID_BUILD
@@ -696,6 +697,7 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                     }
                     frame.offset = ScrollDragDeltaOffsetFor(
                         android_frame_drag_start_scroll, drag_delta_y, maximum);
+                    capture_scroll_input = 1;
                     kry_android_consume_frame_drag();
                     if(!ui_primary_pointer_down())
                         android_frame_drag_active = 0;
@@ -724,8 +726,15 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
         content_dragging = content_drag.dragging;
         if(content_drag.claim_scroll_owner)
             g_ui_pointer_owner = POINTER_OWNER_SCROLL;
+        if(content_drag.capture_input)
+            capture_scroll_input = 1;
         if(content_drag.dragging)
             frame.offset = content_drag.scroll_offset;
+        if(capture_scroll_input) {
+            PushInputCapture((Rectangle){0.0f, 0.0f,
+                                         (float)ui_view_width,
+                                         (float)ui_view_height}, 0);
+        }
         *scroll_offset = frame.offset;
         frame.content.y = frame.clip.y - (float)frame.offset;
         if(frame.scrollbar) {
@@ -768,20 +777,27 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                   .pill = 1},
                     frame.thumb_state, 0, 0.0f, 0.0f, 0.0f,
                     StyleKindScrollThumb()).value);
+            float track_opacity = track_style.opacity * 0.32f;
+            float track_border_opacity = track_style.opacity * 0.42f;
+            float thumb_opacity = thumb_style.opacity;
+            if(thumb_opacity < 0.90f)
+                thumb_opacity = 0.90f;
             ui_draw_material(paint.track_bounds, (Rectangle){0},
-                             track_style.background, track_style.border,
-                             track_style.border, track_style.radius,
-                             track_style.border_width, 0.0f, 0.0f, 0,
-                             track_style.focus, 0.0f,
-                             track_style.opacity,
-                             ui_style_fill(track_style),
+                             Fade(track_style.background, track_opacity),
+                             Fade(track_style.border, track_border_opacity),
+                             Fade(track_style.border, track_border_opacity),
+                             track_style.radius, track_style.border_width,
+                             0.0f, 0.0f, 0, track_style.focus, 0.0f,
+                             1.0f, ui_style_fill(track_style),
                              track_style.material);
             ui_draw_material(paint.thumb_bounds, paint.track_bounds,
-                             thumb_style.background, thumb_style.border,
-                             thumb_style.border, thumb_style.radius,
-                             thumb_style.border_width, 0.0f, 0.0f, 0,
-                             thumb_style.focus, 0.0f,
-                             thumb_style.opacity,
+                             Fade(thumb_style.background, thumb_opacity),
+                             Fade(thumb_style.border, thumb_opacity),
+                             Fade(thumb_style.border, thumb_opacity),
+                             thumb_style.radius, thumb_style.border_width,
+                             frame.thumb_state == ButtonStateHover ? 1.0f : 0.0f,
+                             frame.thumb_state == ButtonStatePressed ? 1.0f : 0.0f,
+                             0, thumb_style.focus, 0.0f, 1.0f,
                              ui_style_fill(thumb_style),
                              thumb_style.material);
         }
@@ -843,6 +859,12 @@ int
 ui_pointer_drag_is_horizontal(void)
 {
     return InputPointerDragIsHorizontal(ui_pointer_dx(), ui_pointer_dy());
+}
+
+int
+ui_pointer_dragged_this_click(void)
+{
+    return g_ui_pointer_dragged_this_click;
 }
 
 static void
