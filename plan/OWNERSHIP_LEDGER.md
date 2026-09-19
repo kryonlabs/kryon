@@ -1,6 +1,6 @@
 # Requirement ownership ledger
 
-Reviewed at Kryon `0154a2f0` after pausing the old JavaScript/web target.
+Reviewed through Kryon `5c98e157` after adding the initial remaining-work ledger.
 This is the P0 working ledger for `plan/COMPLETION.md`. It is evidence of
 current reconciliation progress, not a claim that P0 is complete.
 
@@ -13,9 +13,46 @@ Status meanings:
 - `future`: deliberately moved out of the current release target.
 - `missing`: required work has no complete maintained implementation yet.
 
+## Source document coverage map
+
+This map folds every current plan document into the ledger rows below. It does
+not close P0 by itself: each document still needs row-level evidence from code,
+tests, generated artifacts, or platform/runtime verification before its rows can
+be marked verified.
+
+| Plan document | Folded ledger rows | Current status | Evidence still needed |
+|---|---|---|---|
+| `plan/COMPLETION.md` | P0-01 through P7-03 | partial | Use this file as the phase checklist; close checkboxes only when the mapped ledger rows have revision-specific evidence. |
+| `plan/canonical/README.md` | P2-01, P2-02, P2-04, P6-02 | partial | Preserve the completed canonical evidence and reconcile the Inbe interaction follow-up against current source and downstream assets. |
+| `plan/canonical/02-widget-policy-migration.md` | P2-01, P2-02, P4-03 | partial | Source inventory for native, Go, and generated widget decisions; per-family tests for shared policy ownership. |
+| `plan/canonical/03-input-release-lifecycles.md` | P2-01, P2-04 | partial | Branch inventory for capture/focus/release paths and matched tests for release, drag, disabled, popup, and nested ownership cases. |
+| `plan/canonical/04-text-editing.md` | P2-03, P2-05 | partial | Native/Go fixture coverage for text composition plus actual platform IME candidate-window evidence. |
+| `plan/canonical/05-rich-text-and-drawing.md` | P2-03, P2-04 | partial | Reflow, line-break, selectable paragraph, retained placement, wrap, alignment, and selection evidence. |
+| `plan/canonical/06-lowered-block-backends.md` | P1-01, P2-04, P3-01, P3-02 | future | Keep old JS parity items paused; audit active-backend lowering separately from future web-native lowering. |
+| `plan/canonical/07-host-service-boundary.md` | P2-01, P2-03, P7-01 | partial | File/symbol inventory separating reusable `.kry` policy from host storage, platform, measurement, paint, game, and terminal services. |
+| `plan/canonical/08-go-web-transpilation-parity.md` | P1-04, P2-02, P3-01, P3-02 | future | Treat web parity as future design work; continue active native/Go policy migration evidence. |
+| `plan/dom/00-index.md` | P3-01, P3-02 | future | Future compiler/runtime/fake-DOM/browser evidence once web-native work resumes. |
+| `plan/dom/01-dom-node-identity.md` | P3-02 | future | Future identity fact tests for pre-mount and mounted DOM objects. |
+| `plan/dom/02-compiler-metadata.md` | P3-02 | future | Future metadata tests for all DOM-producing expression forms. |
+| `plan/dom/03-source-ranges.md` | P3-02 | future | Future source range lookup and mounted annotation tests. |
+| `plan/dom/04-native-element-surface.md` | P3-02 | future | Future native tag surface inventory and browser tag evidence. |
+| `plan/dom/05-attributes-state-and-data.md` | P3-02 | future | Future attribute/state/data mutation, selector, and mounted parity evidence. |
+| `plan/dom/06-kss-selector-and-style-contract.md` | P3-02, P4-02 | future | Future DOM fact handoff for browser CSS contract; active KSS semantics stay in P4. |
+| `plan/dom/07-relationships-and-accessibility.md` | P3-02 | future | Future relationship and accessibility snapshot evidence. |
+| `plan/dom/08-events-and-dom-commands.md` | P3-02 | future | Future event refs, command helper, decorated event, and bubbling evidence. |
+| `plan/dom/09-tests-rollout-and-coordination.md` | P3-01, P3-02, P7-03 | future | Future web-native rollout gates after design resumes; current gates exclude old JS runtime parity. |
+| `plan/style/00-status.md` | P4-01 through P7-03 | partial | Keep as style area index; use row evidence below as the authoritative status. |
+| `plan/style/02-kss-language.md` | P4-01, P4-02, P5-03 | partial | Parser/resolver/formatter command evidence and row-level unsupported-feature classification. |
+| `plan/style/04-widget-migration.md` | P2-02, P4-03, P7-02 | partial | Widget subpart/role/state inventory, getter/base allowlist shrink evidence, no-style behavior evidence. |
+| `plan/style/05-runtime-and-backends.md` | P4-01, P4-03, P4-04, P5-04 | partial | Active-target backend matrix, field-presence/provenance evidence, constrained-backend degradation evidence. |
+| `plan/style/06-tooling-and-workflow.md` | P5-02, P5-03, P5-04 | missing | Inspector, diagnostics, formatter, hot reload, and release table implementation/test evidence. |
+| `plan/style/07-testing-and-gates.md` | P4-02, P4-03, P7-03 | partial | Map existing and missing style tests to concrete requirements, then wire completed coverage into gates. |
+| `plan/style/08-downstream-rollout.md` | P6-01, P6-02, P6-03 | partial | Downstream consumer inventory and per-platform build/run evidence. |
+| `plan/style/09-legacy-removal.md` | P4-01, P7-01, P7-02, P7-03 | missing | Bridge inventory with file/symbol/caller/replacement/deletion-test rows before removing debt. |
+
 | ID | Requirement | Source documents | Maintained owner / host-service boundary | Affected targets | Current evidence | Status | Next action |
 |---|---|---|---|---|---|---|---|
-| P0-01 | Reconcile every canonical/style/DOM requirement with current code and tests. | `plan/COMPLETION.md` P0, all files under `plan/` | This ledger owns the reconciliation record; code owners remain the rows below. | All active targets | `find plan -name '*.md'` finds 27 plan docs; this file has initial rows but does not yet enumerate every sub-requirement from every doc. | partial | Expand this ledger until every bullet in the 27 plan files has a row or is explicitly folded into a row with evidence. |
+| P0-01 | Reconcile every canonical/style/DOM requirement with current code and tests. | `plan/COMPLETION.md` P0, all files under `plan/` | This ledger owns the reconciliation record; code owners remain the rows below. | All active targets | The source document coverage map folds all 27 current plan docs into ledger rows; bullet-level evidence is still incomplete. | partial | Expand each coverage-map entry into row-level evidence until every bullet in the 27 plan files is verified or explicitly deferred. |
 | P0-02 | Separate generation, execution, state comparison, rendered-output, and platform evidence. | `plan/COMPLETION.md` P0/P7 | Ledger/evidence docs; tests and rendered artifacts remain authoritative proof. | C, C++, Go, KRB, renderers, downstream apps | Current docs distinguish some gates, but many rows still cite broad tests without proof of what they cover. | partial | Add evidence columns or subrows for generation vs execution vs visual/platform verification as each area is audited. |
 | P1-01 | Remove `k2js` and generated JS runtime parity from default `all`, `tools`, `test`, and `preflight`. | `plan/COMPLETION.md` P1 | `Makefile` target graph; paused `cmd/k2js` remains reference material. | Build/test gates | Dry-runs at `0154a2f0`: `make -n all`, `tools`, `test`, and `preflight` contain no `k2js`. | verified | Keep this dry-run check in final evidence; do not use `k2js` tests as current gates. |
 | P1-02 | Remove `k2js` and generated web runtime from tools package. | `plan/COMPLETION.md` P1 | `scripts/check-tools-package.sh`, tools packaging rules. | Tools archive | Prior slice removed `k2js`; docs state tools bundle excludes JS/web. Need package check rerun at final revision for closure. | implemented/unverified | Run `scripts/check-tools-package.sh` or `make check-tools-package` before final closure. |
