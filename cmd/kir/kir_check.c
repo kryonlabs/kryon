@@ -183,6 +183,24 @@ compatible(const char *to, const char *from)
     if(*canonical) to = canonical;
     if(!*to || !*from) return 1;
     if(!strcmp(to, from)) return 1;
+    if(to[0] == '[' || from[0] == '[') {
+        char to_element[KIR_NAME_MAX], from_element[KIR_NAME_MAX];
+        int to_capacity, from_capacity;
+        if(!KirArrayElementType(to, to_element, sizeof(to_element), &to_capacity) ||
+           !KirArrayElementType(from, from_element, sizeof(from_element), &from_capacity))
+            return 0;
+        if(to_capacity != from_capacity)
+            return 0;
+        if(to_capacity < 0) {
+            size_t length = (size_t)(strchr(to, ']') - to);
+            if(length != (size_t)(strchr(from, ']') - from) || strncmp(to, from, length))
+                return 0;
+        }
+        const char *to_scalar = KirScalarType(to_element);
+        const char *from_scalar = KirScalarType(from_element);
+        return !strcmp(*to_scalar ? to_scalar : to_element,
+                       *from_scalar ? from_scalar : from_element);
+    }
     if(!strcmp(to, "const char*") && !strcmp(from, "string")) return 1;
     if(!strcmp(from, "integer") && numeric(to)) return 1;
     if(!strcmp(from, "real") && (to[0] == 'f')) return 1;
@@ -321,6 +339,8 @@ module_uses_c(const Checker *c)
     return 0;
 }
 
+static const char *local_storage_error(const KirModule *module, const char *type);
+
 static const char *
 expression_type(Checker *c, int index)
 {
@@ -335,6 +355,34 @@ expression_type(Checker *c, int index)
     if(e->right >= 0) right = expression_type(c, e->right);
     switch(e->kind) {
     case KIR_EXPR_COMPOUND: {
+        if(e->name[0] == '[') {
+            char element[KIR_NAME_MAX];
+            int capacity = 0;
+            const char *problem = local_storage_error(c->module, e->name);
+            if(problem != NULL) {
+                error(c, e->span, problem, e->name);
+                break;
+            }
+            KirArrayElementType(e->name, element, sizeof(element), &capacity);
+            if(capacity < 0)
+                error(c, e->span, "array literals require a numeric capacity", e->name);
+            int count = 0;
+            for(int child = e->first_child; child >= 0; child = c->fn->exprs[child].next_sibling) {
+                KirExpr *entry = &c->fn->exprs[child];
+                if(!strcmp(entry->op, "="))
+                    error(c, entry->span, "array literals require positional elements", entry->name);
+                const char *value_type = expression_type(c, entry->right);
+                if(!compatible(element, value_type))
+                    error(c, entry->span, "array initializer element type mismatch", element);
+                check_borrowed_string(c, element, entry->right);
+                kir_copy(entry->type, sizeof(entry->type), element);
+                count++;
+            }
+            if(capacity >= 0 && count > capacity)
+                error(c, e->span, "too many array initializer elements", e->name);
+            type = e->name;
+            break;
+        }
         const KirType *record = KirFindType(c->module, e->name, NULL);
         int ordinal = 0;
         int mode = -1;
@@ -510,6 +558,8 @@ expression_type(Checker *c, int index)
         break;
     }
     case KIR_EXPR_BINARY: {
+        if(left[0] == '[' || right[0] == '[')
+            error(c, e->span, "array values do not support binary operations", e->op);
         const KirType *left_slot = KirFindType(c->module, left, NULL);
         const KirType *right_slot = KirFindType(c->module, right, NULL);
         if((left_slot && left_slot->is_slot) || (right_slot && right_slot->is_slot))
@@ -552,6 +602,8 @@ expression_type(Checker *c, int index)
         type = left;
         break;
     case KIR_EXPR_CAST: {
+        if(right[0] == '[' || e->name[0] == '[')
+            error(c, e->span, "array casts are not supported", e->name);
         const KirType *destination = KirFindType(c->module, e->name, NULL);
         const KirType *source = KirFindType(c->module, right, NULL);
         if(destination != NULL && destination->is_enum &&
@@ -689,6 +741,15 @@ storage_type_error(const KirModule *module, const char *source,
     checked->items = items;
     checked->items[checked->count++] = record;
     return NULL;
+}
+
+static const char *
+local_storage_error(const KirModule *module, const char *type)
+{
+    ValidatedRecords checked = {0};
+    const char *problem = storage_type_error(module, type, NULL, 0, &checked);
+    free(checked.items);
+    return problem;
 }
 
 static int
@@ -1092,11 +1153,14 @@ check_function(Checker *c, KirFunction *fn)
                 if(st->expr_root < 0 || (strcmp(type, "integer") &&
                    key_type[0] != 'i' && key_type[0] != 'u'))
                     error(c, st->span, "instance key requires an integer", st->name);
-            } else if(KirArrayElementType(st->type, NULL, 0, NULL)) {
-                error(c, st->span, "fixed array locals are not supported in strict functions", st->name);
             } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
                 !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
             else if(!compatible(st->type, type)) error(c, st->span, "initializer type mismatch", st->name);
+            if(st->type[0] == '[') {
+                const char *problem = local_storage_error(c->module, st->type);
+                if(problem != NULL)
+                    error(c, st->span, problem, st->name);
+            }
             const KirType *local_type = KirFindType(c->module, st->type, NULL);
             if(local_type != NULL && local_type->is_slot) {
                 has_slots = 1;
@@ -1113,6 +1177,8 @@ check_function(Checker *c, KirFunction *fn)
         } else if(st->kind == KIR_STMT_ASSIGN) {
             const char *lhs = expression_type(c, st->lhs_root);
             const KirType *destination = KirFindType(c->module, lhs, NULL);
+            if(lhs[0] == '[' && strcmp(st->assignment_op, "="))
+                error(c, st->span, "array compound assignment is not supported", st->assignment_op);
             if(destination != NULL && destination->is_slot) {
                 int local = c->count - 1;
                 const char *name = c->fn->exprs[st->lhs_root].name;

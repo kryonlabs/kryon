@@ -1662,37 +1662,38 @@ func KssParser_KssDiagnosticAt(p KssParser) KssParser {
 			var value_26 int32 = p.DiagnosticLength
 			var value_27 int32 = p.Cursor.File
 			var value_28 KssSourceFile = p.Files[value_27]
-			var value_29 int32 = index
-			var value_30 uint8 = value_28.Name[value_29]
-			p.Diagnostic[value_26] = value_30
-			var value_31 int32 = p.DiagnosticLength
-			var value_32 int32 = 1
-			var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
-			p.DiagnosticLength = value_33
-			var value_34 int32 = index
-			var value_35 int32 = 1
-			var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
-			index = value_36
+			var value_29 [96]uint8 = value_28.Name
+			var value_30 int32 = index
+			var value_31 uint8 = value_29[value_30]
+			p.Diagnostic[value_26] = value_31
+			var value_32 int32 = p.DiagnosticLength
+			var value_33 int32 = 1
+			var value_34 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_33), 32, true, 1))
+			p.DiagnosticLength = value_34
+			var value_35 int32 = index
+			var value_36 int32 = 1
+			var value_37 int32 = int32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, true, 1))
+			index = value_37
 		}
-		var value_37 KssParser = p
-		var value_38 string = ":"
-		var value_39 KssParser = KssParser_KssDiagnosticAppend(value_37, value_38)
-		p = value_39
+		var value_38 KssParser = p
+		var value_39 string = ":"
+		var value_40 KssParser = KssParser_KssDiagnosticAppend(value_38, value_39)
+		p = value_40
 	}
-	var value_40 KssParser = p
-	var value_41 int32 = p.Cursor.Line
-	var value_42 KssParser = KssParser_KssDiagnosticAppendInt(value_40, value_41)
-	p = value_42
-	var value_43 KssParser = p
-	var value_44 string = ":"
-	var value_45 KssParser = KssParser_KssDiagnosticAppend(value_43, value_44)
-	p = value_45
-	var value_46 KssParser = p
-	var value_47 int32 = p.Cursor.Column
-	var value_48 KssParser = KssParser_KssDiagnosticAppendInt(value_46, value_47)
-	p = value_48
-	var value_49 KssParser = p
-	return value_49
+	var value_41 KssParser = p
+	var value_42 int32 = p.Cursor.Line
+	var value_43 KssParser = KssParser_KssDiagnosticAppendInt(value_41, value_42)
+	p = value_43
+	var value_44 KssParser = p
+	var value_45 string = ":"
+	var value_46 KssParser = KssParser_KssDiagnosticAppend(value_44, value_45)
+	p = value_46
+	var value_47 KssParser = p
+	var value_48 int32 = p.Cursor.Column
+	var value_49 KssParser = KssParser_KssDiagnosticAppendInt(value_47, value_48)
+	p = value_49
+	var value_50 KssParser = p
+	return value_50
 }
 
 func KssParser_KssFail(p KssParser, message string) KssParser {
@@ -2648,41 +2649,42 @@ func KssParser_KssApplyOverride(p KssParser, index int32) KssParser {
 				var value_35 int32 = index
 				var value_36 KssToken = p.Tokens[value_35]
 				var value_37 KssName = value_36.Name
-				var value_38 int32 = byte_index
-				var value_39 uint8 = value_37.Bytes[value_38]
-				var value_40 uint8 = KssParser_KssLower(value_39)
-				var value_41 bool = value_34 != value_40
-				if value_41 {
-					var value_42 bool = false
-					same = value_42
+				var value_38 [64]uint8 = value_37.Bytes
+				var value_39 int32 = byte_index
+				var value_40 uint8 = value_38[value_39]
+				var value_41 uint8 = KssParser_KssLower(value_40)
+				var value_42 bool = value_34 != value_41
+				if value_42 {
+					var value_43 bool = false
+					same = value_43
 				}
-				var value_43 int32 = byte_index
-				var value_44 int32 = 1
-				var value_45 int32 = int32(number_runtime_bits(uint64(value_43), uint64(value_44), 32, true, 1))
-				byte_index = value_45
+				var value_44 int32 = byte_index
+				var value_45 int32 = 1
+				var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 1))
+				byte_index = value_46
 			}
-			var value_46 bool = same
-			if value_46 {
-				var value_47 int32 = index
-				var value_48 int32 = override
-				var value_49 KssColorOverride = p.Overrides[value_48]
-				var value_50 uint32 = value_49.Color
-				p.Tokens[value_47].Color = value_50
-				var value_51 int32 = index
-				var value_52 int32 = KssOriginKindKssOriginVariant
-				var value_53 int32 = int32(number_runtime_bits(uint64(value_52), uint64(0), 32, true, 0))
-				p.Tokens[value_51].Origin = value_53
-				var value_54 KssParser = p
-				return value_54
+			var value_47 bool = same
+			if value_47 {
+				var value_48 int32 = index
+				var value_49 int32 = override
+				var value_50 KssColorOverride = p.Overrides[value_49]
+				var value_51 uint32 = value_50.Color
+				p.Tokens[value_48].Color = value_51
+				var value_52 int32 = index
+				var value_53 int32 = KssOriginKindKssOriginVariant
+				var value_54 int32 = int32(number_runtime_bits(uint64(value_53), uint64(0), 32, true, 0))
+				p.Tokens[value_52].Origin = value_54
+				var value_55 KssParser = p
+				return value_55
 			}
 		}
-		var value_55 int32 = override
-		var value_56 int32 = 1
-		var value_57 int32 = int32(number_runtime_bits(uint64(value_55), uint64(value_56), 32, true, 1))
-		override = value_57
+		var value_56 int32 = override
+		var value_57 int32 = 1
+		var value_58 int32 = int32(number_runtime_bits(uint64(value_56), uint64(value_57), 32, true, 1))
+		override = value_58
 	}
-	var value_58 KssParser = p
-	return value_58
+	var value_59 KssParser = p
+	return value_59
 }
 
 func KssParser_KssAddToken(p KssParser, token KssToken) KssParser {

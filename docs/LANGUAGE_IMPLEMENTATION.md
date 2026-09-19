@@ -96,7 +96,16 @@ portable ownership and value semantics are implemented. Array and string byte
 indices must be integers. C/C++ debug bounds checks now cover writes as well as
 reads, including symbolic capacities; Go checks indices natively.
 
+Local fixed arrays now support recursive zero initialization, positional
+literals, independent value copies, conditional selection and synchronous
+borrowed callback captures. The shared emitter snapshots array values and uses
+explicit copies for C/C++, preserving Go's array value behavior. Array literals
+currently require numeric capacities; symbolic-bound normalization and direct
+array parameters/returns remain unfinished.
+
 `tests/aggregate_types_test.py` executes positive indexing and read/write traps
 on C, C++ and Go and compares source diagnostics across all three compilers.
+`tests/array_values_test.py` additionally exercises local copies, initializer
+evaluation order, nested records, captured mutations and local bounds traps.
 This hardens the existing aggregate subset; it does not complete the systems
 language work listed above.

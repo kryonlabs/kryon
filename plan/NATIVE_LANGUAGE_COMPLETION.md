@@ -44,13 +44,17 @@ checkout and is outside this change's ownership.
 - Theme role derivation now comes from `.kry`, with shared C/C++/Go fixtures.
   Removed the duplicate C/Go tone and contrast implementations and overwritten
   metric defaults. Live theme catalog callers still require migration.
+- Local fixed arrays now have native value semantics: zero initialization,
+  positional literals, copies, conditional selection and borrowed callback
+  captures. Execution fixtures cover ordering, alias isolation, nested record
+  contents and bounds traps on C, C++ and Go.
 
 ## Remaining implementation order
 
-1. Specify array value construction, copying, parameter passing and returns,
-   then implement the same rules in strict C, C++ and Go emission. Current
-   support covers fixed arrays inside records; a diagnostic for an unsupported
-   array value does not complete this work.
+1. Complete constant-bound normalization and direct array parameter/return ABI
+   across strict C, C++ and Go. Local construction and copying are implemented;
+   arrays can still cross function boundaries inside records. A diagnostic for
+   an unsupported direct array parameter does not complete its implementation.
 2. Define slice bounds, mutation and storage lifetime before accepting slices
    as portable values. Cover valid operations, out-of-bounds access and escaping
    borrowed storage across the three native targets.

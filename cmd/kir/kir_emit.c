@@ -2,6 +2,7 @@
 #include "kir_check.h"
 #include "kir_text.h"
 #include "kir_expr.h"
+#include "kir_diagnostic.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -114,6 +115,8 @@ KirEmitStringType(FILE *out)
 static const char *
 zero_value(const char *type, KirTarget target)
 {
+    if(type[0] == '[')
+        return "";
     if(!strcmp(type, "const char*"))
         return target == KIR_C || target == KIR_CPP ? "NULL" : "\"\"";
     if(!strcmp(canonical(type), "string"))
@@ -189,7 +192,7 @@ supported_expression(const KirModule *module, const KirFunction *fn, int index)
     if(!portable_type(module, e->type)) return 0;
     switch(e->kind) {
     case KIR_EXPR_COMPOUND:
-        if(!record_type(module, e->name)) return 0;
+        if(!record_type(module, e->name) && !KirArrayElementType(e->name, NULL, 0, NULL)) return 0;
         break;
     case KIR_EXPR_FIELD_INIT: break;
     case KIR_EXPR_INT: case KIR_EXPR_FLOAT: case KIR_EXPR_IDENT: case KIR_EXPR_STRING: break;
@@ -500,9 +503,63 @@ js_record_copy(Emitter *e, const char *type, const char *value,
     js_record_fields(e, e->module, type, source, out, size);
 }
 
+/* Array expressions are values. Their source is captured before any write,
+ * so even a self-assignment or an overlapping record destination is safe. */
+static void
+assign_value(Emitter *e, const char *destination, const char *type, const char *source)
+{
+    if(KirArrayElementType(type, NULL, 0, NULL) &&
+       (e->target == KIR_C || e->target == KIR_CPP)) {
+        line(e, "memmove(%s, %s, sizeof(%s));", destination, source, destination);
+    } else {
+        line(e, "%s = %s%s", destination, source, e->target == KIR_GO ? "" : ";");
+    }
+}
+
+static void
+declare_array(Emitter *e, const char *name, const char *type, const char *value)
+{
+    char element[KIR_NAME_MAX];
+    char target_element[KIR_NAME_MAX * 2];
+    char bound[KIR_NAME_MAX];
+    int capacity;
+
+    KirArrayElementType(type, element, sizeof(element), &capacity);
+    const char *scalar = KirTargetType(element, e->target);
+    if(scalar != NULL)
+        kir_copy(target_element, sizeof(target_element), scalar);
+    else
+        e->resolve(e->context, element, target_element, sizeof(target_element));
+    if(capacity >= 0) {
+        format(bound, sizeof(bound), "%d", capacity);
+    } else {
+        char symbol[KIR_NAME_MAX];
+        format(symbol, sizeof(symbol), "%.*s", (int)(strchr(type, ']') - type - 1), type + 1);
+        e->resolve(e->context, symbol, bound, sizeof(bound));
+    }
+    if(e->target == KIR_GO) {
+        if(value != NULL && *value)
+            line(e, "var %s [%s]%s = %s", name, bound, target_element, value);
+        else
+            line(e, "var %s [%s]%s", name, bound, target_element);
+    } else if(e->target == KIR_C || e->target == KIR_CPP) {
+        line(e, "%s %s[%s] = %s;", target_element, name, bound,
+             e->target == KIR_C ? "{0}" : "{}");
+        if(value != NULL && *value)
+            assign_value(e, name, type, value);
+    } else {
+        KirDiagnostic(e->fn->span, "emit.array_target", "array values are supported only by native targets");
+        exit(1);
+    }
+}
+
 static void
 declare(Emitter *e, const char *name, const char *type, const char *value)
 {
+    if(KirArrayElementType(type, NULL, 0, NULL)) {
+        declare_array(e, name, type, value);
+        return;
+    }
     const char *target_type = KirTargetType(type, e->target);
     char resolved_type[KIR_NAME_MAX * 2];
     if(target_type == NULL) {
@@ -874,8 +931,21 @@ KirEmitSlotWrappers(FILE *out, const KirModule *module, const KirFunction *fn,
                 fprintf(out, "struct %s_environment {\n", wrapper);
                 for(int capture = 0; capture < body->capture_count; capture++) {
                     const KirCapture *field = &body->captures[capture];
-                    const char *scalar = KirTargetType(field->type, target);
-                    fprintf(out, "    %s *%s;\n", scalar ? scalar : field->type, field->name);
+                    char element[KIR_NAME_MAX];
+                    int capacity;
+                    if(KirArrayElementType(field->type, element, sizeof(element), &capacity)) {
+                        char bound[KIR_NAME_MAX];
+                        if(capacity >= 0)
+                            format(bound, sizeof(bound), "%d", capacity);
+                        else
+                            format(bound, sizeof(bound), "%.*s",
+                                   (int)(strchr(field->type, ']') - field->type - 1), field->type + 1);
+                        const char *scalar = KirTargetType(element, target);
+                        fprintf(out, "    %s (*%s)[%s];\n", scalar ? scalar : element, field->name, bound);
+                    } else {
+                        const char *scalar = KirTargetType(field->type, target);
+                        fprintf(out, "    %s *%s;\n", scalar ? scalar : field->type, field->name);
+                    }
                 }
                 fputs("};\n", out);
             }
@@ -1038,6 +1108,19 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
     }
     switch(expr->kind) {
     case KIR_EXPR_COMPOUND: {
+        if(KirArrayElementType(type, NULL, 0, NULL)) {
+            fresh(e, temp);
+            declare(e, temp, type, NULL);
+            int ordinal = 0;
+            for(int child = expr->first_child; child >= 0; child = e->fn->exprs[child].next_sibling) {
+                const KirExpr *entry = &e->fn->exprs[child];
+                emit_expr(e, entry->right, entry->type, a, sizeof(a));
+                format(b, sizeof(b), "%s[%d]", temp, ordinal++);
+                assign_value(e, b, entry->type, a);
+            }
+            kir_copy(out, size, temp);
+            return;
+        }
         zero_record(e, type, a, sizeof(a));
         fresh(e, temp);
         declare(e, temp, type, a);
@@ -1049,7 +1132,8 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             else
                 kir_copy(field_name, sizeof(field_name), field->name);
             emit_expr(e, field->right, field->type, a, sizeof(a));
-            line(e, "%s.%s = %s%s", temp, field_name, a, e->target == KIR_GO ? "" : ";");
+            format(b, sizeof(b), "%s.%s", temp, field_name);
+            assign_value(e, b, field->type, a);
         }
         kir_copy(out, size, temp);
         return;
@@ -1147,11 +1231,20 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             zero_record(e, type, b, sizeof(b));
         else
             kir_copy(b, sizeof(b), zero_value(type, e->target));
-        declare(e,temp,type,b);
-        line(e,e->target==KIR_GO?"if %s {":"if (%s) {",a);e->indent++;
-        emit_expr(e,expr->right,type,b,sizeof(b));line(e,"%s = %s%s",temp,b,e->target==KIR_GO?"":";");e->indent--;
-        line(e,"} else {");e->indent++;emit_expr(e,expr->third,type,b,sizeof(b));
-        line(e,"%s = %s%s",temp,b,e->target==KIR_GO?"":";");e->indent--;line(e,"}");kir_copy(out,size,temp);return;
+        declare(e, temp, type, b);
+        line(e, e->target == KIR_GO ? "if %s {" : "if (%s) {", a);
+        e->indent++;
+        emit_expr(e, expr->right, type, b, sizeof(b));
+        assign_value(e, temp, type, b);
+        e->indent--;
+        line(e, "} else {");
+        e->indent++;
+        emit_expr(e, expr->third, type, b, sizeof(b));
+        assign_value(e, temp, type, b);
+        e->indent--;
+        line(e, "}");
+        kir_copy(out, size, temp);
+        return;
     case KIR_EXPR_BINARY: {
         const char *operand_type=type;
         if(!strcmp(type,"bool")) {
@@ -1231,15 +1324,6 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
     default: fatal(expr,"unsupported structured expression");
     }
     if(e->target==KIR_JS && !strcmp(type,"f32")) {kir_copy(a,sizeof(a),result);format(result,sizeof(result),"Math.fround(%s)",a);}
-    {
-        /* Array-typed expressions are index bases, not values: no scalar
-         * temporary can hold them, so pass the access text through. */
-        char element[KIR_NAME_MAX];
-        if(KirArrayElementType(expr->type, element, sizeof(element), NULL)) {
-            kir_copy(out, size, result);
-            return;
-        }
-    }
     fresh(e,temp);declare(e,temp,type,result);kir_copy(out,size,temp);
 }
 
@@ -1354,7 +1438,7 @@ emit_sequence(Emitter *e,int begin,int end)
                 line(e, "%s = %s;", lhs, copy);
             }
             else
-                line(e,"%s = %s%s",lhs,result,e->target==KIR_GO?"":";");
+                assign_value(e, lhs, e->fn->exprs[st->lhs_root].type, result);
             break;
         case KIR_STMT_RETURN:
             if(st->expr_root>=0) {emit_expr(e,st->expr_root,e->fn->return_type,value,sizeof(value));line(e,"return %s%s",value,e->target==KIR_GO?"":";");}

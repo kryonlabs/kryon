@@ -112,6 +112,7 @@ record_initializer(ExprParser *p, size_t start, const char *type)
             size_t offset = 0;
             int position = 0;
             char field_type[KIR_NAME_MAX] = "";
+            KirArrayElementType(type, field_type, sizeof(field_type), NULL);
             while(record != NULL && KirTypeNextField(record, &offset, &field) == 1) {
                 if(named ? !strcmp(field.name, name) : position == ordinal) {
                     kir_copy(field_type, sizeof(field_type), field.type);
@@ -181,17 +182,24 @@ prefix(ExprParser *p)
         right = prefix(p);
         result = node(p, KIR_EXPR_UNARY, start, "", tok.text, -1, right);
     } else if(take(p, "(")) {
-        if(type_name(p, p->token.text)) {
+        if(type_name(p, p->token.text) || is(p, "[")) {
             char type[KIR_NAME_MAX];
             size_t ts = p->begin, length;
-            while(p->token.kind == KIR_TOKEN_IDENT || is(p, "*")) next(p);
+            if(is(p, "[")) {
+                while(p->token.kind != KIR_TOKEN_EOF && !is(p, ")"))
+                    next(p);
+            } else {
+                while(p->token.kind == KIR_TOKEN_IDENT || is(p, "*"))
+                    next(p);
+            }
             length = p->begin - ts;
             if(length >= sizeof(type)) { p->failed = 1; length = 0; }
             memcpy(type, p->source + ts, length); type[length] = 0;
             kir_trim_in_place(type);
             expect(p, ")");
             const KirType *record = p->module ? KirFindType(p->module, type, NULL) : NULL;
-            if(is(p, "{") && record != NULL && !record->is_enum) {
+            if(is(p, "{") && ((record != NULL && !record->is_enum) ||
+                               KirArrayElementType(type, NULL, 0, NULL))) {
                 result = record_initializer(p, start, type);
             } else if(is(p, "{")) {
                 /* Foreign C aggregates retain their backend-owned syntax. */
@@ -400,7 +408,19 @@ KirStructureFunction(KirFunction *fn, const KirModule *module)
             if(!strncmp(value, "else", 4)) value = (char *)kir_skip_ws(value + 4);
             while(*value && !isspace((unsigned char)*value) && *value != '(') value++;
         }
-        if(value && strcmp(kir_skip_ws(value), ";"))
-            st->expr_root = KirParseExpr(fn, module, value, st->span);
+        if(value && strcmp(kir_skip_ws(value), ";")) {
+            if(st->kind == KIR_STMT_DECL && st->type[0] == '[' &&
+               *kir_skip_ws(value) == '{') {
+                char initializer[KIR_TEXT_MAX];
+                int length = snprintf(initializer, sizeof(initializer), "(%s)%s", st->type, value);
+                if(length < 0 || (size_t)length >= sizeof(initializer)) {
+                    KirDiagnostic(st->span, "parse.array", "array initializer exceeds expression limit");
+                    exit(1);
+                }
+                st->expr_root = KirParseExpr(fn, module, initializer, st->span);
+            } else {
+                st->expr_root = KirParseExpr(fn, module, value, st->span);
+            }
+        }
     }
 }

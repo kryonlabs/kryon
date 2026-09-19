@@ -1,6 +1,6 @@
 # Kry Language Specification
 
-Kry language version: `0.2`
+Kry language version: `0.3`
 KIR version: `0.1`
 
 This is the stable public contract for `.kry` source accepted by Kryon tools.
@@ -268,16 +268,31 @@ SumTextBytes :: (text: string) -> i32 #export {
 
 Rules:
 
-- `[N]element` is valid only as a record field type. The element must itself be
-  a scalar or a portable record; nested array types are rejected.
+- `[N]element` is valid as a record field or local type. Elements can be
+  portable scalars, enums, strings or records; nested array types are rejected.
+  Records may themselves contain fixed arrays.
 - `record.field[index]` reads and writes one element with value semantics.
   Array and string indices must be integers; floating-point indices are errors.
-  Array-typed locals are not supported in strict functions; keep scratch state
-  in record fields.
+- Array locals without an initializer are recursively zero-initialized.
+  `items: [3]i32 = {1, 2}` constructs an array with a zero final element.
+  `([3]i32){1, 2}` is the explicitly typed expression form. Initializer elements
+  execute left to right, use the declared element type, and cannot exceed the
+  capacity. Array literals require numeric capacities and positional elements.
+- Array initialization, assignment and conditional selection copy values,
+  including nested record contents; changing a copy does not change its source.
+  Copies require equal capacities and element types. Numeric capacities compare
+  by value and scalar aliases compare by canonical type. Existing symbolic
+  capacities must use the same name on both sides of a copy; symbolic literals
+  await constant-bound resolution in the checker.
+- Arrays can be captured by existing synchronous borrowed `#slot` callbacks.
+  Captures refer to the lexical array, so writes through a callback are visible
+  to its caller. Existing callback escape restrictions still apply.
+  Array arithmetic, comparisons, casts and compound assignments are rejected.
 - `text[index]` reads one byte of a `string` as `u8`. String bytes and
   `text.length` are read-only; assigning to them is a strict error.
 - Active backends lower these identically: C uses array members and `String`
-  views, and Go uses fixed arrays and native string indexing. The paused JS
+  views, explicitly copying array values; Go uses fixed arrays and native string
+  indexing. The paused JS
   path previously routed reads through a byte-aware helper; it is not current
   conformance evidence.
 - C/C++ output lowers `record.field[index]` and `text[index]` through the

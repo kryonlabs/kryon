@@ -1,0 +1,96 @@
+#module "array_values"
+#import "record_types"
+
+CAPACITY :: 3
+Mode :: enum {
+    ModeOff = 0
+    ModeOn = 1
+}
+Entry :: struct {
+    value: i32
+    label: string
+    flags: [2]bool
+}
+Buffer :: struct {
+    values: [3]i32
+}
+Action :: () #slot
+
+Check :: () -> i32 #export {
+    values: [3]i32 = {2, 4}
+    if values[2] != 0 { return 1 }
+    copy: [3] i32 = values
+    copy[0] = 9
+    if values[0] != 2 { return 2 }
+    values = copy
+    copy[1] = 7
+    if values[1] != 4 { return 3 }
+    values = values
+    if values[0] != 9 { return 4 }
+    inferred := values
+    inferred[0] = 11
+    if values[0] != 9 { return 5 }
+
+    # The elements execute in source order, and unspecified elements are zero.
+    next: i32 = 0
+    sequence: [4]i32 = {
+        next++, next++, next++,
+    }
+    if next != 3 || sequence[0] != 0 || sequence[1] != 1 || sequence[2] != 2 || sequence[3] != 0 { return 6 }
+    chosen: [3]i32 = true ? values : copy
+    chosen[1] = 19
+    if values[1] != 4 { return 7 }
+    chosen = false ? ([3]i32){next++} : ([3]i32){next++, next++}
+    if next != 5 || chosen[0] != 3 || chosen[1] != 4 || chosen[2] != 0 { return 8 }
+
+    box: Buffer = (Buffer){.values = {1, 2, 3}}
+    from_box: [3]i32 = box.values
+    box.values = values
+    if from_box[0] != 1 || box.values[0] != 9 { return 9 }
+    box = (Buffer){.values = from_box}
+    from_box[0] = 10
+    if box.values[0] != 1 { return 10 }
+
+    entries: [2]Entry = {{7, "日本語", {true}}}
+    entries_copy: [2]Entry = entries
+    entries_copy[0].value = 8
+    entries_copy[0].flags[0] = false
+    if entries[0].value != 7 || !entries[0].flags[0] { return 11 }
+    if entries[0].label.length != 9 || entries[1].label.length != 0 || entries[1].flags[0] { return 12 }
+    names: [2]string = {"a\x00b"}
+    if names[0].length != 3 || names[1] != "" { return 13 }
+    modes: [2]Mode = {(Mode)ModeOn}
+    if modes[0] != (Mode)ModeOn || modes[1] != (Mode)ModeOff { return 14 }
+    small: [3]u8 = {(u8)255}
+    small_copy: [03]u8 = small
+    if small_copy[0] != (u8)255 || small_copy[2] != (u8)0 { return 15 }
+    named: [CAPACITY]i32
+    named_copy: [CAPACITY]i32 = named
+    named_copy[1] = 6
+    named = named_copy
+    if named[0] != 0 || named[1] != 6 { return 16 }
+
+    # A borrowed callback captures the array itself, including whole copies.
+    update: Action = () #slot {
+        values[0] = 42
+        copy = values
+    }
+    update()
+    if values[0] != 42 || copy[0] != 42 { return 17 }
+    imported: [2]Sample = {{.count = 3}}
+    imported_copy: [2]Sample = imported
+    imported_copy[0].count = 5
+    if imported[0].count != 3 || imported[1].active { return 18 }
+    return 0
+}
+
+Read :: (index: i32) -> i32 #export {
+    values: [2]i32 = {7, 9}
+    return values[index]
+}
+
+Write :: (index: i32) -> i32 #export {
+    values: [2]i32
+    values[index] = 11
+    return values[0]
+}

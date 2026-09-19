@@ -32,3 +32,4 @@ fi
 python3 tests/string_diagnostics_test.py "$bin"
 python3 tests/record_initializer_diagnostics_test.py "$bin"
 python3 tests/aggregate_types_test.py "$bin"
+python3 tests/array_values_test.py "$bin"

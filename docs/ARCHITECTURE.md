@@ -349,6 +349,14 @@ targets now use white contrast ink on dark accents (C previously used
 off-white). The existing theme catalog bridge remains until its downstream
 callers migrate to KSS; it no longer carries a second role derivation.
 
+Portable local array construction and copying use the shared expression checker
+and emitter. Array values are snapshots; C/C++ emit explicit array copies while
+Go uses native array assignment. Element reads can retain a direct index base
+without copying the entire array. Borrowed callback environments keep a typed
+pointer to the captured array in C/C++, preserving its extent for copies and
+bounds checks. Direct array parameters/returns and slice ownership remain
+unsupported rather than falling through to a different host representation.
+
 Each widget must have one canonical declaration in `.kry`. That declaration
 owns its typed props and defaults, per-instance state, events, measurement and
 layout policy, child composition, and appearance. Generated C and native Go
