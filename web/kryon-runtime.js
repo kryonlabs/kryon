@@ -1870,34 +1870,59 @@ function handleDragDrop(rt, state, args, meta) {
   return !!rt.input.mouse.down[MouseButtonLeft];
 }
 
+function tableColumnWidths(state, args, bounds, count) {
+  const name = propIdent(args, "column_widths");
+  const source = name && state ? state[name] : null;
+  if (source && typeof source === "object") {
+    const widths = [];
+    for (let i = 0; i < count; i++)
+      widths.push(numberValue(source[i], bounds.width / Math.max(1, count)));
+    return widths;
+  }
+  if (count === 3)
+    return [90, 140, 70];
+  return Array.from({ length: count }, () => bounds.width / Math.max(1, count));
+}
+
+function tableColumnAt(bounds, widths, x) {
+  let left = bounds.x;
+  for (let i = 0; i < widths.length; i++) {
+    if (x >= left && x < left + widths[i])
+      return i;
+    left += widths[i];
+  }
+  return Math.max(0, widths.length - 1);
+}
+
 function handleTableView(rt, state, args) {
   const bounds = parseBounds(args);
   const rowH = propNumber(args, "row_height", 24);
+  const headerH = propNumber(args, "header_height", rowH);
+  const headerAngle = propNumber(args, "header_angle", 0);
   const selectedRow = propRef(args, "selected_row");
   const selectedColumn = propRef(args, "selected_column");
   const activatedRow = propRef(args, "activated_row");
   const activatedColumn = propRef(args, "activated_column");
   const sortColumn = propRef(args, "sort_column");
-  const widths = [90, 140, 70];
+  const count = Math.max(1, propNumber(args, "column_count", selectedColumn ? 3 : 2));
+  const widths = tableColumnWidths(state, args, bounds, count);
   const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
   if (!tap || !state)
     return false;
-  let x = bounds.x;
-  let col = widths.length - 1;
-  for (let i = 0; i < widths.length; i++) {
-    if (tap.x >= x && tap.x < x + widths[i]) {
-      col = i;
-      break;
+  let col = tableColumnAt(bounds, widths, tap.x);
+  if (tap.y < bounds.y + headerH) {
+    if (headerAngle !== 0) {
+      const headerY = tap.y - bounds.y;
+      if (tap.x < bounds.x + headerH)
+        return false;
+      col = Math.max(0, Math.min(widths.length - 1, Math.floor(headerY * widths.length / Math.max(1, headerH))));
     }
-    x += widths[i];
-  }
-  if (tap.y < bounds.y + rowH) {
     if (selectedRow) state[selectedRow] = -1;
     if (selectedColumn) state[selectedColumn] = col;
     if (sortColumn) state[sortColumn] = col;
     return true;
   }
-  const row = Math.max(0, Math.floor((tap.y - (bounds.y + rowH)) / rowH));
+  const row = Math.max(0, Math.floor((tap.y - (bounds.y + headerH)) / rowH));
   if (state[selectedRow] === row && state[selectedColumn] === col) {
     if (activatedRow) state[activatedRow] = row;
     if (activatedColumn) state[activatedColumn] = col;
