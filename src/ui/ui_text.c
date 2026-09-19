@@ -1,3 +1,4 @@
+#include "ui_text_rows.h"
 #include "ui_text.h"
 #include "ui_text_backend.h"
 #include "ui_clip.h"
@@ -1536,76 +1537,24 @@ ui_text_block_lines(const char *text, int width, int font_size,
     TextBlockLine *lines;
     int count = 0;
     int cap = 8;
-    int len;
-    int start = 0;
-
-    if(out_lines == NULL)
-        return 0;
+    if(out_lines == NULL) return 0;
     *out_lines = NULL;
-    if(text == NULL)
-        return 0;
-    len = (int)strlen(text);
-    lines = (TextBlockLine *)malloc((size_t)cap * sizeof(*lines));
-    if(lines == NULL)
-        return 0;
-
-    while(start < len || (len == 0 && count == 0)) {
-        int end = start;
-        int last_space = -1;
-        int chosen = start;
-
-        if(text[start] == '\n') {
-            chosen = start;
-            end = start + 1;
-        } else {
-            while(end < len && text[end] != '\n') {
-                int cp_bytes = 0;
-                int next;
-                char *slice;
-                int measured;
-
-                (void)GetCodepointNext(text + end, &cp_bytes);
-                if(cp_bytes <= 0)
-                    cp_bytes = 1;
-                next = end + cp_bytes;
-                if(text[end] == ' ' || text[end] == '\t')
-                    last_space = end;
-                slice = ui_text_slice(text, start, next);
-                measured = slice != NULL ? TextWidth(slice, font_size) : 0;
-                free(slice);
-                if(width > 0 && measured > width) {
-                    if(last_space >= start)
-                        chosen = last_space;
-                    else if(end > start)
-                        chosen = end;
-                    else
-                        chosen = next;
-                    break;
-                }
-                end = next;
-                chosen = end;
-            }
-            if(end < len && text[end] == '\n' && chosen == end)
-                end++;
-        }
+    if(text == NULL) return 0;
+    lines = malloc((size_t)cap * sizeof(*lines));
+    if(lines == NULL) return 0;
+    TextRowCursor rows = ui_text_rows(text, font_size, 0, width, 0, 1);
+    TextMeasuredRow row;
+    while(ui_text_row_next(&rows, &row)) {
         if(count == cap) {
-            TextBlockLine *grown;
             cap *= 2;
-            grown = (TextBlockLine *)realloc(lines, (size_t)cap * sizeof(*lines));
+            TextBlockLine *grown = realloc(lines, (size_t)cap * sizeof(*lines));
             if(grown == NULL) {
                 free(lines);
                 return 0;
             }
             lines = grown;
         }
-        lines[count++] = (TextBlockLine){start, chosen};
-        start = chosen;
-        while(start < len && (text[start] == ' ' || text[start] == '\t'))
-            start++;
-        if(start < len && text[start] == '\n')
-            start++;
-        if(len == 0)
-            break;
+        lines[count++] = (TextBlockLine){row.start, row.end};
     }
     *out_lines = lines;
     return count;
@@ -1738,8 +1687,10 @@ RenderSelectableTextBlock(SelectableTextBlock block)
 
     for(int i = 0, y = (int)block.bounds.y; i < count;
         i++, y = ParagraphNextLineY(y, line_h, block.line_gap, true)) {
-        int start = selected_start > lines[i].start ? selected_start : lines[i].start;
-        int end = selected_end < lines[i].end ? selected_end : lines[i].end;
+        TextSelectionPaintSpan span = TextSelectionPaintSpanForLine(
+            selected_start, selected_end, lines[i].start, lines[i].end);
+        int start = span.start;
+        int end = span.end;
         char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
 
         if(end > start && line != NULL)

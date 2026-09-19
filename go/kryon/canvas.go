@@ -8,6 +8,12 @@ type CanvasPolicyResult struct {
 	World    Vector2
 }
 
+type CanvasTransform struct {
+	Scale float32
+	X     float32
+	Y     float32
+}
+
 func Canvas_CanvasZoom(zoom float32) float32 {
 	var value_0 float32 = zoom
 	var value_1 float32 = 0.01
@@ -194,4 +200,103 @@ func Canvas_CanvasHitTestStep(point Vector2, item Rectangle, item_index int32, c
 	}
 	var value_8 int32 = -1
 	return value_8
+}
+
+func Canvas_CanvasHasTransform(has_scroll_x bool, has_scroll_y bool, has_zoom bool, zoom float32) bool {
+	var value_0 bool = has_scroll_x
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 bool = has_scroll_y
+		value_1 = value_2
+	}
+	var value_3 bool = value_1
+	if !value_3 {
+		var value_4 bool = has_zoom
+		var value_5 bool = value_4
+		if value_5 {
+			var value_6 float32 = zoom
+			var value_7 float32 = 0.01
+			var value_8 bool = value_6 > value_7
+			value_5 = value_8
+		}
+		var value_9 bool = value_5
+		if value_9 {
+			var value_10 float32 = zoom
+			var value_11 float32 = 1.0
+			var value_12 bool = value_10 != value_11
+			value_9 = value_12
+		}
+		value_3 = value_9
+	}
+	return value_3
+}
+
+func Canvas_CanvasTransformFor(bounds Rectangle, scroll_x int32, scroll_y int32, zoom float32) CanvasTransform {
+	var value_0 float32 = zoom
+	var value_1 float32 = Canvas_CanvasZoom(value_0)
+	var scale float32 = value_1
+	var value_2 CanvasTransform = CanvasTransform{}
+	var value_3 float32 = scale
+	value_2.Scale = value_3
+	var value_4 float32 = bounds.X
+	var value_5 float32 = bounds.X
+	var value_6 int32 = scroll_x
+	var value_7 float32 = float32(value_6)
+	var value_8 float32 = value_5 + value_7
+	var value_9 float32 = scale
+	var value_10 float32 = value_8 * value_9
+	var value_11 float32 = value_4 - value_10
+	value_2.X = value_11
+	var value_12 float32 = bounds.Y
+	var value_13 float32 = bounds.Y
+	var value_14 int32 = scroll_y
+	var value_15 float32 = float32(value_14)
+	var value_16 float32 = value_13 + value_15
+	var value_17 float32 = scale
+	var value_18 float32 = value_16 * value_17
+	var value_19 float32 = value_12 - value_18
+	value_2.Y = value_19
+	return value_2
+}
+
+func Canvas_CanvasTransformPoint(transform CanvasTransform, point Vector2) Vector2 {
+	var value_0 Vector2 = Vector2{}
+	var value_1 float32 = point.X
+	var value_2 float32 = transform.Scale
+	var value_3 float32 = value_1 * value_2
+	var value_4 float32 = transform.X
+	var value_5 float32 = value_3 + value_4
+	value_0.X = value_5
+	var value_6 float32 = point.Y
+	var value_7 float32 = transform.Scale
+	var value_8 float32 = value_6 * value_7
+	var value_9 float32 = transform.Y
+	var value_10 float32 = value_8 + value_9
+	value_0.Y = value_10
+	return value_0
+}
+
+func Canvas_CanvasTransformRect(transform CanvasTransform, bounds Rectangle) Rectangle {
+	var value_0 CanvasTransform = transform
+	var value_1 Vector2 = Vector2{}
+	var value_2 float32 = bounds.X
+	value_1.X = value_2
+	var value_3 float32 = bounds.Y
+	value_1.Y = value_3
+	var value_4 Vector2 = Canvas_CanvasTransformPoint(value_0, value_1)
+	var point Vector2 = value_4
+	var value_5 Rectangle = Rectangle{}
+	var value_6 float32 = point.X
+	value_5.X = value_6
+	var value_7 float32 = point.Y
+	value_5.Y = value_7
+	var value_8 float32 = bounds.Width
+	var value_9 float32 = transform.Scale
+	var value_10 float32 = value_8 * value_9
+	value_5.Width = value_10
+	var value_11 float32 = bounds.Height
+	var value_12 float32 = transform.Scale
+	var value_13 float32 = value_11 * value_12
+	value_5.Height = value_13
+	return value_5
 }

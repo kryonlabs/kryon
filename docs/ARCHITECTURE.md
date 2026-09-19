@@ -845,3 +845,21 @@ are not emitted as recorded statements or exported runtime wrappers. Disabled
 content additionally uses a runtime input stack and keeps its paired teardown.
 Nested input/restoration behavior still requires backend parity tests beyond
 checking the generated names.
+
+Native composed Canvas scopes now save their camera and clipping state per
+scope. An untransformed nested canvas cannot pop its parent's camera, and
+closing an explicit nested camera restores the previous backend matrices.
+Go applies generated Canvas coordinates to its paint operations and uses the
+same nested clipping rules. The compiler's return/break/continue cleanup is
+executed by the generated Scroll/Canvas fixture.
+
+`runtime/text_rows.kry` owns editable visual-row decisions and selectable-block
+word wrapping. Both native hosts supply grapheme boundaries and measured text
+prefixes without normalizing the source bytes. C measurement, caret scrolling,
+pointer placement and painting use one native iterator; Go rendering and
+pointer placement use the matching adapter. Shared fixtures cover CRLF, blank
+and trailing lines, whitespace, long words, combining marks and emoji families.
+Go Paragraph's inline-icon adapter also consumes shared paragraph tokenization,
+spacing and line assembly. Retained tree focus traversal now runs through
+`TreeFocusBegin` and `TreeFocusAdvance` in C and Go; Go table sorting and tree-row
+activation call their existing generated decisions.

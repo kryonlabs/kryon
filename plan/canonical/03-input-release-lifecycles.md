@@ -5,10 +5,12 @@ flags. The state-changing function itself remains native. The nine generic
 `InputPointerInteractionFor` calls use `runtime/input.kry` policy; they are not
 nine separate C activation implementations. Reorder release policy is done.
 
-Remaining:
+Native completion and future boundary:
 
-- Audit surrounding capture, focus, navigation and owner-reset gates, beyond
-  the consume calls themselves. Include retained tree target selection.
+- Surrounding popup capture, focus and owner-reset transitions now use shared
+  ownership policy. Retained tree target selection uses `TreeFocusBegin` /
+  `TreeFocusAdvance` in both C and Go; registry storage and token validity stay
+  native. The native ownership evidence table records these boundaries.
 - Go context-menu activation/outside-close handling now uses shared policy.
   Popup ancestry, branch order, capture, focus and retirement execute through
   `runtime/popup_ownership.kry`, and Tab target selection through

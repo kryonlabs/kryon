@@ -5456,6 +5456,8 @@ test_drag_drop_accepts_dragged_release(void)
 static void
 test_control_style_resolution(void)
 {
+    /* This test checks the unstyled baseline independently of earlier widgets. */
+    ClearStylePacks();
     Style base;
     ControlStyle control;
     Style got;

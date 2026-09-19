@@ -132,6 +132,7 @@ surface review:
 | `runtime/terminal_pane.kry` | TerminalPane font, content, grid clamp, and scroll indicator metrics policy | `.kry support` |
 | `runtime/text.kry` | Text composition, selectable pointer/drag/copy/show decisions, highlight geometry, and double-click line-selection policy | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
+| `runtime/text_rows.kry` | Source-preserving visual-row breaks, logical lines, heading metrics, caret affinity and point-to-row decisions | `.kry support` |
 | `runtime/text_input.kry` | TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, cursor normalization, navigation, selection state/paint-span policy, double-click/pan decisions, text-buffer mutation/range/bracket policy, focus ownership, platform text-input sync, and edit-intent policy | `.kry canonical` |
 | `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers and typed `ThemePolicy` resolution | `.kry canonical` |
@@ -840,14 +841,15 @@ behind the canonical names.
    navigation/enter/collapse gate policy, keyboard/escape/selection-range/
    composition-display gate policy, older `EditText` shortcut/commit gate
    policy, retained-tree text-input double-click policy, and text reveal/scroll/context-registration gate policy in `.kry`;
-   raw string storage/memmove/scanning still native; remaining native work is
-   IME/composition, selection
-   ownership/painting, and the final decision about how much of that can become
-   reusable `.kry` policy.
+   `text_rows.kry` now owns logical/visual rows, wrapping, heading metrics and
+   caret affinity. Native adapters retain strings, font measurement and Unicode
+   traversal. Real OS IME delivery/candidate windows remain platform work.
 4. Finish rich text migration:
   `Paragraph` has `.kry` metrics/default line-gap/layout spacing/height/line-stride/alignment/selectable line-index/local-offset/text-selection pointer/drag/copy/show/double-click line-selection
-  policy, retained selectable text block height/line advance, and generated `ParagraphSpec` data, but parsing, line-break ownership,
-  icon shaping, and rendering are still host work.
+  policy, retained selectable text block height/line advance and generated
+  `ParagraphSpec` data. Token parsing and line-break ownership are shared through
+  `ParagraphTokenNext` / `ParagraphLineAdvance`; Go inline icons use that policy.
+  Font shaping, glyph/image resources and rendering stay native.
 5. Audit host-owned input/state lifecycles:
    retained menu open/focus/input state, drag/drop payload storage, reorder and
    swipe pointer ownership storage, paned-view active split storage, tree/table stored selection
@@ -857,9 +859,10 @@ behind the canonical names.
    `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
    blocks are canonical `.kry` syntax. Lowered `Scroll` scope geometry, wheel,
    content-drag, thumb-drag, scrollbar-drag/release, and ensure-visible policy now route through
-   `runtime/scroll.kry`; the remaining
-   host scopes still require backend support until generated backends own the
-   whole block path.
+   `runtime/scroll.kry`. Canvas coordinate policy is shared and host scope
+   snapshots restore parent cameras/clips. Compiler cleanup for named scope
+   results executes on return, break and continue in C and Go. Native stacks
+   remain required renderer/storage services.
 7. Separate pure host services from widget policy:
    image cache/loading/drawing, icon sheet/type lookup, URL dispatch, text
    measurement, focus registration, paint layers, clipping, and platform
@@ -876,3 +879,7 @@ behind the canonical names.
    policy.
 10. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
     as the naming and migration review surface.
+
+The detailed native follow-up inventory and executable evidence are in
+[`NATIVE_POLICY_OWNERSHIP.md`](NATIVE_POLICY_OWNERSHIP.md). Historical JS/web
+implementation notes above do not make the paused target an active support claim.

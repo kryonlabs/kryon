@@ -687,6 +687,7 @@ type runtime struct {
 	scrollDragOffset  *int32
 	scrollDragGrab    float32
 	scrollDragOwner   popupInputOwner
+	canvases          []canvasScopeState
 	disabledCount     int32
 }
 
@@ -1048,6 +1049,7 @@ func (r *runtime) BeginFrame() {
 	}
 	clear(r.tabBarsSeen)
 	r.scrollClips = r.scrollClips[:0]
+	r.canvases = r.canvases[:0]
 	r.disabledStack = r.disabledStack[:0]
 	r.disabledCount = 0
 	r.fieldOrder = r.fieldOrder[:0]
@@ -4523,19 +4525,16 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 		return
 	}
 	measure := func(text string) int { return runtimeTextWidthWithFont(text, metrics.Font, fontID) }
-	lines := layoutTextLines(spec.Text, float32(metrics.Width), measure)
+	policy := Paragraph_ParagraphLayoutPolicyFor(int32(measure(" ")), 0, metrics.LineGap, 4, 1)
+	layout := layoutParagraph(spec.Text, metrics.Width, metrics.IconSize, spec.IconType != IconNone || spec.Icon.ID != 0, policy, measure)
 	lineHeight := textHeight(metrics.Font, fontID)
-	metrics.Height = Paragraph_ParagraphLayoutTotalHeight(int32(len(lines)), lineHeight, metrics.LineGap)
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY),
-		Width: float32(metrics.Width), Height: float32(metrics.Height)})
+	metrics.Height = Paragraph_ParagraphLayoutTotalHeight(int32(len(layout.lines)), lineHeight, metrics.LineGap)
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY), Width: float32(metrics.Width), Height: float32(metrics.Height)})
 	lineY := int32(bounds.Y)
-	for index, line := range lines {
-		lineWidth := int32(measure(line))
-		lineX := Paragraph_ParagraphLineXFor(int32(bounds.X), metrics.Width, lineWidth, int32(spec.Align))
-		r.record(FrameOp{Kind: FrameOpText,
-			Bounds: Rectangle{X: float32(lineX), Y: float32(lineY), Width: float32(lineWidth), Height: float32(lineHeight)},
-			Text:   line, Color: color, FontSize: metrics.Font, FontID: fontID})
-		lineY = Paragraph_ParagraphNextLineY(lineY, lineHeight, metrics.LineGap, index+1 < len(lines))
+	for index, line := range layout.lines {
+		lineX := Paragraph_ParagraphLineXFor(int32(bounds.X), metrics.Width, int32(line.Width), int32(spec.Align))
+		r.recordParagraphLine(layout, line, spec, lineX, lineY, metrics.Font, lineHeight, metrics.IconSize, fontID, color, policy)
+		lineY = Paragraph_ParagraphNextLineY(lineY, lineHeight, metrics.LineGap, index+1 < len(layout.lines))
 	}
 	if y != nil {
 		*y = textY + metrics.Height
@@ -5727,6 +5726,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
 		pageRows:      r.textAreaPageRows(props),
+		area:          &props,
 		readOnly:      props.ReadOnly,
 		multiline:     true,
 	})
@@ -5965,27 +5965,12 @@ func (r *runtime) treeHeaderTarget(p CollapsibleProps, key int32) int32 {
 		if node.id != p.ID {
 			continue
 		}
-		switch key {
-		case KeyDown:
-			if i+1 < len(r.prevTreeHeaders) {
-				return r.prevTreeHeaders[i+1].id
-			}
-		case KeyUp:
-			if i > 0 {
-				return r.prevTreeHeaders[i-1].id
-			}
-		case KeyRight:
-			if i+1 < len(r.prevTreeHeaders) && r.prevTreeHeaders[i+1].depth > node.depth {
-				return r.prevTreeHeaders[i+1].id
-			}
-		case KeyLeft:
-			for j := i - 1; j >= 0; j-- {
-				if r.prevTreeHeaders[j].depth < node.depth {
-					return r.prevTreeHeaders[j].id
-				}
-			}
+		scan := Focus_TreeFocusBegin(int32(i), int32(len(r.prevTreeHeaders)), node.depth,
+			key == KeyDown, key == KeyUp, key == KeyRight, key == KeyLeft)
+		for !scan.Done {
+			scan = Focus_TreeFocusAdvance(scan, r.prevTreeHeaders[scan.Index].depth)
 		}
-		break
+		return r.prevTreeHeaders[scan.Index].id
 	}
 	return p.ID
 }
@@ -6134,6 +6119,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 }
 func (r *runtime) TreeView(props TreeViewProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
+	props.Disabled = props.Disabled || r.contentDisabled()
 	count := props.ItemCount
 	if count <= 0 || count > int32(len(props.Items)) {
 		count = int32(len(props.Items))
@@ -6181,8 +6167,9 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		textBounds := TreeView_TreeViewTextBounds(row, item.Depth, metrics)
 		selected := props.SelectedID != nil && *props.SelectedID == item.ID
 		pressed := !props.Disabled && item.Selectable != 0 && r.consumeTap(row)
-		if pressed && props.SelectedID != nil {
-			*props.SelectedID = item.ID
+		decision := TreeView_TreeViewRowDecisionFor(!props.Disabled, pressed, item.Selectable != 0, props.SelectedID != nil, item.ID)
+		if decision.Select {
+			*props.SelectedID = decision.SelectedID
 			selected = true
 			changed = 1
 		}
@@ -6209,10 +6196,7 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 			op.Disabled = props.Disabled
 			r.record(op)
 		}
-		mark := ">"
-		if item.Expanded != 0 {
-			mark = "v"
-		}
+		mark := TreeView_TreeViewMarkerText(item.Expanded != 0)
 		font, fontID := styleTextFace(itemStyle, Text16)
 		textPaint := TreeView_TreeViewTextPaintFor(markerBounds, textBounds, font)
 		markerBounds.X = float32(textPaint.MarkerX)
@@ -6400,27 +6384,27 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		if props.SortColumn != nil {
 			previousSortColumn = *props.SortColumn
 		}
-		if col >= 0 && props.SelectedRow != nil {
-			*props.SelectedRow = -1
-			changed = 1
+		previousDirection := int32(0)
+		if props.SortDirection != nil {
+			previousDirection = *props.SortDirection
 		}
-		if col >= 0 && props.SelectedColumn != nil {
-			*props.SelectedColumn = col
-			changed = 1
-		}
-		if col >= 0 && props.SortColumn != nil {
-			*props.SortColumn = col
-			changed = 1
-		}
-		if col >= 0 && props.SortColumn != nil && props.SortDirection != nil {
-			if previousSortColumn != col || *props.SortDirection == 0 {
-				*props.SortDirection = 1
-			} else if *props.SortDirection > 0 {
-				*props.SortDirection = -1
-			} else {
-				*props.SortDirection = 0
+		decision := TableView_TableViewSortDecisionFor(col, previousSortColumn, previousDirection)
+		if decision.Changed {
+			if props.SelectedRow != nil {
+				*props.SelectedRow = decision.SelectedRow
+				changed = 1
 			}
-			changed = 1
+			if props.SelectedColumn != nil {
+				*props.SelectedColumn = decision.SelectedColumn
+				changed = 1
+			}
+			if props.SortColumn != nil {
+				*props.SortColumn = decision.SortColumn
+				if props.SortDirection != nil {
+					*props.SortDirection = decision.SortDirection
+				}
+				changed = 1
+			}
 		}
 		if props.ID != 0 {
 			r.setFocus(props.ID)
@@ -6485,25 +6469,6 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	r.drawTableOps(props, rowH, headerH)
 	return changed
 }
-func (r *runtime) CanvasScope(canvas Canvas) CanvasResult {
-	var scrollX, scrollY int32
-	zoom := float32(1)
-	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, canvas.ClassName, StyleSheet_StyleKindCanvas(), StyleSheet_StyleAny())
-	r.record(styleFrameRectOp(canvas.Bounds, canvas.Bounds, frame))
-	if canvas.ScrollX != nil {
-		scrollX = *canvas.ScrollX
-	}
-	if canvas.ScrollY != nil {
-		scrollY = *canvas.ScrollY
-	}
-	if canvas.Zoom != nil {
-		zoom = *canvas.Zoom
-	}
-	policy := Canvas_CanvasBeginResultFor(canvas.Bounds, r.mousePos, scrollX, scrollY, zoom, r.mouseDown[MouseButtonLeft])
-	return CanvasResult{Active: policy.Active, Dragging: policy.Dragging, World: policy.World}
-}
-func (r *runtime) CanvasEndScope(Canvas) {}
 func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
 	r.defaultTheme = false
 	r.activeTheme = nil
@@ -6673,6 +6638,7 @@ func systemPrefersDark() bool {
 }
 
 func (r *runtime) record(op FrameOp) {
+	op = r.canvasOperation(op)
 	if op.Kind == FrameOpText && r.recordAccessibleText(op.Text) {
 		op.Role = "presentation"
 	}
@@ -6943,6 +6909,7 @@ func (r *runtime) setRoute(path string) {
 }
 
 type textEditOptions struct {
+	area          *TextAreaProps
 	maxCodepoints int32
 	pageRows      int
 	secure        bool
@@ -6968,7 +6935,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		delete(r.preedit, focusID)
 		return false
 	}
-	tapX, tapped := r.consumeTapPoint(bounds)
+	tapPoint, tapped := r.consumeTapPosition(bounds)
 	if focusID != 0 && tapped {
 		r.setFocus(focusID)
 	}
@@ -6992,7 +6959,11 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 	pos := clampCursor(text, int(*cursor))
 	sel := r.normalizedSelection(focusID, text, pos)
 	if tapped {
-		pos = cursorAtTap(text, bounds, tapX)
+		if options.area != nil {
+			pos = r.textAreaCursorAtPoint(text, *options.area, tapPoint)
+		} else {
+			pos = cursorAtTap(text, bounds, tapPoint.X)
+		}
 		sel = collapsedSelection(pos)
 	}
 	changed := false
@@ -7180,9 +7151,14 @@ func (r *runtime) hasTap(bounds Rectangle) bool {
 }
 
 func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
+	point, found := r.consumeTapPosition(bounds)
+	return point.X, found
+}
+
+func (r *runtime) consumeTapPosition(bounds Rectangle) (Vector2, bool) {
 	bounds = r.scrollClip(bounds)
 	if r.contentDisabled() {
-		return 0, false
+		return Vector2{}, false
 	}
 	for i := range r.taps {
 		if r.taps[i].consumed || r.popupCaptures(r.taps[i].x, r.taps[i].y) {
@@ -7190,10 +7166,10 @@ func (r *runtime) consumeTapPoint(bounds Rectangle) (float32, bool) {
 		}
 		if pointInRect(r.taps[i].x, r.taps[i].y, bounds) {
 			r.taps[i].consumed = true
-			return r.taps[i].x, true
+			return Vector2{X: r.taps[i].x, Y: r.taps[i].y}, true
 		}
 	}
-	return 0, false
+	return Vector2{}, false
 }
 
 func (r *runtime) consumeTap(bounds Rectangle) bool {

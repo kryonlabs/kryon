@@ -1,7 +1,11 @@
 # Remaining lowered block execution
 
 Public Scroll/Popup/Disabled/TableCell/Canvas names are canonical and native/Go
-scope helpers are private. Native and Go have substantial executable coverage.
+scope helpers are private. Native and Go have executable restoration coverage. The generated
+Scroll/Canvas fixture tests nested return, break and continue, while the Button
+fixture does the same for Disabled. Native matrix tests and Go frame-operation
+tests verify parent restoration after both inherited and explicit child cameras.
+Popup and TableCell generated fixtures cover captured and disabled children.
 
 Historical web gaps reconciled against source and parity output on 2026-09-18
 before the JS/web pause:

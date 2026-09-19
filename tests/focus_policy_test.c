@@ -23,6 +23,16 @@ main(void)
     assert(FocusTraversalFor(2, 3, 1).index == 0);
     assert(!FocusTraversalFor(1, 3, 0).move);
     assert(FocusTraversalFor(100, 3, 1).index == 0);
+    TreeFocusScan scan = TreeFocusBegin(3, 5, 2, false, false, false, true);
+    scan = TreeFocusAdvance(scan, 2);
+    assert(!scan.done && scan.index == 1);
+    scan = TreeFocusAdvance(scan, 1);
+    assert(scan.done && scan.index == 1);
+    scan = TreeFocusBegin(1, 5, 1, false, false, true, false);
+    scan = TreeFocusAdvance(scan, 1);
+    assert(scan.done && scan.index == 1);
+    assert(TreeFocusBegin(0, 5, 0, false, true, false, false).done);
+    assert(TreeFocusBegin(4, 5, 0, true, false, false, false).done);
     StyleFrame frame = {0};
     frame.value.padding_x = 5.0f;
     frame.value.border_width = 3.0f;

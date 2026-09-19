@@ -14,12 +14,12 @@ CanvasZoom :: (zoom: float) -> float #export {
 
 CanvasContains :: (bounds: Rectangle, point: Vector2) -> bool #export {
     return point.x >= bounds.x && point.y >= bounds.y &&
-        point.x <= bounds.x + bounds.width &&
-        point.y <= bounds.y + bounds.height
+    point.x <= bounds.x + bounds.width &&
+    point.y <= bounds.y + bounds.height
 }
 
 CanvasPointToScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
-    scroll_y: i32, zoom: float) -> Vector2 #export {
+scroll_y: i32, zoom: float) -> Vector2 #export {
     out: Vector2 = point
     z: float = CanvasZoom(zoom)
     out.x = out.x - (float)scroll_x
@@ -30,7 +30,7 @@ CanvasPointToScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
 }
 
 CanvasPointFromScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
-    scroll_y: i32, zoom: float) -> Vector2 #export {
+scroll_y: i32, zoom: float) -> Vector2 #export {
     out: Vector2 = point
     z: float = CanvasZoom(zoom)
     out.x = bounds.x + (out.x - bounds.x) / z + (float)scroll_x
@@ -39,11 +39,11 @@ CanvasPointFromScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
 }
 
 CanvasRectToScreenBounds :: (bounds: Rectangle, rect: Rectangle,
-    scroll_x: i32, scroll_y: i32, zoom: float) -> Rectangle #export {
+scroll_x: i32, scroll_y: i32, zoom: float) -> Rectangle #export {
     out: Rectangle = rect
     z: float = CanvasZoom(zoom)
     point: Vector2 = CanvasPointToScreen(bounds, (Vector2){rect.x, rect.y},
-        scroll_x, scroll_y, z)
+    scroll_x, scroll_y, z)
     out.x = point.x
     out.y = point.y
     out.width = rect.width * z
@@ -52,18 +52,52 @@ CanvasRectToScreenBounds :: (bounds: Rectangle, rect: Rectangle,
 }
 
 CanvasBeginResultFor :: (bounds: Rectangle, mouse: Vector2, scroll_x: i32,
-    scroll_y: i32, zoom: float, mouse_down: bool) -> CanvasPolicyResult #export {
+scroll_y: i32, zoom: float, mouse_down: bool) -> CanvasPolicyResult #export {
     result: CanvasPolicyResult
     result.active = CanvasContains(bounds, mouse)
     result.dragging = result.active && mouse_down
     result.world = CanvasPointFromScreen(bounds, mouse, scroll_x, scroll_y,
-        zoom)
+    zoom)
     return result
 }
 
 CanvasHitTestStep :: (point: Vector2, item: Rectangle, item_index: i32,
-    current_index: i32) -> i32 #export {
+current_index: i32) -> i32 #export {
     if current_index >= 0 { return current_index }
     if CanvasContains(item, point) { return item_index }
     return -1
+}
+
+# Host stacks store these values alongside their backend state. An omitted
+# camera inherits its parent; an explicit camera replaces it and is restored
+# when the lexical scope exits.
+CanvasTransform :: struct {
+    scale: float
+    x: float
+    y: float
+}
+
+CanvasHasTransform :: (has_scroll_x: bool, has_scroll_y: bool,
+has_zoom: bool, zoom: float) -> bool #export {
+    return has_scroll_x || has_scroll_y ||
+    (has_zoom && zoom > 0.01 && zoom != 1.0)
+}
+
+CanvasTransformFor :: (bounds: Rectangle, scroll_x: i32, scroll_y: i32,
+zoom: float) -> CanvasTransform #export {
+    scale: float = CanvasZoom(zoom)
+    return (CanvasTransform){scale,
+        bounds.x - (bounds.x + (float)scroll_x) * scale,
+        bounds.y - (bounds.y + (float)scroll_y) * scale}
+}
+
+CanvasTransformPoint :: (transform: CanvasTransform, point: Vector2) -> Vector2 #export {
+    return (Vector2){point.x * transform.scale + transform.x,
+        point.y * transform.scale + transform.y}
+}
+
+CanvasTransformRect :: (transform: CanvasTransform, bounds: Rectangle) -> Rectangle #export {
+    point: Vector2 = CanvasTransformPoint(transform, (Vector2){bounds.x, bounds.y})
+    return (Rectangle){point.x, point.y, bounds.width * transform.scale,
+        bounds.height * transform.scale}
 }

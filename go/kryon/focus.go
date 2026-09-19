@@ -22,6 +22,15 @@ type FocusTraversal struct {
 	Clear bool
 }
 
+type TreeFocusScan struct {
+	Index  int32
+	Origin int32
+	Depth  int32
+	Parent bool
+	Child  bool
+	Done   bool
+}
+
 func Focus_FocusBoxRole() int32 {
 	var value_0 int32 = 9
 	return value_0
@@ -330,4 +339,142 @@ func Focus_FocusTraversalFor(current int32, count int32, direction int32) FocusT
 	}
 	var value_46 FocusTraversal = result
 	return value_46
+}
+
+func Focus_TreeFocusBegin(current int32, count int32, depth int32, down bool, up bool, right bool, left bool) TreeFocusScan {
+	var value_0 TreeFocusScan = TreeFocusScan{}
+	var value_1 int32 = current
+	value_0.Index = value_1
+	var value_2 int32 = current
+	value_0.Origin = value_2
+	var value_3 int32 = depth
+	value_0.Depth = value_3
+	var value_4 bool = true
+	value_0.Done = value_4
+	var scan TreeFocusScan = value_0
+	var value_5 int32 = current
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	var value_8 bool = value_7
+	if !value_8 {
+		var value_9 int32 = current
+		var value_10 int32 = count
+		var value_11 bool = value_9 >= value_10
+		value_8 = value_11
+	}
+	if value_8 {
+		var value_12 TreeFocusScan = scan
+		return value_12
+	}
+	var value_13 bool = down
+	var value_14 bool = value_13
+	if !value_14 {
+		var value_15 bool = right
+		value_14 = value_15
+	}
+	if value_14 {
+		var value_16 int32 = current
+		var value_17 int32 = 1
+		var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 1))
+		var value_19 int32 = count
+		var value_20 bool = value_18 >= value_19
+		if value_20 {
+			var value_21 TreeFocusScan = scan
+			return value_21
+		}
+		var value_22 int32 = current
+		var value_23 int32 = 1
+		var value_24 int32 = int32(number_runtime_bits(uint64(value_22), uint64(value_23), 32, true, 1))
+		scan.Index = value_24
+		var value_25 bool = down
+		var value_26 bool = !value_25
+		var value_27 bool = value_26
+		if value_27 {
+			var value_28 bool = right
+			value_27 = value_28
+		}
+		scan.Child = value_27
+	} else {
+		var value_29 bool = up
+		var value_30 bool = value_29
+		if !value_30 {
+			var value_31 bool = left
+			value_30 = value_31
+		}
+		if value_30 {
+			var value_32 int32 = current
+			var value_33 int32 = 0
+			var value_34 bool = value_32 <= value_33
+			if value_34 {
+				var value_35 TreeFocusScan = scan
+				return value_35
+			}
+			var value_36 int32 = current
+			var value_37 int32 = 1
+			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
+			scan.Index = value_38
+			var value_39 bool = up
+			var value_40 bool = !value_39
+			var value_41 bool = value_40
+			if value_41 {
+				var value_42 bool = left
+				value_41 = value_42
+			}
+			scan.Parent = value_41
+		} else {
+			var value_43 TreeFocusScan = scan
+			return value_43
+		}
+	}
+	var value_44 bool = false
+	scan.Done = value_44
+	var value_45 TreeFocusScan = scan
+	return value_45
+}
+
+func Focus_TreeFocusAdvance(scan TreeFocusScan, candidate_depth int32) TreeFocusScan {
+	var value_0 bool = scan.Done
+	if value_0 {
+		var value_1 TreeFocusScan = scan
+		return value_1
+	}
+	var value_2 bool = scan.Parent
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = candidate_depth
+		var value_5 int32 = scan.Depth
+		var value_6 bool = value_4 >= value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 int32 = scan.Index
+		var value_8 int32 = 0
+		var value_9 bool = value_7 > value_8
+		if value_9 {
+			var value_10 int32 = scan.Index
+			var value_11 int32 = 1
+			scan.Index = int32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, true, 2))
+			var value_12 TreeFocusScan = scan
+			return value_12
+		}
+		var value_13 int32 = scan.Origin
+		scan.Index = value_13
+	} else {
+		var value_14 bool = scan.Child
+		var value_15 bool = value_14
+		if value_15 {
+			var value_16 int32 = candidate_depth
+			var value_17 int32 = scan.Depth
+			var value_18 bool = value_16 <= value_17
+			value_15 = value_18
+		}
+		if value_15 {
+			var value_19 int32 = scan.Origin
+			scan.Index = value_19
+		}
+	}
+	var value_20 bool = true
+	scan.Done = value_20
+	var value_21 TreeFocusScan = scan
+	return value_21
 }

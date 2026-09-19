@@ -1,7 +1,8 @@
 # Remaining host-service inventory
 
 `docs/CANONICAL_WIDGET_SURFACE.md` records widget ownership and the completed
-C release-call classification. Complete the inventory at behavior granularity:
+C release-call classification. The native behavior/service inventory is recorded in
+`docs/NATIVE_POLICY_OWNERSHIP.md`, including its evidence and platform limits:
 
 - Native and Go retained focus/selection/menu state: storage is host support;
   navigation targets, close rules, and ownership transitions are policy.

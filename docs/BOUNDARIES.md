@@ -243,10 +243,16 @@ Read-only text tokenization and line assembly belong to `runtime/paragraph.kry`.
 owns hard breaks, overflow, empty lines, and the completed line ranges. Native
 `ui_text_layout.c` and Go `text_layout.go` retain strings/arrays and supply font
 measurements, including the shaped joined candidate. They do not contain a
-second whitespace grammar or wrapping algorithm. Inline-icon measurement and
-painting remain native host services; this does not add Go texture rendering.
-Editable TextArea visual-row traversal and cross-line selection remain separate
-work in the text ownership audit.
+second whitespace grammar or wrapping algorithm. `paragraph_host.go` applies the same token, spacing and wrap decisions to Go
+Paragraph inline icons. Built-in icons paint through the native icon renderer;
+raw texture upload remains a host capability.
+`runtime/text_rows.kry` owns source-preserving logical lines, visual row breaks,
+heading font choice, caret affinity and point-to-row selection. C
+`ui_text_rows.c` and Go `text_rows_host.go` provide borrowed strings, grapheme
+boundaries, measured prefixes and row storage. Native TextArea measurement,
+painting and hit testing share that iterator; selectable blocks request its
+word-break mode. Cross-line selection/composition paint ranges remain owned by
+`runtime/text_input.kry`.
 The native Go wrapped-text cache stores bounded host measurement results, not
 another layout algorithm. Its font-generation invalidation belongs to the font
 registry; color, alignment and clipping remain live per-frame paint decisions.
@@ -269,19 +275,20 @@ Unicode segmentation tables or the shared editing policy. Byte-offset storage,
 scalar-count limits and platform IME preedit offsets are separate contracts.
 Native and Go event loops sample keys and apply those decisions; clipboard IO, buffer
 storage, focus registration and pointer-event queues remain host services.
-The web queued editor and live DOM text fields use generated text-input policy,
+The paused web implementation historically used generated text-input policy,
 with JavaScript limited
 to string storage, UTF-8 offset traversal, event routing and clipboard transport.
 Go and web defer input after backward Tab until the destination's next frame,
 discarding it if focus changes in between. Composition events do not transfer
 to the next field during Tab navigation.
-Generated JavaScript keyboard policy and queued editing behavior are checked
-by `make keyboard-policy-test`.
-`make web-text-input-browser-test` exercises live DOM typing, clipboard,
-composition and redraw, then Chromium keyboard/pointer events, wrapped visual
-lines and native preedit presentation. The browser owns UTF-16 DOM selection,
-visual-row geometry, caret scrolling and platform IME presentation; the adapter
-translates offsets to the UTF-8 byte positions used by application state.
-Stable DOM nodes stay attached during redraw so focus and composition survive.
-This coverage does not imply complete web block or every platform's IME parity; see
-`plan/canonical/README.md` for the remaining execution audit.
+Historical JavaScript keyboard and browser composition tests are future-roadmap
+reference only. JS/web remains paused. Native generated parity executes C and
+Go; OS IME candidate windows still require platform verification.
+
+Canvas camera selection and coordinate transforms belong to `runtime/canvas.kry`.
+C stores backend matrix snapshots per lexical scope; Go adapts frame-operation
+coordinates. Clip stacks, renderer flushes and restoration of saved native
+objects stay in the host. `TreeFocusBegin` / `TreeFocusAdvance` own retained
+hierarchy traversal; native hosts supply stored node depths and resolve IDs.
+See [native ownership evidence](NATIVE_POLICY_OWNERSHIP.md) for the audited
+surfaces and the remaining platform boundaries.

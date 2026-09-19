@@ -267,6 +267,11 @@ typedef struct InstanceEntry {
     struct InstanceEntry *next;
 } InstanceEntry;
 
+typedef struct CanvasScopeState {
+    Matrix projection, modelview;
+    int paint, transform;
+} CanvasScopeState;
+
 struct ToolkitStore {
     int drag_active;
     float drag_last_x;
@@ -276,7 +281,8 @@ struct ToolkitStore {
     NumericClickState numeric_click;
     DragDropState drag_drop;
     int canvas_depth;
-    int canvas_mode_depth;
+    int canvas_capacity;
+    CanvasScopeState *canvases;
     RadioAnimState radio_anim[RADIO_ANIM_MAX];
     InstanceEntry *instances[INSTANCE_BUCKETS];
     unsigned long instance_frame;
@@ -365,6 +371,7 @@ toolkit_store_free(ToolkitStore *store)
             state = next;
         }
     }
+    free(store->canvases);
     free(store->tree_headers);
     free(store->tree_previous);
     free(store);
@@ -4222,8 +4229,9 @@ CanvasScope(Canvas canvas)
     Vector2 mouse = ui_mouse_world();
     CanvasPolicyResult policy;
 
-    ui_tk_draw_style_frame(canvas.bounds, canvas.bounds,
-                           ui_canvas_frame(canvas.class_name), 0, 0, 0, 0);
+    if (IsWindowReady())
+        ui_tk_draw_style_frame(canvas.bounds, canvas.bounds,
+                              ui_canvas_frame(canvas.class_name), 0, 0, 0, 0);
     policy = CanvasBeginResultFor(canvas.bounds, mouse,
                                   canvas.scroll_x != NULL ? *canvas.scroll_x : 0,
                                   canvas.scroll_y != NULL ? *canvas.scroll_y : 0,
@@ -4232,20 +4240,35 @@ CanvasScope(Canvas canvas)
     result.active = policy.active;
     result.dragging = policy.dragging;
     result.world = policy.world;
-    BeginClip((int)canvas.bounds.x, (int)canvas.bounds.y,
-                (int)canvas.bounds.width, (int)canvas.bounds.height);
-    toolkit->canvas_depth++;
-    if(canvas.scroll_x != NULL || canvas.scroll_y != NULL ||
-       (canvas.zoom != NULL && *canvas.zoom > 0.01f && *canvas.zoom != 1.0f)) {
-        Camera2D camera = {0};
-        camera.target = (Vector2){canvas.bounds.x + (canvas.scroll_x != NULL ? (float)*canvas.scroll_x : 0.0f),
-                                  canvas.bounds.y + (canvas.scroll_y != NULL ? (float)*canvas.scroll_y : 0.0f)};
-        camera.offset = (Vector2){canvas.bounds.x, canvas.bounds.y};
-        camera.rotation = 0.0f;
-        camera.zoom = canvas.zoom != NULL && *canvas.zoom > 0.01f ? *canvas.zoom : 1.0f;
-        BeginMode2D(camera);
-        toolkit->canvas_mode_depth++;
+    if (toolkit->canvas_depth == toolkit->canvas_capacity) {
+        int capacity = toolkit->canvas_capacity ? toolkit->canvas_capacity * 2 : 8;
+        CanvasScopeState *scopes = realloc(toolkit->canvases, (size_t)capacity * sizeof(*scopes));
+        if (!scopes) abort();
+        toolkit->canvases = scopes;
+        toolkit->canvas_capacity = capacity;
     }
+    CanvasScopeState scope = {0};
+    scope.paint = IsWindowReady();
+    scope.transform = CanvasHasTransform(canvas.scroll_x != NULL, canvas.scroll_y != NULL,
+        canvas.zoom != NULL, canvas.zoom ? *canvas.zoom : 1.0f);
+    PushInputClip(canvas.bounds);
+    if (scope.paint) {
+        BeginClip((int)canvas.bounds.x, (int)canvas.bounds.y,
+                  (int)canvas.bounds.width, (int)canvas.bounds.height);
+        if (scope.transform) {
+            scope.projection = rlGetMatrixProjection();
+            scope.modelview = rlGetMatrixModelview();
+            CanvasTransform transform = CanvasTransformFor(canvas.bounds,
+                canvas.scroll_x ? *canvas.scroll_x : 0,
+                canvas.scroll_y ? *canvas.scroll_y : 0,
+                canvas.zoom ? *canvas.zoom : 1.0f);
+            Camera2D camera = {0};
+            camera.offset = (Vector2){transform.x, transform.y};
+            camera.zoom = transform.scale;
+            BeginMode2D(camera);
+        }
+    }
+    toolkit->canvases[toolkit->canvas_depth++] = scope;
     return result;
 }
 
@@ -4254,17 +4277,22 @@ CanvasEndScope(Canvas canvas)
 {
     ToolkitStore *toolkit = toolkit_state();
 
-    if(toolkit->canvas_depth > 0) {
-        if(toolkit->canvas_mode_depth > 0) {
-            toolkit->canvas_mode_depth--;
+    if (toolkit->canvas_depth == 0) return;
+    CanvasScopeState scope = toolkit->canvases[--toolkit->canvas_depth];
+    if (scope.paint) {
+        if (scope.transform) {
             EndMode2D();
+            rlSetMatrixProjection(scope.projection);
+            rlSetMatrixModelview(scope.modelview);
         }
-        toolkit->canvas_depth--;
         EndClip();
     }
-    Style style = ui_unpack_style(
-        ui_style_apply_effects_frame(ui_canvas_frame(canvas.class_name)).value);
-    DrawRectangleLinesEx(canvas.bounds, 1.0f, style.border);
+    PopInputClip();
+    if (scope.paint) {
+        Style style = ui_unpack_style(
+            ui_style_apply_effects_frame(ui_canvas_frame(canvas.class_name)).value);
+        DrawRectangleLinesEx(canvas.bounds, 1.0f, style.border);
+    }
 }
 
 void
@@ -4394,20 +4422,12 @@ ui_tree_header_target(int id, int key)
 
     for(int i = 0; i < toolkit->tree_previous_count; i++) {
         if(toolkit->tree_previous[i].id != id) continue;
-        if(key == KEY_DOWN && i + 1 < toolkit->tree_previous_count)
-            return toolkit->tree_previous[i+1].id;
-        if(key == KEY_UP && i > 0)
-            return toolkit->tree_previous[i-1].id;
-        if(key == KEY_RIGHT && i + 1 < toolkit->tree_previous_count &&
-           toolkit->tree_previous[i+1].depth >
-               toolkit->tree_previous[i].depth)
-            return toolkit->tree_previous[i+1].id;
-        if(key == KEY_LEFT)
-            for(int j = i - 1; j >= 0; j--)
-                if(toolkit->tree_previous[j].depth <
-                   toolkit->tree_previous[i].depth)
-                    return toolkit->tree_previous[j].id;
-        break;
+        TreeFocusScan scan = TreeFocusBegin(i, toolkit->tree_previous_count,
+            toolkit->tree_previous[i].depth, key == KEY_DOWN, key == KEY_UP,
+            key == KEY_RIGHT, key == KEY_LEFT);
+        while (!scan.done)
+            scan = TreeFocusAdvance(scan, toolkit->tree_previous[scan.index].depth);
+        return toolkit->tree_previous[scan.index].id;
     }
     return id;
 }

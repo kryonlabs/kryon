@@ -1,0 +1,226 @@
+[
+  {
+    "name": "empty",
+    "text": "",
+    "width": 3,
+    "words": false,
+    "rows": [
+      [
+        0,
+        0,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "trailing newline",
+    "text": "a\n",
+    "width": 3,
+    "words": false,
+    "rows": [
+      [
+        0,
+        1,
+        16
+      ],
+      [
+        2,
+        2,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "blank lines",
+    "text": "\n\n",
+    "width": 3,
+    "words": false,
+    "rows": [
+      [
+        0,
+        0,
+        16
+      ],
+      [
+        1,
+        1,
+        16
+      ],
+      [
+        2,
+        2,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "crlf",
+    "text": "ab\r\ncd",
+    "width": 2,
+    "words": false,
+    "rows": [
+      [
+        0,
+        2,
+        16
+      ],
+      [
+        4,
+        6,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "spaces preserved",
+    "text": "a  b\tc",
+    "width": 3,
+    "words": false,
+    "rows": [
+      [
+        0,
+        3,
+        16
+      ],
+      [
+        3,
+        6,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "space only",
+    "text": "   ",
+    "width": 2,
+    "words": false,
+    "rows": [
+      [
+        0,
+        2,
+        16
+      ],
+      [
+        2,
+        3,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "exact fit",
+    "text": "abcd",
+    "width": 4,
+    "words": false,
+    "rows": [
+      [
+        0,
+        4,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "long word",
+    "text": "abcdefg",
+    "width": 3,
+    "words": false,
+    "rows": [
+      [
+        0,
+        3,
+        16
+      ],
+      [
+        3,
+        6,
+        16
+      ],
+      [
+        6,
+        7,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "word breaks",
+    "text": "ab cdef",
+    "width": 5,
+    "words": true,
+    "rows": [
+      [
+        0,
+        2,
+        16
+      ],
+      [
+        3,
+        7,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "combining grapheme",
+    "text": "áb",
+    "width": 1,
+    "words": false,
+    "rows": [
+      [
+        0,
+        3,
+        16
+      ],
+      [
+        3,
+        4,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "emoji family",
+    "text": "👨‍👩‍👧‍👦z",
+    "width": 1,
+    "words": false,
+    "rows": [
+      [
+        0,
+        25,
+        16
+      ],
+      [
+        25,
+        26,
+        16
+      ]
+    ]
+  },
+  {
+    "name": "heading",
+    "text": "## heading",
+    "width": 30,
+    "words": false,
+    "rows": [
+      [
+        0,
+        10,
+        24
+      ]
+    ]
+  },
+  {
+    "name": "no wrap",
+    "text": "abcdef",
+    "width": 0,
+    "words": false,
+    "rows": [
+      [
+        0,
+        6,
+        16
+      ]
+    ]
+  }
+]

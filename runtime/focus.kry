@@ -114,3 +114,46 @@ FocusTraversalFor :: (current: i32, count: i32, direction: i32) -> FocusTraversa
     }
     return result
 }
+
+TreeFocusScan :: struct {
+    index: i32
+    origin: i32
+    depth: i32
+    parent: bool
+    child: bool
+    done: bool
+}
+
+TreeFocusBegin :: (current: i32, count: i32, depth: i32, down: bool,
+up: bool, right: bool, left: bool) -> TreeFocusScan #export {
+    scan: TreeFocusScan = (TreeFocusScan){.index = current, .origin = current, .depth = depth, .done = true}
+    if current < 0 || current >= count { return scan }
+    if down || right {
+        if current + 1 >= count { return scan }
+        scan.index = current + 1
+        scan.child = !down && right
+    } else if up || left {
+        if current <= 0 { return scan }
+        scan.index = current - 1
+        scan.parent = !up && left
+    } else {
+        return scan
+    }
+    scan.done = false
+    return scan
+}
+
+TreeFocusAdvance :: (scan: TreeFocusScan, candidate_depth: i32) -> TreeFocusScan #export {
+    if scan.done { return scan }
+    if scan.parent && candidate_depth >= scan.depth {
+        if scan.index > 0 {
+            scan.index -= 1
+            return scan
+        }
+        scan.index = scan.origin
+    } else if scan.child && candidate_depth <= scan.depth {
+        scan.index = scan.origin
+    }
+    scan.done = true
+    return scan
+}

@@ -18,14 +18,19 @@ Completed read-only reflow slice:
   spaces, shaped candidates, and zero-width content. Go integration covers
   clipping, alignment, paragraph line gaps, and the final Y position.
 
-Remaining:
+Completed follow-up:
 
-- Classify editable TextArea visual-row traversal in `src/ui/ui.c` and remaining
-  selectable-block decisions in `src/ui/ui_text.c`.
-- Audit selectable paragraph ownership and retained text placement against
-  generated text/paragraph policy in C and Go; web remains paused.
-- Add matched interaction tests for selection crossing lines and text/image
-  content inside clipped scopes. Go inline-icon rendering remains unfinished.
+- TextArea visual rows and selectable-block wrapping use `text_rows.kry` through
+  native storage/measurement adapters. The independent C loops and Go whitespace
+  collapsing wrapper are removed. Thirteen source-range fixtures execute in C
+  and Go; policy also executes in generated C++.
+- Selection and composition painting use shared per-line spans. Soft-wrap caret
+  affinity is shared, and Go pointer placement resolves the clicked visual row.
+- Go Paragraph built-in inline icons use the same tokenization, spacing and
+  wrapping policy as C. Raw texture upload is still renderer support work.
+- Canvas tests cover nested cameras and clips, text/image operations inside
+  clips and restoration before following content. Generated Scroll/Canvas
+  fixtures exercise return, break and continue cleanup.
 
 Glyph lookup, atlas drawing, image decoding/upload/cache, and actual font
 measurement remain host services. Their presence alone is not migration debt.

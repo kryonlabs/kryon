@@ -2961,6 +2961,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                         fprintf(f, "var %s %s = %s\n", aname, gt, assign + 2);
                 } else
                     fprintf(f, "var %s %s\n", aname, gt);
+                /* Lexical widget scopes require a binding even when the body
+                 * only uses their clipping or camera effects. */
+                if(st->node_name[0] != '\0') {
+                    emit_indent(f, indent);
+                    fprintf(f, "_ = %s\n", aname);
+                }
             } else if(colon != NULL) { /* ':=' */
                 fprintf(f, "%s\n", rw);
             } else {

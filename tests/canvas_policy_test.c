@@ -55,5 +55,11 @@ main(void)
                              0, 2) == 2);
     assert(CanvasHitTestStep((Vector2){80, 80}, (Rectangle){10, 10, 20, 20},
                              1, -1) == -1);
+    assert(!CanvasHasTransform(false, false, false, 1));
+    assert(!CanvasHasTransform(false, false, true, 0));
+    assert(CanvasHasTransform(true, false, false, 1));
+    CanvasTransform transform = CanvasTransformFor(bounds, 10, 20, 2);
+    check_vec(CanvasTransformPoint(transform, (Vector2){50, 70}), 40, 50);
+    check_rect(CanvasTransformRect(transform, (Rectangle){50, 70, 20, 10}), 40, 50, 40, 20);
     return 0;
 }

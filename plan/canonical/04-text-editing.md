@@ -1,15 +1,19 @@
-# Remaining text editing work
+# Text editing status
 
-- Extend matched composition-fixture execution to the remaining native
-  layout/pointer scenarios. Web logical editing and live Chromium visual-row,
-  pointer and composition tests now run, but are separate tests.
-- Verify native OS IME candidate windows and browser/platform combinations
-  beyond Chromium. The automated browser test exercises native composition
-  events and visible preedit, not the OS candidate window.
-- Extend web capacity lowering beyond fixed char arrays in module state where
-  maintained callers need local buffers or computed capacity expressions.
+The native ownership/layout slice is implemented: `runtime/text_input.kry`
+owns editing, selection, navigation intent and composition; `runtime/text_rows.kry`
+owns logical/visual rows, wrapping, heading font selection and caret affinity.
+C and Go preserve source byte ranges and use host Unicode/font services.
+Go pointer placement now includes row Y and scrolling. The matched row fixtures,
+editor regressions and generated composition fixture are active evidence.
 
-Completed behavior, source ownership and verification commands live in
-`docs/TEXT_INPUT_BEHAVIOR.md`. Buffers, OS input, font measurement, UTF-8
-traversal and browser geometry remain host services. Keep editing decisions in
-`runtime/text_input.kry`; do not add a second editor or compatibility layer.
+Remaining platform work:
+
+- Route real native Go OS-window IME events into the existing composition queue.
+- Verify OS candidate windows on each supported desktop/mobile host.
+- JS/web is paused. Historical DOM composition, visual-row tests and expanded
+  buffer-capacity lowering belong to the future web-native target.
+
+These are host integration or future-target tasks, not additional editor policy
+implementations. See `docs/TEXT_INPUT_BEHAVIOR.md` and
+`docs/NATIVE_POLICY_OWNERSHIP.md`.

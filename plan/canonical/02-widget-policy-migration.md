@@ -29,8 +29,11 @@ shared owners in `runtime/popup_ownership.kry`; Tab indices use
 `FocusTraversalFor`. Composed Scroll geometry and interaction use
 `ScrollScopeFrameFor` in C and Go. The old Go ancestor-path allocation and
 scrollbar algorithm are removed. Registry storage, token validation and
-clip/paint stack operations remain host services. Canvas and editable text
-layout are the next audited surfaces.
+clip/paint stack operations remain host services. Canvas camera selection/coordinates and nested state restoration are now
+implemented in both native hosts. Editable and selectable text row decisions
+moved to `text_rows.kry`. Retained tree focus traversal uses the shared scan in
+`focus.kry`; Go table sort and tree-row actions use their existing policy owners.
+The behavior/service inventory is `docs/NATIVE_POLICY_OWNERSHIP.md`.
 
 Done when the ownership inventory has no unexplained policy and each moved
 rule has active C/Go evidence. Future web work has a separate roadmap.

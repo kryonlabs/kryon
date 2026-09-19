@@ -911,6 +911,23 @@ overlay-policy-test: $(GENERATED_SRC_DIR)/runtime/overlay.c $(GENERATED_SRC_DIR)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/overlay_policy_test.c $(GENERATED_SRC_DIR)/runtime/overlay.c -lm -o $(OVERLAY_POLICY_TEST)
 	$(OVERLAY_POLICY_TEST)
 
+.PHONY: text-rows-policy-test
+text-rows-policy-test: $(GENERATED_SRC_DIR)/runtime/text_rows.c $(GENERATED_SRC_DIR)/runtime/text_rows.h $(K2CPP)
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_rows_policy_test.c $(GENERATED_SRC_DIR)/runtime/text_rows.c -o $(BUILD_DIR)/text-rows-policy-test
+	$(BUILD_DIR)/text-rows-policy-test
+	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/text-rows-cpp runtime/text_rows.kry
+	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/text-rows-cpp tests/text_rows_policy_test.c $(BUILD_DIR)/tests/text-rows-cpp/runtime/text_rows.cpp -o $(BUILD_DIR)/tests/text-rows-cpp/check
+	$(BUILD_DIR)/tests/text-rows-cpp/check
+	CC="$(CC)" python3 tests/text_rows_test.py $(BUILD_DIR)
+
+.PHONY: canvas-scope-test
+canvas-scope-test: $(BUILD_DIR)/tests/canvas_scope_test
+	xvfb-run -a $(BUILD_DIR)/tests/canvas_scope_test
+
+$(BUILD_DIR)/tests/canvas_scope_test: tests/canvas_scope_test.c $(LIB) $(KRYON_BACKEND_LIBS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
 canvas-policy-test: $(GENERATED_SRC_DIR)/runtime/canvas.c $(GENERATED_SRC_DIR)/runtime/canvas.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/canvas_policy_test.c $(GENERATED_SRC_DIR)/runtime/canvas.c -lm -o $(CANVAS_POLICY_TEST)
 	$(CANVAS_POLICY_TEST)

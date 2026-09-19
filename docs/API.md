@@ -1890,7 +1890,7 @@ Native C and Go editors keep byte-offset cursors and selections, but normalize
 committed-text positions to Unicode 17 extended grapheme boundaries. Left/right,
 Backspace/Delete, selection endpoints, and click placement treat combining
 sequences, joined emoji, flags, and Indic conjuncts as whole characters. CRLF is
-one cursor step. C TextArea soft wrapping does not split a grapheme, and long
+one cursor step. C and Go TextArea soft wrapping does not split a grapheme, and long
 visible lines are no longer truncated at 1023 bytes.
 
 Buffer capacities remain bytes and `max_codepoints` remains a scalar-value
@@ -1900,6 +1900,11 @@ This does not add bidirectional cursor ordering, Unicode word segmentation,
 font shaping, or native Go visual-row wrapping.
 
 ### Text composition
+
+TextArea visual rows preserve source whitespace and byte offsets in both native
+runtimes. CRLF is one logical break; empty and trailing lines remain addressable.
+A caret at a soft-wrap boundary belongs to the next row. Pointer placement uses
+the clicked row, its font measurements and the current vertical scroll offset.
 
 Platform adapters submit UTF-8 IME preedit and commit events through the shared
 input front-end. C retained `TextField` and `TextArea` consume these events;
@@ -2297,7 +2302,10 @@ Canvas canvas: {
 ```
 
 The compiler lowers the block to host canvas-scope support. Scroll and zoom are
-applied to canvas drawing and hit coordinates.
+applied to canvas drawing and hit coordinates. C and Go restore the parent camera
+and clip after each nested Canvas, including compiler-generated cleanup on
+return, break and continue. A Canvas without explicit scroll or zoom inherits
+the active camera; an explicit camera temporarily replaces it.
 
 Text fields and text areas use the shared `EditText` core. Ctrl/Cmd+C copies
 the field buffer, Ctrl/Cmd+X cuts it, and Ctrl/Cmd+V pastes clipboard text

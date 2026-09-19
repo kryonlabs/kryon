@@ -367,67 +367,6 @@ func iconPattern(iconType int32) []string {
 	}
 }
 
-type textAreaRenderLine struct {
-	text       string
-	start, end int
-}
-
-func renderTextAreaLines(text string, wrapWidth int, fontSize int32, fontID uint32, wrap bool) []textAreaRenderLine {
-	var lines []textAreaRenderLine
-	lineStart := 0
-	for i := 0; i <= len(text); i++ {
-		if i < len(text) && text[i] != '\n' {
-			continue
-		}
-		paragraphStart, paragraphEnd := lineStart, i
-		paragraph := text[paragraphStart:paragraphEnd]
-		if !wrap || wrapWidth <= 0 || paragraph == "" {
-			lines = append(lines, textAreaRenderLine{text: paragraph, start: paragraphStart, end: paragraphEnd})
-		} else {
-			chunkStart := paragraphStart
-			lineText := ""
-			lineEnd := paragraphStart
-			wordStart := -1
-			flushWord := func(wordEnd int) {
-				if wordStart < 0 {
-					return
-				}
-				word := text[wordStart:wordEnd]
-				candidate := word
-				if lineText != "" {
-					candidate = lineText + " " + word
-				}
-				if lineText != "" && textAdvance(candidate, int32(len(candidate)), fontSize, fontID) > wrapWidth {
-					lines = append(lines, textAreaRenderLine{text: lineText, start: chunkStart, end: lineEnd})
-					chunkStart = wordStart
-					lineText = word
-				} else {
-					lineText = candidate
-				}
-				lineEnd = wordEnd
-				wordStart = -1
-			}
-			for at := paragraphStart; at <= paragraphEnd; at++ {
-				if at < paragraphEnd && text[at] != ' ' && text[at] != '\t' {
-					if wordStart < 0 {
-						wordStart = at
-					}
-					continue
-				}
-				flushWord(at)
-			}
-			if lineText != "" {
-				lines = append(lines, textAreaRenderLine{text: lineText, start: chunkStart, end: lineEnd})
-			}
-		}
-		lineStart = i + 1
-	}
-	if len(lines) == 0 {
-		lines = append(lines, textAreaRenderLine{})
-	}
-	return lines
-}
-
 func renderTextArea(img *image.RGBA, op FrameOp) {
 	paintOp := op
 	if paintOp.Opacity == 0 && paintOp.Fields&uint32(StyleOpacity) == 0 {
@@ -454,16 +393,13 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 	if lineGap < 0 {
 		lineGap = 0
 	}
-	fontHeight := int(textHeight(op.FontSize, op.FontID))
-	lineHeight := maxInt(1, fontHeight+lineGap)
 	x := int(round(op.Bounds.X)) + paddingX
 	y0 := int(round(op.Bounds.Y)) + paddingY - int(op.ScrollY)
 	clipTop := int(round(op.Bounds.Y)) + paddingY
 	clipBottom := int(round(op.Bounds.Y+op.Bounds.Height)) - paddingY
-	wrapWidth := int(round(op.Bounds.Width)) - paddingX*2
-	if wrapWidth < 24 {
-		wrapWidth = 0
-	}
+	wrapWidth := int(TextInput_TextAreaWrapWidthFor(op.Bounds.Width, int32(paddingX), op.Wrap, TextInput_TextAreaMinWrapWidth(1)))
+	contentClip := image.Rect(x, clipTop, int(round(op.Bounds.X+op.Bounds.Width))-paddingX, clipBottom)
+	img = img.SubImage(contentClip.Intersect(img.Bounds())).(*image.RGBA)
 	text := BLACK
 	if op.TextColor.A != 0 {
 		text = op.TextColor
@@ -484,51 +420,55 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 		cursorColor = op.CursorColor
 	}
 	lines := renderTextAreaLines(op.Text, wrapWidth, op.FontSize, op.FontID, op.Wrap)
-	for i, line := range lines {
-		y := y0 + i*lineHeight
-		if y+lineHeight < clipTop || y > clipBottom {
+	y := y0
+	for _, line := range lines {
+		fontHeight := int(textHeight(line.font, op.FontID))
+		lineHeight := maxInt(1, fontHeight+lineGap)
+		rowY := y
+		y += lineHeight
+		if rowY+lineHeight < clipTop || rowY > clipBottom {
 			continue
 		}
 		if op.SelectionStart != op.SelectionEnd && line.end >= line.start {
 			selStart, selEnd := orderedInt32(op.SelectionStart, op.SelectionEnd)
-			start := maxInt(line.start, int(selStart))
-			end := minInt(line.end, int(selEnd))
+			span := TextInput_TextSelectionPaintSpanForLine(selStart, selEnd, int32(line.start), int32(line.end))
+			start, end := int(span.Start), int(span.End)
 			if end > start {
 				prefix := op.Text[line.start:start]
 				part := op.Text[start:end]
-				sx := x + textAdvance(prefix, int32(len(prefix)), op.FontSize, op.FontID)
-				sw := maxInt(1, textAdvance(part, int32(len(part)), op.FontSize, op.FontID))
-				fillRectPixels(img, sx, y, sw, fontHeight, selection)
+				sx := x + textAdvance(prefix, int32(len(prefix)), line.font, op.FontID)
+				sw := maxInt(1, textAdvance(part, int32(len(part)), line.font, op.FontID))
+				fillRectPixels(img, sx, rowY, sw, fontHeight, selection)
 			}
 		}
-		drawText(img, line.text, x, y, op.FontSize, text, op.FontID)
+		drawText(img, line.text, x, rowY, line.font, text, op.FontID)
 		if op.SelectionStart != op.SelectionEnd && line.end >= line.start {
 			selStart, selEnd := orderedInt32(op.SelectionStart, op.SelectionEnd)
-			start := maxInt(line.start, int(selStart))
-			end := minInt(line.end, int(selEnd))
+			span := TextInput_TextSelectionPaintSpanForLine(selStart, selEnd, int32(line.start), int32(line.end))
+			start, end := int(span.Start), int(span.End)
 			if end > start {
 				prefix := op.Text[line.start:start]
-				sx := x + textAdvance(prefix, int32(len(prefix)), op.FontSize, op.FontID)
-				drawText(img, op.Text[start:end], sx, y, op.FontSize, selected, op.FontID)
+				sx := x + textAdvance(prefix, int32(len(prefix)), line.font, op.FontID)
+				drawText(img, op.Text[start:end], sx, rowY, line.font, selected, op.FontID)
 			}
 		}
 		if op.CompositionStart != op.CompositionEnd && line.end >= line.start {
 			compStart, compEnd := orderedInt32(op.CompositionStart, op.CompositionEnd)
-			start := maxInt(line.start, int(compStart))
-			end := minInt(line.end, int(compEnd))
+			span := TextInput_TextCompositionPaintSpanForLine(compStart, compEnd, int32(line.start), int32(line.end))
+			start, end := int(span.Start), int(span.End)
 			if end > start {
 				prefix := op.Text[line.start:start]
 				part := op.Text[start:end]
-				sx := x + textAdvance(prefix, int32(len(prefix)), op.FontSize, op.FontID)
-				sw := maxInt(2, textAdvance(part, int32(len(part)), op.FontSize, op.FontID))
-				fillRectPixels(img, sx, y+fontHeight-2, sw, 2, cursorColor)
+				sx := x + textAdvance(prefix, int32(len(prefix)), line.font, op.FontID)
+				sw := maxInt(2, textAdvance(part, int32(len(part)), line.font, op.FontID))
+				fillRectPixels(img, sx, rowY+fontHeight-2, sw, 2, cursorColor)
 			}
 		}
-		cursor := clampRuneCursor(op.Text, int(op.Cursor))
-		if op.Focused && !op.ReadOnly && cursor >= line.start && cursor <= line.end {
+		cursor := clampCursor(op.Text, int(op.Cursor))
+		if op.Focused && !op.ReadOnly && TextRows_TextRowHasCursor(int32(line.start), int32(line.end), int32(line.lineEnd), int32(cursor)) {
 			prefix := op.Text[line.start:cursor]
-			cursorX := x + textAdvance(prefix, int32(len(prefix)), op.FontSize, op.FontID)
-			drawVertical(img, cursorX, y, y+fontHeight, cursorColor)
+			cursorX := x + textAdvance(prefix, int32(len(prefix)), line.font, op.FontID)
+			drawVertical(img, cursorX, rowY, rowY+fontHeight, cursorColor)
 		}
 	}
 }

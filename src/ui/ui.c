@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_text_rows.h"
 #include "../backend/kry_input_internal.h"
 #include "ui_paint_layers_internal.h"
 #include "ui_disabled_internal.h"
@@ -2645,84 +2646,14 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
     return 1;
 }
 static int
-ui_text_area_line_font(const char *text, int start, int end, int base_font)
-{
-    int hashes = 0;
-
-    if(text == NULL)
-        return base_font;
-    while(start + hashes < end && hashes < 6 && text[start + hashes] == '#')
-        hashes++;
-    if(hashes > 0 && start + hashes < end && text[start + hashes] == ' ' && base_font < Text24) {
-        if(hashes <= 2)
-            return Text24;
-    }
-    return base_font;
-}
-
-static int
-ui_text_area_wrap_chunk_end(const char *text, int start, int end, int font,
-                            int wrap_width)
-{
-    int chunk_end;
-
-    if(wrap_width <= 0 || start >= end)
-        return end;
-    if(ui_text_range_width(text, start, end, font) <= wrap_width)
-        return end;
-
-    chunk_end = ui_grapheme_next_boundary(text, end, start);
-    while(chunk_end < end) {
-        int next = ui_grapheme_next_boundary(text, end, chunk_end);
-
-        if(next > end || ui_text_range_width(text, start, next, font) > wrap_width)
-            break;
-        chunk_end = next;
-    }
-    return chunk_end;
-}
-
-static int
-ui_text_line_content_end(const char *text, int start, int end)
-{
-    if(end > start && text[end] == '\n' && text[end - 1] == '\r')
-        return end - 1;
-    return end;
-}
-
-static int
 ui_text_area_content_height_uncached(const char *text, int font, int line_gap,
                                      int len, int wrap_width)
 {
-    int line_start = 0;
-    int height = 0;
-
-    if(text == NULL)
-        text = "";
-    for(int i = 0; i <= len; i++) {
-        if(text[i] == '\n' || text[i] == '\0') {
-            int end = ui_text_line_content_end(text, line_start, i);
-            int line_font = ui_text_area_line_font(text, line_start, end, font);
-            int line_h = TextLineHeight(line_font) + line_gap;
-
-            if(wrap_width <= 0 || line_start >= end) {
-                height += line_h;
-            } else {
-                int chunk_start = line_start;
-
-                while(chunk_start < end) {
-                    int chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, end, line_font, wrap_width);
-                    height += line_h;
-                    if(chunk_end <= chunk_start)
-                        break;
-                    chunk_start = chunk_end;
-                }
-            }
-            line_start = i + 1;
-        }
-    }
-    return height;
+    (void)len;
+    TextRowCursor rows = ui_text_rows(text, font, line_gap, wrap_width, 1, 0);
+    TextMeasuredRow row;
+    while (ui_text_row_next(&rows, &row)) {}
+    return rows.y;
 }
 
 static int
@@ -2770,96 +2701,32 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap,
                                int wrap_width, int x, int y, int mouse_x,
                                int mouse_y, int scroll_y)
 {
-    int len;
-    int line_start = 0;
-    int draw_y = 0;
-    int target_y;
-
-    if(text == NULL)
-        return 0;
-    len = (int)strlen(text);
-    target_y = mouse_y - y + scroll_y;
-    if(target_y < 0)
-        target_y = 0;
-    for(int i = 0; i <= len; i++) {
-        if(text[i] == '\n' || text[i] == '\0') {
-            int end = ui_text_line_content_end(text, line_start, i);
-            int line_font = ui_text_area_line_font(text, line_start, end, font);
-            int line_h = TextLineHeight(line_font) + line_gap;
-            if(wrap_width <= 0 || line_start >= end) {
-                if(target_y < draw_y + line_h || text[i] == '\0')
-                    return ui_text_cursor_from_line_x(text, line_start, end,
-                                                      line_font, mouse_x - x);
-                draw_y += line_h;
-            } else {
-                int chunk_start = line_start;
-
-                while(chunk_start < end) {
-                    int chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, end, line_font, wrap_width);
-                    if(target_y < draw_y + line_h ||
-                       (text[i] == '\0' && chunk_end >= end))
-                        return ui_text_cursor_from_line_x(
-                            text, chunk_start, chunk_end, line_font,
-                            mouse_x - x);
-                    draw_y += line_h;
-                    if(chunk_end <= chunk_start)
-                        break;
-                    chunk_start = chunk_end;
-                }
-            }
-            line_start = i + 1;
-        }
+    TextRowCursor rows = ui_text_rows(text, font, line_gap, wrap_width, 1, 0);
+    TextMeasuredRow row;
+    int target_y = mouse_y - y + scroll_y;
+    while (ui_text_row_next(&rows, &row)) {
+        if (TextRowAtY(row.y, row.height, target_y, row.last))
+            return ui_text_cursor_from_line_x(rows.source.data, row.start, row.end,
+                                              row.font, mouse_x - x);
     }
-    return len;
+    return (int)rows.source.length;
 }
 
 static int
 ui_text_area_cursor_y(const char *text, int cursor, int font, int line_gap,
                       int wrap_width, int *cursor_height)
 {
-    int len;
-    int line_start = 0;
-    int draw_y = 0;
-
-    if(text == NULL)
-        text = "";
-    len = (int)strlen(text);
-    cursor = TextCursorForLength(cursor, len);
-    for(int i = 0; i <= len; i++) {
-        if(text[i] == '\n' || text[i] == '\0') {
-            int end = ui_text_line_content_end(text, line_start, i);
-            int line_font = ui_text_area_line_font(text, line_start, end, font);
-            int line_h = TextLineHeight(line_font) + line_gap;
-            int chunk_start = line_start;
-            int chunk_end = end;
-
-            do {
-                if(wrap_width > 0 && chunk_start < end)
-                    chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, end, line_font, wrap_width);
-                else
-                    chunk_end = end;
-                /* A cursor at a soft-wrap boundary belongs to the next
-                 * visual line, except at the logical end of the line. */
-                if(cursor >= chunk_start && cursor <= chunk_end &&
-                   (cursor < chunk_end || chunk_end == end)) {
-                    if(cursor_height != NULL)
-                        *cursor_height = TextLineHeight(line_font);
-                    return draw_y;
-                }
-                draw_y += line_h;
-                if(chunk_end <= chunk_start)
-                    break;
-                chunk_start = chunk_end;
-            } while(wrap_width > 0 && chunk_start < end);
-
-            line_start = i + 1;
+    TextRowCursor rows = ui_text_rows(text, font, line_gap, wrap_width, 1, 0);
+    TextMeasuredRow row;
+    cursor = TextCursorForLength(cursor, (int)rows.source.length);
+    while (ui_text_row_next(&rows, &row)) {
+        if (TextRowHasCursor(row.start, row.end, row.line_end, cursor)) {
+            if (cursor_height) *cursor_height = TextLineHeight(row.font);
+            return row.y;
         }
     }
-    if(cursor_height != NULL)
-        *cursor_height = TextLineHeight(font);
-    return draw_y;
+    if (cursor_height) *cursor_height = TextLineHeight(font);
+    return rows.y;
 }
 
 static int
@@ -3159,86 +3026,62 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     // a second, single-line selection over the editor clipboard contents.
     int selectable = PushTextSelectable(0);
     char local[1024];
-    int len;
-    int line_start = 0;
     TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
         style, StyleKindTextArea(), 0, 0);
     int padding_x = metrics.padding_x;
     int padding_y = metrics.padding_y;
     int text_x = (int)bounds.x + padding_x;
     int text_y = (int)bounds.y + padding_y - scroll_y;
-    int draw_y = text_y;
     int clip_top = (int)bounds.y + padding_y;
     int clip_bottom = (int)(bounds.y + bounds.height) - padding_y;
     int stroke_width = TextInputStrokeWidth((float)Scale(1000) / 1000.0f);
 
-    if(text == NULL)
-        text = "";
-    len = (int)strlen(text);
-    for(int i = 0; i <= len; i++) {
-        if(text[i] == '\n' || text[i] == '\0') {
-            int end = ui_text_line_content_end(text, line_start, i);
-            int line_font = ui_text_area_line_font(text, line_start, end, font);
-            int line_h = TextLineHeight(line_font) + line_gap;
-            int chunk_start = line_start;
-            int chunk_end = end;
+    TextRowCursor rows = ui_text_rows(text, font, line_gap, wrap_width, 1, 0);
+    TextMeasuredRow row;
+    text = rows.source.data;
+    while (ui_text_row_next(&rows, &row)) {
+        int chunk_start = row.start;
+        int chunk_end = row.end;
+        int line_font = row.font;
+        int line_h = row.height;
+        int draw_y = text_y + row.y;
+        int line_len = chunk_end - chunk_start;
+        if(draw_y + line_h >= clip_top && draw_y <= clip_bottom) {
+            char *line = local;
 
-            do {
-                int line_len;
-
-                if(wrap_width > 0 && chunk_start < end)
-                    chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, end, line_font, wrap_width);
-                else
-                    chunk_end = end;
-
-                line_len = chunk_end - chunk_start;
-                if(draw_y + line_h >= clip_top && draw_y <= clip_bottom) {
-                    char *line = local;
-
-                    if(line_len >= (int)sizeof(local)) {
-                        line = malloc((size_t)line_len + 1);
-                        if(line == NULL)
-                            break;
-                    }
-                    if(line_len > 0)
-                        memcpy(line, text + chunk_start, (size_t)line_len);
-                    line[line_len] = '\0';
-                    ui_draw_text_area_selection(text, chunk_start, chunk_end,
-                                                text_x, draw_y, line_font,
-                                                (Color){0, 96, 192, 72},
-                                                selection_start, selection_end);
-                    if(syntax == SyntaxNone)
-                        RenderText(line, text_x, draw_y, line_font, style.text);
-                    else
-                        ui_draw_syntax_line(line, line_len, text_x, draw_y,
-                                            line_font, syntax, style);
-                    if(line != local)
-                        free(line);
-                    ui_draw_text_area_composition(
-                        text, chunk_start, chunk_end, text_x, draw_y,
-                        line_font, style.cursor, composition_start,
-                        composition_end);
-                    if(focused && cursor >= chunk_start && cursor <= chunk_end &&
-                       (cursor < chunk_end || chunk_end == end) &&
-                       ui_caret_blink_visible()) {
-                        int cursor_x = text_x + ui_text_column_x(
-                            text, chunk_start, cursor, line_font);
-                        DrawRectangle(cursor_x, draw_y, stroke_width,
-                                      TextLineHeight(line_font),
-                                      style.cursor);
-                    }
-                }
-                draw_y += line_h;
-                if(chunk_end <= chunk_start)
+            if(line_len >= (int)sizeof(local)) {
+                line = malloc((size_t)line_len + 1);
+                if(line == NULL)
                     break;
-                chunk_start = chunk_end;
-            } while(wrap_width > 0 && chunk_start < end);
-
-            line_start = i + 1;
-            if(draw_y > clip_bottom)
-                break;
+            }
+            if(line_len > 0)
+                memcpy(line, text + chunk_start, (size_t)line_len);
+            line[line_len] = '\0';
+            ui_draw_text_area_selection(text, chunk_start, chunk_end,
+                                        text_x, draw_y, line_font,
+                                        (Color){0, 96, 192, 72},
+                                        selection_start, selection_end);
+            if(syntax == SyntaxNone)
+                RenderText(line, text_x, draw_y, line_font, style.text);
+            else
+                ui_draw_syntax_line(line, line_len, text_x, draw_y,
+                                    line_font, syntax, style);
+            if(line != local)
+                free(line);
+            ui_draw_text_area_composition(
+                text, chunk_start, chunk_end, text_x, draw_y,
+                line_font, style.cursor, composition_start,
+                composition_end);
+            if(focused && TextRowHasCursor(row.start, row.end, row.line_end, cursor) &&
+               ui_caret_blink_visible()) {
+                int cursor_x = text_x + ui_text_column_x(
+                    text, chunk_start, cursor, line_font);
+                DrawRectangle(cursor_x, draw_y, stroke_width,
+                              TextLineHeight(line_font),
+                              style.cursor);
+            }
         }
+        if (draw_y > clip_bottom) break;
     }
     PopTextSelectable(selectable);
 }

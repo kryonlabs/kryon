@@ -1,8 +1,8 @@
 # Canonical migration: remaining work
 
-Audited 2026-09-14 against Kryon master, starting at `0a79e330`.
+Audited 2026-09-14 and updated 2026-09-19 against Kryon master.
 The public naming cleanup is complete; the entire policy migration is not.
-This folder tracks unfinished work. Standing API rules live in `AGENTS.md`;
+This folder records completion evidence and remaining platform/future-target work. Standing API rules live in `AGENTS.md`;
 the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.md`.
 
 ## Completed and removed from the task list
@@ -40,26 +40,28 @@ the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.
 - Removed separate standing test/execution documents; their commands and order
   are below. Their deletion does not mean all runtime behavior is verified.
 
-## Remaining execution order
+## Native migration follow-up
 
-1. Finish the host/policy inventory, especially handwritten Go and web behavior
-   (`02`, `03`, `07`). Public names alone are not evidence of shared execution.
-2. Finish text ownership and layout decisions (`04`, `05`). Keep true platform
-   services native; do not replace them with aliases or forwarding wrappers.
-3. Keep historical web expression-placeholder work as future roadmap input.
-   For current completion, prove matched event sequences on active C and Go
-   surfaces; future web-native work must be redesigned before JS is counted.
-4. Map every requirement to source ownership and passing tests before deleting
-   its remaining plan document.
+The previously listed popup/focus ownership, composed Scroll/Canvas and text-row
+slices now have shared `.kry` owners and native adapters. Their removed legacy
+implementations and executable evidence are listed in
+[`docs/NATIVE_POLICY_OWNERSHIP.md`](../../docs/NATIVE_POLICY_OWNERSHIP.md).
+
+Remaining work is explicitly scoped: real OS IME integration/verification,
+renderer image support, and the future web-native target. The behavior audit
+also records read-only selection limits; do not infer complete rich-document
+selection from TextArea editing parity. Broader language/KSS plans remain
+separate from this native cleanup.
 
 ## Validation
 
 Run from the repository root:
 
 ```sh
-make generate-runtime
+make generate-native-runtime
 make fast-test
-make reorder-policy-test paragraph-policy-test text-policy-test image-policy-test icon-policy-test
+make reorder-policy-test paragraph-policy-test text-rows-policy-test text-policy-test image-policy-test icon-policy-test
+make canvas-scope-test generated-runtime-parity-test
 make k2go-syntax-test
 make go-runtime-test
 python3 tests/canonical_widget_surface_doc_test.py
@@ -108,8 +110,8 @@ The root cross-module Go command was replaced with the real module test target.
 - Downstream startup must bundle the KSS assets and explicitly select its pack.
   A successful native build alone does not prove controls are styled or clickable.
 
-The policy migration work listed above remains open. These interaction fixes
-are not evidence that every legacy path or every platform has been verified.
+The native ownership evidence above supersedes the old open-ended task list.
+These interaction fixes alone do not verify every platform or future target.
 
 Native SDL applications must compile the shared input frontend with
 `KRYON_BACKEND_RAYLIB=1`; the native build template now supplies it. Verify the
