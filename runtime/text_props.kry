@@ -16,7 +16,6 @@ TextProps :: struct {
     bounds: Rectangle
     text: const char*
     font: i32
-    color: Color
     class_name: i32
     wrap: TextWrap
     align: TextAlign

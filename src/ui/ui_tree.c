@@ -2570,10 +2570,10 @@ Text(TextProps props)
         letter_spacing = (int)(style.letter_spacing + 0.5f);
     previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(requested_font, inherited_font, GetFontSize(),
-        props.color.a != 0 ? ColorToInt(props.color) : ColorToInt(style.foreground),
+        ColorToInt(style.foreground),
         ColorToInt(inherited_color), 0xffffffffu,
         inherited_color_set,
-        props.color.a != 0 || (style.fields & StyleForeground) != 0,
+        (style.fields & StyleForeground) != 0,
         props.disabled, inherited_disabled, letter_spacing);
     font = appearance.font;
     color = GetColor(Opacity(appearance.color, style.opacity));

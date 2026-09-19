@@ -1202,10 +1202,6 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	} else if style.Fields&StyleFontSize != 0 {
 		requestedFont = int32(style.FontSize)
 	}
-	if props.Color.A != 0 {
-		style.Foreground = props.Color
-		colorSet = true
-	}
 	if style.Fields&StyleTypeface != 0 {
 		if selected := registeredTypeface(style.Typeface); selected != 0 {
 			fontID = selected
