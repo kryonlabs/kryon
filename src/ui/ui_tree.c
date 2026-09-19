@@ -1751,8 +1751,7 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
                  text_width > (int)bounds.width ||
                  text_height > (int)bounds.height;
     if(needs_clip) {
-        BeginClip((int)bounds.x, (int)bounds.y,
-                    (int)bounds.width, (int)bounds.height);
+        ui_begin_world_clip(bounds);
     }
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {

@@ -8,6 +8,7 @@
 
 static int failures;
 static int draw_rectangle_calls;
+static Rectangle last_scissor;
 
 static void
 check_int(const char *name, int got, int want);
@@ -857,6 +858,30 @@ main(void)
     }
 
     {
+        Camera2D saved_camera = g_ui_camera;
+        Rectangle bounds = {24, 180, 260, 88};
+
+        /* Android paints in logical units while scissor bounds are pixels. */
+        g_ui_camera = (Camera2D){.offset = {9, 31}, .zoom = 1.75f};
+        ResetClip();
+        ui_paint_text_box("Guide instructions", bounds, 14, WHITE,
+                          TextWrapAuto, TextAlignStart, TextAlignStart, 0, 0);
+        check_int("wrapped text clip x", (int)last_scissor.x, 51);
+        check_int("wrapped text clip y", (int)last_scissor.y, 346);
+        check_int("wrapped text clip width", (int)last_scissor.width, 455);
+        check_int("wrapped text clip height", (int)last_scissor.height, 154);
+
+        BeginClip(60, 360, 300, 90);
+        ui_paint_text_box("Guide instructions", bounds, 14, WHITE,
+                          TextWrapAuto, TextAlignStart, TextAlignStart, 0, 0);
+        check_int("wrapped text restores parent clip x", (int)last_scissor.x, 60);
+        check_int("wrapped text restores parent clip y", (int)last_scissor.y, 360);
+        check_int("wrapped text restores parent clip width", (int)last_scissor.width, 300);
+        check_int("wrapped text restores parent clip height", (int)last_scissor.height, 90);
+        EndClip();
+        g_ui_camera = saved_camera;
+    }
+    {
         char boxed[] = "owned";
         BeginTree(Key("headless boxed text"));
         Row((RowProps){.bounds = {11,12,80,24}});
@@ -1031,10 +1056,7 @@ __wrap_DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
 void
 __wrap_BeginScissorMode(int x, int y, int width, int height)
 {
-    (void)x;
-    (void)y;
-    (void)width;
-    (void)height;
+    last_scissor = (Rectangle){(float)x, (float)y, (float)width, (float)height};
 }
 
 void
