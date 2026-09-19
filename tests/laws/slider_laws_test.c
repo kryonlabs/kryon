@@ -1,5 +1,4 @@
 #include <math.h>
-#include <stdint.h>
 
 #include "lawcheck.h"
 #include "runtime/slider.h"
@@ -9,20 +8,6 @@ static const float float_edges[] = {
     0.0f,        0.001f,   0.25f,   0.5f,   0.75f, 1.0f,
     1.001f,      2.0f,     10.0f,   100.0f, 1000.0f, 1000000.0f,
 };
-
-static uint32_t
-next_u32(uint32_t *state)
-{
-    *state = *state * 1664525u + 1013904223u;
-    return *state;
-}
-
-static float
-float_from_state(uint32_t *state, float low, float high)
-{
-    float unit = (float)(next_u32(state) & 0xffffu) / 65535.0f;
-    return low + unit * (high - low);
-}
 
 int
 main(void)
@@ -37,7 +22,7 @@ main(void)
     {
         uint32_t state = 0x1a7e5eedu;
         for(int i = 0; i < 512; i++) {
-            float input = float_from_state(&state, -10000.0f, 10000.0f);
+            float input = law_float_between(&state, -10000.0f, 10000.0f);
             float ratio = SliderClampRatio(input);
             REQUIRE_FLOAT_BETWEEN(&law, ratio, 0.0f, 1.0f);
         }
@@ -64,9 +49,9 @@ main(void)
     {
         uint32_t state = 0xa11ce55u;
         for(int i = 0; i < 512; i++) {
-            float pointer = float_from_state(&state, -2000.0f, 2000.0f);
-            float origin = float_from_state(&state, -500.0f, 500.0f);
-            float length = float_from_state(&state, -10.0f, 1000.0f);
+            float pointer = law_float_between(&state, -2000.0f, 2000.0f);
+            float origin = law_float_between(&state, -500.0f, 500.0f);
+            float length = law_float_between(&state, -10.0f, 1000.0f);
             float normal = SliderPointerRatio(pointer, origin, length, false);
             float inverted = SliderPointerRatio(pointer, origin, length, true);
             REQUIRE_FLOAT_BETWEEN(&law, normal, 0.0f, 1.0f);

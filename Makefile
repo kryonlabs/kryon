@@ -1115,6 +1115,13 @@ $(SLIDER_LAWS_TEST): tests/laws/slider_laws_test.c tests/lawcheck.c tests/lawche
 $(LAYOUT_LAWS_TEST): tests/laws/layout_laws_test.c tests/lawcheck.c tests/lawcheck.h $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/layout.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests tests/laws/layout_laws_test.c tests/lawcheck.c \
+		-Wl,--wrap=DrawRectangle \
+		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleLinesEx \
+		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=DrawLine \
+		-Wl,--wrap=BeginScissorMode \
+		-Wl,--wrap=EndScissorMode \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_SYNC_LDLIBS) \
 		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) \
 		$(LDLIBS) -o $@

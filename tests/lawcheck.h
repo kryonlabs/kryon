@@ -2,6 +2,7 @@
 #define KRYON_TESTS_LAWCHECK_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef struct LawCheck {
     const char *current_law;
@@ -21,5 +22,21 @@ int lawcheck_finish(LawCheck *law);
     REQUIRE((ctx), (value) >= (low) && (value) <= (high))
 #define FOR_INT(name, first, last) \
     for(int name = (first); name <= (last); name++)
+
+/* Deterministic LCG shared by randomized laws; fixed seeds keep law runs
+ * reproducible across machines and CI. */
+static inline uint32_t
+law_next_u32(uint32_t *state)
+{
+    *state = *state * 1664525u + 1013904223u;
+    return *state;
+}
+
+static inline float
+law_float_between(uint32_t *state, float low, float high)
+{
+    float unit = (float)(law_next_u32(state) & 0xffffu) / 65535.0f;
+    return low + unit * (high - low);
+}
 
 #endif
