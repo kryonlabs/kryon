@@ -988,6 +988,24 @@ main(void)
         glow.layer.color = 0xaa66ffffu;
         ui_draw_surface(glow);
         check_int("glow on restores emitted light", draw_rectangle_calls > 0, 1);
+
+        glow.layer.blur = 0;
+        glow.layer.inner_blur = 6;
+        glow.layer.gradient = true;
+        glow.layer.color = 0x00000000u;
+        glow.layer.end_color = 0xaa66ffffu;
+        SetFancyEffectsEnabled(0);
+        draw_rectangle_calls = 0;
+        ui_draw_surface(glow);
+        check_int("glow off suppresses inward gradient light", draw_rectangle_calls, 0);
+        glow.layer.end_color = 0x000000ffu;
+        ui_draw_surface(glow);
+        check_int("glow off keeps inset press shadows", draw_rectangle_calls > 0, 1);
+        SetFancyEffectsEnabled(1);
+        draw_rectangle_calls = 0;
+        glow.layer.end_color = 0xaa66ffffu;
+        ui_draw_surface(glow);
+        check_int("glow on restores inward gradient light", draw_rectangle_calls > 0, 1);
     }
     {
         RouterRoute routes[] = {

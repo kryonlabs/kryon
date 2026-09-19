@@ -2244,10 +2244,10 @@ light that fades inward from the rounded edge. This inner light is clipped to
 the face and leaves the center clear; hover strengthens it and press reduces
 it. Ghost and link controls retain a softer treatment. Geometry and falloff
 are shared through `runtime/surface.kry` rather than separate renderer effects.
-`SetFancyEffectsEnabled(0)` suppresses optional outer glow while preserving the
-selected material, gradient fills, contact shadows, sharp edges, and interaction
-transitions. Apps can apply this preference when selecting a style without
-flattening that style's buttons.
+`SetFancyEffectsEnabled(0)` suppresses outer halos and inward glow while
+preserving the selected material, gradient fills, contact and inset shadows,
+sharp edges, and interaction transitions. Apps can apply this preference when
+selecting a style without flattening that style's buttons.
 In dark surroundings, focus reduces face whitening and deepens the material
 while retaining a bright rim. That absorption fades with the focus track;
 hover and press take precedence over it.
