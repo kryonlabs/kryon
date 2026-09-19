@@ -1,6 +1,8 @@
 # Phase 9 — Complete widget coverage and downstream adoption
 
-Status: planned, not implemented by this planning change.
+Status: the phase 1 completeness gate already fails on unregistered surface (missing
+module rows, disk/surface drift) with mutation tests; downstream consumer migrations
+and the CI completeness enforcement beyond the inventory gate remain open.
 Estimate: **15–30 focused engineer-days; 700–1,800 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

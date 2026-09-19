@@ -1,6 +1,10 @@
 # Phase 2 — Harden proof gates and connect one production policy
 
-Status: planned, not implemented by this planning change.
+Status: first patches implemented 2026-09-19 on `law/program` (commit `aff53b0b`): the focus
+comparison now covers fresh k2cpp output and the go/kryon package, an omitted domain
+case is rejected, and `checkLawsProcess` bounds checking in a separate process with
+timeout and memory limits. Checker/pin ownership review, the reviewed
+extractor/equivalence mechanism and CI access separation remain open.
 Estimate: **5–10 focused engineer-days; 250–600 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

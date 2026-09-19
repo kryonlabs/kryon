@@ -57,8 +57,18 @@ is part of `make laws-test`. This is distinct from the runtime tests below.
 and backward movement with Shift+Tab. `make focus-bend-laws-test`, included in
 `make laws-test`, compares the checked reference against generated C over all
 four Boolean input combinations and rejects missing proofs and deliberate
-reference/native mutations. This is finite-domain native execution evidence,
-not a formal compiler-preservation proof or C++/Go evidence.
+reference/native mutations. The comparison now also covers a fresh `k2cpp`
+lowering and the `go/kryon` runtime package, and an omitted domain case is
+rejected by the checker. This is finite-domain native execution evidence,
+not a formal compiler-preservation proof.
+
+[laws/activation](../laws/activation/README.md) extends the pilot to
+`FocusActivationFor` with seven checked laws (blocking conditions plus
+Enter/Space progress witnesses) and an exhaustive 128-row comparison against
+generated C, run by `make activation-bend-laws-test` (part of
+`make laws-test`). `checkLawsProcess` in `tools/bend-laws.mjs` runs the
+checker in a separate process with a wall-clock timeout and memory cap
+(`node tools/bend-laws.mjs --json` prints machine-readable results).
 
 The [ten-phase law plan](../plan/law/README.md) describes the remaining formal
 connection, broader widget coverage and dependency-free release gates.
@@ -125,7 +135,10 @@ part of `make laws-test`.
 phase 1 dependency boundary: released surfaces (`include/`, `cmd/`,
 `runtime/`) must be free of proof-tier references, `vendor/bend` must match
 the pinned checker commit in `tools/bend-pin.json`, and Bend packages stay
-under `laws/`.
+under `laws/`. `make law-cleanroom-probe` goes further for phase 10: it
+compiles and runs a downstream-style program with `k2c` plus a C toolchain
+while `node`/`bend` (and friends) are poisoned shims that fail and record
+any invocation.
 
 ## Running
 

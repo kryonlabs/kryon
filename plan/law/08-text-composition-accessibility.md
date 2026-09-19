@@ -1,6 +1,9 @@
 # Phase 8 — Text, composition, overlays and accessibility laws
 
-Status: planned, not implemented by this planning change.
+Status: blocked premise recorded 2026-09-19: the finite Bend table path enumerates
+only fieldless constructor domains, so integer-parameter policies such as
+`AccessibilityItemSelectionFor` need a reviewed domain extension before model proofs.
+Existing accessibility/text tests remain the coverage; no rows were faked.
 Estimate: **15–30 focused engineer-days; 700–1,800 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

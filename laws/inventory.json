@@ -56,6 +56,29 @@
       "evidence_revision": "b97812e3"
     },
     {
+      "id": "array.abi.argument.isolation",
+      "domain": "kir",
+      "summary": "Array arguments and results are value-isolated: callee mutations never escape, caller arrays stay intact",
+      "sources": [
+        "tests/fixtures/array_values.kry",
+        "tests/array_values_test.py"
+      ],
+      "phase": 5,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite",
+        "cpp": "test-suite",
+        "go": "test-suite"
+      },
+      "evidence_revision": "2191f104"
+    },
+    {
       "id": "backend.capabilities.honest",
       "domain": "compiler",
       "summary": "BACKEND_CAPABILITIES.json stays complete and honest per backend",
@@ -241,6 +264,39 @@
       ]
     },
     {
+      "id": "focus.activation",
+      "domain": "policy",
+      "summary": "FocusActivationFor: blocking conditions for activation plus Enter/Space progress witnesses",
+      "sources": [
+        "runtime/focus.kry"
+      ],
+      "symbols": [
+        "FocusActivationFor"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "model-proved",
+      "mechanism": "bend-proof",
+      "contract": "laws/activation/LAWS.bend",
+      "proof": "laws/activation/PROOF.bend",
+      "evidence": {
+        "c": "exhaustive-test"
+      },
+      "evidence_revision": "aff53b0b",
+      "assumptions": [
+        "Pinned Bend 2 checker and Base hashes (tools/bend-pin.json)",
+        "Laws reduce only over literals; the exhaustive 128-row check is native",
+        "C++/Go legs still missing"
+      ],
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
       "id": "focus.tab.direction",
       "domain": "policy",
       "summary": "FocusTabDirectionFor: no movement without Tab, forward with Tab, backward with Shift+Tab",
@@ -252,24 +308,23 @@
       ],
       "phase": 2,
       "targets": [
-        "c"
+        "c",
+        "cpp",
+        "go"
       ],
       "status": "model-proved",
       "mechanism": "bend-proof",
       "contract": "laws/focus/LAWS.bend",
       "proof": "laws/focus/PROOF.bend",
       "evidence": {
-        "c": "exhaustive-test"
+        "c": "exhaustive-test",
+        "cpp": "exhaustive-test",
+        "go": "exhaustive-test"
       },
-      "evidence_revision": "b97812e3",
+      "evidence_revision": "aff53b0b",
       "assumptions": [
         "Pinned Bend 2 checker and Base hashes (tools/bend-pin.json)",
-        "Finite four-case Boolean domain; C++/Go comparisons still missing"
-      ],
-      "scope": [
-        "c",
-        "cpp",
-        "go"
+        "C++ compares a fresh k2cpp lowering; Go compares the go/kryon runtime package"
       ]
     },
     {
@@ -1270,6 +1325,24 @@
       "evidence_revision": "b97812e3"
     },
     {
+      "id": "style.explicit-zero.precedence",
+      "domain": "policy",
+      "summary": "An explicit zero is a present value and wins over inherited nonzero styling",
+      "sources": [
+        "tests/style_widget_policy_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "2191f104"
+    },
+    {
       "id": "style.priority.absent.never.wins",
       "domain": "policy",
       "summary": "Style priority law style.priority.absent.never.wins",
@@ -1590,7 +1663,8 @@
       "status": "proposed",
       "mechanism": "planned:policy-proof",
       "laws": [
-        "focus.tab.direction"
+        "focus.tab.direction",
+        "focus.activation"
       ]
     },
     {

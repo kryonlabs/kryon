@@ -1,6 +1,8 @@
 # Phase 7 — Layout, KSS and visual-property laws
 
-Status: planned, not implemented by this planning change.
+Status: first patch registered 2026-09-19: explicit-zero precedence is inventory law
+`style.explicit-zero.precedence` (existing `style_widget_policy_test` coverage).
+KSS parser/formatter proof connections and layout law owners remain open.
 Estimate: **10–20 focused engineer-days; 500–1,200 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

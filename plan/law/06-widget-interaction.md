@@ -1,6 +1,9 @@
 # Phase 6 — Shared widget lifecycle and input laws
 
-Status: planned, not implemented by this planning change.
+Status: pilot extension landed 2026-09-19 on `law/program` (commit `aff53b0b`):
+[laws/activation](../../laws/activation/README.md) checks seven FocusActivationFor
+laws and compares all 128 Boolean rows against generated C. Remaining families,
+trace/temporal integration and C++/Go legs are open.
 Estimate: **8–15 focused engineer-days; 350–800 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

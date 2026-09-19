@@ -1,6 +1,9 @@
 # Phase 10 — Independent audit, release and sustainable implementation workflow
 
-Status: planned, not implemented by this planning change.
+Status: first patch landed 2026-09-19 on `law/program` (commit `aff53b0b`):
+`make law-cleanroom-probe` builds and runs a downstream-style program with k2c + cc
+while node/bend are poisoned shims. Package/install audits, mutation campaigns and
+the economics trial remain open.
 Estimate: **8–15 focused engineer-days; 400–1,000 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

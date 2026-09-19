@@ -1,6 +1,8 @@
 # Phase 3 — Executable language and KIR semantics
 
-Status: planned, not implemented by this planning change.
+Status: not started; missing premise recorded 2026-09-19. `k2kir` inspection dumps
+are declaration-level only (no function bodies), so the reviewed typed-KIR export
+the encoder must consume does not exist yet and needs design review first.
 Estimate: **10–20 focused engineer-days; 500–1,200 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

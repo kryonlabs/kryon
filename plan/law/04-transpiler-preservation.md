@@ -1,6 +1,9 @@
 # Phase 4 — Prove supported transpilation preserves semantics
 
-Status: planned, not implemented by this planning change.
+Status: not started; the executable effect-ordering fixtures this phase supplements
+already exist (`tests/array_values_test.py` ordering cases, focus mutation checks).
+The preservation proof architecture requires strong review before any rule is
+implemented, per this document.
 Estimate: **20–40 focused engineer-days; 1,000–2,500 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 
