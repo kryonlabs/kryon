@@ -1,6 +1,6 @@
 # Portable borrowed slice values
 
-Status: implementation contract; slices are not yet supported. This is the
+Status: range parsing implemented; runtime slice values are not yet supported. This is the
 bounded contract for milestone 3 in `NATIVE_LANGUAGE_COMPLETION.md`.
 
 ## Source behavior
@@ -97,3 +97,22 @@ oversized ranges and out-of-range reads/writes in release as well as debug C/C++
 
 Passing parser tests or rejecting every slice is not completion. The documented
 parameter/return and aliasing examples must execute safely on all native targets.
+
+## Parser implementation evidence
+
+`KIR_EXPR_SLICE` preserves source, optional low bound and optional high bound
+as separate expression children. `KirSliceElementType` distinguishes `[]T` from
+fixed arrays. KIR tests cover omitted bounds, nested ranges, ternary bounds,
+ordinary conditional indexing, malformed ranges and source locations.
+
+Until provenance analysis and native descriptors are implemented, the checker
+rejects range values explicitly in strict and permissive modes. Cross-target
+negative fixtures verify that a C-header import cannot bypass this guard.
+This closes only parsing; construction, ownership, execution and returned-view
+semantics remain unfinished.
+
+Validation for this parser stage: KIR unit tests, cross-target array/range
+fixtures, C/C++/Go syntax suites, all 17 generated native parity fixtures,
+runtime parity and generated provenance passed on 2026-09-19. The active Go
+syntax fixture now uses the existing array-to-host conversion instead of an
+unchecked target-only full-slice expression.

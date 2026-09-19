@@ -1,5 +1,6 @@
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_expr.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +15,49 @@ check(int cond, const char *msg)
     return 0;
 }
 
+static int
+check_slice_expressions(void)
+{
+    const struct {
+        const char *source;
+        KirExprKind kind;
+        int low;
+        int high;
+    } cases[] = {
+        {"items[1:3]", KIR_EXPR_SLICE, 1, 1},
+        {"items[:3]", KIR_EXPR_SLICE, 0, 1},
+        {"items[1:]", KIR_EXPR_SLICE, 1, 0},
+        {"items[:]", KIR_EXPR_SLICE, 0, 0},
+        {"items[yes ? 1 : 2:limit()]", KIR_EXPR_SLICE, 1, 1},
+        {"items[start():yes ? 3 : 4]", KIR_EXPR_SLICE, 1, 1},
+        {"items[1:3][0:1]", KIR_EXPR_SLICE, 1, 1},
+        {"items[yes ? 1 : 2]", KIR_EXPR_INDEX, 1, 0},
+        {"items[]", KIR_EXPR_UNKNOWN, 0, 0},
+        {"items[1:2:3]", KIR_EXPR_UNKNOWN, 0, 0},
+        {"items[1:", KIR_EXPR_UNKNOWN, 0, 0},
+    };
+    int ok = 1;
+    for(size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        KirFunction expression = {0};
+        int root = KirParseExpr(&expression, NULL, cases[i].source,
+                                KirSpan("slices.kry", 7, 5));
+        ok &= check(root >= 0, cases[i].source);
+        if(root >= 0) {
+            const KirExpr *node = &expression.exprs[root];
+            ok &= check(node->kind == cases[i].kind, cases[i].source);
+            if(node->kind != KIR_EXPR_UNKNOWN) {
+                ok &= check(node->left >= 0 && (node->right >= 0) == cases[i].low &&
+                            (node->third >= 0) == cases[i].high,
+                            "range preserves source and omitted bounds");
+                ok &= check(node->span.line == 7 && node->span.column == 5,
+                            "range preserves source location");
+            }
+        }
+        free(expression.exprs);
+    }
+    return ok;
+}
+
 int
 main(void)
 {
@@ -23,7 +67,7 @@ main(void)
     char buf[4096];
     size_t n;
     FILE *out;
-    int ok = 1;
+    int ok = check_slice_expressions();
 
     char element[KIR_NAME_MAX];
     int capacity;
@@ -35,6 +79,14 @@ main(void)
                 "reject overflowing array capacity");
     ok &= check(!KirArrayElementType("[bad-name]i32", element, sizeof(element), &capacity),
                 "reject malformed symbolic array capacity");
+
+    ok &= check(KirSliceElementType("[] i32 ", element, sizeof(element)) &&
+                !strcmp(element, "i32"), "normalize slice element type");
+    ok &= check(!KirSliceElementType("[3]i32", element, sizeof(element)),
+                "fixed array is not a slice");
+    ok &= check(!KirSliceElementType("[]", element, sizeof(element)) &&
+                !KirSliceElementType("[]i32", element, 2),
+                "reject missing or truncated slice element");
 
     /* A module may declare more constants than the initial allocation. */
     {

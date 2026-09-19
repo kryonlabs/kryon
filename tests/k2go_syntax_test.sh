@@ -292,7 +292,7 @@ App :: () #ui {
     Fieldset((FieldsetProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
     tab_result: int = TabBar((TabBarProps){.bounds = {Scale(140), Scale(300), Scale(120), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = pick, .id = 260})
     if tab_result >= 0 { pick = tab_result }
-    ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
+    ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices, .selected_index = &pick})
     TreeView((TreeViewProps){.bounds = {Scale(280), Scale(356), Scale(80), Scale(50)}, .id = 27, .items = tree_items, .item_count = 2, .selected_id = &pick})
     Collapsible((CollapsibleProps){.bounds = {Scale(4), Scale(360), Scale(120), Scale(30)}, .label = "sect", .open = NULL})
     SetThemeMode(THEME_MODE_DARK)

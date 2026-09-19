@@ -245,9 +245,17 @@ prefix(ExprParser *p)
     }
     while(!p->failed) {
         if(take(p, "[")) {
-            int index = expression(p, 1);
-            expect(p, "]");
-            result = node(p, KIR_EXPR_INDEX, start, "", "", result, index);
+            int low = is(p, ":") ? -1 : expression(p, 1);
+            if(take(p, ":")) {
+                int high = is(p, "]") ? -1 : expression(p, 1);
+                expect(p, "]");
+                result = node(p, KIR_EXPR_SLICE, start, "", "", result, low);
+                if(result >= 0)
+                    p->fn->exprs[result].third = high;
+            } else {
+                expect(p, "]");
+                result = node(p, KIR_EXPR_INDEX, start, "", "", result, low);
+            }
         } else if(is(p, ".") || is(p, "->")) {
             int pointer = is(p, "->");
             char name[KIR_NAME_MAX];

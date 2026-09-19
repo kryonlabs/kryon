@@ -59,6 +59,28 @@ KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field)
 }
 
 int
+KirSliceElementType(const char *type, char *element, size_t element_size)
+{
+    if(type == NULL || type[0] != '[' || type[1] != ']')
+        return 0;
+    const char *start = type + 2;
+    while(isspace((unsigned char)*start))
+        start++;
+    size_t length = strlen(start);
+    while(length > 0 && isspace((unsigned char)start[length - 1]))
+        length--;
+    if(length == 0)
+        return 0;
+    if(element != NULL) {
+        if(length >= element_size)
+            return 0;
+        memcpy(element, start, length);
+        element[length] = '\0';
+    }
+    return 1;
+}
+
+int
 KirArrayElementType(const char *type, char *element, size_t element_size,
                     int *capacity)
 {
@@ -726,6 +748,7 @@ KirExprKindName(KirExprKind kind)
     case KIR_EXPR_MEMBER: return "member";
     case KIR_EXPR_POINTER_MEMBER: return "pointer_member";
     case KIR_EXPR_INDEX: return "index";
+    case KIR_EXPR_SLICE: return "slice";
     case KIR_EXPR_CAST: return "cast";
     case KIR_EXPR_COMPOUND: return "compound";
     case KIR_EXPR_FIELD_INIT: return "field_initializer";

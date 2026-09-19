@@ -592,6 +592,13 @@ expression_type(Checker *c, int index)
         type = member_type;
         break;
     }
+    case KIR_EXPR_SLICE:
+        /* Parsing a view must not enable unchecked target-language slicing
+         * before origin tracking and the native descriptor ABI are available. */
+        KirDiagnostic(e->span, "check.slice_lifetime",
+                      "slice values require portable storage lifetime checking");
+        c->failed = 1;
+        break;
     case KIR_EXPR_INDEX: {
         char element[KIR_NAME_MAX];
 

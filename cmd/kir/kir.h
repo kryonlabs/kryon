@@ -73,7 +73,8 @@ typedef enum KirExprKind {
     KIR_EXPR_CHAR,
     KIR_EXPR_CONDITIONAL,
     KIR_EXPR_POSTFIX,
-    KIR_EXPR_FIELD_INIT
+    KIR_EXPR_FIELD_INIT,
+    KIR_EXPR_SLICE
 } KirExprKind;
 
 typedef struct KirSourceSpan {
@@ -252,7 +253,7 @@ typedef struct KirExpr {
     int right;
     int first_child;
     int next_sibling;
-    int third;         /* false arm of conditional, or -1 */
+    int third;         /* false conditional arm or slice upper bound, or -1 */
     char type[KIR_NAME_MAX]; /* resolved type; empty means unresolved */
     KirSourceSpan span;
 } KirExpr;
@@ -339,6 +340,7 @@ int KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field)
 
 /* Parse a fixed-capacity array type text "[N]element". Returns 1 with the
  * element type copied out and the capacity stored, 0 for any other type. */
+int KirSliceElementType(const char *type, char *element, size_t element_size);
 int KirArrayElementType(const char *type, char *element, size_t element_size,
                         int *capacity);
 
