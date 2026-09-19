@@ -1,4 +1,5 @@
 #include "kir.h"
+#include "kir_parse.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,25 @@ main(void)
     size_t n;
     FILE *out;
     int ok = 1;
+
+    /* A module may declare more constants than the initial allocation. */
+    {
+        char source[8192];
+        size_t used = 0;
+        int index;
+        KirProgram *constants;
+
+        for(index = 0; index < 80; index++) {
+            used += (size_t)snprintf(source + used, sizeof(source) - used,
+                "VALUE_%d :: %d\n", index, index);
+        }
+        snprintf(source + used, sizeof(source) - used,
+            "#assert VALUE_79 == 79, \"constant table grew\"\n");
+        constants = kir_parse_source("constants.kry", source);
+        ok &= check(constants != NULL, "grow compile-time constant table");
+        if(constants != NULL)
+            KirProgramFree(constants);
+    }
 
     KirType record = {0};
     KirTypeField field;

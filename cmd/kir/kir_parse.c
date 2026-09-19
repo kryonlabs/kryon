@@ -2643,9 +2643,14 @@ parse_slot_header(const char *text, char *binding, size_t binding_size,
  * statements whose braces are consumed here. */
 
 typedef struct {
-    char names[16][KIR_NAME_MAX];
-    char exprs[16][KIR_TEXT_MAX];
+    char name[KIR_NAME_MAX];
+    char expr[KIR_TEXT_MAX];
+} KirConst;
+
+typedef struct {
+    KirConst *items;
     int count;
+    int capacity;
 } KirConsts;
 
 typedef struct {
@@ -2754,12 +2759,12 @@ expand_compile_expr_depth(char *dst, size_t dst_size, const KirConsts *consts,
             }
             ident[il] = '\0';
             for(i = 0; i < consts->count; i++) {
-                if(strcmp(consts->names[i], ident) == 0) {
+                if(strcmp(consts->items[i].name, ident) == 0) {
                     char expanded[KIR_TEXT_MAX];
                     int written;
 
                     expand_compile_expr_depth(expanded, sizeof(expanded),
-                                              consts, consts->exprs[i],
+                                              consts, consts->items[i].expr,
                                               depth + 1);
                     written = snprintf(dst + n, dst_size - n, "(%s)", expanded);
                     if(written < 0)
@@ -4076,9 +4081,16 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     char run_value[KIR_TEXT_MAX];
                     KirDefine *def;
 
-                    if(consts.count >= 16)
-                        die("%s:%d: too many compile-time constants",
-                            rel, line_no);
+                    if(consts.count == consts.capacity) {
+                        int capacity = consts.capacity > 0 ? consts.capacity * 2 : 16;
+                        KirConst *items = realloc(consts.items,
+                            (size_t)capacity * sizeof(*items));
+
+                        if(items == NULL)
+                            die("out of memory");
+                        consts.items = items;
+                        consts.capacity = capacity;
+                    }
                     if(starts_word(expr, "#run")) {
                         char expanded[KIR_TEXT_MAX];
                         long value = 0;
@@ -4099,10 +4111,10 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                             snprintf(def->guard, sizeof(def->guard), "%s",
                                      cur_guard);
                     }
-                    snprintf(consts.names[consts.count],
-                             sizeof(consts.names[0]), "%s", cname);
-                    snprintf(consts.exprs[consts.count],
-                             sizeof(consts.exprs[0]), "%s", expr);
+                    snprintf(consts.items[consts.count].name,
+                             sizeof(consts.items[0].name), "%s", cname);
+                    snprintf(consts.items[consts.count].expr,
+                             sizeof(consts.items[0].expr), "%s", expr);
                     consts.count++;
                 }
             }
@@ -4521,11 +4533,13 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
             if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {
                 KirProgramFree(program);
+                free(consts.items);
                 free(widget_blocks);
                 return NULL;
             }
             KirStructureFunction(&program->modules[mi].functions[fi], &program->modules[mi]);
         }
+    free(consts.items);
     free(widget_blocks);
     return program;
 }
