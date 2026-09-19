@@ -804,3 +804,38 @@ func TestStylePackDeclaredVariant(t *testing.T) {
 	}
 	ClearStylePacks()
 }
+
+func TestReleaseTypedStylePackAvoidsHotPathParsingInGo(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	source := `@pack release.typed;
+tokens { color { accent: #446688; } }
+Button { background: accent; radius: 7; opacity: 0.5; }`
+	_, rules, err := ParseStyleSheet(source)
+	if err != nil || len(rules) == 0 {
+		t.Fatalf("parse release source: %v", err)
+	}
+	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
+	facts.State = int32(ButtonStateHover)
+	reparsed := ResolveStyle(rules, StyleData{}, facts, int32(ButtonStateHover))
+
+	resetStyleParseInvocationCount()
+	if !RegisterStylePack(StylePack{ID: "release.typed", Label: "Release Typed", Sheet: rules}) {
+		t.Fatal("typed release pack did not register")
+	}
+	if !SetActiveStylePack("release.typed") {
+		t.Fatal("typed release pack did not activate")
+	}
+	for i := 0; i < 5; i++ {
+		resolved := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
+		if resolved.Background != reparsed.Background || resolved.Radius != reparsed.Radius || resolved.Opacity != reparsed.Opacity {
+			t.Fatalf("typed release resolution changed at %d: %+v vs %+v", i, resolved, reparsed)
+		}
+	}
+	if !SetStyleTheme("dark") {
+		t.Fatal("theme switch with only typed packs failed")
+	}
+	if currentStyleParseInvocationCount() != 0 {
+		t.Fatalf("typed release pack parsed on hot path/theme switch: %d", currentStyleParseInvocationCount())
+	}
+}

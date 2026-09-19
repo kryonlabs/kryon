@@ -1,4 +1,5 @@
 #include "ui_style_sheet.h"
+#include "ui/kss_parser.h"
 
 #include <assert.h>
 #include <string.h>
@@ -99,6 +100,42 @@ main(void)
     assert(SetStyleTheme(""));
     resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
     assert(resolved.background == 0x111111ffu);
+
+    ClearStylePacks();
+
+    const char *release_source =
+        "@pack release.typed; tokens { color { accent: #446688; } } "
+        "Button { background: accent; radius: 7; opacity: 0.5; }";
+    StyleRule release_rules[8] = {0};
+    KssParseResult release_parse = {0};
+    char diagnostic[256];
+    StyleSheet release_sheet;
+    StyleData typed;
+    StyleData reparsed;
+
+    KssResetParseInvocationCount();
+    assert(kss_parse_string(release_source, release_rules, 8, &release_parse,
+                            diagnostic, sizeof(diagnostic)));
+    assert(KssParseInvocationCount() > 0);
+    release_sheet.rules = release_rules;
+    release_sheet.rule_count = release_parse.rule_count;
+    reparsed = ResolveStyle(&release_sheet, (StyleData){0}, facts,
+                            ButtonStateHover);
+
+    KssResetParseInvocationCount();
+    assert(RegisterStylePack((StylePack){
+        .id = "release.typed",
+        .label = "Release Typed",
+        .description = "Precompiled release table",
+        .sheet = &release_sheet,
+    }));
+    assert(SetActiveStylePack("release.typed"));
+    typed = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
+    typed = ResolveActiveStyle(typed, facts, ButtonStateHover);
+    assert(KssParseInvocationCount() == 0);
+    assert(typed.background == reparsed.background);
+    assert(typed.radius == reparsed.radius);
+    assert(typed.opacity == reparsed.opacity);
 
     ClearStylePacks();
     return 0;

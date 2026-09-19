@@ -78,6 +78,12 @@
 - Finish release-time compilation of imports/overlays into typed style tables;
   keep parsing and allocation out of render hot paths. Verify generated and
   dynamically loaded styles produce matching results.
+  Status: typed `StyleRule` tables registered with `RegisterStylePack` now have
+  C and Go hot-path checks. The C style-pack source test records parser calls
+  for the one-time source parse, resets the counter, then activates and resolves
+  the typed pack without another parse. The Go test does the same for repeated
+  active resolution and a typed-only theme switch. Generation/reproducibility
+  for built-in packs and import overlays is still open.
 - Expand comparison captures to missing widget families/states, particularly
   popup/modal, navigation, table/menu/list/tree, and text/layout cases. Track
   uncovered cases through the testing matrix rather than rebuilding existing boards.

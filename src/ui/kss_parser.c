@@ -20,6 +20,7 @@ typedef struct KssModule {
 
 static KssModule kss_modules[KSS_MODULE_MAX];
 static int kss_module_count;
+static int kss_parse_invocation_count;
 
 String
 StringSlice(String source, int32_t start, int32_t length)
@@ -106,6 +107,18 @@ kss_copy_diagnostic(char *diagnostic, size_t diagnostic_size,
     diagnostic[length] = '\0';
 }
 
+int
+KssParseInvocationCount(void)
+{
+    return kss_parse_invocation_count;
+}
+
+void
+KssResetParseInvocationCount(void)
+{
+    kss_parse_invocation_count = 0;
+}
+
 static bool
 kss_collect(const char *source, const StyleColorToken *colors, int color_count,
             const char *variant, const char *theme, StyleRule *rules,
@@ -124,6 +137,7 @@ kss_collect(const char *source, const StyleColorToken *colors, int color_count,
 
     int rule_count = 0;
 
+    kss_parse_invocation_count++;
     if(diagnostic != NULL && diagnostic_size > 0)
         diagnostic[0] = '\0';
     for(int i = 0; i < color_count; i++)

@@ -7,6 +7,7 @@ import (
 
 // styleModules feeds '@import <id>' resolution for the shared KSS parser.
 var styleModules = map[string]string{}
+var styleParseInvocationCount int
 
 // RegisterStyleModule registers an importable KSS source by id.
 func RegisterStyleModule(id, source string) bool {
@@ -35,6 +36,14 @@ func (r *runtime) StringSlice(source string, start int32, length int32) string {
 	return source[start : start+length]
 }
 
+func resetStyleParseInvocationCount() {
+	styleParseInvocationCount = 0
+}
+
+func currentStyleParseInvocationCount() int {
+	return styleParseInvocationCount
+}
+
 func kssNameText(name KssName) string {
 	if name.Length < 0 || int(name.Length) > len(name.Bytes) {
 		return ""
@@ -47,6 +56,7 @@ func kssRunParser(source string, colors []StyleColorToken, variant string) (KssP
 }
 
 func kssRunParserEnvironment(source string, colors []StyleColorToken, variant, theme string) (KssParser, []StyleRule, bool) {
+	styleParseInvocationCount++
 	host, ok := active().(*runtime)
 	if !ok {
 		host = New(AppConfig{}).(*runtime)
