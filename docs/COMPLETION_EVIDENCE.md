@@ -5,6 +5,12 @@ plan tasks are removed. It does not replace the full requirements in
 `plan/COMPLETION.md`. An inventory row is not a claim that every branch of its
 subsystem has been audited.
 
+Historical JavaScript/web entries in this file are archived evidence only. The
+old `k2js` and generated web runtime path is paused, excluded from current
+default builds, tests, packaged tools, and public status matrices, and must not
+be used as current support evidence. Current web direction lives in
+`docs/WEB_JS_ROADMAP.md` and `plan/COMPLETION.md`.
+
 ## 2026-09-18 baseline
 
 Baseline started at master `6b2d56d6`. Runtime generation, generated C/Go/JS
