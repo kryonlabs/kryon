@@ -187,7 +187,7 @@ BeginScrollContainer(ScrollArea area)
     static int content_drag_start_y = 0;
     static int content_drag_start_scroll = 0;
     ScrollView view = MeasureScrollContainer(area);
-    Vector2 mouse_world = ui_mouse_world();
+    Vector2 mouse_world = ui_primary_pointer_world();
     int y = (int)area.bounds.y;
     ScrollMetrics metrics = ui_scroll_metrics();
     int wheel_step = area.wheel_step > 0 ? area.wheel_step :
@@ -238,8 +238,8 @@ BeginScrollContainer(ScrollArea area)
             g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER;
         content_delta_y = (int)mouse_world.y - content_drag_start_y;
         content_drag = ScrollContentDragFor(
-            view.max_scroll, IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
-            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0, inside != 0,
+            view.max_scroll, ui_primary_pointer_pressed() != 0,
+            ui_primary_pointer_down() != 0, inside != 0,
             captured != 0, on_scrollbar != 0,
             g_ui_pointer_owner == POINTER_OWNER_NONE,
             g_ui_pointer_owner == POINTER_OWNER_SCROLL,
@@ -357,7 +357,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     ScrollBarPaint paint = ScrollBarPaintFor(x, y, viewport_h, content_h,
                                              *scroll_offset, max_scroll,
                                              metrics);
-    Vector2 mouse_pos = ui_mouse_world();
+    Vector2 mouse_pos = ui_primary_pointer_world();
     int my = (int)mouse_pos.y;
     Rectangle thumb_bounds = paint.thumb_bounds;
     int input_captured = overlay ? ui_base_input_captures_click(mouse_pos, 0)
@@ -371,7 +371,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         MarkClickable();
 
     drag_decision = ScrollBarDragFor(
-        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
+        ui_primary_pointer_down() != 0,
         input_captured != 0, thumb_active != 0,
         g_ui_pointer_owner == POINTER_OWNER_NONE,
         scrollbar_drag_active != 0, owns_drag != 0, *scroll_offset,

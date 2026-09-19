@@ -286,6 +286,10 @@ enum {
 };
 
 Vector2 ui_mouse_world(void);
+Vector2 ui_primary_pointer_world(void);
+int ui_primary_pointer_pressed(void);
+int ui_primary_pointer_down(void);
+int ui_primary_pointer_released(void);
 void ui_camera_ensure_sane(void);
 void MarkCursor(int cursor);
 void MarkClickable(void);

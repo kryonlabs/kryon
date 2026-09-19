@@ -104,6 +104,13 @@ static float g_scroll_drag_grab = 0;
 static PopupInputOwner g_scroll_drag_owner;
 static int g_ui_mouse_world_override_enabled = 0;
 static Vector2 g_ui_mouse_world_override = {0};
+static Vector2 g_ui_primary_pointer_screen = {0};
+static Vector2 g_ui_primary_pointer_press_screen = {0};
+static int g_ui_primary_pointer_pressed = 0;
+static int g_ui_primary_pointer_down = 0;
+static int g_ui_primary_pointer_released = 0;
+static int g_ui_primary_touch_was_down = 0;
+static Vector2 g_ui_primary_last_touch_screen = {0};
 static int ui_default_font_auto_load = 1;
 
 int g_ui_pointer_owner = POINTER_OWNER_NONE;
@@ -413,6 +420,70 @@ screen_to_world_for_input(Vector2 screen)
     return GetScreenToWorld2D(screen, g_ui_camera);
 }
 
+static Vector2
+ui_primary_pointer_press_screen(void)
+{
+    return g_ui_primary_pointer_press_screen;
+}
+
+Vector2
+ui_primary_pointer_world(void)
+{
+    return screen_to_world_for_input(g_ui_primary_pointer_screen);
+}
+
+int
+ui_primary_pointer_pressed(void)
+{
+    return g_ui_primary_pointer_pressed;
+}
+
+int
+ui_primary_pointer_down(void)
+{
+    return g_ui_primary_pointer_down;
+}
+
+int
+ui_primary_pointer_released(void)
+{
+    return g_ui_primary_pointer_released;
+}
+
+static void
+ui_update_primary_pointer_input(void)
+{
+    int touch_count = GetTouchPointCount();
+    int touch_down = touch_count > 0;
+    int touch_active = touch_down || g_ui_primary_touch_was_down;
+    Vector2 mouse = GetMousePosition();
+    Vector2 position = mouse;
+
+    if(touch_down) {
+        position = GetTouchPosition(0);
+        g_ui_primary_last_touch_screen = position;
+    } else if(g_ui_primary_touch_was_down) {
+        position = g_ui_primary_last_touch_screen;
+    }
+
+    g_ui_primary_pointer_pressed =
+        touch_active ? (touch_down && !g_ui_primary_touch_was_down)
+                     : (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
+    g_ui_primary_pointer_down =
+        touch_active ? touch_down
+                     : (IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
+    g_ui_primary_pointer_released =
+        touch_active ? (!touch_down && g_ui_primary_touch_was_down)
+                     : (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0);
+    g_ui_primary_pointer_screen = position;
+    if(g_ui_primary_pointer_pressed) {
+        g_ui_primary_pointer_press_screen = touch_active
+            ? position
+            : kry_mouse_press_position(position);
+    }
+    g_ui_primary_touch_was_down = touch_down;
+}
+
 void
 SetMouseWorldOverride(int enabled, Vector2 position)
 {
@@ -547,18 +618,18 @@ Rectangle
 ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
 {
     ScrollMetrics metrics = ui_scope_scroll_metrics();
-    Vector2 mouse = ui_mouse_world();
+    Vector2 pointer = ui_primary_pointer_world();
     ScrollScopeFrame frame = ScrollScopeFrameFor((ScrollScopeInput){
         .bounds = bounds,
         .content_height = content_height,
         .has_offset = scroll_offset != NULL,
         .offset = scroll_offset ? *scroll_offset : 0,
-        .pointer_allowed = CheckCollisionPointRec(mouse, bounds) && !InputCapturesClick(mouse),
+        .pointer_allowed = CheckCollisionPointRec(pointer, bounds) && !InputCapturesClick(pointer),
         .disabled = ContentDisabled() != 0,
-        .mouse = mouse,
-        .pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0,
-        .down = IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0,
-        .released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
+        .mouse = pointer,
+        .pressed = ui_primary_pointer_pressed() != 0,
+        .down = ui_primary_pointer_down() != 0,
+        .released = ui_primary_pointer_released() != 0,
         .wheel = g_scroll_wheel_frame != g_ui_frame_serial ? GetMouseWheelMove() : 0,
         .owns_drag = scroll_offset && g_scroll_drag_offset == scroll_offset,
         .owner_captured = scroll_offset && g_scroll_drag_offset == scroll_offset &&
@@ -644,8 +715,7 @@ ScrollEndScope(void)
 static int
 ui_pointer_dx(void)
 {
-    Vector2 mouse = GetMousePosition();
-    return (int)mouse.x - g_ui_pointer_start_x;
+    return (int)g_ui_primary_pointer_screen.x - g_ui_pointer_start_x;
 }
 
 static int
@@ -662,8 +732,7 @@ ui_backspace_repeat_count(void)
 static int
 ui_pointer_dy(void)
 {
-    Vector2 mouse = GetMousePosition();
-    return (int)mouse.y - g_ui_pointer_start_y;
+    return (int)g_ui_primary_pointer_screen.y - g_ui_pointer_start_y;
 }
 
 static int
@@ -682,35 +751,35 @@ ui_pointer_drag_is_horizontal(void)
 static void
 ui_update_pointer_gesture(void)
 {
-    Vector2 mouse = GetMousePosition();
-    int mx = (int)mouse.x;
-    int my = (int)mouse.y;
+    Vector2 pointer = g_ui_primary_pointer_screen;
+    int mx = (int)pointer.x;
+    int my = (int)pointer.y;
     int drag_threshold = InputPointerDragThresholdFor(
         (float)Scale(1000) / 1000.0f);
 
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+    if(g_ui_primary_pointer_pressed) {
         g_ui_pointer_down = 1;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
         g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
         g_ui_pointer_owner = POINTER_OWNER_NONE;
-        Vector2 press = kry_mouse_press_position(mouse);
+        Vector2 press = ui_primary_pointer_press_screen();
         g_ui_pointer_start_x = (int)press.x;
         g_ui_pointer_start_y = (int)press.y;
         g_ui_pointer_start_world = screen_to_world_for_input(press);
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
+        if(g_ui_primary_pointer_released &&
            InputPointerDragShouldStart(mx - g_ui_pointer_start_x,
                                        my - g_ui_pointer_start_y, drag_threshold))
             g_ui_pointer_dragged_this_click = 1;
-    } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && g_ui_pointer_down) {
+    } else if(g_ui_primary_pointer_down && g_ui_pointer_down) {
         int dx = ui_pointer_dx();
         int dy = ui_pointer_dy();
         if(InputPointerDragShouldStart(dx, dy, drag_threshold)) {
             g_ui_pointer_dragging = 1;
             g_ui_pointer_dragged_this_click = 1;
         }
-    } else if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    } else if(g_ui_primary_pointer_released) {
         /* A complete injected tap can be pumped before a UI frame. In that
          * case no press origin was observed, so activation falls back to the
          * release point just as it did before origin tracking existed. */
@@ -722,7 +791,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_dragging = 0;
         g_ui_scroll_gesture_pending = 0;
         g_ui_pointer_owner = POINTER_OWNER_NONE;
-    } else if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+    } else if(!g_ui_primary_pointer_down) {
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
@@ -5041,6 +5110,7 @@ SetFrameCamera(Camera2D camera)
     g_ui_cursor_had_intent = 0;
 
     g_ui_camera = ui_sane_camera(camera);
+    ui_update_primary_pointer_input();
     ui_update_pointer_gesture();
     ClearInputCaptures();
     if(g_ui_modal_capture_next_frame) {
