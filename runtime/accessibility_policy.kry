@@ -44,6 +44,22 @@ AccessibilityValueByteLimit :: () -> i32 #export {
     return 65536
 }
 
+AccessibilityItemSelectionFor :: (selected: bool, row: i32, item: i32,
+action: AccessibilityAction) -> bool #export {
+    if action == (AccessibilityAction)AccessibilityActionSelectAll { return true }
+    if action == (AccessibilityAction)AccessibilityActionClearSelection { return false }
+    if row != item { return selected }
+    return action == (AccessibilityAction)AccessibilityActionSelectItem
+}
+
+AccessibilitySingleSelectionFor :: (selected: i32, item: i32,
+action: AccessibilityAction) -> i32 #export {
+    if action == (AccessibilityAction)AccessibilityActionSelectItem { return item }
+    if action == (AccessibilityAction)AccessibilityActionClearSelection ||
+    (action == (AccessibilityAction)AccessibilityActionDeselectItem && selected == item) { return -1 }
+    return selected
+}
+
 AccessibilityValueCodepointAllowed :: (codepoint: i32, multiline: bool) -> bool #export {
     if codepoint >= 32 && codepoint != 127 { return true }
     return multiline && (codepoint == 9 || codepoint == 10 || codepoint == 13)

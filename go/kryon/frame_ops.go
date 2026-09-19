@@ -110,12 +110,12 @@ type FrameOp struct {
 	ScrollY           int32
 	Wrap              bool
 
-	accessibilityAnchor int32
-	accessibilityCursor int32
-	accessibilityKey    uint64
-	accessibilityParent int
+	accessibilityAnchor      int32
+	accessibilityCursor      int32
+	accessibilityKey         uint64
+	accessibilityParent      int
 	accessibilityMultiSelect bool
-	accessibilityOffscreen bool
+	accessibilityOffscreen   bool
 }
 
 type frameOpController interface {

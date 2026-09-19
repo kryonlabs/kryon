@@ -185,6 +185,8 @@ func (b *accessibilityBus) drain(runtime Runtime) {
 			runtime.QueueAccessibilityValue(request.id, request.generation, string(request.value))
 		case AccessibilityActionSetSelection:
 			runtime.QueueAccessibilitySelection(request.id, request.generation, request.anchor, request.cursor)
+		case AccessibilityActionSelectItem, AccessibilityActionDeselectItem:
+			runtime.QueueAccessibilityItem(request.id, request.generation, request.anchor, request.action == AccessibilityActionSelectItem)
 		default:
 			runtime.QueueAccessibilityAction(request.id, request.generation, request.action)
 		}
@@ -235,7 +237,11 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 			ids[node.FocusID]++
 		}
 		if node.Key != 0 {
-			semanticKeys[fmt.Sprintf("key:%d:%s", node.Key, node.Role)]++
+			key := fmt.Sprintf("key:%d:%s", node.Key, node.Role)
+			if node.Role == "option" {
+				key = fmt.Sprintf("item:%d:%d", node.Parent, node.Key)
+			}
+			semanticKeys[key]++
 		}
 	}
 	for index, node := range nodes {
@@ -257,7 +263,9 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 		} else {
 			node.Actions = 0
 			semanticKey := fmt.Sprintf("key:%d:%s", node.Key, node.Role)
-			if node.Key != 0 && semanticKeys[semanticKey] == 1 {
+			if node.Role == "option" && node.Key != 0 && semanticKeys[fmt.Sprintf("item:%d:%d", node.Parent, node.Key)] == 1 {
+				key = fmt.Sprintf("item:%s:%d", parent, node.Key)
+			} else if node.Role != "option" && node.Key != 0 && semanticKeys[semanticKey] == 1 {
 				key = semanticKey
 			}
 		}
@@ -303,7 +311,8 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 		if !exists || old.index != current.index || old.parent != current.parent || len(old.children) != len(current.children) || old.node.Label != current.node.Label ||
 			old.node.Focused != current.node.Focused || old.node.Checked != current.node.Checked ||
 			old.node.Disabled != current.node.Disabled || old.node.ReadOnly != current.node.ReadOnly ||
-			old.node.Actions != current.node.Actions || old.node.Secure != current.node.Secure {
+			old.node.Actions != current.node.Actions || old.node.Secure != current.node.Secure ||
+			old.node.Offscreen != current.node.Offscreen || old.node.MultiSelect != current.node.MultiSelect {
 			b.cacheUpdate(current)
 		}
 		if exists && (old.parent != current.parent || old.index != current.index) {
@@ -319,6 +328,8 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 			{"focused", old.node.Focused, current.node.Focused},
 			{"checked", old.node.Checked, current.node.Checked},
 			{"enabled", !old.node.Disabled, !current.node.Disabled},
+			{"selected", old.node.Selected, current.node.Selected},
+			{"showing", !old.node.Offscreen, !current.node.Offscreen},
 		} {
 			if state.old != state.now {
 				enabled := int32(0)
@@ -327,6 +338,10 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 				}
 				b.event(ref.Path, "StateChanged", state.name, enabled, 0, int32(0))
 			}
+		}
+		if old.node.Selected != current.node.Selected {
+			b.cacheUpdate(current)
+			b.event(current.parent, "SelectionChanged", "", 0, 0, int32(0))
 		}
 		if exists && old.node.Label != current.node.Label {
 			b.event(ref.Path, "PropertyChange", "accessible-name", 0, 0, current.node.Label)
@@ -388,7 +403,8 @@ func (b *accessibilityBus) queue(object accessibleObject, action AccessibilityAc
 		}
 	}
 	for index, request := range b.pending {
-		if request.id == node.FocusID && request.action == action {
+		if request.id == node.FocusID && request.action == action &&
+			(action != AccessibilityActionSelectItem && action != AccessibilityActionDeselectItem || request.anchor == anchor) {
 			clear(request.value)
 			b.pending = append(b.pending[:index], b.pending[index+1:]...)
 			break
@@ -408,6 +424,9 @@ func (b *accessibilityBus) interfaces(object accessibleObject) []string {
 	interfaces := []string{atspiPrefix + "Accessible", atspiPrefix + "Component"}
 	if object.path == atspiRoot {
 		return append(interfaces, atspiPrefix+"Application")
+	}
+	if object.node.Role == "listbox" {
+		interfaces = append(interfaces, atspiPrefix+"Selection")
 	}
 	if object.node.Actions&uint32(AccessibilityActionActivate) != 0 {
 		interfaces = append(interfaces, atspiPrefix+"Action")
@@ -441,6 +460,8 @@ func (b *accessibilityBus) properties(object accessibleObject, iface string) map
 		values["AtspiVersion"], values["InterfaceVersion"], values["Id"] = "2.1", uint32(1), b.appID
 	case atspiPrefix + "Action":
 		values["NActions"] = int32(1)
+	case atspiPrefix + "Selection":
+		values["NSelectedChildren"] = int32(len(b.selectedChildren(object)))
 	case atspiPrefix + "Text":
 		values["CharacterCount"] = int32(utf8.RuneCountInString(accessibleText(node)))
 		values["CaretOffset"] = scalarOffset(node.Value, node.SelectionCursor)
@@ -469,7 +490,7 @@ func accessibleRole(node AccessibilityNode) uint32 {
 	roles := map[string]uint32{"application": 75, "frame": 23, "button": 43, "checkbox": 7,
 		"radio": 44, "textbox": 61, "text": 61, "group": 39, "img": 27, "combobox": 11,
 		"slider": 51, "progressbar": 42, "menu": 33, "tablist": 38, "toolbar": 63,
-		"listbox": 98, "tree": 65, "table": 55, "dialog": 16}
+		"listbox": 98, "option": 32, "tree": 65, "table": 55, "dialog": 16}
 	if role, ok := roles[node.Role]; ok {
 		return role
 	}
@@ -478,6 +499,18 @@ func accessibleRole(node AccessibilityNode) uint32 {
 
 func accessibleStates(node AccessibilityNode) []uint32 {
 	bits := uint64(1)<<25 | uint64(1)<<30
+	if node.Offscreen {
+		bits &^= uint64(1) << 25
+	}
+	if node.Role == "option" {
+		bits |= uint64(1) << 22
+	}
+	if node.Selected {
+		bits |= uint64(1) << 23
+	}
+	if node.MultiSelect {
+		bits |= uint64(1) << 18
+	}
 	if !node.Disabled {
 		bits |= uint64(1)<<8 | uint64(1)<<24
 	}

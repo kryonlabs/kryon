@@ -289,8 +289,13 @@ identity, D-Bus interfaces, cache/event publication, screen geometry, and scalar
 offset conversion belong to the native host adapters, not generated widget
 policy. C callbacks run on the UI thread through a private GLib context; Go
 D-Bus workers enqueue owned requests for UI-thread delivery. The public snapshot array carries parent indices and semantic keys, independently
-of this transport. Other OS adapters and composite
+of this transport. Other OS adapters and remaining composite
 selection/value interfaces remain unimplemented; see [ACCESSIBILITY.md](ACCESSIBILITY.md).
+ListBox selection is implemented through the same validated queue. Shared policy
+decides selected state; hosts match stable item keys, update caller-owned
+selection arrays, and reveal rows. Linux adapters own Selection wire indices
+and change signals, while the snapshot's option parent and item index remain
+backend-neutral. Tree/table/dropdown/range selection is still separate work.
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.

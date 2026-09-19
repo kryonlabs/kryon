@@ -26,6 +26,10 @@ typedef enum AccessibilityAction {
     AccessibilityActionActivate = 2,
     AccessibilityActionSetValue = 4,
     AccessibilityActionSetSelection = 8,
+    AccessibilityActionSelectItem = 16,
+    AccessibilityActionDeselectItem = 32,
+    AccessibilityActionSelectAll = 64,
+    AccessibilityActionClearSelection = 128,
 } AccessibilityAction;
 
 #endif /* K_RUNTIME_ACCESSIBILITY_PROPS_H */

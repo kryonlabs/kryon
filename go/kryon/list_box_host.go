@@ -8,16 +8,22 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 	if count > len(props.Selected) {
 		count = len(props.Selected)
 	}
-	if count == 0 {
-		if props.SelectedCount != nil {
-			*props.SelectedCount = 0
-		}
-		return -1
-	}
 	bounds := r.layoutRect(props.Bounds)
 	disabled := props.Disabled || r.contentDisabled()
+	props.Disabled = disabled
+	r.prepareAccessibility(props.ID, int32(WidgetKindListBox), !disabled)
+	accessibilityChanged, accessibilityItem := r.applyAccessibilityList(props, count)
 	defaultItemFrame := listBoxMultiItemMetricFrame(props.ClassName, disabled)
 	rowHeight := ListBoxMulti_ListBoxMultiRowHeight(props.RowHeight, 1, defaultItemFrame)
+	scroll := int32(0)
+	if props.ScrollOffset != nil {
+		maxScroll := ListBox_ListBoxMaxScroll(bounds.Height, int32(count), rowHeight, 0, 1, defaultItemFrame)
+		scroll = ListBox_ListBoxClampScroll(*props.ScrollOffset, maxScroll)
+		if accessibilityItem >= 0 {
+			scroll = ListBox_ListBoxRevealScroll(accessibilityItem, scroll, rowHeight, bounds.Height, maxScroll, 1, defaultItemFrame)
+		}
+		*props.ScrollOffset = scroll
+	}
 	if !disabled {
 		r.registerField(props.ID)
 	}
@@ -26,7 +32,8 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 	if !disabled {
 		for i := 0; i < count; i++ {
 			row := ListBoxMulti_ListBoxMultiRowBounds(bounds, int32(i), rowHeight)
-			if r.consumeTap(row) {
+			row.Y -= float32(scroll)
+			if r.consumeTap(intersectRectangles(row, bounds)) {
 				clicked = int32(i)
 				if props.ID > 0 {
 					r.setFocus(props.ID)
@@ -115,6 +122,9 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 	listOp.ID = props.ID
 	listOp.Disabled = disabled
 	listOp.Focused = focused
+	listOp.Role = "listbox"
+	listOp.accessibilityKind = int32(WidgetKindListBox)
+	listOp.accessibilityMultiSelect = true
 	r.record(listOp)
 	for i := 0; i < count; i++ {
 		selected := props.Selected[i] != 0
@@ -122,6 +132,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			selectedCount++
 		}
 		row := ListBoxMulti_ListBoxMultiRowBounds(bounds, int32(i), rowHeight)
+		row.Y -= float32(scroll)
 		rowFocused := focusRow == int32(i)
 		hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
 		pressed := int32(i) == clicked
@@ -164,10 +175,14 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			labelY = 4
 		}
 		font, fontID := styleTextFace(itemStyle, Text14)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: props.Items[i], Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
+		r.record(FrameOp{Kind: FrameOpText, Role: "presentation", Clip: bounds, HasClip: true, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: props.Items[i], Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
 	}
 	if props.SelectedCount != nil {
 		*props.SelectedCount = selectedCount
+	}
+	r.recordAccessibilityList(props, bounds, count, rowHeight, scroll)
+	if clicked < 0 && accessibilityChanged {
+		return accessibilityItem
 	}
 	return clicked
 }
@@ -179,13 +194,18 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	props.Disabled = props.Disabled || r.contentDisabled()
+	r.prepareAccessibility(props.ID, int32(WidgetKindListBox), !props.Disabled)
+	accessibilityChanged, accessibilityItem := r.applyAccessibilityList(props, len(props.Items))
 	defaultItemFrame := listBoxItemMetricFrame(props.ClassName, props.Disabled)
 	rowH := ListBox_ListBoxRowHeight(props.RowHeight, 1, defaultItemFrame)
 	maxScroll := ListBox_ListBoxMaxScroll(props.Bounds.Height, int32(len(props.Items)), rowH, 0, 1, defaultItemFrame)
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = ListBox_ListBoxClampScroll(*props.ScrollOffset, maxScroll)
+		if accessibilityItem >= 0 {
+			*props.ScrollOffset = ListBox_ListBoxRevealScroll(accessibilityItem, *props.ScrollOffset, rowH, props.Bounds.Height, maxScroll, 1, defaultItemFrame)
+		}
 	}
-	changed := int32(0)
+	changed := boolInt(accessibilityChanged)
 	if !props.Disabled && r.pointerCanReach(props.Bounds) && props.ScrollOffset != nil && r.mouseWheel != 0 {
 		*props.ScrollOffset = ListBox_ListBoxClampScroll(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, maxScroll)
 		changed = 1
@@ -243,6 +263,9 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	listOp.ID = props.ID
 	listOp.Disabled = props.Disabled
 	listOp.Focused = focused
+	listOp.Role = "listbox"
+	listOp.accessibilityKind = int32(WidgetKindListBox)
+	listOp.ReadOnly = props.SelectedIndex == nil
 	r.record(listOp)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
@@ -296,8 +319,9 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 			labelY = 4
 		}
 		font, fontID := styleTextFace(itemStyle, Text16)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideTextWithFont(props.Items[index], row.Width-labelX*2, font, fontID), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Role: "presentation", Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideTextWithFont(props.Items[index], row.Width-labelX*2, font, fontID), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
+	r.recordAccessibilityList(props, props.Bounds, len(props.Items), rowH, scroll)
 	return changed
 }
 

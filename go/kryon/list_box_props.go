@@ -16,4 +16,5 @@ type ListBoxProps struct {
 	RowHeight     int32
 	Disabled      bool
 	ContentHeight int32
+	ItemKeys      []int32
 }

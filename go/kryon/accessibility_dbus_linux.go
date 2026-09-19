@@ -29,6 +29,7 @@ func (b *accessibilityBus) export() error {
 		atspiPrefix + "Action":       b.actionMethods(),
 		atspiPrefix + "Text":         b.textMethods(),
 		atspiPrefix + "EditableText": b.editableMethods(),
+		atspiPrefix + "Selection":    b.selectionMethods(),
 		atspiPrefix + "Application": {
 			"GetLocale":                func(_ accessibleObject, _ uint32) (string, *dbus.Error) { return os.Getenv("LANG"), nil },
 			"GetApplicationBusAddress": func(_ accessibleObject) (string, *dbus.Error) { return "", nil },

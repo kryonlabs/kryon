@@ -34,12 +34,12 @@ type AccessibilityNode struct {
 type AccessibilitySink func([]AccessibilityNode)
 
 type accessibilityRequest struct {
-	id     int32
-	kind   int32
-	action AccessibilityAction
-	value  []byte
-	anchor int32
-	cursor int32
+	id      int32
+	kind    int32
+	action  AccessibilityAction
+	value   []byte
+	anchor  int32
+	cursor  int32
 	itemKey uint64
 }
 
@@ -375,7 +375,7 @@ func (r *runtime) GetAccessibilitySnapshot() []AccessibilityNode {
 		}
 		node := AccessibilityNode{
 			Key: op.accessibilityKey, Parent: parent,
-			Selected: op.Selected, MultiSelect: op.accessibilityMultiSelect, ItemIndex: op.Row, Offscreen: op.accessibilityOffscreen,
+			Selected: op.Selected && role == "option", MultiSelect: op.accessibilityMultiSelect, ItemIndex: op.Row, Offscreen: op.accessibilityOffscreen,
 			Bounds: op.Bounds, Role: role, Label: op.Text,
 			Disabled: op.Disabled || op.Loading, FocusID: op.ID,
 			ReadOnly: op.ReadOnly, Secure: op.Secure,

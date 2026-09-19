@@ -21,7 +21,8 @@ reconnection after a bus/registry restart is not yet supported.
 The exported tree is application -> window -> semantic controls. Unique stable
 positive focus IDs preserve object paths across frames. Removed paths are
 retired permanently during the connection; duplicate IDs expose no actions.
-Controls without IDs have positional identities and are not actionable.
+Keyed groups retain identity as well. Other anonymous controls have positional
+identities and are not actionable.
 Applications must provide meaningful labels and unique IDs themselves.
 
 The adapters implement Accessible queries, Cache bulk queries/change signals,
@@ -37,6 +38,15 @@ Snapshots preserve nested semantic groups through parent indices. Linux object
 paths retain identity for unique focus IDs and semantic keys when siblings move
 or a control changes parent. Child queries, cache entries and parent-relative
 geometry follow the exposed hierarchy.
+
+List boxes expose every option, including off-screen items. Single- and
+multi-selection, deselection, clearing, and multi-select SelectAll use the normal
+UI-thread action queue. Selection updates application storage and reveals the
+affected row when scroll storage is supplied. Optional positive `item_keys`
+(`ItemKeys` in Go) preserve option identity and queued intent across reordering;
+removed or ambiguous keys cannot select a replacement item. Keys are local to
+each list. AT-SPI Selection methods distinguish child indices from indices into
+the selected subset and publish selection changes and option visibility.
 
 Object state/name/children changes, text changes, caret/selection changes, and
 window activation changes emit AT-SPI events. Unicode scalar offsets on D-Bus
@@ -55,7 +65,7 @@ before frame input reset. Shutdown cancels connection work and retires objects.
 This is an initial Linux integration, not full screen-reader conformance.
 Windows UI Automation, macOS accessibility, Android, and iOS adapters are not
 implemented. C libdraw/terminal/null backends do not automatically register.
-List/tree/table child selection, dropdown options, range-value interfaces,
+Tree/table child selection, dropdown options, tab selection, range-value interfaces,
 relations, rich text attributes, glyph/range geometry, clipboard text actions,
 and legacy Text boundary methods remain unsupported. Rendered-line navigation
 and exhaustive Orca interaction testing remain work.
@@ -70,13 +80,17 @@ shutdown. Requires Linux, Go,
 `dbus-daemon`, GIO, and Pango.
 
 `make generated-runtime-parity-test` exercises generated C and Go, including
-radio accessibility activation through the ordinary application handler.
+radio accessibility activation and keyed list selection/clearing through the
+ordinary application state, including option hierarchy assertions.
 
 An optional real libatspi smoke test (PyGObject and the Atspi 2.0 typelib) is:
 
 ```sh
 dbus-run-session -- /usr/bin/python3 tests/accessibility_atspi_test.py \
   build/linux-x86_64/tests/accessibility_dbus_fixture
+
+KRYON_ACCESSIBILITY_TEST_LIST=1 dbus-run-session -- /usr/bin/python3 \
+  tests/accessibility_atspi_test.py build/linux-x86_64/tests/accessibility_dbus_fixture
 ```
 
 Protocol reference: [GNOME AT-SPI architecture and interfaces](https://gnome.pages.gitlab.gnome.org/at-spi2-core/devel-docs/architecture.html).

@@ -58,6 +58,11 @@ typedef union WidgetData {
     TextFieldProps text_field;
     TextAreaProps text_area;
     RadioProps radio;
+    ListBoxProps list;
+    struct {
+        int selected;
+        int offscreen;
+    } option;
     struct {
         int *value;
         int class_name;
@@ -74,6 +79,7 @@ typedef union WidgetData {
 
 struct TreeNode {
     int id;
+    int accessibility_item;
     KeyID key;
     int kind;
     Rectangle bounds;
@@ -85,6 +91,7 @@ struct TreeNode {
     int font_token;
     int parent;
     int first_child;
+    int last_child;
     int next_sibling;
     const void *props;
     void *state;

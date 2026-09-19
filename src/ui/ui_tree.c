@@ -130,6 +130,7 @@ typedef struct AccessibilityRequest {
     int codepoints;
     int anchor;
     int cursor;
+    uint64_t item_key;
 } AccessibilityRequest;
 
 #define ACCESSIBILITY_QUEUE_CAPACITY 32
@@ -586,6 +587,7 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
     node->props = props;
     node->parent = -1;
     node->first_child = -1;
+    node->last_child = -1;
     node->next_sibling = -1;
     if(ui_tree_building && ui_tree_stack_depth > 0) {
         parent_id = ui_tree_stack[ui_tree_stack_depth - 1];
@@ -595,13 +597,9 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
             if(parent->first_child < 0) {
                 parent->first_child = index;
             } else {
-                NodeId child = parent->first_child;
-
-                while(child >= 0 && ui_tree_nodes[child].next_sibling >= 0)
-                    child = ui_tree_nodes[child].next_sibling;
-                if(child >= 0)
-                    ui_tree_nodes[child].next_sibling = index;
+                ui_tree_nodes[parent->last_child].next_sibling = index;
             }
+            parent->last_child = index;
         }
     }
     if(node->parent >= 0 && bounds.x == 0 && bounds.y == 0) {
@@ -654,6 +652,7 @@ ui_node(int id, int kind, Rectangle bounds)
     node.declared_bounds = bounds;
     node.parent = -1;
     node.first_child = -1;
+    node.last_child = -1;
     node.next_sibling = -1;
     return node;
 }
@@ -668,6 +667,7 @@ ui_tree_store_node(NodeId id, TreeNode src)
         return;
     src.parent = dst->parent;
     src.first_child = dst->first_child;
+    src.last_child = dst->last_child;
     src.next_sibling = dst->next_sibling;
     src.declared_bounds = dst->declared_bounds;
     src.input_clip = dst->input_clip;
@@ -2398,7 +2398,7 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
 
     for(i = 0; i < ui_committed_node_count; i++) {
         TreeNode *node = &ui_committed_nodes[i];
-        const char *role = ui_accessibility_role(node->kind);
+        const char *role = node->accessibility_item > 0 ? "option" : ui_accessibility_role(node->kind);
         const char *label = node->owned_text;
         unsigned parent = parents != NULL && node->parent >= 0 && node->parent < i
             ? parents[node->parent] : 0;
@@ -2444,7 +2444,14 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
                strcmp(role, "progressbar") == 0)
                 nodes[count].focus_id = 0;
             nodes[count].disabled = ui_accessibility_node_disabled(node);
-            if(node->kind == WidgetKindTextField) {
+            if(node->accessibility_item > 0) {
+                nodes[count].item_index = node->accessibility_item - 1;
+                nodes[count].selected = node->data.option.selected;
+                nodes[count].offscreen = node->data.option.offscreen;
+            } else if(node->kind == WidgetKindListBox) {
+                nodes[count].multi_select = node->data.list.selected != NULL;
+                nodes[count].read_only = node->data.list.selected == NULL && node->data.list.selected_index == NULL;
+            } else if(node->kind == WidgetKindTextField) {
                 TextFieldProps field = node->data.text_field;
                 nodes[count].secure = field.secure;
                 nodes[count].read_only = field.read_only;
@@ -2489,6 +2496,8 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
                 nodes[count].focus_id, nodes[count].disabled,
                 ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node)),
                 nodes[count].read_only);
+            if(node->kind == WidgetKindListBox && !nodes[count].multi_select)
+                nodes[count].actions &= ~(unsigned)AccessibilityActionSelectAll;
             if(!nodes[count].secure && node->state != NULL &&
                (node->kind == WidgetKindTextField || node->kind == WidgetKindTextArea)) {
                 TextFieldState *state = node->state;
@@ -2532,10 +2541,13 @@ ui_accessibility_queue(int focus_id, uint64_t generation, AccessibilityRequest r
     if(target == NULL)
         return 0;
     int read_only = target->kind == WidgetKindTextField ? target->data.text_field.read_only :
-        target->kind == WidgetKindTextArea ? target->data.text_area.read_only : 0;
+        target->kind == WidgetKindTextArea ? target->data.text_area.read_only :
+        target->kind == WidgetKindListBox ? target->data.list.selected == NULL && target->data.list.selected_index == NULL : 0;
     unsigned actions = AccessibilityActionsFor(target->kind, focus_id,
         ui_accessibility_node_disabled(target),
         ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(target)), read_only);
+    if(target->kind == WidgetKindListBox && target->data.list.selected == NULL)
+        actions &= ~(unsigned)AccessibilityActionSelectAll;
     if(!AccessibilityActionAllowed(actions, request.action))
         return 0;
     if(request.action == AccessibilityActionSetValue) {
@@ -2550,7 +2562,9 @@ ui_accessibility_queue(int focus_id, uint64_t generation, AccessibilityRequest r
     }
     for(i = 0; i < ui_accessibility_pending_count; i++) {
         if(ui_accessibility_pending[i].id == focus_id &&
-           ui_accessibility_pending[i].action == request.action) {
+           ui_accessibility_pending[i].action == request.action &&
+           ((request.action != AccessibilityActionSelectItem && request.action != AccessibilityActionDeselectItem) ||
+            ui_accessibility_pending[i].anchor == request.anchor)) {
             ui_accessibility_request_clear(&ui_accessibility_pending[i]);
             memmove(&ui_accessibility_pending[i], &ui_accessibility_pending[i + 1],
                     (size_t)(ui_accessibility_pending_count - i - 1) * sizeof(request));
@@ -2570,7 +2584,8 @@ ui_accessibility_queue(int focus_id, uint64_t generation, AccessibilityRequest r
 int
 QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction action)
 {
-    if(action != AccessibilityActionFocus && action != AccessibilityActionActivate)
+    if(action != AccessibilityActionFocus && action != AccessibilityActionActivate &&
+       action != AccessibilityActionSelectAll && action != AccessibilityActionClearSelection)
         return 0;
     return ui_accessibility_queue(focus_id, generation, (AccessibilityRequest){.action = action});
 }
@@ -2603,6 +2618,124 @@ QueueAccessibilitySelection(int focus_id, uint64_t generation, int anchor, int c
         .action = AccessibilityActionSetSelection, .anchor = anchor, .cursor = cursor});
 }
 
+int
+QueueAccessibilityItem(int focus_id, uint64_t generation, int index, int selected)
+{
+    if(index < 0 || index >= ui_committed_node_count)
+        return 0;
+    for(int i = 0; i < ui_committed_node_count; i++) {
+        TreeNode *node = &ui_committed_nodes[i];
+        if(node->accessibility_item != index + 1 || node->parent < 0)
+            continue;
+        TreeNode *parent = &ui_committed_nodes[node->parent];
+        if(parent->kind != WidgetKindListBox || parent->id != focus_id || ui_accessibility_node_disabled(node))
+            continue;
+        const char *label = node->owned_text != NULL ? node->owned_text : "";
+        size_t length = strlen(label);
+        if(length > (size_t)AccessibilityValueByteLimit())
+            return 0;
+        AccessibilityRequest request = {
+            .action = selected ? AccessibilityActionSelectItem : AccessibilityActionDeselectItem,
+            .anchor = index, .item_key = node->key, .length = (int)length,
+            .value = ui_tree_strdup(label)
+        };
+        if(request.value == NULL)
+            return 0;
+        if(ui_accessibility_queue(focus_id, generation, request))
+            return 1;
+        ui_accessibility_request_clear(&request);
+        return 0;
+    }
+    return 0;
+}
+
+int
+ui_accessibility_apply_list(ListBoxProps list, int *item)
+{
+    int changed = 0;
+    *item = -1;
+    unsigned actions = AccessibilityActionsFor(WidgetKindListBox, list.id,
+        list.disabled || ContentDisabled(), ui_popup_input_keyboard_captures(),
+        list.selected == NULL && list.selected_index == NULL);
+    if(list.selected == NULL)
+        actions &= ~(unsigned)AccessibilityActionSelectAll;
+    for(int i = 0; i < ui_accessibility_active_count; i++) {
+        AccessibilityRequest *request = &ui_accessibility_active[i];
+        if(request->id != list.id || list.id <= 0 || request->kind != WidgetKindListBox ||
+           request->action == AccessibilityActionFocus)
+            continue;
+        request->id = 0;
+        if(!AccessibilityActionAllowed(actions, request->action))
+            continue;
+        int all = request->action == AccessibilityActionSelectAll || request->action == AccessibilityActionClearSelection;
+        int index = request->anchor;
+        if(!all) {
+            if(list.items == NULL)
+                continue;
+            if(request->item_key != 0) {
+                index = -1;
+                for(int row = 0; list.item_keys != NULL && row < list.item_count; row++) {
+                    if(list.item_keys[row] > 0 && (uint64_t)list.item_keys[row] == request->item_key) {
+                        if(index >= 0) {
+                            index = -1;
+                            break;
+                        }
+                        index = row;
+                    }
+                }
+            }
+            if(index < 0 || index >= list.item_count)
+                continue;
+            const char *label = list.items[index] != NULL ? list.items[index] : "";
+            if(request->item_key == 0 && strcmp(request->value, label) != 0)
+                continue;
+        }
+        if(list.selected != NULL) {
+            for(int row = 0; row < list.item_count; row++) {
+                int selected = AccessibilityItemSelectionFor(list.selected[row] != 0, row, index, request->action);
+                changed |= selected != list.selected[row];
+                list.selected[row] = selected;
+            }
+            if(!all && list.anchor != NULL)
+                *list.anchor = index;
+        } else if(list.selected_index != NULL) {
+            int selected = AccessibilitySingleSelectionFor(*list.selected_index, index, request->action);
+            changed |= selected != *list.selected_index;
+            *list.selected_index = selected;
+        }
+        if(!all)
+            *item = index;
+        SetFocus(list.id);
+    }
+    return changed;
+}
+
+void
+ui_accessibility_list_items(ListBoxProps list, int row_height, int scroll)
+{
+    if(!ui_tree_building || ui_tree_stack_depth == 0 || list.items == NULL ||
+       ui_tree_nodes[ui_tree_stack[ui_tree_stack_depth-1]].kind != WidgetKindListBox)
+        return;
+    for(int i = 0; i < list.item_count; i++) {
+        Rectangle bounds = {list.bounds.x, list.bounds.y + (float)i * row_height - scroll,
+                            list.bounds.width, row_height};
+        NodeId id = ui_tree_add(0, WidgetKindCustom, bounds, NULL);
+        if(id < 0)
+            continue;
+        TreeNode *node = &ui_tree_nodes[id];
+        node->flags |= TreeNodeFlagPaintedImmediate;
+        if(list.disabled)
+            node->flags |= TreeNodeFlagScopeDisabled;
+        node->accessibility_item = i + 1;
+        node->key = list.item_keys != NULL && list.item_keys[i] > 0 ? (KeyID)list.item_keys[i] : 0;
+        node->owned_text = ui_tree_strdup(list.items[i] != NULL ? list.items[i] : "");
+        node->data.option.selected = list.selected != NULL ? list.selected[i] != 0 :
+            list.selected_index != NULL && *list.selected_index == i;
+        node->data.option.offscreen = bounds.y + bounds.height <= list.bounds.y ||
+            bounds.y >= list.bounds.y + list.bounds.height;
+    }
+}
+
 void
 ui_accessibility_prepare(int id, int kind, int enabled)
 {
@@ -2616,8 +2749,8 @@ ui_accessibility_prepare(int id, int kind, int enabled)
         AccessibilityRequest request = ui_accessibility_active[i];
         if(request.id != id || id <= 0)
             continue;
-        if(request.kind == kind && (request.action == AccessibilityActionSetValue ||
-                                    request.action == AccessibilityActionSetSelection))
+        if(request.kind == kind && request.action != AccessibilityActionFocus &&
+           request.action != AccessibilityActionActivate)
             continue;
         ui_accessibility_active[i].id = 0;
         if(request.kind != kind || !AccessibilityActionAllowed(actions, request.action))
@@ -3688,10 +3821,20 @@ Fieldset(FieldsetProps frame)
 int
 ListBox(ListBoxProps list)
 {
-    ui_tree_add(list.id, WidgetKindListBox, list.bounds, &list);
-    if(list.selected != NULL)
-        return RenderListBoxMulti(list);
-    return RenderListBox(list);
+    ui_accessibility_prepare(list.id, WidgetKindListBox, !list.disabled);
+    NodeId node = ui_tree_add(list.id, WidgetKindListBox, list.bounds, NULL);
+    int scope = node >= 0 && ui_tree_stack_depth < TREE_MAX_DEPTH;
+    if(node >= 0) {
+        ui_tree_nodes[node].data.list = list;
+        if(list.disabled)
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled;
+    }
+    if(scope)
+        ui_tree_stack[ui_tree_stack_depth++] = node;
+    int changed = list.selected != NULL ? RenderListBoxMulti(list) : RenderListBox(list);
+    if(scope)
+        ui_tree_stack_depth--;
+    return changed;
 }
 
 int

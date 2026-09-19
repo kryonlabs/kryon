@@ -13,6 +13,7 @@ state {
 list_box_frame :: () #ui {
     Screen root: {
         items: [4] const char * = {"Alpha","Beta","Gamma","Delta"}
-        ListBox((ListBoxProps){.bounds = {20,20,180,96}, .id = 801, .items = items, .item_count = 4, .selected_index = &list_selected, .scroll_offset = &list_scroll, .row_height = 24, .disabled = 0})
+        item_keys: [4] int = {11,12,13,14}
+        ListBox((ListBoxProps){.bounds = {20,20,180,96}, .id = 801, .items = items, .item_count = 4, .item_keys = item_keys, .selected_index = &list_selected, .scroll_offset = &list_scroll, .row_height = 24, .disabled = 0})
     }
 }

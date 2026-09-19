@@ -36,6 +36,7 @@ typedef struct ListBoxProps {
     int32_t row_height;
     bool disabled;
     int32_t content_height;
+    int32_t* item_keys;
 } ListBoxProps;
 
 #endif /* K_RUNTIME_LIST_BOX_PROPS_H */

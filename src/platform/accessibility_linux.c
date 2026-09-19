@@ -24,7 +24,7 @@ typedef struct AccessibleObject {
     int child_count;
     int old_child_count;
     int cache_dirty;
-    guint registrations[7];
+    guint registrations[8];
 } AccessibleObject;
 
 typedef struct AccessibilityBridge {
@@ -90,7 +90,7 @@ accessible_role(const AccessibleObject *object)
         {"radio", 44}, {"textbox", 61}, {"text", 61}, {"group", 39},
         {"img", 27}, {"combobox", 11}, {"slider", 51}, {"progressbar", 42},
         {"menu", 33}, {"tablist", 38}, {"toolbar", 63}, {"listbox", 98},
-        {"tree", 65}, {"table", 55}, {"dialog", 16}
+        {"tree", 65}, {"table", 55}, {"dialog", 16}, {"option", 32}
     };
     if(object->node.secure)
         return 40;
@@ -105,6 +105,14 @@ accessible_states(const AccessibleObject *object)
 {
     AccessibilityNode node = object->node;
     guint64 bits = ((guint64)1 << 25) | ((guint64)1 << 30);
+    if(node.offscreen)
+        bits &= ~((guint64)1 << 25);
+    if(strcmp(object->role, "option") == 0)
+        bits |= (guint64)1 << 22;
+    if(node.selected)
+        bits |= (guint64)1 << 23;
+    if(node.multi_select)
+        bits |= (guint64)1 << 18;
     if(!node.disabled)
         bits |= ((guint64)1 << 8) | ((guint64)1 << 24);
     if(node.actions & AccessibilityActionFocus)
@@ -140,6 +148,8 @@ accessible_interface(const AccessibleObject *object, const char *interface)
         return strcmp(object->role, "textbox") == 0 || strcmp(object->role, "text") == 0;
     if(strcmp(interface, ATSPI_EDITABLE) == 0)
         return (object->node.actions & AccessibilityActionSetValue) != 0;
+    if(strcmp(interface, ATSPI_SELECTION) == 0)
+        return strcmp(object->role, "listbox") == 0;
     return 0;
 }
 
@@ -209,6 +219,22 @@ accessible_cache_item(const AccessibleObject *object)
         object->index, children, g_variant_builder_end(&interfaces), object->label,
         accessible_role(object), "",
         g_variant_new_fixed_array(G_VARIANT_TYPE_UINT32, states, 2, sizeof(guint32)));
+}
+
+static AccessibleObject *
+accessible_selected_child(const AccessibleObject *object, int index, int *count)
+{
+    AccessibleObject *selected = NULL;
+    *count = 0;
+    for(int i = 0; i < object->child_count; i++) {
+        AccessibleObject *child = accessible_child(object, i);
+        if(child != NULL && child->node.selected) {
+            if(*count == index)
+                selected = child;
+            (*count)++;
+        }
+    }
+    return selected;
 }
 
 static void
@@ -296,6 +322,10 @@ accessible_property(GDBusConnection *connection, const char *sender, const char 
             return g_variant_new_string(KRYON_VERSION_STRING);
         if(strcmp(property, "Version") == 0)
             return g_variant_new_string("");
+    } else if(strcmp(interface, ATSPI_SELECTION) == 0 && strcmp(property, "NSelectedChildren") == 0) {
+        int count;
+        accessible_selected_child(object, -1, &count);
+        return g_variant_new_int32(count);
     } else if(strcmp(interface, ATSPI_TEXT) == 0) {
         if(strcmp(property, "CharacterCount") == 0)
             return g_variant_new_int32((int)g_utf8_strlen(accessible_text(object), -1));
@@ -504,6 +534,21 @@ accessible_call(AccessibleObject *object, const char *interface, const char *met
         if(strcmp(method, "DoAction") == 0)
             return g_variant_new("(b)", QueueAccessibilityAction(node.focus_id, node.generation, AccessibilityActionActivate));
         return g_variant_new("(s)", strcmp(method, "GetKeyBinding") == 0 ? "" : "activate");
+    } else if(strcmp(interface, ATSPI_SELECTION) == 0) {
+        if(strcmp(method, "SelectAll") == 0 || strcmp(method, "ClearSelection") == 0)
+            return g_variant_new("(b)", QueueAccessibilityAction(node.focus_id, node.generation,
+                strcmp(method, "SelectAll") == 0 ? AccessibilityActionSelectAll : AccessibilityActionClearSelection));
+        int index, count;
+        g_variant_get(parameters, "(i)", &index);
+        AccessibleObject *child = strcmp(method, "GetSelectedChild") == 0 || strcmp(method, "DeselectSelectedChild") == 0
+            ? accessible_selected_child(object, index, &count) : accessible_child(object, index);
+        if(strcmp(method, "GetSelectedChild") == 0)
+            return g_variant_new("(@(so))", child != NULL ? accessible_reference(child->path) :
+                g_variant_new("(so)", "", ATSPI_NULL));
+        if(strcmp(method, "IsChildSelected") == 0)
+            return g_variant_new("(b)", child != NULL && child->node.selected);
+        return g_variant_new("(b)", child != NULL && !child->node.disabled &&
+            QueueAccessibilityItem(node.focus_id, node.generation, child->node.item_index, strcmp(method, "SelectChild") == 0));
     } else if(strcmp(interface, ATSPI_EDITABLE) == 0) {
         const char *value;
         g_variant_get(parameters, "(&s)", &value);
@@ -803,7 +848,9 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
         int occurrences = GPOINTER_TO_INT(g_hash_table_lookup(id_counts, id));
         g_hash_table_insert(id_counts, id, GINT_TO_POINTER(occurrences + 1));
         if(nodes[i].key != 0) {
-            char *key = g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)nodes[i].key, nodes[i].role);
+            char *key = strcmp(nodes[i].role, "option") == 0
+                ? g_strdup_printf("item:%u:%" G_GUINT64_FORMAT, nodes[i].parent, (guint64)nodes[i].key)
+                : g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)nodes[i].key, nodes[i].role);
             occurrences = GPOINTER_TO_INT(g_hash_table_lookup(semantic_keys, key));
             g_hash_table_replace(semantic_keys, key, GINT_TO_POINTER(occurrences + 1));
         }
@@ -822,12 +869,15 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
             continue;
         int unique = node.focus_id > 0 &&
             GPOINTER_TO_INT(g_hash_table_lookup(id_counts, GINT_TO_POINTER(node.focus_id))) == 1;
-        char *semantic_key = g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)node.key, node.role);
+        int option = strcmp(node.role, "option") == 0;
+        char *semantic_key = option
+            ? g_strdup_printf("item:%u:%" G_GUINT64_FORMAT, node.parent, (guint64)node.key)
+            : g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)node.key, node.role);
         char *key;
         if(unique)
             key = g_strdup_printf("focus:%d:%s", node.focus_id, node.role);
         else if(node.key != 0 && GPOINTER_TO_INT(g_hash_table_lookup(semantic_keys, semantic_key)) == 1)
-            key = g_strdup(semantic_key);
+            key = option ? g_strdup_printf("item:%s:%" G_GUINT64_FORMAT, parent->path, (guint64)node.key) : g_strdup(semantic_key);
         else
             key = g_strdup_printf("position:%s:%d:%s", parent->path, parent->child_count, node.role);
         g_free(semantic_key);
@@ -873,7 +923,8 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
         if(created || moved || strcmp(old_label, object->label) != 0 ||
            old.focused != node.focused || old.checked != node.checked ||
            old.disabled != node.disabled || old.read_only != node.read_only ||
-           old.actions != node.actions || old.secure != node.secure)
+           old.actions != node.actions || old.secure != node.secure || old.selected != node.selected ||
+           old.multi_select != node.multi_select || old.offscreen != node.offscreen)
             object->cache_dirty = 1;
         if(moved)
             accessible_event(old_parent, "ChildrenChanged", "remove", old_index, 0, accessible_reference(object->path));
@@ -885,6 +936,12 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
             accessible_event(object->path, "StateChanged", "checked", node.checked, 0, g_variant_new_int32(0));
         if(old.disabled != node.disabled)
             accessible_event(object->path, "StateChanged", "enabled", !node.disabled, 0, g_variant_new_int32(0));
+        if(old.selected != node.selected) {
+            accessible_event(object->path, "StateChanged", "selected", node.selected, 0, g_variant_new_int32(0));
+            accessible_event(object->parent, "SelectionChanged", "", 0, 0, g_variant_new_int32(0));
+        }
+        if(old.offscreen != node.offscreen)
+            accessible_event(object->path, "StateChanged", "showing", !node.offscreen, 0, g_variant_new_int32(0));
         if(!created && strcmp(old_label, object->label) != 0)
             accessible_event(object->path, "PropertyChange", "accessible-name", 0, 0, g_variant_new_string(object->label));
         if(!created && !node.secure && strcmp(old_value, object->value) != 0) {

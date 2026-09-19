@@ -783,6 +783,17 @@ RenderListBoxMulti(ListBoxProps list)
 
     if(list.items == NULL || list.selected == NULL || list.item_count <= 0)
         return -1;
+    int accessibility_item;
+    int accessibility_changed = ui_accessibility_apply_list(list, &accessibility_item);
+    int scroll = list.scroll_offset != NULL ? *list.scroll_offset : 0;
+    int max_scroll = ListBoxMaxScroll(list.bounds.height, list.item_count, row_height, 0,
+                                      runtime_scale, default_item_frame);
+    scroll = ListBoxClampScroll(scroll, max_scroll);
+    if(accessibility_item >= 0)
+        scroll = ListBoxRevealScroll(accessibility_item, scroll, row_height, list.bounds.height,
+                                      max_scroll, runtime_scale, default_item_frame);
+    if(list.scroll_offset != NULL)
+        *list.scroll_offset = scroll;
     focused = !disabled && list.id > 0 && RegisterFocus(list.id,list.bounds) &&
               !ui_popup_input_focus_captures(list.id);
     if(focused)
@@ -827,7 +838,9 @@ RenderListBoxMulti(ListBoxProps list)
     }
     for(int i = 0; i < list.item_count; i++) {
         Rectangle row = ListBoxMultiRowBounds(list.bounds, i, row_height);
+        row.y -= scroll;
         int hot = CheckCollisionPointRec(mouse, row) &&
+                  CheckCollisionPointRec(mouse, list.bounds) &&
                   !InputCapturesClick(mouse);
         int selected = list.selected[i] != 0;
         ButtonState item_state = disabled ? ButtonStateDisabled :
@@ -878,7 +891,8 @@ RenderListBoxMulti(ListBoxProps list)
             count += list.selected[i] != 0;
         *list.selected_count = count;
     }
-    return clicked;
+    ui_accessibility_list_items(list, row_height, scroll);
+    return clicked < 0 && accessibility_changed ? accessibility_item : clicked;
 }
 
 void
@@ -3198,6 +3212,8 @@ RenderFieldset(FieldsetProps frame)
 int
 RenderListBox(ListBoxProps list)
 {
+    int accessibility_item;
+    int accessibility_changed = ui_accessibility_apply_list(list, &accessibility_item);
     int paint = IsWindowReady();
     int disabled = list.disabled || ContentDisabled();
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -3220,7 +3236,7 @@ RenderListBox(ListBoxProps list)
     int first;
     int visible;
     int max_scroll;
-    int changed = 0;
+    int changed = accessibility_changed;
 
     max_scroll = ui_update_scroll(list.bounds, list.item_count * row_h,
                                   disabled ? NULL : list.scroll_offset, row_h);
@@ -3229,6 +3245,12 @@ RenderListBox(ListBoxProps list)
                               runtime_scale, default_item_frame);
     layout.max_scroll = max_scroll;
     layout.scroll = ListBoxClampScroll(layout.scroll, max_scroll);
+    if(accessibility_item >= 0) {
+        layout.scroll = ListBoxRevealScroll(accessibility_item, layout.scroll, row_h,
+            list.bounds.height, max_scroll, runtime_scale, default_item_frame);
+        if(list.scroll_offset != NULL)
+            *list.scroll_offset = layout.scroll;
+    }
     int focused = !disabled && list.id > 0 &&
                   RegisterFocus(list.id, list.bounds);
     if(focused) SetFocusTextInputActive(0);
@@ -3319,6 +3341,7 @@ RenderListBox(ListBoxProps list)
     }
     if(paint && focused)
         RenderFocus(list.bounds);
+    ui_accessibility_list_items(list, row_h, list.scroll_offset != NULL ? *list.scroll_offset : scroll_y);
     return changed;
 }
 

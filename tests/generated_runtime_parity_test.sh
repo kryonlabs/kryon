@@ -88,6 +88,7 @@ type inputDriver interface {
 	QueueAccessibilityAction(int32, uint64, kryon.AccessibilityAction) bool
 	QueueAccessibilityValue(int32, uint64, string) bool
 	QueueAccessibilitySelection(int32, uint64, int32, int32) bool
+	QueueAccessibilityItem(int32, uint64, int32, bool) bool
 	QueueText(string)
 	QueueKey(int32)
 	QueueShiftKey(int32)
@@ -1213,6 +1214,29 @@ func main() {
 		kryon.FrameOpRect: 1,
 		kryon.FrameOpText: 4,
 	})
+	listNodes := driver.GetAccessibilitySnapshot()
+	listItems := 0
+	for _, node := range listNodes {
+		if node.Role == "option" {
+			listItems++
+			if node.Parent == 0 || listNodes[node.Parent-1].FocusID != 801 || node.Key != uint64(11+node.ItemIndex) {
+				panic("generated list option hierarchy/key mismatch")
+			}
+		}
+		if node.FocusID == 801 && !driver.QueueAccessibilityItem(801, node.Generation, 3, true) {
+			panic("generated list selection rejected")
+		}
+	}
+	if listItems != 4 { panic("generated list options missing") }
+	drawListBox()
+	if listBox.ListSelected != 3 { panic("generated list selection not delivered") }
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 801 && !driver.QueueAccessibilityAction(801, node.Generation, kryon.AccessibilityActionClearSelection) {
+			panic("generated list clear rejected")
+		}
+	}
+	drawListBox()
+	if listBox.ListSelected != -1 { panic("generated list clear not delivered") }
 	driver.QueueTap(36, 78)
 	drawListBox()
 	driver.SetFocus(0); driver.QueueKey(kryon.KeyTab); drawListBox()
@@ -2522,6 +2546,35 @@ int main(void)
     }
 
     draw_list_box();
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    int list_items = 0;
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(strcmp(node.role, "option") == 0) {
+            list_items++;
+            if(node.parent == 0 || accessible_nodes[node.parent-1].focus_id != 801 || node.key != (uint64_t)(11+node.item_index)) {
+                fprintf(stderr, "generated list option hierarchy/key mismatch\n");
+                return 1;
+            }
+        }
+        if(node.focus_id == 801 && !QueueAccessibilityItem(801, node.generation, 3, 1)) {
+            fprintf(stderr, "generated list selection rejected\n");
+            return 1;
+        }
+    }
+    if(list_items != 4) { fprintf(stderr, "generated list options missing\n"); return 1; }
+    InjectPump(); draw_list_box();
+    if(list_selected != 3) { fprintf(stderr, "generated list selection not delivered\n"); return 1; }
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 801 && !QueueAccessibilityAction(801, node.generation, AccessibilityActionClearSelection)) {
+            fprintf(stderr, "generated list clear rejected\n");
+            return 1;
+        }
+    }
+    InjectPump(); draw_list_box();
+    if(list_selected != -1) { fprintf(stderr, "generated list clear not delivered\n"); return 1; }
     InjectTap(36, 78);
     InjectPump();
     draw_list_box();

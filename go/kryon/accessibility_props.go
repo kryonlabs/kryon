@@ -4,8 +4,12 @@ package kryon
 type AccessibilityAction int32
 
 const (
-	AccessibilityActionFocus        AccessibilityAction = 1
-	AccessibilityActionActivate     AccessibilityAction = 2
-	AccessibilityActionSetValue     AccessibilityAction = 4
-	AccessibilityActionSetSelection AccessibilityAction = 8
+	AccessibilityActionFocus          AccessibilityAction = 1
+	AccessibilityActionActivate       AccessibilityAction = 2
+	AccessibilityActionSetValue       AccessibilityAction = 4
+	AccessibilityActionSetSelection   AccessibilityAction = 8
+	AccessibilityActionSelectItem     AccessibilityAction = 16
+	AccessibilityActionDeselectItem   AccessibilityAction = 32
+	AccessibilityActionSelectAll      AccessibilityAction = 64
+	AccessibilityActionClearSelection AccessibilityAction = 128
 )

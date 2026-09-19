@@ -652,6 +652,11 @@ and reparenting; removed paths are never reused.
 Bulk cache queries and change signals expose current metadata. C uses Pango
 and Go uses uax29 for Unicode text ranges. See [ACCESSIBILITY.md](ACCESSIBILITY.md)
 for the supported Linux builds and remaining platform/control limitations.
+List options are semantic children rather than inferred text paint operations.
+`runtime/accessibility_policy.kry` owns single/multiple selection decisions;
+hosts own the item storage, key validation, bounded queue, and scroll reveal.
+AT-SPI maps Selection requests onto that queue and never mutates app storage
+from a transport callback.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

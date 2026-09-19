@@ -2008,8 +2008,9 @@ Each node also carries `generation` and an `actions` bitmask. Native C and Go
 provide `QueueAccessibilityAction(focus_id, generation, action)` (Go uses
 `int32`, `uint64`, and `AccessibilityAction` and returns `bool`; C returns an
 acceptance `int`). Go exposes package, Runtime, and Host methods. Supported
-payload-free actions are `AccessibilityActionFocus` and `AccessibilityActionActivate`.
-Buttons, clickable cards, checkboxes, toggles, and radios support both; text editors
+payload-free actions are `AccessibilityActionFocus`, `AccessibilityActionActivate`,
+`AccessibilityActionSelectAll`, and `AccessibilityActionClearSelection`.
+Buttons, clickable cards, checkboxes, toggles, and radios support focus and activation; text editors
 support focus, including secure/read-only editors. Editors also advertise
 `AccessibilityActionSetValue` and `AccessibilityActionSetSelection`, delivered
 through their dedicated payload APIs below. Read-only editors omit SetValue.
@@ -2053,6 +2054,25 @@ state, widget kind, and popup ownership before delivery. Applying either action
 cancels preedit and queued composition input. C emits the normal text,
 selection, and composition events; Go TextArea returns its usual changed flag.
 Owned payload buffers are cleared when superseded, discarded, or delivered.
+
+`QueueAccessibilityItem(focus_id, generation, index, selected)` selects or
+deselects a zero-based ListBox item. The C `selected` argument is an `int`, Go
+uses `bool`; Go provides package, Runtime, and Host methods. List snapshots
+include all options, including off-screen rows, with `selected`, `item_index`,
+and `offscreen` metadata. The container exposes `multi_select` and omits
+selection actions when no writable selection storage is supplied.
+`SelectAll` is available only for multi-select lists; `ClearSelection` clears
+either selection mode. Single-select changes preserve the normal changed
+return value; multi-select item changes return the affected row index.
+
+`ListBoxProps.item_keys` (Go `ItemKeys`) optionally supplies positive, unique
+item keys, one per item in C. Keyed requests follow an item across reordering
+and are discarded if its key disappears or becomes ambiguous. Without keys,
+requests require the same index and label at delivery; applications that reorder
+items should provide keys. Item requests coalesce by target, action, and index
+within the same bounded queue. Selection checks live disabled/popup/read-only
+state and reveals the affected row when `scroll_offset` storage is provided.
+AT-SPI exposes the list's Selection interface and selected/showing item states.
 
 Linux native windows additionally publish an AT-SPI application/window tree:
 C raylib builds use GIO/Pango when available; native Go uses a pure-Go D-Bus

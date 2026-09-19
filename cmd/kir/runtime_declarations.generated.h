@@ -8,6 +8,10 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    AccessibilityActionActivate = 2\n"
         "    AccessibilityActionSetValue = 4\n"
         "    AccessibilityActionSetSelection = 8\n"
+        "    AccessibilityActionSelectItem = 16\n"
+        "    AccessibilityActionDeselectItem = 32\n"
+        "    AccessibilityActionSelectAll = 64\n"
+        "    AccessibilityActionClearSelection = 128\n"
         "}\n"
     },
     {"runtime/button_props.kry",
@@ -545,6 +549,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    row_height: i32\n"
         "    disabled: bool\n"
         "    content_height: i32\n"
+        "    item_keys: *i32\n"
         "}\n"
     },
     {"runtime/menu_props.kry",

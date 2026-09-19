@@ -96,9 +96,37 @@ func AccessibilityPolicy_AccessibilityActionsFor(kind int32, focus_id int32, dis
 		var value_57 uint32 = actions
 		return value_57
 	}
-	var value_58 int32 = 0
-	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
-	return value_59
+	var value_58 int32 = kind
+	var value_59 int32 = WidgetKindListBox
+	var value_60 int32 = int32(number_runtime_bits(uint64(value_59), uint64(0), 32, true, 0))
+	var value_61 bool = value_58 == value_60
+	if value_61 {
+		var value_62 int32 = int32(AccessibilityActionFocus)
+		var value_63 uint32 = uint32(number_runtime_bits(uint64(value_62), uint64(0), 32, false, 0))
+		var actions uint32 = value_63
+		var value_64 bool = read_only
+		var value_65 bool = !value_64
+		if value_65 {
+			var value_66 uint32 = actions
+			var value_67 int32 = int32(AccessibilityActionSelectItem)
+			var value_68 uint32 = uint32(number_runtime_bits(uint64(value_67), uint64(0), 32, false, 0))
+			var value_69 int32 = int32(AccessibilityActionDeselectItem)
+			var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
+			var value_71 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(value_70), 32, false, 9))
+			var value_72 int32 = int32(AccessibilityActionSelectAll)
+			var value_73 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(0), 32, false, 0))
+			var value_74 uint32 = uint32(number_runtime_bits(uint64(value_71), uint64(value_73), 32, false, 9))
+			var value_75 int32 = int32(AccessibilityActionClearSelection)
+			var value_76 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(0), 32, false, 0))
+			var value_77 uint32 = uint32(number_runtime_bits(uint64(value_74), uint64(value_76), 32, false, 9))
+			actions = uint32(number_runtime_bits(uint64(value_66), uint64(value_77), 32, false, 9))
+		}
+		var value_78 uint32 = actions
+		return value_78
+	}
+	var value_79 int32 = 0
+	var value_80 uint32 = uint32(number_runtime_bits(uint64(value_79), uint64(0), 32, false, 0))
+	return value_80
 }
 
 func AccessibilityPolicy_AccessibilityActionAllowed(actions uint32, action AccessibilityAction) bool {
@@ -130,23 +158,122 @@ func AccessibilityPolicy_AccessibilityActionAllowed(actions uint32, action Acces
 		var value_18 bool = value_15 != value_17
 		value_14 = value_18
 	}
-	if value_14 {
-		var value_19 bool = false
-		return value_19
+	var value_19 bool = value_14
+	if value_19 {
+		var value_20 AccessibilityAction = AccessibilityAction(action)
+		var value_21 int32 = int32(AccessibilityActionSelectItem)
+		var value_22 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_21), uint64(0), 32, true, 0)))
+		var value_23 bool = value_20 != value_22
+		value_19 = value_23
 	}
-	var value_20 uint32 = actions
-	var value_21 AccessibilityAction = AccessibilityAction(action)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(value_22), 32, false, 8))
-	var value_24 int32 = 0
-	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(0), 32, false, 0))
-	var value_26 bool = value_23 != value_25
-	return value_26
+	var value_24 bool = value_19
+	if value_24 {
+		var value_25 AccessibilityAction = AccessibilityAction(action)
+		var value_26 int32 = int32(AccessibilityActionDeselectItem)
+		var value_27 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_26), uint64(0), 32, true, 0)))
+		var value_28 bool = value_25 != value_27
+		value_24 = value_28
+	}
+	var value_29 bool = value_24
+	if value_29 {
+		var value_30 AccessibilityAction = AccessibilityAction(action)
+		var value_31 int32 = int32(AccessibilityActionSelectAll)
+		var value_32 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_31), uint64(0), 32, true, 0)))
+		var value_33 bool = value_30 != value_32
+		value_29 = value_33
+	}
+	var value_34 bool = value_29
+	if value_34 {
+		var value_35 AccessibilityAction = AccessibilityAction(action)
+		var value_36 int32 = int32(AccessibilityActionClearSelection)
+		var value_37 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_36), uint64(0), 32, true, 0)))
+		var value_38 bool = value_35 != value_37
+		value_34 = value_38
+	}
+	if value_34 {
+		var value_39 bool = false
+		return value_39
+	}
+	var value_40 uint32 = actions
+	var value_41 AccessibilityAction = AccessibilityAction(action)
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(value_42), 32, false, 8))
+	var value_44 int32 = 0
+	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
+	var value_46 bool = value_43 != value_45
+	return value_46
 }
 
 func AccessibilityPolicy_AccessibilityValueByteLimit() int32 {
 	var value_0 int32 = 65536
 	return value_0
+}
+
+func AccessibilityPolicy_AccessibilityItemSelectionFor(selected bool, row int32, item int32, action AccessibilityAction) bool {
+	var value_0 AccessibilityAction = AccessibilityAction(action)
+	var value_1 int32 = int32(AccessibilityActionSelectAll)
+	var value_2 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
+	var value_3 bool = value_0 == value_2
+	if value_3 {
+		var value_4 bool = true
+		return value_4
+	}
+	var value_5 AccessibilityAction = AccessibilityAction(action)
+	var value_6 int32 = int32(AccessibilityActionClearSelection)
+	var value_7 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
+	var value_8 bool = value_5 == value_7
+	if value_8 {
+		var value_9 bool = false
+		return value_9
+	}
+	var value_10 int32 = row
+	var value_11 int32 = item
+	var value_12 bool = value_10 != value_11
+	if value_12 {
+		var value_13 bool = selected
+		return value_13
+	}
+	var value_14 AccessibilityAction = AccessibilityAction(action)
+	var value_15 int32 = int32(AccessibilityActionSelectItem)
+	var value_16 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_15), uint64(0), 32, true, 0)))
+	var value_17 bool = value_14 == value_16
+	return value_17
+}
+
+func AccessibilityPolicy_AccessibilitySingleSelectionFor(selected int32, item int32, action AccessibilityAction) int32 {
+	var value_0 AccessibilityAction = AccessibilityAction(action)
+	var value_1 int32 = int32(AccessibilityActionSelectItem)
+	var value_2 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_1), uint64(0), 32, true, 0)))
+	var value_3 bool = value_0 == value_2
+	if value_3 {
+		var value_4 int32 = item
+		return value_4
+	}
+	var value_5 AccessibilityAction = AccessibilityAction(action)
+	var value_6 int32 = int32(AccessibilityActionClearSelection)
+	var value_7 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
+	var value_8 bool = value_5 == value_7
+	var value_9 bool = value_8
+	if !value_9 {
+		var value_10 AccessibilityAction = AccessibilityAction(action)
+		var value_11 int32 = int32(AccessibilityActionDeselectItem)
+		var value_12 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0)))
+		var value_13 bool = value_10 == value_12
+		var value_14 bool = value_13
+		if value_14 {
+			var value_15 int32 = selected
+			var value_16 int32 = item
+			var value_17 bool = value_15 == value_16
+			value_14 = value_17
+		}
+		value_9 = value_14
+	}
+	if value_9 {
+		var value_18 int32 = -1
+		return value_18
+	}
+	var value_19 int32 = selected
+	return value_19
 }
 
 func AccessibilityPolicy_AccessibilityValueCodepointAllowed(codepoint int32, multiline bool) bool {
