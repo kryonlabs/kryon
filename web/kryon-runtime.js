@@ -331,6 +331,7 @@ export function createRuntime(options = {}) {
       dropdownOpen: null,
       dropdownPopup: null,
       dropdownHighlight: new Map(),
+      activePopupPath: "",
       focusOrder: [],
       lastFocusOrder: [],
       treeOrder: [],
@@ -480,6 +481,7 @@ export function beginFrame(rt) {
     rt.input.textHandoff = 0;
     rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
+    rt.input.activePopupPath = "";
     rt.input.treeOrder = [];
     rt.input.treeDepths = new Map();
     rt.input.layoutBounds = new Map();
@@ -1559,10 +1561,11 @@ function handleCard(rt, args, meta = null) {
   return handleButton(rt, args, meta);
 }
 
-function handlePopup(rt, args) {
+function handlePopup(rt, args, meta = null) {
   if (isTruthyProp(args, "disabled"))
     return false;
   const bounds = parseBounds(args);
+  const popupPath = String(meta?.path || "");
   const flags = propNumber(args, "flags", 0);
   const open = args && typeof args === "object" ? args.open : null;
   if (open && typeof open === "object" && "value" in open) {
@@ -1573,11 +1576,15 @@ function handlePopup(rt, args) {
           Number(ev.button) === MouseButtonRight && hit(trigger, ev.x, ev.y));
         if (release) {
           open.value = true;
+          if (popupPath)
+            rt.input.activePopupPath = popupPath;
           return true;
         }
       }
       return false;
     }
+    if (popupPath)
+      rt.input.activePopupPath = popupPath;
     if ((flags & PopupModal) !== 0) {
       const escape = consumeFirstEvent(rt, (ev) => ev.type === "key" && Number(ev.key) === KeyEscape);
       if (escape) {
@@ -1967,8 +1974,12 @@ function handleScroll(rt, args, meta) {
   return true;
 }
 
-function handleCollapsible(rt, state, args) {
+function handleCollapsible(rt, state, args, meta = null) {
   if (!String(args || "").includes("CollapsibleProps") || isTruthyProp(args, "disabled"))
+    return false;
+  const activePopupPath = String(rt.input.activePopupPath || "");
+  const path = String(meta?.path || "");
+  if (activePopupPath && path && !path.startsWith(activePopupPath + "/") && path !== activePopupPath)
     return false;
   const id = propNumber(args, "id", 0);
   const ref = propRef(args, "open");
@@ -2299,7 +2310,7 @@ function handleWidget(rt, name, args, state, meta = null) {
   case "Scroll":
     return handleScroll(rt, args, meta);
   case "Collapsible":
-    return handleCollapsible(rt, state, args);
+    return handleCollapsible(rt, state, args, meta);
   case "TableCell":
     return handleTableCell(rt, args, meta);
   case "Button":
@@ -2307,7 +2318,7 @@ function handleWidget(rt, name, args, state, meta = null) {
   case "Card":
     return handleCard(rt, args, meta);
   case "Popup":
-    return handlePopup(rt, args);
+    return handlePopup(rt, args, meta);
   case "TextField":
   case "TextArea":
     return handleTextInput(rt, state, args, name === "TextArea", meta);
@@ -11784,11 +11795,11 @@ export function AcceleratorPressed(rt, accelerator) {
   if (!input || !accelerator)
     return 0;
   const values = Array.isArray(accelerator) ? accelerator : accelerator.value || accelerator;
-  const key = Number(values.key ?? values.Key ?? values[0] ?? 0);
-  const ctrlRequired = Number(values.ctrl ?? values.Ctrl ?? values[1] ?? 0) !== 0;
-  const shiftRequired = Number(values.shift ?? values.Shift ?? values[2] ?? 0) !== 0;
-  const altRequired = Number(values.alt ?? values.Alt ?? values[3] ?? 0) !== 0;
-  const id = Number(values.id ?? values.ID ?? values[4] ?? 0);
+  const key = Array.isArray(values) ? Number(values[0] ?? 0) : Number(values.key ?? values.Key ?? 0);
+  const ctrlRequired = Number(Array.isArray(values) ? values[1] : values.ctrl ?? values.Ctrl ?? 0) !== 0;
+  const shiftRequired = Number(Array.isArray(values) ? values[2] : values.shift ?? values.Shift ?? 0) !== 0;
+  const altRequired = Number(Array.isArray(values) ? values[3] : values.alt ?? values.Alt ?? 0) !== 0;
+  const id = Number(Array.isArray(values) ? values[4] : values.id ?? values.ID ?? 0);
   const events = input.events || [];
   const hasKey = (wanted) => events.some((ev) =>
     ev.type === "key" && Number(ev.key) === Number(wanted));
@@ -11808,6 +11819,10 @@ export function AcceleratorPressed(rt, accelerator) {
     return 0;
   if (altRequired && !altDown)
     return 0;
+  const index = events.findIndex((ev) =>
+    (ev.type === "key" || ev.type === "shortcut") && Number(ev.key) === key);
+  if (index >= 0)
+    events.splice(index, 1);
   return id;
 }
 
