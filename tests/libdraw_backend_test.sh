@@ -44,6 +44,10 @@ if command -v xvfb-run >/dev/null 2>&1; then
         DEVDRAW="$plan9/bin/devdraw" KRYON_LIBDRAW_SMOKE_OUT="$out" "$bin"
     run_hierarchy xvfb-run -a env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
         DEVDRAW="$plan9/bin/devdraw" "$hierarchy_bin"
+    if command -v xdotool >/dev/null 2>&1; then
+        xvfb-run -a env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
+            DEVDRAW="$plan9/bin/devdraw" python3 "$root/tests/libdraw_exit_key_test.py" "$bin"
+    fi
 elif [ -n "${DISPLAY:-}" ]; then
     env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
         DEVDRAW="$plan9/bin/devdraw" KRYON_LIBDRAW_SMOKE_OUT="$out" "$bin"

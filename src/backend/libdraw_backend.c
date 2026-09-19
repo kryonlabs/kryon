@@ -870,7 +870,7 @@ kry_libdraw_poll(void)
                 kry_libdraw_push_key(key);
             if((ch >= 32 && ch != 127) || ch == Kbs)
                 kry_libdraw_push_char(ch == Kbs ? 8 : ch);
-            if(key == KEY_ESCAPE)
+            if(g_exit_key > 0 && key == g_exit_key)
                 kry_libdraw_should_close = 1;
             handled = 1;
         }

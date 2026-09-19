@@ -17,9 +17,45 @@ check(const char *name, int ok)
     }
 }
 
+static int
+exit_key_test(const char *mode)
+{
+    int disabled = strcmp(mode, "disabled") == 0;
+    int custom = strcmp(mode, "custom") == 0;
+    int saw_escape = 0;
+    int closed = 0;
+
+    InitWindow(200, 100, "Kryon exit key");
+    if(!IsWindowReady())
+        return 2;
+    SetTargetFPS(60);
+    if(disabled)
+        SetExitKey(0);
+    else if(custom)
+        SetExitKey(KEY_Q);
+    double deadline = GetTime() + 8.0;
+    while(GetTime() < deadline) {
+        closed = WindowShouldClose();
+        if(IsKeyPressed(KEY_ESCAPE))
+            saw_escape = 1;
+        if(closed || (disabled && saw_escape))
+            break;
+        BeginDrawing();
+        ClearBackground(WHITE);
+        EndDrawing();
+    }
+    check("Escape input delivered", saw_escape);
+    check("configured exit key respected", disabled ? !closed : closed);
+    CloseWindow();
+    return failures ? 1 : 0;
+}
+
 int
 main(void)
 {
+    const char *exit_mode = getenv("KRYON_LIBDRAW_EXIT_KEY_TEST");
+    if(exit_mode != NULL)
+        return exit_key_test(exit_mode);
     const char *out = getenv("KRYON_LIBDRAW_SMOKE_OUT");
     const char *options[] = {"First", "Second", "Third"};
     char field[64] = "TaijiOS";
