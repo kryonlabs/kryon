@@ -48,6 +48,7 @@ export interface Runtime {
     dropdownOpen: number | null;
     dropdownPopup: { id: number; bounds: { x: number; y: number; width: number; height: number } } | null;
     dropdownHighlight: Map<number, number>;
+    tableResize: { id: number; column: number; startX: number; startWidth: number } | null;
     focusOrder: number[];
     lastFocusOrder: number[];
     keyPressed: Record<number, boolean>;

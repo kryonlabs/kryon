@@ -344,6 +344,7 @@ export function createRuntime(options = {}) {
       scrollBounds: new Map(),
       scrollOffsets: new Map(),
       dragDrop: null,
+      tableResize: null,
       menus: new Map(),
       layoutBounds: new Map(),
       layoutInfo: new Map(),
@@ -1998,6 +1999,26 @@ function handleTableView(rt, state, args) {
   const sortColumn = propRef(args, "sort_column");
   const count = Math.max(1, propNumber(args, "column_count", selectedColumn ? 3 : 2));
   const widths = tableColumnWidths(state, args, bounds, count);
+  const widthName = propIdent(args, "column_widths");
+  const resizable = propNumber(args, "resizable", 0) !== 0;
+  if (state && resizable && widthName && state[widthName] && headerAngle !== 0) {
+    const resize = rt.input.tableResize;
+    if (resize && resize.id === propNumber(args, "id", 0) && rt.input.mouse.down[MouseButtonLeft]) {
+      state[widthName][resize.column] = Math.max(1, Math.round(resize.startWidth + rt.input.mouse.x - resize.startX));
+      return true;
+    }
+    if (resize && resize.id === propNumber(args, "id", 0) && rt.input.mouse.released[MouseButtonLeft]) {
+      rt.input.tableResize = null;
+      return true;
+    }
+    if (rt.input.mouse.pressed[MouseButtonLeft] && hit({ x: bounds.x, y: bounds.y, width: bounds.width, height: headerH }, rt.input.mouse.x, rt.input.mouse.y)) {
+      const separatorX = bounds.x + bounds.width - 20;
+      if (rt.input.mouse.x >= separatorX) {
+        rt.input.tableResize = { id: propNumber(args, "id", 0), column: 0, startX: rt.input.mouse.x, startWidth: numberValue(state[widthName][0], widths[0]) };
+        return true;
+      }
+    }
+  }
   const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
   if (!tap || !state)
     return false;
