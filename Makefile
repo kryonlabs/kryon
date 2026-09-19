@@ -391,6 +391,9 @@ SCROLL_POLICY_TEST = $(BUILD_DIR)/scroll-policy-test
 TEXT_INPUT_POLICY_TEST = $(BUILD_DIR)/text-input-policy-test
 INPUT_POLICY_TEST = $(BUILD_DIR)/input-policy-test
 FOCUS_POLICY_TEST = $(BUILD_DIR)/focus-policy-test
+SLIDER_LAWS_TEST = $(BUILD_DIR)/tests/slider_laws_test
+LAYOUT_LAWS_TEST = $(BUILD_DIR)/tests/layout_laws_test
+SEMANTIC_TREE_LAWS_TEST = $(BUILD_DIR)/tests/semantic_tree_laws_test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
 KRY_SHA256_TEST = $(BUILD_DIR)/tests/kry_sha256_test
@@ -399,7 +402,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance style-capture-boards bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test laws-test runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance style-capture-boards bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test web-dom-browser-test web-dom-inspector-browser-test go-runtime-test k2js-runtime-snapshot-test visual-props-check paint-style-leak-check style-facts-bridge-check no-glow-pack-check no-theme-chrome-check bevel-policy-test button-policy-test icon-policy-test transition-fade-policy-test modal-policy-test popup-policy-test menu-policy-test tree-view-policy-test table-view-policy-test list-box-policy-test checkbox-policy-test toggle-policy-test slider-policy-test separator-policy-test progress-policy-test selectable-policy-test fieldset-policy-test card-policy-test segmented-control-policy-test canvas-grid-policy-test plot-policy-test color-picker-policy-test navigation-bar-policy-test primitive-policy-test layout-policy-test group-policy-test grid-policy-test toast-policy-test canvas-policy-test dropdown-policy-test drag-drop-policy-test reorder-policy-test swipe-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test text-input-policy-test input-policy-test focus-policy-test terminal-pane-policy-test profile-header-policy-test inspect-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test toolbar-policy-test paragraph-policy-test radio-policy-test spinbox-policy-test rows-policy-test page-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -915,7 +918,7 @@ link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runti
 canonical-surface-test:
 	sh tests/canonical_surface_test.sh .
 
-preflight: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check
+preflight: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check laws-test runtime-parity-check feature-matrix-docs-check conformance-matrix-check
 	git diff --check
 
 fast-test: canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check image-policy-test
@@ -953,7 +956,7 @@ clean-text-api-check:
 	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check laws-test runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -1086,6 +1089,49 @@ web-generated-check: $(K2JS)
 
 backend-capabilities-check:
 	sh tests/backend_capabilities_test.sh .
+
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test
+
+runtime-laws-test: $(SLIDER_LAWS_TEST) $(LAYOUT_LAWS_TEST) $(SEMANTIC_TREE_LAWS_TEST)
+	$(SLIDER_LAWS_TEST)
+	$(LAYOUT_LAWS_TEST)
+	$(SEMANTIC_TREE_LAWS_TEST)
+
+api-laws-test: $(RUNTIME_C) $(RUNTIME_H)
+	sh tools/check-kryon-laws-api.sh . $(GENERATED_SRC_DIR)
+
+backend-capability-laws-test:
+	sh tools/check-backend-capability-laws.sh .
+
+cross-target-laws-test: runtime-parity-check
+
+$(SLIDER_LAWS_TEST): tests/laws/slider_laws_test.c tests/lawcheck.c tests/lawcheck.h $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/slider.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests tests/laws/slider_laws_test.c tests/lawcheck.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_SYNC_LDLIBS) \
+		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) \
+		$(LDLIBS) -o $@
+
+$(LAYOUT_LAWS_TEST): tests/laws/layout_laws_test.c tests/lawcheck.c tests/lawcheck.h $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/layout.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests tests/laws/layout_laws_test.c tests/lawcheck.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_SYNC_LDLIBS) \
+		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) \
+		$(LDLIBS) -o $@
+
+$(SEMANTIC_TREE_LAWS_TEST): tests/laws/semantic_tree_laws_test.c tests/lawcheck.c tests/lawcheck.h $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Itests tests/laws/semantic_tree_laws_test.c tests/lawcheck.c \
+		-Wl,--wrap=DrawRectangle \
+		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleLinesEx \
+		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=DrawLine \
+		-Wl,--wrap=BeginScissorMode \
+		-Wl,--wrap=EndScissorMode \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_SYNC_LDLIBS) \
+		$(KRYON_CURL_LDLIBS) $(KRYON_MARKDOWN_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) \
+		$(LDLIBS) -o $@
 
 $(LIB): $(OBJS) $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_COMPAT_HEADER) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS) $(KRYON_PHYSICS_DEPS)
 	rm -f $@

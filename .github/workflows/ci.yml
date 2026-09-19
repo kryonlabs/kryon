@@ -52,6 +52,9 @@ jobs:
           make clean CMAKE=/usr/bin/cmake
           make all CMAKE=/usr/bin/cmake
 
+      - name: Laws
+        run: make laws-test CMAKE=/usr/bin/cmake
+
       - name: Test
         run: make test CMAKE=/usr/bin/cmake
 
