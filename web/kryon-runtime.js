@@ -344,7 +344,11 @@ export function createRuntime(options = {}) {
       scrollOffsets: new Map(),
       dragDrop: null,
       menus: new Map(),
-      layoutBounds: new Map()
+      layoutBounds: new Map(),
+      layoutInfo: new Map(),
+      layoutChildren: new Map(),
+      layoutClip: new Set(),
+      layoutDisabled: new Set()
     }
   };
   rt.QueueText = (text) => { rt.input.events.push({ type: "text", text: String(text) }); };
@@ -470,6 +474,10 @@ export function beginFrame(rt) {
     rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
     rt.input.layoutBounds = new Map();
+    rt.input.layoutInfo = new Map();
+    rt.input.layoutChildren = new Map();
+    rt.input.layoutClip = new Set();
+    rt.input.layoutDisabled = new Set();
     rt.input.scrollOffsets = new Map();
   }
   return rt;
@@ -530,10 +538,10 @@ export function widget(rt, name, args, state = null, meta = null) {
   if (name === "Disabled" && String(args || "").trim() === "end")
     return handleWidget(rt, name, args, state, item.meta);
   rt.frame.push(item);
-  recordLayoutBounds(rt, args, item.meta);
+  recordLayoutBounds(rt, name, args, item.meta);
   const result = handleWidget(rt, name, args, state, item.meta);
   if (name === "TableCell")
-    recordLayoutBounds(rt, args, item.meta);
+    recordLayoutBounds(rt, name, args, item.meta, true);
   if ((name === "TextField" || name === "TextArea") && state) {
     const props = parseTextInputProps(rt, args, state, name === "TextArea", item.meta);
     props.disabled = isTruthyProp(args, "disabled") || !!state[propIdent(args, "disabled")] || rt.disabledStack.some(Boolean);
@@ -1242,6 +1250,13 @@ function writeStateValue(state, name, index, value) {
   return true;
 }
 
+function pathLayoutBounds(rt, meta) {
+  const path = String(meta?.path || "");
+  if (!path || !rt.input?.layoutBounds)
+    return null;
+  return rt.input.layoutBounds.get(path) || null;
+}
+
 function parentLayoutBounds(rt, meta) {
   const parent = String(meta?.parentPath || "");
   if (!parent || !rt.input?.layoutBounds)
@@ -1288,7 +1303,24 @@ function directParentScrollOffset(rt, meta) {
   return numberValue(rt.input.scrollOffsets.get(parent), 0);
 }
 
-function resolveLayoutBounds(rt, args, meta) {
+function layoutNumberProp(args, prop, fallback = 0) {
+  if (args && typeof args === "object" && !Array.isArray(args))
+    return numberValue(args[prop], fallback);
+  const m = String(args || "").match(new RegExp("\\." + prop + "\\s*=\\s*([^,}]+)"));
+  return m ? numberValue(m[1], fallback) : fallback;
+}
+
+function parentLayoutInfo(rt, meta) {
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.layoutInfo)
+    return null;
+  return rt.input.layoutInfo.get(parent) || null;
+}
+
+function resolveLayoutBounds(rt, args, meta, options = null) {
+  const existing = pathLayoutBounds(rt, meta);
+  if (existing)
+    return existing;
   const bounds = parseBounds(args);
   const parent = parentLayoutBounds(rt, meta);
   if (!parent)
@@ -1303,18 +1335,60 @@ function resolveLayoutBounds(rt, args, meta) {
     if (x !== bounds.x || y !== bounds.y)
       return { x, y, width: bounds.width, height: bounds.height };
   }
+  const info = options?.skipParentFlow ? null : parentLayoutInfo(rt, meta);
+  if (info && bounds.x === 0 && bounds.y === 0) {
+    const parentPath = String(meta?.parentPath || "");
+    const index = rt.input.layoutChildren.get(parentPath) || 0;
+    rt.input.layoutChildren.set(parentPath, index + 1);
+    const padding = numberValue(info.padding, 0);
+    const gap = numberValue(info.gap, 0);
+    if (info.kind === "Row")
+      return { x: parent.x + padding + index * (bounds.width + gap), y: parent.y + padding - parentScrollOffset, width: bounds.width, height: bounds.height };
+    if (info.kind === "Column")
+      return { x: parent.x + padding, y: parent.y + padding + index * (bounds.height + gap) - parentScrollOffset, width: bounds.width, height: bounds.height };
+  }
   if (hasIdentifierBounds(args) || (bounds.x === 0 && bounds.y === 0))
-    return { x: parent.x, y: parent.y - parentScrollOffset, width: bounds.width, height: bounds.height };
+    return {
+      x: parent.x,
+      y: parent.y - parentScrollOffset,
+      width: bounds.width || parent.width,
+      height: bounds.height || parent.height
+    };
   if (parentScrollOffset)
     return { x: bounds.x, y: bounds.y - parentScrollOffset, width: bounds.width, height: bounds.height };
   return bounds;
 }
 
-function recordLayoutBounds(rt, args, meta) {
+function recordLayoutBounds(rt, name, args, meta, replace = false) {
   const path = String(meta?.path || "");
   if (!path || !rt.input?.layoutBounds)
     return;
-  rt.input.layoutBounds.set(path, resolveLayoutBounds(rt, args, meta));
+  if (!replace && rt.input.layoutBounds.has(path))
+    return;
+  const skipParentFlow = name === "TableCell" || name === "TableView";
+  const bounds = replace ? parseBounds(args) : resolveLayoutBounds(rt, args, meta, { skipParentFlow });
+  rt.input.layoutBounds.set(path, bounds);
+  if ((name === "Row" || name === "Column") && rt.input.layoutInfo)
+    rt.input.layoutInfo.set(path, {
+      kind: name,
+      gap: layoutNumberProp(args, "gap", 0),
+      padding: layoutNumberProp(args, "padding", 0)
+    });
+  if (name === "TableCell" && rt.input.layoutClip)
+    rt.input.layoutClip.add(path);
+}
+
+function parentLayoutDisabled(rt, meta) {
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.layoutDisabled)
+    return false;
+  const parts = parent.split("/");
+  while (parts.length > 0) {
+    if (rt.input.layoutDisabled.has(parts.join("/")))
+      return true;
+    parts.pop();
+  }
+  return false;
 }
 
 function hit(bounds, x, y) {
@@ -1378,6 +1452,7 @@ function parseTextInputProps(rt, args, state, multiline, meta = null) {
     maxCodepoints: propNumber(args, "max_codepoints", 4095),
     secure: isTruthyProp(args, "secure") || !!state?.[propIdent(args, "secure")],
     readOnly: isTruthyProp(args, "read_only") || !!state?.[propIdent(args, "read_only")],
+    disabled: isTruthyProp(args, "disabled") || !!state?.[propIdent(args, "disabled")] || parentLayoutDisabled(rt, meta),
     multiline,
     textSize: propNumber(args, "text_size", 2147483647) || 2147483647,
     pageRows: Math.max(1, Math.floor((bounds.height - 8) / 20)),
@@ -1388,8 +1463,10 @@ function parseTextInputProps(rt, args, state, multiline, meta = null) {
 function handleTextInput(rt, state, args, multiline, meta = null) {
   const props = parseTextInputProps(rt, args, state, multiline, meta);
   if (state && props.commitKey) state[props.commitKey] = false;
-  if (props.readOnly || rt.input.focus !== props.focusID)
+  if (props.readOnly || props.disabled || rt.input.focus !== props.focusID)
     rt.input.preedit.delete(props.focusID);
+  if (props.disabled)
+    return false;
   if (props.focusID) {
     if (!rt.input.focusOrder.includes(props.focusID))
       rt.input.focusOrder.push(props.focusID);
@@ -1405,6 +1482,8 @@ function handleTextInput(rt, state, args, multiline, meta = null) {
 }
 
 function handleButton(rt, args, meta = null) {
+  if (parentLayoutDisabled(rt, meta))
+    return false;
   const bounds = resolveLayoutBounds(rt, args, meta);
   return !!consumeFirstEvent(rt, (ev) => ev.type === "tap" && eventHitsWidget(rt, bounds, meta, ev));
 }
@@ -1507,6 +1586,8 @@ function handleToggle(rt, state, args, meta = null) {
 }
 
 function handleCheckbox(rt, state, args, meta = null) {
+  if (parentLayoutDisabled(rt, meta))
+    return false;
   if (String(args || "").includes("CheckboxProps")) {
     const valueRef = propRef(args, "value");
     const flagsRef = propRef(args, "flags");
@@ -1622,12 +1703,15 @@ function pointerCanReachWidget(rt, bounds, meta) {
   if (!mouse || !hit(bounds, mouse.x, mouse.y))
     return false;
   const parent = String(meta?.parentPath || "");
-  if (!parent || !rt.input?.scrollBounds)
+  if (!parent)
     return true;
   const parts = parent.split("/");
   while (parts.length > 0) {
     const key = parts.join("/");
-    const scroll = rt.input.scrollBounds.get(key);
+    const layout = rt.input?.layoutBounds?.get(key);
+    if (rt.input?.layoutClip?.has(key) && layout && layout.width > 0 && layout.height > 0 && !hit(layout, mouse.x, mouse.y))
+      return false;
+    const scroll = rt.input?.scrollBounds?.get(key);
     if (scroll && !hit(scroll, mouse.x, mouse.y))
       return false;
     parts.pop();
@@ -1714,7 +1798,7 @@ function handleCollapsible(rt, state, args) {
   return false;
 }
 
-function handleTableCell(rt, args) {
+function handleTableCell(rt, args, meta = null) {
   if (!args || typeof args !== "object")
     return false;
   const table = args.table;
@@ -1723,7 +1807,8 @@ function handleTableCell(rt, args) {
     return false;
   const tableBounds = parseBounds(table);
   const rowHeight = numberValue(table.row_height, 24);
-  const headerHeight = numberValue(table.header_height, rowHeight);
+  const explicitHeaderHeight = numberValue(table.header_height, 0);
+  const headerHeight = explicitHeaderHeight > 0 ? explicitHeaderHeight : rowHeight;
   const columnCount = Math.max(1, numberValue(table.column_count, 1));
   const row = Math.max(0, numberValue(args.row, 0));
   const column = Math.max(0, numberValue(args.column, 0));
@@ -1741,6 +1826,11 @@ function handleTableCell(rt, args) {
   out.y = tableBounds.y + headerHeight + row * rowHeight;
   out.width = width;
   out.height = rowHeight;
+  if (table.disabled && rt.input?.layoutDisabled) {
+    const path = String(meta?.path || "");
+    if (path)
+      rt.input.layoutDisabled.add(path);
+  }
   return false;
 }
 
@@ -1932,7 +2022,7 @@ function handleWidget(rt, name, args, state, meta = null) {
   case "Collapsible":
     return handleCollapsible(rt, state, args);
   case "TableCell":
-    return handleTableCell(rt, args);
+    return handleTableCell(rt, args, meta);
   case "Button":
     return handleButton(rt, args, meta);
   case "Card":

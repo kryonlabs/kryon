@@ -66,6 +66,10 @@ export interface Runtime {
     dragDrop: unknown;
     menus: Map<number, unknown>;
     layoutBounds: Map<string, { x: number; y: number; width: number; height: number }>;
+    layoutInfo: Map<string, { kind: string; gap: number; padding: number }>;
+    layoutChildren: Map<string, number>;
+    layoutClip: Set<string>;
+    layoutDisabled: Set<string>;
   };
   QueueText(text: string): void;
   QueueKey(key: number): void;
