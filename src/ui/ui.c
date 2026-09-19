@@ -777,23 +777,44 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                   .pill = 1},
                     frame.thumb_state, 0, 0.0f, 0.0f, 0.0f,
                     StyleKindScrollThumb()).value);
-            float track_opacity = track_style.opacity * 0.32f;
-            float track_border_opacity = track_style.opacity * 0.42f;
+            float track_opacity = 0.0f;
+            float track_border_opacity = 0.0f;
             float thumb_opacity = thumb_style.opacity;
-            if(thumb_opacity < 0.90f)
-                thumb_opacity = 0.90f;
-            ui_draw_material(paint.track_bounds, (Rectangle){0},
-                             Fade(track_style.background, track_opacity),
-                             Fade(track_style.border, track_border_opacity),
-                             Fade(track_style.border, track_border_opacity),
-                             track_style.radius, track_style.border_width,
-                             0.0f, 0.0f, 0, track_style.focus, 0.0f,
-                             1.0f, ui_style_fill(track_style),
-                             track_style.material);
-            ui_draw_material(paint.thumb_bounds, paint.track_bounds,
-                             Fade(thumb_style.background, thumb_opacity),
-                             Fade(thumb_style.border, thumb_opacity),
-                             Fade(thumb_style.border, thumb_opacity),
+            Color thumb_background = thumb_style.background;
+            Color thumb_border = thumb_style.border;
+            Rectangle thumb_bounds = paint.thumb_bounds;
+
+            if(frame.thumb_state == ButtonStateHover ||
+               frame.thumb_state == ButtonStatePressed) {
+                track_opacity = track_style.opacity * 0.12f;
+                track_border_opacity = track_style.opacity * 0.16f;
+            }
+            if(thumb_opacity < 0.92f)
+                thumb_opacity = 0.92f;
+            if(frame.thumb_state == ButtonStateNormal) {
+                thumb_background = Fade(GetThemeButton(), 0.84f);
+                thumb_border = Fade(GetThemeButton(), 0.96f);
+            }
+            if(thumb_bounds.width < (float)Scale(5))
+                thumb_bounds.width = (float)Scale(5);
+            if(thumb_bounds.x + thumb_bounds.width > paint.track_bounds.x +
+               paint.track_bounds.width)
+                thumb_bounds.x = paint.track_bounds.x + paint.track_bounds.width -
+                                 thumb_bounds.width;
+            if(track_opacity > 0.0f || track_border_opacity > 0.0f) {
+                ui_draw_material(paint.track_bounds, (Rectangle){0},
+                                 Fade(track_style.background, track_opacity),
+                                 Fade(track_style.border, track_border_opacity),
+                                 Fade(track_style.border, track_border_opacity),
+                                 track_style.radius, track_style.border_width,
+                                 0.0f, 0.0f, 0, track_style.focus, 0.0f,
+                                 1.0f, ui_style_fill(track_style),
+                                 track_style.material);
+            }
+            ui_draw_material(thumb_bounds, paint.track_bounds,
+                             Fade(thumb_background, thumb_opacity),
+                             Fade(thumb_border, thumb_opacity),
+                             Fade(thumb_border, thumb_opacity),
                              thumb_style.radius, thumb_style.border_width,
                              frame.thumb_state == ButtonStateHover ? 1.0f : 0.0f,
                              frame.thumb_state == ButtonStatePressed ? 1.0f : 0.0f,
