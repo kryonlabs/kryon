@@ -631,6 +631,14 @@ ui_disabled_resume(DisabledScopeState scope)
 Rectangle
 ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
 {
+    static int content_drag_active = 0;
+    static int content_dragging = 0;
+    static int content_drag_start_y = 0;
+    static int content_drag_start_scroll = 0;
+#if ANDROID_BUILD
+    static int android_frame_drag_active = 0;
+    static int android_frame_drag_start_scroll = 0;
+#endif
     ScrollMetrics metrics = ui_scope_scroll_metrics();
     Vector2 pointer = ui_primary_pointer_world();
     ScrollScopeFrame frame = ScrollScopeFrameFor((ScrollScopeInput){
@@ -651,7 +659,82 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
         .grab = g_scroll_drag_grab,
     }, metrics);
     if (scroll_offset) {
+        int maximum = ScrollMax(content_height, (int)bounds.height);
+        int inside = CheckCollisionPointRec(pointer, bounds);
+        int captured = InputCapturesClick(pointer);
+        int on_scrollbar = frame.scrollbar &&
+            CheckCollisionPointRec(pointer, frame.paint.track_bounds);
+        int blocked_by_other_drag =
+            g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
+            g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER;
+        int content_delta_y = (int)pointer.y - content_drag_start_y;
+        ScrollContentDragDecision content_drag;
+
+#if ANDROID_BUILD
+        {
+            Vector2 drag_start_screen;
+            Vector2 drag_current_screen;
+            if(kry_android_frame_drag(&drag_start_screen, &drag_current_screen)) {
+                Vector2 drag_start_world = GetScreenToWorld2D(drag_start_screen,
+                                                              g_ui_camera);
+                Vector2 drag_current_world = GetScreenToWorld2D(drag_current_screen,
+                                                                g_ui_camera);
+                int drag_delta_y = (int)drag_current_world.y -
+                                   (int)drag_start_world.y;
+                int drag_starts_in_scroll =
+                    CheckCollisionPointRec(drag_start_world, bounds) &&
+                    !InputCapturesClick(drag_start_world) &&
+                    !(frame.scrollbar &&
+                      CheckCollisionPointRec(drag_start_world,
+                                             frame.paint.track_bounds));
+                if(maximum > 0 && drag_starts_in_scroll &&
+                   (drag_delta_y > metrics.drag_threshold ||
+                    drag_delta_y < -metrics.drag_threshold)) {
+                    if(!android_frame_drag_active) {
+                        android_frame_drag_active = 1;
+                        android_frame_drag_start_scroll = frame.offset;
+                    }
+                    frame.offset = ScrollDragDeltaOffsetFor(
+                        android_frame_drag_start_scroll, drag_delta_y, maximum);
+                    kry_android_consume_frame_drag();
+                    if(!ui_primary_pointer_down())
+                        android_frame_drag_active = 0;
+                }
+            } else if(!ui_primary_pointer_down()) {
+                android_frame_drag_active = 0;
+            }
+        }
+#endif
+
+        content_drag = ScrollContentDragFor(
+            maximum, ui_primary_pointer_pressed() != 0,
+            ui_primary_pointer_down() != 0, inside != 0, captured != 0,
+            on_scrollbar != 0, g_ui_pointer_owner == POINTER_OWNER_NONE,
+            g_ui_pointer_owner == POINTER_OWNER_SCROLL,
+            blocked_by_other_drag != 0, content_drag_active != 0,
+            content_dragging != 0, frame.offset, content_drag_start_scroll,
+            content_delta_y, metrics.drag_threshold);
+        if(content_drag.gesture_pending)
+            g_ui_scroll_gesture_pending = 1;
+        if(content_drag.start_drag) {
+            content_drag_start_y = (int)pointer.y;
+            content_drag_start_scroll = frame.offset;
+        }
+        content_drag_active = content_drag.active;
+        content_dragging = content_drag.dragging;
+        if(content_drag.claim_scroll_owner)
+            g_ui_pointer_owner = POINTER_OWNER_SCROLL;
+        if(content_drag.dragging)
+            frame.offset = content_drag.scroll_offset;
         *scroll_offset = frame.offset;
+        frame.content.y = frame.clip.y - (float)frame.offset;
+        if(frame.scrollbar) {
+            int scrollbar_x = (int)(bounds.x + bounds.width) -
+                metrics.scrollbar_width;
+            frame.paint = ScrollBarPaintFor(scrollbar_x, (int)bounds.y,
+                                            (int)bounds.height, content_height,
+                                            frame.offset, maximum, metrics);
+        }
     }
     if (frame.start_drag) {
         g_scroll_drag_offset = scroll_offset;
