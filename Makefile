@@ -613,6 +613,7 @@ widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIB
 .PHONY: go-style-builtins
 .PHONY: go-style-builtins-check
 .PHONY: style-pack-source-test
+.PHONY: style-release-table-repro-test
 .PHONY: app-background-style-test
 .PHONY: style-widget-policy-test
 .PHONY: text-policy-test
@@ -671,6 +672,10 @@ go-style-builtins-check: scripts/generate-go-style-builtins.py go/kryon/style_bu
 style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_pack_source.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/ui/style_builtin_packs.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
 	$(BUILD_DIR)/style-pack-source-test
+
+style-release-table-repro-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/ui/style_builtin_packs.c $(EMBED_ASSETS_C) src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_repro_test.c src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-repro-test
+	$(BUILD_DIR)/style-release-table-repro-test
 
 app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_background_style_test.c \
@@ -979,6 +984,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(MAKE) style-builtins-test
 	$(MAKE) go-style-builtins-check
 	$(MAKE) style-pack-source-test
+	$(MAKE) style-release-table-repro-test
 	$(MAKE) app-background-style-test
 	$(MAKE) style-widget-policy-test
 	$(MAKE) interaction-policy-matrix-test

@@ -54,6 +54,12 @@
   backends document stable resolved colors/style data and explicit no-op,
   ignored, unsupported, or degraded effects; it is wired into `preflight`,
   `test`, and backend capability laws.
+- Verify release style tables can be consumed by renderers without runtime KSS
+  parsing. Status: `style-release-table-repro-test` builds typed tables for the
+  bundled packs and an import/theme/variant overlay fixture, compares them with
+  the source-loaded path, and checks repeated active resolution does not invoke
+  the parser. The package-time table emitter is still tracked in
+  `06-tooling-and-workflow.md`.
 - Audit browser/terminal defaults for style leakage and remove any product
   decoration not represented by resolved style data.
 

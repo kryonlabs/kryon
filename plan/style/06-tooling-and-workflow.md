@@ -88,9 +88,14 @@
   Status: typed `StyleRule` tables registered with `RegisterStylePack` now have
   C and Go hot-path checks. The C style-pack source test records parser calls
   for the one-time source parse, resets the counter, then activates and resolves
-  the typed pack without another parse. The Go test does the same for repeated
-  active resolution and a typed-only theme switch. Generation/reproducibility
-  for built-in packs and import overlays is still open.
+  the typed pack without another parse. The release-table repro test compiles
+  built-in KSS assets and an import/theme/variant overlay fixture into typed
+  tables inside the test process, compares source-loaded/dynamic resolution
+  against typed-table resolution, verifies repeated parse output is
+  reproducible, and asserts active resolution from those typed tables performs
+  zero parser invocations. The Go test covers repeated active resolution and a
+  typed-only theme switch. Shipping/package-time C table emission is still open;
+  generated release tables should be build artifacts, not checked-in source.
 - Expand comparison captures to missing widget families/states, particularly
   popup/modal, navigation, table/menu/list/tree, and text/layout cases. Track
   uncovered cases through the testing matrix rather than rebuilding existing boards.

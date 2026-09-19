@@ -48,7 +48,7 @@ that basis. All KSS language and policy changes remain owned by `.kry`.
 ## Verified implementation slice
 
 After the environment/Go registry changes, `make kss-matched-test`,
-`make style-pack-source-test`, `make go-runtime-test`,
+`make style-pack-source-test`, `make style-release-table-repro-test`, `make go-runtime-test`,
 `make generated-runtime-parity-test`, and the web KSS strict suite pass.
 The shared environment fixture executes on C, Go, and JavaScript. The generated
 parity report retains its original exclusions; this slice does not close them.

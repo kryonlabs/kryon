@@ -249,9 +249,11 @@ host-service exceptions in P0's ledger before declaring all KSS migrated.
 - [ ] Verify live KSS reload in an actual host, including invalid-source
   recovery, theme overlays, and pack options. Record which downstream hosts
   support reload and test them during P6.
-- [ ] Compile imports/overlays into typed release style tables; compare dynamic
-  and compiled results for supported environments/variants. Prove parsing and
-  allocation are absent from render hot paths and outputs are reproducible.
+- [ ] Add the package-time typed-table emitter for authored KSS/import overlays.
+  `make style-release-table-repro-test` already checks dynamic-vs-typed
+  reproducibility for built-ins plus an import/theme/variant overlay fixture and
+  proves no parser invocation during active typed-table resolution; the emitted
+  release artifacts should remain build outputs rather than tracked source.
 
 Exit: tools use canonical parsing/semantics, authors can inspect the painted
 result and its origin, and release styles match dynamic loading.
@@ -315,7 +317,7 @@ sh tests/public_api_names_test.sh
 sh tests/canonical_surface_test.sh
 make kss-parser-test kss-matched-test kss-formatter-test
 make style-policy-test style-sheet-policy-test style-pack-registry-test
-make style-pack-source-test style-assets-test style-builtins-test style-picker-test
+make style-pack-source-test style-release-table-repro-test style-assets-test style-builtins-test style-picker-test
 make style-widget-policy-test app-background-style-test
 make web-text-input-browser-test
 make build/linux-x86_64/tests/ui_tk_test
