@@ -51,11 +51,24 @@ func kssNameText(name KssName) string {
 	return string(name.Bytes[:name.Length])
 }
 
+func kssSourceFileName(file KssSourceFile) string {
+	if file.Length < 0 || int(file.Length) > len(file.Name) {
+		return ""
+	}
+	return string(file.Name[:file.Length])
+}
+
 func kssRunParser(source string, colors []StyleColorToken, variant string) (KssParser, []StyleRule, bool) {
-	return kssRunParserEnvironment(source, colors, variant, "")
+	parser, rules, _, _, ok := kssRunParserTraceEnvironment(source, colors, variant, "")
+	return parser, rules, ok
 }
 
 func kssRunParserEnvironment(source string, colors []StyleColorToken, variant, theme string) (KssParser, []StyleRule, bool) {
+	parser, rules, _, _, ok := kssRunParserTraceEnvironment(source, colors, variant, theme)
+	return parser, rules, ok
+}
+
+func kssRunParserTraceEnvironment(source string, colors []StyleColorToken, variant, theme string) (KssParser, []StyleRule, []KssOrigin, []KssRuleSpan, bool) {
 	styleParseInvocationCount++
 	host, ok := active().(*runtime)
 	if !ok {
@@ -67,9 +80,13 @@ func kssRunParserEnvironment(source string, colors []StyleColorToken, variant, t
 		parser = KssParser_KssAddColorOverride(parser, color.Name, color.Color)
 	}
 	var rules []StyleRule
+	var origins []KssOrigin
+	var spans []KssRuleSpan
 	for parser.Status == KssStatusContinue || parser.Status == KssStatusRule {
 		if parser.Status == KssStatusRule {
 			rules = append(rules, parser.Rule)
+			origins = append(origins, parser.Origin)
+			spans = append(spans, parser.RuleSpan)
 			parser.Status = KssStatusContinue
 			continue
 		}
@@ -83,7 +100,7 @@ func kssRunParserEnvironment(source string, colors []StyleColorToken, variant, t
 			}
 		}
 	}
-	return parser, rules, parser.Status == KssStatusDone
+	return parser, rules, origins, spans, parser.Status == KssStatusDone
 }
 
 // ParseStyleSheet parses KSS source through the shared runtime module.
@@ -96,6 +113,60 @@ func ParseStyleSheet(source string) (string, []StyleRule, error) {
 type StyleVariantInfo struct {
 	Name  string
 	Label string
+}
+
+// StyleRuleSource records where a generated StyleRule came from.
+type StyleRuleSource struct {
+	Origin KssOrigin
+	Span   KssRuleSpan
+	File   string
+}
+
+// ParsedStyleSheet keeps parsed rules together with source/provenance facts for inspectors.
+type ParsedStyleSheet struct {
+	ID      string
+	Rules   []StyleRule
+	Sources []StyleRuleSource
+	Files   []string
+}
+
+// ParseStyleSheetTrace parses KSS and retains source-span provenance for each rule.
+func ParseStyleSheetTrace(source string) (*ParsedStyleSheet, error) {
+	return parseStyleTraceEnvironment(source, nil, "", "")
+}
+
+// ParseStyleSheetVariantTrace parses KSS with a declared variant active and keeps rule provenance.
+func ParseStyleSheetVariantTrace(source, variant string) (*ParsedStyleSheet, error) {
+	return parseStyleTraceEnvironment(source, nil, variant, "")
+}
+
+func parseStyleTraceEnvironment(source string, colors []StyleColorToken, variant, theme string) (*ParsedStyleSheet, error) {
+	parser, rules, origins, spans, ok := kssRunParserTraceEnvironment(source, colors, variant, theme)
+	if !ok {
+		text := strings.TrimSpace(string(parser.Diagnostic[:parser.DiagnosticLength]))
+		if text == "" {
+			text = "style sheet did not complete"
+		}
+		return nil, fmt.Errorf("kss: %s", text)
+	}
+	fileCount := int(parser.FileCount)
+	if fileCount > len(parser.Files) {
+		fileCount = len(parser.Files)
+	}
+	files := make([]string, fileCount)
+	for i := 0; i < fileCount; i++ {
+		files[i] = kssSourceFileName(parser.Files[i])
+	}
+	sources := make([]StyleRuleSource, len(rules))
+	for i := range rules {
+		file := ""
+		fileIndex := int(spans[i].File)
+		if fileIndex >= 0 && fileIndex < len(files) {
+			file = files[fileIndex]
+		}
+		sources[i] = StyleRuleSource{Origin: origins[i], Span: spans[i], File: file}
+	}
+	return &ParsedStyleSheet{ID: kssNameText(parser.Pack), Rules: rules, Sources: sources, Files: files}, nil
 }
 
 // ParseStyleVariants returns every variant a sheet declares, with the labels

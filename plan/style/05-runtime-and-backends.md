@@ -29,8 +29,10 @@
   part of the conformance-matrix work below.
 - Carry sufficient resolved field-presence/provenance through frame operations
   to distinguish missing values from explicit zero and explain the painted result.
-  Go frame operations now retain field-presence masks; source-span/winner
-  provenance still needs inspector-facing output before this row can close.
+  Status: Go frame operations now retain field-presence masks, and the Go style
+  inspector path exposes parser file names, origins, selector/body spans, and
+  per-field winner/loser/missing-field decisions through `ParseStyleSheetTrace`
+  plus `TraceStyleField`.
   Note: the structured JS emission notes are historical now that the old JS/web
   path is paused. Treat web pack parsing follow-ups as future web-roadmap input,
   not current style-backend completion gates.

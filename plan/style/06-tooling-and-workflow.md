@@ -13,7 +13,11 @@
   `StyleRuleFieldDecision` and `StyleCascadeFieldPriority`, so inspector tools
   can build per-field winner/loser lists from the shared cascade logic instead
   of duplicating priority rules in host code. C and Go tests cover matched,
-  missing-field, winner, and loser decisions.
+  missing-field, winner, and loser decisions. Go now also exposes
+  source-backed inspector traces: `ParseStyleSheetTrace` retains parser file
+  names, origins, and selector/body spans, while `TraceStyleField` returns
+  per-field candidates with source, layer, specificity, order,
+  winner/loser, missing-field, and current-priority facts.
   Historical web status: web sheets and style traces carry several core
   fields, but old JS/web inspector work is paused with the web target and is
   not an active release gate.

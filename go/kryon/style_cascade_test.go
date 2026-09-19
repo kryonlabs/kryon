@@ -72,3 +72,64 @@ func TestStyleFieldDecisionTrace(t *testing.T) {
 		t.Fatalf("unmatched decision = %+v", decision)
 	}
 }
+
+func TestParsedStyleFieldTraceCarriesSourceSpans(t *testing.T) {
+	ClearStyleModules()
+	defer ClearStyleModules()
+	if !RegisterStyleModule("base", "Button { background: #111111; }\n") {
+		t.Fatal("register base module")
+	}
+	source := `@pack inspect;
+@import <base>;
+@layer components;
+Button { background: #222222; }
+Button.primary { background: #333333; }
+Button { foreground: #eeeeee; }
+@layer reset;
+Button { background: #444444; }
+`
+	parsed, err := ParseStyleSheetTrace(source)
+	if err != nil {
+		t.Fatalf("parse trace: %v", err)
+	}
+	if parsed.ID != "inspect" {
+		t.Fatalf("pack id = %q", parsed.ID)
+	}
+	if len(parsed.Rules) != 5 || len(parsed.Sources) != len(parsed.Rules) {
+		t.Fatalf("rules/sources = %d/%d", len(parsed.Rules), len(parsed.Sources))
+	}
+	if len(parsed.Files) != 2 || parsed.Files[1] != "base" {
+		t.Fatalf("files = %#v", parsed.Files)
+	}
+	if parsed.Sources[0].File != "base" || parsed.Sources[0].Origin.File != 1 || parsed.Sources[0].Origin.Line != 1 {
+		t.Fatalf("imported source = %+v", parsed.Sources[0])
+	}
+	if parsed.Sources[2].Origin.File != 0 || parsed.Sources[2].Origin.Line != 5 || parsed.Sources[2].Span.SelectorLength <= 0 || parsed.Sources[2].Span.BodyLength <= 0 {
+		t.Fatalf("main source span = %+v", parsed.Sources[2])
+	}
+
+	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
+	facts.ClassName = StyleClassID("primary")
+	trace := TraceParsedStyleField(parsed, StyleData{}, facts, int32(ButtonStateNormal), uint32(StyleBackground))
+	if trace.Result.Background != 0x333333ff {
+		t.Fatalf("resolved background = %#x", trace.Result.Background)
+	}
+	if len(trace.Candidates) != len(parsed.Rules) {
+		t.Fatalf("candidate count = %d", len(trace.Candidates))
+	}
+	if !trace.Candidates[0].Decision.Matched || !trace.Candidates[0].Decision.FieldPresent || !trace.Candidates[0].Decision.Wins || trace.Candidates[0].Source.File != "base" {
+		t.Fatalf("imported candidate = %+v", trace.Candidates[0])
+	}
+	if !trace.Candidates[2].Decision.Wins || trace.Candidates[2].Decision.Specificity <= trace.Candidates[1].Decision.Specificity {
+		t.Fatalf("class candidate did not win by specificity: %+v after %+v", trace.Candidates[2].Decision, trace.Candidates[1].Decision)
+	}
+	if !trace.Candidates[3].Decision.Matched || trace.Candidates[3].Decision.FieldPresent || trace.Candidates[3].Decision.Wins {
+		t.Fatalf("missing-field candidate = %+v", trace.Candidates[3].Decision)
+	}
+	if !trace.Candidates[4].Decision.Matched || !trace.Candidates[4].Decision.FieldPresent || trace.Candidates[4].Decision.Wins || !trace.Candidates[4].Decision.CurrentPresent {
+		t.Fatalf("losing reset-layer candidate = %+v", trace.Candidates[4].Decision)
+	}
+	if trace.Candidates[4].Decision.CurrentLayer != trace.Candidates[2].Decision.Layer || trace.Candidates[4].Source.Origin.Line != 8 {
+		t.Fatalf("loser source/current priority = %+v source %+v", trace.Candidates[4].Decision, trace.Candidates[4].Source)
+	}
+}
