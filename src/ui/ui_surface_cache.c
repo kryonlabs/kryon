@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(KRYON_BACKEND_RAYLIB)
+/* Android has the texture backend without the desktop SDL backend define. */
+#if defined(KRYON_BACKEND_RAYLIB) || defined(PLATFORM_ANDROID)
 /* Cache rasterized material layers, not widget state or composed backdrops.
  * Transparent texels retain straight alpha, so clipping, blending, placement,
  * and overlays still run in the caller's current rendering context. */
@@ -71,7 +72,7 @@ oldest_surface(void)
 void
 ui_surface_cache_shutdown(void)
 {
-#if defined(KRYON_BACKEND_RAYLIB)
+#if defined(KRYON_BACKEND_RAYLIB) || defined(PLATFORM_ANDROID)
     for(int i = 0; i < SURFACE_CACHE_COUNT; i++)
         evict_surface(i);
     surface_cache_clock = 0;
@@ -81,7 +82,7 @@ ui_surface_cache_shutdown(void)
 int
 ui_draw_surface_cached(SurfaceDrawing command)
 {
-#if defined(KRYON_BACKEND_RAYLIB)
+#if defined(KRYON_BACKEND_RAYLIB) || defined(PLATFORM_ANDROID)
     if(!IsWindowReady() || !command.visible || !isfinite(command.area.x) ||
        !isfinite(command.area.y) || !isfinite(command.area.width) ||
        !isfinite(command.area.height))
