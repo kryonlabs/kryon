@@ -214,6 +214,16 @@ Button frames and materials; they must not add independent dropdown theme paths.
 
 ## Keyboard and release policy
 
+Read-only text tokenization and line assembly belong to `runtime/paragraph.kry`.
+`ParagraphTokenNext` yields borrowed UTF-8 byte ranges; `ParagraphLineAdvance`
+owns hard breaks, overflow, empty lines, and the completed line ranges. Native
+`ui_text_layout.c` and Go `text_layout.go` retain strings/arrays and supply font
+measurements, including the shaped joined candidate. They do not contain a
+second whitespace grammar or wrapping algorithm. Inline-icon measurement and
+painting remain native host services; this does not add Go texture rendering.
+Editable TextArea visual-row traversal and cross-line selection remain separate
+work in the text ownership audit.
+
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.
 `runtime/text_input.kry` also owns navigation and deletion intent, word-boundary

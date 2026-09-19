@@ -112,6 +112,18 @@ private unless an unrelated downstream application demonstrably needs them.
 
 ### Widget lifecycle consolidation
 
+Read-only text layout uses a streaming protocol from `runtime/paragraph.kry`.
+The shared tokenizer returns source byte ranges without allocating or copying
+strings. The line driver receives the host's measured standalone element and
+joined candidate, then emits completed line ranges/widths and the next line
+state. Content presence is explicit, so zero-width glyphs still participate in
+wrapping and an oversized first word does not create an empty leading line.
+Hosts retain output buffers, font shaping/measurement, and paint operations.
+Native Text/paragraph drawing and Go Text, Paragraph, and ParagraphText consume
+this protocol. `make paragraph-policy-test` executes C/C++ decisions and the
+native adapter; Go tests run the same JSON line fixtures through its adapter.
+These fixtures compare layout with identical measurements, not font rasterizers.
+
 #### Canonical `.kry` widget declarations — migration target
 
 Declared records have portable typed initializers, for example

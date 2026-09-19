@@ -405,11 +405,10 @@ def feature_matrix_parser_names() -> tuple[int, list[str]]:
     )
     if not count_match:
         raise AssertionError("missing feature matrix parser widget count")
-    list_match = re.search(
-        r"operations; and `k2b` lowers a subset of it:\n\n`(?P<body>.*?)`",
-        text,
-        flags=re.S,
-    )
+    # Read the inventory itself, independently of the backend-status prose.
+    # The JS pause changed that prose without changing the widget inventory.
+    section = text[count_match.end():].split("\n## ", 1)[0]
+    list_match = re.search(r"\n\n`(?P<body>[A-Za-z0-9_\s]+)`", section)
     if not list_match:
         raise AssertionError("missing feature matrix parser widget list")
     names = list_match.group("body").split()

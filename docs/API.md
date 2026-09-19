@@ -785,6 +785,22 @@ Text message: {
 
 Layout text with embedded icons and line breaks.
 
+Wrapped read-only text collapses ASCII spaces, tabs, vertical tabs, and form
+feeds between words. LF, CRLF, and CR produce explicit line breaks; consecutive
+and trailing breaks preserve empty lines. Non-breaking spaces remain within
+their word, and UTF-8 words are never split into individual bytes. An oversized
+word occupies its current line without inserting a leading blank line. Text
+bounds still control clipping and alignment, including overflowing words.
+
+C and Go use the same `.kry` tokenization and line decisions, with each host
+providing font measurements. Go `Paragraph` advances the caller's Y position by
+the complete laid-out height; `ParagraphText` preserves its style gap between
+lines, with no trailing gap. Native `ParseTextLayout` recognizes `%i` only when
+an icon texture or icon type is supplied; otherwise it remains literal text.
+Native empty/whitespace-only strings contain one empty logical line after
+reflow; a null input remains an absent layout. Inline icon painting in Go and
+editable TextArea wrapping are outside this shared read-only layout contract.
+
 #### `TextLayout`
 
 ```c

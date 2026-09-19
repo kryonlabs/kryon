@@ -7,6 +7,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -19,66 +20,49 @@ ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_
 {
     TextLayout layout = {0};
 
-    if(input == NULL || input[0] == '\0')
+    if(input == NULL)
         return layout;
-
+    size_t input_length = strlen(input);
+    if(input_length >= INT_MAX)
+        return layout;
+    String source = StringView(input, input_length);
+    bool icons = icon.id != 0 || icon_type != ICON_NONE;
     int element_count = 0;
-    const char *p = input;
-    while(*p) {
-        if(strncmp(p, "%i", 2) == 0) {
-            element_count++;
-            p += 2;
-        } else if(*p == '\n') {
-            element_count++;
-            p++;
-        } else {
-            const char *word_start = p;
-            while(*p && *p != ' ' && *p != '\n' && strncmp(p, "%i", 2) != 0)
-                p++;
-            if(p > word_start)
-                element_count++;
-            if(*p == ' ')
-                p++;
-        }
+    ParagraphToken token = ParagraphTokenNext(source, 0, icons);
+    while(token.valid) {
+        element_count++;
+        token = ParagraphTokenNext(source, token.next, icons);
     }
 
-    layout.elements = (TextElement *)calloc((size_t)element_count, sizeof(TextElement));
+    /* Even empty text has one logical line after reflow. */
+    layout.elements = calloc((size_t)element_count + 1, sizeof(TextElement));
     if(layout.elements == NULL)
         return layout;
-    layout.element_count = element_count;
 
-    int element_idx = 0;
-    p = input;
-    while(*p && element_idx < element_count) {
-        if(strncmp(p, "%i", 2) == 0) {
-            layout.elements[element_idx].type = TEXT_ELEMENT_ICON;
-            layout.elements[element_idx].icon = icon;
-            layout.elements[element_idx].icon_type = icon_type;
-            layout.elements[element_idx].icon_size = icon_size;
-            element_idx++;
-            p += 2;
-        } else if(*p == '\n') {
-            layout.elements[element_idx].type = TEXT_ELEMENT_LINE_BREAK;
-            element_idx++;
-            p++;
+    token = ParagraphTokenNext(source, 0, icons);
+    while(token.valid) {
+        TextElement *element = &layout.elements[layout.element_count];
+        if(token.icon) {
+            element->type = TEXT_ELEMENT_ICON;
+            element->icon = icon;
+            element->icon_type = icon_type;
+            element->icon_size = icon_size;
+        } else if(token.line_break) {
+            element->type = TEXT_ELEMENT_LINE_BREAK;
         } else {
-            const char *word_start = p;
-            while(*p && *p != ' ' && *p != '\n' && strncmp(p, "%i", 2) != 0)
-                p++;
-            if(p > word_start) {
-                size_t len = (size_t)(p - word_start);
-                char *text_copy = (char *)malloc(len + 1);
-                if(text_copy != NULL) {
-                    memcpy(text_copy, word_start, len);
-                    text_copy[len] = '\0';
-                    layout.elements[element_idx].type = TEXT_ELEMENT_TEXT;
-                    layout.elements[element_idx].text = text_copy;
-                    element_idx++;
-                }
+            size_t length = (size_t)(token.end - token.start);
+            char *text = malloc(length + 1);
+            if(text == NULL) {
+                FreeTextLayout(&layout);
+                return layout;
             }
-            if(*p == ' ')
-                p++;
+            memcpy(text, input + token.start, length);
+            text[length] = '\0';
+            element->type = TEXT_ELEMENT_TEXT;
+            element->text = text;
         }
+        layout.element_count++;
+        token = ParagraphTokenNext(source, token.next, icons);
     }
 
     return layout;
@@ -87,12 +71,19 @@ ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_
 void
 ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_height)
 {
-    if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
+    if(layout == NULL || layout->elements == NULL)
         return;
 
-    int *new_line_breaks = (int *)calloc((size_t)layout->element_count + 1, sizeof(int));
-    int *new_line_widths = (int *)calloc((size_t)layout->element_count + 1, sizeof(int));
-    if(new_line_breaks == NULL || new_line_widths == NULL) {
+    size_t text_capacity = (size_t)layout->element_count + 1;
+    for(int i = 0; i < layout->element_count; i++) {
+        if(layout->elements[i].type == TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
+            text_capacity += strlen(layout->elements[i].text);
+    }
+    char *candidate = malloc(text_capacity);
+    int *new_line_breaks = calloc((size_t)layout->element_count + 1, sizeof(int));
+    int *new_line_widths = calloc((size_t)layout->element_count + 1, sizeof(int));
+    if(candidate == NULL || new_line_breaks == NULL || new_line_widths == NULL) {
+        free(candidate);
         free(new_line_breaks);
         free(new_line_widths);
         return;
@@ -102,11 +93,6 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
     free(layout->line_widths);
     layout->line_breaks = new_line_breaks;
     layout->line_widths = new_line_widths;
-
-    /* Initialize all line_breaks to -1 (invalid) except line_breaks[0] */
-    for(int i = 1; i < layout->element_count + 1; i++) {
-        layout->line_breaks[i] = -1;
-    }
 
     for(int i = 0; i < layout->element_count; i++) {
         if(layout->elements[i].type == TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
@@ -118,42 +104,52 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
         line_height, ParagraphDefaultLineGap((float)Scale(1000) / 1000.0f),
         (float)Scale(1000) / 1000.0f);
     layout->line_count = 0;
-    layout->line_breaks[0] = 0;
-    int current_line_width = 0;
+    ParagraphLine line = {0};
+    size_t candidate_length = 0;
+    bool has_icon = false;
 
-    for(int i = 0; i < layout->element_count; i++) {
-        if(layout->elements[i].type == TEXT_ELEMENT_LINE_BREAK) {
-            layout->line_count++;
-            layout->line_breaks[layout->line_count] = i;
-            layout->line_widths[layout->line_count - 1] = current_line_width;
-            current_line_width = 0;
-            continue;
-        }
-
+    for(int i = 0; i <= layout->element_count; i++) {
+        bool end = i == layout->element_count;
+        TextElement *element = end ? NULL : &layout->elements[i];
+        bool line_break = !end && element->type == TEXT_ELEMENT_LINE_BREAK;
+        bool icon_element = !end && element->type == TEXT_ELEMENT_ICON;
+        const char *text = !end && element->type == TEXT_ELEMENT_TEXT &&
+            element->text != NULL ? element->text : "";
+        size_t length = strlen(text);
         int element_width = 0;
-        int spacing = 0;
-        if(layout->elements[i].type == TEXT_ELEMENT_TEXT) {
-            element_width = layout->elements[i].text_width;
-            spacing = (current_line_width > 0) ? policy.space_width : 0;
-        } else {
-            element_width = layout->elements[i].icon_size;
-            spacing = (current_line_width > 0) ? policy.icon_spacing : 0;
+        float candidate_width = 0;
+        if(!end && !line_break) {
+            element_width = icon_element ? element->icon_size : element->text_width;
+            if(!icon_element && !has_icon) {
+                String separator = ParagraphTextSeparator(line);
+                if(separator.length > 0)
+                    memcpy(candidate + candidate_length, separator.data, separator.length);
+                candidate_length += separator.length;
+                memcpy(candidate + candidate_length, text, length + 1);
+                candidate_length += length;
+                candidate_width = (float)TextWidth(candidate, font_size);
+            } else {
+                candidate_width = line.width + (float)(element_width +
+                    ParagraphElementSpacing(line.has_content, icon_element, policy));
+            }
         }
-
-        ParagraphLineStep step = ParagraphLineStepFor(
-            current_line_width, spacing, element_width, max_width);
-        if(step.wrap) {
+        ParagraphLineDecision decision = ParagraphLineAdvance(line, i,
+            line_break, end, (float)element_width, candidate_width, (float)max_width);
+        if(decision.emit) {
+            layout->line_breaks[layout->line_count] = decision.line.start;
+            layout->line_widths[layout->line_count] = (int)decision.line.width;
             layout->line_count++;
-            layout->line_breaks[layout->line_count] = i;
-            layout->line_widths[layout->line_count - 1] = current_line_width;
-            current_line_width = step.width;
-        } else {
-            current_line_width = step.width;
+            candidate_length = 0;
+            has_icon = false;
+            if(decision.next.has_content && !icon_element) {
+                memcpy(candidate, text, length + 1);
+                candidate_length = length;
+            }
         }
+        line = decision.next;
+        has_icon = has_icon || icon_element;
     }
-
-    layout->line_widths[layout->line_count] = current_line_width;
-    layout->line_count++;
+    free(candidate);
     {
         int drawn_line_height = TextLineHeight(font_size);
         layout->total_height = ParagraphLayoutTotalHeight(
@@ -229,14 +225,12 @@ ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
     int current_x = x;
 
     for(int i = start; i < end; i++) {
-        int spacing = 0;
-
         if(layout->elements[i].type == TEXT_ELEMENT_LINE_BREAK)
             continue;
 
-        if(current_x > x)
-            spacing = (layout->elements[i].type == TEXT_ELEMENT_TEXT) ? space_width : icon_spacing;
-        current_x += spacing;
+        ParagraphLayoutPolicy policy = {space_width, icon_spacing, 0};
+        current_x += ParagraphElementSpacing(i > start,
+            layout->elements[i].type == TEXT_ELEMENT_ICON, policy);
 
         if(layout->elements[i].type == TEXT_ELEMENT_TEXT) {
             if(layout->elements[i].text != NULL && layout->elements[i].text[0] != '\0') {
@@ -270,7 +264,7 @@ void
 DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
                       Color color, int width, int align)
 {
-    if(layout == NULL || layout->elements == NULL || layout->element_count == 0)
+    if(layout == NULL || layout->elements == NULL)
         return;
 
     int current_y = *y;

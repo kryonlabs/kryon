@@ -1,0 +1,18 @@
+[
+  {"name":"empty", "text":"", "width":10, "lines":[""]},
+  {"name":"whitespace", "text":" \t\u000b\f ", "width":10, "lines":[""]},
+  {"name":"collapse spaces", "text":"  one\t two   three ", "width":30, "lines":["one two three"]},
+  {"name":"exact fit", "text":"one two", "width":7, "lines":["one two"]},
+  {"name":"overflow", "text":"one two", "width":6, "lines":["one","two"]},
+  {"name":"oversized first word", "text":"oversized x", "width":2, "lines":["oversized","x"]},
+  {"name":"fractional width", "text":"a b", "width":2.5, "lines":["a","b"]},
+  {"name":"no width limit", "text":"one two\nthree", "width":0, "lines":["one two","three"]},
+  {"name":"newlines", "text":"\none\n\ntwo\n", "width":10, "lines":["","one","","two",""]},
+  {"name":"CRLF and CR", "text":"one\r\ntwo\rthree", "width":10, "lines":["one","two","three"]},
+  {"name":"empty line with spaces", "text":"one\n \t\n two", "width":10, "lines":["one","","two"]},
+  {"name":"unicode", "text":"日本語 café 🙂", "width":4, "lines":["日本語","café","🙂"]},
+  {"name":"nonbreaking space", "text":"a b c", "width":2, "lines":["a b","c"]},
+  {"name":"literal icon marker", "text":"%i one", "width":6, "lines":["%i one"]},
+  {"name":"shaped candidate", "text":"A V x", "width":3, "lines":["A V","x"]},
+  {"name":"zero width content", "text":"~ x", "width":1, "lines":["~","x"]}
+]

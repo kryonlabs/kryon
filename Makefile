@@ -757,9 +757,13 @@ toolbar-policy-test: $(GENERATED_SRC_DIR)/runtime/toolbar.c $(GENERATED_SRC_DIR)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/toolbar_policy_test.c $(GENERATED_SRC_DIR)/runtime/toolbar.c $(GENERATED_SRC_DIR)/runtime/toolbar_props.c -lm -o $(TOOLBAR_POLICY_TEST)
 	$(TOOLBAR_POLICY_TEST)
 
-paragraph-policy-test: $(GENERATED_SRC_DIR)/runtime/paragraph.c $(GENERATED_SRC_DIR)/runtime/paragraph.h
+paragraph-policy-test: $(GENERATED_SRC_DIR)/runtime/paragraph.c $(GENERATED_SRC_DIR)/runtime/paragraph.h $(ICON_TYPES_H) $(K2CPP)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/paragraph_policy_test.c $(GENERATED_SRC_DIR)/runtime/paragraph.c -lm -o $(PARAGRAPH_POLICY_TEST)
 	$(PARAGRAPH_POLICY_TEST)
+	CC="$(CC)" python3 tests/paragraph_layout_test.py $(BUILD_DIR)
+	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/paragraph-cpp runtime/paragraph.kry runtime/drawing_props.kry runtime/text_props.kry runtime/control_props.kry
+	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/paragraph-cpp tests/paragraph_policy_test.c $(BUILD_DIR)/tests/paragraph-cpp/runtime/paragraph.cpp -lm -o $(BUILD_DIR)/tests/paragraph-cpp/check
+	$(BUILD_DIR)/tests/paragraph-cpp/check
 
 radio-policy-test: $(GENERATED_SRC_DIR)/runtime/radio.c $(GENERATED_SRC_DIR)/runtime/radio.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/radio_policy_test.c $(GENERATED_SRC_DIR)/runtime/radio.c -lm -o $(RADIO_POLICY_TEST)

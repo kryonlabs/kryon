@@ -1235,10 +1235,11 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	bounds.Width = Text_TextExtent(bounds.Width, measuredWidth)
 	lines := []string{props.Text}
 	if bounded && props.Wrap == TextWrapAuto {
-		lines = wrapRuntimeTextMeasured(props.Text, bounds.Width, measure)
+		lines = layoutTextLines(props.Text, bounds.Width, measure)
 	}
-	lineHeight := float32(textHeight(font, fontID) + 2)
-	contentHeight := max(float32(textHeight(font, fontID)), float32(len(lines))*lineHeight-2)
+	lineGap := Paragraph_ParagraphDefaultLineGap(1)
+	lineHeight := float32(Paragraph_ParagraphLineStride(textHeight(font, fontID), lineGap))
+	contentHeight := float32(Paragraph_ParagraphLayoutTotalHeight(int32(len(lines)), textHeight(font, fontID), lineGap))
 	bounds.Height = Text_TextExtent(bounds.Height, contentHeight)
 	if bounds.X == 0 && bounds.Y == 0 {
 		bounds = r.layoutRect(bounds)
@@ -4355,8 +4356,19 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	if width <= 0 {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
 	}
-	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + lineGap)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: int32(props.Key), Semantic: SemanticParagraph})
+	measure := func(text string) int { return runtimeTextWidthWithFont(text, font, fontID) }
+	lines := layoutTextLines(props.Text, float32(width), measure)
+	lineHeight := textHeight(font, fontID)
+	height := Paragraph_ParagraphLayoutTotalHeight(int32(len(lines)), lineHeight, lineGap)
+	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(height)})
+	y := int32(bounds.Y)
+	for index, line := range lines {
+		r.record(FrameOp{Kind: FrameOpText,
+			Bounds: Rectangle{X: bounds.X, Y: float32(y), Width: float32(measure(line)), Height: float32(lineHeight)},
+			Text:   line, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID,
+			ID: int32(props.Key), Semantic: SemanticParagraph})
+		y = Paragraph_ParagraphNextLineY(y, lineHeight, lineGap, index+1 < len(lines))
+	}
 }
 func (r *runtime) Link(props LinkProps) bool {
 	state := ButtonStateNormal
@@ -4416,31 +4428,6 @@ func (r *runtime) GetThemeSurfaceVariant() Color {
 }
 func (r *runtime) GetThemeScheme() DefaultScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
-}
-func wrapRuntimeTextMeasured(text string, width float32, measure func(string) int) []string {
-	if width <= 0 || text == "" {
-		return []string{text}
-	}
-	var lines []string
-	for _, paragraph := range strings.Split(text, "\n") {
-		words := strings.Fields(paragraph)
-		if len(words) == 0 {
-			lines = append(lines, "")
-			continue
-		}
-		line := words[0]
-		for _, word := range words[1:] {
-			candidate := line + " " + word
-			if float32(measure(candidate)) <= width {
-				line = candidate
-			} else {
-				lines = append(lines, line)
-				line = word
-			}
-		}
-		lines = append(lines, line)
-	}
-	return lines
 }
 func (r *runtime) Bevel(x, y, w, h int32, light, dark Color) {
 	lines := Bevel_BevelLinesFor(x, y, w, h)
@@ -4527,11 +4514,23 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	if !Paragraph_ParagraphCanLayout(metrics.Width) {
 		return
 	}
+	measure := func(text string) int { return runtimeTextWidthWithFont(text, metrics.Font, fontID) }
+	lines := layoutTextLines(spec.Text, float32(metrics.Width), measure)
+	lineHeight := textHeight(metrics.Font, fontID)
+	metrics.Height = Paragraph_ParagraphLayoutTotalHeight(int32(len(lines)), lineHeight, metrics.LineGap)
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY),
 		Width: float32(metrics.Width), Height: float32(metrics.Height)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: metrics.Font, FontID: fontID})
+	lineY := int32(bounds.Y)
+	for index, line := range lines {
+		lineWidth := int32(measure(line))
+		lineX := Paragraph_ParagraphLineXFor(int32(bounds.X), metrics.Width, lineWidth, int32(spec.Align))
+		r.record(FrameOp{Kind: FrameOpText,
+			Bounds: Rectangle{X: float32(lineX), Y: float32(lineY), Width: float32(lineWidth), Height: float32(lineHeight)},
+			Text:   line, Color: color, FontSize: metrics.Font, FontID: fontID})
+		lineY = Paragraph_ParagraphNextLineY(lineY, lineHeight, metrics.LineGap, index+1 < len(lines))
+	}
 	if y != nil {
-		*y = metrics.NextY
+		*y = textY + metrics.Height
 	}
 }
 
