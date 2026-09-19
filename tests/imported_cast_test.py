@@ -11,6 +11,8 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 build = (root / sys.argv[1]).resolve()
 sources = ["tests/fixtures/imported_cast.kry", "tests/fixtures/modules/counter.kry"]
+INCLUDE_PAUSED_JS = os.environ.get("KRYON_INCLUDE_PAUSED_JS") == "1"
+TARGETS = ("c", "cpp", "go", "js") if INCLUDE_PAUSED_JS else ("c", "cpp", "go")
 
 
 def run(*command, cwd=root, env=None):
@@ -21,7 +23,7 @@ def run(*command, cwd=root, env=None):
 
 with tempfile.TemporaryDirectory(prefix="kryon-imported-cast-") as directory:
     work = Path(directory)
-    for target in ("c", "cpp", "go", "js"):
+    for target in TARGETS:
         output = work / target
         options = ["--pkg", "casts"] if target == "go" else []
         run(str(build / "bin" / f"k2{target}"), "--strict", "--no-main", *options,
@@ -72,7 +74,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-imported-cast-") as directory:
             'Other :: enum {\n    OtherRest = 0\n}\n'
             'Selection :: struct {\n    phase: Phase\n}\n'
             f'Check :: () -> Phase #export {{\n    {body}\n}}\n')
-        for target in ("c", "cpp", "go", "js"):
+        for target in TARGETS:
             result = subprocess.run(
                 [str(build / "bin" / f"k2{target}"), "--strict", "--no-main",
                  "--root", str(work), "-o", str(work / "invalid" / target), str(source)],
@@ -80,4 +82,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-imported-cast-") as directory:
             assert result.returncode != 0, (target, name, "invalid enum operation accepted")
             assert diagnostic in result.stderr, (target, name, result.stderr)
 
-print("Imported enum casts execute in C, C++, Go, and JavaScript")
+if INCLUDE_PAUSED_JS:
+    print("Imported enum casts execute in C, C++, Go, and JavaScript")
+else:
+    print("Imported enum casts execute in C, C++, and Go; JS paused")

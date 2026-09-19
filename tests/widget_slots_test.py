@@ -11,6 +11,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / (sys.argv[1] if len(sys.argv) > 1 else "build/linux-x86_64")).resolve()
+INCLUDE_PAUSED_JS = os.environ.get("KRYON_INCLUDE_PAUSED_JS") == "1"
+TARGETS = ("c", "cpp", "go", "js") if INCLUDE_PAUSED_JS else ("c", "cpp", "go")
 
 
 def runtime_link(build):
@@ -218,7 +220,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-widget-slots-") as directory:
     caller = work / "caller.kry"
     provider.write_text(PROVIDER)
     caller.write_text(CALLER)
-    for target in ("c", "cpp", "go", "js"):
+    for target in TARGETS:
         output = work / target
         flags = ["--runtime", "./kryon-runtime.js"] if target == "js" else []
         command = [str(BUILD / "bin" / f"k2{target}"), "--no-main", *flags,

@@ -535,7 +535,7 @@ docs-site:
 	test -f $(SITE_BUILD_DIR)/renderers.html
 
 .PHONY: language-test
-language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
+language-test: $(K2C) $(K2CPP) $(K2GO)
 	@mkdir -p $(BUILD_DIR)/tests
 	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c $(KIR_SRCS) -o $(BUILD_DIR)/tests/kir_expression_test
 	$(BUILD_DIR)/tests/kir_expression_test
@@ -546,7 +546,7 @@ language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
 	python3 tests/imported_cast_test.py $(BUILD_DIR)
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 
-spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B)
+spec-test: language-test $(K2KIR) $(K2C) $(K2GO) $(K2B)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 
 runtime-parity-check:

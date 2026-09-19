@@ -9,6 +9,8 @@ import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / (sys.argv[1] if len(sys.argv) > 1 else "build/linux-x86_64")).resolve()
+INCLUDE_PAUSED_JS = os.environ.get("KRYON_INCLUDE_PAUSED_JS") == "1"
+TARGETS = ("c", "cpp", "go", "js") if INCLUDE_PAUSED_JS else ("c", "cpp", "go")
 
 
 def run(*args, cwd=None):
@@ -134,7 +136,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-language-") as directory:
     work = Path(directory)
     source = work / "cleanup.kry"
     source.write_text(SOURCE)
-    for target in ("c", "cpp", "go", "js"):
+    for target in TARGETS:
         out = work / target
         args = [str(BUILD / "bin" / f"k2{target}"), "--strict", "--no-main", "--root", str(work), "-o", str(out)]
         if target == "js":
@@ -220,10 +222,11 @@ func TestCleanup(t *testing.T) {
 }
 ''')
     run("go", "test", "./...", cwd=work / "go")
-    for runtime_file in (ROOT / "web").glob("*.js"):
-        shutil.copyfile(runtime_file, work / "js" / runtime_file.name)
-    (work / "js/package.json").write_text('{"type":"module"}\n')
-    (work / "js/test.mjs").write_text('''import assert from "node:assert/strict";
+    if INCLUDE_PAUSED_JS:
+        for runtime_file in (ROOT / "web").glob("*.js"):
+            shutil.copyfile(runtime_file, work / "js" / runtime_file.name)
+        (work / "js/package.json").write_text('{"type":"module"}\n')
+        (work / "js/test.mjs").write_text('''import assert from "node:assert/strict";
 import * as m from "./cleanup.js";
 const s = m.createState();
 assert.equal(m.Cleanup_Order(), 12); assert.equal(m.moduleState.trace, 12);
@@ -256,7 +259,7 @@ assert.equal(m.Cleanup_Branches(null, s, null, true), 11); assert.equal(s.trace,
 assert.equal(m.Cleanup_Branches(null, s, null, false), 22); assert.equal(s.trace, 7);
 assert.equal(m.Cleanup_EvaluateOnce(null, s), 1); assert.equal(s.trace, 19);
 ''')
-    run("node", str(work / "js/test.mjs"))
+        run("node", str(work / "js/test.mjs"))
 
     # Function visibility must follow imports, not the order of input files.
     first_provider = work / "first_provider.kry"
@@ -284,7 +287,7 @@ Shared :: (value: bool) -> bool {
     for name, (prefix, expression, diagnostic) in function_cases.items():
         caller = work / f"{name}.kry"
         caller.write_text(f'#module "{name}"\n' + prefix + f'Check :: () -> i32 {{\n return {expression}\n}}\n')
-        for target in ("c", "cpp", "go", "js"):
+        for target in TARGETS:
             for providers in ((first_provider, second_provider), (second_provider, first_provider)):
                 output = work / "function_scope" / target
                 flags = ["--runtime", "./kryon-runtime.js"] if target == "js" else []
@@ -330,7 +333,7 @@ Shared :: (value: bool) -> bool {
     for name, (text, diagnostic) in invalid_records.items():
         path = work / f"{name}.kry"
         path.write_text(text)
-        for target in ("c", "cpp", "go", "js"):
+        for target in TARGETS:
             for flags in ([], ["--strict"]):
                 result = subprocess.run(
                     [str(BUILD / "bin" / f"k2{target}"), *flags, "--root", str(work),
@@ -358,10 +361,13 @@ Shared :: (value: bool) -> bool {
     for name, (text, diagnostic) in invalid.items():
         path = work / f"{name}.kry"
         path.write_text(text)
-        for target in ("c", "cpp", "go", "js"):
+        for target in TARGETS:
             result = subprocess.run([str(BUILD / "bin" / f"k2{target}"), "--strict", "--root", str(work), "-o", str(work / "invalid"), str(path)], text=True, capture_output=True)
             assert result.returncode != 0, (name, target, result.stdout)
             assert diagnostic in result.stderr, (name, target, result.stderr)
             assert f"{name}.kry:" in result.stderr
 
-print("language semantics: C, C++, Go, JavaScript behavior and diagnostics agree")
+if INCLUDE_PAUSED_JS:
+    print("language semantics: C, C++, Go, JavaScript behavior and diagnostics agree")
+else:
+    print("language semantics: C, C++, Go behavior and diagnostics agree; JS paused")

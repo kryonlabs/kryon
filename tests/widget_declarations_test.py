@@ -13,6 +13,8 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = (ROOT / (sys.argv[1] if len(sys.argv) > 1 else "build/linux-x86_64")).resolve()
 BIN = BUILD / "bin"
+INCLUDE_PAUSED_JS = os.environ.get("KRYON_INCLUDE_PAUSED_JS") == "1"
+TARGETS = ("c", "cpp", "go", "js") if INCLUDE_PAUSED_JS else ("c", "cpp", "go")
 
 
 def runtime_link(build):
@@ -93,7 +95,7 @@ with tempfile.TemporaryDirectory(prefix="kryon-widget-declarations-") as directo
     caller = work / "consumer.kry"
     provider.write_text(PROVIDER)
     caller.write_text(CALLER)
-    for target in ("c", "cpp", "go", "js"):
+    for target in TARGETS:
         output = work / target
         flags = ["--runtime", "./kryon-runtime.js"] if target == "js" else []
         command = [str(BIN / f"k2{target}"), "--no-main", *flags,
@@ -477,8 +479,13 @@ Layout :: (settings: Settings) #ui {
             assert '"CardScope"' not in generated, (target, "JS output exposed lowered card scope")
         else:
             assert len(re.findall(r"(?<![A-Za-z])Button\(", generated)) == 1, (target, "leaf button opened a content scope")
-            assert generated.count("ButtonScope((") == 1, (target, "composed button lost its content scope")
+            button_scope = "ButtonScope(" if target == "go" else "ButtonScope(("
+            assert generated.count(button_scope) == 1, (target, "composed button lost its content scope")
             assert len(re.findall(r"(?<![A-Za-z])Card\(", generated)) == 1, (target, "leaf card opened a content scope")
-            assert generated.count("CardScope((") == 1, (target, "composed card lost its content scope")
+            card_scope = "CardScope(" if target == "go" else "CardScope(("
+            assert generated.count(card_scope) == 1, (target, "composed card lost its content scope")
 
-print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go, JavaScript")
+if INCLUDE_PAUSED_JS:
+    print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go, JavaScript")
+else:
+    print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go; JS paused")

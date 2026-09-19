@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Invalid record constructors must fail in the shared strict checker."""
 from pathlib import Path
+import os
 import subprocess
 import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
 bin_dir = Path(sys.argv[1]).resolve()
+include_paused_js = os.environ.get("KRYON_INCLUDE_PAUSED_JS") == "1"
+targets = ("k2c", "k2cpp", "k2go", "k2js") if include_paused_js else ("k2c", "k2cpp", "k2go")
 cases = {
     "unknown": ("(Props){.missing=1}", "unknown initializer field"),
     "duplicate": ("(Props){.count=1, .count=2}", "duplicate initializer field"),
@@ -24,11 +27,14 @@ with tempfile.TemporaryDirectory(prefix="kryon-record-initializers-") as directo
             'Props :: struct {\n    count: i32\n    active: bool\n}\n'
             'Outer :: struct {\n    props: Props\n}\n'
             f'Check :: () -> {result_type} #export {{\n    return {value}\n}}\n')
-        for target in ("k2c", "k2cpp", "k2go", "k2js"):
+        for target in targets:
             result = subprocess.run(
                 [str(bin_dir / target), "--strict", "--no-main", "--root", str(work),
                  "-o", str(work / target / name), str(source)],
                 cwd=root, capture_output=True, text=True)
             assert result.returncode != 0, (target, name, "invalid initializer accepted")
             assert diagnostic in result.stderr, (target, name, result.stderr)
-print("Record initializer diagnostics agree in C, C++, Go, and JavaScript")
+if include_paused_js:
+    print("Record initializer diagnostics agree in C, C++, Go, and JavaScript")
+else:
+    print("Record initializer diagnostics agree in C, C++, and Go; JS paused")

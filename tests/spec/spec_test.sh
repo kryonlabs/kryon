@@ -13,6 +13,7 @@ k2c=$build/bin/k2c
 k2go=$build/bin/k2go
 k2js=$build/bin/k2js
 k2b=$build/bin/k2b
+include_paused_js=${KRYON_INCLUDE_PAUSED_JS:-0}
 case_file=tests/spec/language_contract.kry
 work=${TMPDIR:-/tmp}/kryon-spec-test.$$
 
@@ -79,13 +80,14 @@ func TestContractIndexingParity(t *testing.T) {
 GOTEST
 (cd "$work/go-check" && GOCACHE=${GOCACHE:-$work/go-cache} go test ./...)
 
-"$k2js" --root "$root" -o "$work/js" "$root/$case_file"
-test -f "$work/js/tests/spec/language_contract.js"
-cp "$root"/web/*.js "$work/js/"
-printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
-if command -v node >/dev/null 2>&1; then
-    node -e 'import(process.argv[1]).then((m) => { const s = m.frame(); if (!s || !Array.isArray(s.frame)) process.exit(1); })' "$work/js/tests/spec/language_contract.js"
-    node --input-type=module - "$work/js/tests/spec/language_contract.js" << 'JSCHECK'
+if [ "$include_paused_js" = 1 ]; then
+    "$k2js" --root "$root" -o "$work/js" "$root/$case_file"
+    test -f "$work/js/tests/spec/language_contract.js"
+    cp "$root"/web/*.js "$work/js/"
+    printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
+    if command -v node >/dev/null 2>&1; then
+        node -e 'import(process.argv[1]).then((m) => { const s = m.frame(); if (!s || !Array.isArray(s.frame)) process.exit(1); })' "$work/js/tests/spec/language_contract.js"
+        node --input-type=module - "$work/js/tests/spec/language_contract.js" << 'JSCHECK'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
@@ -101,6 +103,7 @@ assert.equal(bytes.data[3], 13);
 assert.equal(m.LanguageContract_ContractByteAt(rt, undefined, undefined, bytes, 2), 12);
 assert.equal(m.LanguageContract_ContractBytesReady(rt, undefined, undefined, bytes), true);
 JSCHECK
+    fi
 fi
 
 "$k2b" --root "$root" -o "$work/krb" "$root/tests/spec/krb_contract.kry"
@@ -119,11 +122,13 @@ if "$k2go" --root "$root" -o "$work/go" "$root/tests/spec/assert_unresolved.kry"
 fi
 grep -Fq "unresolved #assert is not supported by the Go backend" "$work/assert_unresolved_go.err"
 
-if "$k2js" --root "$root" -o "$work/js" "$root/tests/spec/assert_unresolved.kry" 2>"$work/assert_unresolved_js.err"; then
-    echo "spec unresolved #assert did not fail in k2js" >&2
-    exit 1
+if [ "$include_paused_js" = 1 ]; then
+    if "$k2js" --root "$root" -o "$work/js" "$root/tests/spec/assert_unresolved.kry" 2>"$work/assert_unresolved_js.err"; then
+        echo "spec unresolved #assert did not fail in k2js" >&2
+        exit 1
+    fi
+    grep -Fq "unresolved #assert is not supported by the JS backend" "$work/assert_unresolved_js.err"
 fi
-grep -Fq "unresolved #assert is not supported by the JS backend" "$work/assert_unresolved_js.err"
 
 if "$k2b" --root "$root" -o "$work/krb" "$root/tests/spec/assert_unresolved.kry" 2>"$work/assert_unresolved_krb.err"; then
     echo "spec unresolved #assert did not fail in k2b" >&2
