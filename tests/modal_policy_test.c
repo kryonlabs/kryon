@@ -107,7 +107,7 @@ main(void)
     assert(ModalContentWidth(260, metrics) == 240);
     assert(ModalContentWidth(840, metrics) == 768);
     assert(ModalActionWidth(10, metrics) == 176);
-    assert(ModalActionWidth(280, metrics) == 300);
+    assert(ModalActionWidth(280, metrics) == 328);
     action_button = ModalActionButtonFrame(action);
     assert(action.value.offset_x == 88.0f);
     assert(action.value.offset_y == 150.0f);

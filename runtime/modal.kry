@@ -196,7 +196,6 @@ ModalContentWidth :: (modal_width: i32, metrics: ModalMetrics) -> i32 #export {
 ModalActionWidth :: (label_width: i32, metrics: ModalMetrics) -> i32 #export {
     width: i32 = label_width + metrics.action_padding_x
     if width < metrics.action_min_width { width = metrics.action_min_width }
-    if width > metrics.action_max_width { width = metrics.action_max_width }
     return width
 }
 
