@@ -44,9 +44,54 @@ assert_pack_parses(const char *path, const char *id)
     free(source);
 }
 
+
+static void
+assert_diagnostic_contains(const char *source, const char *message,
+                           const char *location)
+{
+    StyleRule rules[12];
+    KssParseResult result = {0};
+    char diagnostic[256];
+
+    assert(!kss_parse_string(source, rules, 12, &result, diagnostic,
+                             sizeof(diagnostic)));
+    assert(strstr(diagnostic, message) != NULL);
+    assert(strstr(diagnostic, location) != NULL);
+}
+
+static void
+test_diagnostics(void)
+{
+    assert_diagnostic_contains(
+        "Button {\n"
+        "  background: #111111;\n"
+        "  mystery: 1;\n"
+        "}\n",
+        "unknown property", "3:11");
+    assert_diagnostic_contains(
+        "tokens {\n"
+        "  font { heading: system; }\n"
+        "}\n",
+        "unknown token group", "2:7");
+    assert_diagnostic_contains(
+        "Button {\n"
+        "  background: #123;\n"
+        "}\n",
+        "expected hex color", "2:19");
+    assert_diagnostic_contains(
+        "@theme dark;\n"
+        "Button { background: #111111; }\n",
+        "expected '{' after @theme name", "1:12");
+    assert_diagnostic_contains(
+        "@import \"missing\";\n"
+        "Button { background: #111111; }\n",
+        "missing import: missing", "1:19");
+}
+
 int
 main(void)
 {
+    test_diagnostics();
     const char *source =
         "@pack sample;\n"
         "tokens {\n"

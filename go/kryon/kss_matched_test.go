@@ -168,6 +168,67 @@ func TestKssMatchedFixture(t *testing.T) {
 	}
 }
 
+func TestKssDiagnosticsIncludeLineColumn(t *testing.T) {
+	cases := []struct {
+		name     string
+		source   string
+		message  string
+		location string
+	}{
+		{
+			name: "property",
+			source: "Button {\n" +
+				"  background: #111111;\n" +
+				"  mystery: 1;\n" +
+				"}\n",
+			message:  "unknown property",
+			location: "3:11",
+		},
+		{
+			name: "token-group",
+			source: "tokens {\n" +
+				"  font { heading: system; }\n" +
+				"}\n",
+			message:  "unknown token group",
+			location: "2:7",
+		},
+		{
+			name: "hex",
+			source: "Button {\n" +
+				"  background: #123;\n" +
+				"}\n",
+			message:  "expected hex color",
+			location: "2:19",
+		},
+		{
+			name: "theme-syntax",
+			source: "@theme dark;\n" +
+				"Button { background: #111111; }\n",
+			message:  "expected '{' after @theme name",
+			location: "1:12",
+		},
+		{
+			name: "missing-import",
+			source: "@import \"missing\";\n" +
+				"Button { background: #111111; }\n",
+			message:  "missing import: missing",
+			location: "1:19",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := ParseStyleSheet(tc.source)
+			if err == nil {
+				t.Fatal("parse unexpectedly succeeded")
+			}
+			text := err.Error()
+			if !strings.Contains(text, tc.message) || !strings.Contains(text, tc.location) {
+				t.Fatalf("diagnostic %q missing %q/%q", text, tc.message, tc.location)
+			}
+		})
+	}
+}
+
 func TestKssInvalidInputSweep(t *testing.T) {
 	source := kssFixtureText(t, "../../tests/fixtures/kss/matched.kss")
 	for cut := 0; cut <= len(source); cut++ {
