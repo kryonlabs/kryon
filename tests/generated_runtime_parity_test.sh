@@ -2493,6 +2493,7 @@ import * as progressMod from "./js/tests/parity/progress.js";
 import * as plotsMod from "./js/tests/parity/plots.js";
 import * as tableMod from "./js/tests/parity/table_view.js";
 import * as selectionMod from "./js/tests/parity/selection_images.js";
+import * as dragDropMod from "./js/tests/parity/drag_drop.js";
 import * as kryon from "./js/kryon-runtime.js";
 
 const rt = kryon.createRuntime();
@@ -2571,6 +2572,7 @@ const listBox = listBoxMod.createState();
 const treeView = treeViewMod.createState();
 const table = tableMod.createState();
 const selection = selectionMod.createState();
+const dragDrop = dragDropMod.createState();
 
 const drawForm = () => formMod.frame(rt, form);
 const drawFields = () => fieldsMod.frame(rt, fields);
@@ -2584,6 +2586,16 @@ const drawProgress = () => progressMod.frame(rt, progressMod.createState());
 const drawPlots = () => plotsMod.frame(rt, plotsMod.createState());
 const drawTableView = () => tableMod.frame(rt, table);
 const drawTabScope = () => selectionMod.SelectionImages_TabScopeFrame(rt, selection);
+const drawDragDrop = () => dragDropMod.frame(rt, dragDrop);
+
+rt.QueueMouseButtonDown(kryon.MouseButtonLeft, 20, 20);
+drawDragDrop();
+dragDrop.dd_payload = "Xtem";
+rt.QueueMouseButtonUp(kryon.MouseButtonLeft, 150, 20);
+drawDragDrop();
+assert.equal(dragDrop.dd_invalid_accepts, 0);
+assert.equal(dragDrop.dd_accepted, 8);
+assert.equal(dragDrop.dd_received.slice(0, 4), "item");
 
 drawForm();
 rt.SetFocus(101);
@@ -2793,4 +2805,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composed_popup.kry"],"web_partial":[]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":[]}'

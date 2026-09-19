@@ -60,6 +60,8 @@ export interface Runtime {
       pressed: Record<number, boolean>;
       released: Record<number, boolean>;
     };
+    scrollBounds: Map<string, { x: number; y: number; width: number; height: number }>;
+    dragDrop: unknown;
   };
   QueueText(text: string): void;
   QueueKey(key: number): void;

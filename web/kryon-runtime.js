@@ -335,7 +335,9 @@ export function createRuntime(options = {}) {
         down: Object.create(null),
         pressed: Object.create(null),
         released: Object.create(null)
-      }
+      },
+      scrollBounds: new Map(),
+      dragDrop: null
     }
   };
   rt.QueueText = (text) => { rt.input.events.push({ type: "text", text: String(text) }); };
@@ -473,6 +475,8 @@ export function endFrame(rt) {
       rt.input.deferredTextEvents = rt.input.events.length;
     rt.input.keyPressed = Object.create(null);
     rt.input.keyDown = Object.create(null);
+    if (rt.input.mouse.released[MouseButtonLeft] && rt.input.dragDrop?.active)
+      rt.input.dragDrop = null;
     rt.input.mouse.dx = 0;
     rt.input.mouse.dy = 0;
     rt.input.mouse.wheel = 0;
@@ -515,9 +519,9 @@ export function viewport(rt, app = null) {
 export function widget(rt, name, args, state = null, meta = null) {
   const item = { kind: "widget", name, args, meta: remapWebCompositeMeta(rt, meta) };
   if (name === "Disabled" && String(args || "").trim() === "end")
-    return handleWidget(rt, name, args, state);
+    return handleWidget(rt, name, args, state, item.meta);
   rt.frame.push(item);
-  const result = handleWidget(rt, name, args, state);
+  const result = handleWidget(rt, name, args, state, item.meta);
   if ((name === "TextField" || name === "TextArea") && state) {
     const props = parseTextInputProps(args, state, name === "TextArea");
     props.disabled = isTruthyProp(args, "disabled") || !!state[propIdent(args, "disabled")] || rt.disabledStack.some(Boolean);
@@ -1470,6 +1474,80 @@ function handleTreeView(rt, state, args) {
   return true;
 }
 
+function stringStateValue(state, key) {
+  if (!state || !key)
+    return "";
+  const value = state[key];
+  if (Array.isArray(value))
+    return value.join("");
+  return String(value ?? "");
+}
+
+function nearestScrollBounds(rt, meta) {
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.scrollBounds)
+    return null;
+  const parts = parent.split("/");
+  while (parts.length > 0) {
+    const key = parts.join("/");
+    if (rt.input.scrollBounds.has(key))
+      return rt.input.scrollBounds.get(key);
+    parts.pop();
+  }
+  return null;
+}
+
+function pointerCanReachWidget(rt, bounds, meta) {
+  const mouse = rt.input?.mouse;
+  if (!mouse || !hit(bounds, mouse.x, mouse.y))
+    return false;
+  const scroll = nearestScrollBounds(rt, meta);
+  return !scroll || hit(scroll, mouse.x, mouse.y);
+}
+
+function handleScroll(rt, args, meta) {
+  const path = String(meta?.path || "");
+  if (path)
+    rt.input.scrollBounds.set(path, parseBounds(args));
+  return false;
+}
+
+function handleDragDrop(rt, state, args, meta) {
+  const bounds = parseBounds(args);
+  const id = propNumber(args, "id", 0);
+  const role = String(args || "").includes("DragDropRoleTarget") ? "target" : "source";
+  const typeName = propStringAny(args, ["type"], "");
+  const hot = pointerCanReachWidget(rt, bounds, meta);
+  if (role === "target") {
+    const acceptedRef = propRef(args, "accepted_size");
+    const outputRef = propIdent(args, "output");
+    if (acceptedRef)
+      state[acceptedRef] = 0;
+    const drag = rt.input.dragDrop;
+    const matches = !!drag && drag.active && typeName !== "" && drag.type === typeName;
+    if (!matches || !hot || !rt.input.mouse.released[MouseButtonLeft])
+      return false;
+    const outputSize = propNumber(args, "output_size", drag.size);
+    const size = Math.max(0, Math.min(outputSize, drag.size));
+    if (outputRef)
+      state[outputRef] = drag.data.slice(0, Math.min(size, drag.data.length));
+    if (acceptedRef)
+      state[acceptedRef] = size;
+    rt.input.dragDrop = null;
+    rt.input.mouse.released[MouseButtonLeft] = false;
+    return true;
+  }
+  if (!hot || !rt.input.mouse.pressed[MouseButtonLeft])
+    return !!(rt.input.dragDrop && rt.input.dragDrop.active && rt.input.dragDrop.sourceID === id && rt.input.mouse.down[MouseButtonLeft]);
+  const dataKey = propIdent(args, "data");
+  const dataSize = propNumber(args, "data_size", stringStateValue(state, dataKey).length);
+  const data = stringStateValue(state, dataKey).slice(0, Math.max(0, dataSize));
+  if (!typeName || data.length === 0)
+    return false;
+  rt.input.dragDrop = { active: true, sourceID: id, type: typeName, data, size: dataSize };
+  return !!rt.input.mouse.down[MouseButtonLeft];
+}
+
 function handleTableView(rt, state, args) {
   const bounds = parseBounds(args);
   const rowH = propNumber(args, "row_height", 24);
@@ -1541,7 +1619,7 @@ function handleTabBar(rt, state, args, interactive = true) {
   return { open: true, count, selected };
 }
 
-function handleWidget(rt, name, args, state) {
+function handleWidget(rt, name, args, state, meta = null) {
   if (!rt.input)
     return false;
   if (name === "Disabled") {
@@ -1556,6 +1634,8 @@ function handleWidget(rt, name, args, state) {
   if (rt.disabledStack.some(Boolean))
     return false;
   switch (name) {
+  case "Scroll":
+    return handleScroll(rt, args, meta);
   case "Button":
     return handleButton(rt, args);
   case "Card":
@@ -1581,6 +1661,8 @@ function handleWidget(rt, name, args, state) {
     return handleTableView(rt, state, args);
   case "TabBar":
     return handleTabBar(rt, state, args).selected;
+  case "DragDrop":
+    return handleDragDrop(rt, state, args, meta);
   default:
     return false;
   }
