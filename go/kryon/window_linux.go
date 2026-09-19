@@ -193,6 +193,7 @@ func (r *windowRuntime) pumpEvents() {
 			r.dirty = true // server asks for a repaint after occlusion
 		case x11EventFocusIn:
 			r.focused = true
+			r.dirty = true // compositors may clear/remap without a later Expose
 		case x11EventFocusOut:
 			r.focused = false
 			if r.ime != nil {
@@ -1138,7 +1139,7 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 	case x11EventFocusOutNotify:
 		return x11Event{kind: x11EventFocusOut}, true
 	case x11EventExpose:
-		return x11Event{}, false
+		return x11Event{kind: x11EventExposeKind}, true
 	}
 	return x11Event{}, false
 }

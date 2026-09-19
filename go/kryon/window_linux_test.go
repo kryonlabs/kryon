@@ -205,6 +205,16 @@ func TestX11DecodeWindowFocusEvents(t *testing.T) {
 	}
 }
 
+func TestX11DecodeExposeEvent(t *testing.T) {
+	win := &x11Window{}
+	buf := make([]byte, 32)
+	buf[0] = x11EventExpose
+	event, ok := win.decodeEvent(buf)
+	if !ok || event.kind != x11EventExposeKind {
+		t.Fatalf("expose event = %+v, ok=%v", event, ok)
+	}
+}
+
 func TestX11LoadKeyboardMappingRequestAndDecode(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
