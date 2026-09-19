@@ -5,6 +5,7 @@ root="${1:-.}"
 cd "$root"
 
 sh tests/backend_capabilities_test.sh .
+sh tests/backend_style_degradation_test.sh .
 
 python3 - <<'PY'
 import json

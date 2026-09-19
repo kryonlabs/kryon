@@ -6,55 +6,117 @@
       "id": "raylib",
       "label": "Desktop raylib",
       "tier": "default",
-      "platforms": ["Linux", "FreeBSD", "macOS", "Windows"],
+      "platforms": [
+        "Linux",
+        "FreeBSD",
+        "macOS",
+        "Windows"
+      ],
       "surface": "full raylib compatibility through Kryon wrapper symbols, including the 3D tier (camera, meshes, custom shaders, curated rlgl entry points) and the static-inline math3d surface",
       "status": "default",
-      "checks": ["make kryon-compat-check", "make raylib-matrix-check", "build/linux-x86_64/tests/raylib_compat_test"]
+      "checks": [
+        "make kryon-compat-check",
+        "make raylib-matrix-check",
+        "build/linux-x86_64/tests/raylib_compat_test"
+      ],
+      "style_degradation": {
+        "material": "full: paints generated material layers, gradients, radius, blur, and glow through the raylib-backed renderer",
+        "effects": "full: no style material/effect degradation expected",
+        "reporting": "no degradation report is emitted for fully supported material/effect output"
+      }
     },
     {
       "id": "null",
       "label": "Null headless",
       "tier": "headless",
-      "platforms": ["hosted C"],
+      "platforms": [
+        "hosted C"
+      ],
       "surface": "generated zero-return stubs plus Kryon input injection",
       "status": "test backend",
-      "checks": ["make KRYON_BACKEND=null all"]
+      "checks": [
+        "make KRYON_BACKEND=null all"
+      ],
+      "style_degradation": {
+        "material": "headless no-op: style resolution preserves colors/material fields, but no pixels are painted",
+        "effects": "unsupported: all material, gradient, radius, blur, and glow effects degrade to a no-op surface",
+        "reporting": "manifest reports headless no-op degradation; tests assert resolved style data remains available before painting"
+      }
     },
     {
       "id": "canvas",
       "label": "Web Canvas2D",
       "tier": "web",
-      "platforms": ["Emscripten web"],
+      "platforms": [
+        "Emscripten web"
+      ],
       "surface": "Canvas2D and WebAudio implementation with null stubs for unsupported surface areas",
       "status": "source-capture gated",
-      "checks": ["make canvas-test", "make canvas2d-parity-check", "make web-canvas-matrix-check"]
+      "checks": [
+        "make canvas-test",
+        "make canvas2d-parity-check",
+        "make web-canvas-matrix-check"
+      ],
+      "style_degradation": {
+        "material": "partial: Canvas2D paints resolved colors and simple gradients; advanced material depth/glow degrades to flat Canvas2D fills",
+        "effects": "partial: unsupported blur/glow material effects degrade without changing resolved colors or substituting another style pack",
+        "reporting": "manifest reports Canvas2D material/effect degradation alongside canvas parity checks"
+      }
     },
     {
       "id": "dom",
       "label": "Web DOM",
       "tier": "dom-page",
-      "platforms": ["Emscripten web"],
+      "platforms": [
+        "Emscripten web"
+      ],
       "surface": "HTML/CSS DOM UI presentation with semantic page metadata, native heading/link/image annotations, CSS gradients, RGBA image-node textures, browser route helpers with route-change versioning, and null stubs for unsupported surface areas",
       "status": "smoke gated",
-      "checks": ["make dom-test"]
+      "checks": [
+        "make dom-test"
+      ],
+      "style_degradation": {
+        "material": "partial: DOM/CSS applies resolved colors, radius, and CSS gradients; non-CSS material lighting degrades to ordinary CSS boxes",
+        "effects": "partial: unsupported material depth/glow effects degrade to CSS-supported paint while keeping resolved style facts stable",
+        "reporting": "manifest reports DOM material/effect degradation with semantic DOM smoke coverage"
+      }
     },
     {
       "id": "libdraw",
       "label": "Plan 9 libdraw",
       "tier": "desktop",
-      "platforms": ["plan9port/devdraw"],
+      "platforms": [
+        "plan9port/devdraw"
+      ],
       "surface": "kry_sw software renderer presented through libdraw",
       "status": "source-capture gated",
-      "checks": ["make libdraw-test", "make libdraw-matrix-check"]
+      "checks": [
+        "make libdraw-test",
+        "make libdraw-matrix-check"
+      ],
+      "style_degradation": {
+        "material": "software: kry_sw renders material layers before libdraw presentation, so style degradation is limited to presenter/platform constraints",
+        "effects": "software: material effects follow kry_sw support; unsupported presenter features do not alter resolved colors",
+        "reporting": "manifest reports libdraw as kry_sw-presented material output with matrix checks"
+      }
     },
     {
       "id": "termi",
       "label": "Terminal cells",
       "tier": "terminal",
-      "platforms": ["ANSI terminal"],
+      "platforms": [
+        "ANSI terminal"
+      ],
       "surface": "terminal-cell drawing, raw terminal input, and null stubs for unsupported surface areas",
       "status": "smoke gated",
-      "checks": ["make termi-test"]
+      "checks": [
+        "make termi-test"
+      ],
+      "style_degradation": {
+        "material": "terminal degradation: resolved foreground/background/focus colors map to terminal cells; radius, gradients, and material depth are ignored",
+        "effects": "unsupported: blur/glow/shadow/material geometry degrade to terminal-cell color output without pack substitution",
+        "reporting": "manifest reports terminal style degradation; termi checks cover the constrained backend smoke path"
+      }
     }
   ]
 }

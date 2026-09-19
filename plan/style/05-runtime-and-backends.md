@@ -49,6 +49,11 @@
 - Implement or verify explicit material/effect degradation on constrained
   backends. Report unsupported effects without changing resolved colors or
   silently activating another style.
+  Status: `docs/BACKEND_CAPABILITIES.json` records material/effect degradation
+  for every backend. `backend-style-degradation-check` verifies constrained
+  backends document stable resolved colors/style data and explicit no-op,
+  ignored, unsupported, or degraded effects; it is wired into `preflight`,
+  `test`, and backend capability laws.
 - Audit browser/terminal defaults for style leakage and remove any product
   decoration not represented by resolved style data.
 

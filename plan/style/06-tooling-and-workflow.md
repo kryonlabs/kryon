@@ -34,8 +34,9 @@
   the real-browser inspector test (winner source, matched-rule sources,
   environment, token origin). Still open: per-field losing-rule lists (the
   matched-rules array carries all candidates and scores; a convenience view is
-  pending) and backend degradation reporting, which waits on the
-  runtime-and-backends conformance matrix.
+  pending) and fuller inspector UI presentation. Backend degradation reporting
+  is now tracked by `docs/BACKEND_CAPABILITIES.json` and
+  `backend-style-degradation-check`.
 - Add inspector authoring actions: copy selector, jump to source, unmatched-class
   reporting, and dead-rule diagnostics.
   Status: `webDOMUnmatchedClasses` reports widget classes present in the
