@@ -1216,7 +1216,7 @@ backend-capabilities-check:
 backend-style-degradation-check:
 	sh tests/backend_style_degradation_test.sh .
 
-laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test activation-bend-laws-test kir-semantics-test law-inventory-check law-release-boundary-check law-cleanroom-probe
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test activation-bend-laws-test selection-bend-laws-test kir-semantics-test law-inventory-check law-release-boundary-check law-cleanroom-probe
 
 .PHONY: bend-laws-test
 bend-laws-test:
@@ -1236,6 +1236,11 @@ activation-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_
 .PHONY: kir-semantics-test
 kir-semantics-test: $(K2C) $(K2KIR)
 	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/kir_semantics_test.mjs
+
+# Phase 8 first patch: accessibility selection over a bounded subdomain.
+.PHONY: selection-bend-laws-test
+selection-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/accessibility_policy.c $(GENERATED_SRC_DIR)/runtime/accessibility_policy.h
+	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/selection_bend_laws_test.mjs
 
 # Phase 1 law-plan gates: inventory completeness and the proof-dependency boundary.
 .PHONY: law-inventory-check

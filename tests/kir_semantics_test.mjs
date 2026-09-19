@@ -42,7 +42,7 @@ async function groundTruth(directory) {
     run(path.join(binDir, 'bin', 'k2c'),
         ['--strict', '--no-main', '--root', root, '-o', out, fixture]);
     const driver = path.join(directory, 'driver.c');
-    const calls = ['Add', 'Sub', 'Div', 'Temp'].flatMap(name =>
+    const calls = ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch'].flatMap(name =>
         cases.filter(([a, b]) => name !== 'Div' || b !== 0)
             .map(([a, b]) => `    printf("%d\\n", KirSem${name}(${a}, ${b}));`)).join('\n');
     fs.writeFileSync(driver, `#include <stdio.h>
@@ -69,9 +69,12 @@ test('checked evaluator agrees with the k2c lowering over exact i32 semantics', 
             Sub: encodeChecked(findFunction(program, 'KirSemSub')),
             Div: encodeChecked(findFunction(program, 'KirSemDiv')),
             Temp: encodeChecked(findFunction(program, 'KirSemTemp')),
+            Max: encodeChecked(findFunction(program, 'KirSemMax')),
+            Clamp: encodeChecked(findFunction(program, 'KirSemClamp')),
+            Branch: encodeChecked(findFunction(program, 'KirSemBranch')),
         };
         let index = 0;
-        for (const name of ['Add', 'Sub', 'Div', 'Temp']) {
+        for (const name of ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch']) {
             for (const [a, b] of cases) {
                 if (name === 'Div' && b === 0) {
                     // Division by zero is a trap on both sides; the evaluator
@@ -92,9 +95,9 @@ test('constructs outside the reviewed subset are rejected with a span', async ()
     await temporary(async directory => {
         const program = dumpProgram(binDir, root,
             fixture, path.join(directory, 'kir'));
-        assert.throws(() => encodeChecked(findFunction(program, 'KirSemBranch')),
+        assert.throws(() => encodeChecked(findFunction(program, 'KirSemLoop')),
             error => error instanceof Unsupported
-                && /statement kind if/.test(error.message)
+                && /statement kind while/.test(error.message)
                 && /kir_semantics\.kry:\d+/.test(error.span));
     });
 });

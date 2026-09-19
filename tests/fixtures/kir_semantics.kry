@@ -19,7 +19,28 @@ KirSemTemp :: (a: i32, b: i32) -> i32 #export {
     return t + u
 }
 
-KirSemBranch :: (flag: bool) -> i32 #export {
+KirSemBranch :: (flag: bool, unused: i32) -> i32 #export {
     if flag { return 1 }
     return 0
+}
+
+KirSemMax :: (a: i32, b: i32) -> i32 #export {
+    if a < b { return b }
+    return a
+}
+
+KirSemClamp :: (v: i32, limit: i32) -> i32 #export {
+    if v < 0 { return 0 }
+    if v > limit { return limit }
+    return v
+}
+
+KirSemLoop :: (n: i32) -> i32 #export {
+    total: i32 = 0
+    i: i32 = 0
+    while i < n {
+        total = total + i
+        i = i + 1
+    }
+    return total
 }

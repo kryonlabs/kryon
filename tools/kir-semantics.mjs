@@ -85,8 +85,9 @@ export function parseKirDump(text) {
     return { modules };
 }
 
-const BINARY_OPS = new Set(['+', '-', '*', '/', '%']);
-const SCALAR_TYPES = new Set(['i32', 'int', 'i8', 'i16', 'u8', 'u16', 'u32']);
+const BINARY_OPS = new Set(['+', '-', '*', '/', '%',
+    '==', '!=', '<', '>', '<=', '>=', '&&', '||']);
+const SCALAR_TYPES = new Set(['i32', 'int', 'i8', 'i16', 'u8', 'u16', 'u32', 'bool']);
 
 export function findFunction(program, name) {
     for (const module of program.modules) {
@@ -147,15 +148,57 @@ export function encodeChecked(fn) {
                 if (stmt.expr === null) throw new Unsupported('bare return not in subset', stmt.span);
                 body.push({ stmt: 'return', expr: encodeExpr(stmt.expr), span: stmt.span });
                 break;
+            case 'if': {
+                if (stmt.expr === null) throw new Unsupported('if without condition', stmt.span);
+                if (/else/.test(stmt.text)) throw new Unsupported('if/else form not in subset', stmt.span);
+                body.push({ stmt: 'if', expr: encodeExpr(stmt.expr), span: stmt.span });
+                break;
+            }
+            case 'block_close':
+                body.push({ stmt: 'block_close', span: stmt.span });
+                break;
             default:
                 throw new Unsupported(`statement kind ${stmt.kind}`, stmt.span);
         }
     }
     if (!body.some(s => s.stmt === 'return')) throw new Unsupported('function without return', fn.span);
-    return { name: fn.name, args: fn.args, returnType: fn.returnType, body, span: fn.span };
+    return structureBody({ name: fn.name, args: fn.args, returnType: fn.returnType, body, span: fn.span });
+}
+
+// Nest the flat statement list: an `if` owns the statements up to its
+// matching block_close (nested ifs deepen the count).
+export function structureBody(encoded) {
+    const build = (start, end) => {
+        const out = [];
+        let i = start;
+        while (i < end) {
+            const step = encoded.body[i];
+            if (step.stmt === 'block_close') {
+                throw new Unsupported('unbalanced or standalone block structure', step.span);
+            }
+            if (step.stmt === 'if') {
+                let depth = 1;
+                let j = i + 1;
+                for (; j < end && depth > 0; j++) {
+                    const inner = encoded.body[j];
+                    if (inner.stmt === 'if') depth++;
+                    else if (inner.stmt === 'block_close') depth--;
+                }
+                if (depth !== 0) throw new Unsupported('unterminated if block', step.span);
+                out.push({ ...step, then: build(i + 1, j - 1) });
+                i = j;
+                continue;
+            }
+            out.push(step);
+            i++;
+        }
+        return out;
+    };
+    return { ...encoded, body: build(0, encoded.body.length) };
 }
 // Evaluate an encoded function with exact two's-complement i32 semantics.
-// Division and remainder follow C truncation toward zero.
+// Division and remainder follow C truncation toward zero; && and || short
+// circuit and yield 0/1 like C.
 export function evaluate(encoded, argumentValues) {
     if (argumentValues.length !== encoded.args.length) {
         throw new Unsupported(`arity mismatch for ${encoded.name}`);
@@ -171,28 +214,54 @@ export function evaluate(encoded, argumentValues) {
             }
             case 'neg': return wrapInt32(-evalExpr(node.value));
             case 'bin': {
+                if (node.kind === '&&') {
+                    if (evalExpr(node.left) === 0n) return 0n;
+                    return evalExpr(node.right) === 0n ? 0n : 1n;
+                }
+                if (node.kind === '||') {
+                    if (evalExpr(node.left) !== 0n) return 1n;
+                    return evalExpr(node.right) === 0n ? 0n : 1n;
+                }
                 const left = evalExpr(node.left);
                 const right = evalExpr(node.right);
                 if (node.kind === '+') return wrapInt32(left + right);
                 if (node.kind === '-') return wrapInt32(left - right);
                 if (node.kind === '*') return wrapInt32(left * right);
+                if (node.kind === '==') return left === right ? 1n : 0n;
+                if (node.kind === '!=') return left !== right ? 1n : 0n;
+                if (node.kind === '<') return left < right ? 1n : 0n;
+                if (node.kind === '>') return left > right ? 1n : 0n;
+                if (node.kind === '<=') return left <= right ? 1n : 0n;
+                if (node.kind === '>=') return left >= right ? 1n : 0n;
                 if (right === 0n) throw new Unsupported('division by zero is a trap, not a value', node.span);
                 return wrapInt32(left / right); // BigInt division truncates toward zero
             }
             default: throw new Unsupported(`encoded op ${node.op}`, node.span);
         }
     };
-    for (const step of encoded.body) {
-        if (step.stmt === 'decl' || step.stmt === 'assign') {
-            if (step.stmt === 'assign' && !env.has(step.name)) {
-                throw new Unsupported(`assignment to undeclared ${step.name}`, step.span);
+    const exec = steps => {
+        for (const step of steps) {
+            if (step.stmt === 'decl' || step.stmt === 'assign') {
+                if (step.stmt === 'assign' && !env.has(step.name)) {
+                    throw new Unsupported(`assignment to undeclared ${step.name}`, step.span);
+                }
+                env.set(step.name, evalExpr(step.expr));
+            } else if (step.stmt === 'return') {
+                return { value: evalExpr(step.expr) };
+            } else if (step.stmt === 'if') {
+                if (evalExpr(step.expr) !== 0n) {
+                    const done = exec(step.then);
+                    if (done) return done;
+                }
+            } else {
+                throw new Unsupported(`structured step ${step.stmt}`, step.span);
             }
-            env.set(step.name, evalExpr(step.expr));
-        } else if (step.stmt === 'return') {
-            return evalExpr(step.expr);
         }
-    }
-    throw new Unsupported(`no return reached in ${encoded.name}`, encoded.span);
+        return undefined;
+    };
+    const done = exec(encoded.body);
+    if (!done) throw new Unsupported(`no return reached in ${encoded.name}`, encoded.span);
+    return done.value;
 }
 
 // Run k2kir over one source file and return the parsed dump.
