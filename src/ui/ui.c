@@ -777,41 +777,39 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                   .pill = 1},
                     frame.thumb_state, 0, 0.0f, 0.0f, 0.0f,
                     StyleKindScrollThumb()).value);
-            float track_opacity = 0.0f;
-            float track_border_opacity = 0.0f;
+            float track_opacity = track_style.opacity * 0.34f;
+            float track_border_opacity = track_style.opacity * 0.46f;
             float thumb_opacity = thumb_style.opacity;
             Color thumb_background = thumb_style.background;
             Color thumb_border = thumb_style.border;
+            Rectangle track_bounds = paint.track_bounds;
             Rectangle thumb_bounds = paint.thumb_bounds;
+            float indicator_w = (float)Scale(6);
 
-            if(frame.thumb_state == ButtonStateHover ||
-               frame.thumb_state == ButtonStatePressed) {
-                track_opacity = track_style.opacity * 0.12f;
-                track_border_opacity = track_style.opacity * 0.16f;
-            }
-            if(thumb_opacity < 0.92f)
-                thumb_opacity = 0.92f;
+            if(indicator_w > paint.track_bounds.width)
+                indicator_w = paint.track_bounds.width;
+            if(indicator_w < 3.0f)
+                indicator_w = paint.track_bounds.width;
+            track_bounds.width = indicator_w;
+            track_bounds.x = paint.track_bounds.x +
+                             (paint.track_bounds.width - indicator_w) * 0.5f;
+            thumb_bounds.width = indicator_w;
+            thumb_bounds.x = track_bounds.x;
+            if(thumb_opacity < 0.96f)
+                thumb_opacity = 0.96f;
             if(frame.thumb_state == ButtonStateNormal) {
-                thumb_background = Fade(GetThemeButton(), 0.84f);
-                thumb_border = Fade(GetThemeButton(), 0.96f);
+                thumb_background = GetThemeButton();
+                thumb_border = GetThemeButtonHover();
             }
-            if(thumb_bounds.width < (float)Scale(5))
-                thumb_bounds.width = (float)Scale(5);
-            if(thumb_bounds.x + thumb_bounds.width > paint.track_bounds.x +
-               paint.track_bounds.width)
-                thumb_bounds.x = paint.track_bounds.x + paint.track_bounds.width -
-                                 thumb_bounds.width;
-            if(track_opacity > 0.0f || track_border_opacity > 0.0f) {
-                ui_draw_material(paint.track_bounds, (Rectangle){0},
-                                 Fade(track_style.background, track_opacity),
-                                 Fade(track_style.border, track_border_opacity),
-                                 Fade(track_style.border, track_border_opacity),
-                                 track_style.radius, track_style.border_width,
-                                 0.0f, 0.0f, 0, track_style.focus, 0.0f,
-                                 1.0f, ui_style_fill(track_style),
-                                 track_style.material);
-            }
-            ui_draw_material(thumb_bounds, paint.track_bounds,
+            ui_draw_material(track_bounds, (Rectangle){0},
+                             Fade(track_style.background, track_opacity),
+                             Fade(track_style.border, track_border_opacity),
+                             Fade(track_style.border, track_border_opacity),
+                             track_style.radius, track_style.border_width,
+                             0.0f, 0.0f, 0, track_style.focus, 0.0f,
+                             1.0f, ui_style_fill(track_style),
+                             track_style.material);
+            ui_draw_material(thumb_bounds, track_bounds,
                              Fade(thumb_background, thumb_opacity),
                              Fade(thumb_border, thumb_opacity),
                              Fade(thumb_border, thumb_opacity),

@@ -124,6 +124,10 @@ main(void)
     assert(paint.track_span == 62);
     assert(paint.scroll_per_pixel > 2.58f && paint.scroll_per_pixel < 2.59f);
     assert(ScrollDragOffsetFor(66.0f, 20.0f, 8.0f, 160, paint) == 98);
+    paint = ScrollBarPaintFor(300, 20, 100, 130, 15, 30, metrics);
+    assert((int)paint.thumb_bounds.height == 42);
+    assert(paint.track_span == 58);
+    paint = ScrollBarPaintFor(300, 20, 100, 260, 40, 160, metrics);
     assert(ScrollDragDeltaOffsetFor(80, 12, 160) == 68);
     assert(ScrollDragDeltaOffsetFor(4, 12, 160) == 0);
     assert(ScrollThumbDragDeltaOffsetFor(40, 10, 160, paint) == 65);
