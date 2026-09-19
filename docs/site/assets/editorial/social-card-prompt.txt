@@ -1,0 +1,11 @@
+Use case: ads-marketing
+Asset type: one finished raster social sharing preview card for the Kryon website, landscape 1536x1024.
+Primary request: create a sophisticated airy editorial branded card, matching warm ivory paper, dark ink serif typography, and restrained watercolor nature illustration. A single cohesive composition.
+Composition/framing: generous margins, left half devoted to clear crisp typography, right half a delicate ink and watercolor illustration of a small wooden workshop under tall pines beside a mountain lake, with distant mountain peaks and a small rust-colored sun. Let illustration edges softly dissolve into ivory paper. Keep all text legible at thumbnail scale.
+Color palette: warm ivory paper #f7f3eb, forest green #315e48, dark ink #202c29, muted terracotta #a64e32. Natural gray-green watercolor washes, delicate paper texture.
+Typography: small elegant serif brand name at upper left; very large legible editorial serif headline at center-left on multiple balanced lines; clean restrained supporting line below. No invented logo or emblem.
+Text (verbatim; render only these three text elements):
+"Kryon"
+"Small foundations. Useful software."
+"A compact language and native UI runtime."
+Constraints: exactly one image. The headline must be the strongest text element, with exact punctuation and spelling. Airy polished website editorial style. No UI buttons, navigation, browser chrome, extra words, watermarks, captions, code, or invented logos.

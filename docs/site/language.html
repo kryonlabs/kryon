@@ -1,72 +1,198 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kry Language Reference</title>
-  <meta name="description" content="Kry source language reference: declarations, statements, compile-time checks, KIR lowering, and backend behavior.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kryonlabs.com/language.html">
-  <meta property="og:title" content="Kry Language Reference">
-  <meta property="og:description" content="The documented .kry to KIR to C, Go, and KRB language contract; JS/web is a future roadmap target.">
-  <meta name="theme-color" content="#f3f1ea">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kry Language Reference
+  </title>
+  <meta content="Kry source language reference: declarations, statements, compile-time checks, KIR lowering, and backend behavior." name="description"/>
+  <meta content="#f7f3eb" name="theme-color"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="icons/proj/kryon.png" rel="apple-touch-icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/language.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/language.html" property="og:url"/>
+  <meta content="Kry Language Reference" property="og:title"/>
+  <meta content="Kry source language reference: declarations, statements, compile-time checks, KIR lowering, and backend behavior." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kry Language Reference" name="twitter:title"/>
+  <meta content="Kry source language reference: declarations, statements, compile-time checks, KIR lowering, and backend behavior." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="/">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="/api">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a aria-current="page" href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main>
-    <section class="doc-hero">
-      <p class="section-eyebrow">Kry Source Language</p>
-      <h1>Language Reference</h1>
-      <p class="section-lead">Kry is C-close application code for Kryon. This page mirrors the canonical source contract in <code>docs/KRY_LANGUAGE_SPEC.md</code>: source lowers into KIR first, then the same KIR can produce readable C, Go bindings, or portable KRB cartridges. The old JavaScript/web target is paused and reserved for a future HTML/CSS/JS roadmap target.</p>
-<pre><code>.kry -> KIR -> C
-.kry -> KIR -> Go
-.kry -> KIR -> KRB</code></pre>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Contract</p>
-      <h2>What Kry Guarantees</h2>
-      <div class="table-wrap">
-        <table class="matrix-table">
-          <thead><tr><th>Rule</th><th>Meaning</th></tr></thead>
-          <tbody>
-            <tr><td>Single frontend</td><td><code>.kry</code> parses into KIR before every backend. Backend-specific behavior must be visible in KIR or reported as a diagnostic.</td></tr>
-            <tr><td>C-close expressions</td><td>Types, pointer expressions, calls, field access, and raw C escape lines stay familiar to C programmers.</td></tr>
-            <tr><td>Declarative UI shape</td><td><code>#ui</code> functions declare named node hierarchies; the runtime owns reconciliation, layout, input routing, focus, and update order.</td></tr>
-            <tr><td>Inspectable lowering</td><td><code>k2kir</code> prints imports, state, functions, statements, assertions, and simple structured expression trees for tooling.</td></tr>
-            <tr><td>Honest subsets</td><td>C is the full path. Go and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics. JS/web is paused.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Declarations</p>
-      <h2>Top-Level Forms</h2>
-<pre><code>#import "kryon.h"
+  <nav aria-label="Documentation" class="docs-nav">
+   <a href="getting-started.html">
+    Get started
+   </a>
+   <a href="docs.html">
+    Overview
+   </a>
+   <a aria-current="page" href="language.html">
+    Language
+   </a>
+   <a href="api.html">
+    API
+   </a>
+   <a href="renderers.html">
+    Renderers
+   </a>
+   <a href="matrices.html">
+    Coverage
+   </a>
+   <a href="benchmarks.html">
+    Benchmarks
+   </a>
+  </nav>
+  <main id="main">
+   <section class="doc-hero">
+    <p class="section-eyebrow">
+     Kry Source Language
+    </p>
+    <h1>
+     Language Reference
+    </h1>
+    <p class="section-lead">
+     Kry is C-close application code for Kryon. This page mirrors the canonical source contract in
+     <code>
+      docs/KRY_LANGUAGE_SPEC.md
+     </code>
+     : source lowers into KIR first, then the same KIR can produce readable C, native Go, or portable KRB cartridges. The old JavaScript/web target is paused and reserved for a future HTML/CSS/JS roadmap target.
+    </p>
+    <pre><code>.kry -&gt; KIR -&gt; C
+.kry -&gt; KIR -&gt; Go
+.kry -&gt; KIR -&gt; KRB</code></pre>
+   </section>
+   <details class="page-contents" open="">
+    <summary>
+     On this page
+    </summary>
+    <nav aria-label="Language contents" data-page-contents="">
+    </nav>
+   </details>
+   <section>
+    <p class="section-eyebrow">
+     Contract
+    </p>
+    <h2>
+     What Kry Guarantees
+    </h2>
+    <div class="table-wrap">
+     <table class="matrix-table">
+      <thead>
+       <tr>
+        <th>
+         Rule
+        </th>
+        <th>
+         Meaning
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td>
+         Single frontend
+        </td>
+        <td>
+         <code>
+          .kry
+         </code>
+         parses into KIR before every backend. Backend-specific behavior must be visible in KIR or reported as a diagnostic.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         C-close expressions
+        </td>
+        <td>
+         Types, pointer expressions, calls, field access, and raw C escape lines stay familiar to C programmers.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Declarative UI shape
+        </td>
+        <td>
+         <code>
+          #ui
+         </code>
+         functions declare named node hierarchies; the runtime owns reconciliation, layout, input routing, focus, and update order.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Inspectable lowering
+        </td>
+        <td>
+         <code>
+          k2kir
+         </code>
+         prints imports, state, functions, statements, assertions, and simple structured expression trees for tooling.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Honest subsets
+        </td>
+        <td>
+         C is the full path. Go and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics. JS/web is paused.
+        </td>
+       </tr>
+      </tbody>
+     </table>
+    </div>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Declarations
+    </p>
+    <h2>
+     Top-Level Forms
+    </h2>
+    <pre><code>#import "kryon.h"
 ui :: #import "src/ui/panel"
 
 WEB :: #defined(PLATFORM_WEB)
@@ -85,104 +211,593 @@ Counter :: (viewport: Rectangle, app: App*) #ui {
             gap = 8
             Text((TextProps){.text="Count"})
             if Button((ButtonProps){.label = "Increment"}) {
-                app->click_count += 1
+                app-&gt;click_count += 1
             }
         }
     }
 }</code></pre>
-      <div class="table-wrap">
-        <table class="matrix-table">
-          <thead><tr><th>Form</th><th>Purpose</th></tr></thead>
-          <tbody>
-            <tr><td><code>#import "header.h"</code></td><td>Include a C header in generated native code.</td></tr>
-            <tr><td><code>name :: #import "module"</code></td><td>Import another Kry module.</td></tr>
-            <tr><td><code>name :: (...) -> Ret { ... }</code></td><td>Define a function. Module functions are source-prefixed in generated C unless exported.</td></tr>
-            <tr><td><code>name :: (...) #ui { ... }</code></td><td>Define a UI hierarchy function. Named nodes inside it get stable hierarchy paths.</td></tr>
-            <tr><td><code>#export</code>, <code>#private</code>, <code>#extern</code></td><td>Control ABI visibility and declarations that are implemented outside Kry.</td></tr>
-            <tr><td><code>#global</code></td><td>Create a file-level variable; combine with <code>#export</code> for public extern storage.</td></tr>
-            <tr><td><code>Type :: struct { ... }</code></td><td>Define a C-compatible struct type.</td></tr>
-            <tr><td><code>state { ... }</code></td><td>Declare persistent app state fields owned by the generated module.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Statements</p>
-      <h2>Function Body Forms</h2>
-      <ul class="link-list">
-        <li><strong>Locals:</strong> <code>name := expr</code>, <code>name: Type = expr</code>, or <code>name: Type</code>.</li>
-        <li><strong>Assignments:</strong> <code>name = expr</code> and compound operators such as <code>+=</code>, <code>%=</code>, and <code>&=</code>.</li>
-        <li><strong>UI nodes:</strong> <code>Screen root: { ... }</code>, <code>Column body: { ... }</code>, <code>Row actions: { ... }</code>, and <code>Stack layer: { ... }</code> declare hierarchy nodes.</li>
-        <li><strong>Calls:</strong> plain call statements remain available for leaf widgets and utility calls inside UI or normal functions.</li>
-        <li><strong>Control flow:</strong> <code>if</code>, <code>else if</code>, <code>else</code>, <code>while</code>, <code>for</code>, <code>switch</code>, <code>case</code>, <code>default</code>, labels, <code>goto</code>, <code>break</code>, <code>continue</code>, <code>guard</code>, <code>defer</code>, and <code>return</code>.</li>
-        <li><strong>Interop:</strong> <code>c line</code> emits raw C glue, and <code>unused expr</code> silences unused-value warnings.</li>
-      </ul>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Compile Time</p>
-      <h2>Constants, Guards, And Assertions</h2>
-      <div class="table-wrap">
-        <table class="matrix-table">
-          <thead><tr><th>Feature</th><th>Status</th><th>Backend Behavior</th></tr></thead>
-          <tbody>
-            <tr><td><code>#defined(SYMBOL)</code></td><td class="ok">Available</td><td>Expands to a C preprocessor-style condition for guards and generated C.</td></tr>
-            <tr><td><code>NAME :: #run INTEGER_EXPR</code></td><td class="ok">Available</td><td>Evaluated by the Kry frontend as a small integer constant. It is not a general compile-time function system.</td></tr>
-            <tr><td><code>#assert CONDITION, "message"</code></td><td class="ok">Available</td><td>Ungarded constant-false assertions fail during Kry parsing. C emits <code>#if/#error</code>. Go and KRB require known true assertions; JS/web is paused.</td></tr>
-            <tr><td><code>#if</code>, <code>#else</code>, <code>#endif</code></td><td class="ok">Available</td><td>Retained in KIR as expanded guards so backends know the active platform conditions.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">KIR</p>
-      <h2>Intermediate Representation</h2>
-      <p>KIR keeps raw source statement text for backend compatibility and adds structured metadata where the frontend can parse safely. Today that metadata covers simple identifiers, integer literals, string literals, calls, and binary expressions. More expression kinds can be added without changing the source pipeline.</p>
-<pre><code>k2kir --root . -o build/ir src/app.kry
+    <div class="table-wrap">
+     <table class="matrix-table">
+      <thead>
+       <tr>
+        <th>
+         Form
+        </th>
+        <th>
+         Purpose
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td>
+         <code>
+          #import "header.h"
+         </code>
+        </td>
+        <td>
+         Include a C header in generated native code.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          name :: #import "module"
+         </code>
+        </td>
+        <td>
+         Import another Kry module.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          name :: (...) -&gt; Ret { ... }
+         </code>
+        </td>
+        <td>
+         Define a function. Module functions are source-prefixed in generated C unless exported.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          name :: (...) #ui { ... }
+         </code>
+        </td>
+        <td>
+         Define a UI hierarchy function. Named nodes inside it get stable hierarchy paths.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          #export
+         </code>
+         ,
+         <code>
+          #private
+         </code>
+         ,
+         <code>
+          #extern
+         </code>
+        </td>
+        <td>
+         Control ABI visibility and declarations that are implemented outside Kry.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          #global
+         </code>
+        </td>
+        <td>
+         Create a file-level variable; combine with
+         <code>
+          #export
+         </code>
+         for public extern storage.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          Type :: struct { ... }
+         </code>
+        </td>
+        <td>
+         Define a C-compatible struct type.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          state { ... }
+         </code>
+        </td>
+        <td>
+         Declare persistent app state fields owned by the generated module.
+        </td>
+       </tr>
+      </tbody>
+     </table>
+    </div>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Statements
+    </p>
+    <h2>
+     Function Body Forms
+    </h2>
+    <ul class="link-list">
+     <li>
+      <strong>
+       Locals:
+      </strong>
+      <code>
+       name := expr
+      </code>
+      ,
+      <code>
+       name: Type = expr
+      </code>
+      , or
+      <code>
+       name: Type
+      </code>
+      .
+     </li>
+     <li>
+      <strong>
+       Assignments:
+      </strong>
+      <code>
+       name = expr
+      </code>
+      and compound operators such as
+      <code>
+       +=
+      </code>
+      ,
+      <code>
+       %=
+      </code>
+      , and
+      <code>
+       &amp;=
+      </code>
+      .
+     </li>
+     <li>
+      <strong>
+       UI nodes:
+      </strong>
+      <code>
+       Screen root: { ... }
+      </code>
+      ,
+      <code>
+       Column body: { ... }
+      </code>
+      ,
+      <code>
+       Row actions: { ... }
+      </code>
+      , and
+      <code>
+       Stack layer: { ... }
+      </code>
+      declare hierarchy nodes.
+     </li>
+     <li>
+      <strong>
+       Calls:
+      </strong>
+      plain call statements remain available for leaf widgets and utility calls inside UI or normal functions.
+     </li>
+     <li>
+      <strong>
+       Control flow:
+      </strong>
+      <code>
+       if
+      </code>
+      ,
+      <code>
+       else if
+      </code>
+      ,
+      <code>
+       else
+      </code>
+      ,
+      <code>
+       while
+      </code>
+      ,
+      <code>
+       for
+      </code>
+      ,
+      <code>
+       switch
+      </code>
+      ,
+      <code>
+       case
+      </code>
+      ,
+      <code>
+       default
+      </code>
+      , labels,
+      <code>
+       goto
+      </code>
+      ,
+      <code>
+       break
+      </code>
+      ,
+      <code>
+       continue
+      </code>
+      ,
+      <code>
+       guard
+      </code>
+      ,
+      <code>
+       defer
+      </code>
+      , and
+      <code>
+       return
+      </code>
+      .
+     </li>
+     <li>
+      <strong>
+       Interop:
+      </strong>
+      <code>
+       c line
+      </code>
+      emits raw C glue, and
+      <code>
+       unused expr
+      </code>
+      silences unused-value warnings.
+     </li>
+    </ul>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Compile Time
+    </p>
+    <h2>
+     Constants, Guards, And Assertions
+    </h2>
+    <div class="table-wrap">
+     <table class="matrix-table">
+      <thead>
+       <tr>
+        <th>
+         Feature
+        </th>
+        <th>
+         Status
+        </th>
+        <th>
+         Backend Behavior
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td>
+         <code>
+          #defined(SYMBOL)
+         </code>
+        </td>
+        <td class="ok">
+         Available
+        </td>
+        <td>
+         Expands to a C preprocessor-style condition for guards and generated C.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          NAME :: #run INTEGER_EXPR
+         </code>
+        </td>
+        <td class="ok">
+         Available
+        </td>
+        <td>
+         Evaluated by the Kry frontend as a small integer constant. It is not a general compile-time function system.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          #assert CONDITION, "message"
+         </code>
+        </td>
+        <td class="ok">
+         Available
+        </td>
+        <td>
+         Unguarded constant-false assertions fail during Kry parsing. C emits
+         <code>
+          #if/#error
+         </code>
+         . Go and KRB require known true assertions; JS/web is paused.
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          #if
+         </code>
+         ,
+         <code>
+          #else
+         </code>
+         ,
+         <code>
+          #endif
+         </code>
+        </td>
+        <td class="ok">
+         Available
+        </td>
+        <td>
+         Retained in KIR as expanded guards so backends know the active platform conditions.
+        </td>
+       </tr>
+      </tbody>
+     </table>
+    </div>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     KIR
+    </p>
+    <h2>
+     Intermediate Representation
+    </h2>
+    <p>
+     KIR keeps raw source statement text for backend compatibility and adds structured metadata where the frontend can parse safely. Today that metadata covers simple identifiers, integer literals, string literals, calls, and binary expressions. More expression kinds can be added without changing the source pipeline.
+    </p>
+    <pre><code>k2kir --root . -o build/ir src/app.kry
 k2c  --root . -o build/c  src/app.kry
 k2go  --root . -o build/go src/app.kry
 k2b  --root . -o build/krb src/app.kry</code></pre>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Limits</p>
-      <h2>Known Language Boundaries</h2>
-      <ul class="link-list">
-        <li><strong>No hidden macro language:</strong> Kry keeps compile-time behavior small and explicit. <code>#run</code> currently folds integer expressions only.</li>
-        <li><strong>Backend subsets are real:</strong> C is broadest; Go and KRB intentionally support smaller surfaces and must diagnose unsupported KIR. JS/web is paused for a future web-native target.</li>
-        <li><strong>Text system limits remain runtime limits:</strong> font fallback exists, but shaping, bidi, RTL mirroring, and IME preedit are not complete.</li>
-        <li><strong>KRB is portable by design:</strong> it carries a smaller widget and capability surface than native C.</li>
-      </ul>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Backend Contract</p>
-      <h2>Conformance Summary</h2>
-      <div class="table-wrap">
-        <table class="matrix-table">
-          <thead><tr><th>Feature</th><th>KIR</th><th>C</th><th>Go</th><th>KRB</th><th>JS/Web Roadmap</th></tr></thead>
-          <tbody>
-            <tr><td><code>#run</code> integer constants</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="na">Future target</td></tr>
-            <tr><td><code>#assert</code></td><td class="ok">Yes</td><td class="ok"><code>#if/#error</code></td><td class="part">Known true only</td><td class="part">Known true only</td><td class="na">Future target</td></tr>
-            <tr><td>State block</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="na">Future target</td></tr>
-            <tr><td>Raw C lines</td><td class="ok">Preserved</td><td class="ok">Yes</td><td class="no">No</td><td class="no">No</td><td class="na">Future target</td></tr>
-            <tr><td>Structured expression metadata</td><td class="part">Partial</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="na">Future target</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="index.html">Home</a> &middot; <a href="matrices.html">Matrices</a> &middot; <a href="renderers.html">Renderers</a></p>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Limits
+    </p>
+    <h2>
+     Known Language Boundaries
+    </h2>
+    <ul class="link-list">
+     <li>
+      <strong>
+       No hidden macro language:
+      </strong>
+      Kry keeps compile-time behavior small and explicit.
+      <code>
+       #run
+      </code>
+      currently folds integer expressions only.
+     </li>
+     <li>
+      <strong>
+       Backend subsets are real:
+      </strong>
+      C is broadest; Go and KRB intentionally support smaller surfaces and must diagnose unsupported KIR. JS/web is paused for a future web-native target.
+     </li>
+     <li>
+      <strong>
+       Text system limits remain runtime limits:
+      </strong>
+      font fallback exists, but shaping, bidi, RTL mirroring, and IME preedit are not complete.
+     </li>
+     <li>
+      <strong>
+       KRB is portable by design:
+      </strong>
+      it carries a smaller widget and capability surface than native C.
+     </li>
+    </ul>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Backend Contract
+    </p>
+    <h2>
+     Conformance Summary
+    </h2>
+    <div class="table-wrap">
+     <table class="matrix-table">
+      <thead>
+       <tr>
+        <th>
+         Feature
+        </th>
+        <th>
+         KIR
+        </th>
+        <th>
+         C
+        </th>
+        <th>
+         Go
+        </th>
+        <th>
+         KRB
+        </th>
+        <th>
+         JS/Web Roadmap
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td>
+         <code>
+          #run
+         </code>
+         integer constants
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="na">
+         Future target
+        </td>
+       </tr>
+       <tr>
+        <td>
+         <code>
+          #assert
+         </code>
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         <code>
+          #if/#error
+         </code>
+        </td>
+        <td class="part">
+         Known true only
+        </td>
+        <td class="part">
+         Known true only
+        </td>
+        <td class="na">
+         Future target
+        </td>
+       </tr>
+       <tr>
+        <td>
+         State block
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="na">
+         Future target
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Raw C lines
+        </td>
+        <td class="ok">
+         Preserved
+        </td>
+        <td class="ok">
+         Yes
+        </td>
+        <td class="no">
+         No
+        </td>
+        <td class="no">
+         No
+        </td>
+        <td class="na">
+         Future target
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Structured expression metadata
+        </td>
+        <td class="part">
+         Partial
+        </td>
+        <td class="part">
+         Metadata
+        </td>
+        <td class="part">
+         Metadata
+        </td>
+        <td class="part">
+         Metadata
+        </td>
+        <td class="na">
+         Future target
+        </td>
+       </tr>
+      </tbody>
+     </table>
     </div>
+   </section>
+  </main>
+  <footer>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
   </footer>
-  <script src="highlight.js"></script>
+  <script src="highlight.js">
+  </script>
   <script>
-    (function() {
+   (function() {
       var toggle = document.querySelector(".menu-toggle");
       var nav = document.getElementById("header-nav");
       if (toggle && nav) {
@@ -193,5 +808,5 @@ k2b  --root . -o build/krb src/app.kry</code></pre>
       }
     })();
   </script>
-</body>
+ </body>
 </html>

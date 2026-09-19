@@ -1,92 +1,116 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Playground Examples</title>
-  <meta name="description" content="Kryon examples now live with the browser playground as one unified entry point.">
-  <meta http-equiv="refresh" content="0; url=ide.html">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body class="ide-page">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon Playground Examples
+  </title>
+  <meta content="Kryon examples now live with the browser playground as one unified entry point." name="description"/>
+  <meta content="0; url=ide.html" http-equiv="refresh"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/live-examples.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/live-examples.html" property="og:url"/>
+  <meta content="Kryon Playground Examples" property="og:title"/>
+  <meta content="Kryon examples now live with the browser playground as one unified entry point." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon Playground Examples" name="twitter:title"/>
+  <meta content="Kryon examples now live with the browser playground as one unified entry point." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body class="ide-page">
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="index.html">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="/api">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a aria-current="page" href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main class="web-ide live-examples" data-live-examples>
-    <section class="ide-shell">
-      <div class="ide-toolbar">
-        <div>
-          <p class="section-eyebrow">Playground Examples</p>
-          <h1>Examples now live in the Playground</h1>
-        </div>
-        <div class="ide-actions">
-          <a class="btn btn-primary" href="ide.html">Open Playground</a>
-        </div>
-      </div>
-
-      <div class="live-grid">
-        <aside class="ide-pane example-browser">
-          <div class="pane-title">
-            <span>Examples + widgets</span>
-            <span data-count>loading</span>
-          </div>
-          <div class="example-list" data-example-list></div>
-        </aside>
-
-        <div class="ide-pane source-pane">
-          <div class="pane-title">
-            <span data-source-title>source</span>
-            <span data-status>Loading compiler...</span>
-          </div>
-          <textarea spellcheck="false" data-source></textarea>
-        </div>
-
-        <div class="ide-pane preview-pane">
-          <div class="pane-title">
-            <span>Live canvas output</span>
-            <span data-preview-status>waiting</span>
-          </div>
-          <canvas width="800" height="600" data-preview></canvas>
-        </div>
-
-        <div class="ide-pane artifact-pane">
-          <div class="artifact-tabs" role="tablist" aria-label="Generated artifacts">
-            <button type="button" class="is-active" data-tab="kry">.kry</button>
-            <button type="button" data-tab="kir">KIR</button>
-            <button type="button" data-tab="c">C</button>
-            <button type="button" data-tab="go">Go</button>
-            <button type="button" data-tab="krb">KRB</button>
-          </div>
-          <pre class="artifact-output"><code data-artifact></code></pre>
-        </div>
-      </div>
-    </section>
+  <main id="main">
+   <section class="doc-hero">
+    <p class="section-eyebrow">
+     Examples
+    </p>
+    <h1>
+     Your examples have a new home.
+    </h1>
+    <p class="section-lead">
+     Opening the Playground with your selected example and output tab.
+    </p>
+    <a class="btn btn-primary" data-playground-link="" href="ide.html">
+     Open Playground →
+    </a>
+   </section>
   </main>
-
-  <script src="ide-tools/k2kir.js"></script>
-  <script src="ide-tools/k2b.js"></script>
-  <script src="ide-tools/k2c.js"></script>
-  <script src="ide-tools/k2go.js"></script>
-  <script src="ide-tools/krb-web.js"></script>
-  <script src="live-examples.js"></script>
-</body>
+  <footer>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
+  </footer>
+  <script src="live-examples.js">
+  </script>
+ </body>
 </html>

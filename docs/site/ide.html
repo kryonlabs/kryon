@@ -1,108 +1,209 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Playground</title>
-  <meta name="description" content="Edit .kry files in the browser, inspect active Kryon outputs, and preview the generated KRB cartridge from one place. JS/web output is paused.">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body class="ide-page">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon Playground
+  </title>
+  <meta content="Edit .kry files in the browser, inspect active Kryon outputs, and preview the generated KRB cartridge from one place. JS/web output is paused." name="description"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/ide.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/ide.html" property="og:url"/>
+  <meta content="Kryon Playground" property="og:title"/>
+  <meta content="Edit .kry files in the browser, inspect active Kryon outputs, and preview the generated KRB cartridge from one place. JS/web output is paused." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon Playground" name="twitter:title"/>
+  <meta content="Edit .kry files in the browser, inspect active Kryon outputs, and preview the generated KRB cartridge from one place. JS/web output is paused." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body class="ide-page">
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="index.html">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="api.html">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a aria-current="page" href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main class="web-ide" data-kryon-web-ide>
-    <section class="ide-shell">
-      <div class="ide-toolbar">
-        <div>
-          <p class="section-eyebrow">Kryon Playground</p>
-          <h1>Write, compile, and preview .kry</h1>
-          <p class="section-lead">The old JS/web output is paused. This playground shows active KIR, C, Go, and KRB outputs while future web work moves to a DOM/CSS/JS roadmap target.</p>
-        </div>
-        <div class="ide-actions">
-          <button class="btn" type="button" data-action="load-sample">Sample</button>
-          <button class="btn btn-primary" type="button" data-action="compile">Run</button>
-        </div>
+  <main class="web-ide" data-kryon-web-ide="" id="main">
+   <section class="ide-shell">
+    <div class="ide-toolbar">
+     <div>
+      <p class="section-eyebrow">
+       Kryon Playground
+      </p>
+      <h1>
+       A little code. A working idea.
+      </h1>
+      <p class="section-lead">
+       Edit .kry, inspect KIR, C, Go, and KRB output, and preview supported cartridge nodes. Compilers run in your browser; the JavaScript application target is paused.
+      </p>
+     </div>
+     <div class="ide-actions">
+      <button class="btn" data-action="load-sample" type="button">
+       Scratch
+      </button>
+      <button class="btn btn-primary" data-action="compile" disabled="" type="button">
+       Run
+      </button>
+     </div>
+    </div>
+    <div class="live-grid">
+     <aside class="ide-pane example-browser">
+      <div class="pane-title">
+       <span>
+        Examples
+       </span>
+       <span data-count="">
+        loading
+       </span>
       </div>
+      <div class="example-list" data-example-list="">
+      </div>
+     </aside>
+     <div class="ide-pane source-pane">
+      <div class="pane-title">
+       <span data-source-title="">
+        app.kry
+       </span>
+       <span aria-live="polite" data-status="" role="status">
+        Loading compiler...
+       </span>
+      </div>
+      <textarea aria-label="Kryon source code" data-source="" spellcheck="false">#import "kryon.h"
 
-      <div class="live-grid">
-        <aside class="ide-pane example-browser">
-          <div class="pane-title">
-            <span>Examples</span>
-            <span data-count>loading</span>
-          </div>
-          <div class="example-list" data-example-list></div>
-        </aside>
-
-        <div class="ide-pane source-pane">
-          <div class="pane-title">
-            <span data-source-title>app.kry</span>
-            <span data-status>Loading compiler...</span>
-          </div>
-          <textarea spellcheck="false" data-source>#import "kryon.h"
-
-app "Kryon Web IDE" {
-    size 800 520
+app "Hello, Kryon" {
+    size 480 280
 }
 
 App :: () #ui {
     Screen root: {
-        Background((Color){249, 246, 235, 255})
-        Box((Rectangle){48, 42, 704, 390}, (Color){255, 254, 249, 255}, BLANK)
-        Text((TextProps){.bounds={76,86,0,0}, .text="Hello from .kry", .wrap=TextWrapNone})
-        Text((TextProps){.bounds={76,134,0,0}, .text="This page runs k2kir and k2b as WebAssembly, then renders the KRB cartridge.", .wrap=TextWrapNone})
-        Box((Rectangle){76, 188, 292, 80}, (Color){35, 101, 125, 255}, BLANK)
-        Text((TextProps){.bounds={104,219,0,0}, .text="Portable preview", .wrap=TextWrapNone})
-        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = "Get started"})
+        Background((Color){247, 243, 235, 255})
+        Text((TextProps){.bounds = {36,48,408,40}, .text = "Hello, Kryon", .font = Text24, .wrap = TextWrapNone})
+        Button((ButtonProps){.bounds = {36,112,176,44}, .label = "Get started"})
     }
-}</textarea>
-        </div>
-
-        <div class="ide-pane preview-pane">
-          <div class="pane-title">
-            <span>KRB Preview (supported nodes)</span>
-            <span data-preview-status>waiting</span>
-          </div>
-          <canvas width="800" height="520" data-preview></canvas>
-        </div>
-
-        <div class="ide-pane artifact-pane">
-          <div class="artifact-tabs" role="tablist" aria-label="Generated artifacts">
-            <button type="button" class="is-active" data-tab="kry">.kry</button>
-            <button type="button" data-tab="kir">KIR</button>
-            <button type="button" data-tab="c">C</button>
-            <button type="button" data-tab="go">Go</button>
-            <button type="button" data-tab="krb">KRB</button>
-          </div>
-          <pre class="artifact-output"><code data-artifact></code></pre>
-        </div>
+}
+</textarea>
+     </div>
+     <div class="ide-pane preview-pane">
+      <div class="pane-title">
+       <span>
+        KRB preview · supported nodes
+       </span>
+       <span data-preview-status="" role="status">
+        waiting
+       </span>
       </div>
-    </section>
+      <canvas aria-label="Preview of supported KRB interface nodes" data-preview="" height="280" role="img" width="480">
+      </canvas>
+     </div>
+     <div class="ide-pane artifact-pane">
+      <div aria-label="Generated artifacts" class="artifact-tabs" role="tablist">
+       <button aria-controls="artifact-panel" aria-selected="true" class="is-active" data-tab="kry" id="artifact-tab-kry" role="tab" tabindex="0" type="button">
+        .kry
+       </button>
+       <button aria-controls="artifact-panel" aria-selected="false" data-tab="kir" id="artifact-tab-kir" role="tab" tabindex="-1" type="button">
+        KIR
+       </button>
+       <button aria-controls="artifact-panel" aria-selected="false" data-tab="c" id="artifact-tab-c" role="tab" tabindex="-1" type="button">
+        C
+       </button>
+       <button aria-controls="artifact-panel" aria-selected="false" data-tab="go" id="artifact-tab-go" role="tab" tabindex="-1" type="button">
+        Go
+       </button>
+       <button aria-controls="artifact-panel" aria-selected="false" data-tab="krb" id="artifact-tab-krb" role="tab" tabindex="-1" type="button">
+        KRB
+       </button>
+      </div>
+      <pre aria-labelledby="artifact-tab-kry" class="artifact-output" id="artifact-panel" role="tabpanel" tabindex="0"><code data-artifact=""></code></pre>
+     </div>
+    </div>
+    <p class="caption">
+     Your edits stay in this browser tab when you switch examples. KRB preview coverage varies by widget;
+     <a href="matrices.html">
+      check the coverage matrix
+     </a>
+     .
+    </p>
+   </section>
   </main>
-
-  <script src="ide-tools/k2kir.js"></script>
-  <script src="ide-tools/k2b.js"></script>
-  <script src="ide-tools/k2c.js"></script>
-  <script src="ide-tools/k2go.js"></script>
-  <script src="ide.js"></script>
-</body>
+  <footer>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
+  </footer>
+  <script src="ide-tools/k2kir.js">
+  </script>
+  <script src="ide-tools/k2b.js">
+  </script>
+  <script src="ide-tools/k2c.js">
+  </script>
+  <script src="ide-tools/k2go.js">
+  </script>
+  <script src="ide.js">
+  </script>
+ </body>
 </html>

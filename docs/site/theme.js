@@ -9,14 +9,14 @@
   try { saved = localStorage.getItem(storageKey); } catch (_) {}
 
   function preferredTheme() {
-    return saved === "light" || saved === "dark" ? saved : (media.matches ? "light" : "dark");
+    return saved === "light" || saved === "dark" ? saved : "light";
   }
 
   function applyTheme(theme) {
     root.dataset.theme = theme;
     root.style.colorScheme = theme;
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === "light" ? "#f4efdf" : "#151512";
+    if (meta) meta.content = theme === "light" ? "#f7f3eb" : "#18221f";
     var button = document.querySelector(".theme-toggle");
     if (button) {
       var next = theme === "dark" ? "light" : "dark";

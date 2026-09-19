@@ -1,7 +1,7 @@
 # Kryon Labs website improvement plan
 
 Date: 2026-09-19
-Status: Planned; implementation has not started.
+Status: Implemented and locally validated; production rollout pending verification.
 Site: https://kryonlabs.com/
 Owner: `kryonlabs/kryon`, with website source in `docs/site/`.
 
@@ -15,8 +15,8 @@ Keep Kryon as the main subject of the homepage. Present Daochi, TaijiOS, and
 other projects as related work with their own destinations. Preserve the
 existing Kryon mark and project names.
 
-This document plans the work. It does not change the public site, compiler,
-runtime, release version, or application behavior.
+The approved design is implemented in `docs/site/`. The compiler, runtime, and
+release versions remain outside this website change.
 
 ## Findings from the current site
 
@@ -109,27 +109,27 @@ and phone sizes. Avoid a full-height opening that hides the useful content.
 
 ### 1. Establish the content and build baseline
 
-- [ ] Inventory all public routes, anchors, external links, generated files,
+- [x] Inventory all public routes, anchors, external links, generated files,
   and functional interactions before changing markup.
-- [ ] Record which target claims are current, experimental, or paused, with
+- [x] Record which target claims are current, experimental, or paused, with
   their source revision and supporting release/test evidence.
-- [ ] Select one runnable native quickstart and three maintained showcase apps.
-- [ ] Run the current site build once and record any existing failures separately.
+- [x] Select one runnable native quickstart and three maintained showcase apps.
+- [x] Run the current site build once and record any existing failures separately.
 
 Completion: a verified content map and build baseline, with no unsupported
 claims carried into the redesign.
 
 ### 2. Build the shared layout and homepage
 
-- [ ] Consolidate `styles.css` into tokens, layout, components, documentation,
+- [x] Consolidate `styles.css` into tokens, layout, components, documentation,
   and tool-specific rules. Update `theme.js` to use the same palette.
-- [ ] Implement the common navigation, footer, focus states, and theme behavior.
-- [ ] Generate the workshop artwork, preserve its original, and export an
+- [x] Implement the common navigation, footer, focus states, and theme behavior.
+- [x] Generate the workshop artwork, preserve its original, and export an
   optimized WebP. Save the exact prompt with the design artifacts.
-- [ ] Build the homepage and quickstart, including the real sample capture and
+- [x] Build the homepage and quickstart, including the real sample capture and
   featured project data.
-- [ ] Review desktop and phone previews against the approved Waozi/Daochi style.
-- [ ] Create and wire the matching social image after the visual direction is
+- [x] Review desktop and phone previews against the approved Waozi/Daochi style.
+- [x] Create and wire the matching social image after the visual direction is
   represented in the actual page.
 
 Completion: the first-time visitor can understand Kryon and reach a working
@@ -137,29 +137,29 @@ first-app path; the homepage is useful without loading compiler WebAssembly.
 
 ### 3. Carry the design through documentation and tools
 
-- [ ] Update Docs, Language, generated API, and Showcase consistently.
-- [ ] Update Playground and the older examples route without losing tool state.
-- [ ] Update renderer, feature, and benchmark tables while preserving data.
-- [ ] Check theme persistence, active navigation, error states, and old links.
+- [x] Update Docs, Language, generated API, and Showcase consistently.
+- [x] Update Playground and the older examples route without losing tool state.
+- [x] Update renderer, feature, and benchmark tables while preserving data.
+- [x] Check theme persistence, active navigation, error states, and old links.
 
 Completion: all public pages share a coherent design and existing developer
 workflows still function.
 
 ### 4. Validate and publish the implemented site
 
-- [ ] Run `make docs-site CMAKE=/usr/bin/cmake SITE_BUILD_DIR=build/site` with
+- [x] Run `make docs-site CMAKE=/usr/bin/cmake SITE_BUILD_DIR=build/site` with
   its documented compiler/build prerequisites, then inspect the generated site.
-- [ ] Check 390 px, 768 px, and 1440 px layouts in light and dark modes. Code
+- [x] Check 390 px, 768 px, and 1440 px layouts in light and dark modes. Code
   and matrices may scroll internally; the document itself must not overflow.
-- [ ] Verify mobile navigation, keyboard tabs, theme controls, focus visibility,
+- [x] Verify mobile navigation, keyboard tabs, theme controls, focus visibility,
   skip links, heading order, contrast, reduced motion, and alt text.
-- [ ] Load a Playground example, edit it, run it, inspect each supported output,
+- [x] Load a Playground example, edit it, run it, inspect each supported output,
   and exercise a compile error and failed asset load. User edits must survive.
-- [ ] Check showcase filters and missing-data behavior; check docs/API anchors
+- [x] Check showcase filters and missing-data behavior; check docs/API anchors
   and representative old example links.
-- [ ] Check canonical URLs, unique titles/descriptions, social image URLs,
+- [x] Check canonical URLs, unique titles/descriptions, social image URLs,
   image dimensions, font licenses, and local asset paths.
-- [ ] Aim for at most 250 KB per optimized editorial illustration and 150 KB
+- [x] Aim for at most 250 KB per optimized editorial illustration and 150 KB
   total for required homepage fonts. Lazy-load below-fold screenshots; do not
   preload compiler assets on marketing pages. Measure actual transfer sizes.
 - [ ] Publish through the existing Cloudflare Pages workflow after successful
@@ -191,3 +191,40 @@ the relevant tests. Never modify a downstream vendor copy for site work.
 - [Current completion and support notes](COMPLETION.md)
 - [Showcase generator](../scripts/update-showcase.py)
 - [Showcase registry](https://github.com/kryonlabs/showcase)
+
+## Implementation and validation record — 2026-09-19
+
+- Rebuilt all ten public content/tool pages, with the older examples route
+  forwarding its example and artifact parameters to the Playground.
+- Generated the approved workshop artwork and a matching social card; exact
+  prompts and font licenses are in `docs/site/assets/editorial/`. The original
+  generated images are retained with the approved design artifacts.
+- Homepage app metadata comes from the existing showcase registry. The example
+  image is a real Kryon-owned KRB capture of the downloadable `hello.kry`.
+- Verified the exact sample with native C generation, KRB compilation, and the
+  SDL native host capture. The quickstart explicitly starts with the KRB subset.
+- Built the site in an isolated checkout, including all five JavaScript/WASM
+  tool pairs. The first baseline build lacked the raylib header submodule;
+  initializing the pinned dependency resolved it without source changes.
+- Checked all ten content/tool pages at 390, 768, and 1440 pixels in both themes:
+  60 combinations, no document overflow, one primary heading, valid skip link.
+- Checked Docs keyboard tabs, showcase filters and missing data, API contents
+  filtering and anchors, matrix filtering, mobile menu/Escape, reduced motion,
+  theme persistence, compiler outputs, error diagnostics, draft recovery, failed
+  compiler downloads, and the older example/output-tab links.
+- Corrected the Playground's theme-color decoding (signed bit comparison made
+  text invisible), obsolete default sample, incomplete output count, and draft
+  loss when switching examples. These are website-tool changes, not runtime APIs.
+- Checked generated API links under the Markdown renderer, including stable
+  heading IDs, older style-section links, and links to repository documents.
+- Validated local assets, internal links/fragments, metadata, scripts, and
+  unique IDs. Text palette contrast on the page background is at least 5.05:1
+  in light mode and 7.73:1 in dark mode.
+- Hero WebP: 210,322 bytes. Both required fonts together: 82,104 bytes.
+  The homepage does not load compiler modules; app images load lazily.
+- Benchmark data, coverage evidence, paused JS-target status, and KRB subset
+  limits remain explicit. No fresh benchmark numbers or broader target support
+  are claimed by this redesign.
+
+Local design review artifacts: `waozi-design-proposals/2026-09-19/kryonlabs/`.
+Publishing uses the existing `Cloudflare Pages` workflow and project `kryon`.

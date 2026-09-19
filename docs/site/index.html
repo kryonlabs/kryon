@@ -1,178 +1,318 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon</title>
-  <meta name="description" content="Kryon is a language, runtime, and native UI framework for small app development.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kryonlabs.com/">
-  <meta property="og:title" content="Kryon">
-  <meta property="og:description" content="A language, runtime, and native UI framework for small app development.">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://kryonlabs.com/">
-  <meta name="twitter:title" content="Kryon">
-  <meta name="twitter:description" content="A language, runtime, and native UI framework for small app development.">
-  <meta name="twitter:site" content="@kryonlabs">
-  <meta name="twitter:creator" content="@kryonlabs">
-  <meta name="theme-color" content="#f3f1ea">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Kryon",
-    "description": "Native declarative UI and app runtime. Write .kry, inspect KIR, ship readable C99 or portable KRB cartridges.",
-    "url": "https://kryonlabs.com",
-    "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Linux, Windows, macOS, Android, Browser, FreeBSD",
-    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
-    "author": {"@type": "Organization", "name": "Kryon Labs", "url": "https://kryonlabs.com"}
-  }
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon — Small foundations. Useful software.
+  </title>
+  <meta content="A compact language and native UI runtime for making useful software. Write an interface, explore real apps, and build with Kryon." name="description"/>
+  <meta content="#f7f3eb" name="theme-color"/>
+  <link href="icons/proj/kryon.png" rel="icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
   </script>
-  <script src="theme.js"></script>
-</head>
-<body>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/" property="og:url"/>
+  <meta content="Kryon — Small foundations. Useful software." property="og:title"/>
+  <meta content="A compact language and native UI runtime for making useful software. Write an interface, explore real apps, and build with Kryon." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon — Small foundations. Useful software." name="twitter:title"/>
+  <meta content="A compact language and native UI runtime for making useful software. Write an interface, explore real apps, and build with Kryon." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="/">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-        <a class="btn btn-primary" href="ide.html">Playground</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main id="top">
-    <section class="hero lab-hero">
-      <div class="hero-inner">
-        <span class="hero-eyebrow"><span class="dot"></span>Language and native UI framework</span>
-        <img class="hero-icon" src="icons/proj/kryon.png" width="84" height="84" alt="Kryon">
-        <h1>Kryon</h1>
-        <p class="hero-sub">A compact app language, runtime, and renderer stack for building small native interfaces across desktop, web, and embedded targets.</p>
-        <div class="hero-cta">
-          <a class="btn btn-primary" href="docs.html">Read docs</a>
-          <a class="btn" href="showcase.html">Open showcase</a>
-        </div>
+  <main id="main">
+   <section class="hero" id="top">
+    <div class="hero-copy">
+     <span class="hero-eyebrow">
+      A language. A runtime. A place to build.
+     </span>
+     <h1>
+      Small foundations.
+      <br/>
+      <em>
+       Useful software.
+      </em>
+     </h1>
+     <p>
+      Kryon is a compact language and native UI runtime for making things that work. Start with a small idea, and give it an interface.
+     </p>
+     <div class="hero-cta">
+      <a class="btn btn-primary" href="getting-started.html">
+       Build your first interface
+       <span aria-hidden="true">
+        →
+       </span>
+      </a>
+      <a class="btn" href="#showcase">
+       See the apps
+       <span aria-hidden="true">
+        ↗
+       </span>
+      </a>
+     </div>
+     <p class="hero-note">
+      Open source   ·   Native UI   ·   Readable code
+     </p>
+    </div>
+    <img alt="An illustrated wooden workshop beneath pine trees, beside a mountain lake." class="hero-art" fetchpriority="high" height="1024" src="assets/editorial/workshop.webp" width="1536"/>
+   </section>
+   <section id="example">
+    <div class="section-heading">
+     <h2>
+      A small idea. A real interface.
+     </h2>
+     <a class="text-link" href="ide.html?src=hello.kry">
+      Open in Playground →
+     </a>
+    </div>
+    <div class="example-window">
+     <div>
+      <div class="pane-title">
+       <span>
+        hello.kry
+       </span>
+       <a download="" href="hello.kry">
+        Download source ↓
+       </a>
       </div>
-    </section>
+      <pre><code>#import "kryon.h"
 
-    <section class="replaces">
-      <div class="label">Development surface</div>
-      <div class="pills">
-        <span class="pill">.kry language</span>
-        <span class="pill">C runtime</span>
-        <span class="pill">KIR</span>
-        <span class="pill">KRB cartridges</span>
-        <span class="pill">renderer backends</span>
-        <span class="pill">app storage</span>
+app "Hello, Kryon" {
+    size 480 280
+}
+
+App :: () #ui {
+    Screen root: {
+        Background((Color){247, 243, 235, 255})
+        Text((TextProps){.bounds = {36,48,408,40}, .text = "Hello, Kryon", .font = Text24, .wrap = TextWrapNone})
+        Button((ButtonProps){.bounds = {36,112,176,44}, .label = "Get started"})
+    }
+}
+</code></pre>
+     </div>
+     <div>
+      <div class="pane-title">
+       <span>
+        Hello, Kryon
+       </span>
+       <span>
+        KRB software renderer
+       </span>
       </div>
-    </section>
-
-    <section id="framework">
-      <p class="section-eyebrow">Framework</p>
-      <h2>Language, runtime, renderers</h2>
-      <p class="section-lead">Kryon keeps app code small while still exposing the lower-level surfaces needed for serious native development.</p>
-      <div class="why-grid">
-        <article class="why-card">
-          <h3><a href="language.html">Language</a></h3>
-          <p>Write declarative .kry interfaces, compile through KIR, and generate C, Go, KRB, or portable runtime artifacts.</p>
-        </article>
-        <article class="why-card">
-          <h3><a href="docs.html">Framework docs</a></h3>
-          <p>Use the C runtime, app shell, storage, update, assets, windows, markdown, and automation APIs from one organized reference.</p>
-        </article>
-        <article class="why-card">
-          <h3><a href="renderers.html">Renderer backends</a></h3>
-          <p>Target raylib, Canvas, DOM, terminal cells, libdraw, and headless test backends from the same UI model.</p>
-        </article>
+      <img alt="Actual Kryon rendering of the example: Hello, Kryon and a Get started button." height="280" loading="lazy" src="assets/editorial/hello.png" width="480"/>
+     </div>
+    </div>
+    <p class="caption">
+     A real capture from Kryon’s preview tool. The Playground lets you inspect the generated code and supported KRB nodes.
+    </p>
+   </section>
+   <section id="framework">
+    <div class="path-grid">
+     <article class="path-card">
+      <span>
+       01 / WRITE
+      </span>
+      <h3>
+       Give your idea a screen.
+      </h3>
+      <p>
+       Start with a few lines of .kry. Describe your interface with familiar, readable code.
+      </p>
+      <a class="text-link" href="getting-started.html">
+       Write an interface →
+      </a>
+     </article>
+     <article class="path-card">
+      <span>
+       02 / BUILD
+      </span>
+      <h3>
+       Keep the useful pieces.
+      </h3>
+      <p>
+       Use the C runtime for UI, text, layout, assets, and the details applications share.
+      </p>
+      <a class="text-link" href="api.html">
+       Explore the runtime →
+      </a>
+     </article>
+     <article class="path-card">
+      <span>
+       03 / EXPLORE
+      </span>
+      <h3>
+       Find the right surface.
+      </h3>
+      <p>
+       Explore native renderers and portable cartridges, with clear coverage for each path.
+      </p>
+      <a class="text-link" href="renderers.html">
+       Choose a renderer →
+      </a>
+     </article>
+    </div>
+   </section>
+   <section id="showcase">
+    <div class="section-heading">
+     <h2>
+      Built with Kryon
+     </h2>
+     <a class="text-link" href="showcase.html">
+      Explore the showcase →
+     </a>
+    </div>
+    <div class="showcase-grid" data-home-projects="">
+     <p>
+      Meet the apps in the
+      <a href="showcase.html">
+       Kryon showcase
+      </a>
+      .
+     </p>
+    </div>
+   </section>
+   <section class="support-note" id="targets">
+    <div>
+     <span class="section-eyebrow">
+      Where it runs
+     </span>
+     <h2>
+      Choose a path.
+      <br/>
+      Know its edges.
+     </h2>
+    </div>
+    <div>
+     <p>
+      <strong>
+       Native C is the most complete application path.
+      </strong>
+      C++ uses the C runtime; Go has a tested declarative subset. Portable KRB cartridges cover a smaller interface surface.
+     </p>
+     <p>
+      The browser Playground runs compilers and a KRB preview. The JavaScript application target is paused while a future HTML and CSS target is explored.
+     </p>
+     <a class="text-link" href="matrices.html">
+      See coverage and test evidence →
+     </a>
+    </div>
+   </section>
+   <section id="links">
+    <div class="section-heading">
+     <h2>
+      Made to connect
+     </h2>
+     <span class="caption">
+      Related work from Kryon Labs
+     </span>
+    </div>
+    <div class="related-grid">
+     <a class="related-card" href="https://daochi.net">
+      <div>
+       <h3>
+        Daochi
+       </h3>
+       <p>
+        A separate sync network for app-owned data, identity, and connected devices.
+       </p>
       </div>
-    </section>
-
-    <section id="showcase">
-      <p class="section-eyebrow">Showcase</p>
-      <h2>Apps built with Kryon</h2>
-      <p class="section-lead">The homepage stays focused on Kryon itself. The showcase page is where first-party and community apps can be browsed with real screenshots and GitHub stars.</p>
-      <div class="hero-cta">
-        <a class="btn btn-primary" href="showcase.html">Browse showcase</a>
-        <a class="btn" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit pull request</a>
+      <span aria-hidden="true">
+       ↗
+      </span>
+     </a>
+     <a class="related-card" href="https://taijios.net">
+      <div>
+       <h3>
+        TaijiOS
+       </h3>
+       <p>
+        A Plan 9 desktop, with a growing collection of Kryon applications.
+       </p>
       </div>
-    </section>
-
-    <section id="links">
-      <p class="section-eyebrow">Development</p>
-      <h2>Source, docs, and related systems</h2>
-      <ul class="link-list">
-        <li><strong><a href="/api">API reference</a></strong> - generated C API documentation</li>
-        <li><strong><a href="ide.html">Playground</a></strong> - browser tools for trying Kryon source and artifacts</li>
-        <li><strong><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">Kryon source</a></strong> - compiler, runtime, docs, and release history</li>
-        <li><strong><a href="https://daochi.net" target="_blank" rel="noopener">Daochi</a></strong> - independent sync project used by apps that opt into it</li>
-      </ul>
-    </section>
+      <span aria-hidden="true">
+       ↗
+      </span>
+     </a>
+    </div>
+   </section>
   </main>
-
   <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <img src="icons/proj/kryon.png" alt="Kryon Labs" width="20" height="20">
-        <span>KRYON</span>
-      </div>
-      <div class="footer-cols">
-        <div class="footer-col">
-          <h4>Related</h4>
-          <ul>
-            <li><a href="https://daochi.net">Daochi</a></li>
-            <li><a href="https://taijios.net">TaijiOS</a></li>
-            <li><a href="https://krait.kryonlabs.com">Krait</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Kryon</h4>
-          <ul>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="language.html">Language</a></li>
-            <li><a href="matrices.html">Matrices</a></li>
-            <li><a href="renderers.html">Renderers</a></li>
-            <li><a href="/api">API reference</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Community</h4>
-          <ul>
-            <li><a href="showcase.html">Showcase</a></li>
-            <li><a href="https://github.com/kryonlabs" target="_blank" rel="noopener">GitHub</a></li>
-            <li><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram</a></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="https://waozi.xyz" target="_blank" rel="noopener">Made by Waozi</a></p>
-    </div>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
   </footer>
-
-  <script>
-    (function() {
-      var toggle = document.querySelector(".menu-toggle");
-      var nav = document.getElementById("header-nav");
-      if (toggle && nav) {
-        toggle.addEventListener("click", function() {
-          var open = nav.classList.toggle("is-open");
-          toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        });
-      }
-
-    })();
+  <script src="highlight.js">
   </script>
-</body>
+  <script src="home.js">
+  </script>
+ </body>
 </html>

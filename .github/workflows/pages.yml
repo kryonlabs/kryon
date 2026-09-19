@@ -52,6 +52,17 @@ jobs:
           test -f build/site/ide-tools/k2kir.wasm
           test -f build/site/ide-tools/k2b.js
           test -f build/site/ide-tools/k2b.wasm
+          test -f build/site/ide-tools/k2c.js
+          test -f build/site/ide-tools/k2c.wasm
+          test -f build/site/ide-tools/k2go.js
+          test -f build/site/ide-tools/k2go.wasm
+          test -f build/site/ide-tools/krb-web.js
+          test -f build/site/ide-tools/krb-web.wasm
+          test ! -f build/site/ide-tools/unavailable.json
+          test -f build/site/getting-started.html
+          test -f build/site/hello.kry
+          test -f build/site/og.png
+          test -f build/site/assets/editorial/workshop.webp
           test -f build/site/icons/proj/kryon.png
           test ! -f build/site/API.md
         env:

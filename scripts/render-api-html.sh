@@ -131,6 +131,45 @@ END {
 ' "$src" > "$tmp"
 fi
 
+# cmark does not add heading IDs. Use the same slugs as the fallback renderer
+# so published API links work regardless of the installed Markdown renderer.
+python3 - "$tmp" <<'PY'
+import html
+import posixpath
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+used = set()
+
+def anchor(match):
+    level, attributes, label = match.groups()
+    existing = re.search(r'\bid="([^"]+)"', attributes)
+    plain = html.unescape(re.sub(r'<[^>]+>', '', label))
+    slug = existing[1] if existing else re.sub(r'[^A-Za-z0-9]+', '-', plain).strip('-').lower()
+    candidate = slug
+    suffix = 1
+    while candidate in used:
+        candidate = f'{slug}-{suffix}'
+        suffix += 1
+    used.add(candidate)
+    attributes = re.sub(r'\s+id="[^"]+"', '', attributes)
+    return f'<h{level}{attributes} id="{candidate}">{label}</h{level}>'
+
+body = re.sub(r'<h([1-6])([^>]*)>(.*?)</h\1>', anchor, path.read_text(), flags=re.S)
+
+def markdown_link(match):
+    destination = posixpath.normpath('docs/' + match[1])
+    return 'href="https://github.com/kryonlabs/kryon/blob/master/' + destination + '"'
+
+body = re.sub(r'href="([^":]+\.md(?:#[^"]*)?)"', markdown_link, body)
+# Preserve the older contents link to the KSS documentation section.
+if 'id="style-sheets"' not in body:
+    body = body.replace('<h3 id="kss-language-model">', '<span id="style-sheets"></span><h3 id="kss-language-model">')
+path.write_text(body)
+PY
+
 awk '
 FNR == NR {
     body = body $0 "\n"

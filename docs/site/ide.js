@@ -24,26 +24,23 @@
   var last = { kry: "", kir: "", krb: "", c: "", go: "", bytes: null };
   var compileTimer = 0;
 
-  var sample = [
-    "#import \"kryon.h\"",
-    "",
-    "app \"Kryon Web IDE\" {",
-    "    size 800 520",
-    "}",
-    "",
-    "App :: () #ui {",
-    "    Screen root: {",
-    "        Background((Color){249, 246, 235, 255})",
-    "        Box((Rectangle){48, 42, 704, 390}, (Color){255, 254, 249, 255}, BLANK)",
-    "        Text(\"Hello from .kry\", 76, 86, Text24, (Color){31, 83, 102, 255})",
-    "        Text(\"This page runs k2kir and k2b as WebAssembly, then renders the KRB cartridge.\", 76, 134, Text16, (Color){42, 59, 64, 255})",
-    "        Box((Rectangle){76, 188, 292, 80}, (Color){35, 101, 125, 255}, BLANK)",
-    "        Text(\"Portable preview\", 104, 219, Text20, WHITE)",
-    "        Button((ButtonProps){.bounds = {76, 308, 184, 44}, .label = \"Get started\"})",
-    "    }",
-    "}"
-  ].join("\n");
-  source.value = sample;
+  var sample = source.value;
+  var drafts = {};
+  var draftKey = "scratch";
+  var selectionToken = 0;
+  var edited = false;
+  var sourceLoadError = "";
+  try {
+    drafts = JSON.parse(sessionStorage.getItem("kryon-playground-drafts") || "{}");
+  } catch (_) {}
+  source.value = drafts.scratch || sample;
+
+  function saveDraft() {
+    drafts[draftKey] = source.value;
+    try {
+      sessionStorage.setItem("kryon-playground-drafts", JSON.stringify(drafts));
+    } catch (_) {}
+  }
 
   if (menuToggle && headerNav) {
     menuToggle.addEventListener("click", function() {
@@ -88,12 +85,13 @@
     if (!mod) return { ok: false, text: "Compiler module unavailable." };
     try {
       resetFs(mod);
+      mod.siteMessages.length = 0;
       mod.FS.writeFile("/work/src/app.kry", source.value);
       rc = mod.callMain(args);
       if (rc && rc !== 0) throw new Error("compiler exited with " + rc);
       return reader(mod);
     } catch (e) {
-      return { ok: false, text: String(e && e.stack ? e.stack : e) };
+      return { ok: false, text: mod.siteMessages.join("\n") || String(e && e.message ? e.message : e) };
     }
   }
 
@@ -144,7 +142,7 @@
   }
 
   function rgba(u32) {
-    if ((u32 & 0xffffff00) === 0x80000000) {
+    if ((u32 >>> 8) === 0x800000) {
       var slot = u32 & 0xff;
       if (slot === 0) return "rgb(247,244,236)";
       if (slot === 1) return "rgb(42,59,64)";
@@ -305,7 +303,7 @@
         break;
       }
     });
-    setPreviewStatus("canvas backend");
+    setPreviewStatus("KRB subset preview");
   }
 
   function showArtifact() {
@@ -353,18 +351,20 @@
       passed++;
       try {
         render(last.bytes);
-        if (current) setPreviewStatus("best-effort KRB subset");
+        setPreviewStatus("KRB subset preview");
       } catch (e) {
         setPreviewStatus(String(e && e.message ? e.message : e).slice(0, 80));
         failed++;
       }
     } else {
       last.krb = result.text || "KRB output unavailable.";
-      setPreviewStatus("no KRB preview");
+      canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+      setPreviewStatus("Preview unavailable · check KRB diagnostics");
       failed++;
     }
     showArtifact();
-    setStatus(failed ? "compiled " + passed + "/5" : "compiled");
+    setStatus(passed === 4 ? "4/4 outputs compiled" : passed + "/4 outputs compiled · see diagnostics");
+    status.dataset.state = passed === 4 ? "success" : "error";
   }
 
   function scheduleCompile() {
@@ -379,26 +379,35 @@
   }
 
   function setScratch() {
+    selectionToken++;
+    saveDraft();
     current = null;
-    source.value = sample;
-    if (sourceTitle) sourceTitle.textContent = "app.kry";
+    draftKey = "scratch";
+    source.value = drafts.scratch || sample;
+    sourceTitle.textContent = "hello.kry · scratch";
     markSelection("scratch");
-    if (window.history && window.history.replaceState)
-      window.history.replaceState({}, "", window.location.pathname);
+    window.history.replaceState({}, "", window.location.pathname);
   }
 
   function selectItem(item) {
-    current = item;
-    if (sourceTitle) sourceTitle.textContent = item.path;
-    markSelection(item.path);
-    setStatus("fetching source...");
-    if (window.history && window.history.replaceState)
-      window.history.replaceState({}, "", window.location.pathname + "?example=" + encodeURIComponent(item.id));
-    return fetch(item.url).then(function(res) {
-      if (!res.ok) throw new Error("Could not fetch " + item.url + ": " + res.status);
-      return res.text();
-    }).then(function(text) {
+    saveDraft();
+    var token = ++selectionToken;
+    setStatus("Loading source…");
+    var request = Object.prototype.hasOwnProperty.call(drafts, item.path)
+      ? Promise.resolve(drafts[item.path])
+      : fetch(item.url).then(function (response) {
+          if (!response.ok) throw new Error("Could not load " + item.path + ". Your edits are safe; try again.");
+          return response.text();
+        });
+    return request.then(function (text) {
+      if (token !== selectionToken) return;
+      current = item;
+      draftKey = item.path;
       source.value = text;
+      sourceTitle.textContent = item.path;
+      markSelection(item.path);
+      var query = item.id ? "?example=" + encodeURIComponent(item.id) : "?src=" + encodeURIComponent(item.url);
+      window.history.replaceState({}, "", window.location.pathname + query);
     });
   }
 
@@ -448,68 +457,103 @@
   }
 
   function loadInitialSource() {
+    if (edited) return Promise.resolve();
     var params = new URLSearchParams(window.location.search);
     var wanted = params.get("example");
     var src = params.get("src");
-    var item;
-    if (wanted) {
-      item = items.filter(function(entry) {
-        return entry.id === wanted || entry.path === wanted || entry.name === wanted;
-      })[0];
-      if (item) return selectItem(item);
-    }
-    if (!src) {
-      setScratch();
-      return Promise.resolve();
-    }
-    setStatus("fetching source...");
-    return fetch(src).then(function(res) {
-      if (!res.ok) throw new Error("Could not fetch " + src + ": " + res.status);
-      return res.text();
-    }).then(function(text) {
-      source.value = text;
-    }).catch(function(err) {
-      source.value = sample;
-      artifact.textContent = String(err);
+    var item = items.find(function (entry) {
+      return entry.id === wanted || entry.path === wanted || entry.name === wanted;
+    });
+    if (item) return selectItem(item);
+    if (wanted) return Promise.reject(new Error("Example not found. Your current source is preserved."));
+    if (src) return selectItem({ path: src, url: src, title: src });
+    setScratch();
+    return Promise.resolve();
+  }
+
+  function compilerModule(factory) {
+    var messages = [];
+    return factory({
+      noInitialRun: true,
+      print: function (text) { messages.push(text); },
+      printErr: function (text) { messages.push(text); }
+    }).then(function (module) {
+      module.siteMessages = messages;
+      return module;
     });
   }
 
   function boot() {
+    var sources = loadManifest().catch(function () {
+      count.textContent = "Unavailable";
+      renderList();
+      count.textContent = "Unavailable";
+    }).then(loadInitialSource).catch(function (error) {
+      sourceLoadError = error.message;
+      setStatus(sourceLoadError);
+    });
     if (typeof createK2irModule !== "function" || typeof createK2bModule !== "function" ||
         typeof createK2cModule !== "function" || typeof createK2gModule !== "function") {
-      setStatus("compiler unavailable");
-      artifact.textContent = "The web compiler assets were not built.";
+      setStatus("Compiler unavailable · reload to retry");
+      artifact.textContent = "The compiler could not load. Your source remains editable and your drafts are saved in this tab. Reload to retry.";
       return;
     }
     Promise.all([
-      createK2irModule({ noInitialRun: true }),
-      createK2bModule({ noInitialRun: true }),
-      createK2cModule({ noInitialRun: true }),
-      createK2gModule({ noInitialRun: true }),
-      loadManifest()
-    ]).then(function(mods) {
-      k2kirMod = mods[0];
-      k2bMod = mods[1];
-      k2cMod = mods[2];
-      k2goMod = mods[3];
-      return loadInitialSource();
-    }).then(function() {
-      setStatus("ready");
+      compilerModule(createK2irModule),
+      compilerModule(createK2bModule),
+      compilerModule(createK2cModule),
+      compilerModule(createK2gModule),
+      sources
+    ]).then(function (modules) {
+      k2kirMod = modules[0];
+      k2bMod = modules[1];
+      k2cMod = modules[2];
+      k2goMod = modules[3];
+      compileButton.disabled = false;
       compile();
-    }).catch(function(err) {
-      setStatus("error");
-      artifact.textContent = String(err && err.stack ? err.stack : err);
+      if (sourceLoadError) {
+        setStatus(sourceLoadError);
+      }
+    }).catch(function () {
+      setStatus("Compiler unavailable · reload to retry");
+      artifact.textContent = "The compiler could not load. Your edits are preserved. Reload to retry.";
     });
   }
 
   tabButtons.forEach(function(btn) {
     btn.addEventListener("click", function() {
       activeTab = btn.getAttribute("data-tab");
-      tabButtons.forEach(function(b) { b.classList.toggle("is-active", b === btn); });
+      tabButtons.forEach(function(b) {
+        b.classList.toggle("is-active", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+        b.tabIndex = b === btn ? 0 : -1;
+      });
+      document.getElementById("artifact-panel").setAttribute("aria-labelledby", btn.id);
       showArtifact();
     });
   });
-  source.addEventListener("input", scheduleCompile);
+  source.addEventListener("input", function () {
+    edited = true;
+    selectionToken++;
+    saveDraft();
+    scheduleCompile();
+  });
+  window.addEventListener("pagehide", saveDraft);
+  var initialTab = new URLSearchParams(window.location.search).get("tab");
+  tabButtons.forEach(function (button) {
+    if (button.dataset.tab === initialTab) button.click();
+    button.addEventListener("keydown", function (event) {
+      var index = tabButtons.indexOf(button);
+      if (event.key === "ArrowRight") index = (index + 1) % tabButtons.length;
+      else if (event.key === "ArrowLeft") index = (index - 1 + tabButtons.length) % tabButtons.length;
+      else if (event.key === "Home") index = 0;
+      else if (event.key === "End") index = tabButtons.length - 1;
+      else return;
+      event.preventDefault();
+      tabButtons[index].focus();
+      tabButtons[index].click();
+    });
+  });
   compileButton.addEventListener("click", compile);
   sampleButton.addEventListener("click", function() {
     setScratch();

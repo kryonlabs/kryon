@@ -1,100 +1,183 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Showcase</title>
-  <meta name="description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kryonlabs.com/showcase.html">
-  <meta property="og:title" content="Kryon Showcase">
-  <meta property="og:description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="https://kryonlabs.com/showcase.html">
-  <meta name="twitter:title" content="Kryon Showcase">
-  <meta name="twitter:description" content="Apps and projects built with Kryon, organized as featured, first-party, and community projects.">
-  <meta name="theme-color" content="#f3f1ea">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon Showcase
+  </title>
+  <meta content="Apps and projects built with Kryon, organized as featured, first-party, and community projects." name="description"/>
+  <meta content="#f7f3eb" name="theme-color"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="icons/proj/kryon.png" rel="apple-touch-icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/showcase.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/showcase.html" property="og:url"/>
+  <meta content="Kryon Showcase" property="og:title"/>
+  <meta content="Apps and projects built with Kryon, organized as featured, first-party, and community projects." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon Showcase" name="twitter:title"/>
+  <meta content="Apps and projects built with Kryon, organized as featured, first-party, and community projects." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="/">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="/api">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit PR</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a href="docs.html">
+      Docs
+     </a>
+     <a aria-current="page" href="showcase.html">
+      Showcase
+     </a>
+     <a href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main id="top">
-    <section class="doc-hero">
-      <p class="section-eyebrow">Showcase</p>
-      <h1>Apps built with Kryon</h1>
-      <p class="section-lead">Browse featured, first-party, and community projects built with Kryon. Cards use real screenshots and GitHub stars when a public repository exposes them.</p>
-      <div class="hero-cta">
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit a project</a>
-        <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" target="_blank" rel="noopener">View metadata</a>
-      </div>
-    </section>
-
-    <section>
-      <div class="tabs showcase-tabs" data-showcase-tabs>
-        <div class="tablist" role="tablist" aria-label="Showcase sections">
-          <button type="button" role="tab" id="showcase-tab-featured" aria-selected="true" aria-controls="showcase-panel-featured" data-showcase-filter="featured">Featured</button>
-          <button type="button" role="tab" id="showcase-tab-first-party" aria-selected="false" aria-controls="showcase-panel-first-party" data-showcase-filter="first-party" tabindex="-1">First-party</button>
-          <button type="button" role="tab" id="showcase-tab-community" aria-selected="false" aria-controls="showcase-panel-community" data-showcase-filter="community" tabindex="-1">Community</button>
-        </div>
-
-        <div class="tabpanel is-active" id="showcase-panel-featured" role="tabpanel" aria-labelledby="showcase-tab-featured">
-          <div class="showcase-panel-head">
-            <h2>Featured</h2>
-            <p>Public Kryon projects highlighted by the showcase metadata.</p>
-          </div>
-          <div class="showcase-grid" data-showcase-grid="featured" aria-live="polite"></div>
-        </div>
-
-        <div class="tabpanel" id="showcase-panel-first-party" role="tabpanel" aria-labelledby="showcase-tab-first-party" hidden>
-          <div class="showcase-panel-head">
-            <h2>First-party</h2>
-            <p>Projects maintained under the Kryon Labs umbrella or built as core ecosystem pieces.</p>
-          </div>
-          <div class="showcase-grid" data-showcase-grid="first-party" aria-live="polite"></div>
-        </div>
-
-        <div class="tabpanel" id="showcase-panel-community" role="tabpanel" aria-labelledby="showcase-tab-community" hidden>
-          <div class="showcase-panel-head">
-            <h2>Community</h2>
-            <p>Public submissions ranked by stars when a public source repository exposes that data.</p>
-          </div>
-          <div class="showcase-grid" data-showcase-grid="community" aria-live="polite"></div>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <footer>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" target="_blank" rel="noopener">Submit a Kryon app</a></p>
+  <main id="main">
+   <section class="doc-hero">
+    <p class="section-eyebrow">
+     Showcase
+    </p>
+    <h1>
+     Apps built with Kryon
+    </h1>
+    <p class="section-lead">
+     Browse featured, first-party, and community projects built with Kryon. Cards use real screenshots and GitHub stars when a public repository exposes them.
+    </p>
+    <div class="hero-cta">
+     <a class="btn btn-primary" href="https://github.com/kryonlabs/showcase/pulls/new?template=PULL_REQUEST_TEMPLATE.md" rel="noopener" target="_blank">
+      Submit a project
+     </a>
+     <a class="btn" href="https://github.com/kryonlabs/showcase/tree/master/projects" rel="noopener" target="_blank">
+      View metadata
+     </a>
     </div>
+   </section>
+   <section>
+    <div class="tabs showcase-tabs" data-showcase-tabs="">
+     <div aria-label="Showcase sections" class="tablist" role="tablist">
+      <button aria-controls="showcase-panel-featured" aria-selected="true" data-showcase-filter="featured" id="showcase-tab-featured" role="tab" type="button">
+       Featured
+      </button>
+      <button aria-controls="showcase-panel-first-party" aria-selected="false" data-showcase-filter="first-party" id="showcase-tab-first-party" role="tab" tabindex="-1" type="button">
+       First-party
+      </button>
+      <button aria-controls="showcase-panel-community" aria-selected="false" data-showcase-filter="community" id="showcase-tab-community" role="tab" tabindex="-1" type="button">
+       Community
+      </button>
+     </div>
+     <div aria-labelledby="showcase-tab-featured" class="tabpanel is-active" id="showcase-panel-featured" role="tabpanel">
+      <div class="showcase-panel-head">
+       <h2>
+        Featured
+       </h2>
+       <p>
+        Public Kryon projects highlighted by the showcase metadata.
+       </p>
+      </div>
+      <div aria-live="polite" class="showcase-grid" data-showcase-grid="featured">
+      </div>
+     </div>
+     <div aria-labelledby="showcase-tab-first-party" class="tabpanel" hidden="" id="showcase-panel-first-party" role="tabpanel">
+      <div class="showcase-panel-head">
+       <h2>
+        First-party
+       </h2>
+       <p>
+        Projects maintained under the Kryon Labs umbrella or built as core ecosystem pieces.
+       </p>
+      </div>
+      <div aria-live="polite" class="showcase-grid" data-showcase-grid="first-party">
+      </div>
+     </div>
+     <div aria-labelledby="showcase-tab-community" class="tabpanel" hidden="" id="showcase-panel-community" role="tabpanel">
+      <div class="showcase-panel-head">
+       <h2>
+        Community
+       </h2>
+       <p>
+        Public submissions ranked by stars when a public source repository exposes that data.
+       </p>
+      </div>
+      <div aria-live="polite" class="showcase-grid" data-showcase-grid="community">
+      </div>
+     </div>
+    </div>
+    <p class="caption" data-showcase-updated="">
+    </p>
+    <noscript>
+     <p>
+      <a href="https://github.com/kryonlabs/showcase/tree/master/projects">
+       Browse all projects in the showcase registry.
+      </a>
+     </p>
+    </noscript>
+   </section>
+  </main>
+  <footer>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
   </footer>
-
   <script>
-    (function() {
+   (function() {
       var toggle = document.querySelector(".menu-toggle");
       var nav = document.getElementById("header-nav");
       if (toggle && nav) {
@@ -117,101 +200,6 @@
         taijios: true,
         kapsule: true
       };
-
-      var builtInProjects = [
-        {
-          slug: "kryon",
-          name: "Kryon",
-          summary: "Native declarative UI and app runtime with .kry source, KIR, C output, KRB cartridges, and browser tooling.",
-          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
-          repository: "https://github.com/kryonlabs/kryon",
-          homepage: "https://kryonlabs.com/language.html",
-          banner: "project-shots/kryon.png",
-          bannerAlt: "Kryon documentation screenshot",
-          tags: ["runtime", "kry", "c", "embedded", "desktop"],
-          featured: true
-        },
-        {
-          slug: "daochi",
-          name: "Daochi",
-          summary: "Mesh-native sync network for app-owned data, signed identity, encrypted records, and remote events.",
-          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
-          repository: "https://github.com/kryonlabs/daochi",
-          homepage: "https://daochi.net",
-          banner: "project-shots/daochi.png",
-          bannerAlt: "Daochi website screenshot",
-          tags: ["sync", "protocol", "native", "mesh"],
-          featured: true
-        },
-        {
-          slug: "krait",
-          name: "Krait",
-          summary: "Kryon IDE and development environment for editing, previewing, and shipping Kryon apps.",
-          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
-          repository: "https://github.com/kryonlabs/krait",
-          homepage: "https://krait.kryonlabs.com",
-          banner: "project-shots/krait.png",
-          bannerAlt: "Krait IDE screenshot",
-          tags: ["ide", "kry", "developer-tools"],
-          featured: true
-        },
-        {
-          slug: "taijios",
-          name: "TaijiOS",
-          summary: "Plan 9-based desktop OS with a Kryon app stack and browser boot path.",
-          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
-          repository: "https://github.com/kryonlabs/taiji",
-          homepage: "https://taijios.net",
-          banner: "project-shots/taijios.png",
-          bannerAlt: "TaijiOS desktop screenshot",
-          tags: ["os", "plan9", "desktop"],
-          featured: true
-        },
-        {
-          slug: "kasaival",
-          name: "Kasaival",
-          summary: "2D fire-spirit action game built in Kry for desktop, web, and Android.",
-          author: {name: "waozixyz", url: "https://waozi.xyz"},
-          homepage: "https://kasai.waozi.xyz",
-          banner: "project-shots/kasaival.png",
-          bannerAlt: "Kasaival gameplay screenshot",
-          tags: ["game", "kry", "desktop", "android"],
-          featured: true
-        },
-        {
-          slug: "katalis",
-          name: "Katalis",
-          summary: "Voxel sandbox built on Kryon with local singleplayer worlds and Luanti-style mod compatibility.",
-          author: {name: "waozixyz", url: "https://waozi.xyz"},
-          homepage: "https://katalis.waozi.xyz",
-          banner: "project-shots/katalis.png",
-          bannerAlt: "Katalis gameplay screenshot",
-          tags: ["game", "c", "kryon", "desktop", "mods"],
-          featured: true
-        },
-        {
-          slug: "kapsule",
-          name: "Kapsule",
-          summary: "Terminal application using Kryon for terminal-native workflows and app UI.",
-          author: {name: "kryonlabs", url: "https://kryonlabs.com"},
-          repository: "https://github.com/kryonlabs/kapsule",
-          homepage: "https://github.com/kryonlabs/kapsule",
-          banner: "project-shots/kapsule.png",
-          bannerAlt: "Kapsule terminal screenshot",
-          tags: ["terminal", "kryon", "desktop"]
-        },
-        {
-          slug: "uku",
-          name: "Uku",
-          summary: "Local password manager with Kryon UI, QR handoff flows, and app-owned storage.",
-          author: {name: "waozixyz", url: "https://waozi.xyz"},
-          repository: "https://github.com/waozixyz/uku",
-          homepage: "https://github.com/waozixyz/uku",
-          banner: "project-shots/uku.png",
-          bannerAlt: "Uku vault screenshot",
-          tags: ["security", "kryon", "desktop", "android"]
-        }
-      ];
 
       function text(value) {
         return String(value == null ? "" : value);
@@ -249,7 +237,7 @@
       }
       function mergeProjects(projects) {
         var bySlug = {};
-        builtInProjects.concat(projects || []).forEach(function(project) {
+        (projects || []).forEach(function(project) {
           if (!project || !project.slug) return;
           bySlug[project.slug] = normalizeProject(Object.assign({}, bySlug[project.slug] || {}, project));
         });
@@ -281,7 +269,7 @@
         var image = project.banner || "icons/proj/kryon.png";
         var source = project.repository ? '<a class="btn" href="' + escapeHtml(project.repository) + '" target="_blank" rel="noopener">Source</a>' : "";
         return '<article class="app-card">' +
-          '<img class="app-card-image" src="' + escapeHtml(image) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
+          '<img class="app-card-image" loading="lazy" width="640" height="400" src="' + escapeHtml(image) + '" alt="' + escapeHtml(project.bannerAlt || project.name + ' app banner') + '">' +
           '<div class="app-card-body">' +
           rankHtml +
           '<span class="app-kicker">' + escapeHtml(tags) + '</span>' +
@@ -296,41 +284,17 @@
           '</article>';
       }
       function renderAll(projects) {
+        Object.keys(grids).forEach(function (key) { grids[key].textContent = ""; });
         var ranked = rerankProjects(projects);
         grids.featured.innerHTML = ranked.filter(function(project) { return project.featured; }).map(renderProject).join("");
         grids["first-party"].innerHTML = ranked.filter(function(project) { return project.firstParty; }).map(renderProject).join("");
         grids.community.innerHTML = ranked.filter(function(project) { return !project.firstParty; }).map(renderProject).join("");
-      }
-      function refreshStars(projects) {
-        var requests = projects.map(function(project, index) {
-          var slug = repositorySlug(project);
-          if (!slug) return Promise.resolve({index: index});
-          return fetch("https://api.github.com/repos/" + slug)
-            .then(function(response) { return response.ok ? response.json() : null; })
-            .then(function(repo) {
-              return {
-                index: index,
-                stars: repo && typeof repo.stargazers_count === "number" ? repo.stargazers_count : null
-              };
-            })
-            .catch(function() { return {index: index}; });
-        });
-        return Promise.all(requests).then(function(results) {
-          var changed = false;
-          var next = projects.map(function(project) {
-            var copy = normalizeProject(project);
-            return copy;
-          });
-          results.forEach(function(result) {
-            if (typeof result.stars === "number" && next[result.index].stars !== result.stars) {
-              next[result.index].stars = result.stars;
-              changed = true;
-            }
-          });
-          return changed ? next : projects;
+        Object.keys(grids).forEach(function (key) {
+          if (!grids[key].children.length) {
+            grids[key].innerHTML = '<p>No projects available in this section. <a href="https://github.com/kryonlabs/showcase/tree/master/projects">Browse the registry</a> or try again later.</p>';
+          }
         });
       }
-
       document.querySelectorAll("[data-showcase-tabs]").forEach(function(group) {
         var tabs = group.querySelectorAll("[role=tab]");
         tabs.forEach(function(tab) {
@@ -358,11 +322,11 @@
 
       if (window.fetch) {
         fetch("showcase-data.json")
-          .then(function(response) { return response.ok ? response.json() : null; })
+          .then(function(response) { if (!response.ok) throw new Error("Showcase unavailable"); return response.json(); })
           .then(function(data) {
             var projects = mergeProjects(data && Array.isArray(data.projects) ? data.projects : []);
             renderAll(projects);
-            refreshStars(projects).then(renderAll);
+            document.querySelector("[data-showcase-updated]").textContent = data.updatedAt ? "Registry updated " + data.updatedAt : "";
           })
           .catch(function() { renderAll(mergeProjects([])); });
       } else {
@@ -370,5 +334,5 @@
       }
     })();
   </script>
-</body>
+ </body>
 </html>

@@ -1,74 +1,148 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon API Reference</title>
-  <meta name="description" content="Kryon runtime and UI API reference rendered from the canonical markdown documentation.">
-  <meta name="theme-color" content="#f3f1ea">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon API Reference
+  </title>
+  <meta content="Kryon runtime and UI API reference rendered from the canonical markdown documentation." name="description"/>
+  <meta content="#f7f3eb" name="theme-color"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="icons/proj/kryon.png" rel="apple-touch-icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/api.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/api.html" property="og:url"/>
+  <meta content="Kryon API Reference" property="og:title"/>
+  <meta content="Kryon runtime and UI API reference rendered from the canonical markdown documentation." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon API Reference" name="twitter:title"/>
+  <meta content="Kryon runtime and UI API reference rendered from the canonical markdown documentation." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="index.html">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="api.html">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a aria-current="page" href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main class="wrap api-reference" style="padding: 32px 20px 60px;">
-    <p class="section-eyebrow">Reference</p>
-    <h1 style="margin-top: 0; font-size: 28px; border-bottom: 1px solid var(--line); padding-bottom: 10px;">API</h1>
-    <p class="section-lead" style="margin-bottom: 28px;">Runtime and widget surface, rendered from the canonical <code>docs/API.md</code>.</p>
-{{ API_BODY }}
+  <nav aria-label="Documentation" class="docs-nav">
+   <a href="getting-started.html">
+    Get started
+   </a>
+   <a href="docs.html">
+    Overview
+   </a>
+   <a href="language.html">
+    Language
+   </a>
+   <a aria-current="page" href="api.html">
+    API
+   </a>
+   <a href="renderers.html">
+    Renderers
+   </a>
+   <a href="matrices.html">
+    Coverage
+   </a>
+   <a href="benchmarks.html">
+    Benchmarks
+   </a>
+  </nav>
+  <main class="wrap api-reference" id="main">
+   <p class="section-eyebrow">
+    Reference
+   </p>
+   <p class="section-lead" style="margin-bottom: 28px;">
+    Runtime and widget surface, rendered from the canonical
+    <code>
+     docs/API.md
+    </code>
+    .
+   </p>
+   <details class="page-contents" open="">
+    <summary>
+     On this page
+    </summary>
+    <label class="contents-search">
+     Find a section
+     <input data-contents-search="" placeholder="Text, layout, input…" type="search"/>
+    </label>
+    <nav aria-label="API contents" data-page-contents="">
+    </nav>
+   </details>
+   {{ API_BODY }}
   </main>
-
   <footer>
-    <div class="footer-inner">
-      <div class="footer-brand">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="20" height="20">
-        <span>KRYON</span>
-      </div>
-      <div class="footer-cols">
-        <div class="footer-col">
-          <h4>Kryon</h4>
-          <ul>
-            <li><a href="index.html#features">Features</a></li>
-            <li><a href="index.html#platforms">Platforms</a></li>
-            <li><a href="api.html">API reference</a></li>
-          </ul>
-        </div>
-        <div class="footer-col">
-          <h4>Ecosystem</h4>
-          <ul>
-            <li><a href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub ↗</a></li>
-            <li><a href="https://discord.gg/ep7gCWzHJD" target="_blank" rel="noopener">Discord ↗</a></li>
-            <li><a href="https://t.me/kryonlabs_com" target="_blank" rel="noopener">Telegram ↗</a></li>
-          </ul>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="https://waozi.xyz" target="_blank" rel="noopener">Made by Waozi</a></p>
-    </div>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
   </footer>
-
-  <script src="highlight.js"></script>
-</body>
+  <script src="highlight.js">
+  </script>
+ </body>
 </html>

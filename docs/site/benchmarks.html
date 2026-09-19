@@ -1,85 +1,241 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kryon Benchmarks</title>
-  <meta name="description" content="Kryon compiler and runtime benchmark summaries generated from checked performance harnesses.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://kryonlabs.com/benchmarks.html">
-  <meta property="og:title" content="Kryon Benchmarks">
-  <meta property="og:description" content="Text-input latency and lowering benchmark summaries for Kryon.">
-  <meta name="theme-color" content="#f3f1ea">
-  <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
-  <link rel="apple-touch-icon" href="icons/proj/kryon.png">
-  <link rel="stylesheet" href="styles.css">
-  <script src="theme.js"></script>
-</head>
-<body>
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <title>
+   Kryon Benchmarks
+  </title>
+  <meta content="Kryon compiler and runtime benchmark summaries generated from checked performance harnesses." name="description"/>
+  <meta content="#f7f3eb" name="theme-color"/>
+  <link href="icons/proj/kryon.png" rel="icon" sizes="16x16" type="image/png"/>
+  <link href="icons/proj/kryon.png" rel="apple-touch-icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+  <script src="theme.js">
+  </script>
+  <script defer="" src="site.js">
+  </script>
+  <link href="https://kryonlabs.com/benchmarks.html" rel="canonical"/>
+  <meta content="website" property="og:type"/>
+  <meta content="https://kryonlabs.com/benchmarks.html" property="og:url"/>
+  <meta content="Kryon Benchmarks" property="og:title"/>
+  <meta content="Kryon compiler and runtime benchmark summaries generated from checked performance harnesses." property="og:description"/>
+  <meta content="https://kryonlabs.com/og.png" property="og:image"/>
+  <meta content="Kryon — Small foundations. Useful software. An illustrated workshop beneath the pines." property="og:image:alt"/>
+  <meta content="summary_large_image" name="twitter:card"/>
+  <meta content="Kryon Benchmarks" name="twitter:title"/>
+  <meta content="Kryon compiler and runtime benchmark summaries generated from checked performance harnesses." name="twitter:description"/>
+  <meta content="https://kryonlabs.com/og.png" name="twitter:image"/>
+  <meta content="1200" property="og:image:width"/>
+  <meta content="800" property="og:image:height"/>
+ </head>
+ <body>
+  <a class="skip-link" href="#main">
+   Skip to content
+  </a>
   <header class="site-header">
-    <div class="site-header-inner">
-      <a class="brand" href="/">
-        <img src="icons/proj/kryon.png" alt="Kryon" width="22" height="22">
-        <span>KRYON</span>
-      </a>
-      <button class="menu-toggle" type="button" aria-label="Open site menu" aria-expanded="false" aria-controls="header-nav">Menu</button>
-      <nav class="header-nav" id="header-nav" aria-label="Primary">
-        <a href="/">Home</a>
-        <a href="docs.html">Docs</a>
-        <a href="language.html">Language</a>
-        <a href="renderers.html">Renderers</a>
-        <a href="showcase.html">Showcase</a>
-        <a href="/api">API</a>
-        <a href="ide.html">Playground</a>
-        <a class="btn btn-primary" href="https://github.com/kryonlabs/kryon" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
+   <div class="site-header-inner">
+    <a class="brand" href="index.html">
+     <img alt="" height="28" src="icons/proj/kryon.png" width="28"/>
+     <span>
+      Kryon
+     </span>
+    </a>
+    <button aria-controls="primary-navigation" aria-expanded="false" class="menu-button" type="button">
+     Menu
+    </button>
+    <nav aria-label="Primary" class="header-nav" id="primary-navigation">
+     <a href="getting-started.html">
+      Get started
+     </a>
+     <a aria-current="page" href="docs.html">
+      Docs
+     </a>
+     <a href="showcase.html">
+      Showcase
+     </a>
+     <a href="ide.html">
+      Playground
+     </a>
+     <a href="https://github.com/kryonlabs/kryon">
+      Source ↗
+     </a>
+    </nav>
+   </div>
   </header>
-
-  <main>
-    <section class="doc-hero">
-      <p class="section-eyebrow">Runtime Evidence</p>
-      <h1>Benchmarks</h1>
-      <p class="section-lead">The text-input harnesses measure one full retained UI frame per interaction: declare, reconcile, layout, route, and update. Rendering is GPU-side and not included in headless timings.</p>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Text Input</p>
-      <h2>Latest Generated Results</h2>
-      <p>Generate this page's data with:</p>
-<pre><code>make perf-text-input-site</code></pre>
-      <div class="table-wrap">
-        <table class="matrix-table" id="benchmark-table">
-          <thead>
-            <tr><th>Benchmark</th><th>Scenario</th><th>Samples</th><th>p50</th><th>p95</th><th>p99</th><th>Max</th><th>Notes</th></tr>
-          </thead>
-          <tbody>
-            <tr><td colspan="8">Loading <code>benchmarks.json</code>.</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p id="benchmark-meta"></p>
-    </section>
-
-    <section>
-      <p class="section-eyebrow">Contracts</p>
-      <h2>What The Harness Covers</h2>
-      <ul class="link-list">
-        <li><strong>Lowering:</strong> <code>perf-text-input</code> validates KIR, C, Go, and KRB outputs for the same <code>.kry</code> source. JS/web output is paused.</li>
-        <li><strong>Retained typing:</strong> <code>text_input_perf_test</code> checks repeated keystroke frames under the retained UI core.</li>
-        <li><strong>Precision path:</strong> <code>text_input_precision_test</code> focuses random fields, sends one character or backspace, and verifies the edited text after each frame.</li>
-      </ul>
-    </section>
-  </main>
-
-  <footer>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Kryon Labs &middot; <a href="index.html">Home</a> &middot; <a href="language.html">Language</a> &middot; <a href="matrices.html">Matrices</a></p>
+  <nav aria-label="Documentation" class="docs-nav">
+   <a href="getting-started.html">
+    Get started
+   </a>
+   <a href="docs.html">
+    Overview
+   </a>
+   <a href="language.html">
+    Language
+   </a>
+   <a href="api.html">
+    API
+   </a>
+   <a href="renderers.html">
+    Renderers
+   </a>
+   <a href="matrices.html">
+    Coverage
+   </a>
+   <a aria-current="page" href="benchmarks.html">
+    Benchmarks
+   </a>
+  </nav>
+  <main id="main">
+   <section class="doc-hero">
+    <p class="section-eyebrow">
+     Runtime Evidence
+    </p>
+    <h1>
+     Benchmarks
+    </h1>
+    <p class="section-lead">
+     The text-input harnesses measure one full retained UI frame per interaction: declare, reconcile, layout, route, and update. Rendering is GPU-side and not included in headless timings.
+    </p>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Text Input
+    </p>
+    <h2>
+     Latest Generated Results
+    </h2>
+    <p>
+     Generate this page's data with:
+    </p>
+    <pre><code>make perf-text-input-site</code></pre>
+    <div class="table-wrap">
+     <table class="matrix-table" id="benchmark-table">
+      <thead>
+       <tr>
+        <th>
+         Benchmark
+        </th>
+        <th>
+         Scenario
+        </th>
+        <th>
+         Samples
+        </th>
+        <th>
+         p50
+        </th>
+        <th>
+         p95
+        </th>
+        <th>
+         p99
+        </th>
+        <th>
+         Max
+        </th>
+        <th>
+         Notes
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td colspan="8">
+         Loading
+         <code>
+          benchmarks.json
+         </code>
+         .
+        </td>
+       </tr>
+      </tbody>
+     </table>
     </div>
+    <p class="caption" id="benchmark-meta">
+    </p>
+    <p class="caption">
+     Times are CPU microseconds for the recorded run. The published data does not include a host or source revision; use these as observations, not cross-machine comparisons.
+    </p>
+   </section>
+   <section>
+    <p class="section-eyebrow">
+     Contracts
+    </p>
+    <h2>
+     What The Harness Covers
+    </h2>
+    <ul class="link-list">
+     <li>
+      <strong>
+       Lowering:
+      </strong>
+      <code>
+       perf-text-input
+      </code>
+      validates KIR, C, Go, and KRB outputs for the same
+      <code>
+       .kry
+      </code>
+      source. JS/web output is paused.
+     </li>
+     <li>
+      <strong>
+       Retained typing:
+      </strong>
+      <code>
+       text_input_perf_test
+      </code>
+      checks repeated keystroke frames under the retained UI core.
+     </li>
+     <li>
+      <strong>
+       Precision path:
+      </strong>
+      <code>
+       text_input_precision_test
+      </code>
+      focuses random fields, sends one character or backspace, and verifies the edited text after each frame.
+     </li>
+    </ul>
+   </section>
+  </main>
+  <footer>
+   <div class="footer-top">
+    <a class="brand" href="index.html">
+     Kryon
+    </a>
+    <nav aria-label="Footer">
+     <a href="docs.html">
+      Documentation
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/releases">
+      Releases
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/pulls">
+      Contribute
+     </a>
+     <a href="https://github.com/kryonlabs/kryon/issues">
+      Community
+     </a>
+     <a href="https://waozi.xyz">
+      Waozi ↗
+     </a>
+    </nav>
+   </div>
+   <div class="footer-bottom">
+    <p>
+     Small foundations. Useful software.
+    </p>
+    <p>
+     © 2026 Kryon Labs · Open source, made with care.
+    </p>
+   </div>
   </footer>
-  <script src="highlight.js"></script>
+  <script src="highlight.js">
+  </script>
   <script>
-    (function() {
+   (function() {
       var toggle = document.querySelector(".menu-toggle");
       var nav = document.getElementById("header-nav");
       if (toggle && nav) {
@@ -123,5 +279,5 @@
       });
     })();
   </script>
-</body>
+ </body>
 </html>
