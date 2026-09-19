@@ -92,9 +92,9 @@ to restart completed parser, editor, image or naming work.
 Implementation contract and source audit:
 [`ARRAY_CALL_ABI.md`](ARRAY_CALL_ABI.md). Six strict compiler probes on
 2026-09-19 established the original rejection on C, C++ and Go. Ordinary
-function array calls are now implemented. Array/record execution and C/C++
-syntax checks pass; concurrent slider source/generated-host mismatches currently
-block final runtime generation and Go integration (see the ABI evidence).
+function array calls are now implemented. Array/record execution, all native
+syntax suites, 17 generated parity fixtures, runtime/provenance guards and Go
+runtime tests pass. See the ABI evidence for revisions and shared-checkout scope.
 
 - [x] Specify value-copy behavior for direct array arguments and results,
   mutation isolation, evaluation order, type identity and imported signatures.
@@ -116,9 +116,13 @@ not completion. Local construction/copying and checked bounds already work.
 
 ## Milestone 3 — Slice semantics and safe storage lifetimes
 
-- [ ] Write the language contract first: element type, length, valid range,
+The bounded implementation contract is in [`SLICE_VALUES.md`](SLICE_VALUES.md).
+It includes returned subviews and lexical escape checking; implementation and
+execution evidence remain pending.
+
+- [x] Write the language contract first: element type, length, valid range,
   empty slices, view versus copy, mutability and borrowed storage lifetime.
-- [ ] Define ownership/escape checks for views of locals, parameters, returned
+- [x] Define ownership/escape checks for views of locals, parameters, returned
   values and captured values. Choose a bounded supported contract; do not imply
   a general allocator or garbage collector merely by introducing slices.
 - [ ] Implement slice construction, indexing, length and the parameter/return

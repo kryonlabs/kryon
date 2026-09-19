@@ -1,7 +1,7 @@
 #import "kryon.h"
 
 app "Generated Plot Parity" {
-    size 260 940
+    size 560 1000
     fps 60
 }
 
@@ -23,7 +23,7 @@ state {
 
 plots_frame :: () #ui {
     Screen plots_root: {
-        bounds = {0,0,260,940}
+        bounds = {0,0,560,1000}
         values: [4] float = {0.0f,0.25f,1.0f,0.5f}
         Plot((PlotProps){.bounds = {20,20,220,60}, .label = "Lines", .values = values, .value_count = 4, .overlay = "peak", .scale_min = 0.0f, .scale_max = 1.0f})
         Plot((PlotProps){.bounds = {20,100,220,60}, .label = "Bars", .values = values, .value_count = 4, .offset = 1, .mode = PlotBars})
@@ -31,8 +31,8 @@ plots_frame :: () #ui {
         Drag((DragProps){.bounds = {135,180,105,28}, .id = 921, .label = "Int", .kind = NumericInt, .int_values = plots_whole_values, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
         Drag((DragProps){.bounds = {20,215,105,28}, .id = 938, .label = "Float range", .kind = NumericFloat, .mode = DragRange, .float_min = &plots_scalar_range_min, .float_max = &plots_scalar_range_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format = "%.1f", .format_max = "max %.1f"})
         Drag((DragProps){.bounds = {135,215,105,28}, .id = 939, .label = "Int range", .kind = NumericInt, .mode = DragRange, .int_min = &plots_whole_range_min, .int_max = &plots_whole_range_max, .speed = 1.0f, .min = 0, .max = 10, .format_max = "max %d"})
-        Slider((SliderProps){.bounds = {20,220,105,28}, .id = 922, .label = "Slider float", .kind = NumericFloat, .float_values = plots_slider_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
-        Slider((SliderProps){.bounds = {135,220,105,28}, .id = 923, .label = "Slider int", .kind = NumericInt, .int_values = plots_slider_discrete_values, .value_count = 2, .min = 0, .max = 10})
+        Slider((SliderProps){.bounds = {300,20,220,120}, .id = 922, .label = "Slider float", .kind = NumericFloat, .float_values = plots_slider_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
+        Slider((SliderProps){.bounds = {300,180,220,120}, .id = 923, .label = "Slider int", .kind = NumericInt, .int_values = plots_slider_discrete_values, .value_count = 2, .min = 0, .max = 10})
         Slider((SliderProps){.bounds = {20,270,50,100}, .id = 924, .label = "V float", .kind = NumericFloat, .float_values = plots_slider_values, .value_count = 1, .min = 0.0f, .max = 1.0f, .vertical = 1})
         Slider((SliderProps){.bounds = {80,270,50,100}, .id = 925, .label = "V int", .kind = NumericInt, .int_values = plots_slider_discrete_values, .value_count = 1, .min = 0, .max = 10, .vertical = 1})
         Slider((SliderProps){.bounds = {140,270,100,28}, .id = 926, .label = "Angle", .kind = NumericFloat, .float_value = &plots_angle_value, .min = -180.0f, .max = 180.0f, .angle = 1})
@@ -49,18 +49,18 @@ plots_frame :: () #ui {
         ColorPicker((ColorPickerProps){.bounds = {20,620,100,130}, .id = 935, .label = "RGB picker", .values = edit_color, .value_count = 3, .picker = true})
         ColorPicker((ColorPickerProps){.bounds = {140,620,100,130}, .id = 936, .label = "RGBA picker", .values = edit_color, .value_count = 4, .picker = true})
         Button((ButtonProps){.bounds = {20,760,100,28}, .id = 937, .label = "Swatch", .swatch = true, .swatch_color = (Color){51,102,153,204}})
-        Text((TextProps){.bounds={20, 805, 0, 0}, .text="colored", .wrap=TextWrapNone})
-        Text((TextProps){.bounds={20, 830, 0, 0}, .text="disabled", .wrap=TextWrapNone, .disabled=1})
-        Text((TextProps){.bounds=(Rectangle){20,855,220,40}, .text="wrapped text helper uses the available width"})
-        Text((TextProps){.bounds={20,900,0,0}, .text="Status", .wrap=TextWrapNone})
-        Text((TextProps){.bounds={80,900,0,0}, .text="Ready", .wrap=TextWrapNone})
+        Text((TextProps){.bounds = {20, 805, 0, 0}, .text = "colored", .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {20, 830, 0, 0}, .text = "disabled", .wrap = TextWrapNone, .disabled = 1})
+        Text((TextProps){.bounds = (Rectangle){20,855,220,40}, .text = "wrapped text helper uses the available width"})
+        Text((TextProps){.bounds = {20,900,0,0}, .text = "Status", .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {80,900,0,0}, .text = "Ready", .wrap = TextWrapNone})
         Bullet((Rectangle){140,805,16,20})
-        Text((TextProps){.bounds={160,805,0,0}, .text="bullet text", .wrap=TextWrapNone})
+        Text((TextProps){.bounds = {160,805,0,0}, .text = "bullet text", .wrap = TextWrapNone})
         enabled_text: const char* = "false"
         if plots_whole_values[0] != 0 { enabled_text = "true" }
-        Text((TextProps){.bounds={20,925,0,0}, .text=TextFormat("Enabled: %s", enabled_text), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,925,0,0}, .text=TextFormat("Count: %d", plots_whole_values[0]), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={20,950,0,0}, .text=TextFormat("Mask: %u", 42), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,950,0,0}, .text=TextFormat("Rate: %.1f", plots_scalar_values[0]), .wrap=TextWrapNone})
+        Text((TextProps){.bounds = {20,925,0,0}, .text = TextFormat("Enabled: %s", enabled_text), .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {125,925,0,0}, .text = TextFormat("Count: %d", plots_whole_values[0]), .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {20,950,0,0}, .text = TextFormat("Mask: %u", 42), .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {125,950,0,0}, .text = TextFormat("Rate: %.1f", plots_scalar_values[0]), .wrap = TextWrapNone})
     }
 }

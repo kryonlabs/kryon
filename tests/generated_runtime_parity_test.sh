@@ -1110,7 +1110,7 @@ func main() {
 		kryon.FrameOpButton: 1,
 	})
 	requireRenderedFrame("controls", 50, drawControls)
-	driver.QueueTap(146, 48)
+	driver.QueueTap(346, 236)
 	drawControls()
 	driver.QueueTap(30, 92)
 	drawControls()
@@ -1328,7 +1328,7 @@ func main() {
 	driver.QueueKey(kryon.KeyEnter)
 	drawPlots()
 	driver.QueueKey(kryon.KeyLeftControl)
-	driver.QueueTap(150, 246)
+	driver.QueueTap(330, 260)
 	drawPlots()
 	driver.QueueShortcut(kryon.KeyA)
 	driver.QueueText("19")
@@ -2442,7 +2442,7 @@ int main(void)
     }
 
     draw_controls();
-    InjectTap(146, 48);
+    InjectTap(346, 220);
     InjectPump();
     draw_controls();
     InjectPump();
@@ -2676,7 +2676,7 @@ int main(void)
         return 1;
     }
     InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();
-    InjectMousePosition(150,246); InjectKey(KEY_LEFT_CONTROL,1);
+    InjectMousePosition(330,260); InjectKey(KEY_LEFT_CONTROL,1);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1); InjectPump(); draw_plots();
     InjectMouseButton(MOUSE_BUTTON_LEFT,0); InjectKey(KEY_LEFT_CONTROL,0);
     InjectPump(); draw_plots();

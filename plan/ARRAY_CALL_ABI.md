@@ -1,6 +1,6 @@
 # Direct fixed-array call ABI
 
-Status: implemented for ordinary functions; final integration checks pending.
+Status: implemented for ordinary functions; native integration checks passed.
 Initial audit: 2026-09-19 after `265ff394`. Belongs to milestone 2 of
 `NATIVE_LANGUAGE_COMPLETION.md`.
 
@@ -113,9 +113,12 @@ parameter mutation isolation, borrowed callbacks, record/string elements,
 zero-valued returns and bounds traps on parameters/results. The full record,
 string and aggregate fixture suite also passes. C and C++ syntax suites pass.
 
-Go syntax passed before the latest concurrent slider host changes, but the
-latest integration run fails on missing generated `SliderProps` fields.
-Full runtime generation fails on the concurrently edited `runtime/slider.kry`
-layout expressions. Generated runtime parity and final Go integration therefore
-remain unverified for the combined checkout. These failures must be resolved
-and the gates rerun before closing the milestone's integration requirement.
+Follow-up integration on 2026-09-19 passed native generation, Go syntax, all
+17 generated C/Go parity fixtures, runtime parity, generated provenance and Go
+runtime tests. The slider compilation mismatches were resolved in the shared
+checkout. Two old fixtures needed nonoverlapping slider bounds and matching
+C/Go tap coordinates; expected interaction results were preserved.
+
+Evidence applies to compiler `aa07f3f4` with `d8cc3a9f` and the current shared
+slider/style worktree. It does not assert that the unrelated slider/style work
+has been committed or that final platform validation for the whole goal is done.
