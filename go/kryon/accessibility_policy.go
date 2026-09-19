@@ -50,47 +50,55 @@ func AccessibilityPolicy_AccessibilityActionsFor(kind int32, focus_id int32, dis
 		var value_27 bool = value_24 == value_26
 		value_23 = value_27
 	}
-	if value_23 {
-		var value_28 int32 = int32(AccessibilityActionFocus)
-		var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-		var value_30 int32 = int32(AccessibilityActionActivate)
-		var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 9))
-		return value_32
+	var value_28 bool = value_23
+	if !value_28 {
+		var value_29 int32 = kind
+		var value_30 int32 = WidgetKindRadio
+		var value_31 int32 = int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0))
+		var value_32 bool = value_29 == value_31
+		value_28 = value_32
 	}
-	var value_33 int32 = kind
-	var value_34 int32 = WidgetKindTextField
-	var value_35 int32 = int32(number_runtime_bits(uint64(value_34), uint64(0), 32, true, 0))
-	var value_36 bool = value_33 == value_35
-	var value_37 bool = value_36
-	if !value_37 {
-		var value_38 int32 = kind
-		var value_39 int32 = WidgetKindTextArea
-		var value_40 int32 = int32(number_runtime_bits(uint64(value_39), uint64(0), 32, true, 0))
-		var value_41 bool = value_38 == value_40
-		value_37 = value_41
+	if value_28 {
+		var value_33 int32 = int32(AccessibilityActionFocus)
+		var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+		var value_35 int32 = int32(AccessibilityActionActivate)
+		var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
+		var value_37 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(value_36), 32, false, 9))
+		return value_37
 	}
-	if value_37 {
-		var value_42 int32 = int32(AccessibilityActionFocus)
-		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
-		var value_44 int32 = int32(AccessibilityActionSetSelection)
-		var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-		var value_46 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(value_45), 32, false, 9))
-		var actions uint32 = value_46
-		var value_47 bool = read_only
-		var value_48 bool = !value_47
-		if value_48 {
-			var value_49 uint32 = actions
-			var value_50 int32 = int32(AccessibilityActionSetValue)
-			var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
-			actions = uint32(number_runtime_bits(uint64(value_49), uint64(value_51), 32, false, 9))
+	var value_38 int32 = kind
+	var value_39 int32 = WidgetKindTextField
+	var value_40 int32 = int32(number_runtime_bits(uint64(value_39), uint64(0), 32, true, 0))
+	var value_41 bool = value_38 == value_40
+	var value_42 bool = value_41
+	if !value_42 {
+		var value_43 int32 = kind
+		var value_44 int32 = WidgetKindTextArea
+		var value_45 int32 = int32(number_runtime_bits(uint64(value_44), uint64(0), 32, true, 0))
+		var value_46 bool = value_43 == value_45
+		value_42 = value_46
+	}
+	if value_42 {
+		var value_47 int32 = int32(AccessibilityActionFocus)
+		var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
+		var value_49 int32 = int32(AccessibilityActionSetSelection)
+		var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+		var value_51 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(value_50), 32, false, 9))
+		var actions uint32 = value_51
+		var value_52 bool = read_only
+		var value_53 bool = !value_52
+		if value_53 {
+			var value_54 uint32 = actions
+			var value_55 int32 = int32(AccessibilityActionSetValue)
+			var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
+			actions = uint32(number_runtime_bits(uint64(value_54), uint64(value_56), 32, false, 9))
 		}
-		var value_52 uint32 = actions
-		return value_52
+		var value_57 uint32 = actions
+		return value_57
 	}
-	var value_53 int32 = 0
-	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
-	return value_54
+	var value_58 int32 = 0
+	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
+	return value_59
 }
 
 func AccessibilityPolicy_AccessibilityActionAllowed(actions uint32, action AccessibilityAction) bool {

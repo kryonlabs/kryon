@@ -1994,7 +1994,7 @@ Native Go provides `GetAccessibilitySnapshot() []AccessibilityNode` and
 Call the snapshot API after `EndFrame` on the UI thread. Returned slices belong
 to the caller; callbacks run synchronously at frame end, including empty frames.
 Setting a nil sink removes the callback. Go snapshots cover ordinary/composed
-buttons, text editors, checkboxes, toggles, text, images, groups, and tables.
+buttons, text editors, checkboxes, toggles, radios, text, images, groups, and tables.
 Editor values exclude uncommitted IME preedit.
 
 Each node also carries `generation` and an `actions` bitmask. Native C and Go
@@ -2002,7 +2002,7 @@ provide `QueueAccessibilityAction(focus_id, generation, action)` (Go uses
 `int32`, `uint64`, and `AccessibilityAction` and returns `bool`; C returns an
 acceptance `int`). Go exposes package, Runtime, and Host methods. Supported
 payload-free actions are `AccessibilityActionFocus` and `AccessibilityActionActivate`.
-Buttons, clickable cards, checkboxes, and toggles support both; text editors
+Buttons, clickable cards, checkboxes, toggles, and radios support both; text editors
 support focus, including secure/read-only editors. Editors also advertise
 `AccessibilityActionSetValue` and `AccessibilityActionSetSelection`, delivered
 through their dedicated payload APIs below. Read-only editors omit SetValue.
@@ -2047,9 +2047,16 @@ cancels preedit and queued composition input. C emits the normal text,
 selection, and composition events; Go TextArea returns its usual changed flag.
 Owned payload buffers are cleared when superseded, discarded, or delivered.
 
-These are flat host snapshots, not stable OS object trees. Native screen-reader
-adapters and complete composite-control coverage
-remain work in progress.
+Linux native windows additionally publish an AT-SPI application/window tree:
+C raylib builds use GIO/Pango when available; native Go uses a pure-Go D-Bus
+transport. Adapters own snapshot strings, preserve object paths for unique stable
+focus IDs, retire removed paths, and deliver requests through the validated UI
+queue. AT-SPI text offsets are Unicode scalar offsets, converted at the adapter
+boundary. Password content and selection offsets are never exported.
+`NO_AT_BRIDGE=1` or `KRYON_ACCESSIBILITY=0` disables automatic registration.
+Other native OS adapters and full composite-control coverage are not implemented.
+See [ACCESSIBILITY.md](ACCESSIBILITY.md) for build requirements, verification,
+supported interfaces, and limitations.
 
 ### Input Capture
 

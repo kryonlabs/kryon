@@ -284,8 +284,13 @@ Accessibility projection is a host service over committed retained nodes (C)
 or completed frame operations (Go). It reuses widget state and checkbox flag
 policy, strips secure values and selection offsets, and publishes snapshots through the host sink.
 It must not infer duplicate controls from paint decoration or mutate editor
-buffers. Action queues are a separate host input service. Native screen-reader
-transports remain adapter work; the flat snapshot is not an OS object-identity protocol.
+buffers. Action queues are a separate host input service. Linux AT-SPI object
+identity, D-Bus interfaces, cache/event publication, screen geometry, and scalar
+offset conversion belong to the native host adapters, not generated widget
+policy. C callbacks run on the UI thread through a private GLib context; Go
+D-Bus workers enqueue owned requests for UI-thread delivery. The flat public
+snapshot remains independent of this transport. Other OS adapters and composite
+selection/value interfaces remain unimplemented; see [ACCESSIBILITY.md](ACCESSIBILITY.md).
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.

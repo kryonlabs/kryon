@@ -6,6 +6,8 @@ import (
 
 func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
+	props.Disabled = props.Disabled || r.contentDisabled()
+	r.prepareAccessibility(props.ID, int32(WidgetKindRadio), !props.Disabled)
 	input := r.ReadActivation(props.Bounds, props.ID, !props.Disabled)
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, props.Disabled)
 	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, props.ClassName, Radio_RadioMarkRole())
@@ -35,8 +37,8 @@ func (r *runtime) Radio(props RadioProps) int32 {
 		markColor = unpackRGBA(paint.FillColor)
 	}
 	labelColor := unpackRGBA(paint.LabelColor)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, FontID: markFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Role: "radio", AccessibleLabel: props.Label, AccessibleBounds: props.Bounds, accessibilityKind: int32(WidgetKindRadio), Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, FontID: markFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Role: "presentation", Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	return Radio_RadioActivationFor(props.ID, input.Activated, props.Disabled)
 }
 

@@ -6,7 +6,8 @@ AccessibilityActionsFor :: (kind: i32, focus_id: i32, disabled: bool,
 captured: bool, read_only: bool) -> u32 #export {
     if focus_id <= 0 || disabled || captured { return (u32)0 }
     if kind == (i32)WidgetKindButton || kind == (i32)WidgetKindCard ||
-    kind == (i32)WidgetKindCheckbox || kind == (i32)WidgetKindToggle {
+    kind == (i32)WidgetKindCheckbox || kind == (i32)WidgetKindToggle ||
+    kind == (i32)WidgetKindRadio {
         return (u32)AccessibilityActionFocus | (u32)AccessibilityActionActivate
     }
     if kind == (i32)WidgetKindTextField || kind == (i32)WidgetKindTextArea {

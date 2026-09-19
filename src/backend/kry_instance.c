@@ -47,6 +47,15 @@ __attribute__((weak))
 #endif
 extern void ui_surface_cache_shutdown(void);
 
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+extern void ui_accessibility_platform_start(const char *title);
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+extern void ui_accessibility_platform_close(void);
+
 static int g_single_instance =
 #if defined(KRYON_BACKEND_TERMI)
     0;
@@ -268,10 +277,14 @@ void InitWindow(int width, int height, const char *title)
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_VSYNC_HINT);
     if(KryonRaylibBackend_InitWindow != 0)
         KryonRaylibBackend_InitWindow(width, height, title);
+    if(ui_accessibility_platform_start != 0)
+        ui_accessibility_platform_start(title);
 }
 
 void CloseWindow(void)
 {
+    if(!g_instance_rejected && ui_accessibility_platform_close != 0)
+        ui_accessibility_platform_close();
     if(!g_instance_rejected && ui_paint_layers_shutdown != 0)
         ui_paint_layers_shutdown();
     if(!g_instance_rejected && ui_surface_cache_shutdown != 0)

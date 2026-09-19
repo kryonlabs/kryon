@@ -57,6 +57,7 @@ typedef union WidgetData {
     ButtonSpec button;
     TextFieldProps text_field;
     TextAreaProps text_area;
+    RadioProps radio;
     struct {
         int *value;
         int class_name;

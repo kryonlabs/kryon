@@ -1163,6 +1163,17 @@ func main() {
 			controls.ChoiceSelected, controls.ChoiceFlags, controls.ChoiceRadioActions))
 	}
 	controls.ChoiceSelected, controls.ChoiceFlags, controls.ChoiceRadioActions = 0, 0, 0
+	accessibleRadio := false
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 807 {
+			accessibleRadio = node.Role == "radio" && node.Label == "Radio" &&
+				driver.QueueAccessibilityAction(807, node.Generation, kryon.AccessibilityActionActivate)
+		}
+	}
+	if !accessibleRadio { panic("generated radio accessibility missing") }
+	drawControls()
+	if controls.ChoiceRadioActions != 1 { panic("generated radio accessibility action not delivered") }
+	controls.ChoiceRadioActions = 0
 	driver.SetFocus(805)
 	driver.QueueKey(kryon.KeyTab)
 	drawControls()
@@ -2469,6 +2480,24 @@ int main(void)
         return 1;
     }
     choice_selected = choice_flags = choice_radio_actions = 0;
+    int accessible_radio = 0;
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 807)
+            accessible_radio = strcmp(node.role, "radio") == 0 && strcmp(node.label, "Radio") == 0 &&
+                QueueAccessibilityAction(807, node.generation, AccessibilityActionActivate);
+    }
+    if(!accessible_radio) {
+        fprintf(stderr, "generated radio accessibility missing\n");
+        return 1;
+    }
+    InjectPump(); draw_controls();
+    if(choice_radio_actions != 1) {
+        fprintf(stderr, "generated radio accessibility action not delivered\n");
+        return 1;
+    }
+    choice_radio_actions = 0;
     SetFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
     if(GetFocus() != 806) {
         fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetFocus());

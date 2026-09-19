@@ -283,6 +283,18 @@ ifneq ($(strip $(SYSTEM_THEME_PKG)),)
     LDLIBS += $(shell pkg-config --libs $(SYSTEM_THEME_PKG))
 endif
 
+KRYON_ACCESSIBILITY ?= 1
+ifeq ($(KRYON_PLATFORM),linux)
+ifeq ($(KRYON_BACKEND),raylib)
+ifeq ($(KRYON_ACCESSIBILITY),1)
+ifneq ($(shell pkg-config --exists gio-2.0 pango && printf yes),)
+    CPPFLAGS += $(shell pkg-config --cflags gio-2.0 pango) -DKRYON_ACCESSIBILITY_DBUS
+    LDLIBS += $(shell pkg-config --libs gio-2.0 pango)
+endif
+endif
+endif
+endif
+
 OBJS = $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(filter src/%,$(SRCS))) \
 	$(patsubst $(BUILD_DIR)/%.c,$(BUILD_DIR)/%.o,$(filter $(BUILD_DIR)/%,$(SRCS)))
 LIB = $(BUILD_DIR)/libkryon.a
@@ -592,6 +604,14 @@ k2js-runtime-snapshot-test:
 generated-runtime-parity-test: generate-native-runtime $(K2C) $(K2GO) $(LIB) $(KRYON_BACKEND_LIBS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" \
 		"$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+
+.PHONY: accessibility-dbus-test
+accessibility-dbus-test: $(BUILD_DIR)/tests/accessibility_dbus_fixture
+	cd go/kryon && KRYON_ACCESSIBILITY_C_FIXTURE=$(abspath $<) go test -race -run '^TestAccessibility' -count=1 -timeout 60s .
+
+$(BUILD_DIR)/tests/accessibility_dbus_fixture: tests/accessibility_dbus_fixture.c $(LIB) $(KRYON_BACKEND_LIBS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
 
 .PHONY: keyboard-policy-test
 keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test

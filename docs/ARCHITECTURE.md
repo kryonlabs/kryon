@@ -634,8 +634,15 @@ Text actions own bounded payloads, replace atomically against live byte/scalar
 limits, and normalize selection to grapheme boundaries. Applying them cancels
 stale composition and preserves ordinary editor change reporting. Snapshots
 publish committed selection offsets, but omit secure values and offsets.
-Removed or newly ineligible controls cannot replay pending requests. Native OS
-accessibility object trees and platform adapters are not yet implemented.
+Removed or newly ineligible controls cannot replay pending requests. Linux
+AT-SPI adapters wrap these snapshots in application/window/leaf object trees.
+The C adapter connects off-thread but dispatches a private GMainContext before
+frame input reset; the Go adapter's D-Bus workers access owned snapshots and a
+bounded inbox, drained before BeginFrame. Neither transport edits app buffers.
+Stable positive IDs retain paths across frames; removed paths are never reused.
+Bulk cache queries and change signals expose current metadata. C uses Pango
+and Go uses uax29 for Unicode text ranges. See [ACCESSIBILITY.md](ACCESSIBILITY.md)
+for the supported Linux builds and remaining platform/control limitations.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

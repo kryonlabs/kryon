@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "../platform/accessibility_internal.h"
 #include "ui_text_rows.h"
 #include "../backend/kry_input_internal.h"
 #include "ui_paint_layers_internal.h"
@@ -5014,6 +5015,7 @@ BeginInterfaceFrame(int width, int height, float dpi)
 void
 SetFrameCamera(Camera2D camera)
 {
+    ui_accessibility_platform_pump();
     PumpWindows();
     EndFocusScope();
     BeginFocusScope();

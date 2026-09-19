@@ -21,13 +21,14 @@ import (
 
 type windowRuntime struct {
 	Runtime
-	window     *x11Window
-	ime        *ibusInputMethod
-	fps        int
-	last       time.Time
-	closed     bool
-	focused    bool
-	imeFocusID int32
+	window        *x11Window
+	ime           *ibusInputMethod
+	fps           int
+	last          time.Time
+	closed        bool
+	focused       bool
+	imeFocusID    int32
+	accessibility *accessibilityConnection
 
 	// frame *image.RGBA     reused target image (reallocation only on resize)
 	// prevOps/nextOps       double buffer for change detection
@@ -55,6 +56,7 @@ func openWindowRuntime(config AppConfig) (Runtime, error) {
 		return nil, err
 	}
 	wr := &windowRuntime{Runtime: base, window: win, fps: config.FPS}
+	wr.accessibility = startAccessibilityConnection(config.Title)
 	if im, imErr := openIBusInputMethod(); imErr == nil {
 		wr.ime = im
 	} else if os.Getenv("KRYON_WINDOW_DEBUG") != "" {
@@ -65,6 +67,8 @@ func openWindowRuntime(config AppConfig) (Runtime, error) {
 
 func (r *windowRuntime) Close() {
 	r.closed = true
+	r.accessibility.close()
+	r.Runtime.Close()
 	if r.ime != nil {
 		r.ime.close()
 		r.ime = nil
@@ -80,6 +84,7 @@ func (r *windowRuntime) WindowShouldClose() bool {
 
 func (r *windowRuntime) BeginFrame() {
 	r.pumpEvents()
+	r.accessibility.current().drain(r.Runtime)
 	r.Runtime.BeginFrame()
 }
 
@@ -87,6 +92,18 @@ func (r *windowRuntime) EndFrame() {
 	r.Runtime.EndFrame()
 	if r.window == nil {
 		return
+	}
+	if bus := r.accessibility.current(); bus != nil {
+		bus.windowActive(r.focused)
+		r.window.requestScreenOrigin()
+		nodes := r.Runtime.GetAccessibilitySnapshot()
+		if !r.focused {
+			for i := range nodes {
+				nodes[i].Focused = false
+			}
+		}
+		bus.publish(nodes, Rectangle{X: float32(r.window.screenX), Y: float32(r.window.screenY),
+			Width: float32(r.window.width), Height: float32(r.window.height)})
 	}
 	ops := []FrameOp(nil)
 	if fr, ok := r.Runtime.(frameOpController); ok {
@@ -456,10 +473,16 @@ type x11Window struct {
 	greenShift uint
 	blueShift  uint
 
-	window uint32
-	gc     uint32
-	width  int
-	height int
+	window         uint32
+	gc             uint32
+	width          int
+	height         int
+	screenX        int
+	screenY        int
+	originSequence uint16
+	originPending  bool
+	originKnown    bool
+	originDirty    bool
 
 	wmProtocols    uint32
 	wmDeleteWindow uint32
@@ -1055,6 +1078,13 @@ func (w *x11Window) poll() ([]x11Event, error) {
 }
 
 func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
+	if buf[0] == 1 && w.originPending && get16(buf[2:]) == w.originSequence {
+		w.screenX = int(int16(get16(buf[12:])))
+		w.screenY = int(int16(get16(buf[14:])))
+		w.originPending = false
+		w.originKnown = !w.originDirty
+		return x11Event{}, false
+	}
 	switch buf[0] & 0x7f {
 	case x11EventButtonPress:
 		_ = w.setInputFocus()
@@ -1086,6 +1116,8 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 		y := int(int16(get16(buf[26:])))
 		return x11Event{kind: x11EventMotion, x: x, y: y}, true
 	case x11EventConfigureNotify:
+		w.originKnown = false
+		w.originDirty = true
 		return x11Event{kind: x11EventResize, x: int(get16(buf[20:])), y: int(get16(buf[22:]))}, true
 	case x11EventClientMessage:
 		if get32(buf[8:]) == w.wmProtocols && get32(buf[12:]) == w.wmDeleteWindow {

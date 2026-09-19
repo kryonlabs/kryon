@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "../platform/accessibility_internal.h"
 #include "runtime/widget_kind.h"
 #include "runtime/icon.h"
 #include "ui_style_internal.h"
@@ -924,13 +925,14 @@ EndTree(void)
     ui_accessibility_activation = 0;
     ui_accessibility_building = 0;
     if(ui_accessibility_sink != NULL ||
-       kry_platform_accessibility_snapshot != NULL) {
+       kry_platform_accessibility_snapshot != NULL || ui_accessibility_platform_active()) {
         int count = GetAccessibilitySnapshot(NULL, 0);
         AccessibilityNode *nodes = count > 0
             ? malloc((size_t)count * sizeof(*nodes)) : NULL;
 
         if(count == 0 || nodes != NULL) {
             (void)GetAccessibilitySnapshot(nodes, count);
+            ui_accessibility_platform_publish(nodes, count);
             if(kry_platform_accessibility_snapshot != NULL)
                 kry_platform_accessibility_snapshot(nodes, count);
             if(ui_accessibility_sink != NULL)
@@ -2462,6 +2464,8 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
                 const char *active_label = nodes[count].checked
                     ? node->data.toggle.on_label : node->data.toggle.off_label;
                 nodes[count].label = active_label != NULL ? active_label : "";
+            } else if(node->kind == WidgetKindRadio) {
+                nodes[count].checked = node->data.radio.checked;
             } else if(node->kind == WidgetKindImage) {
                 nodes[count].label = node->data.image.alt_text != NULL
                     ? node->data.image.alt_text : "";
@@ -3260,7 +3264,14 @@ DragDrop(DragDropProps drag_drop)
 int
 Radio(RadioProps radio)
 {
-    ui_tree_add(radio.id, WidgetKindRadio, radio.bounds, &radio);
+    ui_accessibility_prepare(radio.id, WidgetKindRadio, !radio.disabled);
+    NodeId node = ui_tree_add(radio.id, WidgetKindRadio, radio.bounds, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.radio = radio;
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(radio.label != NULL ? radio.label : "");
+        if(radio.disabled)
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled;
+    }
     return RenderRadio(radio);
 }
 

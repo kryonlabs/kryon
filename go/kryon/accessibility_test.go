@@ -2,6 +2,33 @@ package kryon
 
 import "testing"
 
+func TestAccessibilityRadio(t *testing.T) {
+	r := New(AppConfig{Width: 200, Height: 100}).(*runtime)
+	defer r.Close()
+	draw := func(disabled bool) int32 {
+		r.BeginFrame()
+		result := r.Radio(RadioProps{ID: 71, Label: "Option", Checked: true,
+			Disabled: disabled, Bounds: NewRectangle(0, 0, 100, 30)})
+		r.EndFrame()
+		return result
+	}
+	draw(false)
+	nodes := r.GetAccessibilitySnapshot()
+	if len(nodes) != 1 || nodes[0].Role != "radio" || nodes[0].Label != "Option" || !nodes[0].Checked {
+		t.Fatalf("radio snapshot = %+v", nodes)
+	}
+	if !r.QueueAccessibilityAction(71, nodes[0].Generation, AccessibilityActionActivate) || draw(false) != 71 {
+		t.Fatal("radio action was not delivered")
+	}
+	nodes = r.GetAccessibilitySnapshot()
+	if !r.QueueAccessibilityAction(71, nodes[0].Generation, AccessibilityActionActivate) || draw(true) != 0 {
+		t.Fatal("radio action ignored live disabled state")
+	}
+	if node := r.GetAccessibilitySnapshot()[0]; !node.Disabled || node.Actions != 0 {
+		t.Fatalf("disabled radio snapshot = %+v", node)
+	}
+}
+
 func TestAccessibilitySnapshotEditorPrivacyAndState(t *testing.T) {
 	r := New(AppConfig{Width: 500, Height: 300}).(*runtime)
 	password, notes := make([]byte, 64), make([]byte, 64)
