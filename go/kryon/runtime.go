@@ -345,6 +345,8 @@ type Runtime interface {
 	GetAccessibilitySnapshot() []AccessibilityNode
 	SetAccessibilitySink(AccessibilitySink)
 	QueueAccessibilityAction(int32, uint64, AccessibilityAction) bool
+	QueueAccessibilityValue(int32, uint64, string) bool
+	QueueAccessibilitySelection(int32, uint64, int32, int32) bool
 	InstanceValue(typeID any, key uint64, create func() any) any
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
@@ -891,6 +893,8 @@ func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
 }
 
 func (r *runtime) Close() {
+	r.clearAccessibilityRequests(r.accessibility.pending)
+	r.clearAccessibilityRequests(r.accessibility.active)
 	r.closed = true
 	r.instances = nil
 }

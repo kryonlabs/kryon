@@ -71,6 +71,8 @@ typedef struct {
     int multiline;
     uint64_t generation;
     unsigned actions;
+    int selection_anchor;
+    int selection_cursor;
 } AccessibilityNode;
 
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);

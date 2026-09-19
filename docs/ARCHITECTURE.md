@@ -621,9 +621,13 @@ can remove stale controls. Generated-form
 assertions compare editor roles, values, focus and secure-field behavior in both
 runtimes. `runtime/accessibility_policy.kry` owns shared action eligibility;
 hosts own bounded request queues, snapshot-generation validation, and next-frame
-delivery into ordinary focus/activation sampling. Removed or newly ineligible
-controls cannot replay pending requests. Native OS accessibility object trees,
-platform adapters, and value/selection actions are not yet implemented.
+delivery into ordinary focus/activation sampling and editor input handling.
+Text actions own bounded payloads, replace atomically against live byte/scalar
+limits, and normalize selection to grapheme boundaries. Applying them cancels
+stale composition and preserves ordinary editor change reporting. Snapshots
+publish committed selection offsets, but omit secure values and offsets.
+Removed or newly ineligible controls cannot replay pending requests. Native OS
+accessibility object trees and platform adapters are not yet implemented.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

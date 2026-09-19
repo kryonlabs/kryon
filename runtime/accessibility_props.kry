@@ -3,4 +3,6 @@
 AccessibilityAction :: enum {
     AccessibilityActionFocus = 1
     AccessibilityActionActivate = 2
+    AccessibilityActionSetValue = 4
+    AccessibilityActionSetSelection = 8
 }

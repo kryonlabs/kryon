@@ -56,6 +56,10 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	if sel, ok := r.selection[focusID]; ok {
 		selectionStart, selectionEnd = selectionRange(sel)
 	}
+	accessibleSelection := r.normalizedSelection(focusID, value, pos)
+	if secure {
+		accessibleSelection = selection{}
+	}
 	compositionStart, compositionEnd := 0, 0
 	if preedit, ok := r.preedit[focusID]; ok && r.focusID == focusID && !secure {
 		if view, visible := makeTextCompositionView(text, selectionStart, selectionEnd, preedit); visible {
@@ -115,6 +119,9 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		Disabled:          disabled,
 		Secure:            secure,
 		ReadOnly:          readOnly,
+
+		accessibilityAnchor: int32(accessibleSelection.Anchor),
+		accessibilityCursor: int32(accessibleSelection.Cursor),
 	}
 	if focused != nil {
 		op.Focused = *focused
@@ -207,6 +214,7 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		delete(r.preedit, focusID)
 		return false
 	}
+	changed := r.applyAccessibilityText(focusID, buf, cursor, options)
 	tapPoint, tapped := r.consumeTapPosition(bounds)
 	if focusID != 0 && tapped {
 		r.setFocus(focusID)
@@ -238,7 +246,6 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 		}
 		sel = collapsedSelection(pos)
 	}
-	changed := false
 	for len(r.inputEvents) > 0 && r.focusID == focusID {
 		event := r.inputEvents[0]
 		r.inputEvents = r.inputEvents[1:]

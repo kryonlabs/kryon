@@ -24,6 +24,8 @@ static inline bool StringEqual(String a, String b) {
 typedef enum AccessibilityAction {
     AccessibilityActionFocus = 1,
     AccessibilityActionActivate = 2,
+    AccessibilityActionSetValue = 4,
+    AccessibilityActionSetSelection = 8,
 } AccessibilityAction;
 
 #endif /* K_RUNTIME_ACCESSIBILITY_PROPS_H */

@@ -124,6 +124,11 @@ typedef struct AccessibilityRequest {
     int id;
     int kind;
     AccessibilityAction action;
+    char *value;
+    int length;
+    int codepoints;
+    int anchor;
+    int cursor;
 } AccessibilityRequest;
 
 #define ACCESSIBILITY_QUEUE_CAPACITY 32
@@ -133,6 +138,20 @@ static int ui_accessibility_pending_count;
 static int ui_accessibility_active_count;
 static int ui_accessibility_activation;
 static int ui_accessibility_building;
+
+static void
+ui_accessibility_request_clear(AccessibilityRequest *request)
+{
+    if(request->value != NULL) {
+        volatile char *value = request->value;
+        for(int i = 0; i < request->length; i++)
+            value[i] = 0;
+        free(request->value);
+    }
+    memset(request, 0, sizeof(*request));
+}
+
+static void ui_accessibility_apply_text(TreeNode *node, TextFieldProps *field);
 #if defined(__GNUC__) || defined(__clang__)
 extern void kry_platform_accessibility_snapshot(
     const AccessibilityNode *nodes, int count) __attribute__((weak));
@@ -836,6 +855,7 @@ BeginTree(KeyID screen_key)
     memcpy(ui_accessibility_active, ui_accessibility_pending,
            (size_t)ui_accessibility_pending_count * sizeof(AccessibilityRequest));
     ui_accessibility_active_count = ui_accessibility_pending_count;
+    memset(ui_accessibility_pending, 0, sizeof(ui_accessibility_pending));
     ui_accessibility_pending_count = 0;
     ui_accessibility_activation = 0;
     ui_accessibility_building = 1;
@@ -898,6 +918,8 @@ EndTree(void)
     UpdateTree();
     update = GetTime();
     DrawTree();
+    for(int i = 0; i < ui_accessibility_active_count; i++)
+        ui_accessibility_request_clear(&ui_accessibility_active[i]);
     ui_accessibility_active_count = 0;
     ui_accessibility_activation = 0;
     ui_accessibility_building = 0;
@@ -1406,6 +1428,7 @@ RouteInput(void)
             field = &field_storage;
         }
         state = node->state;
+        ui_accessibility_apply_text(node, field);
         if(FocusFrameOpen() && field->focus_id > 0) {
             int focused = IsFocusActive(field->focus_id);
 
@@ -2452,7 +2475,14 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
             nodes[count].generation = ui_tree_declaration;
             nodes[count].actions = AccessibilityActionsFor(node->kind,
                 nodes[count].focus_id, nodes[count].disabled,
-                ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node)));
+                ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node)),
+                nodes[count].read_only);
+            if(!nodes[count].secure && node->state != NULL &&
+               (node->kind == WidgetKindTextField || node->kind == WidgetKindTextArea)) {
+                TextFieldState *state = node->state;
+                nodes[count].selection_anchor = ui_grapheme_floor_offset(nodes[count].value, state->anchor);
+                nodes[count].selection_cursor = ui_grapheme_floor_offset(nodes[count].value, state->cursor);
+            }
         }
         count++;
     }
@@ -2466,8 +2496,8 @@ SetAccessibilitySink(AccessibilitySink sink, void *userdata)
     ui_accessibility_sink_userdata = userdata;
 }
 
-int
-QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction action)
+static int
+ui_accessibility_queue(int focus_id, uint64_t generation, AccessibilityRequest request)
 {
     TreeNode *target = NULL;
     int i;
@@ -2478,7 +2508,7 @@ QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction 
     for(i = 0; i < ui_committed_node_count; i++) {
         TreeNode *node = &ui_committed_nodes[i];
         if(node->id != focus_id ||
-           AccessibilityActionsFor(node->kind, focus_id, false, false) == 0)
+           AccessibilityActionsFor(node->kind, focus_id, false, false, false) == 0)
             continue;
         if(target != NULL)
             return 0;
@@ -2486,22 +2516,76 @@ QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction 
     }
     if(target == NULL)
         return 0;
+    int read_only = target->kind == WidgetKindTextField ? target->data.text_field.read_only :
+        target->kind == WidgetKindTextArea ? target->data.text_area.read_only : 0;
     unsigned actions = AccessibilityActionsFor(target->kind, focus_id,
         ui_accessibility_node_disabled(target),
-        ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(target)));
-    if(!AccessibilityActionAllowed(actions, action))
+        ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(target)), read_only);
+    if(!AccessibilityActionAllowed(actions, request.action))
         return 0;
+    if(request.action == AccessibilityActionSetValue) {
+        for(int offset = 0; offset < request.length;) {
+            int size;
+            int codepoint = GetCodepointNext(request.value + offset, &size);
+            if(!AccessibilityValueCodepointAllowed(codepoint, target->kind == WidgetKindTextArea))
+                return 0;
+            request.codepoints++;
+            offset += size;
+        }
+    }
     for(i = 0; i < ui_accessibility_pending_count; i++) {
         if(ui_accessibility_pending[i].id == focus_id &&
-           ui_accessibility_pending[i].action == action)
-            return 1;
+           ui_accessibility_pending[i].action == request.action) {
+            ui_accessibility_request_clear(&ui_accessibility_pending[i]);
+            memmove(&ui_accessibility_pending[i], &ui_accessibility_pending[i + 1],
+                    (size_t)(ui_accessibility_pending_count - i - 1) * sizeof(request));
+            ui_accessibility_pending_count--;
+            break;
+        }
     }
     if(ui_accessibility_pending_count == ACCESSIBILITY_QUEUE_CAPACITY)
         return 0;
-    ui_accessibility_pending[ui_accessibility_pending_count++] =
-        (AccessibilityRequest){focus_id, target->kind, action};
+    request.id = focus_id;
+    request.kind = target->kind;
+    ui_accessibility_pending[ui_accessibility_pending_count++] = request;
     InvalidateTree(INVALIDATE_PAINT);
     return 1;
+}
+
+int
+QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction action)
+{
+    if(action != AccessibilityActionFocus && action != AccessibilityActionActivate)
+        return 0;
+    return ui_accessibility_queue(focus_id, generation, (AccessibilityRequest){.action = action});
+}
+
+int
+QueueAccessibilityValue(int focus_id, uint64_t generation, const char *value)
+{
+    AccessibilityRequest request = {.action = AccessibilityActionSetValue};
+    int limit = AccessibilityValueByteLimit();
+    if(value == NULL)
+        return 0;
+    while(request.length <= limit && value[request.length] != '\0')
+        request.length++;
+    if(request.length > limit || !ui_utf8_valid(value, request.length))
+        return 0;
+    request.value = malloc((size_t)request.length + 1);
+    if(request.value == NULL)
+        return 0;
+    memcpy(request.value, value, (size_t)request.length + 1);
+    if(ui_accessibility_queue(focus_id, generation, request))
+        return 1;
+    ui_accessibility_request_clear(&request);
+    return 0;
+}
+
+int
+QueueAccessibilitySelection(int focus_id, uint64_t generation, int anchor, int cursor)
+{
+    return ui_accessibility_queue(focus_id, generation, (AccessibilityRequest){
+        .action = AccessibilityActionSetSelection, .anchor = anchor, .cursor = cursor});
 }
 
 void
@@ -2510,12 +2594,15 @@ ui_accessibility_prepare(int id, int kind, int enabled)
     if(ui_accessibility_active_count == 0)
         return;
     unsigned actions = AccessibilityActionsFor(kind, id,
-        !enabled || ContentDisabled(), ui_popup_input_keyboard_captures());
+        !enabled || ContentDisabled(), ui_popup_input_keyboard_captures(), false);
     int i;
 
     for(i = 0; i < ui_accessibility_active_count; i++) {
         AccessibilityRequest request = ui_accessibility_active[i];
         if(request.id != id || id <= 0)
+            continue;
+        if(request.kind == kind && (request.action == AccessibilityActionSetValue ||
+                                    request.action == AccessibilityActionSetSelection))
             continue;
         ui_accessibility_active[i].id = 0;
         if(request.kind != kind || !AccessibilityActionAllowed(actions, request.action))
@@ -2523,6 +2610,58 @@ ui_accessibility_prepare(int id, int kind, int enabled)
         SetFocus(id);
         if(request.action == AccessibilityActionActivate)
             ui_accessibility_activation = id;
+    }
+}
+
+static void
+ui_accessibility_apply_text(TreeNode *node, TextFieldProps *field)
+{
+    TextFieldState *state = node->state;
+    unsigned actions = AccessibilityActionsFor(node->kind, node->id,
+        ui_accessibility_node_disabled(node),
+        ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node)), field->read_only);
+    if(state == NULL || field->text == NULL || field->text_size == 0)
+        return;
+    for(int i = 0; i < ui_accessibility_active_count; i++) {
+        AccessibilityRequest *request = &ui_accessibility_active[i];
+        if(node->id <= 0 || request->id != node->id ||
+           (request->action != AccessibilityActionSetValue && request->action != AccessibilityActionSetSelection))
+            continue;
+        request->id = 0;
+        if(request->kind != node->kind || !AccessibilityActionAllowed(actions, request->action))
+            continue;
+        int changed = 0;
+        int anchor = state->anchor;
+        int cursor = state->cursor;
+        if(request->action == AccessibilityActionSetValue) {
+            size_t capacity = field->text_size;
+            if(capacity > (size_t)AccessibilityValueByteLimit() + 1)
+                capacity = (size_t)AccessibilityValueByteLimit() + 1;
+            if(!AccessibilityValueFits(request->length, request->codepoints,
+                                      (int)capacity, field->max_codepoints))
+                continue;
+            changed = strcmp(field->text, request->value) != 0;
+            memset(field->text, 0, field->text_size);
+            memcpy(field->text, request->value, (size_t)request->length);
+            ui_tree_text_collapse(state, request->length);
+        } else {
+            state->anchor = ui_grapheme_floor_offset(field->text, request->anchor);
+            state->cursor = ui_grapheme_floor_offset(field->text, request->cursor);
+        }
+        SetFocus(node->id);
+        state->dragging = 0;
+        if(field->cursor_position != NULL)
+            *field->cursor_position = state->cursor;
+        if(ui_text_composition_cancel(state))
+            ui_text_field_event(node, EVENT_COMPOSITION_CHANGED, GetTime());
+        ClearTextComposition();
+        if(changed)
+            ui_text_field_event(node, EVENT_TEXT_CHANGED, GetTime());
+        if(anchor != state->anchor || cursor != state->cursor)
+            ui_text_field_event(node, EVENT_SELECTION_CHANGED, GetTime());
+        if(node->kind == WidgetKindTextArea)
+            ui_text_area_reveal_cursor(node->data.text_area, state->cursor);
+        ui_tree_invalid |= INVALIDATE_PAINT;
     }
 }
 

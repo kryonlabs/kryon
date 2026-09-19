@@ -108,6 +108,9 @@ type FrameOp struct {
 	Columns           int32
 	ScrollY           int32
 	Wrap              bool
+
+	accessibilityAnchor int32
+	accessibilityCursor int32
 }
 
 type frameOpController interface {

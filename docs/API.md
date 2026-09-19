@@ -1964,7 +1964,9 @@ removing focus styling. Re-enabling editing does not replay rejected input.
 `GetAccessibilitySnapshot` projects the committed retained UI tree into
 backend-neutral roles, labels, bounds, focus, disabled, and checked state.
 Nodes also include the app's `focus_id`, committed editor `value`, `read_only`,
-`secure`, and `multiline` metadata. Secure fields expose an empty value and no
+`secure`, and `multiline` metadata, plus `selection_anchor` and `selection_cursor`
+as UTF-8 byte offsets in committed text (Go: `SelectionAnchor`, `SelectionCursor`).
+Secure fields expose an empty value, zero selection offsets, and no
 password-derived label. TextArea placeholders provide a fallback label. Button
 descendant text supplies the button name without a duplicate text announcement;
 checkbox flag masks and disabled scopes are reflected in the snapshot.
@@ -1994,9 +1996,12 @@ Each node also carries `generation` and an `actions` bitmask. Native C and Go
 provide `QueueAccessibilityAction(focus_id, generation, action)` (Go uses
 `int32`, `uint64`, and `AccessibilityAction` and returns `bool`; C returns an
 acceptance `int`). Go exposes package, Runtime, and Host methods. Supported
-actions are `AccessibilityActionFocus` and `AccessibilityActionActivate`.
+payload-free actions are `AccessibilityActionFocus` and `AccessibilityActionActivate`.
 Buttons, clickable cards, checkboxes, and toggles support both; text editors
-support focus, including secure/read-only editors. Unsupported controls,
+support focus, including secure/read-only editors. Editors also advertise
+`AccessibilityActionSetValue` and `AccessibilityActionSetSelection`, delivered
+through their dedicated payload APIs below. Read-only editors omit SetValue.
+Unsupported controls,
 disabled/loading controls, and controls behind a capturing popup expose no
 actions. Applications must give actionable controls unique, stable positive
 focus IDs.
@@ -2005,17 +2010,40 @@ Call on the UI thread between frames, including from the accessibility sink,
 with the generation from the current completed snapshot. Requests with stale
 generations, unknown/ambiguous IDs, or unsupported actions are rejected. At most
 32 distinct requests may be pending; repeated requests for the same target and
-action coalesce. Accepted requests are delivered once during the next frame's
-widget declarations, in declaration order, using the ordinary focus and
-activation path. The host must schedule that frame. Acceptance does not promise
+action coalesce, replacing the older request and moving it to the queue's end.
+Accepted requests are delivered once during the next frame: focus/activation
+at widget declaration, text edits at editor input handling. Targets are visited
+in declaration order; text requests for a target retain queue order.
+The host must schedule that frame. Acceptance does not promise
 delivery: current disabled/loading state, widget kind, and popup capture are
 checked again. Missing or newly ineligible targets are discarded at frame end,
 never replayed when they reappear. Activation preserves widget return values,
 checkbox flag-mask updates, and normal application handlers; it does not inject
 pointer coordinates or an Enter key.
 
+`QueueAccessibilityValue(focus_id, generation, value)` requests an atomic editor
+replacement. C accepts a NUL-terminated `const char *`; Go accepts a `string`.
+Both own a copy, reject malformed UTF-8 and values over 65,536 bytes, and reject
+ASCII control characters (TextArea allows tab, LF, and CR, preserving CRLF). Embedded
+NUL is not representable in C and is rejected in Go. The live buffer must fit
+the entire value plus its NUL terminator, and `max_codepoints` is checked against
+Unicode scalar count. A failed live limit check leaves text, selection, and
+focus unchanged. A successful replacement focuses the editor and collapses its
+selection at the end; identical text does not report a text change.
+
+`QueueAccessibilitySelection(focus_id, generation, anchor, cursor)` accepts
+UTF-8 byte offsets (`int` in C, `int32` in Go). Offsets clamp to the committed
+text and round down to grapheme boundaries; reversed selections are preserved.
+It focuses the editor and works with read-only and secure fields. Both APIs
+are available as Go package, Runtime, and Host methods, return queue acceptance
+with the same generation/identity contract, and recheck live read-only/disabled
+state, widget kind, and popup ownership before delivery. Applying either action
+cancels preedit and queued composition input. C emits the normal text,
+selection, and composition events; Go TextArea returns its usual changed flag.
+Owned payload buffers are cleared when superseded, discarded, or delivered.
+
 These are flat host snapshots, not stable OS object trees. Native screen-reader
-adapters, value/selection actions, and complete composite-control coverage
+adapters and complete composite-control coverage
 remain work in progress.
 
 ### Input Capture

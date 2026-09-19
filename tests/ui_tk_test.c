@@ -5713,7 +5713,8 @@ test_accessibility_actions(void)
         check_int("coalesce duplicate", QueueAccessibilityAction(id, node.generation, AccessibilityActionActivate), 1);
     }
     AccessibilityNode field = accessibility_target(7204);
-    check_int("secure read-only field capabilities", field.actions, AccessibilityActionFocus);
+    check_int("secure read-only field capabilities", field.actions,
+              AccessibilityActionFocus | AccessibilityActionSetSelection);
     check_int("reject field activation", QueueAccessibilityAction(7204, field.generation, AccessibilityActionActivate), 0);
     check_int("queue editor focus", QueueAccessibilityAction(7204, field.generation, AccessibilityActionFocus), 1);
     accessibility_action_frame(0);
@@ -5872,6 +5873,241 @@ test_accessibility_action_limits_and_variants(void)
     InjectReset();
 }
 
+typedef struct AccessibilityTextEvents {
+    int text;
+    int selection;
+    int composition;
+    int start;
+    int end;
+} AccessibilityTextEvents;
+
+static AccessibilityTextEvents
+accessibility_text_frame(TextFieldProps field, int area, int disabled, int removed)
+{
+    AccessibilityTextEvents events = {0};
+    Event event;
+    InjectPump();
+    BeginInterfaceFrame(240, 160, 1);
+    BeginTree(Key("accessibility-text"));
+    DisabledScope(disabled);
+    if(!removed) {
+        if(area) {
+            TextArea((TextAreaProps){.bounds = field.bounds, .text = field.text,
+                .text_size = field.text_size, .cursor_position = field.cursor_position,
+                .focus_id = field.focus_id, .read_only = field.read_only,
+                .max_codepoints = field.max_codepoints});
+        } else {
+            TextField(field);
+        }
+    }
+    DisabledEndScope();
+    while(NextEvent(&event)) {}
+    EndTree();
+    while(NextEvent(&event)) {
+        if(event.kind == EVENT_TEXT_CHANGED)
+            events.text++;
+        if(event.kind == EVENT_COMPOSITION_CHANGED)
+            events.composition++;
+        if(event.kind == EVENT_SELECTION_CHANGED) {
+            events.selection++;
+            events.start = event.data.selection.start;
+            events.end = event.data.selection.end;
+        }
+    }
+    EndInterfaceFrame();
+    return events;
+}
+
+static void
+test_accessibility_text_actions(void)
+{
+    char text[128] = "old";
+    int cursor = 3;
+    TextFieldProps field = {.bounds = {0, 0, 220, 120}, .text = text,
+        .text_size = sizeof(text), .cursor_position = &cursor, .focus_id = 7601};
+    InjectReset();
+    ClearFocus();
+    ClearTextComposition();
+    accessibility_text_frame(field, 0, 0, 0);
+    AccessibilityNode node = accessibility_target(field.focus_id);
+    check_int("editable capabilities", node.actions,
+              AccessibilityActionFocus | AccessibilityActionSetValue | AccessibilityActionSetSelection);
+    check_int("reject value without payload", QueueAccessibilityAction(field.focus_id,
+        node.generation, AccessibilityActionSetValue), 0);
+    check_int("reject selection without payload", QueueAccessibilityAction(field.focus_id,
+        node.generation, AccessibilityActionSetSelection), 0);
+    const char *invalid[] = {"a\nb", "a\tb", "a\x7f", "\xc0\xaf", "\xed\xa0\x80", NULL};
+    for(int i = 0; i < 6; i++)
+        check_int("reject invalid field value", QueueAccessibilityValue(field.focus_id,
+                  node.generation, invalid[i]), 0);
+    char oversized[65538];
+    memset(oversized, 'x', sizeof(oversized) - 1);
+    oversized[sizeof(oversized) - 1] = '\0';
+    check_int("reject oversized value", QueueAccessibilityValue(field.focus_id,
+              node.generation, oversized), 0);
+    char payload[] = "hello";
+    check_int("queue owned value", QueueAccessibilityValue(field.focus_id, node.generation, payload), 1);
+    payload[0] = 'X';
+    AccessibilityTextEvents events = accessibility_text_frame(field, 0, 0, 0);
+    check_int("replacement owns payload", strcmp(text, "hello"), 0);
+    check_int("replacement emits once", events.text, 1);
+    check_int("replacement selection event", events.selection, 1);
+    check_int("replacement focuses field", IsFocusActive(field.focus_id), 1);
+    check_int("replacement cursor", cursor, 5);
+    events = accessibility_text_frame(field, 0, 0, 0);
+    check_int("replacement does not replay", events.text, 0);
+    check_int("reject stale value", QueueAccessibilityValue(field.focus_id, node.generation, "stale"), 0);
+
+    for(int scenario = 0; scenario < 4; scenario++) {
+        field.text_size = scenario == 1 ? 5 : scenario == 2 ? 6 : sizeof(text);
+        field.max_codepoints = scenario == 0 ? 1 : 2;
+        strcpy(text, "old");
+        cursor = 3;
+        accessibility_text_frame(field, 0, 0, 0);
+        node = accessibility_target(field.focus_id);
+        check_int("queue unicode value", QueueAccessibilityValue(field.focus_id,
+            node.generation, "\xc3\xa9\xe7\x95\x8c"), 1);
+        events = accessibility_text_frame(field, 0, 0, 0);
+        check_int("atomic scalar and capacity limit", strcmp(text,
+            scenario < 2 ? "old" : "\xc3\xa9\xe7\x95\x8c"), 0);
+        check_int("atomic value change event", events.text, scenario >= 2);
+    }
+    field.text_size = sizeof(text);
+    field.max_codepoints = 0;
+    for(int change = 0; change < 5; change++) {
+        ClearFocus();
+        strcpy(text, "old");
+        cursor = 3;
+        accessibility_text_frame(field, 0, 0, 0);
+        node = accessibility_target(field.focus_id);
+        check_int("queue before changed eligibility", QueueAccessibilityValue(field.focus_id,
+                  node.generation, "blocked"), 1);
+        TextFieldProps changed = field;
+        changed.read_only = change == 0;
+        changed.max_codepoints = change == 4 ? 3 : 0;
+        events = accessibility_text_frame(changed, change == 3, change == 1, change == 2);
+        check_int("ineligible editor unchanged", strcmp(text, "old"), 0);
+        check_int("ineligible editor has no change event", events.text, 0);
+        check_int("ineligible editor not focused", IsFocusActive(field.focus_id), 0);
+        accessibility_text_frame(field, 0, 0, 0);
+        check_int("ineligible action not replayed", strcmp(text, "old"), 0);
+    }
+    strcpy(text, "Ae\xcc\x81\r\nB\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x92\xbbZ");
+    cursor = 0;
+    accessibility_text_frame(field, 1, 0, 0);
+    const int offsets[][4] = {{3, 12, 1, 7}, {17, 5, 7, 4}, {-9, 999, 0, 19}, {999, -9, 19, 0}};
+    for(int read_only = 0; read_only < 2; read_only++) {
+        field.read_only = read_only;
+        accessibility_text_frame(field, 1, 0, 0);
+        for(int i = 0; i < 4; i++) {
+            node = accessibility_target(field.focus_id);
+            check_int("queue area selection", QueueAccessibilitySelection(field.focus_id,
+                node.generation, offsets[i][0], offsets[i][1]), 1);
+            events = accessibility_text_frame(field, 1, 0, 0);
+            node = accessibility_target(field.focus_id);
+            check_int("grapheme anchor", node.selection_anchor, offsets[i][2]);
+            check_int("grapheme cursor", node.selection_cursor, offsets[i][3]);
+            check_int("caller cursor updated", cursor, offsets[i][3]);
+            check_int("selection does not emit text change", events.text, 0);
+            check_int("selection event emitted", events.selection, 1);
+            check_int("selection event start", events.start,
+                offsets[i][2] < offsets[i][3] ? offsets[i][2] : offsets[i][3]);
+            check_int("selection event end", events.end,
+                offsets[i][2] > offsets[i][3] ? offsets[i][2] : offsets[i][3]);
+        }
+        if(read_only)
+            check_int("read-only value rejected", QueueAccessibilityValue(field.focus_id,
+                      node.generation, "blocked"), 0);
+    }
+    field.read_only = 0;
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE, "pending", 7, 0);
+    accessibility_text_frame(field, 1, 0, 0);
+    node = accessibility_target(field.focus_id);
+    check_int("snapshot excludes preedit", strstr(node.value, "pending") == NULL, 1);
+    check_int("snapshot has committed selection", node.selection_anchor, 19);
+    SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT, "stale", 5, 0);
+    check_int("queue value cancels preedit", QueueAccessibilityValue(field.focus_id,
+              node.generation, "a\r\nb\tc"), 1);
+    events = accessibility_text_frame(field, 1, 0, 0);
+    check_int("area preserves line endings", strcmp(text, "a\r\nb\tc"), 0);
+    check_int("composition cancellation event", events.composition, 1);
+    InjectText("!");
+    accessibility_text_frame(field, 1, 0, 0);
+    check_int("normal editing after action", strcmp(text, "a\r\nb\tc!"), 0);
+
+    field.secure = 1;
+    accessibility_text_frame(field, 0, 0, 0);
+    node = accessibility_target(field.focus_id);
+    check_int("queue secure value", QueueAccessibilityValue(field.focus_id, node.generation, "secret"), 1);
+    check_int("queue secure selection", QueueAccessibilitySelection(field.focus_id, node.generation, 0, 2), 1);
+    check_int("coalesce value to newest position", QueueAccessibilityValue(field.focus_id, node.generation, "last"), 1);
+    events = accessibility_text_frame(field, 0, 0, 0);
+    check_int("ordered coalesced value", strcmp(text, "last"), 0);
+    check_int("ordered coalesced cursor", cursor, 4);
+    check_int("only coalesced value emits", events.text, 1);
+    node = accessibility_target(field.focus_id);
+    check_int("secure value omitted", node.value[0], 0);
+    check_int("secure anchor omitted", node.selection_anchor, 0);
+    check_int("secure cursor omitted", node.selection_cursor, 0);
+    check_int("queue identical value", QueueAccessibilityValue(field.focus_id, node.generation, "last"), 1);
+    events = accessibility_text_frame(field, 0, 0, 0);
+    check_int("identical value has no change event", events.text, 0);
+    node = accessibility_target(field.focus_id);
+    check_int("queue empty value", QueueAccessibilityValue(field.focus_id, node.generation, ""), 1);
+    events = accessibility_text_frame(field, 0, 0, 0);
+    check_int("empty value applied", text[0], 0);
+    check_int("empty value emits change", events.text, 1);
+    InjectReset();
+    ClearFocus();
+    ClearTextComposition();
+}
+
+static void
+test_accessibility_text_popup_capture(void)
+{
+    PopupInput *context = ui_popup_input_create();
+    char text[32] = "old";
+    int cursor = 3;
+    InjectReset();
+    ClearFocus();
+    for(int frame = 0; frame < 3; frame++) {
+        InjectPump();
+        BeginInterfaceFrame(240, 160, 1);
+        ui_popup_input_frame(context);
+        PopupInput *previous = ui_popup_input_bind(context);
+        BeginTree(Key("accessibility-text-popup"));
+        if(frame == 1) {
+            PopupInputToken popup = ui_popup_input_begin(context, 1, (Rectangle){0, 0, 120, 120});
+            ui_popup_input_end(popup);
+        } else {
+            ui_popup_input_close(context, 1);
+        }
+        TextField((TextFieldProps){.bounds = {0, 0, 200, 30}, .text = text,
+            .text_size = sizeof(text), .cursor_position = &cursor, .focus_id = 7601});
+        EndTree();
+        AccessibilityNode node = accessibility_target(7601);
+        if(frame == 0) {
+            check_int("queue value before popup", QueueAccessibilityValue(7601, node.generation, "blocked"), 1);
+            check_int("queue selection before popup", QueueAccessibilitySelection(7601, node.generation, 0, 1), 1);
+        } else {
+            check_int("captured editor preserves text", strcmp(text, "old"), 0);
+            check_int("captured editor preserves cursor", cursor, 3);
+            check_int("captured editor not focused", IsFocusActive(7601), 0);
+        }
+        if(frame == 1) {
+            check_int("captured editor has no capabilities", node.actions, 0);
+            check_int("captured value rejected", QueueAccessibilityValue(7601, node.generation, "blocked"), 0);
+            check_int("captured selection rejected", QueueAccessibilitySelection(7601, node.generation, 0, 1), 0);
+        }
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        EndInterfaceFrame();
+    }
+    ui_popup_input_destroy(context);
+    InjectReset();
+    ClearFocus();
+}
+
 int
 main(void)
 {
@@ -5880,6 +6116,8 @@ main(void)
     test_accessibility_actions();
     test_accessibility_popup_actions();
     test_accessibility_action_limits_and_variants();
+    test_accessibility_text_actions();
+    test_accessibility_text_popup_capture();
     SetThemeMode(THEME_MODE_LIGHT);
     check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
     check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);

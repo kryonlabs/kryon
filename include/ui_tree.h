@@ -92,6 +92,9 @@ int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 int QueueAccessibilityAction(int focus_id, uint64_t generation,
                              AccessibilityAction action);
+int QueueAccessibilityValue(int focus_id, uint64_t generation, const char *value);
+int QueueAccessibilitySelection(int focus_id, uint64_t generation,
+                                int anchor, int cursor);
 
 void AppBackground(void);
 void Background(Color color);

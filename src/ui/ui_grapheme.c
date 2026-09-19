@@ -7,6 +7,23 @@
 #include "../../vendor/utf8proc/utf8proc.c"
 
 int
+ui_utf8_valid(const char *text, int length)
+{
+    int offset = 0;
+    if(text == NULL || length < 0)
+        return 0;
+    while(offset < length) {
+        utf8proc_int32_t codepoint;
+        utf8proc_ssize_t size = utf8proc_iterate(
+            (const utf8proc_uint8_t *)text + offset, length - offset, &codepoint);
+        if(size < 1)
+            return 0;
+        offset += (int)size;
+    }
+    return 1;
+}
+
+int
 ui_grapheme_next_boundary(const char *text, int length, int offset)
 {
     utf8proc_int32_t previous;

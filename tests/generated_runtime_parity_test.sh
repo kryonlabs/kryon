@@ -86,6 +86,8 @@ import (
 type inputDriver interface {
 	GetAccessibilitySnapshot() []kryon.AccessibilityNode
 	QueueAccessibilityAction(int32, uint64, kryon.AccessibilityAction) bool
+	QueueAccessibilityValue(int32, uint64, string) bool
+	QueueAccessibilitySelection(int32, uint64, int32, int32) bool
 	QueueText(string)
 	QueueKey(int32)
 	QueueShiftKey(int32)
@@ -898,6 +900,31 @@ func main() {
 		}
 	}
 	if accessibleFields != 4 { panic("generated editor accessibility nodes missing") }
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 101 {
+			if !driver.QueueAccessibilityValue(101, node.Generation, "Ae\u0301Z") ||
+				!driver.QueueAccessibilitySelection(101, node.Generation, 3, 99) {
+				panic("generated editor value/selection request rejected")
+			}
+		}
+		if node.FocusID == 104 && !driver.QueueAccessibilityValue(104, node.Generation, "a\r\nb\tc") {
+			panic("generated area value request rejected")
+		}
+	}
+	drawForm()
+	if text64(form.First) != "Ae\u0301Z" || form.FirstCursor != 5 || text128(form.Notes) != "a\r\nb\tc" {
+		panic("generated editor value/selection not delivered")
+	}
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 101 {
+			if node.SelectionAnchor != 1 || node.SelectionCursor != 5 { panic("generated editor selection split grapheme") }
+			if !driver.QueueAccessibilityValue(101, node.Generation, "alpha") { panic("generated editor reset rejected") }
+		}
+		if node.FocusID == 104 && !driver.QueueAccessibilityValue(104, node.Generation, "notes") {
+			panic("generated area reset rejected")
+		}
+	}
+	drawForm()
 	for _, node := range driver.GetAccessibilitySnapshot() {
 		if node.FocusID == 201 && !driver.QueueAccessibilityAction(201, node.Generation, kryon.AccessibilityActionActivate) {
 			panic("generated button accessibility action rejected")
@@ -2114,6 +2141,41 @@ int main(void)
         fprintf(stderr, "generated editor accessibility nodes missing\n");
         return 1;
     }
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 101 &&
+           (!QueueAccessibilityValue(101, node.generation, "Ae\xcc\x81Z") ||
+            !QueueAccessibilitySelection(101, node.generation, 3, 99))) {
+            fprintf(stderr, "generated editor value/selection request rejected\n");
+            return 1;
+        }
+        if(node.focus_id == 104 && !QueueAccessibilityValue(104, node.generation, "a\r\nb\tc")) {
+            fprintf(stderr, "generated area value request rejected\n");
+            return 1;
+        }
+    }
+    draw_form();
+    if(strcmp(first, "Ae\xcc\x81Z") != 0 || first_cursor != 5 || strcmp(notes, "a\r\nb\tc") != 0) {
+        fprintf(stderr, "generated editor value/selection not delivered\n");
+        return 1;
+    }
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 101) {
+            if(node.selection_anchor != 1 || node.selection_cursor != 5 ||
+               !QueueAccessibilityValue(101, node.generation, "alpha")) {
+                fprintf(stderr, "generated editor selection or reset failed\n");
+                return 1;
+            }
+        }
+        if(node.focus_id == 104 && !QueueAccessibilityValue(104, node.generation, "notes")) {
+            fprintf(stderr, "generated area reset rejected\n");
+            return 1;
+        }
+    }
+    draw_form();
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
     for(int i = 0; i < accessible_count && i < 32; i++) {
         AccessibilityNode node = accessible_nodes[i];
         if(node.focus_id == 201 && !QueueAccessibilityAction(201, node.generation, AccessibilityActionActivate)) {

@@ -1881,6 +1881,8 @@ include/ui_tree.h function Paragraph
 include/ui_tree.h function Plot
 include/ui_tree.h function Progress
 include/ui_tree.h function QueueAccessibilityAction
+include/ui_tree.h function QueueAccessibilitySelection
+include/ui_tree.h function QueueAccessibilityValue
 include/ui_tree.h function Radio
 include/ui_tree.h function ReconcileTree
 include/ui_tree.h function Ring

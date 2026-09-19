@@ -149,11 +149,15 @@ direct Go package imports stay stateless. Application host bridges remain
 separate from runtime implementation; no runtime-wide mutable service setter is
 generated. MeasureTextWidth supplies font-specific measurement without making
 widget size decisions and restores the C host's previous typeface after use.
-Accessibility action capabilities belong to `runtime/accessibility_policy.kry`.
+Accessibility action capabilities and value size/control-character rules belong
+to `runtime/accessibility_policy.kry`.
 Hosts project semantic nodes, validate snapshot generations and target identity,
 and own bounded next-frame request queues. Focus/activation requests enter the
 ordinary control input path after live eligibility and popup-ownership checks;
-they do not mutate application values out of band. OS screen-reader adapters
+they do not mutate application values out of band. Value/selection requests
+enter editor input handling, where hosts validate UTF-8, apply the shared
+byte/scalar limit policy, normalize grapheme offsets, and cancel composition.
+Hosts own and clear bounded queued payloads. OS screen-reader adapters
 remain platform services and must marshal requests to the UI thread.
 ReadActivation supplies pointer, keyboard, and accessibility samples using the
 host's focus and popup ownership rules. `runtime/input_props.kry` owns the sample
@@ -271,10 +275,10 @@ registry; color, alignment and clipping remain live per-frame paint decisions.
 
 Accessibility projection is a host service over committed retained nodes (C)
 or completed frame operations (Go). It reuses widget state and checkbox flag
-policy, strips secure values, and publishes snapshots through the host sink.
+policy, strips secure values and selection offsets, and publishes snapshots through the host sink.
 It must not infer duplicate controls from paint decoration or mutate editor
-buffers. Native screen-reader transports and action delivery remain separate
-adapter work; the flat snapshot is not an OS object-identity protocol.
+buffers. Action queues are a separate host input service. Native screen-reader
+transports remain adapter work; the flat snapshot is not an OS object-identity protocol.
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.

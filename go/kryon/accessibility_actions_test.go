@@ -42,7 +42,7 @@ func TestAccessibilityActionsDeliverOnce(t *testing.T) {
 		}
 	}
 	field := accessibilityNode(t, r, 14)
-	if field.Actions != uint32(AccessibilityActionFocus) || field.Value != "" {
+	if field.Actions != uint32(AccessibilityActionFocus|AccessibilityActionSetSelection) || field.Value != "" {
 		t.Fatalf("secure editor capabilities: %+v", field)
 	}
 	if r.QueueAccessibilityAction(14, field.Generation, AccessibilityActionActivate) {

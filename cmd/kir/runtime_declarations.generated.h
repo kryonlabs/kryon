@@ -6,6 +6,8 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "AccessibilityAction :: enum {\n"
         "    AccessibilityActionFocus = 1\n"
         "    AccessibilityActionActivate = 2\n"
+        "    AccessibilityActionSetValue = 4\n"
+        "    AccessibilityActionSetSelection = 8\n"
         "}\n"
     },
     {"runtime/button_props.kry",

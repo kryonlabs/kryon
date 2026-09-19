@@ -3,7 +3,7 @@ package kryon
 
 // #import accessibility_props
 // #import widget_kind
-func AccessibilityPolicy_AccessibilityActionsFor(kind int32, focus_id int32, disabled bool, captured bool) uint32 {
+func AccessibilityPolicy_AccessibilityActionsFor(kind int32, focus_id int32, disabled bool, captured bool, read_only bool) uint32 {
 	var value_0 int32 = focus_id
 	var value_1 int32 = 0
 	var value_2 bool = value_0 <= value_1
@@ -73,11 +73,24 @@ func AccessibilityPolicy_AccessibilityActionsFor(kind int32, focus_id int32, dis
 	if value_37 {
 		var value_42 int32 = int32(AccessibilityActionFocus)
 		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
-		return value_43
+		var value_44 int32 = int32(AccessibilityActionSetSelection)
+		var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
+		var value_46 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(value_45), 32, false, 9))
+		var actions uint32 = value_46
+		var value_47 bool = read_only
+		var value_48 bool = !value_47
+		if value_48 {
+			var value_49 uint32 = actions
+			var value_50 int32 = int32(AccessibilityActionSetValue)
+			var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
+			actions = uint32(number_runtime_bits(uint64(value_49), uint64(value_51), 32, false, 9))
+		}
+		var value_52 uint32 = actions
+		return value_52
 	}
-	var value_44 int32 = 0
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	return value_45
+	var value_53 int32 = 0
+	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
+	return value_54
 }
 
 func AccessibilityPolicy_AccessibilityActionAllowed(actions uint32, action AccessibilityAction) bool {
@@ -93,16 +106,112 @@ func AccessibilityPolicy_AccessibilityActionAllowed(actions uint32, action Acces
 		var value_8 bool = value_5 != value_7
 		value_4 = value_8
 	}
-	if value_4 {
-		var value_9 bool = false
-		return value_9
+	var value_9 bool = value_4
+	if value_9 {
+		var value_10 AccessibilityAction = AccessibilityAction(action)
+		var value_11 int32 = int32(AccessibilityActionSetValue)
+		var value_12 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0)))
+		var value_13 bool = value_10 != value_12
+		value_9 = value_13
 	}
-	var value_10 uint32 = actions
-	var value_11 AccessibilityAction = AccessibilityAction(action)
-	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 8))
-	var value_14 int32 = 0
-	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
-	var value_16 bool = value_13 != value_15
-	return value_16
+	var value_14 bool = value_9
+	if value_14 {
+		var value_15 AccessibilityAction = AccessibilityAction(action)
+		var value_16 int32 = int32(AccessibilityActionSetSelection)
+		var value_17 AccessibilityAction = AccessibilityAction(int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0)))
+		var value_18 bool = value_15 != value_17
+		value_14 = value_18
+	}
+	if value_14 {
+		var value_19 bool = false
+		return value_19
+	}
+	var value_20 uint32 = actions
+	var value_21 AccessibilityAction = AccessibilityAction(action)
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(value_22), 32, false, 8))
+	var value_24 int32 = 0
+	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(0), 32, false, 0))
+	var value_26 bool = value_23 != value_25
+	return value_26
+}
+
+func AccessibilityPolicy_AccessibilityValueByteLimit() int32 {
+	var value_0 int32 = 65536
+	return value_0
+}
+
+func AccessibilityPolicy_AccessibilityValueCodepointAllowed(codepoint int32, multiline bool) bool {
+	var value_0 int32 = codepoint
+	var value_1 int32 = 32
+	var value_2 bool = value_0 >= value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = codepoint
+		var value_5 int32 = 127
+		var value_6 bool = value_4 != value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 bool = true
+		return value_7
+	}
+	var value_8 bool = multiline
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 int32 = codepoint
+		var value_11 int32 = 9
+		var value_12 bool = value_10 == value_11
+		var value_13 bool = value_12
+		if !value_13 {
+			var value_14 int32 = codepoint
+			var value_15 int32 = 10
+			var value_16 bool = value_14 == value_15
+			value_13 = value_16
+		}
+		var value_17 bool = value_13
+		if !value_17 {
+			var value_18 int32 = codepoint
+			var value_19 int32 = 13
+			var value_20 bool = value_18 == value_19
+			value_17 = value_20
+		}
+		value_9 = value_17
+	}
+	return value_9
+}
+
+func AccessibilityPolicy_AccessibilityValueFits(bytes int32, codepoints int32, capacity int32, max_codepoints int32) bool {
+	var value_0 int32 = bytes
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = bytes
+		var value_5 int32 = AccessibilityPolicy_AccessibilityValueByteLimit()
+		var value_6 bool = value_4 > value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = capacity
+		var value_9 int32 = bytes
+		var value_10 bool = value_8 <= value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 bool = false
+		return value_11
+	}
+	var value_12 int32 = max_codepoints
+	var value_13 int32 = 0
+	var value_14 bool = value_12 <= value_13
+	var value_15 bool = value_14
+	if !value_15 {
+		var value_16 int32 = codepoints
+		var value_17 int32 = max_codepoints
+		var value_18 bool = value_16 <= value_17
+		value_15 = value_18
+	}
+	return value_15
 }
