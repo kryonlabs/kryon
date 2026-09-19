@@ -151,9 +151,10 @@ func (r *runtime) CardScope(props CardProps) {
 		owner = len(r.ops)
 	}
 	r.layout = append(r.layout, layoutFrame{
-		accessibilityOwner: owner,
-		bounds:             frame.Button.ContentBounds,
-		center:             true, textFont: frame.Button.Font,
+		accessibilityOwner:     owner,
+		accessibilityContainer: len(r.ops),
+		bounds:                 frame.Button.ContentBounds,
+		center:                 true, textFont: frame.Button.Font,
 		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
 		textDisabled: frame.Disabled,
 	})
@@ -167,9 +168,10 @@ func (r *runtime) ButtonScope(props ButtonProps) {
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	r.record(frame)
 	r.layout = append(r.layout, layoutFrame{
-		accessibilityOwner: len(r.ops),
-		bounds:             frame.Button.ContentBounds,
-		center:             true, textFont: frame.Button.Font,
+		accessibilityOwner:     len(r.ops),
+		accessibilityContainer: len(r.ops),
+		bounds:                 frame.Button.ContentBounds,
+		center:                 true, textFont: frame.Button.Font,
 		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
 		textDisabled: frame.Disabled,
 	})

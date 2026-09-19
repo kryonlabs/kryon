@@ -2,6 +2,15 @@
 
 Reviewed 2026-09-18 against master `2efbf174`.
 
+Current execution scope (2026-09-19): see
+[`NATIVE_LANGUAGE_COMPLETION.md`](NATIVE_LANGUAGE_COMPLETION.md) for the detailed
+active goal after `6e4c2a6f`. The inventory below retains historical open rows;
+reconcile them against code and revision-specific evidence before scheduling
+work. All JS/web/DOM-only implementation and browser-only validation below are
+future-roadmap work, not prerequisites for current native completion. Completed
+native image, text/IME, host organization and array batches are recorded in the
+active plan and must not be restarted from these older rows.
+
 This plan consolidates all 26 documents in `plan/canonical`, `plan/style`, and
 `plan/dom`. It orders implementation and verification; the linked documents
 retain the detailed requirements. This was a document and source review, not a

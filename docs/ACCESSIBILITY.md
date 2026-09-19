@@ -33,6 +33,11 @@ sentence ranges, caret queries, and editor selections. Line and paragraph
 queries use hard line breaks, not rendered soft wraps. EditableText replacement
 is supported in both adapters; native Go also supports insertion/deletion.
 
+Snapshots preserve nested semantic groups through parent indices. Linux object
+paths retain identity for unique focus IDs and semantic keys when siblings move
+or a control changes parent. Child queries, cache entries and parent-relative
+geometry follow the exposed hierarchy.
+
 Object state/name/children changes, text changes, caret/selection changes, and
 window activation changes emit AT-SPI events. Unicode scalar offsets on D-Bus
 are converted to the runtime's UTF-8 byte offsets. Password fields expose no
@@ -52,15 +57,16 @@ Windows UI Automation, macOS accessibility, Android, and iOS adapters are not
 implemented. C libdraw/terminal/null backends do not automatically register.
 List/tree/table child selection, dropdown options, range-value interfaces,
 relations, rich text attributes, glyph/range geometry, clipboard text actions,
-and legacy Text boundary methods remain unsupported. Nested semantic hierarchy,
-rendered-line navigation, and exhaustive Orca interaction testing remain work.
+and legacy Text boundary methods remain unsupported. Rendered-line navigation
+and exhaustive Orca interaction testing remain work.
 
 ## Verification
 
 `make accessibility-dbus-test` builds a C fixture and runs C/Go round trips on a
 private D-Bus daemon with Go's race detector. It covers discovery, bulk cache
 queries, Unicode offsets, password privacy, queued activation/replacement,
-selection, stable/retired paths, and shutdown. Requires Linux, Go,
+selection, nested children, parent-relative bounds, stable/retired paths, and
+shutdown. Requires Linux, Go,
 `dbus-daemon`, GIO, and Pango.
 
 `make generated-runtime-parity-test` exercises generated C and Go, including

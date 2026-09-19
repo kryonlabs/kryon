@@ -643,11 +643,12 @@ limits, and normalize selection to grapheme boundaries. Applying them cancels
 stale composition and preserves ordinary editor change reporting. Snapshots
 publish committed selection offsets, but omit secure values and offsets.
 Removed or newly ineligible controls cannot replay pending requests. Linux
-AT-SPI adapters wrap these snapshots in application/window/leaf object trees.
+AT-SPI adapters wrap these snapshots in application/window trees with nested semantic children.
 The C adapter connects off-thread but dispatches a private GMainContext before
 frame input reset; the Go adapter's D-Bus workers access owned snapshots and a
 bounded inbox, drained before BeginFrame. Neither transport edits app buffers.
-Stable positive IDs retain paths across frames; removed paths are never reused.
+Stable positive focus IDs and unique semantic keys retain paths across frames
+and reparenting; removed paths are never reused.
 Bulk cache queries and change signals expose current metadata. C uses Pango
 and Go uses uax29 for Unicode text ranges. See [ACCESSIBILITY.md](ACCESSIBILITY.md)
 for the supported Linux builds and remaining platform/control limitations.

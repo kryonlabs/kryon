@@ -73,6 +73,12 @@ typedef struct {
     unsigned actions;
     int selection_anchor;
     int selection_cursor;
+    uint64_t key;
+    unsigned parent;
+    int selected;
+    int multi_select;
+    int item_index;
+    int offscreen;
 } AccessibilityNode;
 
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);

@@ -314,7 +314,7 @@ func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_widt
 	var value_19 int32 = int32(StylePaddingX)
 	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
 	var value_21 float32 = label.Value.PaddingX
-	var value_22 float32 = 16.0
+	var value_22 float32 = 10.0
 	var value_23 float32 = scale
 	var value_24 bool = true
 	var value_25 float32 = Toggle_ToggleMetric(value_18, value_20, value_21, value_22, value_23, value_24)

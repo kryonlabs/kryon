@@ -347,6 +347,7 @@ type Runtime interface {
 	QueueAccessibilityAction(int32, uint64, AccessibilityAction) bool
 	QueueAccessibilityValue(int32, uint64, string) bool
 	QueueAccessibilitySelection(int32, uint64, int32, int32) bool
+	QueueAccessibilityItem(int32, uint64, int32, bool) bool
 	InstanceValue(typeID any, key uint64, create func() any) any
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
@@ -580,20 +581,21 @@ type themePalette struct {
 }
 
 type layoutFrame struct {
-	accessibilityOwner int
-	bounds             Rectangle
-	cursorX            float32
-	cursorY            float32
-	gap                float32
-	padding            float32
-	horizontal         bool
-	gridCursor         GridCursor
-	noLayout           bool
-	center             bool
-	textFont           int32
-	textColor          Color
-	textColorSet       bool
-	textDisabled       bool
+	accessibilityOwner     int
+	accessibilityContainer int
+	bounds                 Rectangle
+	cursorX                float32
+	cursorY                float32
+	gap                    float32
+	padding                float32
+	horizontal             bool
+	gridCursor             GridCursor
+	noLayout               bool
+	center                 bool
+	textFont               int32
+	textColor              Color
+	textColorSet           bool
+	textDisabled           bool
 }
 
 type inputEvent struct {
@@ -1148,6 +1150,12 @@ func (r *runtime) focusablePress(bounds Rectangle, id int32, disabled bool) (pre
 }
 
 func (r *runtime) record(op FrameOp) {
+	for index := len(r.layout) - 1; index >= 0; index-- {
+		if parent := r.layout[index].accessibilityContainer; parent > 0 {
+			op.accessibilityParent = parent
+			break
+		}
+	}
 	op = r.canvasOperation(op)
 	if op.Kind == FrameOpText && r.recordAccessibleText(op.Text) {
 		op.Role = "presentation"

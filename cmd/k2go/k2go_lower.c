@@ -1266,7 +1266,7 @@ props_field_at(const KirModule *module, const char *type, int index,
                            "Style", "ContentVersion", "ReadOnly", "Wrap"}},
 		{"ListBoxProps", {"Bounds", "ID", "ClassName", "Items", "ItemCount",
 		                  "SelectedIndex", "Selected", "SelectedCount", "Anchor",
-		                  "ScrollOffset", "RowHeight", "Disabled", "ContentHeight"}},
+		                  "ScrollOffset", "RowHeight", "Disabled", "ContentHeight", "ItemKeys"}},
 		{"TreeItem", {"Label", "Depth", "ID", "Expanded", "Selectable"}},
 		{"TreeViewProps", {"Bounds", "ID", "ClassName", "Items", "ItemCount",
 		                   "SelectedID", "ScrollOffset", "RowHeight", "Disabled"}},
@@ -1451,7 +1451,7 @@ slice_prop_field(const char *type, const char *field)
     if(strcmp(type, "ButtonProps") == 0 && strcmp(field, "Items") == 0)
         return 1;
     if(strcmp(type, "ListBoxProps") == 0 &&
-       (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0))
+       (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0 || strcmp(field, "ItemKeys") == 0))
         return 1;
     if(strcmp(type, "TreeViewProps") == 0 && strcmp(field, "Items") == 0)
         return 1;

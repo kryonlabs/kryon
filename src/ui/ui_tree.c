@@ -2393,11 +2393,17 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
 {
     int count = 0;
     int i;
+    unsigned *parents = nodes != NULL && capacity > 0
+        ? calloc((size_t)ui_committed_node_count, sizeof(*parents)) : NULL;
 
     for(i = 0; i < ui_committed_node_count; i++) {
         TreeNode *node = &ui_committed_nodes[i];
         const char *role = ui_accessibility_role(node->kind);
         const char *label = node->owned_text;
+        unsigned parent = parents != NULL && node->parent >= 0 && node->parent < i
+            ? parents[node->parent] : 0;
+        if(parents != NULL)
+            parents[i] = parent;
 
         if(node->kind == WidgetKindText) {
             int parent = node->parent;
@@ -2426,6 +2432,8 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
             label = node->data.checkbox.label;
         if(nodes != NULL && count < capacity) {
             memset(&nodes[count], 0, sizeof(nodes[count]));
+            nodes[count].key = node->key;
+            nodes[count].parent = parent;
             nodes[count].bounds = node->bounds;
             nodes[count].role = role;
             nodes[count].label = label != NULL ? label : "";
@@ -2489,7 +2497,10 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
             }
         }
         count++;
+        if(parents != NULL)
+            parents[i] = (unsigned)count;
     }
+    free(parents);
     return count;
 }
 

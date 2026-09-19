@@ -288,8 +288,8 @@ buffers. Action queues are a separate host input service. Linux AT-SPI object
 identity, D-Bus interfaces, cache/event publication, screen geometry, and scalar
 offset conversion belong to the native host adapters, not generated widget
 policy. C callbacks run on the UI thread through a private GLib context; Go
-D-Bus workers enqueue owned requests for UI-thread delivery. The flat public
-snapshot remains independent of this transport. Other OS adapters and composite
+D-Bus workers enqueue owned requests for UI-thread delivery. The public snapshot array carries parent indices and semantic keys, independently
+of this transport. Other OS adapters and composite
 selection/value interfaces remain unimplemented; see [ACCESSIBILITY.md](ACCESSIBILITY.md).
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,

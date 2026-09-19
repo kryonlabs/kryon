@@ -149,9 +149,9 @@ func (b *accessibilityBus) accessibleMethods() map[string]any {
 			return []accessibleReference{{b.name, atspiWindow}}
 		}
 		if object.path == atspiWindow {
-			return append([]accessibleReference{}, b.children...)
+			return append([]accessibleReference{}, b.roots...)
 		}
-		return []accessibleReference{}
+		return append([]accessibleReference{}, object.children...)
 	}
 	type relation struct {
 		Kind    uint32
@@ -192,6 +192,10 @@ func (b *accessibilityBus) extents(object accessibleObject, coordinates uint32) 
 		rect.Y += b.bounds.Y
 	} else if coordinates != 0 && (object.path == atspiRoot || object.path == atspiWindow) {
 		rect.X, rect.Y = 0, 0
+	} else if coordinates == 2 && object.parent != atspiWindow {
+		parent := b.objects[object.parent]
+		rect.X -= parent.node.Bounds.X
+		rect.Y -= parent.node.Bounds.Y
 	}
 	return accessibleRectangle{int32(rect.X), int32(rect.Y), int32(rect.Width), int32(rect.Height)}, nil
 }
@@ -212,12 +216,31 @@ func (b *accessibilityBus) componentMethods() map[string]any {
 		},
 		"Contains": contains,
 		"GetAccessibleAtPoint": func(object accessibleObject, x, y int32, coordinates uint32) (accessibleReference, *dbus.Error) {
-			if object.path == atspiRoot || object.path == atspiWindow {
-				for i := len(b.children) - 1; i >= 0; i-- {
-					child := b.objects[b.children[i].Path]
-					if hit, _ := contains(child, x, y, coordinates); hit {
-						return b.children[i], nil
-					}
+			if coordinates > 2 {
+				return accessibleReference{}, accessibleInvalidArgument()
+			}
+			// Convert once to window coordinates; parent coordinates belong to
+			// the queried object, not to each candidate child.
+			windowX, windowY := x, y
+			if coordinates == 0 {
+				windowX -= int32(b.bounds.X)
+				windowY -= int32(b.bounds.Y)
+			} else if coordinates == 2 && object.parent != atspiWindow {
+				parent := b.objects[object.parent]
+				windowX += int32(parent.node.Bounds.X)
+				windowY += int32(parent.node.Bounds.Y)
+			}
+			for i := len(b.children) - 1; i >= 0; i-- {
+				child := b.objects[b.children[i].Path]
+				parent := child.parent
+				for parent != "" && parent != atspiWindow && parent != object.path {
+					parent = b.objects[parent].parent
+				}
+				if parent != object.path && object.path != atspiRoot && object.path != atspiWindow {
+					continue
+				}
+				if hit, _ := contains(child, windowX, windowY, 1); hit {
+					return b.children[i], nil
 				}
 			}
 			if hit, err := contains(object, x, y, coordinates); err != nil {

@@ -58,8 +58,11 @@ func (r *runtime) Page(props PageProps) {
 	if style.Background.A != 0 {
 		r.SetPageThemeColor(style.Background)
 	}
-	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage})
+	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage, accessibilityKey: uint64(key)})
+	owner := len(r.ops)
 	r.Column(ColumnProps{Bounds: bounds, Gap: styleLength(style.Gap), Padding: styleLength(style.PaddingX), Key: key})
+	r.ops[len(r.ops)-1].Role = "presentation"
+	r.ops[len(r.ops)-1].accessibilityParent = owner
 }
 
 func (r *runtime) Section(props SectionProps) {
@@ -68,9 +71,12 @@ func (r *runtime) Section(props SectionProps) {
 	if key == 0 {
 		key = Key(props.Label)
 	}
-	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: SemanticSection})
+	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: SemanticSection, accessibilityKey: uint64(key)})
+	owner := len(r.ops)
 	style := styleForClassKind(props.ClassName, StyleSheet_StyleKindSection())
 	r.Column(ColumnProps{Bounds: bounds, Gap: styleLength(style.Gap), Padding: styleLength(style.PaddingX), Key: key})
+	r.ops[len(r.ops)-1].Role = "presentation"
+	r.ops[len(r.ops)-1].accessibilityParent = owner
 }
 
 func (r *runtime) Heading(props HeadingProps) {

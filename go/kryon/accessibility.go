@@ -23,6 +23,12 @@ type AccessibilityNode struct {
 	Actions         uint32
 	SelectionAnchor int32
 	SelectionCursor int32
+	Key             uint64
+	Parent          uint32
+	Selected        bool
+	MultiSelect     bool
+	ItemIndex       int32
+	Offscreen       bool
 }
 
 type AccessibilitySink func([]AccessibilityNode)
@@ -34,6 +40,7 @@ type accessibilityRequest struct {
 	value  []byte
 	anchor int32
 	cursor int32
+	itemKey uint64
 }
 
 type accessibilityState struct {
@@ -54,10 +61,27 @@ func (h *Host) QueueAccessibilityAction(focusID int32, generation uint64, action
 }
 
 func (r *runtime) QueueAccessibilityAction(focusID int32, generation uint64, action AccessibilityAction) bool {
-	if action != AccessibilityActionFocus && action != AccessibilityActionActivate {
+	if action != AccessibilityActionFocus && action != AccessibilityActionActivate &&
+		action != AccessibilityActionSelectAll && action != AccessibilityActionClearSelection {
 		return false
 	}
 	return r.queueAccessibilityRequest(generation, accessibilityRequest{id: focusID, action: action})
+}
+
+func QueueAccessibilityItem(focusID int32, generation uint64, index int32, selected bool) bool {
+	return activeRuntime != nil && activeRuntime.QueueAccessibilityItem(focusID, generation, index, selected)
+}
+
+func (h *Host) QueueAccessibilityItem(focusID int32, generation uint64, index int32, selected bool) bool {
+	return h != nil && h.runtime != nil && h.runtime.QueueAccessibilityItem(focusID, generation, index, selected)
+}
+
+func (r *runtime) QueueAccessibilityItem(focusID int32, generation uint64, index int32, selected bool) bool {
+	action := AccessibilityActionDeselectItem
+	if selected {
+		action = AccessibilityActionSelectItem
+	}
+	return r.queueAccessibilityRequest(generation, accessibilityRequest{id: focusID, action: action, anchor: index})
 }
 
 // QueueAccessibilityValue owns a bounded UTF-8 copy for atomic replacement in
@@ -107,7 +131,8 @@ func (r *runtime) queueAccessibilityRequest(generation uint64, request accessibi
 	}
 	kind := int32(0)
 	actions := uint32(0)
-	for _, op := range r.ops {
+	owner := -1
+	for index, op := range r.ops {
 		candidate := accessibilityKind(op)
 		id := op.ID
 		if op.FocusID != 0 {
@@ -120,10 +145,32 @@ func (r *runtime) queueAccessibilityRequest(generation uint64, request accessibi
 			return false
 		}
 		kind = candidate
+		owner = index
 		actions = AccessibilityPolicy_AccessibilityActionsFor(kind, id, op.Disabled || op.Loading, r.popupFocusCaptures(id), op.ReadOnly)
+		if kind == int32(WidgetKindListBox) && !op.accessibilityMultiSelect {
+			actions &^= uint32(AccessibilityActionSelectAll)
+		}
 	}
 	if !AccessibilityPolicy_AccessibilityActionAllowed(actions, action) {
 		return false
+	}
+	if action == AccessibilityActionSelectItem || action == AccessibilityActionDeselectItem {
+		found := false
+		for _, op := range r.ops {
+			if op.accessibilityParent != owner+1 || op.Role != "option" || op.Row != request.anchor || op.Disabled {
+				continue
+			}
+			if len(op.Text) > int(AccessibilityPolicy_AccessibilityValueByteLimit()) {
+				return false
+			}
+			request.itemKey = op.accessibilityKey
+			request.value = []byte(op.Text)
+			found = true
+			break
+		}
+		if !found {
+			return false
+		}
 	}
 	if action == AccessibilityActionSetValue {
 		for _, codepoint := range string(request.value) {
@@ -133,7 +180,8 @@ func (r *runtime) queueAccessibilityRequest(generation uint64, request accessibi
 		}
 	}
 	for i, previous := range r.accessibility.pending {
-		if previous.id == focusID && previous.action == action {
+		if previous.id == focusID && previous.action == action &&
+			(action != AccessibilityActionSelectItem && action != AccessibilityActionDeselectItem || previous.anchor == request.anchor) {
 			clear(previous.value)
 			r.accessibility.pending = append(r.accessibility.pending[:i], r.accessibility.pending[i+1:]...)
 			break
@@ -177,7 +225,7 @@ func (r *runtime) prepareAccessibility(id, kind int32, enabled bool) {
 		if request.id != id || id <= 0 {
 			continue
 		}
-		if request.kind == kind && (request.action == AccessibilityActionSetValue || request.action == AccessibilityActionSetSelection) {
+		if request.kind == kind && request.action != AccessibilityActionFocus && request.action != AccessibilityActionActivate {
 			continue
 		}
 		r.accessibility.active[i].id = 0
@@ -314,12 +362,20 @@ func (r *runtime) recordAccessibleText(text string) bool {
 
 func (r *runtime) GetAccessibilitySnapshot() []AccessibilityNode {
 	var nodes []AccessibilityNode
-	for _, op := range r.ops {
+	parents := make([]uint32, len(r.ops)+1)
+	for index, op := range r.ops {
+		parent := uint32(0)
+		if op.accessibilityParent > 0 && op.accessibilityParent <= index {
+			parent = parents[op.accessibilityParent]
+		}
+		parents[index+1] = parent
 		role := accessibilityRole(op)
 		if role == "" || role == "presentation" || role == "none" {
 			continue
 		}
 		node := AccessibilityNode{
+			Key: op.accessibilityKey, Parent: parent,
+			Selected: op.Selected, MultiSelect: op.accessibilityMultiSelect, ItemIndex: op.Row, Offscreen: op.accessibilityOffscreen,
 			Bounds: op.Bounds, Role: role, Label: op.Text,
 			Disabled: op.Disabled || op.Loading, FocusID: op.ID,
 			ReadOnly: op.ReadOnly, Secure: op.Secure,
@@ -331,6 +387,9 @@ func (r *runtime) GetAccessibilitySnapshot() []AccessibilityNode {
 		switch role {
 		case "main", "group", "text", "img", "progressbar":
 			node.FocusID = 0
+		}
+		if node.Key == 0 && node.FocusID > 0 {
+			node.Key = uint64(node.FocusID)
 		}
 		if op.AccessibleBounds.Width > 0 && op.AccessibleBounds.Height > 0 {
 			node.Bounds = op.AccessibleBounds
@@ -357,7 +416,11 @@ func (r *runtime) GetAccessibilitySnapshot() []AccessibilityNode {
 		node.Generation = uint64(r.frames)
 		node.Actions = AccessibilityPolicy_AccessibilityActionsFor(accessibilityKind(op), node.FocusID,
 			node.Disabled, r.popupFocusCaptures(node.FocusID), node.ReadOnly)
+		if role == "listbox" && !node.MultiSelect {
+			node.Actions &^= uint32(AccessibilityActionSelectAll)
+		}
 		nodes = append(nodes, node)
+		parents[index+1] = uint32(len(nodes))
 	}
 	return nodes
 }

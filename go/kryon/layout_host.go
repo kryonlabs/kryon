@@ -50,7 +50,8 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKin
 		padding:    float32(metrics.Padding),
 		horizontal: horizontal,
 	})
-	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
+	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key), accessibilityKey: uint64(props.Key)})
+	r.layout[len(r.layout)-1].accessibilityContainer = len(r.ops)
 }
 
 func (r *runtime) pushGrid(props GridProps) {
@@ -61,7 +62,8 @@ func (r *runtime) pushGrid(props GridProps) {
 		bounds:     bounds,
 		gridCursor: cursor,
 	})
-	r.record(FrameOp{Kind: FrameOpGrid, Bounds: bounds, ID: int32(props.Key), Columns: cursor.Metrics.Columns})
+	r.record(FrameOp{Kind: FrameOpGrid, Bounds: bounds, ID: int32(props.Key), accessibilityKey: uint64(props.Key), Columns: cursor.Metrics.Columns})
+	r.layout[len(r.layout)-1].accessibilityContainer = len(r.ops)
 }
 
 func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
@@ -81,7 +83,8 @@ func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
 		padding:  float32(padding),
 		noLayout: true,
 	})
-	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
+	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key), accessibilityKey: uint64(props.Key)})
+	r.layout[len(r.layout)-1].accessibilityContainer = len(r.ops)
 }
 
 func (r *runtime) layoutRect(bounds Rectangle) Rectangle {

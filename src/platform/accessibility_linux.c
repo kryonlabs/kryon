@@ -18,7 +18,12 @@ typedef struct AccessibleObject {
     char *label;
     char *value;
     char *role;
+    char *parent;
     int index;
+    int position;
+    int child_count;
+    int old_child_count;
+    int cache_dirty;
     guint registrations[7];
 } AccessibleObject;
 
@@ -54,6 +59,7 @@ accessible_unref(gpointer data)
     g_free(object->label);
     g_free(object->value);
     g_free(object->role);
+    g_free(object->parent);
     g_free(object);
 }
 
@@ -149,6 +155,38 @@ accessible_reference(const char *path)
     return g_variant_new("(so)", accessible_bus_name(), path);
 }
 
+static AccessibleObject *
+accessible_parent(const AccessibleObject *object)
+{
+    AccessibilityBridge *bridge = accessibility_bridge;
+    if(object == bridge->root)
+        return NULL;
+    if(object == bridge->window)
+        return bridge->root;
+    if(strcmp(object->parent, ATSPI_WINDOW) == 0)
+        return bridge->window;
+    for(guint i = 0; i < bridge->children->len; i++) {
+        AccessibleObject *candidate = bridge->children->pdata[i];
+        if(strcmp(candidate->path, object->parent) == 0)
+            return candidate;
+    }
+    return NULL;
+}
+
+static AccessibleObject *
+accessible_child(const AccessibleObject *object, int index)
+{
+    AccessibilityBridge *bridge = accessibility_bridge;
+    if(object == bridge->root)
+        return index == 0 ? bridge->window : NULL;
+    for(guint i = 0; i < bridge->children->len; i++) {
+        AccessibleObject *child = bridge->children->pdata[i];
+        if(child->index == index && strcmp(child->parent, object->path) == 0)
+            return child;
+    }
+    return NULL;
+}
+
 static GVariant *
 accessible_cache_item(const AccessibleObject *object)
 {
@@ -162,8 +200,8 @@ accessible_cache_item(const AccessibleObject *object)
     }
     GVariant *parent = object == bridge->root
         ? g_variant_new("(so)", "org.a11y.atspi.Registry", ATSPI_ROOT)
-        : accessible_reference(object == bridge->window ? ATSPI_ROOT : ATSPI_WINDOW);
-    int children = object == bridge->root ? 1 : object == bridge->window ? (int)bridge->children->len : 0;
+        : accessible_reference(object == bridge->window ? ATSPI_ROOT : object->parent);
+    int children = object->child_count;
     guint64 bits = accessible_states(object);
     guint32 states[] = {(guint32)bits, (guint32)(bits >> 32)};
     return g_variant_new("(@(so)@(so)@(so)ii@assus@au)",
@@ -203,6 +241,12 @@ accessible_bounds(const AccessibleObject *object, guint coordinates)
     } else if(toplevel) {
         bounds.x = 0;
         bounds.y = 0;
+    } else if(coordinates == 2) {
+        AccessibleObject *parent = accessible_parent(object);
+        if(parent != NULL && parent != accessibility_bridge->window) {
+            bounds.x -= parent->node.bounds.x;
+            bounds.y -= parent->node.bounds.y;
+        }
     }
     return bounds;
 }
@@ -237,10 +281,10 @@ accessible_property(GDBusConnection *connection, const char *sender, const char 
         if(strcmp(property, "Parent") == 0) {
             if(object == bridge->root)
                 return g_variant_new("(so)", "org.a11y.atspi.Registry", ATSPI_ROOT);
-            return accessible_reference(object == bridge->window ? ATSPI_ROOT : ATSPI_WINDOW);
+            return accessible_reference(object == bridge->window ? ATSPI_ROOT : object->parent);
         }
         if(strcmp(property, "ChildCount") == 0)
-            return g_variant_new_int32(object == bridge->root ? 1 : object == bridge->window ? (int)bridge->children->len : 0);
+            return g_variant_new_int32(object->child_count);
     } else if(strcmp(interface, ATSPI_APPLICATION) == 0) {
         if(strcmp(property, "Id") == 0)
             return g_variant_new_int32(bridge->application_id);
@@ -350,20 +394,19 @@ accessible_call(AccessibleObject *object, const char *interface, const char *met
         if(strcmp(method, "GetChildren") == 0) {
             GVariantBuilder children;
             g_variant_builder_init(&children, G_VARIANT_TYPE("a(so)"));
-            if(object == bridge->root)
-                g_variant_builder_add_value(&children, accessible_reference(ATSPI_WINDOW));
-            else if(object == bridge->window)
-                for(guint i = 0; i < bridge->children->len; i++)
-                    g_variant_builder_add_value(&children, accessible_reference(((AccessibleObject *)bridge->children->pdata[i])->path));
+            for(int i = 0; i < object->child_count; i++) {
+                AccessibleObject *child = accessible_child(object, i);
+                if(child != NULL)
+                    g_variant_builder_add_value(&children, accessible_reference(child->path));
+            }
             return g_variant_new("(@a(so))", g_variant_builder_end(&children));
         }
         if(strcmp(method, "GetChildAtIndex") == 0) {
             int index;
             g_variant_get(parameters, "(i)", &index);
-            if(object == bridge->root && index == 0)
-                return g_variant_new("(@(so))", accessible_reference(ATSPI_WINDOW));
-            if(object == bridge->window && index >= 0 && (guint)index < bridge->children->len)
-                return g_variant_new("(@(so))", accessible_reference(((AccessibleObject *)bridge->children->pdata[index])->path));
+            AccessibleObject *child = accessible_child(object, index);
+            if(child != NULL)
+                return g_variant_new("(@(so))", accessible_reference(child->path));
             return NULL;
         }
         if(strcmp(method, "GetIndexInParent") == 0)
@@ -417,12 +460,26 @@ accessible_call(AccessibleObject *object, const char *interface, const char *met
         if(strcmp(method, "Contains") == 0)
             return g_variant_new("(b)", CheckCollisionPointRec((Vector2){x, y}, bounds));
         if(strcmp(method, "GetAccessibleAtPoint") == 0) {
-            if(object == bridge->root || object == bridge->window)
-                for(int i = (int)bridge->children->len - 1; i >= 0; i--) {
-                    AccessibleObject *child = bridge->children->pdata[i];
-                    if(CheckCollisionPointRec((Vector2){x, y}, accessible_bounds(child, coordinates)))
-                        return g_variant_new("(@(so))", accessible_reference(child->path));
+            Vector2 point = {x, y};
+            if(coordinates == 0 && IsWindowReady()) {
+                Vector2 position = GetWindowPosition();
+                point.x -= position.x;
+                point.y -= position.y;
+            } else if(coordinates == 2) {
+                AccessibleObject *parent = accessible_parent(object);
+                if(parent != NULL && parent != bridge->root && parent != bridge->window) {
+                    point.x += parent->node.bounds.x;
+                    point.y += parent->node.bounds.y;
                 }
+            }
+            for(int i = (int)bridge->children->len - 1; i >= 0; i--) {
+                AccessibleObject *child = bridge->children->pdata[i];
+                AccessibleObject *parent = accessible_parent(child);
+                while(parent != NULL && parent != object)
+                    parent = accessible_parent(parent);
+                if(parent == object && CheckCollisionPointRec(point, child->node.bounds))
+                    return g_variant_new("(@(so))", accessible_reference(child->path));
+            }
             return g_variant_new("(@(so))", accessible_reference(CheckCollisionPointRec((Vector2){x, y}, bounds) ? object->path : ATSPI_NULL));
         }
         if(strcmp(method, "GrabFocus") == 0)
@@ -656,6 +713,7 @@ ui_accessibility_platform_pump(void)
         bridge->root->label = g_strdup(bridge->title);
         bridge->root->value = g_strdup("");
         bridge->root->index = -1;
+        bridge->root->child_count = 1;
         bridge->window = g_new0(AccessibleObject, 1);
         bridge->window->references = 1;
         bridge->window->path = g_strdup(ATSPI_WINDOW);
@@ -731,6 +789,11 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
     GPtrArray *previous = bridge->children;
     GHashTable *previous_by_key = g_hash_table_new(g_str_hash, g_str_equal);
     GHashTable *id_counts = g_hash_table_new(g_direct_hash, g_direct_equal);
+    GHashTable *semantic_keys = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    AccessibleObject **parents = g_new0(AccessibleObject *, count + 1);
+    parents[0] = bridge->window;
+    bridge->window->old_child_count = bridge->window->child_count;
+    bridge->window->child_count = 0;
     for(guint i = 0; i < previous->len; i++) {
         AccessibleObject *object = previous->pdata[i];
         g_hash_table_insert(previous_by_key, object->key, object);
@@ -739,25 +802,40 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
         gpointer id = GINT_TO_POINTER(nodes[i].focus_id);
         int occurrences = GPOINTER_TO_INT(g_hash_table_lookup(id_counts, id));
         g_hash_table_insert(id_counts, id, GINT_TO_POINTER(occurrences + 1));
+        if(nodes[i].key != 0) {
+            char *key = g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)nodes[i].key, nodes[i].role);
+            occurrences = GPOINTER_TO_INT(g_hash_table_lookup(semantic_keys, key));
+            g_hash_table_replace(semantic_keys, key, GINT_TO_POINTER(occurrences + 1));
+        }
     }
     bridge->children = g_ptr_array_new();
     bridge->root->node.bounds = (Rectangle){0, 0, GetScreenWidth(), GetScreenHeight()};
     bridge->window->node.bounds = bridge->root->node.bounds;
     for(int i = 0; i < count; i++) {
         AccessibilityNode node = nodes[i];
+        AccessibleObject *parent = node.parent > 0 && node.parent <= (unsigned)i
+            ? parents[node.parent] : bridge->window;
+        parents[i+1] = parent;
         if(IsWindowReady() && !IsWindowFocused())
             node.focused = 0;
         if(strcmp(node.role, "main") == 0)
             continue;
         int unique = node.focus_id > 0 &&
             GPOINTER_TO_INT(g_hash_table_lookup(id_counts, GINT_TO_POINTER(node.focus_id))) == 1;
-        char *key = unique ? g_strdup_printf("focus:%d:%s", node.focus_id, node.role) :
-                            g_strdup_printf("position:%d:%s", i, node.role);
+        char *semantic_key = g_strdup_printf("key:%" G_GUINT64_FORMAT ":%s", (guint64)node.key, node.role);
+        char *key;
+        if(unique)
+            key = g_strdup_printf("focus:%d:%s", node.focus_id, node.role);
+        else if(node.key != 0 && GPOINTER_TO_INT(g_hash_table_lookup(semantic_keys, semantic_key)) == 1)
+            key = g_strdup(semantic_key);
+        else
+            key = g_strdup_printf("position:%s:%d:%s", parent->path, parent->child_count, node.role);
+        g_free(semantic_key);
         if(!unique)
             node.actions = 0;
         AccessibleObject *object = g_hash_table_lookup(previous_by_key, key);
         if(object != NULL)
-            previous->pdata[object->index] = NULL;
+            previous->pdata[object->position] = NULL;
         int created = object == NULL;
         if(created) {
             object = g_new0(AccessibleObject, 1);
@@ -771,6 +849,11 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
         AccessibilityNode old = object->node;
         char *old_value = object->value;
         char *old_label = object->label;
+        char *old_parent = object->parent;
+        object->parent = g_strdup(parent->path);
+        object->old_child_count = object->child_count;
+        object->child_count = 0;
+        parents[i+1] = object;
         object->node = node;
         object->label = g_utf8_make_valid(node.label != NULL ? node.label : "", -1);
         object->value = g_utf8_make_valid(!node.secure && node.value != NULL ? node.value : "", -1);
@@ -782,16 +865,20 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
             object->node.selection_cursor = 0;
         }
         int old_index = object->index;
-        object->index = (int)bridge->children->len;
+        object->position = (int)bridge->children->len;
+        object->index = parent->child_count++;
         g_ptr_array_add(bridge->children, object);
         accessible_register(object);
-        if(created || old_index != object->index || strcmp(old_label, object->label) != 0 ||
+        int moved = !created && (old_index != object->index || strcmp(old_parent, object->parent) != 0);
+        if(created || moved || strcmp(old_label, object->label) != 0 ||
            old.focused != node.focused || old.checked != node.checked ||
            old.disabled != node.disabled || old.read_only != node.read_only ||
            old.actions != node.actions || old.secure != node.secure)
-            accessible_cache_update(object);
-        if(created)
-            accessible_event(ATSPI_WINDOW, "ChildrenChanged", "add", object->index, 0, accessible_reference(object->path));
+            object->cache_dirty = 1;
+        if(moved)
+            accessible_event(old_parent, "ChildrenChanged", "remove", old_index, 0, accessible_reference(object->path));
+        if(created || moved)
+            accessible_event(object->parent, "ChildrenChanged", "add", object->index, 0, accessible_reference(object->path));
         if(old.focused != node.focused)
             accessible_event(object->path, "StateChanged", "focused", node.focused, 0, g_variant_new_int32(0));
         if(old.checked != node.checked)
@@ -810,6 +897,7 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
         }
         g_free(old_label);
         g_free(old_value);
+        g_free(old_parent);
     }
     for(guint i = 0; i < previous->len; i++) {
         AccessibleObject *object = previous->pdata[i];
@@ -817,12 +905,20 @@ ui_accessibility_platform_publish(const AccessibilityNode *nodes, int count)
             g_dbus_connection_emit_signal(bridge->connection, NULL, ATSPI_CACHE_PATH,
                 ATSPI_CACHE, "RemoveAccessible", g_variant_new("(@(so))", accessible_reference(object->path)), NULL);
             accessible_event(object->path, "StateChanged", "defunct", 1, 0, g_variant_new_int32(0));
-            accessible_event(ATSPI_WINDOW, "ChildrenChanged", "remove", object->index, 0, accessible_reference(object->path));
+            accessible_event(object->parent, "ChildrenChanged", "remove", object->index, 0, accessible_reference(object->path));
             accessible_clear(object);
         }
     }
-    if(previous->len != bridge->children->len)
+    if(bridge->window->old_child_count != bridge->window->child_count)
         accessible_cache_update(bridge->window);
+    for(guint i = 0; i < bridge->children->len; i++) {
+        AccessibleObject *object = bridge->children->pdata[i];
+        if(object->cache_dirty || object->old_child_count != object->child_count)
+            accessible_cache_update(object);
+        object->cache_dirty = 0;
+    }
+    g_free(parents);
+    g_hash_table_destroy(semantic_keys);
     g_hash_table_destroy(previous_by_key);
     g_hash_table_destroy(id_counts);
     g_ptr_array_free(previous, TRUE);

@@ -55,6 +55,11 @@ func TestAccessibilityDBusNativeC(t *testing.T) {
 	if binary == "" {
 		t.Skip("native C fixture is run by accessibility-dbus-test")
 	}
+	t.Run("flat", func(t *testing.T) { accessibilityNativeC(t, binary, false) })
+	t.Run("nested", func(t *testing.T) { accessibilityNativeC(t, binary, true) })
+}
+
+func accessibilityNativeC(t *testing.T, binary string, nested bool) {
 	address, client := accessibilityTestBus(t)
 	registered := make(chan accessibleReference, 1)
 	if err := client.ExportMethodTable(map[string]any{
@@ -69,6 +74,9 @@ func TestAccessibilityDBusNativeC(t *testing.T) {
 	defer cancel()
 	command := exec.CommandContext(ctx, binary)
 	command.Env = append(os.Environ(), "AT_SPI_BUS_ADDRESS="+address, "NO_AT_BRIDGE=0", "KRYON_ACCESSIBILITY=1")
+	if nested {
+		command.Env = append(command.Env, "KRYON_ACCESSIBILITY_TEST_TREE=1")
+	}
 	command.Stderr = os.Stderr
 	pipe, err := command.StdoutPipe()
 	if err != nil {
@@ -91,12 +99,44 @@ func TestAccessibilityDBusNativeC(t *testing.T) {
 	bus := &accessibilityBus{name: reference.Bus}
 	var children []accessibleReference
 	accessibilityCall(t, client, bus, atspiWindow, atspiPrefix+"Accessible.GetChildren").Store(&children)
+	if nested {
+		if len(children) != 2 {
+			t.Fatalf("native root children = %v", children)
+		}
+		outer, password := children[0], children[1]
+		var group []accessibleReference
+		accessibilityCall(t, client, bus, outer.Path, atspiPrefix+"Accessible.GetChildren").Store(&group)
+		if len(group) != 2 {
+			t.Fatalf("native group children = %v", group)
+		}
+		var editor []accessibleReference
+		accessibilityCall(t, client, bus, group[1].Path, atspiPrefix+"Accessible.GetChildren").Store(&editor)
+		if len(editor) != 1 {
+			t.Fatalf("native inner group children = %v", editor)
+		}
+		var parent dbus.Variant
+		accessibilityCall(t, client, bus, editor[0].Path, "org.freedesktop.DBus.Properties.Get", atspiPrefix+"Accessible", "Parent").Store(&parent)
+		var actual accessibleReference
+		if err := parent.Store(&actual); err != nil || actual != group[1] {
+			t.Fatalf("native editor parent = %v: %v", parent, err)
+		}
+		var rect accessibleRectangle
+		accessibilityCall(t, client, bus, editor[0].Path, atspiPrefix+"Component.GetExtents", uint32(2)).Store(&rect)
+		if rect.X != 2 || rect.Y != 5 {
+			t.Fatalf("native parent-relative bounds = %+v", rect)
+		}
+		children = []accessibleReference{group[0], editor[0], password}
+	}
 	if len(children) != 3 {
 		t.Fatalf("native children = %v", children)
 	}
 	button, field, password := children[0].Path, children[1].Path, children[2].Path
 	var cache []accessibleCacheItem
-	if err := accessibilityCall(t, client, bus, atspiCache, atspiPrefix+"Cache.GetItems").Store(&cache); err != nil || len(cache) != 5 {
+	wantCache := 5
+	if nested {
+		wantCache = 7
+	}
+	if err := accessibilityCall(t, client, bus, atspiCache, atspiPrefix+"Cache.GetItems").Store(&cache); err != nil || len(cache) != wantCache {
 		t.Fatalf("native cache = %+v: %v", cache, err)
 	}
 	var rangeText string

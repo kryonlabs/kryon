@@ -488,14 +488,7 @@ func Modal_ModalActionWidth(label_width int32, metrics ModalMetrics) int32 {
 		width = value_6
 	}
 	var value_7 int32 = width
-	var value_8 int32 = metrics.ActionMaxWidth
-	var value_9 bool = value_7 > value_8
-	if value_9 {
-		var value_10 int32 = metrics.ActionMaxWidth
-		width = value_10
-	}
-	var value_11 int32 = width
-	return value_11
+	return value_7
 }
 
 func Modal_ModalActionRowsStep(row_width int32, rows int32, action_width int32, content_width int32, gap int32) int32 {

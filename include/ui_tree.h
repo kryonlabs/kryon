@@ -95,6 +95,7 @@ int QueueAccessibilityAction(int focus_id, uint64_t generation,
 int QueueAccessibilityValue(int focus_id, uint64_t generation, const char *value);
 int QueueAccessibilitySelection(int focus_id, uint64_t generation,
                                 int anchor, int cursor);
+int QueueAccessibilityItem(int focus_id, uint64_t generation, int index, int selected);
 
 void AppBackground(void);
 void Background(Color color);

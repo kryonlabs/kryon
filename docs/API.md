@@ -1997,6 +1997,13 @@ Setting a nil sink removes the callback. Go snapshots cover ordinary/composed
 buttons, text editors, checkboxes, toggles, radios, text, images, groups, and tables.
 Editor values exclude uncommitted IME preedit.
 
+Snapshots carry a stable node `key` (`Key` in Go) and a `parent` (`Parent`)
+reference. Parent references are one-based indices into the snapshot, with zero
+for roots; parents precede children. Presentational wrappers are omitted while
+preserving the nearest exposed ancestor. Linux adapters use this hierarchy for
+child queries and parent-relative geometry, and preserve uniquely keyed group
+identity across reordering.
+
 Each node also carries `generation` and an `actions` bitmask. Native C and Go
 provide `QueueAccessibilityAction(focus_id, generation, action)` (Go uses
 `int32`, `uint64`, and `AccessibilityAction` and returns `bool`; C returns an

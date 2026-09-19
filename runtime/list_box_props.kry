@@ -15,4 +15,5 @@ ListBoxProps :: struct {
     row_height: i32
     disabled: bool
     content_height: i32
+    item_keys: *i32
 }

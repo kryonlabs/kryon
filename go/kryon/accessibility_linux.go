@@ -27,9 +27,11 @@ type accessibleReference struct {
 }
 
 type accessibleObject struct {
-	node  AccessibilityNode
-	path  dbus.ObjectPath
-	index int32
+	node     AccessibilityNode
+	path     dbus.ObjectPath
+	index    int32
+	parent   dbus.ObjectPath
+	children []accessibleReference
 }
 
 type platformAccessibilityRequest struct {
@@ -48,6 +50,7 @@ type accessibilityBus struct {
 	objects  map[dbus.ObjectPath]accessibleObject
 	keys     map[string]dbus.ObjectPath
 	children []accessibleReference
+	roots    []accessibleReference
 	next     uint64
 	pending  []platformAccessibilityRequest
 	closed   bool
@@ -162,6 +165,7 @@ func (b *accessibilityBus) close() {
 	b.pending = nil
 	b.objects = nil
 	b.children = nil
+	b.roots = nil
 	b.keys = nil
 	b.mu.Unlock()
 	b.conn.Close()
@@ -221,21 +225,41 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 	objects := make(map[dbus.ObjectPath]accessibleObject, len(nodes))
 	keys := make(map[string]dbus.ObjectPath, len(nodes))
 	children := make([]accessibleReference, 0, len(nodes))
+	roots := make([]accessibleReference, 0)
+	paths := make([]dbus.ObjectPath, len(nodes)+1)
+	paths[0] = atspiWindow
 	ids := make(map[int32]int)
+	semanticKeys := make(map[string]int)
 	for _, node := range nodes {
 		if node.FocusID > 0 {
 			ids[node.FocusID]++
 		}
+		if node.Key != 0 {
+			semanticKeys[fmt.Sprintf("key:%d:%s", node.Key, node.Role)]++
+		}
 	}
 	for index, node := range nodes {
+		parent := atspiWindow
+		if node.Parent > 0 && int(node.Parent) <= index {
+			parent = paths[node.Parent]
+		}
+		paths[index+1] = parent
 		if node.Role == "main" {
 			continue
 		}
-		key := fmt.Sprintf("position:%d:%s", index, node.Role)
+		sibling := len(roots)
+		if parent != atspiWindow {
+			sibling = len(objects[parent].children)
+		}
+		key := fmt.Sprintf("position:%s:%d:%s", parent, sibling, node.Role)
 		if node.FocusID > 0 && ids[node.FocusID] == 1 {
 			key = fmt.Sprintf("focus:%d:%s", node.FocusID, node.Role)
 		} else {
 			node.Actions = 0
+			semanticKey := fmt.Sprintf("key:%d:%s", node.Key, node.Role)
+			if node.Key != 0 && semanticKeys[semanticKey] == 1 {
+				key = semanticKey
+			}
 		}
 		if node.Secure {
 			node.Value = ""
@@ -247,32 +271,46 @@ func (b *accessibilityBus) publish(nodes []AccessibilityNode, bounds Rectangle) 
 			path = dbus.ObjectPath(fmt.Sprintf("/org/a11y/atspi/accessible/node_%d", b.next))
 		}
 		keys[key] = path
-		objects[path] = accessibleObject{node: node, path: path, index: int32(len(children))}
-		children = append(children, accessibleReference{b.name, path})
+		paths[index+1] = path
+		objects[path] = accessibleObject{node: node, path: path, parent: parent, index: int32(sibling)}
+		reference := accessibleReference{b.name, path}
+		children = append(children, reference)
+		if parent == atspiWindow {
+			roots = append(roots, reference)
+		} else {
+			owner := objects[parent]
+			owner.children = append(owner.children, reference)
+			objects[parent] = owner
+		}
 	}
 	oldObjects := b.objects
+	oldRootCount := len(b.roots)
 	b.objects, b.keys, b.children = objects, keys, children
-	if len(oldObjects) != len(objects) {
+	b.roots = roots
+	if oldRootCount != len(roots) {
 		b.cacheUpdate(b.toplevel(atspiWindow))
 	}
 	for path, old := range oldObjects {
 		if _, exists := objects[path]; !exists {
 			b.conn.Emit(atspiCache, atspiPrefix+"Cache.RemoveAccessible", accessibleReference{b.name, path})
 			b.event(path, "StateChanged", "defunct", 1, 0, int32(0))
-			b.event(atspiWindow, "ChildrenChanged", "remove", old.index, 0, accessibleReference{b.name, path})
+			b.event(old.parent, "ChildrenChanged", "remove", old.index, 0, accessibleReference{b.name, path})
 		}
 	}
 	for _, ref := range children {
 		current := objects[ref.Path]
 		old, exists := oldObjects[ref.Path]
-		if !exists || old.index != current.index || old.node.Label != current.node.Label ||
+		if !exists || old.index != current.index || old.parent != current.parent || len(old.children) != len(current.children) || old.node.Label != current.node.Label ||
 			old.node.Focused != current.node.Focused || old.node.Checked != current.node.Checked ||
 			old.node.Disabled != current.node.Disabled || old.node.ReadOnly != current.node.ReadOnly ||
 			old.node.Actions != current.node.Actions || old.node.Secure != current.node.Secure {
 			b.cacheUpdate(current)
 		}
-		if !exists {
-			b.event(atspiWindow, "ChildrenChanged", "add", current.index, 0, ref)
+		if exists && (old.parent != current.parent || old.index != current.index) {
+			b.event(old.parent, "ChildrenChanged", "remove", old.index, 0, ref)
+		}
+		if !exists || old.parent != current.parent || old.index != current.index {
+			b.event(current.parent, "ChildrenChanged", "add", current.index, 0, ref)
 		}
 		for _, state := range []struct {
 			name     string
@@ -388,12 +426,12 @@ func (b *accessibilityBus) properties(object accessibleObject, iface string) map
 	node := object.node
 	switch iface {
 	case atspiPrefix + "Accessible":
-		parent := accessibleReference{b.name, atspiWindow}
-		count := int32(0)
+		parent := accessibleReference{b.name, object.parent}
+		count := int32(len(object.children))
 		if object.path == atspiRoot {
 			parent, count = b.parent, 1
 		} else if object.path == atspiWindow {
-			parent, count = accessibleReference{b.name, atspiRoot}, int32(len(b.children))
+			parent, count = accessibleReference{b.name, atspiRoot}, int32(len(b.roots))
 		}
 		values["Name"], values["Description"], values["HelpText"] = node.Label, "", ""
 		values["Parent"], values["ChildCount"] = parent, count

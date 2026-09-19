@@ -25,6 +25,7 @@ const (
 	FrameOpSection    FrameOpKind = "section"
 	FrameOpImage      FrameOpKind = "image"
 	FrameOpEnd        FrameOpKind = "end"
+	FrameOpSemantic   FrameOpKind = "semantic"
 )
 
 type FrameOp struct {
@@ -111,6 +112,10 @@ type FrameOp struct {
 
 	accessibilityAnchor int32
 	accessibilityCursor int32
+	accessibilityKey    uint64
+	accessibilityParent int
+	accessibilityMultiSelect bool
+	accessibilityOffscreen bool
 }
 
 type frameOpController interface {
