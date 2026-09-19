@@ -275,25 +275,23 @@
       ],
       "phase": 6,
       "targets": [
-        "c"
+        "c",
+        "cpp",
+        "go"
       ],
       "status": "model-proved",
       "mechanism": "bend-proof",
       "contract": "laws/activation/LAWS.bend",
       "proof": "laws/activation/PROOF.bend",
       "evidence": {
-        "c": "exhaustive-test"
+        "c": "exhaustive-test",
+        "cpp": "exhaustive-test",
+        "go": "exhaustive-test"
       },
       "evidence_revision": "aff53b0b",
       "assumptions": [
         "Pinned Bend 2 checker and Base hashes (tools/bend-pin.json)",
-        "Laws reduce only over literals; the exhaustive 128-row check is native",
-        "C++/Go legs still missing"
-      ],
-      "scope": [
-        "c",
-        "cpp",
-        "go"
+        "C++ compares a fresh k2cpp lowering; Go compares the go/kryon runtime package"
       ]
     },
     {
@@ -372,6 +370,29 @@
         "c": "property-test"
       },
       "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "kir.borrow.conservative",
+      "domain": "kir",
+      "summary": "The borrow checker rejects unsound slice lifetimes before unsafe code is emitted",
+      "sources": [
+        "cmd/kir/kir_borrow.c",
+        "cmd/kir/kir_check.c"
+      ],
+      "phase": 5,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite",
+        "cpp": "test-suite",
+        "go": "test-suite"
+      },
+      "evidence_revision": "2191f104"
     },
     {
       "id": "kir.expr.binary",
@@ -660,6 +681,30 @@
       ],
       "status": "proposed",
       "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.semantics.vertical",
+      "domain": "kir",
+      "summary": "Checked KIR semantic evaluator (literals, idents, + - * / %, scalar decl/assign/return, exact i32 wrapping) agrees with the k2c lowering",
+      "sources": [
+        "tools/kir-semantics.mjs",
+        "tests/fixtures/kir_semantics.kry",
+        "tests/kir_semantics_test.mjs"
+      ],
+      "phase": 3,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "34946141",
+      "assumptions": [
+        "Restricted subset only; unsupported constructs reject with a source span",
+        "Division by zero traps on both sides; INT_MIN/-1 excluded (C UB)"
+      ]
     },
     {
       "id": "kir.stmt.assign",
@@ -1251,6 +1296,29 @@
         "c": "property-test"
       },
       "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "slice.values.bounded",
+      "domain": "kir",
+      "summary": "Slice ranges, indexing, descriptors and empty views behave within bounds on native targets",
+      "sources": [
+        "tests/slice_values_test.py",
+        "tests/fixtures/slice_values.kry"
+      ],
+      "phase": 5,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite",
+        "cpp": "test-suite",
+        "go": "test-suite"
+      },
+      "evidence_revision": "2191f104"
     },
     {
       "id": "slider.discrete.value.in.range",
