@@ -71,11 +71,69 @@ test_priority_tiers(void)
     assert(resolve(base, facts, rules, 1, 0).background == 0x112233ff);
 }
 
+static void
+test_field_decision_trace(void)
+{
+    StyleFacts facts = StyleDefaultFacts(StyleKindButton());
+    StyleCascade cascade = BeginStyleCascade((StyleData){0});
+    StylePriority current;
+    StyleFieldDecision decision;
+    StyleRule base = {0};
+    StyleRule later = {0};
+    StyleRule unmatched = {0};
+
+    base.selector = StyleDefaultSelector();
+    base.selector.kind = StyleKindButton();
+    base.layer = 0;
+    base.order = 1;
+    base.style = color_style(StyleBackground, 0x112233ffu);
+
+    current = StyleCascadeFieldPriority(cascade, StyleBackground);
+    decision = StyleRuleFieldDecision(current, base, facts, ButtonStateNormal,
+                                      StyleBackground);
+    assert(decision.matched);
+    assert(decision.field_present);
+    assert(decision.wins);
+    assert(!decision.current_present);
+    assert(decision.layer == 0);
+    assert(decision.specificity == 1);
+    assert(decision.order == 1);
+
+    cascade = ApplyStyleRule(cascade, base, facts, ButtonStateNormal);
+    current = StyleCascadeFieldPriority(cascade, StyleBackground);
+
+    later = base;
+    later.order = 0;
+    later.style.background = 0x445566ffu;
+    decision = StyleRuleFieldDecision(current, later, facts, ButtonStateNormal,
+                                      StyleBackground);
+    assert(decision.matched);
+    assert(decision.field_present);
+    assert(!decision.wins);
+    assert(decision.current_present);
+    assert(decision.current_order == 1);
+
+    decision = StyleRuleFieldDecision(current, later, facts, ButtonStateNormal,
+                                      StyleForeground);
+    assert(decision.matched);
+    assert(!decision.field_present);
+    assert(!decision.wins);
+
+    unmatched = later;
+    unmatched.selector.kind = StyleKindText();
+    decision = StyleRuleFieldDecision(current, unmatched, facts, ButtonStateNormal,
+                                      StyleBackground);
+    assert(!decision.matched);
+    assert(!decision.field_present);
+    assert(!decision.wins);
+}
+
 int
 main(void)
 {
     test_cascade_fixture();
     test_priority_tiers();
+    test_field_decision_trace();
     StyleSelector any = StyleDefaultSelector();
     StyleSelector button = StyleDefaultSelector();
     StyleSelector primary = StyleDefaultSelector();

@@ -338,6 +338,19 @@ StyleCascade :: struct {
     letter_spacing_priority: StylePriority
 }
 
+StyleFieldDecision :: struct {
+    matched: bool
+    field_present: bool
+    wins: bool
+    layer: i32
+    specificity: i32
+    order: i32
+    current_present: bool
+    current_layer: i32
+    current_specificity: i32
+    current_order: i32
+}
+
 StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
     facts: StyleFacts
     facts.kind = kind
@@ -511,6 +524,55 @@ StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: i32) -> b
         return false
     }
     return StyleSelectorMatches(rule.selector, facts)
+}
+
+StyleHasField :: (style: StyleData, field: u32) -> bool #export {
+    return (style.fields & field) != (u32)0
+}
+
+StyleCascadeFieldPriority :: (cascade: StyleCascade, field: u32) -> StylePriority #export {
+    if field == (u32)StyleBackground { return cascade.background_priority }
+    if field == (u32)StyleForeground { return cascade.foreground_priority }
+    if field == (u32)StyleBorder { return cascade.border_priority }
+    if field == (u32)StyleFocus { return cascade.focus_priority }
+    if field == (u32)StyleRadius { return cascade.radius_priority }
+    if field == (u32)StyleBorderWidth { return cascade.border_width_priority }
+    if field == (u32)StyleOpacity { return cascade.opacity_priority }
+    if field == (u32)StylePaddingX { return cascade.padding_x_priority }
+    if field == (u32)StylePaddingY { return cascade.padding_y_priority }
+    if field == (u32)StyleGap { return cascade.gap_priority }
+    if field == (u32)StyleFontSize { return cascade.font_size_priority }
+    if field == (u32)StyleLetterSpacing { return cascade.letter_spacing_priority }
+    if field == (u32)StyleIconSize { return cascade.icon_size_priority }
+    if field == (u32)StyleContentOffset { return cascade.content_offset_priority }
+    if field == (u32)StyleBackgroundEnd { return cascade.background_end_priority }
+    if field == (u32)StyleMaterial { return cascade.material_priority }
+    if field == (u32)StyleTypeface { return cascade.typeface_priority }
+    priority: StylePriority
+    return priority
+}
+
+StyleRuleFieldDecision :: (current: StylePriority, rule: StyleRule,
+    facts: StyleFacts, active_state: i32, field: u32) -> StyleFieldDecision #export {
+    decision: StyleFieldDecision
+    decision.current_present = current.present
+    decision.current_layer = current.layer
+    decision.current_specificity = current.specificity
+    decision.current_order = current.order
+    if !StyleRuleMatches(rule, facts, active_state) {
+        return decision
+    }
+    decision.matched = true
+    if !StyleHasField(rule.style, field) {
+        return decision
+    }
+    decision.field_present = true
+    priority: StylePriority = StyleRulePriority(rule)
+    decision.layer = priority.layer
+    decision.specificity = priority.specificity
+    decision.order = priority.order
+    decision.wins = StylePriorityWins(priority, current)
+    return decision
 }
 
 # A scalar score is useful for display but cannot order arbitrary selector

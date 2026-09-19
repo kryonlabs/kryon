@@ -9,7 +9,14 @@
   per-field winner, token origin, source location, specificity/layer, resolved
   value, and backend degradation. Audit existing inspector output before adding
   missing fields.
-  Status: web sheets and style traces now carry the missing core fields.
+  Active C/Go progress: `runtime/style_sheet.kry` exports
+  `StyleRuleFieldDecision` and `StyleCascadeFieldPriority`, so inspector tools
+  can build per-field winner/loser lists from the shared cascade logic instead
+  of duplicating priority rules in host code. C and Go tests cover matched,
+  missing-field, winner, and loser decisions.
+  Historical web status: web sheets and style traces carry several core
+  fields, but old JS/web inspector work is paused with the web target and is
+  not an active release gate.
   `parseWebStyleSheet` results include the active environment (theme, axes,
   variant), source file names for imports, token name -> origin kind
   (pack/import/theme/environment/variant), and per-rule source file/line plus

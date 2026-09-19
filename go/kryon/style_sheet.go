@@ -72,6 +72,19 @@ type StyleCascade struct {
 	LetterSpacingPriority StylePriority
 }
 
+type StyleFieldDecision struct {
+	Matched            bool
+	FieldPresent       bool
+	Wins               bool
+	Layer              int32
+	Specificity        int32
+	Order              int32
+	CurrentPresent     bool
+	CurrentLayer       int32
+	CurrentSpecificity int32
+	CurrentOrder       int32
+}
+
 func StyleSheet_StyleAny() int32 {
 	var value_0 int32 = -1
 	return value_0
@@ -808,6 +821,206 @@ func StyleSheet_StyleRuleMatches(rule StyleRule, facts StyleFacts, active_state 
 	var value_6 StyleFacts = facts
 	var value_7 bool = StyleSheet_StyleSelectorMatches(value_5, value_6)
 	return value_7
+}
+
+func StyleSheet_StyleHasField(style StyleData, field uint32) bool {
+	var value_0 uint32 = style.Fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 != value_4
+	return value_5
+}
+
+func StyleSheet_StyleCascadeFieldPriority(cascade StyleCascade, field uint32) StylePriority {
+	var value_0 uint32 = field
+	var value_1 int32 = int32(StyleBackground)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 bool = value_0 == value_2
+	if value_3 {
+		var value_4 StylePriority = cascade.BackgroundPriority
+		return value_4
+	}
+	var value_5 uint32 = field
+	var value_6 int32 = int32(StyleForeground)
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
+	var value_8 bool = value_5 == value_7
+	if value_8 {
+		var value_9 StylePriority = cascade.ForegroundPriority
+		return value_9
+	}
+	var value_10 uint32 = field
+	var value_11 int32 = int32(StyleBorder)
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 bool = value_10 == value_12
+	if value_13 {
+		var value_14 StylePriority = cascade.BorderPriority
+		return value_14
+	}
+	var value_15 uint32 = field
+	var value_16 int32 = int32(StyleFocus)
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
+	var value_18 bool = value_15 == value_17
+	if value_18 {
+		var value_19 StylePriority = cascade.FocusPriority
+		return value_19
+	}
+	var value_20 uint32 = field
+	var value_21 int32 = int32(StyleRadius)
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
+	var value_23 bool = value_20 == value_22
+	if value_23 {
+		var value_24 StylePriority = cascade.RadiusPriority
+		return value_24
+	}
+	var value_25 uint32 = field
+	var value_26 int32 = int32(StyleBorderWidth)
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 bool = value_25 == value_27
+	if value_28 {
+		var value_29 StylePriority = cascade.BorderWidthPriority
+		return value_29
+	}
+	var value_30 uint32 = field
+	var value_31 int32 = int32(StyleOpacity)
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
+	var value_33 bool = value_30 == value_32
+	if value_33 {
+		var value_34 StylePriority = cascade.OpacityPriority
+		return value_34
+	}
+	var value_35 uint32 = field
+	var value_36 int32 = int32(StylePaddingX)
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_38 bool = value_35 == value_37
+	if value_38 {
+		var value_39 StylePriority = cascade.PaddingXPriority
+		return value_39
+	}
+	var value_40 uint32 = field
+	var value_41 int32 = int32(StylePaddingY)
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 bool = value_40 == value_42
+	if value_43 {
+		var value_44 StylePriority = cascade.PaddingYPriority
+		return value_44
+	}
+	var value_45 uint32 = field
+	var value_46 int32 = int32(StyleGap)
+	var value_47 uint32 = uint32(number_runtime_bits(uint64(value_46), uint64(0), 32, false, 0))
+	var value_48 bool = value_45 == value_47
+	if value_48 {
+		var value_49 StylePriority = cascade.GapPriority
+		return value_49
+	}
+	var value_50 uint32 = field
+	var value_51 int32 = int32(StyleFontSize)
+	var value_52 uint32 = uint32(number_runtime_bits(uint64(value_51), uint64(0), 32, false, 0))
+	var value_53 bool = value_50 == value_52
+	if value_53 {
+		var value_54 StylePriority = cascade.FontSizePriority
+		return value_54
+	}
+	var value_55 uint32 = field
+	var value_56 int32 = int32(StyleLetterSpacing)
+	var value_57 uint32 = uint32(number_runtime_bits(uint64(value_56), uint64(0), 32, false, 0))
+	var value_58 bool = value_55 == value_57
+	if value_58 {
+		var value_59 StylePriority = cascade.LetterSpacingPriority
+		return value_59
+	}
+	var value_60 uint32 = field
+	var value_61 int32 = int32(StyleIconSize)
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
+	var value_63 bool = value_60 == value_62
+	if value_63 {
+		var value_64 StylePriority = cascade.IconSizePriority
+		return value_64
+	}
+	var value_65 uint32 = field
+	var value_66 int32 = int32(StyleContentOffset)
+	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_66), uint64(0), 32, false, 0))
+	var value_68 bool = value_65 == value_67
+	if value_68 {
+		var value_69 StylePriority = cascade.ContentOffsetPriority
+		return value_69
+	}
+	var value_70 uint32 = field
+	var value_71 int32 = int32(StyleBackgroundEnd)
+	var value_72 uint32 = uint32(number_runtime_bits(uint64(value_71), uint64(0), 32, false, 0))
+	var value_73 bool = value_70 == value_72
+	if value_73 {
+		var value_74 StylePriority = cascade.BackgroundEndPriority
+		return value_74
+	}
+	var value_75 uint32 = field
+	var value_76 int32 = int32(StyleMaterial)
+	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
+	var value_78 bool = value_75 == value_77
+	if value_78 {
+		var value_79 StylePriority = cascade.MaterialPriority
+		return value_79
+	}
+	var value_80 uint32 = field
+	var value_81 int32 = int32(StyleTypeface)
+	var value_82 uint32 = uint32(number_runtime_bits(uint64(value_81), uint64(0), 32, false, 0))
+	var value_83 bool = value_80 == value_82
+	if value_83 {
+		var value_84 StylePriority = cascade.TypefacePriority
+		return value_84
+	}
+	var priority StylePriority = StylePriority{}
+	var value_85 StylePriority = priority
+	return value_85
+}
+
+func StyleSheet_StyleRuleFieldDecision(current StylePriority, rule StyleRule, facts StyleFacts, active_state int32, field uint32) StyleFieldDecision {
+	var decision StyleFieldDecision = StyleFieldDecision{}
+	var value_0 bool = current.Present
+	decision.CurrentPresent = value_0
+	var value_1 int32 = current.Layer
+	decision.CurrentLayer = value_1
+	var value_2 int32 = current.Specificity
+	decision.CurrentSpecificity = value_2
+	var value_3 int32 = current.Order
+	decision.CurrentOrder = value_3
+	var value_4 StyleRule = rule
+	var value_5 StyleFacts = facts
+	var value_6 int32 = active_state
+	var value_7 bool = StyleSheet_StyleRuleMatches(value_4, value_5, value_6)
+	var value_8 bool = !value_7
+	if value_8 {
+		var value_9 StyleFieldDecision = decision
+		return value_9
+	}
+	var value_10 bool = true
+	decision.Matched = value_10
+	var value_11 StyleData = rule.Style
+	var value_12 uint32 = field
+	var value_13 bool = StyleSheet_StyleHasField(value_11, value_12)
+	var value_14 bool = !value_13
+	if value_14 {
+		var value_15 StyleFieldDecision = decision
+		return value_15
+	}
+	var value_16 bool = true
+	decision.FieldPresent = value_16
+	var value_17 StyleRule = rule
+	var value_18 StylePriority = StyleSheet_StyleRulePriority(value_17)
+	var priority StylePriority = value_18
+	var value_19 int32 = priority.Layer
+	decision.Layer = value_19
+	var value_20 int32 = priority.Specificity
+	decision.Specificity = value_20
+	var value_21 int32 = priority.Order
+	decision.Order = value_21
+	var value_22 StylePriority = priority
+	var value_23 StylePriority = current
+	var value_24 bool = StyleSheet_StylePriorityWins(value_22, value_23)
+	decision.Wins = value_24
+	var value_25 StyleFieldDecision = decision
+	return value_25
 }
 
 func StyleSheet_StylePriorityWins(priority StylePriority, current StylePriority) bool {
