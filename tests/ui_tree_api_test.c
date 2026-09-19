@@ -974,6 +974,40 @@ main(void)
         ClearTextFonts();
     }
     {
+        Camera2D saved_camera = g_ui_camera;
+        GlyphInfo glyph = {.value = 'a', .offsetX = -2, .offsetY = 3, .advanceX = 10};
+        Rectangle glyph_rec = {0, 0, 12, 12};
+        Font font = {.baseSize = 16, .glyphCount = 1, .texture = {.id = 1},
+            .recs = &glyph_rec, .glyphs = &glyph};
+        GlyphInfo fallback_glyph = {.value = 0x4e2d, .advanceX = 24};
+        Rectangle fallback_rec = {0, 0, 24, 18};
+        Font fallback = {.baseSize = 16, .glyphCount = 1, .texture = {.id = 2},
+            .recs = &fallback_rec, .glyphs = &fallback_glyph};
+        int selection = PushTextSelectable(0);
+        ClearTextFonts();
+        RegisterTextFont("clip-latin", font);
+        RegisterTextFont("clip-fallback", fallback);
+        g_ui_camera = (Camera2D){.zoom = 1};
+        check_int("fitting glyphs need no text scissor",
+            ui_text_fits_bounds("a", 10, 10, 16, (Rectangle){0, 0, 40, 40}), 1);
+        check_int("glyph left overhang still clips",
+            ui_text_fits_bounds("a", 10, 10, 16, (Rectangle){10, 0, 40, 40}), 0);
+        check_int("glyph descender still clips",
+            ui_text_fits_bounds("a", 10, 10, 16, (Rectangle){0, 0, 40, 20}), 0);
+        check_int("fallback glyph fits wide control",
+            ui_text_fits_bounds("a中", 10, 10, 16, (Rectangle){0, 0, 60, 40}), 1);
+        check_int("fallback glyph overhang still clips",
+            ui_text_fits_bounds("a中", 10, 10, 16, (Rectangle){0, 0, 35, 40}), 0);
+        g_ui_camera = (Camera2D){.offset = {9, 31}, .zoom = 1.75f};
+        check_int("text fits scaled viewport",
+            ui_text_fits_bounds("aa", 10, 10, 16, (Rectangle){0, 0, 40, 40}), 1);
+        check_int("fractional pixel clip remains exact",
+            ui_text_fits_bounds("aa", 10, 10, 16, (Rectangle){0.4f, 0, 30, 40}), 0);
+        ClearTextFonts();
+        PopTextSelectable(selection);
+        g_ui_camera = saved_camera;
+    }
+    {
         StyleFrame frame = {0};
         frame.value.fields = StyleMaterial | StyleBackground | StyleBackgroundEnd;
         frame.value.material = MaterialLightfield;

@@ -1359,9 +1359,13 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
     int y = ControlTextBaselineY(value, (int)rect.y, (int)rect.height,
                                  font_size);
 
-    ui_begin_world_clip(TextControlClipBounds(rect, scale));
+    Rectangle clip = TextControlClipBounds(rect, scale);
+    int needs_clip = !ui_text_fits_bounds(value, x, y, font_size, clip);
+    if(needs_clip)
+        ui_begin_world_clip(clip);
     RenderText(value, x, y, font_size, color);
-    EndClip();
+    if(needs_clip)
+        EndClip();
 }
 
 const char *
@@ -1450,9 +1454,13 @@ RenderControlTextInRect(const char *text, Rectangle rect, int font_size,
     int y = ControlTextBaselineY(value, (int)rect.y, (int)rect.height,
                                  font_size);
 
-    ui_begin_world_clip(TextControlClipBounds(rect, scale));
+    Rectangle clip = TextControlClipBounds(rect, scale);
+    int needs_clip = !ui_text_fits_bounds(value, (int)rect.x, y, font_size, clip);
+    if(needs_clip)
+        ui_begin_world_clip(clip);
     RenderText(value, (int)rect.x, y, font_size, color);
-    EndClip();
+    if(needs_clip)
+        EndClip();
 }
 
 void

@@ -486,15 +486,15 @@ ui_dropdown(DropdownProps props)
     }
     int text_w = (int)trigger_content.clip_bounds.width;
     if(can_draw && text_w > 0) {
-        BeginClip((int)(g_ui_camera.offset.x +
-                        trigger_content.clip_bounds.x * g_ui_camera.zoom),
-                  (int)(g_ui_camera.offset.y +
-                        trigger_content.clip_bounds.y * g_ui_camera.zoom),
-                  (int)(trigger_content.clip_bounds.width * g_ui_camera.zoom),
-                  (int)(trigger_content.clip_bounds.height * g_ui_camera.zoom));
+        int needs_clip = !ui_text_fits_bounds(current_name,
+            (int)trigger_content.text_bounds.x, (int)trigger_content.text_bounds.y,
+            font, trigger_content.clip_bounds);
+        if(needs_clip)
+            ui_begin_world_clip(trigger_content.clip_bounds);
         RenderText(current_name, (int)trigger_content.text_bounds.x,
                    (int)trigger_content.text_bounds.y, font, button_text);
-        EndClip();
+        if(needs_clip)
+            EndClip();
     }
 
     if(can_draw)

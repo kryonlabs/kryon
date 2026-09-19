@@ -219,6 +219,9 @@ font_entry_has_codepoint(TextFontEntry *entry, int codepoint)
 {
     if(entry == NULL || codepoint <= 0)
         return 0;
+    if(entry->font_data == NULL)
+        return TextFontHasGlyphValue(entry->font, codepoint) ||
+               TextFontHasGlyphValue(entry->small_font, codepoint);
     for(int i = 0; i < entry->codepoint_count; i++) {
         if(entry->codepoints[i] == codepoint)
             return 1;
@@ -1365,6 +1368,69 @@ float
 GetTextFontScale(Font font, int font_size)
 {
     return font_size_scale(font, ui_text_normalize_token_size(font_size));
+}
+
+static int
+text_quad_inside_clip(Rectangle quad, Rectangle clip)
+{
+    float left = g_ui_camera.offset.x + quad.x * g_ui_camera.zoom;
+    float top = g_ui_camera.offset.y + quad.y * g_ui_camera.zoom;
+    return left >= clip.x && top >= clip.y &&
+        left + quad.width * g_ui_camera.zoom <= clip.x + clip.width &&
+        top + quad.height * g_ui_camera.zoom <= clip.y + clip.height;
+}
+
+int
+ui_text_fits_bounds(const char *text, int x, int y, int font_size,
+                    Rectangle bounds)
+{
+    int cursor_x = x;
+    int size = ui_text_normalize_token_size(font_size);
+    Font font = active_font_for_size(size);
+    Rectangle clip;
+
+    if(text == NULL || text[0] == '\0')
+        return 1;
+    if(!TextFontReady(font) || TextFontHasNativeText(font) ||
+       g_ui_camera.zoom <= 0 || g_ui_camera.rotation != 0 ||
+       g_ui_camera.target.x != 0 || g_ui_camera.target.y != 0)
+        return 0;
+    /* Match the integer pixel bounds used by ui_begin_world_clip. Advances
+     * alone are insufficient: fallback glyphs and italics can overhang. */
+    clip = (Rectangle){
+        (int)(g_ui_camera.offset.x + bounds.x * g_ui_camera.zoom),
+        (int)(g_ui_camera.offset.y + bounds.y * g_ui_camera.zoom),
+        (int)(bounds.width * g_ui_camera.zoom),
+        (int)(bounds.height * g_ui_camera.zoom)
+    };
+    if(g_ui_text_selectable &&
+       (g_ui_text_selection.id == ui_text_id(text, x, y, size) ||
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+        Rectangle selection = {(float)x, (float)y,
+            (float)TextWidth(text, size), (float)TextLineHeight(size)};
+        if(!text_quad_inside_clip(selection, clip))
+            return 0;
+    }
+    for(int i = 0; text[i] != '\0';) {
+        int bytes = 0;
+        int codepoint = GetCodepointNext(text + i, &bytes);
+        if(codepoint == '\n')
+            break;
+        Font glyph_font = font_for_codepoint(codepoint, size);
+        if(!TextFontReady(glyph_font) || TextFontHasNativeText(glyph_font))
+            return 0;
+        float scale = font_size_scale(glyph_font, size);
+        GlyphInfo glyph = TextFontGlyph(glyph_font, codepoint);
+        Rectangle source = TextFontAtlasRec(glyph_font, codepoint);
+        Rectangle quad = {cursor_x + glyph.offsetX * scale,
+            y + glyph.offsetY * scale, source.width * scale, source.height * scale};
+        if(source.width > 0 && source.height > 0 &&
+           !text_quad_inside_clip(quad, clip))
+            return 0;
+        cursor_x += (int)(glyph.advanceX * scale + 0.5f) + g_ui_text_letter_spacing;
+        i += bytes;
+    }
+    return 1;
 }
 
 void
