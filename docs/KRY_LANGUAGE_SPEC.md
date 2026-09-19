@@ -271,6 +271,7 @@ Rules:
 - `[N]element` is valid only as a record field type. The element must itself be
   a scalar or a portable record; nested array types are rejected.
 - `record.field[index]` reads and writes one element with value semantics.
+  Array and string indices must be integers; floating-point indices are errors.
   Array-typed locals are not supported in strict functions; keep scratch state
   in record fields.
 - `text[index]` reads one byte of a `string` as `u8`. String bytes and
@@ -283,7 +284,12 @@ Rules:
   `KRYON_INDEX` macro. Generated headers include `kry_bounds.h` directly,
   so indexing works without importing the UI umbrella header. Builds that define `KRYON_BOUNDS_CHECK` trap on
   out-of-range indexes with a diagnostic naming the array; release builds
-  compile to plain indexing. Go bounds-checks natively.
+  compile to plain indexing. Checks apply to both reads and writes, including
+  arrays with symbolic capacities. Go bounds-checks natively.
+- Strict stored-type validation rejects unknown types, zero-capacity arrays,
+  recursive record value layouts, and stored borrowed slots. Slices and direct
+  array/slice function parameters or returns are rejected until portable
+  storage, ownership and value semantics are specified.
 
 ## Trust model
 

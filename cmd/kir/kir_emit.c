@@ -628,7 +628,12 @@ emit_destination(Emitter *e, int index, char *out, size_t size)
             fatal(expr, "string bytes are read-only");
         emit_destination(e, expr->left, base, sizeof(base));
         emit_expr(e, expr->right, "i32", index, sizeof(index));
-        format(out, size, "%s[%s]", base, index);
+        if((e->target == KIR_C || e->target == KIR_CPP) &&
+           KirArrayElementType(e->fn->exprs[expr->left].type, NULL, 0, NULL))
+            format(out, size, "KRYON_INDEX(%s, sizeof(%s) / sizeof(%s[0]), %s)",
+                   base, base, base, index);
+        else
+            format(out, size, "%s[%s]", base, index);
         return;
     }
     fatal(expr, "unsupported assignment destination");
@@ -1089,9 +1094,10 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
                 format(result, sizeof(result), "%s[%s]", a, b);
             else
                 format(result, sizeof(result), "(uint8_t)KRYON_INDEX(%s.data, %s.length, %s)", a, a, b);
-        } else if((e->target == KIR_C || e->target == KIR_CPP) && capacity > 0) {
+        } else if((e->target == KIR_C || e->target == KIR_CPP) && capacity != 0) {
             /* fixed-capacity .kry arrays: debug builds bounds-check */
-            format(result, sizeof(result), "KRYON_INDEX(%s, %d, %s)", a, capacity, b);
+            format(result, sizeof(result), "KRYON_INDEX(%s, sizeof(%s) / sizeof(%s[0]), %s)",
+                   a, a, a, b);
         } else {
             format(result, sizeof(result), "%s[%s]", a, b);
         }

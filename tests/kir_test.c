@@ -25,6 +25,17 @@ main(void)
     FILE *out;
     int ok = 1;
 
+    char element[KIR_NAME_MAX];
+    int capacity;
+    ok &= check(KirArrayElementType("[4] i32 ", element, sizeof(element), &capacity) &&
+                capacity == 4 && !strcmp(element, "i32"), "normalize fixed array element type");
+    ok &= check(!KirArrayElementType("[]i32", element, sizeof(element), &capacity),
+                "slice is not a symbolic fixed array");
+    ok &= check(!KirArrayElementType("[9999999999999999999999]i32", element, sizeof(element), &capacity),
+                "reject overflowing array capacity");
+    ok &= check(!KirArrayElementType("[bad-name]i32", element, sizeof(element), &capacity),
+                "reject malformed symbolic array capacity");
+
     /* A module may declare more constants than the initial allocation. */
     {
         char source[8192];

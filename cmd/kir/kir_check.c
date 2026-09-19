@@ -169,6 +169,14 @@ numeric(const char *type)
 }
 
 static int
+integer_type(const char *type)
+{
+    const char *scalar = KirScalarType(type);
+    return !strcmp(type, "integer") || !strcmp(scalar, "char") ||
+           scalar[0] == 'i' || scalar[0] == 'u';
+}
+
+static int
 compatible(const char *to, const char *from)
 {
     const char *canonical = KirScalarType(to);
@@ -400,13 +408,13 @@ expression_type(Checker *c, int index)
          * byte of a borrowed string. Element types stay scalar so every
          * backend lowers the same shape. */
         if(!strcmp(left, "string")) {
-            if(!numeric(right))
+            if(!integer_type(right))
                 error(c, e->span, "string index requires an integer operand", e->text);
             kir_copy(element, sizeof(element), "u8");
         } else if(!KirArrayElementType(left, element, sizeof(element), NULL)) {
             error(c, e->span, "index requires a fixed array or string", e->text);
             kir_copy(element, sizeof(element), "i32");
-        } else if(!numeric(right)) {
+        } else if(!integer_type(right)) {
             error(c, e->span, "array index requires an integer operand", e->text);
         }
         kir_copy(member_type, sizeof(member_type), element);
@@ -587,8 +595,104 @@ record_declaration_error(const KirType *record, const char *message,
 
 /* Structural errors are invalid in every backend, including non-strict mode.
  * Check them before function eligibility can select a fallback emitter. */
+typedef struct RecordPath {
+    const KirType *record;
+    const struct RecordPath *parent;
+    int depth;
+} RecordPath;
+
+typedef struct ValidatedRecords {
+    const KirType **items;
+    size_t count;
+} ValidatedRecords;
+
 static int
-check_type_declarations(const KirModule *module)
+has_foreign_types(const KirModule *module)
+{
+    for(int i = 0; i < module->import_count; i++) {
+        const KirImport *import = &module->imports[i];
+        if(import->kind == KIR_IMPORT_HEADER && import->resolved_module == NULL)
+            return 1;
+    }
+    return 0;
+}
+
+/* Validate stored shapes before choosing an emitter. In particular, a slice
+ * must never be mistaken for a fixed array, nor a recursive value layout for
+ * an opaque host type. Pointers stop layout recursion but still name a type. */
+static const char *
+storage_type_error(const KirModule *module, const char *source,
+                   const RecordPath *path, int indirect, ValidatedRecords *checked)
+{
+    char type[KIR_NAME_MAX];
+    char element[KIR_NAME_MAX];
+    const KirModule *owner = NULL;
+    const KirType *record;
+    int capacity;
+
+    kir_copy(type, sizeof(type), source);
+    kir_trim_in_place(type);
+    if(!strcmp(type, "void"))
+        return indirect ? NULL : "stored values cannot have void type";
+    if(*KirScalarType(type) != '\0' || KirTargetType(type, KIR_C) != NULL)
+        return NULL;
+    if(type[0] == '[') {
+        if(type[1] == ']')
+            return "slices do not yet have portable storage semantics";
+        if(!KirArrayElementType(type, element, sizeof(element), &capacity))
+            return "malformed fixed array type";
+        if(capacity == 0)
+            return "fixed arrays require a positive capacity";
+        if(element[0] == '[')
+            return "nested fixed arrays are not supported";
+        return storage_type_error(module, element, path, indirect, checked);
+    }
+    size_t length = strlen(type);
+    if(length > 0 && type[length - 1] == '*') {
+        type[length - 1] = '\0';
+        kir_trim_in_place(type);
+        if(!strncmp(type, "const ", 6))
+            memmove(type, type + 6, strlen(type + 6) + 1);
+        return storage_type_error(module, type, path, 1, checked);
+    }
+    record = KirFindType(module, type, &owner);
+    if(record == NULL)
+        return has_foreign_types(module) ? NULL : "unknown stored type";
+    if(record->is_slot)
+        return "slot values cannot be stored in aggregates or pointers";
+    if(record->is_enum || indirect)
+        return NULL;
+    for(const RecordPath *ancestor = path; ancestor != NULL; ancestor = ancestor->parent) {
+        if(ancestor->record == record)
+            return "record has a recursive value layout";
+    }
+    for(size_t i = 0; i < checked->count; i++) {
+        if(checked->items[i] == record)
+            return NULL;
+    }
+    if(path != NULL && path->depth >= 128)
+        return "record nesting exceeds the portable limit";
+    RecordPath current = {record, path, path == NULL ? 1 : path->depth + 1};
+    KirTypeField field;
+    size_t offset = 0;
+    int status;
+    while((status = KirTypeNextField(record, &offset, &field)) == 1) {
+        const char *error = storage_type_error(owner, field.type, &current, 0, checked);
+        if(error != NULL)
+            return error;
+    }
+    if(status < 0)
+        return "malformed record field";
+    const KirType **items = realloc(checked->items, (checked->count + 1) * sizeof(*items));
+    if(items == NULL)
+        return "cannot allocate record type validation state";
+    checked->items = items;
+    checked->items[checked->count++] = record;
+    return NULL;
+}
+
+static int
+check_type_declarations(const KirModule *module, int strict)
 {
     for(int i = 0; i < module->type_count; i++) {
         const KirType *record = &module->types[i];
@@ -645,6 +749,13 @@ check_type_declarations(const KirModule *module)
         }
         if(status < 0)
             return record_declaration_error(record, "malformed record field", NULL);
+        if(strict) {
+            ValidatedRecords checked = {0};
+            const char *error = storage_type_error(module, record->name, NULL, 0, &checked);
+            free(checked.items);
+            if(error != NULL)
+                return record_declaration_error(record, error, NULL);
+        }
     }
     return 1;
 }
@@ -933,6 +1044,8 @@ check_function(Checker *c, KirFunction *fn)
         KirDiagnostic(c->fn->span, "check.slot_escape", "slot values cannot escape through returns");
         return 0;
     }
+    if(c->strict && c->fn->return_type[0] == '[')
+        error(c, c->fn->span, "array and slice return types require portable value semantics", c->fn->return_type);
     /* Imports are linked now. Rebuild expressions so imported types
      * participate in cast/grouping decisions before type checking. */
     KirStructureFunction(c->fn, c->module);
@@ -946,6 +1059,8 @@ check_function(Checker *c, KirFunction *fn)
             *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
             const KirType *parameter_type = KirFindType(c->module, colon, NULL);
             has_slots |= parameter_type != NULL && parameter_type->is_slot;
+            if(c->strict && colon[0] == '[')
+                error(c, c->fn->span, "array and slice parameters require portable value semantics", params[a]);
             bind(c, params[a], colon, c->fn->span);
         } else error(c, c->fn->span, "strict parameters require name: type", params[a]);
     }
@@ -1103,7 +1218,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
     }
     for(int p = 0; p < count; p++)
         for(int m = 0; m < programs[p]->module_count; m++)
-            if(!check_type_declarations(&programs[p]->modules[m]))
+            if(!check_type_declarations(&programs[p]->modules[m], strict))
                 return 0;
     for(int p = 0; p < count; p++) for(int m = 0; m < programs[p]->module_count; m++) {
         c.module = &programs[p]->modules[m];
@@ -1111,6 +1226,18 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             const char *type = i < c.module->global_count ? c.module->globals[i].type :
                 c.module->state_fields[i - c.module->global_count].type;
             const KirType *slot = KirFindType(c.module, type, NULL);
+            if(strict) {
+                ValidatedRecords checked = {0};
+                const char *error = storage_type_error(c.module, type, NULL, 0, &checked);
+                free(checked.items);
+                if(error != NULL && (slot == NULL || !slot->is_slot)) {
+                    KirSourceSpan span = i < c.module->global_count ? c.module->globals[i].span :
+                        c.module->state_fields[i - c.module->global_count].span;
+                    KirDiagnostic(span, "check.storage", "%s: %s", error, type);
+                    free(c.bindings);
+                    return 0;
+                }
+            }
             if(slot != NULL && slot->is_slot) {
                 KirSourceSpan span = i < c.module->global_count ? c.module->globals[i].span :
                     c.module->state_fields[i - c.module->global_count].span;

@@ -85,20 +85,27 @@ KirArrayElementType(const char *type, char *element, size_t element_size,
         /* Symbolic capacity: a named module constant. The bound value is
          * resolved by the backend emitters; only the element type matters
          * here. */
+        if(!isalpha((unsigned char)*cursor) && *cursor != '_')
+            return 0;
         while(isalnum((unsigned char)*cursor) || *cursor == '_')
             cursor++;
         if(*cursor != ']')
             return 0;
         count = -1;
     }
-    close = cursor;
-    length = strlen(close + 1);
+    close = cursor + 1;
+    while(isspace((unsigned char)*close))
+        close++;
+    length = strlen(close);
+    while(length > 0 && isspace((unsigned char)close[length - 1]))
+        length--;
     if(length == 0)
         return 0;
     if(element != NULL) {
         if(length >= element_size)
             return 0;
-        memcpy(element, close + 1, length + 1);
+        memcpy(element, close, length);
+        element[length] = '\0';
     }
     if(capacity != NULL)
         *capacity = (int)count;

@@ -12,7 +12,7 @@ the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
 - Token-based expression trees with C precedence, casts, conditional
   expressions, indirect calls, postfix operations, and chained indexing.
 - Separate assignment destinations and declaration bindings in KIR.
-- Shared scalar type annotation and opt-in strict checking before emission.
+- Shared type annotation and opt-in strict checking before emission.
   Strict mode fully checks Kry-to-Kry scalar code. Modules that import C
   headers interoperate with C: calls, statements, and enum/identifier names
   the frontend cannot see are left to the C compiler instead of failing the
@@ -84,3 +84,19 @@ the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
 Each remaining feature needs execution fixtures on every supported backend and
 negative tests for targets that cannot preserve its semantics. Generating target
 syntax or adding a parser node is insufficient evidence of language support.
+
+## Aggregate validation and indexing
+
+Strict checking validates stored record shapes, including nested records and
+fixed-array element types. It rejects unknown types, zero/invalid capacities,
+recursive value layouts, nested fixed arrays, and borrowed slots stored through
+aggregates or pointers. C-header imports retain their foreign-type boundary.
+Slices and array-valued parameters/returns receive explicit diagnostics until
+portable ownership and value semantics are implemented. Array and string byte
+indices must be integers. C/C++ debug bounds checks now cover writes as well as
+reads, including symbolic capacities; Go checks indices natively.
+
+`tests/aggregate_types_test.py` executes positive indexing and read/write traps
+on C, C++ and Go and compares source diagnostics across all three compilers.
+This hardens the existing aggregate subset; it does not complete the systems
+language work listed above.
