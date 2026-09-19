@@ -30,7 +30,7 @@ KirArrayValueType(const char *type)
     char element[KIR_NAME_MAX];
     /* Host char buffers retain their explicit C-string interop convention. */
     return KirArrayElementType(type, element, sizeof(element), NULL) &&
-           strcmp(element, "char") != 0;
+           strcmp(element, "char") != 0 && strcmp(element, "const char") != 0;
 }
 
 /* These names share a deterministic collision check between declarations and

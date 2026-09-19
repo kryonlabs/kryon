@@ -42,6 +42,18 @@ invalid = {
 resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
 with tempfile.TemporaryDirectory(prefix="kryon-array-values-") as directory:
     work = Path(directory)
+    # Host C-string buffers keep reference semantics, including read-only
+    # buffers whose capacity is supplied by an imported C header.
+    (work / "host.h").write_text("enum { HostCapacity = 4 };\n")
+    host_buffer = work / "host_buffer.kry"
+    host_buffer.write_text(
+        '#import "host.h"\n'
+        'ReadBuffer :: (value: [HostCapacity] const char) -> int #export {\n'
+        '    return (int)value[0]\n}\n'
+    )
+    for target in ("k2c", "k2cpp"):
+        run([str(bin_dir / target), "--no-main", "--root", str(work),
+             "-o", str(work / "host_buffer" / target), str(host_buffer)])
     for name, (body, diagnostic) in invalid.items():
         source = work / f"{name}.kry"
         source.write_text("CAPACITY :: 2\nAction :: () #slot\nCheck :: () {\n" + body + "\n}\n")
