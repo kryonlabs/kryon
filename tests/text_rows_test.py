@@ -19,6 +19,12 @@ subprocess.run([
     str(generated / "runtime/text_rows.c"), "-lm", "-o", str(output),
 ], cwd=root, check=True)
 cases = json.loads((root / "tests/fixtures/text_rows.json").read_text())
+cases.extend([
+    {"name": "large measured rows", "text": "a" * 2600, "width": 1200,
+     "words": False, "rows": [[0, 1200, 16], [1200, 2400, 16], [2400, 2600, 16]]},
+    {"name": "large cluster after a wrap", "text": "abx" + "\u0301" * 600,
+     "width": 1, "words": False, "rows": [[0, 1, 16], [1, 2, 16], [2, 1203, 16]]},
+])
 for case in cases:
     result = subprocess.run([str(output), case["text"], str(case["width"]), str(int(case["words"]))],
                             text=True, capture_output=True, check=True)

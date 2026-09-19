@@ -83,6 +83,8 @@ func (r *runtime) canvasOperation(op FrameOp) FrameOp {
 	op.BorderWidth *= scale
 	op.ContentOffset.X *= scale
 	op.ContentOffset.Y *= scale
+	op.ImageOrigin.X *= scale
+	op.ImageOrigin.Y *= scale
 	op.Gap *= scale
 	op.IconSize *= scale
 	op.ScrollY = int32(float32(op.ScrollY) * scale)

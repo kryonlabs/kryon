@@ -2718,3 +2718,12 @@ For opacity, `StyleOpacityValue(fields, opacity)` resolves an absent declaration
 to one while preserving an explicit zero. Renderers must not reinterpret that
 explicit zero as a request for default paint. Native style conversion applies
 this rule to composed surfaces too, including Material guide and modal panels.
+## Native Go image assets
+
+`Image(ImageProps)` and button image props render PNG, JPEG, and GIF assets from
+filesystem paths in the native Go renderer. GIF uses its first frame. `Source`,
+`Fit`, `Origin`, `Rotation`, style tint/opacity, rounded bounds, and surrounding
+Scroll/Canvas clipping are preserved. Missing or invalid assets paint nothing;
+the widget's KSS surface and semantic alt text still apply. The native cache
+retains at most 64 decoded assets and 32 MiB of pixels and reloads changed files
+when they are rendered. Individual decoded images are limited to 64 MiB.

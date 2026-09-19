@@ -1627,7 +1627,9 @@ func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, di
 		if tint.A == 0 {
 			tint = White
 		}
-		r.record(FrameOp{Kind: FrameOpImage, Bounds: image.Bounds, Text: image.AssetPath, Color: tint, Disabled: frame.Disabled})
+		op := imageOperation(image, tint)
+		op.Disabled = frame.Disabled
+		r.record(op)
 	}
 	return pressed
 }
@@ -4505,7 +4507,8 @@ func (r *runtime) Image(props ImageProps) {
 	if tintStyle.Fields&uint32(StyleOpacity) != 0 && tintStyle.Opacity < 1 {
 		tint = unpackRGBA(Surface_Opacity(packRGBA(tint), tintStyle.Opacity))
 	}
-	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: tint}
+	op := imageOperation(props, tint)
+	op.Radius = style.Radius
 	if props.AltText != "" {
 		op.Semantic = SemanticImage
 		op.Role = "img"

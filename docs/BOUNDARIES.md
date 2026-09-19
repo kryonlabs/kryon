@@ -299,3 +299,9 @@ objects stay in the host. `TreeFocusBegin` / `TreeFocusAdvance` own retained
 hierarchy traversal; native hosts supply stored node depths and resolve IDs.
 See [native ownership evidence](NATIVE_POLICY_OWNERSHIP.md) for the audited
 surfaces and the remaining platform boundaries.
+## Native text and image resource ownership
+
+Editable row caches and decoded image caches are bounded native host resources.
+They do not own wrapping, fit, selection or style policy: row and fit decisions
+come from shared `.kry` modules. Font measurement, Unicode iteration, file
+decoding, pixel sampling and cache synchronization remain native services.

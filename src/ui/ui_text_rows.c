@@ -15,8 +15,9 @@ TextRowCursor ui_text_rows(const char *text, int font, int gap, int width,
     return cursor;
 }
 
-/* Copying a measured range is a font ABI adaptation: native font APIs accept
- * terminated strings. Reuse one buffer per row, including shaped prefixes. */
+/* Native font APIs accept terminated strings. Copy only the measured prefix
+ * after the first row, so a long wrapped line does not copy and measure its
+ * entire remaining tail repeatedly. Preserve full-prefix shaping. */
 int ui_text_row_next(TextRowCursor *cursor, TextMeasuredRow *row)
 {
     if (!cursor->loaded) {
@@ -31,20 +32,47 @@ int ui_text_row_next(TextRowCursor *cursor, TextMeasuredRow *row)
                               cursor->font, cursor->headings);
     int length = line.end - start;
     char local[1024];
-    char *buffer = length < (int)sizeof(local) ? local : malloc((size_t)length + 1);
-    if (!buffer) return 0;
+    char *buffer = local;
+    size_t capacity = sizeof(local);
+    int copied = 0;
     const char *text = (const char *)cursor->source.data;
-    memcpy(buffer, text + start, (size_t)length);
-    buffer[length] = '\0';
-    int measured = TextWidth(buffer, font);
+    int measure_full = cursor->width <= 0 || start == line.start;
+    int measured = 0;
+    if (measure_full) {
+        if ((size_t)length + 1 > capacity) {
+            capacity = (size_t)length + 1;
+            buffer = malloc(capacity);
+            if (!buffer) return 0;
+        }
+        memcpy(buffer, text + start, (size_t)length);
+        buffer[length] = '\0';
+        copied = length;
+        measured = TextWidth(buffer, font);
+    }
     TextRowBreak state = {.end = start};
-    if (cursor->width <= 0 || measured <= cursor->width || start == line.end) {
+    if (cursor->width <= 0 || (measure_full && measured <= cursor->width) || start == line.end) {
         state = TextRowAdvance(state, start, line.end, line.end, 0,
                                (float)measured, (float)cursor->width, cursor->words);
     } else {
         while (!state.done) {
             int next = ui_grapheme_next_boundary(text, line.end, state.end);
             int offset = next - start;
+            if ((size_t)offset + 1 > capacity) {
+                capacity = ((size_t)offset + 1) * 2;
+                char *expanded = malloc(capacity);
+                if (!expanded) {
+                    if (buffer != local) free(buffer);
+                    return 0;
+                }
+                memcpy(expanded, buffer, (size_t)copied);
+                if (buffer != local) free(buffer);
+                buffer = expanded;
+            }
+            if (offset > copied) {
+                memcpy(buffer + copied, text + start + copied, (size_t)(offset - copied));
+                copied = offset;
+                buffer[copied] = '\0';
+            }
             char saved = buffer[offset];
             buffer[offset] = '\0';
             measured = TextWidth(buffer, font);

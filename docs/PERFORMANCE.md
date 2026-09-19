@@ -61,3 +61,24 @@ cache and a median 4.85 ms afterward (three runs of 30 frames). This includes
 frame construction and CPU rasterization, but excludes presentation and network
 requests. Pixel comparisons cover flat, lightfield, and glass materials with
 clipping, fractional coordinates, scaling, gradients, and translucent targets.
+## Editable text layout and painting (2026-09-19)
+
+`go test -run '^$' -bench BenchmarkEditable -benchmem` measures actual row
+measurement and CPU painting, including a long wrapped line and a 500-line
+multilingual editor. On the Ryzen 9 9950X development host:
+
+| Workload | Before | After |
+|---|---:|---:|
+| Long wrapped line, cold rows | 15.72 ms | 1.35 ms |
+| Warm row lookup, long line | 15.72 ms | 47 ns |
+| Warm row lookup, document | 114 µs | 86 ns |
+| Editor paint | 454 µs / 74 KB | 317 µs / 1.2 KB |
+
+The native row adapters stop remeasuring the entire remaining tail for every
+soft-wrapped row. Go walks Unicode clusters sequentially instead of rescanning
+from a logical line's beginning. Prefix measurement still preserves font shaping.
+Go caches immutable row snapshots (32 entries, 4 MiB, source limit 256 KiB),
+invalidating on text/width/font changes and font replacement. Warm lookup does
+not allocate. Cold short-line document layout remains approximately 117 µs;
+the cache does not claim to speed up all first-time layouts. Measurements are
+local CPU timings, not display or GPU latency guarantees.

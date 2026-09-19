@@ -1,5 +1,7 @@
 package kryon
 
+import "github.com/clipperhouse/uax29/v2/graphemes"
+
 type textAreaRenderLine struct {
 	text                string
 	start, end, lineEnd int
@@ -20,12 +22,18 @@ func measuredTextRows(text string, width int, font int32, headings, words bool,
 		start := line.Start
 		for {
 			state := TextRowBreak{End: start}
-			fullWidth := measure(text[start:line.End], rowFont)
+			// Measure a logical line once, rather than its entire remaining
+			// tail again for each soft-wrapped row.
+			fullWidth := width + 1
+			if start == line.Start || width <= 0 {
+				fullWidth = measure(text[start:line.End], rowFont)
+			}
 			if width <= 0 || fullWidth <= width || start == line.End {
 				state = TextRows_TextRowAdvance(state, start, line.End, line.End, false, float32(fullWidth), float32(width), words)
 			} else {
-				for !state.Done {
-					next := int32(nextGrapheme(text[:line.End], int(state.End)))
+				clusters := graphemes.FromString(text[start:line.End])
+				for !state.Done && clusters.Next() {
+					next := start + int32(clusters.End())
 					measured := measure(text[start:next], rowFont)
 					space := text[state.End] == ' ' || text[state.End] == '\t'
 					state = TextRows_TextRowAdvance(state, start, next, line.End, space, float32(measured), float32(width), words)
@@ -45,7 +53,8 @@ func renderTextAreaLines(text string, wrapWidth int, fontSize int32, fontID uint
 	if !wrap {
 		wrapWidth = 0
 	}
-	return measuredTextRows(text, wrapWidth, fontSize, true, false,
+	key := textRowsKey{text: text, width: wrapWidth, font: fontSize, fontID: fontID}
+	return editableRows.layout(key, fontGeneration.Load(),
 		func(value string, font int32) int { return runtimeTextWidthWithFont(value, font, fontID) })
 }
 

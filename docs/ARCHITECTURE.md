@@ -866,3 +866,11 @@ Go Paragraph's inline-icon adapter also consumes shared paragraph tokenization,
 spacing and line assembly. Retained tree focus traversal now runs through
 `TreeFocusBegin` and `TreeFocusAdvance` in C and Go; Go table sorting and tree-row
 activation call their existing generated decisions.
+## Native Go raster resources
+
+`image_cache.go` owns bounded filesystem decoding; `image_render.go` samples and
+blends pixels. Image fitting remains in `runtime/image.kry`. Frame operations
+preserve source rectangles, fit, origin and rotation rather than discarding
+them before rasterization. `text_rows_cache.go` shares immutable measured row
+snapshots between editor painting and hit testing, invalidated by text, width,
+font identity/size and the font registry generation.

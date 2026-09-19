@@ -54,6 +54,9 @@ type FrameOp struct {
 	FontSize          int32
 	LetterSpacing     int32
 	Rotation          float32
+	ImageSource       Rectangle
+	ImageOrigin       Vector2
+	ImageFit          ImageFit
 	Radius            float32
 	BorderWidth       float32
 	Opacity           float32

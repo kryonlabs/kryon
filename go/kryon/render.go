@@ -82,8 +82,7 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 		case FrameOpIcon:
 			renderIcon(img, op)
 		case FrameOpImage:
-			fillRect(img, op.Bounds, opaque(op.Color, Color{224, 229, 236, 255}))
-			strokeRect(img, op.Bounds, Color{136, 146, 160, 255})
+			renderAssetImage(img, op)
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
 		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGroup, FrameOpGrid, FrameOpPage, FrameOpSection:
