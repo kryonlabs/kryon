@@ -3772,6 +3772,7 @@
       "widgets": [
         "Box",
         "Button",
+        "Canvas",
         "Checkbox",
         "Collapsible",
         "Column",
@@ -4642,7 +4643,7 @@
     "Bevel": 2,
     "Box": 10,
     "Button": 18,
-    "Canvas": 3,
+    "Canvas": 4,
     "CanvasGrid": 3,
     "Checkbox": 8,
     "Collapsible": 5,
@@ -4766,11 +4767,14 @@
     },
     {
       "id": "Canvas",
-      "semantic_sources": [],
-      "source_count": 3,
+      "semantic_sources": [
+        "tests/parity/scroll_content.kry"
+      ],
+      "source_count": 4,
       "sources": [
         "examples/14_canvas.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
