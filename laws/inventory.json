@@ -1,0 +1,2675 @@
+{
+  "schema": 1,
+  "laws": [
+    {
+      "id": "api.app.blocked-ui-surface",
+      "domain": "compiler",
+      "summary": "Examples and fixtures never call the blocked texture/UI surface",
+      "sources": [
+        "tools/check-kryon-laws-api.sh"
+      ],
+      "phase": 1,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "static-check",
+      "evidence": {
+        "c": "static-check"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "api.generated.blocked-names",
+      "domain": "compiler",
+      "summary": "Internal runtime APIs never leak into generated C",
+      "sources": [
+        "tools/check-kryon-laws-api.sh"
+      ],
+      "phase": 1,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "static-check",
+      "evidence": {
+        "c": "static-check"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "api.generated.props-ownership",
+      "domain": "compiler",
+      "summary": "Every generated props header has a runtime .kry source",
+      "sources": [
+        "tools/check-kryon-laws-api.sh"
+      ],
+      "phase": 1,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "static-check",
+      "evidence": {
+        "c": "static-check"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "backend.capabilities.honest",
+      "domain": "compiler",
+      "summary": "BACKEND_CAPABILITIES.json stays complete and honest per backend",
+      "sources": [
+        "tools/check-backend-capability-laws.sh"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "static-check",
+      "evidence": {
+        "c": "static-check",
+        "cpp": "static-check",
+        "go": "static-check"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.borrow-check",
+      "domain": "compiler",
+      "summary": "Borrow/lifetime checking for slices",
+      "sources": [
+        "cmd/kir/kir_borrow.c"
+      ],
+      "phase": 5,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3",
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
+      "id": "compiler.pass.emit-c",
+      "domain": "compiler",
+      "summary": "KIR to C lowering",
+      "sources": [
+        "cmd/k2c/k2c_lower.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.emit-cpp",
+      "domain": "compiler",
+      "summary": "KIR to C++ lowering",
+      "sources": [
+        "cmd/k2cpp/k2cpp_lower.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "cpp"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "cpp": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.emit-go",
+      "domain": "compiler",
+      "summary": "KIR to Go lowering",
+      "sources": [
+        "cmd/k2go/k2go_lower.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "go": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.emit-kir",
+      "domain": "compiler",
+      "summary": "KIR serialization for inspection",
+      "sources": [
+        "cmd/kir/kir_emit.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.laws-check",
+      "domain": "compiler",
+      "summary": "Compiler law enforcement before lowering",
+      "sources": [
+        "cmd/kir/kir_laws.c"
+      ],
+      "phase": 1,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "static-check",
+        "cpp": "static-check",
+        "go": "static-check"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "compiler.pass.parse",
+      "domain": "compiler",
+      "summary": "Frontend parsing into KIR",
+      "sources": [
+        "cmd/kir/kir_parse.c"
+      ],
+      "phase": 3,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3",
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
+      "id": "compiler.pass.resolve",
+      "domain": "compiler",
+      "summary": "Name/type/bound resolution",
+      "sources": [
+        "cmd/kir/kir_check.c"
+      ],
+      "phase": 3,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3",
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
+      "id": "focus.tab.direction",
+      "domain": "policy",
+      "summary": "FocusTabDirectionFor: no movement without Tab, forward with Tab, backward with Shift+Tab",
+      "sources": [
+        "runtime/focus.kry"
+      ],
+      "symbols": [
+        "FocusTabDirectionFor"
+      ],
+      "phase": 2,
+      "targets": [
+        "c"
+      ],
+      "status": "model-proved",
+      "mechanism": "bend-proof",
+      "contract": "laws/focus/LAWS.bend",
+      "proof": "laws/focus/PROOF.bend",
+      "evidence": {
+        "c": "exhaustive-test"
+      },
+      "evidence_revision": "b97812e3",
+      "assumptions": [
+        "Pinned Bend 2 checker and Base hashes (tools/bend-pin.json)",
+        "Finite four-case Boolean domain; C++/Go comparisons still missing"
+      ],
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
+      "id": "image.surface.no_low_level_calls",
+      "domain": "compiler",
+      "summary": "App .kry image surface must draw through Image(ImageProps), never raw texture/UI host calls",
+      "sources": [
+        "cmd/kir/kir_laws.c"
+      ],
+      "symbols": [
+        "KirCheckLaws"
+      ],
+      "phase": 1,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "static-check",
+      "evidence": {
+        "c": "static-check",
+        "cpp": "static-check",
+        "go": "static-check"
+      },
+      "evidence_revision": "b97812e3",
+      "assumptions": [
+        "Enforced over parsed syntax on every k2c/k2cpp/k2go/k2js/k2kir/k2b build"
+      ]
+    },
+    {
+      "id": "input.drag.monotonic.with.distance",
+      "domain": "policy",
+      "summary": "Drag detection is monotonic in distance",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "kir.expr.binary",
+      "domain": "kir",
+      "summary": "KIR expression construct binary",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.call",
+      "domain": "kir",
+      "summary": "KIR expression construct call",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.cast",
+      "domain": "kir",
+      "summary": "KIR expression construct cast",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.char",
+      "domain": "kir",
+      "summary": "KIR expression construct char",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.compound",
+      "domain": "kir",
+      "summary": "KIR expression construct compound",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.conditional",
+      "domain": "kir",
+      "summary": "KIR expression construct conditional",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.field_init",
+      "domain": "kir",
+      "summary": "KIR expression construct field_init",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.float",
+      "domain": "kir",
+      "summary": "KIR expression construct float",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.ident",
+      "domain": "kir",
+      "summary": "KIR expression construct ident",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.index",
+      "domain": "kir",
+      "summary": "KIR expression construct index",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.int",
+      "domain": "kir",
+      "summary": "KIR expression construct int",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.member",
+      "domain": "kir",
+      "summary": "KIR expression construct member",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.pointer_member",
+      "domain": "kir",
+      "summary": "KIR expression construct pointer_member",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.postfix",
+      "domain": "kir",
+      "summary": "KIR expression construct postfix",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.sizeof",
+      "domain": "kir",
+      "summary": "KIR expression construct sizeof",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.slice",
+      "domain": "kir",
+      "summary": "KIR expression construct slice",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.string",
+      "domain": "kir",
+      "summary": "KIR expression construct string",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.expr.unary",
+      "domain": "kir",
+      "summary": "KIR expression construct unary",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.assign",
+      "domain": "kir",
+      "summary": "KIR statement construct assign",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.block_close",
+      "domain": "kir",
+      "summary": "KIR statement construct block_close",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.block_open",
+      "domain": "kir",
+      "summary": "KIR statement construct block_open",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.break",
+      "domain": "kir",
+      "summary": "KIR statement construct break",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.case",
+      "domain": "kir",
+      "summary": "KIR statement construct case",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.continue",
+      "domain": "kir",
+      "summary": "KIR statement construct continue",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.decl",
+      "domain": "kir",
+      "summary": "KIR statement construct decl",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.defer",
+      "domain": "kir",
+      "summary": "KIR statement construct defer",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.expr",
+      "domain": "kir",
+      "summary": "KIR statement construct expr",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.for",
+      "domain": "kir",
+      "summary": "KIR statement construct for",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.goto",
+      "domain": "kir",
+      "summary": "KIR statement construct goto",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.if",
+      "domain": "kir",
+      "summary": "KIR statement construct if",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.label",
+      "domain": "kir",
+      "summary": "KIR statement construct label",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.raw",
+      "domain": "kir",
+      "summary": "KIR statement construct raw",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.return",
+      "domain": "kir",
+      "summary": "KIR statement construct return",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.switch",
+      "domain": "kir",
+      "summary": "KIR statement construct switch",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.unused",
+      "domain": "kir",
+      "summary": "KIR statement construct unused",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.while",
+      "domain": "kir",
+      "summary": "KIR statement construct while",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "kir.stmt.widget",
+      "domain": "kir",
+      "summary": "KIR statement construct widget",
+      "sources": [
+        "cmd/kir/kir.h"
+      ],
+      "phase": 3,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:bend-semantics"
+    },
+    {
+      "id": "krb.asset",
+      "domain": "compiler",
+      "summary": "KRB asset operations",
+      "sources": [
+        "tests/krb_asset_test.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.capabilities",
+      "domain": "compiler",
+      "summary": "KRB capability reporting",
+      "sources": [
+        "tests/krb_caps_test.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.decode.walk",
+      "domain": "compiler",
+      "summary": "KRB tree walking",
+      "sources": [
+        "tests/krb_walk_test.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.encode",
+      "domain": "compiler",
+      "summary": "KRB encoding from KIR (k2b)",
+      "sources": [
+        "cmd/k2b/k2b_krb.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.execute",
+      "domain": "compiler",
+      "summary": "KRB execution",
+      "sources": [
+        "cmd/krb-run/main.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.logic",
+      "domain": "compiler",
+      "summary": "KRB logic operations",
+      "sources": [
+        "tests/krb_logic_test.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "krb.mount",
+      "domain": "compiler",
+      "summary": "KRB mounting",
+      "sources": [
+        "tests/krb_mount_test.c"
+      ],
+      "phase": 4,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "layout.metrics.content.nonnegative",
+      "domain": "policy",
+      "summary": "Content boxes never go negative",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "layout.tree.bounds.finite",
+      "domain": "policy",
+      "summary": "Layout tree law layout.tree.bounds.finite",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "layout.tree.children.start.in.content",
+      "domain": "policy",
+      "summary": "Layout tree law layout.tree.children.start.in.content",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "layout.tree.deterministic",
+      "domain": "policy",
+      "summary": "Layout tree law layout.tree.deterministic",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "layout.tree.idempotent",
+      "domain": "policy",
+      "summary": "Layout tree law layout.tree.idempotent",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "paned_view.split.clamped",
+      "domain": "policy",
+      "summary": "Pane splits clamp to their limits",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "runtime.parity.cross-target",
+      "domain": "compiler",
+      "summary": "C, Go and JS runtime outputs agree (cross-target parity)",
+      "sources": [
+        "tools/runtime_parity_doc.go"
+      ],
+      "phase": 4,
+      "targets": [
+        "c",
+        "go"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "test-suite",
+      "evidence": {
+        "c": "test-suite",
+        "go": "test-suite"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "runtime.parity.cross-target.js",
+      "domain": "compiler",
+      "summary": "JS leg of cross-target runtime parity",
+      "sources": [
+        "tools/runtime_parity_doc.go"
+      ],
+      "phase": 4,
+      "targets": [
+        "js"
+      ],
+      "status": "deferred",
+      "mechanism": "planned:test-suite",
+      "deferred_reason": "JS/web target paused; reactivation must meet the same law requirements before this row changes."
+    },
+    {
+      "id": "semantic.button.label.equals.text.child",
+      "domain": "policy",
+      "summary": "A button label and an equivalent child text node lay out identically",
+      "sources": [
+        "tests/laws/semantic_tree_laws_test.c"
+      ],
+      "phase": 8,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "slider.discrete.value.in.range",
+      "domain": "policy",
+      "summary": "Slider property law slider.discrete.value.in.range (see docs/LAWS.md runtime tier)",
+      "sources": [
+        "tests/laws/slider_laws_test.c"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "slider.pointer.ratio.clamped",
+      "domain": "policy",
+      "summary": "Slider property law slider.pointer.ratio.clamped (see docs/LAWS.md runtime tier)",
+      "sources": [
+        "tests/laws/slider_laws_test.c"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "slider.ratio.clamped",
+      "domain": "policy",
+      "summary": "Slider property law slider.ratio.clamped (see docs/LAWS.md runtime tier)",
+      "sources": [
+        "tests/laws/slider_laws_test.c"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "slider.value.ratio.roundtrip.clamped",
+      "domain": "policy",
+      "summary": "Slider property law slider.value.ratio.roundtrip.clamped (see docs/LAWS.md runtime tier)",
+      "sources": [
+        "tests/laws/slider_laws_test.c"
+      ],
+      "phase": 6,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "style.priority.absent.never.wins",
+      "domain": "policy",
+      "summary": "Style priority law style.priority.absent.never.wins",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "style.priority.deterministic.ordering",
+      "domain": "policy",
+      "summary": "Style priority law style.priority.deterministic.ordering",
+      "sources": [
+        "tests/laws/layout_laws_test.c"
+      ],
+      "phase": 7,
+      "targets": [
+        "c"
+      ],
+      "status": "implementation-connected",
+      "mechanism": "property-test",
+      "evidence": {
+        "c": "property-test"
+      },
+      "evidence_revision": "b97812e3"
+    },
+    {
+      "id": "widget.accessibility",
+      "domain": "widget",
+      "summary": "Accessibility action contract",
+      "sources": [
+        "runtime/accessibility_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.accessibility_policy",
+      "domain": "widget",
+      "summary": "Accessibility focus and activation eligibility",
+      "sources": [
+        "runtime/accessibility_policy.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.bevel",
+      "domain": "widget",
+      "summary": "Bevel line geometry policy",
+      "sources": [
+        "runtime/bevel.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.button",
+      "domain": "widget",
+      "summary": "Button composition, input, metrics, content, and fallback paint policy",
+      "sources": [
+        "runtime/button.kry",
+        "runtime/button_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "semantic.button.label.equals.text.child"
+      ]
+    },
+    {
+      "id": "widget.canvas",
+      "domain": "widget",
+      "summary": "Canvas transform and hit-test policy",
+      "sources": [
+        "runtime/canvas.kry",
+        "runtime/canvas_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.canvas_grid",
+      "domain": "widget",
+      "summary": "CanvasGrid line policy",
+      "sources": [
+        "runtime/canvas_grid.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.card",
+      "domain": "widget",
+      "summary": "Card composition",
+      "sources": [
+        "runtime/card.kry",
+        "runtime/card_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.checkbox",
+      "domain": "widget",
+      "summary": "Checkbox paint, row/text layout, and value/flag policy",
+      "sources": [
+        "runtime/checkbox.kry",
+        "runtime/checkbox_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.collapsible",
+      "domain": "widget",
+      "summary": "Collapsible metrics/header geometry, pointer, close, keyboard, and open-state policy",
+      "sources": [
+        "runtime/collapsible.kry",
+        "runtime/collapsible_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.color_picker",
+      "domain": "widget",
+      "summary": "ColorPicker channel, swatch, and color policy",
+      "sources": [
+        "runtime/color_picker.kry",
+        "runtime/color_picker_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.control",
+      "domain": "widget",
+      "summary": "Shared control props",
+      "sources": [
+        "runtime/control_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.drag",
+      "domain": "widget",
+      "summary": "Drag component layout, text paint geometry, typed keyboard input, and value/keyboard policy",
+      "sources": [
+        "runtime/drag.kry",
+        "runtime/drag_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.drag_drop",
+      "domain": "widget",
+      "summary": "DragDrop source/target lifecycle decision policy",
+      "sources": [
+        "runtime/drag_drop.kry",
+        "runtime/drag_drop_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.drawing",
+      "domain": "widget",
+      "summary": "Shared drawing props and paragraph spec data",
+      "sources": [
+        "runtime/drawing_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.dropdown",
+      "domain": "widget",
+      "summary": "Dropdown composition, option/index normalization, open/dismiss/commit-close state, popup, row, scrollbar, keyboard intent, navigation, and indicator geometry policy",
+      "sources": [
+        "runtime/dropdown.kry",
+        "runtime/dropdown_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.fieldset",
+      "domain": "widget",
+      "summary": "Fieldset layout/paint policy",
+      "sources": [
+        "runtime/fieldset.kry",
+        "runtime/fieldset_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.focus",
+      "domain": "widget",
+      "summary": "Focus ring, activation, tab-direction, and debug overlay geometry policy",
+      "sources": [
+        "runtime/focus.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "focus.tab.direction"
+      ]
+    },
+    {
+      "id": "widget.grid",
+      "domain": "widget",
+      "summary": "Grid composition",
+      "sources": [
+        "runtime/grid.kry",
+        "runtime/grid_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.group",
+      "domain": "widget",
+      "summary": "Group bounds/content policy",
+      "sources": [
+        "runtime/group.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.guide",
+      "domain": "widget",
+      "summary": "Guide overlay layout, arrow geometry, and step policy",
+      "sources": [
+        "runtime/guide.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.guide_pager",
+      "domain": "widget",
+      "summary": "Internal pager footer layout and page transition policy",
+      "sources": [
+        "runtime/guide_pager.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.icon",
+      "domain": "widget",
+      "summary": "Icon bounds/size policy",
+      "sources": [
+        "runtime/icon.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.image",
+      "domain": "widget",
+      "summary": "Image fit and placeholder layout policy",
+      "sources": [
+        "runtime/image.kry",
+        "runtime/image_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.input",
+      "domain": "widget",
+      "summary": "Input step-button default, component layout, value/step, temp-edit activation, and generic pointer activation/consume policy",
+      "sources": [
+        "runtime/input.kry",
+        "runtime/input_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "input.drag.monotonic.with.distance"
+      ]
+    },
+    {
+      "id": "widget.inspect",
+      "domain": "widget",
+      "summary": "Inspector edit/resize geometry, handle-size, and release-consume policy",
+      "sources": [
+        "runtime/inspect.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.instance",
+      "domain": "widget",
+      "summary": "Generated widget instance identity helpers",
+      "sources": [
+        "runtime/instance.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.kss_formatter",
+      "domain": "widget",
+      "summary": "The KSS formatter: stable re-layout from parser-verified construct spans with comment preservation",
+      "sources": [
+        "runtime/kss_formatter.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.kss_parser",
+      "domain": "widget",
+      "summary": "The KSS parser: tokens, theme/env overlays, imports, layers, provenance, and diagnostics shared by all backends",
+      "sources": [
+        "runtime/kss_parser.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.layout",
+      "domain": "widget",
+      "summary": "Column/Row/Stack content and child placement policy",
+      "sources": [
+        "runtime/layout.kry",
+        "runtime/layout_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "layout.metrics.content.nonnegative",
+        "layout.tree.deterministic",
+        "layout.tree.idempotent",
+        "layout.tree.children.start.in.content",
+        "layout.tree.bounds.finite"
+      ]
+    },
+    {
+      "id": "widget.link",
+      "domain": "widget",
+      "summary": "Link bounds, interaction, activation/release-consumption, state, and color policy",
+      "sources": [
+        "runtime/link.kry",
+        "runtime/link_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.list_box",
+      "domain": "widget",
+      "summary": "ListBox layout, keyboard navigation intent, and row paint geometry policy",
+      "sources": [
+        "runtime/list_box.kry",
+        "runtime/list_box_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.list_box_multi",
+      "domain": "widget",
+      "summary": "ListBox multi-selection row activation, keyboard navigation, and selection policy",
+      "sources": [
+        "runtime/list_box_multi.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.material",
+      "domain": "widget",
+      "summary": "Material layer assembly with typed `MaterialKind` policy",
+      "sources": [
+        "runtime/material.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.menu",
+      "domain": "widget",
+      "summary": "Menu metrics, geometry, selectable/keyboard navigation, accelerator matching, bar/context open/index/outside-close policy, and group pointer open/close decisions",
+      "sources": [
+        "runtime/menu.kry",
+        "runtime/menu_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.modal",
+      "domain": "widget",
+      "summary": "Modal layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback, prompt input/result, and action row policy",
+      "sources": [
+        "runtime/modal.kry",
+        "runtime/modal_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.navigation_bar",
+      "domain": "widget",
+      "summary": "Navigation bar default-height, item interaction, paint, and configuration layout/count/default policy",
+      "sources": [
+        "runtime/navigation_bar.kry",
+        "runtime/navigation_bar_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.node2d",
+      "domain": "widget",
+      "summary": "Game2D scene/node declaration props, defaults, node props, and enums",
+      "sources": [
+        "runtime/node2d_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.node_registry",
+      "domain": "widget",
+      "summary": "Public node registry flags",
+      "sources": [
+        "runtime/node_registry_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.overlay",
+      "domain": "widget",
+      "summary": "Internal dismissible overlay viewport, dismissal, and release-consumption policy",
+      "sources": [
+        "runtime/overlay.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.page",
+      "domain": "widget",
+      "summary": "Page, Section, Heading, ParagraphText, and Flow composition",
+      "sources": [
+        "runtime/page.kry",
+        "runtime/page_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.paint",
+      "domain": "widget",
+      "summary": "Paint/drawing helpers",
+      "sources": [
+        "runtime/paint.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.paned_view",
+      "domain": "widget",
+      "summary": "PanedView split/layout/handle geometry, drag lifecycle, and change policy",
+      "sources": [
+        "runtime/paned_view.kry",
+        "runtime/paned_view_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "paned_view.split.clamped"
+      ]
+    },
+    {
+      "id": "widget.paragraph",
+      "domain": "widget",
+      "summary": "Paragraph metrics/default line-gap, layout spacing, line-step, height, line stride, alignment, and selectable line-index/local-offset policy",
+      "sources": [
+        "runtime/paragraph.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.plot",
+      "domain": "widget",
+      "summary": "Plot geometry and text policy",
+      "sources": [
+        "runtime/plot.kry",
+        "runtime/plot_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.popup",
+      "domain": "widget",
+      "summary": "Popup props",
+      "sources": [
+        "runtime/popup_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.popup_ownership",
+      "domain": "widget",
+      "summary": "Popup ancestry, branch ordering, input capture, focus acquisition/restoration, and owner retirement",
+      "sources": [
+        "runtime/popup_ownership.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.popup_policy",
+      "domain": "widget",
+      "summary": "Popup mode/input record/open-state, tooltip visibility, outside-dismissal, and Escape-close policy",
+      "sources": [
+        "runtime/popup_policy.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.primitive",
+      "domain": "widget",
+      "summary": "Background/Box/Line/Circle/Ring/Triangle primitive geometry policy",
+      "sources": [
+        "runtime/primitive.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.profile_header",
+      "domain": "widget",
+      "summary": "Profile header geometry/text placement plus profile pointer activation and profile image picker geometry/selection/click policy",
+      "sources": [
+        "runtime/profile_header.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.progress",
+      "domain": "widget",
+      "summary": "Progress layout policy",
+      "sources": [
+        "runtime/progress.kry",
+        "runtime/progress_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.radio",
+      "domain": "widget",
+      "summary": "Radio paint/layout and activation policy",
+      "sources": [
+        "runtime/radio.kry",
+        "runtime/radio_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.reorder",
+      "domain": "widget",
+      "summary": "Reorder metrics, handle/placeholder paint geometry, target-index, lifecycle/release gates, and result normalization policy",
+      "sources": [
+        "runtime/reorder.kry",
+        "runtime/reorder_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.router",
+      "domain": "widget",
+      "summary": "Router routes, state, props, and result",
+      "sources": [
+        "runtime/router_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.rows",
+      "domain": "widget",
+      "summary": "Info/form/button row sizing, wrapping, and layout fallback policy",
+      "sources": [
+        "runtime/rows.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.scene_tree",
+      "domain": "widget",
+      "summary": "Game2D scene node kind and flag values",
+      "sources": [
+        "runtime/scene_tree_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.scroll",
+      "domain": "widget",
+      "summary": "Scroll measurement, sizing, wheel, content-drag decision, thumb drag offset, scrollbar drag/release decision, and ensure-visible policy",
+      "sources": [
+        "runtime/scroll.kry",
+        "runtime/scroll_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.segmented_control",
+      "domain": "widget",
+      "summary": "SegmentedControl layout, gap, font fallback, wrapping, segment sizing, and selection policy",
+      "sources": [
+        "runtime/segmented_control.kry",
+        "runtime/segmented_control_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.selectable",
+      "domain": "widget",
+      "summary": "Selectable paint/layout and toggle policy",
+      "sources": [
+        "runtime/selectable.kry",
+        "runtime/selectable_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.separator",
+      "domain": "widget",
+      "summary": "Separator/Bullet layout and paint policy",
+      "sources": [
+        "runtime/separator.kry",
+        "runtime/separator_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.slider",
+      "domain": "widget",
+      "summary": "Slider composition, component/editor/hit layout, text paint geometry, and value/keyboard policy",
+      "sources": [
+        "runtime/slider.kry",
+        "runtime/slider_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "slider.ratio.clamped",
+        "slider.value.ratio.roundtrip.clamped",
+        "slider.pointer.ratio.clamped",
+        "slider.discrete.value.in.range"
+      ]
+    },
+    {
+      "id": "widget.spinbox",
+      "domain": "widget",
+      "summary": "Spinbox button-width default, layout, button input, and value policy",
+      "sources": [
+        "runtime/spinbox.kry",
+        "runtime/spinbox_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.style",
+      "domain": "widget",
+      "summary": "Style helpers",
+      "sources": [
+        "runtime/style.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "style.priority.deterministic.ordering",
+        "style.priority.absent.never.wins"
+      ]
+    },
+    {
+      "id": "widget.style_picker",
+      "domain": "widget",
+      "summary": "StylePicker props and option/selection/dropdown state policy",
+      "sources": [
+        "runtime/style_picker_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.style_sheet",
+      "domain": "widget",
+      "summary": "Style sheet evaluation helpers",
+      "sources": [
+        "runtime/style_sheet.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.surface",
+      "domain": "widget",
+      "summary": "Surface/container helpers",
+      "sources": [
+        "runtime/surface.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.swipe",
+      "domain": "widget",
+      "summary": "Swipe begin, drag, release, lifecycle, direction, default, and progress policy",
+      "sources": [
+        "runtime/swipe.kry",
+        "runtime/swipe_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.tab_bar",
+      "domain": "widget",
+      "summary": "TabBar sizing, scroll, keyboard index, reorder marker/drag lifecycle/release-consumption, tab pointer release-consumption, and double-click decision policy",
+      "sources": [
+        "runtime/tab_bar.kry",
+        "runtime/tab_bar_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.table_view",
+      "domain": "widget",
+      "summary": "TableView layout, scroll, scrollbar, cell geometry, header-angle normalization, header/row hot/pointer decisions, keyboard selection, activation, clear-selection, resize start/drag/clear/width lifecycle, and clipboard intent policy",
+      "sources": [
+        "runtime/table_view.kry",
+        "runtime/table_view_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.terminal_pane",
+      "domain": "widget",
+      "summary": "TerminalPane font, content, grid clamp, and scroll indicator metrics policy",
+      "sources": [
+        "runtime/terminal_pane.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.text",
+      "domain": "widget",
+      "summary": "Text composition, selectable pointer/drag/copy/show decisions, highlight geometry, and double-click line-selection policy",
+      "sources": [
+        "runtime/text.kry",
+        "runtime/text_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.text_input",
+      "domain": "widget",
+      "summary": "TextField/TextArea defaults, metrics, scroll, wrap thresholds, caret/IME stroke metrics, paint geometry, buffer-limit, cursor normalization, navigation, selection state/paint-span policy, double-click/pan decisions, text-buffer mutation/range/bracket policy, focus ownership, platform text-input sync, and edit-intent policy",
+      "sources": [
+        "runtime/text_input.kry",
+        "runtime/text_input_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.text_rows",
+      "domain": "widget",
+      "summary": "Source-preserving visual-row breaks, logical lines, heading metrics, caret affinity and point-to-row decisions",
+      "sources": [
+        "runtime/text_rows.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.theme",
+      "domain": "widget",
+      "summary": "Theme data/helpers and typed `ThemePolicy` resolution",
+      "sources": [
+        "runtime/theme.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.title_bar",
+      "domain": "widget",
+      "summary": "TitleBar effective state, layout, reservation, and paint geometry policy",
+      "sources": [
+        "runtime/title_bar.kry",
+        "runtime/title_bar_props.kry"
+      ],
+      "phase": 7,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.toast",
+      "domain": "widget",
+      "summary": "Toast style facts, request/render decision, duration, layout, text-placement, and truncation policy",
+      "sources": [
+        "runtime/toast.kry",
+        "runtime/toast_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.toggle",
+      "domain": "widget",
+      "summary": "Toggle composition, paint/layout, and value policy",
+      "sources": [
+        "runtime/toggle.kry",
+        "runtime/toggle_props.kry"
+      ],
+      "phase": 6,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.toolbar",
+      "domain": "widget",
+      "summary": "Toolbar, bottom icon row, and icon slider popup metrics/geometry/style-size/open/close policy",
+      "sources": [
+        "runtime/toolbar.kry",
+        "runtime/toolbar_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.transition",
+      "domain": "widget",
+      "summary": "Transition phase enum names",
+      "sources": [
+        "runtime/transition_props.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.transition_fade",
+      "domain": "widget",
+      "summary": "Transition fade alpha/easing policy",
+      "sources": [
+        "runtime/transition_fade.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.tree_view",
+      "domain": "widget",
+      "summary": "TreeView row/window, paint geometry, marker text, and row-selection decision policy",
+      "sources": [
+        "runtime/tree_view.kry",
+        "runtime/tree_view_props.kry"
+      ],
+      "phase": 8,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    },
+    {
+      "id": "widget.widget_kind",
+      "domain": "widget",
+      "summary": "Retained tree node kind and internal flag values",
+      "sources": [
+        "runtime/widget_kind.kry"
+      ],
+      "phase": 9,
+      "targets": [
+        "c",
+        "cpp",
+        "go"
+      ],
+      "status": "proposed",
+      "mechanism": "planned:policy-proof"
+    }
+  ]
+}

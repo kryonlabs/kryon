@@ -105,6 +105,28 @@ api-laws-test` and `make backend-capability-laws-test`.
 |---|---|---|
 | runtime parity | `make cross-target-laws-test` | C, Go, and JS runtime outputs agree |
 
+## Inventory
+
+[laws/inventory.json](../laws/inventory.json) is the machine-readable law
+inventory introduced by [phase 1](../plan/law/01-baseline-and-contracts.md)
+of the law plan. Every canonical widget module, KIR statement/expression
+construct, compiler pass, KRB operation and enforced law has a row with a
+stable dotted id, phase assignment, targets, status and evidence level.
+Statuses are `proposed`, `specified`, `model-proved`,
+`implementation-connected`, `integration-verified` and `deferred`; a test
+pass never promotes a proof status. `node tools/check-law-inventory.mjs`
+validates the inventory against `docs/CANONICAL_WIDGET_SURFACE.md`,
+`cmd/kir/kir.h` and the runtime module set on disk; `--report` renders a
+deterministic coverage table. Mutation tests live in
+`tests/law_inventory_test.mjs`. Both run under `make law-inventory-check`,
+part of `make laws-test`.
+
+`make law-release-boundary-check` (also part of `make laws-test`) probes the
+phase 1 dependency boundary: released surfaces (`include/`, `cmd/`,
+`runtime/`) must be free of proof-tier references, `vendor/bend` must match
+the pinned checker commit in `tools/bend-pin.json`, and Bend packages stay
+under `laws/`.
+
 ## Running
 
 - Everything: `make laws-test` (also part of `make test` and `preflight`)

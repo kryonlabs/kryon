@@ -1215,7 +1215,7 @@ backend-capabilities-check:
 backend-style-degradation-check:
 	sh tests/backend_style_degradation_test.sh .
 
-laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test law-inventory-check law-release-boundary-check
 
 .PHONY: bend-laws-test
 bend-laws-test:
@@ -1225,6 +1225,16 @@ bend-laws-test:
 .PHONY: focus-bend-laws-test
 focus-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h
 	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/focus_bend_laws_test.mjs
+
+# Phase 1 law-plan gates: inventory completeness and the proof-dependency boundary.
+.PHONY: law-inventory-check
+law-inventory-check:
+	node tools/check-law-inventory.mjs
+	node --test tests/law_inventory_test.mjs
+
+.PHONY: law-release-boundary-check
+law-release-boundary-check:
+	sh tools/check-law-release-boundary.sh .
 
 runtime-laws-test: $(SLIDER_LAWS_TEST) $(LAYOUT_LAWS_TEST) $(SEMANTIC_TREE_LAWS_TEST)
 	$(SLIDER_LAWS_TEST)
