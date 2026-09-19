@@ -10,8 +10,10 @@ Remaining:
 - Replace handwritten policy in Go/web host runtimes with generated decisions.
 - Execute menus, scroll_content, drag_drop, and composed_popup in JS with
   matching native/Go event sequences. Composition now runs its generated text
-  behavior checks in C/Go/JS. Extend Disabled/TableCell/Canvas scope
-  restoration, nesting and early-exit coverage.
+  behavior checks in C/Go/JS. The web runtime has queued mouse move/down/up/wheel
+  primitives and frame-scoped key/mouse queries; fixture-level routing/capture
+  promotion remains open. Extend Disabled/TableCell/Canvas scope restoration,
+  nesting and early-exit coverage.
 - Add real lowering for every supported expression form. Unsupported lowering
   now fails visibly instead of emitting the removed `kryon.expr` runtime
   placeholder, executable fixture generation rejects any placeholder calls, and

@@ -14,7 +14,7 @@ intent until rerun at the revision being delivered.
 |---|---|---|
 | Canonical API | Canonical plan records completed naming and release-call migrations; generated policy modules and surface guards exist. | Audit remaining behavior ownership. Do not repeat public renaming or the 34-call release-consumption migration. |
 | Web parity | `tests/generated_runtime_parity_test.sh` reports menus, scroll_content, drag_drop, and composed_popup as native/Go only; composition now executes its text composition, read-only, selection, clipboard, page navigation, newline, and word-delete checks in JS too. | Four fixtures still need JS execution. Correct the older claim that none of the composition JS cases execute; composition is now a three-backend fixture. |
-| Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, and shortcuts; no equivalent queued down/move/up/wheel driver is present there. | Reuse composition support. Add the missing lifecycle driver and connect it to actual shared decisions. Native DOM pointer handlers alone do not prove generated-runtime parity. |
+| Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, shortcuts, queued mouse move/down/up/wheel, and frame-scoped public key/mouse queries covered by `tests/web_input_driver_test.mjs`. | Reuse the driver primitives to connect lifecycle routing/capture decisions to actual shared fixtures. Native DOM pointer handlers alone do not prove generated-runtime parity. |
 | Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, the web runtime no longer exports that placeholder, `sizeof(fixed_array)` lowers to the declared capacity for module state, globals, and function locals; the fixed-array count idiom `sizeof(array) / sizeof(array[0])` lowers to executable JavaScript. | Add real lowering for the remaining supported expression forms before claiming condition/activation parity. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
 | Theme switching | `src/ui/style_pack_source.c` implements `SetStyleTheme`; Go registers source packs in `go/kryon/style_pack.go`, but no Go `SetStyleTheme` definition was found. | Complete source retention and theme re-resolution in Go. |
@@ -106,8 +106,9 @@ record. No percentage-complete claim based only on file counts or scanners.
 ## P1 — Make the remaining web fixtures executable
 
 - [ ] Add queued pointer down/move/up and wheel events, preserving ordering,
-  pointer ownership, capture, cancellation, and focus transitions. Extend the
-  existing composition driver only where required.
+  pointer ownership, capture, cancellation, and focus transitions. The web
+  runtime now has queued mouse move/down/up/wheel primitives and frame-scoped
+  key/mouse queries; ownership/capture fixture promotion remains open.
 - [ ] Route Go context-menu activation/outside-close and web event-loop
   decisions through generated policies. Keep queues and owner storage native.
 - [ ] Replace unresolved expression lowering in supported executable paths

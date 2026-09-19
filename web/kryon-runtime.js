@@ -68,6 +68,8 @@ export const KeyC = 67;
 export const KeyV = 86;
 export const KeyX = 88;
 export const MouseButtonLeft = 0;
+export const MouseButtonRight = 1;
+export const MouseButtonMiddle = 2;
 export const KEY_SPACE = KeySpace;
 export const KEY_ESCAPE = KeyEscape;
 export const KEY_ENTER = KeyEnter;
@@ -90,6 +92,8 @@ export const KEY_RIGHT_SHIFT = KeyRightShift;
 export const KEY_RIGHT_CONTROL = KeyRightControl;
 export const KEY_RIGHT_ALT = KeyRightAlt;
 export const MOUSE_BUTTON_LEFT = MouseButtonLeft;
+export const MOUSE_BUTTON_RIGHT = MouseButtonRight;
+export const MOUSE_BUTTON_MIDDLE = MouseButtonMiddle;
 
 let activeTheme = null;
 let activeThemeFamily = null;
@@ -323,14 +327,72 @@ export function createRuntime(options = {}) {
       deferredTextEvents: 0,
       dropdownOpen: null,
       focusOrder: [],
-      lastFocusOrder: []
+      lastFocusOrder: [],
+      keyPressed: Object.create(null),
+      keyDown: Object.create(null),
+      mouse: {
+        x: 0, y: 0, dx: 0, dy: 0, wheel: 0,
+        down: Object.create(null),
+        pressed: Object.create(null),
+        released: Object.create(null)
+      }
     }
   };
   rt.QueueText = (text) => { rt.input.events.push({ type: "text", text: String(text) }); };
-  rt.QueueKey = (key) => { rt.input.events.push({ type: "key", key }); };
-  rt.QueueShiftKey = (key) => { rt.input.events.push({ type: "key", key, shift: true }); };
-  rt.QueueShortcut = (key) => { rt.input.events.push({ type: "shortcut", key }); };
-  rt.QueueTap = (x, y) => { rt.input.events.push({ type: "tap", x: Number(x), y: Number(y) }); };
+  rt.QueueKey = (key) => {
+    const k = Number(key);
+    rt.input.events.push({ type: "key", key: k });
+    rt.input.keyPressed[k] = true;
+    rt.input.keyDown[k] = true;
+  };
+  rt.QueueShiftKey = (key) => {
+    const k = Number(key);
+    rt.input.events.push({ type: "key", key: k, shift: true });
+    rt.input.keyPressed[k] = true;
+    rt.input.keyDown[k] = true;
+    rt.input.keyPressed[KeyLeftShift] = true;
+    rt.input.keyDown[KeyLeftShift] = true;
+  };
+  rt.QueueShortcut = (key) => {
+    const k = Number(key);
+    rt.input.events.push({ type: "shortcut", key: k });
+    rt.input.keyPressed[k] = true;
+    rt.input.keyDown[k] = true;
+    rt.input.keyPressed[KeyLeftControl] = true;
+    rt.input.keyDown[KeyLeftControl] = true;
+  };
+  rt.QueueMouseMove = (x, y) => {
+    const nx = Number(x), ny = Number(y);
+    rt.input.mouse.dx += nx - rt.input.mouse.x;
+    rt.input.mouse.dy += ny - rt.input.mouse.y;
+    rt.input.mouse.x = nx;
+    rt.input.mouse.y = ny;
+  };
+  rt.QueueMouseButtonDown = (button, x, y) => {
+    const b = Number(button);
+    rt.QueueMouseMove(x, y);
+    rt.input.mouse.down[b] = true;
+    rt.input.mouse.pressed[b] = true;
+    rt.input.events.push({ type: "mouse", action: "down", button: b, x: Number(x), y: Number(y) });
+    if (b === MouseButtonLeft)
+      rt.input.events.push({ type: "tap", x: Number(x), y: Number(y) });
+  };
+  rt.QueueMouseButtonUp = (button, x, y) => {
+    const b = Number(button);
+    rt.QueueMouseMove(x, y);
+    rt.input.mouse.down[b] = false;
+    rt.input.mouse.released[b] = true;
+    rt.input.events.push({ type: "mouse", action: "up", button: b, x: Number(x), y: Number(y) });
+  };
+  rt.QueueMouseWheel = (delta) => {
+    const d = Number(delta);
+    rt.input.mouse.wheel += d;
+    rt.input.events.push({ type: "wheel", delta: d });
+  };
+  rt.QueueTap = (x, y) => {
+    rt.QueueMouseButtonDown(MouseButtonLeft, x, y);
+    rt.QueueMouseButtonUp(MouseButtonLeft, x, y);
+  };
   rt.SetClipboardText = (text) => { rt.input.clipboard = String(text); };
   rt.ClipboardText = () => rt.input.clipboard;
   rt.SetSelection = (focusID, anchor, cursor) => {
@@ -375,7 +437,10 @@ export function instanceState(rt, type, key, create) {
   return entry;
 }
 
+let activeRuntime = null;
+
 export function beginFrame(rt) {
+  activeRuntime = rt;
   rt.frame = [];
   rt.statements = [];
   rt.hostCalls = [];
@@ -406,11 +471,20 @@ export function endFrame(rt) {
       rt.input.events = [];
     else
       rt.input.deferredTextEvents = rt.input.events.length;
+    rt.input.keyPressed = Object.create(null);
+    rt.input.keyDown = Object.create(null);
+    rt.input.mouse.dx = 0;
+    rt.input.mouse.dy = 0;
+    rt.input.mouse.wheel = 0;
+    rt.input.mouse.pressed = Object.create(null);
+    rt.input.mouse.released = Object.create(null);
     for (const id of rt.input.preedit.keys()) {
       if (id !== rt.input.focus || !rt.input.focusOrder.includes(id))
         rt.input.preedit.delete(id);
     }
   }
+  if (activeRuntime === rt)
+    activeRuntime = null;
   rt.instanceFrame++;
   return snapshot(rt);
 }
@@ -10949,6 +11023,10 @@ export function GetUIClipboardTextValue() { return ""; }
 export function UpdateFileDialog() { return 0; }
 
 
+function runtimeForInput(rt = activeRuntime) {
+  return rt?.input ? rt : null;
+}
+
 export function AcceleratorPressed(rt, accelerator) {
   const input = rt?.input;
   if (!input || !accelerator)
@@ -10981,11 +11059,56 @@ export function AcceleratorPressed(rt, accelerator) {
   return id;
 }
 
-export function IsKeyPressed(_key) { return false; }
+export function IsKeyPressed(key) {
+  const rt = runtimeForInput();
+  return !!rt?.input?.keyPressed?.[Number(key)];
+}
 
-export function IsKeyDown(_key) { return false; }
+export function IsKeyDown(key) {
+  const rt = runtimeForInput();
+  return !!rt?.input?.keyDown?.[Number(key)];
+}
 
-export function IsMouseButtonReleased(_button) { return false; }
+export function IsMouseButtonPressed(button) {
+  const rt = runtimeForInput();
+  return !!rt?.input?.mouse?.pressed?.[Number(button)];
+}
+
+export function IsMouseButtonDown(button) {
+  const rt = runtimeForInput();
+  return !!rt?.input?.mouse?.down?.[Number(button)];
+}
+
+export function IsMouseButtonReleased(button) {
+  const rt = runtimeForInput();
+  return !!rt?.input?.mouse?.released?.[Number(button)];
+}
+
+export function IsMouseButtonUp(button) {
+  return !IsMouseButtonDown(button);
+}
+
+export function GetMousePosition() {
+  const mouse = runtimeForInput()?.input?.mouse;
+  return { x: mouse?.x || 0, y: mouse?.y || 0 };
+}
+
+export function GetMouseX() { return GetMousePosition().x; }
+
+export function GetMouseY() { return GetMousePosition().y; }
+
+export function GetMouseDelta() {
+  const mouse = runtimeForInput()?.input?.mouse;
+  return { x: mouse?.dx || 0, y: mouse?.dy || 0 };
+}
+
+export function GetMouseWheelMove() {
+  return runtimeForInput()?.input?.mouse?.wheel || 0;
+}
+
+export function GetMouseWheelMoveV() {
+  return { x: 0, y: GetMouseWheelMove() };
+}
 
 export function GetThemeMetrics() {
   return {

@@ -9,7 +9,8 @@ trap 'rm -rf "$work"' EXIT INT TERM
     runtime/style_sheet.kry runtime/surface.kry runtime/instance.kry \
     runtime/kss_parser.kry runtime/kss_formatter.kry
 cp web/kryon-runtime.js web/text_edit.js web/text_dom.js "$work/"
-cp tests/keyboard_policy_test.mjs tests/web_text_edit_test.mjs "$work/"
+cp tests/keyboard_policy_test.mjs tests/web_text_edit_test.mjs tests/web_input_driver_test.mjs "$work/"
 printf '%s\n' '{"type":"module"}' > "$work/package.json"
 node "$work/keyboard_policy_test.mjs"
 node "$work/web_text_edit_test.mjs"
+node "$work/web_input_driver_test.mjs"
