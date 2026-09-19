@@ -6,6 +6,7 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_check.h"
+#include "kir_laws.h"
 #include "k2c_lower.h"
 #include "k2c_plan9.h"
 
@@ -28,6 +29,8 @@ main(int argc, char **argv)
     const char *out_dir = NULL;
     int no_main = 0;
     int strict = 0;
+    int check_ok;
+    int laws_ok;
     int plan9 = 0;
     int unresolved = 0;
     KirProgram **progs;
@@ -81,7 +84,9 @@ main(int argc, char **argv)
         }
         k2c_build_syms(progs[i], &syms[i]);
     }
-    if(!KirCheckPrograms(progs, file_count, strict)) {
+    check_ok = KirCheckPrograms(progs, file_count, strict);
+    laws_ok = KirCheckLaws(progs, file_count, strict);
+    if(!check_ok || !laws_ok) {
         for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
         free(progs);
         free(syms);

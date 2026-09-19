@@ -5,6 +5,7 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_check.h"
+#include "kir_laws.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,8 @@ main(int argc, char **argv)
 {
     const char *root = NULL;
     const char *out_dir = NULL;
+    int check_ok;
+    int laws_ok;
     int i;
 
     for(i = 1; i < argc; i++) {
@@ -44,7 +47,9 @@ main(int argc, char **argv)
         KirProgram *program = kir_parse_file(argv[i], root);
         if(program == NULL)
             return 1;
-        if(!KirCheckPrograms(&program, 1, 0)) {
+        check_ok = KirCheckPrograms(&program, 1, 0);
+            laws_ok = KirCheckLaws(&program, 1, 0);
+            if(!check_ok || !laws_ok) {
             KirProgramFree(program);
             return 1;
         }

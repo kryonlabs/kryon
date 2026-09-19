@@ -145,4 +145,12 @@ if "$k2c" --root "$root" -o "$work/c" "$root/tests/spec/bad_import.kry" 2>"$work
 fi
 grep -Fq "#import target contains a character that cannot appear in an include path" "$work/bad_import.err"
 
+# Blocked UI surface calls must fail the image-surface law under strict
+# compiles instead of passing as opaque host calls.
+if "$k2c" --strict --no-main --root "$root" -o "$work/c" "$root/tests/spec/law_texture_call.kry" 2>"$work/law_texture.err"; then
+    echo "spec blocked UI surface call did not fail in k2c" >&2
+    exit 1
+fi
+grep -Fq "law image.surface.no_low_level_calls" "$work/law_texture.err"
+
 echo "spec ok"

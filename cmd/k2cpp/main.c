@@ -9,6 +9,7 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_check.h"
+#include "kir_laws.h"
 #include "k2cpp_lower.h"
 
 #include <stdio.h>
@@ -30,6 +31,8 @@ main(int argc, char **argv)
     const char *out_dir = NULL;
     int no_main = 0;
     int strict = 0;
+    int check_ok;
+    int laws_ok;
     KirProgram **progs;
     K2cppModuleSyms *syms;
     int file_count;
@@ -76,7 +79,9 @@ main(int argc, char **argv)
         }
         k2cpp_build_syms(progs[i], &syms[i]);
     }
-    if(!KirCheckPrograms(progs, file_count, strict)) {
+    check_ok = KirCheckPrograms(progs, file_count, strict);
+    laws_ok = KirCheckLaws(progs, file_count, strict);
+    if(!check_ok || !laws_ok) {
         for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
         free(progs);
         free(syms);

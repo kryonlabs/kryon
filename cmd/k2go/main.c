@@ -9,6 +9,7 @@
 #include "kir.h"
 #include "kir_parse.h"
 #include "kir_check.h"
+#include "kir_laws.h"
 #include "k2go_lower.h"
 
 #include <stdio.h>
@@ -31,6 +32,8 @@ main(int argc, char **argv)
     const char *pkg = "krygen";
     int no_main = 0;
     int strict = 0;
+    int check_ok;
+    int laws_ok;
     int runtime_implementation = 0;
     KirProgram **progs;
     int file_count;
@@ -82,7 +85,9 @@ main(int argc, char **argv)
             return 1;
         }
     }
-    if(!KirCheckPrograms(progs, file_count, strict)) {
+    check_ok = KirCheckPrograms(progs, file_count, strict);
+    laws_ok = KirCheckLaws(progs, file_count, strict);
+    if(!check_ok || !laws_ok) {
         for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
         free(progs);
         return 1;
