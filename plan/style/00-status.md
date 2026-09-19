@@ -15,7 +15,9 @@ missing-source diagnostics, ordered `@layer` declarations, `@version`, and
 file/line/column provenance. Strict `.kry` gained fixed-capacity array
 indexing and borrowed string byte access to make that implementation
 possible; C and Go hosts consume thin shims, and the hand-written per-backend
-parsers are gone.
+parsers are gone. `plan/KSS_HOST_SERVICE_LEDGER.md` is now the maintained
+P4-01 inventory for parser, formatter, resolver, generated registration, and
+future web-reference call sites.
 
 | Order | Remaining area | Task document |
 |---|---|---|

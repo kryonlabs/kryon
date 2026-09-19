@@ -181,10 +181,11 @@ Browser-only CSS features remain explicitly distinct from native StyleData.
 
 ## P4 — Finish style backend conformance
 
-- [ ] Verify all hosts/tools delegate grammar and shared semantic decisions to
+- [x] Verify all active hosts/tools delegate grammar and shared semantic decisions to
   maintained `.kry` sources. Include all KSS formatting, diagnostics, selector
-  serialization, and CSS mapping decisions; output sinks remain host services. Remove any residual independent implementations
-  discovered by the audit, not the thin I/O/generated-code shims.
+  serialization, and active target mapping decisions; output sinks remain host
+  services. Remove any residual independent implementations discovered by the
+  audit, not the thin I/O/generated-code shims.
 - [ ] Reconcile the declared value/selector contract and diagnostics across
   typed and web surfaces. Retain intentional web CSS extensions; resolve or
   explicitly document divergences such as numeric `px` handling. Do not assume

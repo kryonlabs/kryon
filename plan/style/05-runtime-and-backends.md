@@ -4,6 +4,9 @@
   code from the shared `.kry` implementation in `02-kss-language.md`. Hosts may
   read assets, supply platform capabilities, and paint resolved values; they
   must not interpret tokens, selectors, overlays, or cascade precedence.
+  Status: complete for active C/Go/style-tool call sites. The maintained
+  inventory is `plan/KSS_HOST_SERVICE_LEDGER.md`, and
+  `make kss-host-ledger-check` fails on unclassified production call sites.
 
 - Audit `go/kryon/render.go` fallback assignments, including the default border
   width/material near the frame-op dispatcher and zero-opacity/default-border
