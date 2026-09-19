@@ -1,7 +1,9 @@
 # Text input ownership and verification
 
-Editing decisions live in `runtime/text_input.kry`. The C, Go, and JavaScript
-hosts apply generated decisions and store the resulting text and selection.
+Editing decisions live in `runtime/text_input.kry`. The active C and Go hosts
+apply generated decisions and store the resulting text and selection. The old
+JavaScript/web host path is paused and kept only as future-roadmap reference
+material.
 
 | Path | Selection and focus ownership | Platform services |
 | --- | --- | --- |

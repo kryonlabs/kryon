@@ -1,8 +1,9 @@
 # Portable scalar programming
 
-Checked scalar functions share one KIR emitter for C, C++, native Go, and
-JavaScript. This is the tested portable core of Kry, not a complete systems
-language. Use `--strict` to reject source outside that core.
+Checked scalar functions share one KIR emitter for C, C++, and native Go. This
+is the tested portable core of Kry, not a complete systems language. Use
+`--strict` to reject source outside that core. The old JavaScript scalar path is
+paused with the broader JS/web target.
 
 ```kry
 step :: (value: i32) -> i32 {
@@ -15,18 +16,18 @@ third :: () -> u64 {
 }
 ```
 
-`step(2147483647)` returns `-2147483648` on all four targets. `third()` returns
-`6148914691236517205`; JavaScript represents this result as `6148914691236517205n`.
+`step(2147483647)` returns `-2147483648` on the active scalar targets.
+`third()` returns `6148914691236517205`.
 
 ## Types and operations
 
-| Kry type | C/C++ representation | Go representation | JavaScript representation |
-|---|---|---|---|
-| `i8`, `i16`, `i32`, `i64` | corresponding `intN_t` | corresponding `intN` | Number up to 32 bits; BigInt for 64 bits |
-| `u8`, `u16`, `u32`, `u64` | corresponding `uintN_t` | corresponding `uintN` | Number up to 32 bits; BigInt for 64 bits |
-| `f32` | `float` | `float32` | Number rounded with `Math.fround` |
-| `f64` | `double` | `float64` | Number |
-| `bool` | `bool` | `bool` | Boolean |
+| Kry type | C/C++ representation | Go representation |
+|---|---|---|
+| `i8`, `i16`, `i32`, `i64` | corresponding `intN_t` | corresponding `intN` |
+| `u8`, `u16`, `u32`, `u64` | corresponding `uintN_t` | corresponding `uintN` |
+| `f32` | `float` | `float32` |
+| `f64` | `double` | `float64` |
+| `bool` | `bool` | `bool` |
 
 The familiar spellings `int`, `unsigned int`, `float`, `double`, and standard
 fixed-width C typedefs are recognized. Prefer explicit widths in portable code.
@@ -38,7 +39,7 @@ Pointer-sized integers and C layout-dependent types are outside this core.
   minimum divided by `-1` returns signed minimum; its remainder is zero.
 - Signed right shift extends the sign bit. Left shift wraps to the operand width.
   Negative shift counts and counts at least the width trap.
-- Division or remainder by zero traps: C/C++ abort, Go panics, JS throws RangeError.
+- Division or remainder by zero traps: C/C++ abort, Go panics.
 - Literal values must fit their contextual type. Use an explicit cast when
   narrowing is intended. Integer-to-integer casts retain the low destination bits.
 - Float-to-integer casts require a value in the destination range before
@@ -47,9 +48,6 @@ Pointer-sized integers and C layout-dependent types are outside this core.
   toward zero.
 - Numeric-to-boolean casts test against zero. Boolean-to-numeric casts yield 0 or 1.
   Conditions and logical operators require booleans; there is no implicit truthiness.
-- JS i64/u64 callers should pass BigInt. Safe integral Numbers are accepted;
-  unsafe or fractional Numbers are rejected. Integer parameters normalize to
-  their declared width, and boolean parameters require actual Booleans.
 - f32 expression results and compound updates round to f32. Full IEEE exception,
   literal-range, and conversion-rounding conformance is still unfinished.
 
@@ -85,9 +83,10 @@ need standard headers but no UI inspection header. Pure generated Go omits its
 UI runtime import.
 
 `language-test` compiles and runs the same fixture in the active scalar targets.
-The old JavaScript scalar output path is paused with the broader JS/web target.
 It covers cleanup, integer overflow, 64-bit exactness, signed division and shifts,
 casts, f32 rounding, evaluation order, short-circuiting, and arithmetic traps.
+The old JavaScript scalar output path is paused with the broader JS/web target
+and is not an active verification target.
 
 ## Current limits
 

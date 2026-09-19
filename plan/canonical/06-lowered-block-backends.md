@@ -3,7 +3,8 @@
 Public Scroll/Popup/Disabled/TableCell/Canvas names are canonical and native/Go
 scope helpers are private. Native and Go have substantial executable coverage.
 
-Web gaps reconciled against source and parity output on 2026-09-18:
+Historical web gaps reconciled against source and parity output on 2026-09-18
+before the JS/web pause:
 
 - `tests/generated_runtime_parity_test.sh` generates menus, scroll_content,
   drag_drop, and composed_popup but its JS runner does not execute them.
@@ -20,5 +21,5 @@ Web gaps reconciled against source and parity output on 2026-09-18:
   disabled/captured children; removing names alone is not behavior parity.
 
 Implement real lowering/host services without compatibility aliases, then run
-identical event sequences and compare state. Add web coverage incrementally,
-but do not label a fixture three-backend parity until all three execute it.
+identical event sequences and compare state. Keep this as future web-roadmap input; do not label any paused JS fixture as
+current parity evidence until a redesigned web-native target executes it.

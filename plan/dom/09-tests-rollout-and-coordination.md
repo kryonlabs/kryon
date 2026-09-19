@@ -8,8 +8,9 @@ on KSS and `.kry` widget policy.
 - `git diff --check` for every touched path.
 - Parser whitelist count check when widget names change.
 - `tests/public_api_names_test.sh` when runtime exports or public names change.
-- `make k2js-syntax-test` for compiler/runtime/browser DOM coverage when the
-  tree is not blocked by unrelated parallel work.
+- Future web-native compiler/runtime/browser DOM coverage once the paused web
+  target is redesigned and reactivated. Do not use `k2js` gates as current
+  completion evidence.
 - Focused direct runtime smokes for narrow DOM aliases.
 - Browser DOM and inspector tests for mounted behavior.
 

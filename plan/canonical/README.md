@@ -21,8 +21,9 @@ the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.
 - Audited all 34 C release-consumption calls: they apply generated decisions;
   the separate `ConsumeRelease` definition is host input state. See the shared
   surface document for the file/owner table.
-- Added generated JavaScript and Go keyboard policy tests. Native focused
-  tests cover capture, simultaneous keys, and release boundaries.
+- Added generated web and Go keyboard policy tests before the JS/web pause.
+  Native focused tests cover capture, simultaneous keys, and release boundaries.
+  Historical JS/web checks no longer count as current completion evidence.
 - Updated the browser-generated table column fixture to canonical
   `TableColumnGroup`/`TableColumn` names.
 - Removed obsolete per-button style overrides from the button example; its
@@ -30,8 +31,9 @@ the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.
 - Web lowering consumes native paint-scope end markers instead of leaking them
   into recorded statements. Parent-path metadata owns the declarative tree;
   the separate disabled-input stack retains executable teardown.
-- Three-backend parity now requires Node instead of reporting JS success after
-  skipping it. Rendering assertions explicitly select a style pack.
+- Historical three-backend parity required Node instead of reporting JS success
+  after skipping it. That path is now paused; rendering assertions explicitly
+  select a style pack.
 - Removed separate standing test/execution documents; their commands and order
   are below. Their deletion does not mean all runtime behavior is verified.
 
@@ -41,8 +43,9 @@ the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.
    (`02`, `03`, `07`). Public names alone are not evidence of shared execution.
 2. Finish text ownership and layout decisions (`04`, `05`). Keep true platform
    services native; do not replace them with aliases or forwarding wrappers.
-3. Remove web expression placeholders and complete executable block paths
-   (`06`, `08`), then run matched event sequences on C, Go, and JS.
+3. Keep historical web expression-placeholder work as future roadmap input.
+   For current completion, prove matched event sequences on active C and Go
+   surfaces; future web-native work must be redesigned before JS is counted.
 4. Map every requirement to source ownership and passing tests before deleting
    its remaining plan document.
 

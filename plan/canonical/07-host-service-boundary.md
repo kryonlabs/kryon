@@ -14,5 +14,7 @@ C release-call classification. Complete the inventory at behavior granularity:
 - Terminal: retain only reusable runtime/host primitives in Kryon. Kapsule's
   terminal emulator and product behavior belong in Kapsule.
 
-Done when every retained native/Go/JS path has either a specific service reason
+Done when every retained native/Go path has either a specific service reason
 or a shared `.kry` policy owner, with no old API adapters left in maintained use.
+The paused JS/web path is future-roadmap reference material, not a current
+completion gate.

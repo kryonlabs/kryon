@@ -1,7 +1,8 @@
 # KSS language: remaining work
 
 Implemented and verified (single implementation in `runtime/kss_parser.kry`,
-lowered to C, Go, and JavaScript by the shared transpilers):
+lowered to active C and Go hosts by the shared transpilers; old JavaScript
+lowering is paused and kept only as future-roadmap reference material):
 
 - `@theme` token overlays and typed environment axes (`theme`, `contrast`,
   `density`, `pointer`, `platform`) with closed values, parse-time matching,
@@ -13,8 +14,8 @@ lowered to C, Go, and JavaScript by the shared transpilers):
 - `@version`, per-rule file/line/column provenance, per-token origin kinds,
   and diagnostics that name the offending file, line, and column.
 - Strict .kry gained fixed-capacity array indexing and borrowed string byte
-  access (`base[index]`, `text.length`) with C/Go/JS parity; the shared spec
-  test executes the contract through Go and JavaScript.
+  access (`base[index]`, `text.length`) with active C/Go parity. Historical JS
+  checks are no longer current completion evidence.
 
 Remaining:
 
@@ -38,7 +39,8 @@ Remaining:
   - Color values: `#rrggbb`, `#rrggbbaa`, color tokens, and the three
     named colors above (short `#rgb` hex is not accepted). Unsupported: `color-mix(...)` and any computed color
     function - these need a deterministic rounding spec (integer pipeline in
-    f64, no float division) before they can match across C/Go/JS.
+    f64, no float division) before they can match across active C/Go hosts and
+    any future web-native target.
   - Number values: decimal literals with optional sign, fraction, and
     exponent; `ms`/`s` duration suffixes on duration-token and
     duration-property positions. Divergence recorded: web mapping also
@@ -80,20 +82,18 @@ Remaining:
   the web layer has no pack registry, so variant selection there is the
   parse environment's `variant` field by design. Remaining: surface the
   active variant in the inspector (06).
-- Done: matched C/Go/JS fixtures and invalid-input coverage. One fixture
+- Done: matched C/Go fixtures and invalid-input coverage. One fixture
   (`tests/fixtures/kss/matched.kss` + `matched_module.kss`) drives the
-  generated C parser (provenance asserted via `KssBegin`/`KssStep`), the Go
-  module, and the web runtime with identical winners; truncation sweeps and
-  deterministic byte-mutation fuzz run in all three suites (C 4000
-  iterations, Go 6000, web 500+truncations) with liveness guaranteed.
+  generated C parser (provenance asserted via `KssBegin`/`KssStep`) and the Go
+  module with identical winners. Historical web runtime fixture results are
+  paused reference material; truncation sweeps and deterministic byte-mutation
+  fuzz remain current evidence for active C and Go hosts.
 - Done: hot-cursor split in `kss_parser.kry`. The per-byte lexical functions
   thread a small `KssCursor` (source/pos/line/column/file) while the full
   parser state only moves at statement level; mid-tier functions sync
-  `p.cursor` before parser-level calls and after nested parses. Together with
-  the k2js copy elisions (call-site `copyValue` skipped for direct calls;
-  same-module record parameters passed by reference under the reassign-from-
-  result discipline) this cut web sheet parsing ~30x (3 KB sheet:
-  6.2 s -> 0.2 s) with C/Go behavior unchanged. Follow-up if needed: avoid
+  `p.cursor` before parser-level calls and after nested parses. Historical
+  k2js copy-elision notes remain future web-roadmap input; active C/Go behavior
+  is unchanged. Follow-up if needed: avoid
   zero-building parser-embedding result structs (`KssRuleResult` & co.) per
   declaration.
 

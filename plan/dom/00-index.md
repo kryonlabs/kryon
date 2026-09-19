@@ -1,6 +1,8 @@
 # DOM Plan Index
 
-Status: planning contract for the Kry web-native DOM path.
+Status: future planning contract for the Kry web-native DOM path. The old
+JavaScript/web target is paused; this plan must not be read as a current release
+gate until web work resumes under the roadmap.
 
 This folder breaks the remaining DOM work into ten implementation documents.
 The target is a web authoring surface where `.kry` owns document structure,
@@ -11,8 +13,8 @@ KSS owns styling, and generated JavaScript owns logic and runtime glue.
 1. `00-index.md` defines the plan map and completion rules.
 2. `01-dom-node-identity.md` defines the stable identity every DOM-producing
    Kry node must expose.
-3. `02-compiler-metadata.md` defines how k2js should emit identity metadata
-   before runtime fallback is needed.
+3. `02-compiler-metadata.md` defines how a future web-native compiler should
+   emit identity metadata before runtime fallback is needed.
 4. `03-source-ranges.md` defines full source-span coverage for editor and
    devtools lookup.
 5. `04-native-element-surface.md` defines how Kry widget names map to browser

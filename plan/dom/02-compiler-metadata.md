@@ -1,7 +1,8 @@
 # Compiler Metadata
 
-Goal: k2js emits DOM metadata from `.kry` syntax instead of letting the runtime
-guess structure later.
+Goal: the future web-native compiler emits DOM metadata from `.kry` syntax
+instead of letting the runtime guess structure later. The old `k2js` path is
+paused and is not a current release target.
 
 ## Scope
 
@@ -34,8 +35,8 @@ Compiler metadata applies to:
 
 ## Done When
 
-- Generated JS can be inspected and shows metadata attached to DOM-producing
-  runtime calls.
+- Future generated web output can be inspected and shows metadata attached to
+  DOM-producing runtime calls.
 - No supported expression-backed DOM node depends on index-only fallback when
   the compiler has enough source information.
 - A failing compiler metadata path fails a focused test, not only a browser

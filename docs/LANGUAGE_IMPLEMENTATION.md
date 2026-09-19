@@ -1,7 +1,9 @@
 # C replacement implementation status
 
 The requested goal is a systems language that replaces application C while
-continuing to transpile through KIR to C, Go, JavaScript, and other targets.
+continuing to transpile through KIR to C, Go, KRB, and other active targets.
+The old JavaScript/web target is paused and tracked separately as future web
+roadmap work.
 That goal is **not complete**. This file records the implemented foundation and
 the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
 
@@ -18,18 +20,18 @@ the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
   declarations the same way the emitter resolves them.
 - Shared lexical cleanup lowering for normal block exits, returns, loop breaks,
   and loop continuation. Return values are evaluated before cleanup.
-- One structured statement emitter for checked scalar C/C++/Go/JS functions:
+- One structured statement emitter for checked scalar C/C++/Go functions:
   declarations, assignments, calls, conditionals, while loops, and early exits.
-- Fixed-width integer arithmetic with wrapping overflow, exact JS BigInt i64/u64,
-  arithmetic signed shifts, and traps for invalid division, shifts, and casts.
+- Fixed-width integer arithmetic with wrapping overflow, arithmetic signed
+  shifts, and traps for invalid division, shifts, and casts.
 - Left-to-right operand/argument evaluation and lazy logical/conditional arms.
-- Explicit integer narrowing, numeric/boolean casts, and JS f32 rounding.
-- Executable C/C++/Go/JS numeric and cleanup parity fixtures, arithmetic trap
+- Explicit integer narrowing and numeric/boolean casts.
+- Executable C/C++/Go numeric and cleanup parity fixtures, arithmetic trap
   checks, and negative source diagnostic tests.
 - Removed duplicate backend cleanup implementations and the Go cgo generator.
   Explicit C ABI imports now fail in Go; native host/package bindings remain.
-- JS execution of module/host call statements, scalar while/switch control flow,
-  and increment/decrement statements.
+- Historical JS execution experiments remain in the tree only as paused
+  reference material for a future web-native target.
 - Go output omits its UI runtime import when generated code does not use it.
 
 ## Remaining: complete typed KIR

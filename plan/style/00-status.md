@@ -7,7 +7,9 @@ shipped behavior is documented in [API.md](../../docs/API.md).
 An audit item means coverage has not been established, not that the feature is absent.
 
 Shipped since the last audit: the KSS grammar now exists once in
-`runtime/kss_parser.kry` and is lowered to C, Go, and JavaScript. That module
+`runtime/kss_parser.kry` and is lowered to active C and Go hosts. The old
+JavaScript lowering path is paused and no longer counts as current completion
+evidence. That module
 implements `@theme` overlays, typed `@env` axes, `@import` with cycle and
 missing-source diagnostics, ordered `@layer` declarations, `@version`, and
 file/line/column provenance. Strict `.kry` gained fixed-capacity array

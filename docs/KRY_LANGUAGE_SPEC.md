@@ -8,14 +8,17 @@ Kry is intentionally C-close: expressions and types stay familiar to C, while
 the frontend owns declarations, compile-time guards, UI frame structure, and
 KIR emission.
 
-The required pipeline is:
+The active pipeline is:
 
 ```text
 .kry -> KIR -> C
 .kry -> KIR -> Go
-.kry -> KIR -> JS
 .kry -> KIR -> KRB
 ```
+
+The old `.kry -> KIR -> JS` path is paused. It remains in the tree as
+experimental reference material for the future web-native roadmap target, not
+as part of the supported language contract.
 
 Backends may accept `.kry` directly as a CLI convenience, but they must behave
 as if the source was first lowered into KIR. Unsupported behavior must be
@@ -237,7 +240,7 @@ these areas are being migrated.
 The checker also annotates known expression types in ordinary builds, without
 rejecting unresolved imported C/runtime symbols. KIR dumps expose these types.
 `make language-test` runs expression-tree tests and executes matching numeric
-and cleanup fixtures through C, C++, Go, and JavaScript, including arithmetic
+and cleanup fixtures through the active scalar targets, including arithmetic
 traps and negative diagnostics. See [portable scalar programming](LANGUAGE_SCALARS.md)
 for the exact numeric contract and build commands.
 
@@ -272,16 +275,15 @@ Rules:
   in record fields.
 - `text[index]` reads one byte of a `string` as `u8`. String bytes and
   `text.length` are read-only; assigning to them is a strict error.
-- Backends lower these identically: C uses array members and `String` views,
-  Go uses fixed arrays and native string indexing, JS routes reads through the
-  byte-aware `kryon.index` helper and copies array fields element-wise.
-  `tests/spec/spec_test.sh` executes the shared contract through Go and
-  JavaScript.
+- Active backends lower these identically: C uses array members and `String`
+  views, and Go uses fixed arrays and native string indexing. The paused JS
+  path previously routed reads through a byte-aware helper; it is not current
+  conformance evidence.
 - C/C++ output lowers `record.field[index]` and `text[index]` through the
   `KRYON_INDEX` macro. Generated headers include `kry_bounds.h` directly,
   so indexing works without importing the UI umbrella header. Builds that define `KRYON_BOUNDS_CHECK` trap on
   out-of-range indexes with a diagnostic naming the array; release builds
-  compile to plain indexing. Go and JS always bounds-check natively.
+  compile to plain indexing. Go bounds-checks natively.
 
 ## Trust model
 
@@ -319,7 +321,7 @@ It is not a general compile-time function system.
 
 `#assert CONDITION, "message"` records a KIR assertion. If the assertion is
 unguarded, fully known, and false, the frontend fails immediately. C lowers
-assertions to `#if` and `#error`. Go, JS, and KRB currently accept only
+assertions to `#if` and `#error`. Go and KRB currently accept only
 known-true assertions and reject guarded or unresolved assertions.
 
 ## Diagnostics
@@ -372,9 +374,9 @@ evaluated exactly once into a temporary before cleanup begins. Deferred
 expressions read their operands at cleanup time, not registration time.
 
 Cleanup is lowered into ordinary KIR statements before backend emission. This
-gives C, C++, Go, and JS the same normal-control-flow behavior; it does not use
+gives C, C++, and Go the same normal-control-flow behavior; it does not use
 Go's function-scoped `defer`. Cleanup does not run after process termination,
-foreign exceptions, Go panics, or JS exceptions. Exceptional unwinding is not
+foreign exceptions, or Go panics. Exceptional unwinding is not
 yet part of this language contract.
 
 Functions using cleanup currently reject raw C, conditional preprocessing,
@@ -414,8 +416,9 @@ control-flow lowering and are diagnosed instead of emitting incorrect cleanup.
 - KRB is a portable cartridge subset with explicit host/capability boundaries.
 - `defer` is a shared KIR transform; the restrictions above apply to every target.
 - Raw C lines are not portable.
-- Checked scalar functions emit directly from structured KIR in C/C++/Go/JS.
+- Checked scalar functions emit directly from structured KIR in C/C++/Go.
   App, aggregate, and other unconverted bodies still use target-specific text
-  lowering outside strict mode. KRB has not adopted the scalar emitter.
+  lowering outside strict mode. KRB has not adopted the scalar emitter. The
+  paused JS emitter is not current conformance evidence.
 - Kry is not yet a full C replacement. [Implementation status](LANGUAGE_IMPLEMENTATION.md)
   lists the remaining type, memory, ABI, ownership, and compile-time work.

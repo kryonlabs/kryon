@@ -165,9 +165,10 @@ silently transform explicit coordinates. Nested blocks intersect clips.
 
 The compiler lowers `Scroll` to the native host scroll scope through lexical
 cleanup, including return, break and continue. The same structured-control-flow
-restrictions as `Disabled` apply. Generated C, Go, and JavaScript parity tests
-exercise nested input/clipping, wheel scrolling, scrollbar dragging and parent
-restoration; C++ syntax tests cover the shared lowering.
+restrictions as `Disabled` apply. Generated C and Go parity tests exercise
+nested input/clipping, wheel scrolling, scrollbar dragging and parent
+restoration; C++ syntax tests cover the shared lowering. The old JavaScript
+parity path is paused.
 
 ### Popup blocks in native `.kry` code
 
@@ -347,8 +348,8 @@ Counters :: () #ui {
 }
 ```
 
-For C, C++, Go, and JavaScript, this resolves to the same declaration as an
-ordinary `Counter(props)` call. Omitted fields are zero-initialized, props are
+For C, C++, and Go, this resolves to the same declaration as an ordinary
+`Counter(props)` call. Omitted fields are zero-initialized, props are
 passed by value, and unknown, duplicate, or incorrectly typed properties are
 errors. Declarations can appear later in the file or in an explicitly imported
 module; imported declarations must be public and their props record must be
@@ -1295,9 +1296,9 @@ runtime file path and then as an embedded asset path. `Image` uses the full
 image with contain fitting and exposes source rect, origin, rotation, tint, fit
 mode, and optional material-style image treatment through `style`. The
 `Sprite2D` scene node shares the same texture cache for world-space game
-sprites. The public `.kry`, Go, and JS widget is `Image`; host drawing support
-is internal because raylib already owns `Image` as a decoded-image-in-memory
-struct type.
+sprites. The public `.kry` and Go widget is `Image`; host drawing support is
+internal because raylib already owns `Image` as a decoded-image-in-memory struct
+type. Future web-native work should keep the same public image surface.
 
 ### Buttons
 
@@ -2352,7 +2353,8 @@ those tokens.
 ### KSS language model
 
 The KSS grammar exists once in `runtime/kss_parser.kry` and is lowered to the
-C, Go, and JavaScript runtimes by the shared transpilers. Hosts feed source
+active C and Go runtimes by the shared transpilers. The old JavaScript lowering
+path is paused with JS/web. Hosts feed source
 text and resolve imports; they never reimplement parsing:
 
 - `@pack`, `@version 1`, `tokens { color|length|number|duration|material }`

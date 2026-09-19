@@ -1,7 +1,7 @@
 # Styling debt: remaining removals
 
-- Remove the independent C, Go, and JavaScript KSS implementations identified
-  in `02-kss-language.md`, including the color-token variant logic added in
+- Remove the independent active C and Go KSS implementations identified in
+  `02-kss-language.md`, including the color-token variant logic added in
   `16510c75`. Switch their consumers to generated `.kry` code before deletion;
   do not preserve a second parser behind an alias, adapter, or fallback.
 
