@@ -20,6 +20,11 @@
   Keep negative tests for rejected syntax, and label design proposals clearly.
 - For every remaining bridge, record file, owner, maintained callers, deletion
   condition, and replacement test. Delete it once the callers have migrated.
+  Status: `plan/STYLE_BRIDGE_LEDGER.md` records the current ratchet-allowed
+  C/Go/style-data bridges and `scripts/bridge-ledger-check.py` fails if those
+  rows drift from the active scanner hits. Downstream app bridge rows and any
+  future import/export bridge findings still need to be added as their scans
+  are completed.
 
 Completion requires no unclassified styling bridge or deprecated maintained
 caller, and gates that prevent their reintroduction. Passing public-name checks
