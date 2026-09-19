@@ -51,6 +51,10 @@ export interface Runtime {
     tableResize: { id: number; column: number; startX: number; startWidth: number } | null;
     focusOrder: number[];
     lastFocusOrder: number[];
+    treeOrder: number[];
+    lastTreeOrder: number[];
+    treeDepths: Map<number, number>;
+    lastTreeDepths: Map<number, number>;
     keyPressed: Record<number, boolean>;
     keyDown: Record<number, boolean>;
     mouse: {

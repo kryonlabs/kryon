@@ -2738,6 +2738,28 @@ assert.equal(scrollContent.nested_open, true);
 assert.equal(rt.Focus(), 991);
 rt.QueueTap(490, 85); drawScrollContent(); drawScrollContent();
 assert.equal(scrollContent.branch_actions, 1);
+rt.SetFocus(990);
+for (const [i, key] of [kryon.KeyLeft, kryon.KeyRight, kryon.KeyRight, kryon.KeyEnter, kryon.KeySpace].entries()) {
+  rt.SetFocus(990);
+  rt.QueueKey(key);
+  drawScrollContent(); drawScrollContent();
+  assert.equal(scrollContent.branch_open, i === 1 || i === 2 || i === 4);
+  assert.equal(scrollContent.nested_open, true);
+}
+rt.QueueKey(kryon.KeyTab);
+drawScrollContent(); drawScrollContent();
+rt.QueueKey(kryon.KeyLeft);
+drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.branch_open, true);
+assert.equal(scrollContent.nested_open, false);
+for (const [i, key] of [kryon.KeyUp, kryon.KeyDown, kryon.KeyLeft, kryon.KeyRight, kryon.KeyRight, kryon.KeyDown, kryon.KeyLeft].entries()) {
+  rt.QueueKey(key);
+  drawScrollContent(); drawScrollContent();
+  const want = (i === 0 || i === 2 || i === 6) ? 990 : i === 5 ? 995 : 991;
+  assert.equal(rt.Focus(), want);
+  assert.equal(scrollContent.branch_open, true);
+  assert.equal(scrollContent.nested_open, i >= 4);
+}
 rt.QueueTap(20, 345); drawScrollContent(); drawScrollContent();
 rt.QueueTap(180, 345); drawScrollContent(); drawScrollContent();
 assert.equal(scrollContent.custom_actions, 1);

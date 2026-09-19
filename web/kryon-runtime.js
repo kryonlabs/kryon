@@ -333,6 +333,10 @@ export function createRuntime(options = {}) {
       dropdownHighlight: new Map(),
       focusOrder: [],
       lastFocusOrder: [],
+      treeOrder: [],
+      lastTreeOrder: [],
+      treeDepths: new Map(),
+      lastTreeDepths: new Map(),
       keyPressed: Object.create(null),
       keyDown: Object.create(null),
       mouse: {
@@ -475,6 +479,8 @@ export function beginFrame(rt) {
     rt.input.textHandoff = 0;
     rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
+    rt.input.treeOrder = [];
+    rt.input.treeDepths = new Map();
     rt.input.layoutBounds = new Map();
     rt.input.layoutInfo = new Map();
     rt.input.layoutChildren = new Map();
@@ -488,6 +494,8 @@ export function beginFrame(rt) {
 export function endFrame(rt) {
   if (rt.input) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
+    rt.input.lastTreeOrder = rt.input.treeOrder.slice();
+    rt.input.lastTreeDepths = new Map(rt.input.treeDepths);
     if (!rt.input.textHandoff || rt.input.textHandoff !== rt.input.focus)
       rt.input.events = [];
     else
@@ -1420,6 +1428,49 @@ function moveFocus(rt, id, shift) {
   rt.input.focus = order[next];
 }
 
+function treeOrder(rt) {
+  return rt.input.lastTreeOrder.length ? rt.input.lastTreeOrder : rt.input.treeOrder;
+}
+
+function treeDepths(rt) {
+  return rt.input.lastTreeDepths.size ? rt.input.lastTreeDepths : rt.input.treeDepths;
+}
+
+function moveTreeFocus(rt, id, delta) {
+  const order = treeOrder(rt);
+  const at = order.indexOf(id);
+  if (at < 0 || order.length === 0)
+    return;
+  const next = Math.max(0, Math.min(order.length - 1, at + delta));
+  rt.input.focus = order[next];
+}
+
+function focusTreeParent(rt, id) {
+  const order = treeOrder(rt);
+  const depths = treeDepths(rt);
+  const at = order.indexOf(id);
+  const depth = numberValue(depths.get(id), 0);
+  for (let i = at - 1; i >= 0; i--) {
+    if (numberValue(depths.get(order[i]), 0) < depth) {
+      rt.input.focus = order[i];
+      return true;
+    }
+  }
+  return false;
+}
+
+function focusTreeChild(rt, id) {
+  const order = treeOrder(rt);
+  const depths = treeDepths(rt);
+  const at = order.indexOf(id);
+  const depth = numberValue(depths.get(id), 0);
+  if (at >= 0 && at + 1 < order.length && numberValue(depths.get(order[at + 1]), 0) > depth) {
+    rt.input.focus = order[at + 1];
+    return true;
+  }
+  return false;
+}
+
 function applyTextInput(rt, state, props) {
   if (!state || !props.textKey || !props.cursorKey)
     return false;
@@ -1864,28 +1915,60 @@ function handleCollapsible(rt, state, args) {
   const id = propNumber(args, "id", 0);
   const ref = propRef(args, "open");
   const bounds = parseBounds(args);
+  const tree = isTruthyProp(args, "tree");
+  const leaf = isTruthyProp(args, "leaf");
+  const depth = propNumber(args, "depth", 0);
   if (id && !rt.input.focusOrder.includes(id))
     rt.input.focusOrder.push(id);
+  if (tree && id && !rt.input.treeOrder.includes(id)) {
+    rt.input.treeOrder.push(id);
+    rt.input.treeDepths.set(id, depth);
+  }
   const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
   if (tap) {
     if (id)
       rt.input.focus = id;
-    if (state && ref && !isTruthyProp(args, "leaf"))
+    if (state && ref && !leaf)
       state[ref] = !state[ref];
     return true;
   }
-  if (id && rt.input.focus === id && state && ref && !isTruthyProp(args, "leaf")) {
+  if (id && rt.input.focus === id) {
     const key = consumeFirstEvent(rt, (ev) => ev.type === "key" &&
-      [KeyLeft, KeyRight, KeyEnter, KeySpace].includes(Number(ev.key)));
+      [KeyTab, KeyUp, KeyDown, KeyLeft, KeyRight, KeyEnter, KeySpace].includes(Number(ev.key)));
     if (key) {
       const code = Number(key.key);
-      if (code === KeyLeft)
-        state[ref] = false;
-      else if (code === KeyRight)
-        state[ref] = true;
-      else
-        state[ref] = !state[ref];
-      return true;
+      if (code === KeyTab) {
+        moveFocus(rt, id, !!key.shift);
+        return true;
+      }
+      if (tree && code === KeyUp) {
+        moveTreeFocus(rt, id, -1);
+        return true;
+      }
+      if (tree && code === KeyDown) {
+        moveTreeFocus(rt, id, 1);
+        return true;
+      }
+      if (tree && code === KeyLeft) {
+        if (state && ref && !leaf && state[ref])
+          state[ref] = false;
+        else
+          focusTreeParent(rt, id);
+        return true;
+      }
+      if (tree && code === KeyRight) {
+        if (state && ref && !leaf && !state[ref])
+          state[ref] = true;
+        else
+          focusTreeChild(rt, id);
+        return true;
+      }
+      if (state && ref && !leaf) {
+        if (code === KeyEnter || code === KeySpace) {
+          state[ref] = !state[ref];
+          return true;
+        }
+      }
     }
   }
   return false;
