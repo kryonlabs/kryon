@@ -74,6 +74,10 @@ tooling backlog. P7 follows verified migration of every affected caller.
 
 ## P0 — Establish an actionable baseline
 
+Working ledger: [`plan/OWNERSHIP_LEDGER.md`](OWNERSHIP_LEDGER.md). It is the
+current requirement/ownership inventory and remains incomplete until every row
+below has authoritative evidence at the delivered revision.
+
 - [ ] Reconcile each linked requirement with current code and tests. Label it
   implemented/unverified, partial, missing, or verified at a named revision.
   Preserve documented unsupported features as unsupported; do not silently
