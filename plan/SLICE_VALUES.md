@@ -1,7 +1,42 @@
-# Portable borrowed slice values
+# Portable borrowed slices: remaining verification
 
-Status: range parsing implemented; runtime slice values are not yet supported. This is the
-bounded contract for milestone 3 in `NATIVE_LANGUAGE_COMPLETION.md`.
+Updated 2026-09-19. Implemented and saved in the current checkpoint; not yet fully
+integration-verified. This is milestone 3 of
+[NATIVE_LANGUAGE_COMPLETION.md](NATIVE_LANGUAGE_COMPLETION.md).
+
+## Current evidence
+
+`python3 tests/slice_values_test.py build/linux-x86_64/bin` passes on C, C++
+and Go after the foreign-signature fix. The fixture covers descriptor aliasing,
+parameter/local rebinding, returned subviews, imported helpers, recursion,
+module-owned storage, record fields/elements, strings, synchronous borrowed
+captures, empty/default views and ordered bounds. Release C/C++ uses `-O2
+-DNDEBUG -Wall -Werror`; invalid reads/writes and negative, reversed or oversized
+ranges trap. Unsafe local/parameter/temporary returns, inner-scope escapes,
+helper escapes, stored descriptors, foreign signatures, invalid bounds,
+comparisons/casts, length writes and captured-descriptor rebinding reject in
+strict and permissive modes.
+
+KIR unit tests and the existing array/aggregate suites have also passed during
+this implementation. The combined record/native regression run passed the
+record, string, aggregate, array and then-current slice cases, C syntax and the
+runtime parity guard. It exited with status 2 at a stale Go slice diagnostic
+expectation. That test has been updated; a complete rerun on final code is still
+required. Earlier parser-only parity passes do not prove the new slice runtime.
+
+## Remaining work
+
+- [ ] Add explicit branch/loop provenance and capture-lifetime adversarial cases;
+  verify function summaries do not lose an unsafe origin across control flow.
+- [ ] Extend focused rejection coverage for index types, element-type mismatch,
+  unsupported element storage and C-header permissive fallback. Run the bounds
+  cases in debug C/C++ as well as the passing release configuration.
+- [ ] Complete native syntax, generated-runtime parity, generation/provenance
+  and affected regression checks after the final compiler changes.
+- [ ] Update the public language spec/version and implementation/architecture
+  documentation. Review the bounded capture restriction below explicitly.
+- [ ] Record the final integration-validated revision and results. Move the durable contract to docs and retire this
+  task plan only after these remaining requirements pass.
 
 ## Source behavior
 
@@ -43,7 +78,9 @@ tracks provenance separately from the visible `[]T` type:
   Check assignment lifetime, not just return statements. Merge possible origins
   across branches and loops so an unsafe path cannot disappear during checking.
 - Existing synchronous borrowed slots may capture a slice only while its backing
-  storage remains live. Stored/escaping closures need milestone 4's contract.
+  storage remains live. The current checker permits element mutation but rejects
+  rebinding a captured slice descriptor. Stored/escaping closures need milestone
+  4's contract.
 - Slice fields in records, global/state slice descriptors and foreign slice
   signatures remain rejected in this initial contract. This bounds storage
   analysis without excluding ordinary slice arguments and returned subviews.
@@ -63,56 +100,33 @@ Do not simply mark every returned slice as caller-owned, or lose provenance
 when a view passes through an identity helper. Conservative uncertainty must
 reject an unsafe escape, not delegate its lifetime to Go's collector.
 
-## Native representation and implementation order
+## Implemented representation
 
-1. Add an explicit range expression node with source/low/high children. Keep
-   ordinary indexing and existing conditional `?:` parsing intact.
-2. Add slice type recognition, length/index checking and storage diagnostics.
-   Implement origin propagation, control-flow joins and function summaries.
-3. Lower C/C++ descriptors to a typed data pointer plus length, with deterministic
-   shared declarations across imported modules. Go uses native `[]T`; restrict
-   capacity to the view's end so generated code cannot extend the view.
-4. Range emission must borrow the backing lvalue. Calling the existing array
-   value emitter would snapshot the array and produce incorrect aliasing or a
-   dangling slice. Reuse address/destination evaluation with one evaluation of
-   source and bounds instead.
-5. Emit always-on range/index validation and empty-slice handling across targets.
-   Existing debug-only fixed-array checks cannot establish this slice contract.
-6. Enable construction, indexing, rebinding, arguments and returned subviews as
-   one coherent checked feature, then update the language support documentation.
+`KIR_EXPR_SLICE` stores source and optional lower/upper bound expressions.
+`kir_check.c` checks element/range types and unsupported storage; `kir_borrow.c`
+tracks lexical origins and computes returned-parameter summaries to a fixed
+point across linked functions. Origin joins are conservative rather than
+flow-sensitive overwrites.
 
-## Required executable evidence
+C/C++ uses the shared compiler descriptor in `include/kry_slice.h`: `void *data`
+and `int32_t length`. The checker preserves element type; generated accesses
+cast the pointer to that checked type and perform always-on bounds checks.
+Go uses native `[]T` with capacity restricted to the view's end. No descriptor
+owns or extends backing storage. Generated module headers include slice support
+only when the module uses it.
 
-Use one multi-target harness with C/C++ warning-as-error compilation and Go
-execution, without requiring the UI runtime. Cover empty/default views, omitted
-bounds, first/last indices, subviews of subviews, nonzero offsets, mutation
-aliasing, descriptor rebinding and ordered side effects. Cover imported identity/
-subview functions, module storage and multiple possible safe return origins.
+The shared emitter borrows array lvalues rather than calling the array value
+emitter, which would copy the backing array. It evaluates source, low and high
+once in order, and handles empty/null views without null pointer arithmetic.
 
-Negative fixtures must reject returned local-array views, returned views of
-array parameters, temporary-array views, inner-to-outer rebinding, escapes hidden
-through helper calls or branch joins, unsupported descriptor storage, invalid
-index types and foreign signatures. Runtime cases must trap negative/reversed/
-oversized ranges and out-of-range reads/writes in release as well as debug C/C++.
+This replaces the earlier proposed per-element typed descriptor and the
+parser-only fail-closed stage. The current implementation executes real views;
+only the remaining verification and delivery tasks above are still scheduled.
 
-Passing parser tests or rejecting every slice is not completion. The documented
-parameter/return and aliasing examples must execute safely on all native targets.
+## Commit-checkpoint validation
 
-## Parser implementation evidence
-
-`KIR_EXPR_SLICE` preserves source, optional low bound and optional high bound
-as separate expression children. `KirSliceElementType` distinguishes `[]T` from
-fixed arrays. KIR tests cover omitted bounds, nested ranges, ternary bounds,
-ordinary conditional indexing, malformed ranges and source locations.
-
-Until provenance analysis and native descriptors are implemented, the checker
-rejects range values explicitly in strict and permissive modes. Cross-target
-negative fixtures verify that a C-header import cannot bypass this guard.
-This closes only parsing; construction, ownership, execution and returned-view
-semantics remain unfinished.
-
-Validation for this parser stage: KIR unit tests, cross-target array/range
-fixtures, C/C++/Go syntax suites, all 17 generated native parity fixtures,
-runtime parity and generated provenance passed on 2026-09-19. The active Go
-syntax fixture now uses the existing array-to-host conversion instead of an
-unchecked target-only full-slice expression.
+Before saving this checkpoint, `make generate-native-runtime`, the complete
+`tests/record_values_test.sh` suite (including array/slice cases), and
+`make focus-bend-laws-test bend-laws-test` passed. Regeneration removed stale
+slice-header includes from unrelated generated prop headers. This does not
+replace the broader native integration and proof-coverage tasks above.

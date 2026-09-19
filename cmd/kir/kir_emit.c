@@ -33,6 +33,26 @@ KirArrayValueType(const char *type)
            strcmp(element, "char") != 0 && strcmp(element, "const char") != 0;
 }
 
+int
+KirModuleUsesSlices(const KirModule *module)
+{
+    for(int i = 0; i < module->function_count; i++) {
+        const KirFunction *fn = &module->functions[i];
+        if(KirSliceElementType(fn->return_type, NULL, 0) || strstr(fn->args, "[]") != NULL)
+            return 1;
+        for(int j = 0; j < fn->capture_count; j++)
+            if(KirSliceElementType(fn->captures[j].type, NULL, 0))
+                return 1;
+        for(int j = 0; j < fn->stmt_count; j++)
+            if(KirSliceElementType(fn->stmts[j].type, NULL, 0))
+                return 1;
+        for(int j = 0; j < fn->expr_count; j++)
+            if(KirSliceElementType(fn->exprs[j].type, NULL, 0))
+                return 1;
+    }
+    return 0;
+}
+
 /* These names share a deterministic collision check between declarations and
  * bodies. Negative parameter denotes the hidden array result. */
 void
@@ -107,6 +127,8 @@ KirTargetType(const char *type, KirTarget target)
         {"const char*", "const char*", "string"}, {NULL, NULL, NULL}
     };
     type = canonical(type);
+    if(KirSliceElementType(type, NULL, 0) && (target == KIR_C || target == KIR_CPP))
+        return "Slice";
     for(int i = 0; map[i].type; i++)
         if(!strcmp(type, map[i].type)) return target == KIR_GO ? map[i].go : map[i].c;
     return NULL;
@@ -175,6 +197,8 @@ KirEmitStringType(FILE *out)
 static const char *
 zero_value(const char *type, KirTarget target)
 {
+    if(KirSliceElementType(type, NULL, 0))
+        return target == KIR_GO ? "nil" : "{0}";
     if(type[0] == '[')
         return "";
     if(!strcmp(type, "const char*"))
@@ -200,6 +224,9 @@ portable_type_path(const KirModule *module, const char *type, const TypePath *pa
     int fields = 0;
     int status;
 
+    char slice_element[KIR_NAME_MAX];
+    if(KirSliceElementType(type, slice_element, sizeof(slice_element)))
+        return portable_type_path(module, slice_element, path);
     if(KirTargetType(type, KIR_C)) return 1;
     if(strchr(type, '*') != NULL) return 1;
     {
@@ -256,7 +283,7 @@ supported_expression(const KirModule *module, const KirFunction *fn, int index)
         break;
     case KIR_EXPR_FIELD_INIT: break;
     case KIR_EXPR_INT: case KIR_EXPR_FLOAT: case KIR_EXPR_IDENT: case KIR_EXPR_STRING: break;
-    case KIR_EXPR_MEMBER: case KIR_EXPR_INDEX: break;
+    case KIR_EXPR_MEMBER: case KIR_EXPR_INDEX: case KIR_EXPR_SLICE: break;
     case KIR_EXPR_BINARY: case KIR_EXPR_CONDITIONAL: break;
     case KIR_EXPR_UNARY:
         if(!strcmp(e->op, "&") || !strcmp(e->op, "*")) return 0;
@@ -723,6 +750,24 @@ static void emit_expr(Emitter *e, int index, const char *expected, char *out, si
 static void zero_record(Emitter *e, const char *type, char *out, size_t size);
 
 static void
+slice_index(Emitter *e, const char *type, const char *base, const char *index,
+            char *out, size_t size)
+{
+    if(e->target == KIR_GO) {
+        format(out, size, "%s[%s]", base, index);
+        return;
+    }
+    char element[KIR_NAME_MAX], mapped[KIR_NAME_MAX];
+    KirSliceElementType(type, element, sizeof(element));
+    const char *scalar = KirTargetType(element, e->target);
+    if(scalar != NULL)
+        kir_copy(mapped, sizeof(mapped), scalar);
+    else
+        e->resolve(e->context, element, mapped, sizeof(mapped));
+    format(out, size, "((%s *)%s.data)[SliceIndex(%s, (int64_t)%s)]", mapped, base, base, index);
+}
+
+static void
 emit_destination(Emitter *e, int index, char *out, size_t size)
 {
     const KirExpr *expr = &e->fn->exprs[index];
@@ -743,9 +788,14 @@ emit_destination(Emitter *e, int index, char *out, size_t size)
 
         if(!strcmp(e->fn->exprs[expr->left].type, "string"))
             fatal(expr, "string bytes are read-only");
-        emit_destination(e, expr->left, base, sizeof(base));
+        if(KirSliceElementType(e->fn->exprs[expr->left].type, NULL, 0))
+            emit_expr(e, expr->left, e->fn->exprs[expr->left].type, base, sizeof(base));
+        else
+            emit_destination(e, expr->left, base, sizeof(base));
         emit_expr(e, expr->right, "i32", index, sizeof(index));
-        if((e->target == KIR_C || e->target == KIR_CPP) &&
+        if(KirSliceElementType(e->fn->exprs[expr->left].type, NULL, 0))
+            slice_index(e, e->fn->exprs[expr->left].type, base, index, out, size);
+        else if((e->target == KIR_C || e->target == KIR_CPP) &&
            KirArrayElementType(e->fn->exprs[expr->left].type, NULL, 0, NULL))
             format(out, size, "KRYON_INDEX(%s, sizeof(%s) / sizeof(%s[0]), %s)",
                    base, base, base, index);
@@ -1210,7 +1260,8 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             emit_destination(e, expr->left, a, sizeof(a));
         else
             emit_expr(e, expr->left, e->fn->exprs[expr->left].type, a, sizeof(a));
-        if(!strcmp(e->fn->exprs[expr->left].type, "string") &&
+        if((!strcmp(e->fn->exprs[expr->left].type, "string") ||
+            KirSliceElementType(e->fn->exprs[expr->left].type, NULL, 0)) &&
            !strcmp(expr->name, "length")) {
             if(e->target == KIR_GO)
                 format(result, sizeof(result), "int32(len(%s))", a);
@@ -1225,6 +1276,50 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         format(result, sizeof(result), "%s.%s", a, field);
         break;
     }
+    case KIR_EXPR_SLICE: {
+        const char *base_type = e->fn->exprs[expr->left].type;
+        char source[KIR_TEXT_MAX], low[KIR_TEXT_MAX], high[KIR_TEXT_MAX];
+        char element[KIR_NAME_MAX], mapped[KIR_NAME_MAX];
+        char view[KIR_NAME_MAX];
+        int capacity = 0;
+        int array = KirArrayElementType(base_type, element, sizeof(element), &capacity);
+        if(array) {
+            emit_destination(e, expr->left, source, sizeof(source));
+        } else {
+            KirSliceElementType(base_type, element, sizeof(element));
+            emit_expr(e, expr->left, base_type, source, sizeof(source));
+        }
+        fresh(e, view);
+        if(e->target == KIR_GO) {
+            line(e, "%s := %s[:]", view, source);
+        } else if(array) {
+            line(e, "Slice %s = {%s, %d};", view, source, capacity);
+        } else {
+            line(e, "Slice %s = %s;", view, source);
+        }
+        if(expr->right >= 0)
+            emit_expr(e, expr->right, "i64", low, sizeof(low));
+        else
+            kir_copy(low, sizeof(low), "0");
+        if(expr->third >= 0)
+            emit_expr(e, expr->third, "i64", high, sizeof(high));
+        else
+            format(high, sizeof(high), e->target == KIR_GO ? "len(%s)" : "%s.length", view);
+        if(e->target == KIR_GO) {
+            line(e, "if int64(%s) < 0 || int64(%s) < int64(%s) || int64(%s) > int64(len(%s)) { panic(\"slice range out of bounds\") }",
+                 low, high, low, high, view);
+            format(result, sizeof(result), "%s[int64(%s):int64(%s):int64(%s)]", view, low, high, high);
+        } else {
+            const char *scalar = KirTargetType(element, e->target);
+            if(scalar != NULL)
+                kir_copy(mapped, sizeof(mapped), scalar);
+            else
+                e->resolve(e->context, element, mapped, sizeof(mapped));
+            format(result, sizeof(result), "SliceRange(%s, (int64_t)%s, (int64_t)%s, sizeof(%s))",
+                   view, low, high, mapped);
+        }
+        break;
+    }
     case KIR_EXPR_INDEX: {
         const char *base_type = e->fn->exprs[expr->left].type;
         int capacity = 0;
@@ -1235,7 +1330,9 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             emit_expr(e, expr->left, base_type, a, sizeof(a));
         emit_expr(e, expr->right, "i32", b, sizeof(b));
         KirArrayElementType(base_type, NULL, 0, &capacity);
-        if(!strcmp(base_type, "string")) {
+        if(KirSliceElementType(base_type, NULL, 0)) {
+            slice_index(e, base_type, a, b, result, sizeof(result));
+        } else if(!strcmp(base_type, "string")) {
             if(e->target == KIR_JS)
                 format(result, sizeof(result), "kryon.index(%s, %s)", a, b);
             else if(e->target == KIR_GO)

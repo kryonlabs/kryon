@@ -11,6 +11,7 @@ int KirScalarLiteral(const char *type, const char *text, KirTarget target,
                       KirSourceSpan span, char *out, size_t size);
 /* C/C++ private ABI names and source-shaped arguments for array values. */
 int KirArrayValueType(const char *type);
+int KirModuleUsesSlices(const KirModule *module);
 void KirArrayAbiName(const KirFunction *fn, int parameter, char *out, size_t size);
 void KirArrayAbiArgs(const KirFunction *fn, char *out, size_t size);
 int KirCanEmitBody(const KirModule *module, const KirFunction *fn);

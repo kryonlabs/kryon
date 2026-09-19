@@ -12,7 +12,7 @@ cases = {
     "local": ("Check :: () {\nvalue: Missing\n}", "unsupported or unresolved Go type"),
     "field": ("Value :: struct {\nitem: Missing\n}", "unsupported or unresolved Go type"),
     "array": ("Value :: struct {\nitems: [4] Missing\n}", "unsupported or unresolved Go type"),
-    "slice": ("Value :: struct {\nitems: [] Missing\n}", "unsupported or unresolved Go type"),
+    "slice": ("Value :: struct {\nitems: [] Missing\n}", "slice descriptors cannot be stored in aggregates"),
     "pointer": ("Check :: (value: Missing*) {}", "unsupported or unresolved Go type"),
     "host": ('Check :: (value: Missing) #extern "host.Check"', "unsupported or unresolved Go type"),
     "state": ("state {\nvalue: Missing\n}", "unsupported or unresolved Go type"),

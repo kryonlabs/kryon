@@ -12,7 +12,7 @@ bin_dir = Path(sys.argv[1]).resolve()
 targets = ("k2c", "k2cpp", "k2go")
 cases = {
     "unknown": ("Box :: struct {\nvalue: Missing\n}", "unknown stored type"),
-    "slice": ("Box :: struct {\nvalue: []i32\n}", "slices do not yet have portable storage semantics"),
+    "slice": ("Box :: struct {\nvalue: []i32\n}", "slice descriptors cannot be stored in aggregates"),
     "zero": ("Box :: struct {\nvalue: [0]i32\n}", "positive capacity"),
     "large": ("Box :: struct {\nvalue: [99999999999999999999]i32\n}", "malformed fixed array type"),
     "nested": ("Box :: struct {\nvalue: [2][3]i32\n}", "nested fixed arrays"),
@@ -23,8 +23,8 @@ cases = {
     "slot_array": ("Content :: () #slot\nBox :: struct {\nvalue: [2]Content\n}", "slot values cannot be stored"),
     "float_index": ("Box :: struct {\nvalue: [2]i32\n}\nRead :: (box: Box) -> i32 {\nreturn box.value[0.5]\n}", "array index requires an integer"),
     "float_string_index": ('Read :: (text: string) -> u8 {\nreturn text[0.5]\n}', "string index requires an integer"),
-    "slice_parameter": ("Read :: (items: []i32) {}", "slices do not yet have portable storage semantics"),
-    "slice_return": ("Read :: () -> []i32 {}", "slices do not yet have portable storage semantics"),
+    "slice_field": ("Box :: struct {\nitems: []i32\n}", "slice descriptors cannot be stored in aggregates"),
+    "slice_return": ("Read :: () -> []i32 {}", "return on every path"),
     "unknown_state": ("state {\nitem: Missing\n}", "unknown stored type"),
     "slot_pointer_state": ("Content :: () #slot\nstate {\nitem: Content*\n}", "slot values cannot be stored"),
 }

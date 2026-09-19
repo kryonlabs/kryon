@@ -1215,11 +1215,16 @@ backend-capabilities-check:
 backend-style-degradation-check:
 	sh tests/backend_style_degradation_test.sh .
 
-laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test
 
 .PHONY: bend-laws-test
 bend-laws-test:
 	node --test tests/bend_laws_test.mjs
+
+# Build-time proof/reference checks; no proof dependency enters user binaries.
+.PHONY: focus-bend-laws-test
+focus-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h
+	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/focus_bend_laws_test.mjs
 
 runtime-laws-test: $(SLIDER_LAWS_TEST) $(LAYOUT_LAWS_TEST) $(SEMANTIC_TREE_LAWS_TEST)
 	$(SLIDER_LAWS_TEST)
@@ -1277,11 +1282,11 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_laws.c cmd/kir/kir_emit.c cmd/kir/kir_style_imports.c cmd/kir/kir_diagnostic.c src/kry_std/kry_json.c
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_borrow.c cmd/kir/kir_laws.c cmd/kir/kir_emit.c cmd/kir/kir_style_imports.c cmd/kir/kir_diagnostic.c src/kry_std/kry_json.c
 cmd/kir/runtime_declarations.generated.h: scripts/embed-runtime-declarations.py $(wildcard runtime/*_props.kry)
 	python3 scripts/embed-runtime-declarations.py $@
 
-KIR_HDRS := cmd/kir/runtime_declarations.generated.h cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_laws.h cmd/kir/kir_emit.h cmd/kir/kir_style_imports.h cmd/kir/kir_diagnostic.h include/kry_json.h
+KIR_HDRS := cmd/kir/runtime_declarations.generated.h cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_borrow.h cmd/kir/kir_laws.h cmd/kir/kir_emit.h cmd/kir/kir_style_imports.h cmd/kir/kir_diagnostic.h include/kry_json.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)

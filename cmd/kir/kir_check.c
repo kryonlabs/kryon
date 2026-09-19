@@ -1,4 +1,5 @@
 #include "kir_check.h"
+#include "kir_borrow.h"
 #include "kir_text.h"
 #include "kir_emit.h"
 #include "kir_expr.h"
@@ -316,6 +317,13 @@ compatible(const char *to, const char *from)
     if(*canonical) to = canonical;
     if(!*to || !*from) return 1;
     if(!strcmp(to, from)) return 1;
+    if(KirSliceElementType(to, NULL, 0) || KirSliceElementType(from, NULL, 0)) {
+        char a[KIR_NAME_MAX], b[KIR_NAME_MAX];
+        if(!KirSliceElementType(to, a, sizeof(a)) || !KirSliceElementType(from, b, sizeof(b)))
+            return 0;
+        const char *ca = KirScalarType(a), *cb = KirScalarType(b);
+        return !strcmp(*ca ? ca : a, *cb ? cb : b);
+    }
     if(to[0] == '[' || from[0] == '[') {
         char to_element[KIR_NAME_MAX], from_element[KIR_NAME_MAX];
         int to_capacity, from_capacity;
@@ -375,6 +383,9 @@ readonly_text_destination(const KirFunction *fn, int index)
     if(index < 0 || index >= fn->expr_count)
         return 0;
     e = &fn->exprs[index];
+    if(e->kind == KIR_EXPR_MEMBER && !strcmp(e->name, "length") &&
+       KirSliceElementType(fn->exprs[e->left].type, NULL, 0))
+        return 1;
     if(e->kind == KIR_EXPR_INDEX || e->kind == KIR_EXPR_MEMBER) {
         if(fn->exprs[e->left].kind == KIR_EXPR_IDENT &&
            !strcmp(fn->exprs[e->left].type, "string"))
@@ -488,6 +499,10 @@ expression_type(Checker *c, int index)
     if(e->right >= 0) right = expression_type(c, e->right);
     switch(e->kind) {
     case KIR_EXPR_COMPOUND: {
+        if(KirSliceElementType(e->name, NULL, 0)) {
+            error(c, e->span, "slice literals require a backing range", e->name);
+            break;
+        }
         if(e->name[0] == '[') {
             char element[KIR_NAME_MAX];
             int capacity = 0;
@@ -571,7 +586,7 @@ expression_type(Checker *c, int index)
     case KIR_EXPR_MEMBER: {
         const KirModule *record_owner = NULL;
         const KirType *record = KirFindType(c->module, left, &record_owner);
-        if(record == NULL && !strcmp(left, "string") &&
+        if(record == NULL && (!strcmp(left, "string") || KirSliceElementType(left, NULL, 0)) &&
            !strcmp(e->name, "length")) {
             /* Byte length of a borrowed string value; read-only. */
             type = "i32";
@@ -592,13 +607,25 @@ expression_type(Checker *c, int index)
         type = member_type;
         break;
     }
-    case KIR_EXPR_SLICE:
-        /* Parsing a view must not enable unchecked target-language slicing
-         * before origin tracking and the native descriptor ABI are available. */
-        KirDiagnostic(e->span, "check.slice_lifetime",
-                      "slice values require portable storage lifetime checking");
-        c->failed = 1;
+    case KIR_EXPR_SLICE: {
+        char element[KIR_NAME_MAX];
+        int array = KirArrayElementType(left, element, sizeof(element), NULL);
+        if(!array && !KirSliceElementType(left, element, sizeof(element))) {
+            error(c, e->span, "slice source requires an array or slice", e->text);
+            break;
+        }
+        if(array && !assignable(c, e->left))
+            error(c, e->span, "slice source requires persistent array storage", e->text);
+        if((!strcmp(element, "char") || !strcmp(element, "const char")) || element[0] == '[')
+            error(c, e->span, "unsupported slice element type", element);
+        if(e->right >= 0 && !integer_type(right))
+            error(c, e->span, "slice lower bound requires an integer", e->text);
+        if(e->third >= 0 && !integer_type(expression_type(c, e->third)))
+            error(c, e->span, "slice upper bound requires an integer", e->text);
+        snprintf(member_type, sizeof(member_type), "[]%s", element);
+        type = member_type;
         break;
+    }
     case KIR_EXPR_INDEX: {
         char element[KIR_NAME_MAX];
 
@@ -609,7 +636,8 @@ expression_type(Checker *c, int index)
             if(!integer_type(right))
                 error(c, e->span, "string index requires an integer operand", e->text);
             kir_copy(element, sizeof(element), "u8");
-        } else if(!KirArrayElementType(left, element, sizeof(element), NULL)) {
+        } else if(!KirArrayElementType(left, element, sizeof(element), NULL) &&
+                  !KirSliceElementType(left, element, sizeof(element))) {
             error(c, e->span, "index requires a fixed array or string", e->text);
             kir_copy(element, sizeof(element), "i32");
         } else if(!integer_type(right)) {
@@ -837,6 +865,8 @@ storage_type_error(const KirModule *module, const char *source,
     kir_trim_in_place(type);
     if(!strcmp(type, "void"))
         return indirect ? NULL : "stored values cannot have void type";
+    if(KirSliceElementType(type, NULL, 0))
+        return "slice descriptors cannot be stored in aggregates or globals";
     if(*KirScalarType(type) != '\0' || KirTargetType(type, KIR_C) != NULL)
         return NULL;
     if(type[0] == '[') {
@@ -905,7 +935,13 @@ static const char *
 local_storage_error(const KirModule *module, const char *type)
 {
     ValidatedRecords checked = {0};
-    const char *problem = storage_type_error(module, type, NULL, 0, &checked);
+    char element[KIR_NAME_MAX];
+    int slice = KirSliceElementType(type, element, sizeof(element));
+    const char *problem;
+    if(slice && (element[0] == '[' || !strcmp(element, "char") || !strcmp(element, "const char")))
+        problem = "unsupported slice element type";
+    else
+        problem = storage_type_error(module, slice ? element : type, NULL, 0, &checked);
     free(checked.items);
     return problem;
 }
@@ -955,6 +991,8 @@ check_type_declarations(const KirModule *module, int strict)
             size_t previous_offset = 0;
             KirTypeField previous;
 
+            if(strstr(field.type, "[]") != NULL)
+                return record_declaration_error(record, "slice descriptors cannot be stored in aggregates", field.name);
             if(strcmp(field.type, "void") == 0)
                 return record_declaration_error(record, "record field cannot have void type", field.name);
             const KirType *field_type = KirFindType(module, field.type, NULL);
@@ -1333,7 +1371,7 @@ check_function(Checker *c, KirFunction *fn)
             *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
             const KirType *parameter_type = KirFindType(c->module, colon, NULL);
             has_slots |= parameter_type != NULL && parameter_type->is_slot;
-            has_arrays |= KirArrayValueType(colon);
+            has_arrays |= KirArrayValueType(colon) || KirSliceElementType(colon, NULL, 0);
             bind(c, params[a], colon, c->fn->span);
         } else error(c, c->fn->span, "strict parameters require name: type", params[a]);
     }
@@ -1435,6 +1473,7 @@ check_function(Checker *c, KirFunction *fn)
     }
     for(int i = 0; i < fn->expr_count; i++) {
         const KirExpr *call = &fn->exprs[i];
+        has_arrays |= KirSliceElementType(call->type, NULL, 0);
         if(call->kind != KIR_EXPR_CALL)
             continue;
         const KirFunction *callee = NULL;
@@ -1454,7 +1493,7 @@ check_function(Checker *c, KirFunction *fn)
     }
     if(!fn->is_extern && fn->return_type[0] == '[' &&
        !sequence_returns(fn, 0, fn->stmt_count))
-        error(c, fn->span, "array result requires a return on every path", fn->name);
+        error(c, fn->span, "array or slice result requires a return on every path", fn->name);
     c->fn->checked = c->errors == errors_before;
     for(int expression = 0; expression < c->fn->expr_count; expression++)
         has_slots |= c->fn->exprs[expression].is_function_value;
@@ -1476,7 +1515,7 @@ check_function(Checker *c, KirFunction *fn)
     if(has_arrays && !fn->is_extern &&
        (!fn->checked || !KirCanEmitBody(c->module, fn))) {
         KirDiagnostic(fn->span, "check.array_body",
-                      "array value calls require a fully checked portable body: %s", fn->name);
+                      "array and slice values require a fully checked portable body: %s", fn->name);
         c->failed = 1;
     }
     if(strict && c->fn->checked && !c->fn->is_extern && !KirCanEmitBody(c->module, c->fn)) {
@@ -1515,13 +1554,12 @@ normalize_function_arrays(const KirModule *module, KirFunction *fn)
         int host_buffer = i >= 0 && KirArrayElementType(type, NULL, 0, NULL) &&
                           !KirArrayValueType(type);
         if(type[0] == '[' && !host_buffer) {
-            ValidatedRecords checked = {0};
-            const char *problem = storage_type_error(module, type, NULL, 0, &checked);
-            free(checked.items);
+            const char *problem = local_storage_error(module, type);
             if(problem == NULL && (fn->is_extern || fn->is_closure))
                 problem = "direct array signatures require an ordinary Kry function";
             int bound = -1;
-            if(problem == NULL && array_capacity(module, type, &bound) != 1)
+            if(problem == NULL && !KirSliceElementType(type, NULL, 0) &&
+               array_capacity(module, type, &bound) != 1)
                 problem = "array signatures require a resolved capacity";
             if(problem != NULL) {
                 KirDiagnostic(fn->span, "check.array_signature", "%s: %s", problem, type);
@@ -1556,6 +1594,13 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             for(int i = 0; i < module->import_count; i++) {
                 KirImport *import = &module->imports[i];
                 import->resolved_module = NULL;
+                if(import->kind == KIR_IMPORT_EXTERN &&
+                   (strstr(import->args, "[]") != NULL ||
+                    KirSliceElementType(import->return_type, NULL, 0))) {
+                    KirDiagnostic(import->span, "check.slice_signature",
+                                  "slice signatures require an ordinary Kry function");
+                    return 0;
+                }
                 if(import->kind != KIR_IMPORT_HEADER || strchr(import->target, '.') != NULL)
                     continue;
                 for(int q = 0; q < count; q++) {
@@ -1600,7 +1645,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             const char *type = i < c.module->global_count ? c.module->globals[i].type :
                 c.module->state_fields[i - c.module->global_count].type;
             const KirType *slot = KirFindType(c.module, type, NULL);
-            if(strict) {
+            if(strict || strstr(type, "[]") != NULL) {
                 ValidatedRecords checked = {0};
                 const char *error = storage_type_error(c.module, type, NULL, 0, &checked);
                 free(checked.items);
@@ -1658,5 +1703,5 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
         }
     } while(changed);
     free(c.bindings);
-    return !c.failed && (!strict || c.errors == 0);
+    return !c.failed && (!strict || c.errors == 0) && KirCheckSliceLifetimes(programs, count);
 }

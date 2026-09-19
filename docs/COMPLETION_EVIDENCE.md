@@ -728,3 +728,92 @@ its greeting is visible in the preview.
 
 Final desktop and Playground production captures are retained beside the
 approved proposal under `kryonlabs/implementation/`.
+
+## Native language plan cleanup (2026-09-19)
+
+The active native plan now lists only unfinished work. This cleanup inspected
+master `9094c18f`, current compiler sources/tests and existing execution logs;
+it did not rerun the full platform suite. Completed tasks removed from plans
+remain recorded here and in the fixed-array ABI contract. Slice implementation
+is uncommitted and is not part of the completed milestones below.
+
+- Compiler diagnostics fail closed in native Go. Strict aggregate checks now
+  cover malformed shapes, borrowed-slot storage, integer-only indices and
+  debug bounds checking on array writes. General slice/callable ownership
+  remains part of the language work, not completed by diagnostics.
+- Removed obsolete style branches, recorder theme snippets and unused palette
+  setters/globals. KSS presence reaches native rasterization without debug
+  widget chrome; shared `.kry` policy owns text content fallback.
+- Native input, image resources, measured row reuse and host organization are
+  committed. Linux input verification runs on a private Xvfb/IBus session.
+- Theme role derivation now comes from `.kry`, with shared C/C++/Go fixtures.
+  Removed the duplicate C/Go tone and contrast implementations and overwritten
+  metric defaults. Live theme catalog callers still require migration.
+- Local fixed arrays now have native value semantics: zero initialization,
+  positional literals, copies, conditional selection and borrowed callback
+  captures. Execution fixtures cover ordering, alias isolation, nested record
+  contents and bounds traps on C, C++ and Go.
+- Named array bounds normalize across literals, copies and imported record
+  fields. The checker rejects invalid sizes and arithmetic overflow before
+  target emission. Go constant references and bound names use their emitted
+  names consistently.
+
+
+### Direct fixed-array parameters and returns
+
+Implementation contract and source audit:
+[ARRAY_CALL_ABI.md](ARRAY_CALL_ABI.md). Six strict compiler probes on
+2026-09-19 established the original rejection on C, C++ and Go. Ordinary
+function array calls are now implemented. Array/record execution, all native
+syntax suites, 17 generated parity fixtures, runtime/provenance guards and Go
+runtime tests pass. See the ABI evidence for revisions and shared-checkout scope.
+
+- [x] Specify value-copy behavior for direct array arguments and results,
+  mutation isolation, evaluation order, type identity and imported signatures.
+- [x] Define the C/C++ representation and calling convention in KIR/shared
+  lowering, then implement matching native Go behavior. Internal representation
+  must not leak into app-facing compatibility APIs.
+- [x] Support declaration, call, return, assignment of results and forwarding
+  through another function. Preserve numeric/named bound equivalence and arrays
+  whose elements are supported records, strings or scalar types.
+- [x] Diagnose incompatible shapes, unsupported element storage and invalid
+  returns at source locations before generating output.
+- [x] Execute the same fixtures on C, C++ and Go: caller/callee copy isolation,
+  returned local storage, evaluation order with side effects, imported functions,
+  boundary indexing and rejected mismatches.
+
+Done when direct arrays can cross function boundaries safely on all three
+native targets. Wrapping arrays manually in records or rejecting parameters is
+not completion. Local construction/copying and checked bounds already work.
+
+
+### Previously closed checklist rows removed from the overall plan
+
+These retain the earlier plan's recorded completion status, not new execution
+claims from this documentation edit.
+
+- [x] Remove `k2js` and generated JS runtime parity from default `all`, `tools`,
+  `test`, and `preflight` gates.
+
+- [x] Remove `k2js` and the generated web runtime from the tools package.
+
+- [x] Remove public green JS status from the website conformance matrix.
+
+- [x] Document the future web target as `.kry -> HTML/DOM + KSS/CSS + small JS`
+  in `docs/WEB_JS_ROADMAP.md`.
+
+- [x] Add matched cases for disabled controls, empty data, simultaneous keys,
+  release without press, drag cancellation, popup capture, focus loss, and
+  nested ownership restoration. Active generated C/Go coverage lives in
+  `interaction-policy-matrix-test` and `TestInteractionPolicyMatrix*`; the
+  old JS/web leg remains paused.
+
+- [x] Verify all active hosts/tools delegate grammar and shared semantic decisions to
+  maintained `.kry` sources. Include all KSS formatting, diagnostics, selector
+  serialization, and active target mapping decisions; output sinks remain host
+  services. Remove any residual independent implementations discovered by the
+  audit, not the thin I/O/generated-code shims.
+
+- [x] Add Go source-retaining theme switching, including registered sources,
+  built-ins, variants, repeated switching, and atomic failure recovery.
+  C registry lifecycle differences remain tracked in the evidence ledger.

@@ -2652,7 +2652,8 @@ static void
 resolve_body_symbol(void *context, const char *text, char *out, size_t size)
 {
     const KirModule *module = context;
-    if(KirFindType(module, text, NULL) != NULL && go_type(text, out, size))
+    if((KirSliceElementType(text, NULL, 0) || KirFindType(module, text, NULL) != NULL) &&
+       go_type(text, out, size))
         return;
     for(int i = 0; i < module->global_count; i++) {
         if(!strcmp(text, module->globals[i].name)) {

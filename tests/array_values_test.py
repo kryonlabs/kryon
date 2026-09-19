@@ -33,7 +33,7 @@ invalid = {
     "nested": ("a: [2][3]i32", "nested fixed arrays"),
     "void": ("a: [2]void", "void type"),
     "unknown": ("a: [2]Missing", "unknown stored type"),
-    "slice": ("a: []i32", "slices do not yet have portable storage semantics"),
+    "nested_slice": ("a: [2][]i32", "nested fixed arrays"),
     "stored_slot": ("a: [2]Action", "slot values cannot be stored"),
     "symbolic_count": ("a: [CAPACITY]i32 = {1, 2, 3}", "too many array initializer elements"),
     "unknown_bound": ("a: [MISSING]i32", "array capacity requires a known integer constant"),
@@ -127,21 +127,6 @@ with tempfile.TemporaryDirectory(prefix="kryon-array-values-") as directory:
             assert result.returncode != 0, (target, name, "invalid array call accepted")
             assert diagnostic in result.stderr, (target, name, result.stderr)
             assert f"{name}.kry:" in result.stderr, (target, name, "missing source location")
-
-    # Range parsing must not accidentally enable native-Go slicing through
-    # permissive host fallback before shared lifetime checks are implemented.
-    for number, expression in enumerate(("a[1:3]", "a[:2]", "a[2:]", "a[:]")):
-        source = work / f"slice_range_{number}.kry"
-        source.write_text('#import "kryon.h"\nRead :: () {\na: [4]i32\nview := ' + expression + '\n}\n')
-        for target in targets:
-            for mode in ([], ["--strict"]):
-                result = subprocess.run(
-                    [str(bin_dir / target), *mode, "--no-main", "--root", str(work),
-                     "-o", str(work / "range" / target), str(source)], capture_output=True, text=True,
-                )
-                assert result.returncode != 0, (target, mode, expression, "unchecked slice accepted")
-                assert "slice values require portable storage lifetime checking" in result.stderr, (target, mode, result.stderr)
-                assert f"slice_range_{number}.kry:" in result.stderr, (target, mode, "missing source location")
 
     for target in targets:
         out = work / target

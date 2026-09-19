@@ -1,15 +1,17 @@
 # Kryon remaining-work completion plan
 
-Reviewed 2026-09-18 against master `2efbf174`.
+Historical inventory reviewed 2026-09-18 against `2efbf174`; completed rows
+removed and current goal references updated 2026-09-19 against `9094c18f`.
+Unreconciled inventory rows below are not new implementation assignments.
 
 Current execution scope (2026-09-19): see
 [`NATIVE_LANGUAGE_COMPLETION.md`](NATIVE_LANGUAGE_COMPLETION.md) for the detailed
-active goal after `6e4c2a6f`. The inventory below retains historical open rows;
+remaining goal, updated against `9094c18f` plus local slice work. The inventory below retains historical open rows;
 reconcile them against code and revision-specific evidence before scheduling
 work. All JS/web/DOM-only implementation and browser-only validation below are
 future-roadmap work, not prerequisites for current native completion. Completed
-native image, text/IME, host organization and array batches are recorded in the
-active plan and must not be restarted from these older rows.
+native image, text/IME, host organization and array batches are recorded in
+[completion evidence](../docs/COMPLETION_EVIDENCE.md#native-language-plan-cleanup-2026-09-19) and must not be restarted from these older rows.
 
 This plan consolidates all 26 documents in `plan/canonical`, `plan/style`, and
 `plan/dom`. It orders implementation and verification; the linked documents
@@ -26,7 +28,7 @@ intent until rerun at the revision being delivered.
 | Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, shortcuts, queued mouse move/down/up/wheel, and frame-scoped public key/mouse queries covered by `tests/web_input_driver_test.mjs`. | Reuse the driver primitives to connect lifecycle routing/capture decisions to actual shared fixtures. Native DOM pointer handlers alone do not prove generated-runtime parity. |
 | Expression lowering | Historical `k2js` placeholder fixes remain in the tree, but JS/web is paused. Active target lowering must still fail visibly for unsupported executable forms. | Add real lowering for supported expression forms in active targets before claiming condition/activation parity. Do not use paused JS syntax coverage as completion evidence. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
-| Theme switching | `src/ui/style_pack_source.c` implements `SetStyleTheme`; Go registers source packs in `go/kryon/style_pack.go`, but no Go `SetStyleTheme` definition was found. | Complete source retention and theme re-resolution in Go. |
+| Theme switching | C and `go/kryon/style_pack.go` implement `SetStyleTheme`; source-retaining Go theme switching is completed. | Verify affected app migrations; do not implement a second theme-switching API. |
 | DOM | Existing `web/kryon-runtime.js` and k2js syntax-runner work are paused experimental evidence. | Treat DOM documents as future web-native contract audits; API existence does not establish current support. |
 | DOM names | The DOM plan lists `ColGroup`/`Col`; current test surface uses `TableColumnGroup`/`TableColumn`. | Reconcile with the canonical names. Do not introduce compatibility aliases from stale plan wording. |
 | Style allowances | `scripts/check-style-gates.py` classifies legacy theme calls, fallback background, content metrics, and recorder-generated source; its getter list also includes `ui_node_registry.c`, absent from the older summary. | Reinventory current call sites instead of trusting historical counts. A passing ratchet is not completion. |
@@ -67,15 +69,14 @@ ledger). Generated C and Go are outputs, not policy owners; paused JavaScript ou
 ## Execution order
 
 1. Establish the requirement, ownership, and coverage inventory (P0).
-2. Pause the old JavaScript/web runtime target and record the future web roadmap (P1).
-3. Close shared widget, text, and visual policy gaps (P2).
-4. Finish DOM compiler metadata and browser contracts (P3).
-5. Establish style backend conformance (P4).
-6. Finish style authoring and release tooling (P5).
-7. Migrate and verify downstream consumers (P6).
-8. Remove obsolete bridges and close the plans with evidence (P7).
+2. Close shared widget, text, and visual policy gaps (P2).
+3. Keep DOM compiler metadata and browser contracts deferred to the web roadmap (P3).
+4. Establish style backend conformance (P4).
+5. Finish style authoring and release tooling (P5).
+6. Migrate and verify downstream consumers (P6).
+7. Remove obsolete bridges and close the plans with evidence (P7).
 
-Dependencies: P1 depends on P0 and stops the old JS parity track. Future DOM compiler work in P3 must coordinate through the web roadmap before reactivating any KIR-to-web compiler path. P2 proves interaction parity on active native/Go surfaces.
+Dependencies: P1 is complete; the old JS parity track stays paused. Future DOM compiler work in P3 must coordinate through the web roadmap before reactivating any KIR-to-web compiler path. P2 proves interaction parity on active native/Go surfaces.
 P4 consumes P2's visual-policy inventory and P3's DOM facts. P5 inspector
 degradation reporting depends on P4; its formatter and Go theme work can start
 after P0. P6 follows the relevant upstream slices, not necessarily the entire
@@ -107,20 +108,6 @@ below has authoritative evidence at the delivered revision.
 Exit: every original requirement has an owner and a next action or closure
 record. No percentage-complete claim based only on file counts or scanners.
 
-## P1 — Pause the old JavaScript/web runtime target
-
-- [x] Remove `k2js` and generated JS runtime parity from default `all`, `tools`,
-  `test`, and `preflight` gates.
-- [x] Remove `k2js` and the generated web runtime from the tools package.
-- [x] Remove public green JS status from the website conformance matrix.
-- [x] Document the future web target as `.kry -> HTML/DOM + KSS/CSS + small JS`
-  in `docs/WEB_JS_ROADMAP.md`.
-- [ ] When web work resumes, design the web-native compiler path before adding
-  more widget-specific JavaScript runtime behavior.
-
-Exit: JS/web is clearly paused as a current target, and future work is tracked
-as a roadmap redesign rather than a remaining parity checklist.
-
 ## P2 — Complete shared behavior and drawing ownership
 
 - [ ] Audit capture, focus, navigation, owner-reset gates, and retained tree
@@ -131,11 +118,6 @@ as a roadmap redesign rather than a remaining parity checklist.
 - [ ] Classify text reflow, line breaking, selection, and retained placement.
   Keep buffer storage, UTF-8 traversal, font measurement, glyph/atlas work,
   image decoding/upload/cache, and OS input as justified host services.
-- [x] Add matched cases for disabled controls, empty data, simultaneous keys,
-  release without press, drag cancellation, popup capture, focus loss, and
-  nested ownership restoration. Active generated C/Go coverage lives in
-  `interaction-policy-matrix-test` and `TestInteractionPolicyMatrix*`; the
-  old JS/web leg remains paused.
 - [ ] Match text cases for wrap boundaries, empty lines, alignment, selection
   across lines, and text/image content in clipped scopes. Reuse the existing
   shared editor rather than introducing a second editor.
@@ -190,11 +172,6 @@ Browser-only CSS features remain explicitly distinct from native StyleData.
 
 ## P4 — Finish style backend conformance
 
-- [x] Verify all active hosts/tools delegate grammar and shared semantic decisions to
-  maintained `.kry` sources. Include all KSS formatting, diagnostics, selector
-  serialization, and active target mapping decisions; output sinks remain host
-  services. Remove any residual independent implementations discovered by the
-  audit, not the thin I/O/generated-code shims.
 - [ ] Reconcile the declared value/selector contract and diagnostics across
   typed and web surfaces. Retain intentional web CSS extensions; resolve or
   explicitly document divergences such as numeric `px` handling. Do not assume
@@ -242,9 +219,6 @@ host-service exceptions in P0's ledger before declaring all KSS migrated.
 
 ## P5 — Complete style tooling
 
-- [x] Add Go source-retaining theme switching, including registered sources,
-  built-ins, variants, repeated switching, and atomic failure recovery.
-  C registry lifecycle differences remain tracked in the evidence ledger.
 - [ ] Audit inspector parity across existing tooling. Finish per-field losing
   rules and backend degradation reporting; expose active overlays/variants,
   winner values, token origins, source locations, specificity, and layer.
@@ -330,7 +304,6 @@ make kss-parser-test kss-matched-test kss-formatter-test
 make style-policy-test style-sheet-policy-test style-pack-registry-test
 make style-pack-source-test style-release-table-repro-test style-release-table-emitter-test style-release-table-import-emitter-test style-release-startup-test style-assets-test style-builtins-test style-picker-test
 make style-widget-policy-test app-background-style-test
-make web-text-input-browser-test
 make build/linux-x86_64/tests/ui_tk_test
 xvfb-run -a build/linux-x86_64/tests/ui_tk_test
 make sdl-pointer-test
@@ -364,6 +337,6 @@ checks require additional recorded execution beyond this command list.
 | [dom/06](dom/06-kss-selector-and-style-contract.md) | P3 facts/CSS contract, P4 style parity |
 | [dom/07](dom/07-relationships-and-accessibility.md), [08](dom/08-events-and-dom-commands.md) | P3 semantic relationships and native commands |
 
-First implementation slice: complete P0's fixture/ownership ledger, then P1's
-missing pointer/wheel driver and placeholder rejection. Those unlock honest
-cross-backend verification for much of the remaining policy migration.
+Next work is defined in [the native remaining-task list](NATIVE_LANGUAGE_COMPLETION.md):
+finish slice delivery, then callable semantics and maintained theme migrations.
+Reconcile older inventory rows before treating them as additional tasks.

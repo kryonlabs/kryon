@@ -1,74 +1,26 @@
-# Native language and runtime completion
+# Native language and runtime remaining work
 
-Requested 2026-09-19. JavaScript remains a future target. Shared behavior belongs
-in `.kry`; resource storage, Unicode/font services, rasterization, and OS protocol
-adapters remain native. Work is performed on upstream master.
+Updated 2026-09-19 against master `9094c18f` and the slice implementation saved in this checkpoint. This is the remaining-task list, not a list of all historical
+work. Completed array, text/IME, image, host-organization and shared-policy
+batches are recorded in [completion evidence](../docs/COMPLETION_EVIDENCE.md#native-language-plan-cleanup-2026-09-19).
+The fixed-array contract and verification live in [ARRAY_CALL_ABI.md](../docs/ARRAY_CALL_ABI.md).
 
-## Acceptance checklist
+Slices now execute in C, C++ and Go in the working tree. Their focused tests
+pass; broader integration, final contract review and public language documentation
+are still outstanding. Callable extensions and downstream theme migration remain
+open. No final completion claim applies to the whole goal.
 
-- [ ] Compiler: validate portable aggregate, array, slice, and callable types;
-  replace silent Go `any`/comment fallbacks with source diagnostics; exercise
-  supported cases and rejected cases across native targets.
-- [ ] Styling: retire obsolete theme bridges and widget appearance defaults
-  after migrating maintained callers; keep explicit content metrics and genuine
-  platform fallbacks documented in the bridge ledger.
-- [x] Editable text: benchmark actual row measurement and painting, bound layout
-  reuse, preserve Unicode/selection/wrapping behavior, and record measurements.
-- [x] Native Go: render asset images with canonical ImageProps; verify existing
-  OS IME integration; support useful text-range selection with shared policy.
-- [x] Host organization: split the large Go host into focused modules without
-  duplicating policy or changing generated API ownership.
-- [ ] Validation: native generated-output guards, C/Go/C++ parity, appropriate
-  native tests on a virtual display, and current API/architecture/boundary docs.
+Shared behavior belongs in `.kry`; resource storage, Unicode/font services,
+rasterization and OS adapters remain native. Work goes directly to upstream
+master before pristine downstream vendor pointers are updated. Preserve Inbe's
+accepted UI. JS/web remains a future target.
 
-## Existing functionality to preserve
+Milestone numbers are retained for existing references; completed milestone 2
+has been removed. Other plan ledgers contain older inventories: verify an open
+row before scheduling it, and preserve independently committed work.
 
-KSS parsing/cascade already comes from `.kry`. Native Go already implements an
-IBus bridge and bounded read-only text and surface raster caches. Reuse these;
-do not introduce alternate parsers, image APIs, or compatibility aliases.
-
-Website and accessibility action work is underway independently in this shared
-checkout and is outside this change's ownership.
-
-## Completed batches
-
-- Compiler diagnostics fail closed in native Go. Strict aggregate checks now
-  cover malformed shapes, borrowed-slot storage, integer-only indices and
-  debug bounds checking on array writes. General slice/callable ownership
-  remains part of the language work, not completed by diagnostics.
-- Removed obsolete style branches, recorder theme snippets and unused palette
-  setters/globals. KSS presence reaches native rasterization without debug
-  widget chrome; shared `.kry` policy owns text content fallback.
-- Native input, image resources, measured row reuse and host organization are
-  committed. Linux input verification runs on a private Xvfb/IBus session.
-- Theme role derivation now comes from `.kry`, with shared C/C++/Go fixtures.
-  Removed the duplicate C/Go tone and contrast implementations and overwritten
-  metric defaults. Live theme catalog callers still require migration.
-- Local fixed arrays now have native value semantics: zero initialization,
-  positional literals, copies, conditional selection and borrowed callback
-  captures. Execution fixtures cover ordering, alias isolation, nested record
-  contents and bounds traps on C, C++ and Go.
-- Named array bounds normalize across literals, copies and imported record
-  fields. The checker rejects invalid sizes and arithmetic overflow before
-  target emission. Go constant references and bound names use their emitted
-  names consistently.
-
-## Active goal and scope
-
-Updated 2026-09-19 after `6e4c2a6f` (named array bounds). Complete the remaining
-native language and shared-policy migration so maintained applications can use
-portable arrays, slices and callables, obtain styling from KSS, and build against
-one upstream implementation with reproducible native verification.
-
-This document defines the current goal. `COMPLETION.md` and the ownership/style
-ledgers retain the broader requirement inventory. Reconcile their older rows
-against implementation evidence before treating them as new work. An old open
-checkbox is not proof that implementation is missing.
-
-The last compiler batch is complete; this goal is not. Completed image, text,
-IME, host organization, local array and named-bound work must be preserved.
-Do not repeat those migrations or count their passing tests as proof of features
-that have not been implemented.
+The broader proof/law program is planned separately in [law/README.md](law/README.md).
+It reuses this work and does not restart completed language or widget migrations.
 
 ## Milestone 1 — Reconcile the remaining native requirements
 
@@ -77,9 +29,9 @@ that have not been implemented.
 - [ ] Classify each row as verified, implemented but unverified, partial,
   missing, future, or an intentional host service. Record source owner, affected
   target, test/evidence, revision and concrete remaining action.
-- [ ] Identify concurrent accessibility/style work by its eventual commits.
-  Review its integration once committed; do not absorb unrelated working-tree
-  edits or report unfinished concurrent work as delivered.
+- [ ] Verify integration with the independently committed control/slider work
+  (`4c709497`) and text work (`9094c18f`), plus later relevant revisions.
+  Preserve unrelated working-tree changes.
 - [ ] Record required native platform checks separately from unavailable-device
   checks and future web work. Preserve unsupported combinations explicitly.
 
@@ -87,55 +39,28 @@ Done when every active requirement maps to a milestone below or a specific
 native follow-up with an acceptance test. This is reconciliation, not an excuse
 to restart completed parser, editor, image or naming work.
 
-## Milestone 2 — Direct fixed-array parameters and returns
+## Milestone 3 — Finish slice verification and delivery
 
-Implementation contract and source audit:
-[`docs/ARRAY_CALL_ABI.md`](../docs/ARRAY_CALL_ABI.md). Six strict compiler probes on
-2026-09-19 established the original rejection on C, C++ and Go. Ordinary
-function array calls are now implemented. Array/record execution, all native
-syntax suites, 17 generated parity fixtures, runtime/provenance guards and Go
-runtime tests pass. See the ABI evidence for revisions and shared-checkout scope.
+The implementation and remaining evidence gaps are tracked in
+[SLICE_VALUES.md](SLICE_VALUES.md). Range parsing, descriptors, indexing,
+mutation, length, rebinding, arguments, returned views and lifetime summaries
+are implemented locally; do not schedule them again as missing features.
 
-- [x] Specify value-copy behavior for direct array arguments and results,
-  mutation isolation, evaluation order, type identity and imported signatures.
-- [x] Define the C/C++ representation and calling convention in KIR/shared
-  lowering, then implement matching native Go behavior. Internal representation
-  must not leak into app-facing compatibility APIs.
-- [x] Support declaration, call, return, assignment of results and forwarding
-  through another function. Preserve numeric/named bound equivalence and arrays
-  whose elements are supported records, strings or scalar types.
-- [x] Diagnose incompatible shapes, unsupported element storage and invalid
-  returns at source locations before generating output.
-- [x] Execute the same fixtures on C, C++ and Go: caller/callee copy isolation,
-  returned local storage, evaluation order with side effects, imported functions,
-  boundary indexing and rejected mismatches.
+- [ ] Review lifetime propagation through branches, loops and captures; add
+  explicit adversarial fixtures where current coverage is incomplete.
+- [ ] Complete the bounds/type rejection matrix, including debug C/C++ runs
+  alongside the passing release-mode checks and C-header fallback probes.
+- [ ] Rerun affected native syntax, generation, parity and provenance gates on
+  the final code. The latest combined run stopped at a stale Go diagnostic
+  expectation; that expectation is updated, but the combined rerun is pending.
+- [ ] Update the language version/spec, implementation status and relevant
+  architecture/boundary documentation with the actual supported contract.
+  Document borrowed-only storage and captured-descriptor rebinding limits.
+- [ ] Record the final validated delivery revision and results before retiring
+  this plan; the current checkpoint is not final slice acceptance.
 
-Done when direct arrays can cross function boundaries safely on all three
-native targets. Wrapping arrays manually in records or rejecting parameters is
-not completion. Local construction/copying and checked bounds already work.
-
-## Milestone 3 — Slice semantics and safe storage lifetimes
-
-The bounded implementation contract is in [`SLICE_VALUES.md`](SLICE_VALUES.md).
-It includes returned subviews and lexical escape checking; implementation and
-execution evidence remain pending.
-
-- [x] Write the language contract first: element type, length, valid range,
-  empty slices, view versus copy, mutability and borrowed storage lifetime.
-- [x] Define ownership/escape checks for views of locals, parameters, returned
-  values and captured values. Choose a bounded supported contract; do not imply
-  a general allocator or garbage collector merely by introducing slices.
-- [ ] Implement slice construction, indexing, length and the parameter/return
-  cases permitted by that contract across KIR, C, C++ and Go.
-- [ ] Keep unsupported owning/resizing operations explicitly diagnosed until
-  their storage model exists; document these limits in the language spec.
-- [ ] Add matching execution and rejection fixtures for empty ranges, first/
-  last elements, negative/out-of-range access, mutation aliasing, expired local
-  storage and escaping borrowed values.
-
-Done when the documented slice subset is usable across native targets without
-silently relying on Go lifetimes that C/C++ cannot provide. Diagnostics alone
-do not implement slices.
+Done when the documented slice contract has complete native evidence at the
+committed revision; the current focused pass alone does not close integration.
 
 ## Milestone 4 — Callable values beyond synchronous borrowed slots
 

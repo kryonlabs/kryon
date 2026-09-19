@@ -7,7 +7,8 @@ every subsystem; the linked evidence and completion gates remain authoritative.
 | Area | Plans | Status |
 |---|---|---|
 | Overall completion | [Completion](COMPLETION.md), [ownership](OWNERSHIP_LEDGER.md) | Partial; requirement reconciliation and final evidence remain open. |
-| Native language | [Language completion](NATIVE_LANGUAGE_COMPLETION.md), [slices](SLICE_VALUES.md) | Active; slices, callable values, integration and validation remain. |
+| Long-term law refactor | [Ten-phase law plan](law/README.md) | Planned; per-phase usable checkpoints, proof-to-production connection, dependency-free user releases and time/token estimates. |
+| Native language | [Language completion](NATIVE_LANGUAGE_COMPLETION.md), [slices](SLICE_VALUES.md) | Slice implementation saved as a checkpoint with focused C/C++/Go tests passing; final slice verification/delivery, callable values and theme migrations remain. |
 | Fixed-array calls | [ABI contract and evidence](../docs/ARRAY_CALL_ABI.md) | Complete for ordinary functions; task plan removed, durable contract retained in docs. |
 | Native accessibility | [Accessibility completion](NATIVE_ACCESSIBILITY_COMPLETION.md) | Partial; Linux trees and list selection implemented, other controls and platform adapters remain. |
 | Shared widget policy | [Canonical index](canonical/README.md) | Partial; shipped policy slices coexist with ownership audits, native IME and platform verification. |

@@ -50,6 +50,19 @@ changes; a modifiable repository cannot make its own checks immutable.
 `make bend-laws-test` verifies acceptance, evaluation, and rejection paths and
 is part of `make laws-test`. This is distinct from the runtime tests below.
 
+### First production-policy reference laws
+
+[laws/focus](../laws/focus/README.md) contains three checked Bend laws for
+`FocusTabDirectionFor`: no movement without Tab, forward movement with Tab,
+and backward movement with Shift+Tab. `make focus-bend-laws-test`, included in
+`make laws-test`, compares the checked reference against generated C over all
+four Boolean input combinations and rejects missing proofs and deliberate
+reference/native mutations. This is finite-domain native execution evidence,
+not a formal compiler-preservation proof or C++/Go evidence.
+
+The [ten-phase law plan](../plan/law/README.md) describes the remaining formal
+connection, broader widget coverage and dependency-free release gates.
+
 ## Runtime tier
 
 Property laws over generated inputs, run by `make runtime-laws-test`
