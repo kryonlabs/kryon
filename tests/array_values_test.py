@@ -35,7 +35,8 @@ invalid = {
     "unknown": ("a: [2]Missing", "unknown stored type"),
     "slice": ("a: []i32", "slices do not yet have portable storage semantics"),
     "stored_slot": ("a: [2]Action", "slot values cannot be stored"),
-    "symbolic_literal": ("a: [CAPACITY]i32 = {1}", "array literals require a numeric capacity"),
+    "symbolic_count": ("a: [CAPACITY]i32 = {1, 2, 3}", "too many array initializer elements"),
+    "unknown_bound": ("a: [MISSING]i32", "array capacity requires a known integer constant"),
 }
 
 resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
@@ -54,13 +55,55 @@ with tempfile.TemporaryDirectory(prefix="kryon-array-values-") as directory:
             assert diagnostic in result.stderr, (target, name, result.stderr)
             assert f"{name}.kry:" in result.stderr, (target, name, "missing source location")
 
+    invalid_bounds = {
+        "zero_bound": "0",
+        "negative_bound": "-1",
+        "large_bound": "1048577",
+        "float_bound": "2.5",
+        "division_bound": "2 / 0",
+        "overflow_bound": "(2147483647 + 1) / 1073741824",
+        "remainder_overflow_bound": "((-2147483647 - 1) % -1) + 2",
+        "cycle_bound": "BAD + 1",
+    }
+    for name, expression in invalid_bounds.items():
+        source = work / f"{name}.kry"
+        source.write_text(f"BAD :: {expression}\nBox :: struct {{\nvalues: [BAD]i32\n}}\n")
+        for target in targets:
+            result = subprocess.run(
+                [str(bin_dir / target), "--strict", "--no-main", "--root", str(work),
+                 "-o", str(work / name / target), str(source)], capture_output=True, text=True,
+            )
+            assert result.returncode != 0, (target, name, "invalid bound accepted")
+            assert "array capacity is not a valid bounded integer constant" in result.stderr, (target, name, result.stderr)
+            assert f"{name}.kry:" in result.stderr, (target, name, "missing source location")
+
+    first = work / "first.kry"
+    second = work / "second.kry"
+    first.write_text('#module "first"\nSHARED_COUNT :: 2\n')
+    second.write_text('#module "second"\nSHARED_COUNT :: 3\n')
+    for name, imports, diagnostic in (
+        ("ambiguous", '#import "first"\n#import "second"\n', "not a valid bounded integer constant"),
+        ("unimported", "", "requires a known integer constant"),
+    ):
+        source = work / f"{name}.kry"
+        source.write_text(imports + "Box :: struct {\nvalues: [SHARED_COUNT]i32\n}\n")
+        for target in targets:
+            result = subprocess.run(
+                [str(bin_dir / target), "--strict", "--no-main", "--root", str(work),
+                 "-o", str(work / name / target), str(source), str(first), str(second)],
+                capture_output=True, text=True,
+            )
+            assert result.returncode != 0, (target, name, "invalid import scope accepted")
+            assert diagnostic in result.stderr, (target, name, result.stderr)
+
     for target in targets:
         out = work / target
         args = [str(bin_dir / target), "--strict", "--no-main", "--root", str(root), "-o", str(out)]
         if target == "k2go":
             args += ["--pkg", "main"]
         run(args + [str(root / "tests/fixtures/array_values.kry"),
-                    str(root / "tests/fixtures/record_types.kry")])
+                    str(root / "tests/fixtures/record_types.kry"),
+                    str(root / "tests/fixtures/array_bound_types.kry")])
         executable = out / "check"
         if target == "k2go":
             (out / "main.go").write_text('''package main

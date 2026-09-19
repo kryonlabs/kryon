@@ -1,0 +1,5 @@
+#module "array_bound_types"
+IMPORTED_COUNT :: 2 * 2
+ImportedBuffer :: struct {
+    values: [IMPORTED_COUNT]i32
+}

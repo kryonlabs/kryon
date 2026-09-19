@@ -260,6 +260,8 @@ qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
         snprintf(dst, dst_size, "%s", type);
 }
 
+static int is_module_constant(const KirModule *module, const char *name);
+
 /* C-ish type -> Go type. Unknown shapes must be diagnosed by the caller. */
 static int
 go_type(const char *type, char *dst, size_t dst_size)
@@ -322,17 +324,24 @@ go_type(const char *type, char *dst, size_t dst_size)
         const char *base;
 
         if(close != NULL) {
+            char bound[K2GO_NAME_MAX];
+            snprintf(bound, sizeof(bound), "%.*s", (int)(close - t - 1), t + 1);
+            if(type_scope != NULL && is_module_constant(type_scope, bound)) {
+                char mapped[K2GO_NAME_MAX];
+                kir_camel_ident(bound, mapped, sizeof(mapped));
+                snprintf(bound, sizeof(bound), "%s", mapped);
+            }
             base = close + 1;
             while(*base == ' ' || *base == '\t')
                 base++;
             if(strcmp(base, "char") == 0) {
                 *close = '\0';
-                snprintf(dst, dst_size, "[%s]byte", t + 1);
+                snprintf(dst, dst_size, "[%s]byte", bound);
                 return 1;
             }
             if(strcmp(base, "char*") == 0 || strcmp(base, "string") == 0) {
                 *close = '\0';
-                snprintf(dst, dst_size, "[%s]string", t + 1);
+                snprintf(dst, dst_size, "[%s]string", bound);
                 return 1;
             }
             {
@@ -340,7 +349,7 @@ go_type(const char *type, char *dst, size_t dst_size)
 
                 if(go_type(base, gt, sizeof(gt))) {
                     *close = '\0';
-                    snprintf(dst, dst_size, "[%s]%s", t + 1, gt);
+                    snprintf(dst, dst_size, "[%s]%s", bound, gt);
                     return 1;
                 }
             }
@@ -1803,6 +1812,24 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
     }
 }
 
+static int
+is_module_constant(const KirModule *module, const char *name)
+{
+    for(int pass = 0; pass < 2; pass++) {
+        int count = pass == 0 ? 1 : module->import_count;
+        for(int i = 0; i < count; i++) {
+            const KirModule *scope = pass == 0 ? module : module->imports[i].resolved_module;
+            if(scope == NULL)
+                continue;
+            for(int j = 0; j < scope->define_count; j++) {
+                if(!strcmp(scope->defines[j].name, name))
+                    return 1;
+            }
+        }
+    }
+    return 0;
+}
+
 static void
 tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 {
@@ -2434,6 +2461,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     if(dn + ll + 1 < dst_size) {
                         memcpy(dst + dn, local, ll);
                         dn += ll;
+                    }
+                } else if(is_module_constant(m, ident)) {
+                    char mapped[K2GO_NAME_MAX];
+                    kir_camel_ident(ident, mapped, sizeof(mapped));
+                    size_t length = strlen(mapped);
+                    if(dn + length + 1 < dst_size) {
+                        memcpy(dst + dn, mapped, length);
+                        dn += length;
                     }
                 } else {
                     memcpy(dst + dn, ident, il);

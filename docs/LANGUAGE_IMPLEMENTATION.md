@@ -99,9 +99,11 @@ reads, including symbolic capacities; Go checks indices natively.
 Local fixed arrays now support recursive zero initialization, positional
 literals, independent value copies, conditional selection and synchronous
 borrowed callback captures. The shared emitter snapshots array values and uses
-explicit copies for C/C++, preserving Go's array value behavior. Array literals
-currently require numeric capacities; symbolic-bound normalization and direct
-array parameters/returns remain unfinished.
+explicit copies for C/C++, preserving Go's array value behavior. Named bounds
+now normalize through a checked integer constant evaluator, including imported
+constants, local aliases and evaluated `#run` results. Literal counts and array
+copies are checked against the resolved size. General compile-time evaluation
+and direct array parameters/returns remain unfinished.
 
 `tests/aggregate_types_test.py` executes positive indexing and read/write traps
 on C, C++ and Go and compares source diagnostics across all three compilers.

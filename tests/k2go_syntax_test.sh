@@ -731,7 +731,9 @@ func TestSourceRecordWithoutCompilerNameEntry(t *testing.T) {
     }
 }
 EOF
-(cd "$work/out" && GOCACHE="${GOCACHE:-$work/go-cache}" go test ./...)
+# Resolve the local runtime's pinned transitive dependencies in this disposable
+# module without changing the repository's module files.
+(cd "$work/out" && GOWORK=off GOCACHE="${GOCACHE:-$work/go-cache}" go test -mod=mod ./...)
 
 cat > "$work/src/geometry_extra.kry" <<'EOF'
 #import "kryon.h"

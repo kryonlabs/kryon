@@ -4103,8 +4103,17 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         snprintf(run_value, sizeof(run_value), "%ld", value);
                         expr = run_value;
                     }
+                    int emitted_alias = 0;
+                    if(is_identifier_text(expr)) {
+                        for(int i = 0; i < module->define_count; i++) {
+                            if(!strcmp(module->defines[i].name, expr)) {
+                                emitted_alias = 1;
+                                break;
+                            }
+                        }
+                    }
                     if(!starts_word(expr, "#defined") &&
-                       !is_identifier_text(expr)) {
+                       (!is_identifier_text(expr) || emitted_alias)) {
                         def = KirModuleAddDefine(module, cname, expr,
                                                  KirSpan(rel, line_no, 1));
                         if(def != NULL)

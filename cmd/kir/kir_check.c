@@ -5,6 +5,8 @@
 #include "kir_diagnostic.h"
 
 #include <ctype.h>
+#include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -174,6 +176,137 @@ integer_type(const char *type)
     const char *scalar = KirScalarType(type);
     return !strcmp(type, "integer") || !strcmp(scalar, "char") ||
            scalar[0] == 'i' || scalar[0] == 'u';
+}
+
+/* Bounds use a checked integer subset: every intermediate must fit i32.
+ * This avoids accepting a size whose C constant expression overflows while
+ * Go evaluates it with arbitrary precision. Unknown host macros stay opaque. */
+static int bound_constant(const KirModule *module, const char *name, int depth, int64_t *value);
+
+static int
+bound_expression(const KirModule *module, const KirFunction *expression, int index,
+                 int depth, int64_t *value)
+{
+    if(index < 0 || depth > 128)
+        return -1;
+    const KirExpr *node = &expression->exprs[index];
+    if(node->kind == KIR_EXPR_IDENT)
+        return bound_constant(module, node->name, depth + 1, value);
+    if(node->kind == KIR_EXPR_INT) {
+        char *end;
+        errno = 0;
+        *value = strtoll(node->text, &end, 0);
+        if(errno || end == node->text || *end || *value < 0 || *value > INT32_MAX)
+            return -1;
+        return 1;
+    }
+    int64_t left = 0, right = 0;
+    if(node->kind == KIR_EXPR_UNARY) {
+        int status = bound_expression(module, expression, node->right, depth + 1, &right);
+        if(status != 1)
+            return status;
+        if(!strcmp(node->op, "+"))
+            *value = right;
+        else if(!strcmp(node->op, "-"))
+            *value = -right;
+        else
+            return -1;
+    } else if(node->kind == KIR_EXPR_BINARY) {
+        int status = bound_expression(module, expression, node->left, depth + 1, &left);
+        if(status != 1)
+            return status;
+        status = bound_expression(module, expression, node->right, depth + 1, &right);
+        if(status != 1)
+            return status;
+        if(left == INT32_MIN && right == -1 &&
+           (!strcmp(node->op, "/") || !strcmp(node->op, "%")))
+            return -1;
+        if(!strcmp(node->op, "+"))
+            *value = left + right;
+        else if(!strcmp(node->op, "-"))
+            *value = left - right;
+        else if(!strcmp(node->op, "*"))
+            *value = left * right;
+        else if(!strcmp(node->op, "/") && right != 0)
+            *value = left / right;
+        else if(!strcmp(node->op, "%") && right != 0)
+            *value = left % right;
+        else
+            return -1;
+    } else {
+        return -1;
+    }
+    return *value >= INT32_MIN && *value <= INT32_MAX ? 1 : -1;
+}
+
+static int
+bound_constant(const KirModule *module, const char *name, int depth, int64_t *value)
+{
+    if(depth > 128)
+        return -1;
+    const KirDefine *definition = NULL;
+    const KirModule *owner = NULL;
+    for(int pass = 0; pass < 2; pass++) {
+        int count = pass == 0 ? 1 : module->import_count;
+        for(int i = 0; i < count; i++) {
+            const KirModule *scope = pass == 0 ? module : module->imports[i].resolved_module;
+            if(scope == NULL)
+                continue;
+            for(int j = 0; j < scope->define_count; j++) {
+                const KirDefine *candidate = &scope->defines[j];
+                if(strcmp(candidate->name, name))
+                    continue;
+                if(definition != NULL && definition != candidate)
+                    return -1;
+                definition = candidate;
+                owner = scope;
+            }
+        }
+        if(definition != NULL)
+            break;
+    }
+    if(definition == NULL)
+        return 0;
+    KirFunction expression = {0};
+    int index = KirParseExpr(&expression, owner, definition->value, definition->span);
+    int status = bound_expression(owner, &expression, index, depth + 1, value);
+    free(expression.exprs);
+    return status;
+}
+
+static int
+array_capacity(const KirModule *module, const char *type, int *capacity)
+{
+    if(!KirArrayElementType(type, NULL, 0, capacity))
+        return -1;
+    if(*capacity >= 0)
+        return 1;
+    char name[KIR_NAME_MAX];
+    size_t length = (size_t)(strchr(type, ']') - type - 1);
+    memcpy(name, type + 1, length);
+    name[length] = '\0';
+    int64_t value = 0;
+    int status = bound_constant(module, name, 0, &value);
+    if(status != 1)
+        return status;
+    if(value < 1 || value > 1048576)
+        return -1;
+    *capacity = (int)value;
+    return 1;
+}
+
+static void
+normalize_array(const KirModule *module, char *type, size_t size)
+{
+    char element[KIR_NAME_MAX];
+    int capacity;
+    if(KirArrayElementType(type, element, sizeof(element), NULL) &&
+       array_capacity(module, type, &capacity) == 1) {
+        char normalized[KIR_NAME_MAX];
+        int length = snprintf(normalized, sizeof(normalized), "[%d]%s", capacity, element);
+        if(length >= 0 && (size_t)length < sizeof(normalized))
+            kir_copy(type, size, normalized);
+    }
 }
 
 static int
@@ -363,9 +496,10 @@ expression_type(Checker *c, int index)
                 error(c, e->span, problem, e->name);
                 break;
             }
+            normalize_array(c->module, e->name, sizeof(e->name));
             KirArrayElementType(e->name, element, sizeof(element), &capacity);
             if(capacity < 0)
-                error(c, e->span, "array literals require a numeric capacity", e->name);
+                error(c, e->span, "array literals require a resolved capacity", e->name);
             int count = 0;
             for(int child = e->first_child; child >= 0; child = c->fn->exprs[child].next_sibling) {
                 KirExpr *entry = &c->fn->exprs[child];
@@ -383,7 +517,8 @@ expression_type(Checker *c, int index)
             type = e->name;
             break;
         }
-        const KirType *record = KirFindType(c->module, e->name, NULL);
+        const KirModule *record_owner = NULL;
+        const KirType *record = KirFindType(c->module, e->name, &record_owner);
         int ordinal = 0;
         int mode = -1;
         if(record == NULL || record->is_enum || record->is_slot) {
@@ -407,6 +542,12 @@ expression_type(Checker *c, int index)
                 }
                 position++;
             }
+            if(found) {
+                normalize_array(record_owner, field.type, sizeof(field.type));
+                KirExpr *initializer = &c->fn->exprs[entry->right];
+                if(initializer->kind == KIR_EXPR_COMPOUND)
+                    normalize_array(record_owner, initializer->name, sizeof(initializer->name));
+            }
             const char *value_type = expression_type(c, entry->right);
             if(!found) {
                 error(c, entry->span, named ? "unknown initializer field" : "too many positional record fields", entry->name);
@@ -428,7 +569,8 @@ expression_type(Checker *c, int index)
         break;
     }
     case KIR_EXPR_MEMBER: {
-        const KirType *record = KirFindType(c->module, left, NULL);
+        const KirModule *record_owner = NULL;
+        const KirType *record = KirFindType(c->module, left, &record_owner);
         if(record == NULL && !strcmp(left, "string") &&
            !strcmp(e->name, "length")) {
             /* Byte length of a borrowed string value; read-only. */
@@ -441,6 +583,7 @@ expression_type(Checker *c, int index)
             while(KirTypeNextField(record, &offset, &field) == 1) {
                 if(!strcmp(field.name, e->name)) {
                     kir_copy(member_type, sizeof(member_type), field.type);
+                    normalize_array(record_owner, member_type, sizeof(member_type));
                     break;
                 }
             }
@@ -632,6 +775,7 @@ expression_type(Checker *c, int index)
     }
     if(*KirScalarType(type)) type = KirScalarType(type);
     kir_copy(e->type, sizeof(e->type), type);
+    normalize_array(c->module, e->type, sizeof(e->type));
     return e->type;
 }
 
@@ -695,6 +839,13 @@ storage_type_error(const KirModule *module, const char *source,
             return "malformed fixed array type";
         if(capacity == 0)
             return "fixed arrays require a positive capacity";
+        if(capacity < 0) {
+            int status = array_capacity(module, type, &capacity);
+            if(status < 0)
+                return "array capacity is not a valid bounded integer constant";
+            if(status == 0 && !has_foreign_types(module))
+                return "array capacity requires a known integer constant";
+        }
         if(element[0] == '[')
             return "nested fixed arrays are not supported";
         return storage_type_error(module, element, path, indirect, checked);
@@ -1133,6 +1284,8 @@ check_function(Checker *c, KirFunction *fn)
             if(c->depth) c->depth--;
         }
         int errors_before_expression = c->errors;
+        if(st->kind == KIR_STMT_DECL)
+            normalize_array(c->module, st->type, sizeof(st->type));
         if(st->declared_widget || st->is_instance)
             c->strict = 1;
         if(st->kind == KIR_STMT_DECL && !st->is_instance)

@@ -277,13 +277,18 @@ Rules:
   `items: [3]i32 = {1, 2}` constructs an array with a zero final element.
   `([3]i32){1, 2}` is the explicitly typed expression form. Initializer elements
   execute left to right, use the declared element type, and cannot exceed the
-  capacity. Array literals require numeric capacities and positional elements.
+  capacity. Array literals require resolved capacities and positional elements.
 - Array initialization, assignment and conditional selection copy values,
   including nested record contents; changing a copy does not change its source.
   Copies require equal capacities and element types. Numeric capacities compare
-  by value and scalar aliases compare by canonical type. Existing symbolic
-  capacities must use the same name on both sides of a copy; symbolic literals
-  await constant-bound resolution in the checker.
+  by value and scalar aliases compare by canonical type. Named constants resolve
+  to the same numeric shape, including constants from directly imported modules,
+  aliases of previously declared local constants and evaluated `#run` results.
+  The bound evaluator accepts signed integer literals, parentheses, unary `+`/`-`
+  and `+`, `-`, `*`, `/`, `%`; every intermediate must fit `i32`, and the final
+  capacity must be 1 through 1,048,576. Unknown, ambiguous, cyclic, invalid and
+  overflowing bounds are errors. Foreign header macros may remain opaque for
+  existing host storage, but cannot initialize portable array literals.
 - Arrays can be captured by existing synchronous borrowed `#slot` callbacks.
   Captures refer to the lexical array, so writes through a callback are visible
   to its caller. Existing callback escape restrictions still apply.

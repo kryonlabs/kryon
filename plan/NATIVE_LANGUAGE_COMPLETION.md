@@ -48,11 +48,15 @@ checkout and is outside this change's ownership.
   positional literals, copies, conditional selection and borrowed callback
   captures. Execution fixtures cover ordering, alias isolation, nested record
   contents and bounds traps on C, C++ and Go.
+- Named array bounds normalize across literals, copies and imported record
+  fields. The checker rejects invalid sizes and arithmetic overflow before
+  target emission. Go constant references and bound names use their emitted
+  names consistently.
 
 ## Remaining implementation order
 
-1. Complete constant-bound normalization and direct array parameter/return ABI
-   across strict C, C++ and Go. Local construction and copying are implemented;
+1. Complete the direct array parameter/return ABI across strict C, C++ and Go.
+   Local construction, copying and checked constant bounds are implemented;
    arrays can still cross function boundaries inside records. A diagnostic for
    an unsupported direct array parameter does not complete its implementation.
 2. Define slice bounds, mutation and storage lifetime before accepting slices
