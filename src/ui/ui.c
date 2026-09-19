@@ -811,7 +811,7 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                              0.0f, 0.0f, 0, track_style.focus, 0.0f,
                              1.0f, ui_style_fill(track_style),
                              track_style.material);
-            ui_draw_material(thumb_bounds, track_bounds,
+            ui_draw_material(thumb_bounds, (Rectangle){0},
                              Fade(thumb_background, thumb_opacity),
                              Fade(thumb_border, thumb_opacity),
                              Fade(thumb_border, thumb_opacity),
