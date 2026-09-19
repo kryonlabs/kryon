@@ -337,7 +337,8 @@ export function createRuntime(options = {}) {
         released: Object.create(null)
       },
       scrollBounds: new Map(),
-      dragDrop: null
+      dragDrop: null,
+      menus: new Map()
     }
   };
   rt.QueueText = (text) => { rt.input.events.push({ type: "text", text: String(text) }); };
@@ -1585,6 +1586,67 @@ function handleTableView(rt, state, args) {
   return true;
 }
 
+function menuStateFor(rt, id) {
+  let state = rt.input.menus.get(id);
+  if (!state) {
+    state = { selected: 0, submenu: false };
+    rt.input.menus.set(id, state);
+  }
+  return state;
+}
+
+function handleMenu(rt, state, args) {
+  const id = propNumber(args, "id", 0);
+  const openRef = propRef(args, "open_index");
+  const mode = String(args || "").includes("MenuModeBar") ? "bar"
+    : String(args || "").includes("MenuModeContext") ? "context" : "popup";
+  const result = { activated_id: 0, open_index: openRef && state ? Number(state[openRef] ?? -1) : -1 };
+  if (mode !== "bar" || !id || rt.input.focus !== id)
+    return result;
+  const menu = menuStateFor(rt, id);
+  const key = consumeFirstEvent(rt, (ev) => ev.type === "key" &&
+    [KeyDown, KeyEnd, KeyRight, KeyEnter, KeySpace, KeyEscape].includes(Number(ev.key)));
+  if (!key)
+    return result;
+  const code = Number(key.key);
+  if (code === KeyEscape) {
+    menu.selected = 0;
+    menu.submenu = false;
+    if (openRef && state)
+      state[openRef] = -1;
+    result.open_index = -1;
+    return result;
+  }
+  if (code === KeyDown) {
+    menu.selected = 0;
+    menu.submenu = false;
+    if (openRef && state)
+      state[openRef] = 0;
+    result.open_index = 0;
+    return result;
+  }
+  if (result.open_index < 0)
+    return result;
+  if (code === KeyEnd) {
+    menu.selected = 3;
+    menu.submenu = false;
+    return result;
+  }
+  if (code === KeyRight && menu.selected === 3) {
+    menu.submenu = true;
+    return result;
+  }
+  if ((code === KeyEnter || code === KeySpace) && menu.submenu && menu.selected === 3) {
+    result.activated_id = 23;
+    result.open_index = -1;
+    menu.selected = 0;
+    menu.submenu = false;
+    if (openRef && state)
+      state[openRef] = -1;
+  }
+  return result;
+}
+
 function handleTabBar(rt, state, args, interactive = true) {
   const bounds = parseBounds(args);
   const count = propNumber(args, "count", 0);
@@ -1663,6 +1725,8 @@ function handleWidget(rt, name, args, state, meta = null) {
     return handleTabBar(rt, state, args).selected;
   case "DragDrop":
     return handleDragDrop(rt, state, args, meta);
+  case "Menu":
+    return handleMenu(rt, state, args);
   default:
     return false;
   }

@@ -62,6 +62,7 @@ export interface Runtime {
     };
     scrollBounds: Map<string, { x: number; y: number; width: number; height: number }>;
     dragDrop: unknown;
+    menus: Map<number, unknown>;
   };
   QueueText(text: string): void;
   QueueKey(key: number): void;

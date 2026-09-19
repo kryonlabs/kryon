@@ -8,8 +8,8 @@ outputs. This establishes tested cases, not blanket runtime equivalence.
 Remaining:
 
 - Replace handwritten policy in Go/web host runtimes with generated decisions.
-- Execute menus, scroll_content, and composed_popup in JS with matching native/Go
-  event sequences. Composition and drag_drop now run their generated behavior
+- Execute scroll_content and composed_popup in JS with matching native/Go event
+  sequences. Composition, drag_drop, and menus now run their generated behavior
   checks in C/Go/JS. The web runtime has queued mouse move/down/up/wheel
   primitives and frame-scoped key/mouse queries; remaining fixture-level
   routing/capture promotion remains open. Extend Disabled/TableCell/Canvas scope
