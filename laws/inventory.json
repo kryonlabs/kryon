@@ -718,7 +718,7 @@
     {
       "id": "kir.semantics.vertical",
       "domain": "kir",
-      "summary": "Checked KIR semantic evaluator (literals, idents, arithmetic, comparisons, &&/||, if branches, scalar decl/assign/return, exact i32 wrapping) agrees with the k2c lowering",
+      "summary": "Checked KIR semantic evaluator (literals, idents, arithmetic, comparisons, &&/||, if branches, fuel-bounded while loops, same-module calls with recursion, scalar decl/assign/return, exact i32 wrapping) agrees with the k2c lowering",
       "sources": [
         "tools/kir-semantics.mjs",
         "tests/fixtures/kir_semantics.kry",
@@ -733,7 +733,7 @@
       "evidence": {
         "c": "test-suite"
       },
-      "evidence_revision": "06cf09b1",
+      "evidence_revision": "6375aad3",
       "assumptions": [
         "Restricted subset only; unsupported constructs reject with a source span",
         "Division by zero traps on both sides; INT_MIN/-1 excluded (C UB)"
