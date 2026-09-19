@@ -777,9 +777,11 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                                   .pill = 1},
                     frame.thumb_state, 0, 0.0f, 0.0f, 0.0f,
                     StyleKindScrollThumb()).value);
-            float track_opacity = track_style.opacity * 0.34f;
-            float track_border_opacity = track_style.opacity * 0.46f;
+            float track_opacity = 0.42f;
+            float track_border_opacity = 0.60f;
             float thumb_opacity = thumb_style.opacity;
+            Color track_background = GetThemeBorder();
+            Color track_border = GetThemeBorder();
             Color thumb_background = thumb_style.background;
             Color thumb_border = thumb_style.border;
             Rectangle track_bounds = paint.track_bounds;
@@ -802,9 +804,9 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
                 thumb_border = GetThemeButtonHover();
             }
             ui_draw_material(track_bounds, (Rectangle){0},
-                             Fade(track_style.background, track_opacity),
-                             Fade(track_style.border, track_border_opacity),
-                             Fade(track_style.border, track_border_opacity),
+                             Fade(track_background, track_opacity),
+                             Fade(track_border, track_border_opacity),
+                             Fade(track_border, track_border_opacity),
                              track_style.radius, track_style.border_width,
                              0.0f, 0.0f, 0, track_style.focus, 0.0f,
                              1.0f, ui_style_fill(track_style),

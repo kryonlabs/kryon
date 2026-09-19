@@ -391,7 +391,7 @@ scroll_offset: i32, max_scroll: i32, metrics: ScrollMetrics) -> ScrollBarPaint #
         thumb_h = (i32)((float)viewport_h * ((float)viewport_h / (float)content_h))
     }
     if thumb_h < metrics.thumb_min_height { thumb_h = metrics.thumb_min_height }
-    max_thumb_h: i32 = (i32)((float)viewport_h * 0.42)
+    max_thumb_h: i32 = (i32)((float)viewport_h * 0.28)
     if max_thumb_h < metrics.thumb_min_height { max_thumb_h = metrics.thumb_min_height }
     if thumb_h > max_thumb_h { thumb_h = max_thumb_h }
     if thumb_h > viewport_h { thumb_h = viewport_h }
