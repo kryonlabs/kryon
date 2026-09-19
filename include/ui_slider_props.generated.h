@@ -38,6 +38,11 @@ typedef struct SliderProps {
     bool vertical;
     bool angle;
     int32_t class_name;
+    double value_scale;
+    const char* value_format;
+    bool step_buttons;
+    bool show_limits;
+    float* measured_height;
 } SliderProps;
 
 #endif /* K_RUNTIME_SLIDER_PROPS_H */

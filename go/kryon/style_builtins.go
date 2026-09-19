@@ -1772,7 +1772,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
-  font-size: font.sm;
+  font-size: font.md;
 }
 
 Slider:hover {

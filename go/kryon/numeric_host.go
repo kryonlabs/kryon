@@ -76,6 +76,7 @@ type sliderFloatProps struct {
 	Format     string
 	Disabled   bool
 	ClassName  int32
+	TrackOnly  bool
 }
 
 type sliderIntProps struct {
@@ -89,6 +90,7 @@ type sliderIntProps struct {
 	Format     string
 	Disabled   bool
 	ClassName  int32
+	TrackOnly  bool
 }
 
 type sliderAngleProps struct {
@@ -731,32 +733,28 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 	trackFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), Slider_SliderTrackRole())
 	activeFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled, true, className, StyleSheet_StyleKindSlider(), Slider_SliderFillRole())
 	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false, className, StyleSheet_StyleKindSlider(), Slider_SliderLabelRole())
-	trackStyle := unpackStyle(trackFrame.Value)
-	activeStyle := unpackStyle(activeFrame.Value)
-	labelStyle := unpackStyle(labelFrame.Value)
-	trackOp := styleFrameRectOp(bounds, Rectangle{}, trackFrame)
-	trackOp.ID = id
-	trackOp.Row = component
-	trackOp.Disabled = disabled
-	trackOp.Focused = focused
-	trackOp.Hovered = hovered
+	thumbFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, state, disabled, true, className, StyleSheet_StyleKindSliderThumb(), StyleSheet_StyleAny())
+	paint := Slider_SliderPaintFor(SliderSpec{Bounds: bounds, Ratio: ratio, Vertical: vertical, Active: focused,
+		Hovered: hovered, Disabled: disabled, Scale: float32(r.Scale(1000)) / 1000, Track: trackFrame, ActiveTrack: activeFrame, Thumb: thumbFrame})
+	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, trackFrame)
+	trackOp.ID, trackOp.Row, trackOp.Disabled, trackOp.Focused, trackOp.Hovered = id, component, disabled, focused, hovered
 	if focused {
 		trackOp.BorderColor = trackOp.FocusColor
 	}
 	r.record(trackOp)
-	if vertical {
-		fill := Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height*(1-ratio), Width: bounds.Width, Height: bounds.Height * ratio}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: activeStyle.Background, BorderColor: activeStyle.Border, ID: id, Row: component, Selected: true, Disabled: disabled})
-		y := bounds.Y + bounds.Height*(1-ratio)
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: y, Width: bounds.Width}, Color: trackStyle.Foreground, ID: id, Row: component})
-	} else {
-		fill := Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * ratio, Height: bounds.Height}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: activeStyle.Background, BorderColor: activeStyle.Border, ID: id, Row: component, Selected: true, Disabled: disabled})
-		x := bounds.X + bounds.Width*ratio
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: trackStyle.Foreground, ID: id, Row: component})
+	fillOp := styleFrameRectOp(paint.ActiveBounds, paint.TrackBounds, activeFrame)
+	fillOp.ID, fillOp.Row, fillOp.Selected, fillOp.Disabled = id, component, true, disabled
+	r.record(fillOp)
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Color: unpackRGBA(paint.ThumbFillColor), ID: id, Row: component, Disabled: disabled})
+	if focused {
+		r.record(FrameOp{Kind: FrameOpRing, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+4), Radius: paint.ThumbRadius + 2, Color: unpackStyle(thumbFrame.Value).Focus, ID: id})
 	}
-	labelFont, labelFontID := styleTextFace(labelStyle, Text14)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: id, Row: component})
+	if text != "" {
+		labelStyle := unpackStyle(labelFrame.Value)
+		labelFont, labelFontID := styleTextFace(labelStyle, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: id, Row: component})
+	}
+
 }
 
 func (r *runtime) drawSliderLabel(bounds Rectangle, label string, className, id int32) {
@@ -810,7 +808,11 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 			format = "%.3f"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
+		text := fmt.Sprintf(format, props.Values[i])
+		if props.TrackOnly {
+			text = ""
+		}
+		r.drawSliderCell(cell, ratio, text, props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
 	}
 	r.drawSliderLabel(props.Bounds, props.Label, props.ClassName, props.ID)
 	return changed
@@ -859,7 +861,11 @@ func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 			format = "%d"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
+		text := fmt.Sprintf(format, props.Values[i])
+		if props.TrackOnly {
+			text = ""
+		}
+		r.drawSliderCell(cell, ratio, text, props.Disabled, vertical, focused, props.ClassName, props.ID, int32(i))
 	}
 	r.drawSliderLabel(props.Bounds, props.Label, props.ClassName, props.ID)
 	return changed
@@ -882,62 +888,181 @@ func (r *runtime) sliderAngle(props sliderAngleProps) bool {
 	return changed
 }
 
+func sliderValue(props SliderProps, index int) float64 {
+	if props.Angle {
+		return float64(*props.FloatValue) * 57.29577951308232
+	}
+	if props.Kind == NumericInt {
+		return float64(props.IntValues[index])
+	}
+	return float64(props.FloatValues[index])
+}
+
+func sliderDisplay(props SliderProps, value float64) string {
+	if props.ValueFormat != "" {
+		scale := props.ValueScale
+		if scale == 0 {
+			scale = 1
+		}
+		return fmt.Sprintf(props.ValueFormat, value*scale)
+	}
+	format := props.Format
+	if props.Kind == NumericInt && !props.Angle {
+		if format == "" {
+			format = "%d"
+		}
+		return fmt.Sprintf(format, int32(value))
+	}
+	if format == "" {
+		format = "%.3f"
+	}
+	return fmt.Sprintf(format, value)
+}
+
 func (r *runtime) Slider(props SliderProps) bool {
-	count := props.ValueCount
-	if count <= 0 {
-		if props.Kind == NumericInt {
-			count = int32(len(props.IntValues))
-		} else {
-			count = int32(len(props.FloatValues))
+	count := int(props.ValueCount)
+	if props.Angle {
+		if props.FloatValue == nil {
+			return false
+		}
+		count = 1
+	} else if props.Kind == NumericInt {
+		if count <= 0 || count > len(props.IntValues) {
+			count = len(props.IntValues)
+		}
+	} else {
+		if count <= 0 || count > len(props.FloatValues) {
+			count = len(props.FloatValues)
+		}
+	}
+	if count == 0 {
+		return false
+	}
+	props.ValueCount = int32(count)
+	props.Disabled = props.Disabled || r.contentDisabled()
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	}
+	style := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
+		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSlider(), Slider_SliderLabelRole()).Value)
+	font, fontID := styleTextFace(style, Text16)
+	scale := float32(r.Scale(1000)) / 1000
+	lineHeight := float32(textHeight(font, fontID))
+	measure := func(text string) int { return runtimeTextWidthWithFont(text, font, fontID) }
+	valueWidth := float32(0)
+	for i := -2; i < count; i++ {
+		value := props.Min
+		if i == -1 {
+			value = props.Max
+		} else if i >= 0 {
+			value = sliderValue(props, i)
+		}
+		valueWidth = max(valueWidth, float32(measure(sliderDisplay(props, value))))
+	}
+	labelWidth := props.Bounds.Width
+	if count == 1 {
+		labelWidth = max(1, labelWidth-valueWidth-12*scale)
+	}
+	labelHeight := float32(0)
+	var lines []string
+	if props.Label != "" {
+		result := r.textLayouts.layout(textLayoutKey{text: props.Label, width: labelWidth, font: font, fontID: fontID}, fontGeneration.Load(), measure)
+		lines = result.lines
+		labelHeight = float32(len(lines)) * lineHeight
+	}
+	layout := Slider_SliderLayoutFor(props.Bounds, lineHeight, labelHeight, valueWidth,
+		scale, count > 1, props.Vertical, props.StepButtons && count == 1, props.ShowLimits)
+	placed := r.layoutRect(layout.Bounds)
+	dx, dy := placed.X-layout.Bounds.X, placed.Y-layout.Bounds.Y
+	layout.Bounds = placed
+	for _, rect := range []*Rectangle{&layout.Label, &layout.Value, &layout.Track, &layout.Decrement, &layout.Increment, &layout.Limits} {
+		rect.X += dx
+		rect.Y += dy
+	}
+	if props.MeasuredHeight != nil {
+		*props.MeasuredHeight = layout.Bounds.Height
+	}
+	changed := false
+	// Step buttons use the same allocated identity space as numeric editors.
+	if layout.Decrement.Width > 0 {
+		integer := props.Kind == NumericInt && !props.Angle
+		kind := numericEditSliderContinuous
+		if integer {
+			kind = numericEditSliderDiscrete
+		}
+		input := r.numericInputState(numericInputKey{kind: kind, widgetID: props.ID}, "")
+		value := sliderValue(props, 0)
+		decrement := r.Button(ButtonProps{ID: input.token + 1, Bounds: layout.Decrement, Label: "−", Pill: true,
+			Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: props.Disabled || value <= props.Min || props.Max <= props.Min})
+		increment := r.Button(ButtonProps{ID: input.token + 2, Bounds: layout.Increment, Label: "+", Pill: true,
+			Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: props.Disabled || value >= props.Max || props.Max <= props.Min})
+		direction := 0
+		if decrement {
+			direction--
+		}
+		if increment {
+			direction++
+		}
+		if direction != 0 {
+			step := (props.Max - props.Min) / 100
+			if integer {
+				step = 1
+			}
+			next := max(props.Min, min(props.Max, value+float64(direction)*step))
+			if props.Angle {
+				*props.FloatValue = float32(next * 0.017453292519943295)
+			} else if integer {
+				props.IntValues[0] = int32(next)
+			} else {
+				props.FloatValues[0] = float32(next)
+			}
+			changed = next != value
 		}
 	}
 	if props.Angle {
-		return r.sliderAngle(sliderAngleProps{
-			Bounds:     props.Bounds,
-			ID:         props.ID,
-			Label:      props.Label,
-			Value:      props.FloatValue,
-			MinDegrees: float32(props.Min),
-			MaxDegrees: float32(props.Max),
-			Format:     props.Format,
-			Disabled:   props.Disabled,
-			ClassName:  props.ClassName,
-		})
-	}
-	if props.Kind == NumericInt {
-		slider := sliderIntProps{
-			Bounds:     props.Bounds,
-			ID:         props.ID,
-			Label:      props.Label,
-			Values:     props.IntValues,
-			ValueCount: count,
-			Min:        int32(props.Min),
-			Max:        int32(props.Max),
-			Format:     props.Format,
-			Disabled:   props.Disabled,
-			ClassName:  props.ClassName,
+		values := []float32{float32(sliderValue(props, 0))}
+		if r.sliderFloat(sliderFloatProps{Bounds: layout.Track, ID: props.ID, Values: values, ValueCount: 1,
+			Min: float32(props.Min), Max: float32(props.Max), Format: props.Format, Disabled: props.Disabled, ClassName: props.ClassName, TrackOnly: true}, false) {
+			*props.FloatValue = values[0] * 0.017453292519943295
+			changed = true
 		}
-		if props.Vertical {
-			return r.sliderInt(slider, true)
+	} else if props.Kind == NumericInt {
+		changed = r.sliderInt(sliderIntProps{Bounds: layout.Track, ID: props.ID, Values: props.IntValues, ValueCount: int32(count),
+			Min: int32(props.Min), Max: int32(props.Max), Format: props.Format, Disabled: props.Disabled, ClassName: props.ClassName, TrackOnly: true}, props.Vertical) || changed
+	} else {
+		changed = r.sliderFloat(sliderFloatProps{Bounds: layout.Track, ID: props.ID, Values: props.FloatValues, ValueCount: int32(count),
+			Min: float32(props.Min), Max: float32(props.Max), Format: props.Format, Disabled: props.Disabled, ClassName: props.ClassName, TrackOnly: true}, props.Vertical) || changed
+	}
+	recordText := func(text string, bounds Rectangle, right bool, row int32) {
+		width := float32(measure(text))
+		if right {
+			bounds.X += max(0, bounds.Width-width)
 		}
-		return r.sliderInt(slider, false)
+		bounds.Width = min(bounds.Width, width)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: text, Color: style.Foreground, Opacity: style.Opacity,
+			FontSize: font, FontID: fontID, ID: props.ID, Row: row, Disabled: props.Disabled})
 	}
-	slider := sliderFloatProps{
-		Bounds:     props.Bounds,
-		ID:         props.ID,
-		Label:      props.Label,
-		Values:     props.FloatValues,
-		ValueCount: count,
-		Min:        float32(props.Min),
-		Max:        float32(props.Max),
-		Format:     props.Format,
-		Disabled:   props.Disabled,
-		ClassName:  props.ClassName,
+	for i, line := range lines {
+		bounds := layout.Label
+		bounds.Y += float32(i) * lineHeight
+		bounds.Height = lineHeight
+		recordText(line, bounds, false, 0)
 	}
-	if props.Vertical {
-		return r.sliderFloat(slider, true)
+	for i := 0; i < count; i++ {
+		bounds := layout.Value
+		if count > 1 {
+			cell := Slider_SliderCellBoundsFor(layout.Track, int32(count), int32(i))
+			bounds.X = cell.X
+			bounds.Width = cell.Width
+		}
+		recordText(sliderDisplay(props, sliderValue(props, i)), bounds, true, int32(i))
 	}
-	return r.sliderFloat(slider, false)
+	if props.ShowLimits {
+		recordText(sliderDisplay(props, props.Min), layout.Limits, false, 0)
+		recordText(sliderDisplay(props, props.Max), layout.Limits, true, 0)
+	}
+	return changed
 }
 
 func (r *runtime) numericInputState(key numericInputKey, formatted string) *numericInputState {

@@ -175,15 +175,17 @@ ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
                          ui_style_apply_effects_fill(active_frame.fill),
                          active_style.material);
     }
-    if((active || hovered) && paint.glow_radius > 0.0f)
+    if(FancyEffectsEnabled() && (active || hovered) && paint.glow_radius > 0.0f)
         DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                    paint.glow_radius, GetColor(paint.glow_color));
-    DrawCircle((int)paint.thumb_shadow_x, (int)paint.thumb_shadow_y,
+    if(FancyEffectsEnabled())
+        DrawCircle((int)paint.thumb_shadow_x, (int)paint.thumb_shadow_y,
                paint.thumb_shadow_radius,
                GetColor(paint.thumb_shadow_color));
     DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                paint.thumb_radius, GetColor(paint.thumb_fill_color));
-    DrawCircle((int)paint.thumb_highlight_x,
+    if(FancyEffectsEnabled())
+        DrawCircle((int)paint.thumb_highlight_x,
                (int)paint.thumb_highlight_y,
                paint.thumb_highlight_radius,
                GetColor(paint.thumb_highlight_color));
@@ -2729,8 +2731,9 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
         .active_track = active,
         .thumb = thumb
     }), hovered, focused, disabled);
-    RenderText(text, (int)text_paint.text_x, (int)text_paint.text_y,
-               label_font, Fade(label_style.foreground, label_style.opacity));
+    if(text != NULL)
+        RenderText(text, (int)text_paint.text_x, (int)text_paint.text_y,
+                   label_font, Fade(label_style.foreground, label_style.opacity));
     if(focused)
         RenderFocus(cell);
 }
@@ -2893,6 +2896,167 @@ ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
                             slider.class_name);
     }
     ui_draw_slider_label(slider.bounds,slider.label,slider.class_name);
+}
+
+static double
+ui_slider_value(SliderProps slider, int index)
+{
+    if(slider.angle)
+        return slider.float_value != NULL ? *slider.float_value * 57.29577951308232 : 0;
+    if(InputKindIsInt(slider.kind))
+        return slider.int_values != NULL ? slider.int_values[index] : 0;
+    return slider.float_values != NULL ? slider.float_values[index] : 0;
+}
+
+static void
+ui_slider_format(SliderProps slider, double value, char *text, size_t size)
+{
+    if(slider.value_format != NULL) {
+        double scale = slider.value_scale != 0 ? slider.value_scale : 1;
+        snprintf(text, size, slider.value_format, value * scale);
+    } else if(InputKindIsInt(slider.kind) && !slider.angle) {
+        snprintf(text, size, slider.format != NULL ? slider.format : "%d", (int)value);
+    } else {
+        snprintf(text, size, slider.format != NULL ? slider.format : "%.3f", value);
+    }
+}
+
+static Style
+ui_slider_header_style(SliderProps slider)
+{
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        slider.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        slider.disabled, 0, slider.class_name, StyleKindSlider(), SliderLabelRole());
+    return ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+}
+
+static SliderLayout
+ui_slider_layout(SliderProps slider)
+{
+    Style style = ui_slider_header_style(slider);
+    int font = ResolveFont(0, StyleFontValue(style.fields, style.font_size), GetFontSize());
+    float line_height = TextLineHeight(font);
+    float scale = (float)Scale(1000) / 1000.0f;
+    float value_width = 0;
+    char text[96];
+    for(int i = -2; i < slider.value_count; i++) {
+        double value = i == -2 ? slider.min : i == -1 ? slider.max : ui_slider_value(slider, i);
+        ui_slider_format(slider, value, text, sizeof(text));
+        value_width = fmaxf(value_width, TextWidth(text, font));
+    }
+    float label_width = slider.value_count > 1 ? slider.bounds.width :
+        fmaxf(1, slider.bounds.width - value_width - Scale(12));
+    float label_height = 0;
+    if(slider.label != NULL && slider.label[0] != '\0')
+        label_height = MeasureSelectableTextBlock(slider.label, (int)label_width, font, 0);
+    return SliderLayoutFor(slider.bounds, line_height, label_height, value_width,
+        scale, slider.value_count > 1, slider.vertical,
+        slider.step_buttons && slider.value_count == 1, slider.show_limits);
+}
+
+Rectangle
+ui_slider_bounds(SliderProps slider)
+{
+    return ui_slider_layout(slider).bounds;
+}
+
+int
+ui_update_slider(SliderProps slider)
+{
+    if((slider.angle && slider.float_value == NULL) ||
+       (!slider.angle && InputKindIsInt(slider.kind) && slider.int_values == NULL) ||
+       (!slider.angle && !InputKindIsInt(slider.kind) && slider.float_values == NULL))
+        return 0;
+    SliderLayout layout = ui_slider_layout(slider);
+    int changed;
+    if(slider.angle) {
+        changed = ui_update_slider_angle((SliderAngleProps){layout.track,
+            slider.id, NULL, slider.float_value, (float)slider.min, (float)slider.max,
+            slider.format, slider.disabled, slider.class_name});
+    } else if(InputKindIsInt(slider.kind)) {
+        changed = ui_update_slider_discrete((SliderDiscreteProps){layout.track,
+            slider.id, NULL, slider.int_values, slider.value_count,
+            (int)slider.min, (int)slider.max, slider.format,
+            slider.disabled, slider.class_name}, slider.vertical);
+    } else {
+        changed = ui_update_slider_continuous((SliderContinuousProps){layout.track,
+            slider.id, NULL, slider.float_values, slider.value_count,
+            (float)slider.min, (float)slider.max, slider.format,
+            slider.disabled, slider.class_name}, slider.vertical);
+    }
+    if(layout.decrement.width > 0) {
+        int integer = InputKindIsInt(slider.kind) && !slider.angle;
+        NumericInputState *state = ui_numeric_input_state(integer ?
+            NUMERIC_EDIT_SLIDER_INT : NUMERIC_EDIT_SLIDER_FLOAT, slider.id, 0);
+        double value = ui_slider_value(slider, 0);
+        int decrement = Button((ButtonProps){.id = state->token + 1,
+            .bounds = layout.decrement, .label = "−", .pill = 1,
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+            .disabled = slider.disabled || value <= slider.min || slider.max <= slider.min});
+        int increment = Button((ButtonProps){.id = state->token + 2,
+            .bounds = layout.increment, .label = "+", .pill = 1,
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+            .disabled = slider.disabled || value >= slider.max || slider.max <= slider.min});
+        int direction = increment - decrement;
+        if(direction != 0) {
+            double step = integer ? 1 : (slider.max - slider.min) / 100;
+            double next = fmax(slider.min, fmin(slider.max, value + direction * step));
+            if(slider.angle)
+                *slider.float_value = (float)(next * 0.017453292519943295);
+            else if(integer)
+                slider.int_values[0] = (int)next;
+            else
+                slider.float_values[0] = (float)next;
+            changed |= next != value;
+        }
+    }
+    return changed;
+}
+
+void
+ui_paint_slider(SliderProps slider)
+{
+    if(!IsWindowReady())
+        return;
+    SliderLayout layout = ui_slider_layout(slider);
+    Style style = ui_slider_header_style(slider);
+    int font = ResolveFont(0, StyleFontValue(style.fields, style.font_size), GetFontSize());
+    Color color = Fade(style.foreground, style.opacity);
+    if(slider.label != NULL && slider.label[0] != '\0')
+        ui_paint_text_box(slider.label, layout.label, font, color,
+            TextWrapAuto, TextAlignStart, TextAlignStart, 0, 0);
+    for(int i = 0; i < slider.value_count; i++) {
+        Rectangle cell = SliderCellBoundsFor(layout.track, slider.value_count, i);
+        int integer = InputKindIsInt(slider.kind) && !slider.angle;
+        int focus_id = ui_numeric_focus_id(slider.id, i, integer);
+        int focused = !slider.disabled && focus_id > 0 && IsFocusActive(focus_id) &&
+            !ui_popup_input_focus_captures(focus_id);
+        NumericInputState *state = ui_numeric_input_find(integer ?
+            NUMERIC_EDIT_SLIDER_INT : NUMERIC_EDIT_SLIDER_FLOAT, slider.id, i);
+        double value = ui_slider_value(slider, i);
+        float ratio = SliderRatio((float)value, (float)slider.min, (float)slider.max);
+        if(state == NULL || !state->focused)
+            ui_draw_slider_cell(cell, ratio, NULL, slider.disabled, slider.vertical,
+                focused, slider.class_name);
+        Rectangle value_bounds = layout.value;
+        if(slider.value_count > 1) {
+            value_bounds.x = cell.x;
+            value_bounds.width = cell.width;
+        }
+        char text[96];
+        ui_slider_format(slider, value, text, sizeof(text));
+        ui_paint_text_box(text, value_bounds, font, color, TextWrapNone,
+            TextAlignEnd, TextAlignStart, 0, 0);
+    }
+    if(slider.show_limits) {
+        char text[96];
+        ui_slider_format(slider, slider.min, text, sizeof(text));
+        ui_paint_text_box(text, layout.limits, font, color, TextWrapNone,
+            TextAlignStart, TextAlignStart, 0, 0);
+        ui_slider_format(slider, slider.max, text, sizeof(text));
+        ui_paint_text_box(text, layout.limits, font, color, TextWrapNone,
+            TextAlignEnd, TextAlignStart, 0, 0);
+    }
 }
 
 static int

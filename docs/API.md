@@ -1826,6 +1826,24 @@ payloads are internal.
 int Slider(SliderProps slider);
 ```
 
+The slider owns its header: `label` starts at the top-left of `bounds`, and
+formatted values appear above the track at the right. The header never paints
+outside the widget. Long labels wrap; the control grows to fit its header and
+48-unit interaction row. Set `measured_height` to receive the occupied height
+when placing subsequent controls manually. A supplied height is a minimum.
+
+`step_buttons` adds decrement/increment controls for a single horizontal value;
+`show_limits` displays the range endpoints beneath the track. Narrow controls
+place the step buttons on a separate row. Integer steps are one; float and angle
+steps are one percent of the range. Disabled and endpoint buttons reject input.
+
+`format` formats the stored numeric type (also used by direct numeric editing).
+For a different display unit, use the floating-point `value_format` and optional
+`value_scale` multiplier (zero means one). For example, an integer stored as ten
+can display `1.0×` with `.value_scale = 0.1, .value_format = "%.1f×"`.
+The display conversion does not change stored values or keyboard increments.
+
+
 #### Toggle Switch
 
 ```c

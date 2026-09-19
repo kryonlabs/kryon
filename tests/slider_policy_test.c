@@ -77,5 +77,24 @@ main(void)
     assert(!SliderKeyboardShouldRun(1, 0, 0));
     assert(!SliderKeyboardShouldRun(1, 1, 1));
 
+    SliderLayout layout = SliderLayoutFor((Rectangle){20, 30, 360, 0},
+        20, 20, 48, 1, false, false, true, true);
+    assert(layout.label.x == 20 && layout.label.y == 30);
+    assert(layout.value.x + layout.value.width == 380);
+    assert(layout.track.y >= layout.label.y + layout.label.height + 12);
+    assert(layout.decrement.width == 48 && layout.increment.height == 48);
+    assert(layout.track.x > layout.decrement.x + layout.decrement.width);
+    assert(layout.limits.y >= layout.track.y + layout.track.height);
+    assert(layout.bounds.height >= 104);
+    SliderLayout narrow = SliderLayoutFor((Rectangle){20, 30, 160, 0},
+        20, 60, 48, 1, false, false, true, true);
+    assert(narrow.track.y >= narrow.decrement.y + narrow.decrement.height);
+    assert(narrow.bounds.height > layout.bounds.height);
+    SliderLayout again = SliderLayoutFor(narrow.bounds, 20, 60, 48, 1,
+        false, false, true, true);
+    assert(again.bounds.height == narrow.bounds.height);
+    assert(again.track.y == narrow.track.y);
+    assert(again.track.height == narrow.track.height);
+
     return 0;
 }

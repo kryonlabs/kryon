@@ -82,6 +82,272 @@ type SliderTextPaint struct {
 	TextY float32
 }
 
+type SliderLayout struct {
+	Bounds    Rectangle
+	Label     Rectangle
+	Value     Rectangle
+	Track     Rectangle
+	Decrement Rectangle
+	Increment Rectangle
+	Limits    Rectangle
+}
+
+func Slider_SliderLayoutFor(bounds Rectangle, line_height float32, label_height float32, value_width float32, scale float32, multiple bool, vertical bool, step_buttons bool, show_limits bool) SliderLayout {
+	var layout SliderLayout = SliderLayout{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 12.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var gap float32 = value_6
+	var value_7 float32 = 48.0
+	var value_8 float32 = scale
+	var value_9 float32 = value_7 * value_8
+	var target float32 = value_9
+	var value_10 float32 = bounds.Width
+	var value_11 float32 = value_width
+	var value_12 float32 = value_10 - value_11
+	var value_13 float32 = gap
+	var value_14 float32 = value_12 - value_13
+	var label_width float32 = value_14
+	var value_15 float32 = label_width
+	var value_16 float32 = 1.0
+	var value_17 bool = value_15 < value_16
+	if value_17 {
+		var value_18 float32 = 1.0
+		label_width = value_18
+	}
+	var value_19 float32 = line_height
+	var header float32 = value_19
+	var value_20 float32 = label_height
+	var value_21 float32 = header
+	var value_22 bool = value_20 > value_21
+	if value_22 {
+		var value_23 float32 = label_height
+		header = value_23
+	}
+	var value_24 float32 = bounds.X
+	layout.Label.X = value_24
+	var value_25 float32 = bounds.Y
+	layout.Label.Y = value_25
+	var value_26 float32 = label_width
+	layout.Label.Width = value_26
+	var value_27 float32 = label_height
+	layout.Label.Height = value_27
+	var value_28 float32 = bounds.X
+	var value_29 float32 = bounds.Width
+	var value_30 float32 = value_28 + value_29
+	var value_31 float32 = value_width
+	var value_32 float32 = value_30 - value_31
+	layout.Value.X = value_32
+	var value_33 float32 = bounds.Y
+	layout.Value.Y = value_33
+	var value_34 float32 = value_width
+	layout.Value.Width = value_34
+	var value_35 float32 = line_height
+	layout.Value.Height = value_35
+	var value_36 bool = multiple
+	var value_37 bool = value_36
+	if value_37 {
+		var value_38 float32 = label_height
+		var value_39 float32 = 0.0
+		var value_40 bool = value_38 > value_39
+		value_37 = value_40
+	}
+	if value_37 {
+		var value_41 float32 = bounds.Width
+		layout.Label.Width = value_41
+		var value_42 float32 = layout.Value.Y
+		var value_43 float32 = label_height
+		var value_44 float32 = gap
+		var value_45 float32 = value_43 + value_44
+		layout.Value.Y = value_42 + value_45
+		var value_46 float32 = label_height
+		var value_47 float32 = gap
+		var value_48 float32 = value_46 + value_47
+		var value_49 float32 = line_height
+		var value_50 float32 = value_48 + value_49
+		header = value_50
+	}
+	var value_51 float32 = 0.0
+	var footer float32 = value_51
+	var value_52 bool = show_limits
+	if value_52 {
+		var value_53 float32 = line_height
+		var value_54 float32 = 4.0
+		var value_55 float32 = scale
+		var value_56 float32 = value_54 * value_55
+		var value_57 float32 = value_53 + value_56
+		footer = value_57
+	}
+	var value_58 float32 = 0.0
+	var extra float32 = value_58
+	var value_59 bool = vertical
+	var value_60 bool = !value_59
+	var value_61 bool = value_60
+	if value_61 {
+		var value_62 bool = step_buttons
+		value_61 = value_62
+	}
+	var value_63 bool = value_61
+	if value_63 {
+		var value_64 float32 = bounds.Width
+		var value_65 float32 = target
+		var value_66 float32 = 3.0
+		var value_67 float32 = value_65 * value_66
+		var value_68 float32 = gap
+		var value_69 float32 = 2.0
+		var value_70 float32 = value_68 * value_69
+		var value_71 float32 = value_67 + value_70
+		var value_72 bool = value_64 < value_71
+		value_63 = value_72
+	}
+	if value_63 {
+		var value_73 float32 = target
+		var value_74 float32 = gap
+		var value_75 float32 = value_73 + value_74
+		extra = value_75
+	}
+	var value_76 float32 = header
+	var value_77 float32 = gap
+	var value_78 float32 = value_76 + value_77
+	var value_79 float32 = target
+	var value_80 float32 = value_78 + value_79
+	var value_81 float32 = footer
+	var value_82 float32 = value_80 + value_81
+	var value_83 float32 = extra
+	var value_84 float32 = value_82 + value_83
+	var minimum float32 = value_84
+	var value_85 float32 = bounds.Height
+	var value_86 float32 = minimum
+	var value_87 bool = value_85 < value_86
+	if value_87 {
+		var value_88 float32 = minimum
+		bounds.Height = value_88
+	}
+	var value_89 Rectangle = bounds
+	layout.Bounds = value_89
+	var value_90 float32 = bounds.X
+	layout.Track.X = value_90
+	var value_91 float32 = bounds.Y
+	var value_92 float32 = header
+	var value_93 float32 = value_91 + value_92
+	var value_94 float32 = gap
+	var value_95 float32 = value_93 + value_94
+	layout.Track.Y = value_95
+	var value_96 float32 = bounds.Width
+	layout.Track.Width = value_96
+	var value_97 float32 = bounds.Height
+	var value_98 float32 = header
+	var value_99 float32 = value_97 - value_98
+	var value_100 float32 = gap
+	var value_101 float32 = value_99 - value_100
+	var value_102 float32 = footer
+	var value_103 float32 = value_101 - value_102
+	var value_104 float32 = extra
+	var value_105 float32 = value_103 - value_104
+	layout.Track.Height = value_105
+	var value_106 bool = vertical
+	var value_107 bool = !value_106
+	var value_108 bool = value_107
+	if value_108 {
+		var value_109 bool = step_buttons
+		value_108 = value_109
+	}
+	if value_108 {
+		var value_110 float32 = bounds.Width
+		var value_111 float32 = target
+		var value_112 float32 = 3.0
+		var value_113 float32 = value_111 * value_112
+		var value_114 float32 = gap
+		var value_115 float32 = 2.0
+		var value_116 float32 = value_114 * value_115
+		var value_117 float32 = value_113 + value_116
+		var value_118 bool = value_110 < value_117
+		if value_118 {
+			var value_119 float32 = bounds.X
+			layout.Decrement.X = value_119
+			var value_120 float32 = layout.Track.Y
+			layout.Decrement.Y = value_120
+			var value_121 float32 = target
+			layout.Decrement.Width = value_121
+			var value_122 float32 = target
+			layout.Decrement.Height = value_122
+			var value_123 float32 = bounds.X
+			var value_124 float32 = bounds.Width
+			var value_125 float32 = value_123 + value_124
+			var value_126 float32 = target
+			var value_127 float32 = value_125 - value_126
+			layout.Increment.X = value_127
+			var value_128 float32 = layout.Track.Y
+			layout.Increment.Y = value_128
+			var value_129 float32 = target
+			layout.Increment.Width = value_129
+			var value_130 float32 = target
+			layout.Increment.Height = value_130
+			var value_131 float32 = layout.Track.Y
+			var value_132 float32 = target
+			var value_133 float32 = gap
+			var value_134 float32 = value_132 + value_133
+			layout.Track.Y = value_131 + value_134
+		} else {
+			var value_135 float32 = bounds.X
+			layout.Decrement.X = value_135
+			var value_136 float32 = layout.Track.Y
+			layout.Decrement.Y = value_136
+			var value_137 float32 = target
+			layout.Decrement.Width = value_137
+			var value_138 float32 = target
+			layout.Decrement.Height = value_138
+			var value_139 float32 = bounds.X
+			var value_140 float32 = bounds.Width
+			var value_141 float32 = value_139 + value_140
+			var value_142 float32 = target
+			var value_143 float32 = value_141 - value_142
+			layout.Increment.X = value_143
+			var value_144 float32 = layout.Track.Y
+			layout.Increment.Y = value_144
+			var value_145 float32 = target
+			layout.Increment.Width = value_145
+			var value_146 float32 = target
+			layout.Increment.Height = value_146
+			var value_147 float32 = layout.Track.X
+			var value_148 float32 = target
+			var value_149 float32 = gap
+			var value_150 float32 = value_148 + value_149
+			layout.Track.X = value_147 + value_150
+			var value_151 float32 = layout.Track.Width
+			var value_152 float32 = target
+			var value_153 float32 = gap
+			var value_154 float32 = value_152 + value_153
+			var value_155 float32 = 2.0
+			var value_156 float32 = value_154 * value_155
+			layout.Track.Width = value_151 - value_156
+		}
+	}
+	var value_157 float32 = layout.Track.X
+	layout.Limits.X = value_157
+	var value_158 float32 = layout.Track.Y
+	var value_159 float32 = layout.Track.Height
+	var value_160 float32 = value_158 + value_159
+	var value_161 float32 = 4.0
+	var value_162 float32 = scale
+	var value_163 float32 = value_161 * value_162
+	var value_164 float32 = value_160 + value_163
+	layout.Limits.Y = value_164
+	var value_165 float32 = layout.Track.Width
+	layout.Limits.Width = value_165
+	var value_166 float32 = line_height
+	layout.Limits.Height = value_166
+	var value_167 SliderLayout = layout
+	return value_167
+}
+
 func Slider_SliderCellTextPaintFor(bounds Rectangle, inset float32, text_line_height float32) SliderTextPaint {
 	var paint SliderTextPaint = SliderTextPaint{}
 	var value_0 float32 = bounds.X
@@ -1606,28 +1872,38 @@ func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 	var value_156 float32 = value_152 * value_155
 	var value_157 uint32 = Surface_Opacity(value_150, value_156)
 	paint.ThumbHighlightColor = value_157
-	var value_158 uint32 = paint.Thumb.Value.Focus
-	var value_159 bool = spec.Active
-	var value_160 float32 = 0
-	if value_159 {
-		var value_161 float32 = 0.32
-		value_160 = value_161
-	} else {
-		var value_162 bool = spec.Hovered
-		var value_163 float32 = 0
-		if value_162 {
-			var value_164 float32 = 0.18
-			value_163 = value_164
-		} else {
-			var value_165 float32 = 0.0
-			value_163 = value_165
-		}
-		value_160 = value_163
+	var value_158 MaterialKind = MaterialKind(paint.Thumb.Value.Material)
+	var value_159 int32 = int32(MaterialFlat)
+	var value_160 MaterialKind = MaterialKind(int32(number_runtime_bits(uint64(value_159), uint64(0), 32, true, 0)))
+	var value_161 bool = value_158 == value_160
+	if value_161 {
+		var value_162 uint32 = 0
+		paint.ThumbShadowColor = value_162
+		var value_163 uint32 = 0
+		paint.ThumbHighlightColor = value_163
 	}
-	var value_166 float32 = thumb_opacity
-	var value_167 float32 = value_160 * value_166
-	var value_168 uint32 = Surface_Opacity(value_158, value_167)
-	paint.GlowColor = value_168
-	var value_169 SliderPaint = paint
-	return value_169
+	var value_164 uint32 = paint.Thumb.Value.Focus
+	var value_165 bool = spec.Active
+	var value_166 float32 = 0
+	if value_165 {
+		var value_167 float32 = 0.32
+		value_166 = value_167
+	} else {
+		var value_168 bool = spec.Hovered
+		var value_169 float32 = 0
+		if value_168 {
+			var value_170 float32 = 0.18
+			value_169 = value_170
+		} else {
+			var value_171 float32 = 0.0
+			value_169 = value_171
+		}
+		value_166 = value_169
+	}
+	var value_172 float32 = thumb_opacity
+	var value_173 float32 = value_166 * value_172
+	var value_174 uint32 = Surface_Opacity(value_164, value_173)
+	paint.GlowColor = value_174
+	var value_175 SliderPaint = paint
+	return value_175
 }

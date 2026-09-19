@@ -17,4 +17,9 @@ SliderProps :: struct {
     vertical: bool
     angle: bool
     class_name: i32
+    value_scale: double
+    value_format: const char*
+    step_buttons: bool
+    show_limits: bool
+    measured_height: *float
 }

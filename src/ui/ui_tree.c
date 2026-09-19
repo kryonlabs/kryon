@@ -1909,24 +1909,11 @@ DrawTree(void)
             slider.format = node->owned_text != NULL
                 ? node->owned_text + node->data.slider.format_offset
                 : NULL;
-            if(slider.angle) {
-                ui_paint_slider_angle((SliderAngleProps){
-                    slider.bounds, slider.id, slider.label, slider.float_value,
-                    (float)slider.min, (float)slider.max, slider.format,
-                    slider.disabled, slider.class_name});
-            } else if(InputKindIsInt(slider.kind)) {
-                ui_paint_slider_discrete((SliderDiscreteProps){
-                    slider.bounds, slider.id, slider.label, slider.int_values,
-                    slider.value_count, (int)slider.min, (int)slider.max,
-                    slider.format, slider.disabled, slider.class_name},
-                    slider.vertical);
-            } else {
-                ui_paint_slider_continuous((SliderContinuousProps){
-                    slider.bounds, slider.id, slider.label, slider.float_values,
-                    slider.value_count, (float)slider.min, (float)slider.max,
-                    slider.format, slider.disabled, slider.class_name},
-                    slider.vertical);
-            }
+            slider.value_format = slider.format != NULL
+                ? slider.format + strlen(slider.format) + 1 : NULL;
+            if(slider.value_format != NULL && slider.value_format[0] == '\0')
+                slider.value_format = NULL;
+            ui_paint_slider(slider);
             break;
         }
         case WidgetKindBackground:
@@ -3611,134 +3598,46 @@ ui_tree_numeric_text(const char *label, const char *format, size_t *offset)
     return text;
 }
 
-static int
-ui_tree_scalar_slider(SliderContinuousProps slider, int vertical)
-{
-    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
-                            slider.bounds, NULL);
-    if(id >= 0) {
-        /* Caller-owned values can change without an input event. */
-        InvalidateTree(INVALIDATE_PAINT);
-        TreeNode *node = &ui_tree_nodes[id];
-        slider.bounds = node->bounds;
-        node->data.slider.props = (SliderProps){.bounds = slider.bounds,
-            .id = slider.id, .label = NULL, .kind = NumericFloat,
-            .float_values = slider.values, .value_count = slider.value_count,
-            .min = slider.min, .max = slider.max, .format = NULL,
-            .disabled = slider.disabled, .vertical = vertical,
-            .class_name = slider.class_name};
-        node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format :
-                InputDefaultFormat(NumericFloat),
-            &node->data.slider.format_offset);
-    }
-    int changed = ui_update_slider_continuous(slider,vertical);
-    if(!ui_tree_building) ui_paint_slider_continuous(slider,vertical);
-    if(changed) InvalidateTree(INVALIDATE_PAINT);
-    return changed;
-}
-
-static int
-ui_tree_whole_slider(SliderDiscreteProps slider, int vertical)
-{
-    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
-                            slider.bounds, NULL);
-    if(id >= 0) {
-        InvalidateTree(INVALIDATE_PAINT);
-        TreeNode *node = &ui_tree_nodes[id];
-        slider.bounds = node->bounds;
-        node->data.slider.props = (SliderProps){.bounds = slider.bounds,
-            .id = slider.id, .label = NULL, .kind = NumericInt,
-            .int_values = slider.values, .value_count = slider.value_count,
-            .min = slider.min, .max = slider.max, .format = NULL,
-            .disabled = slider.disabled, .vertical = vertical,
-            .class_name = slider.class_name};
-        node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format : InputDefaultFormat(NumericInt),
-            &node->data.slider.format_offset);
-    }
-    int changed = ui_update_slider_discrete(slider,vertical);
-    if(!ui_tree_building) ui_paint_slider_discrete(slider,vertical);
-    if(changed) InvalidateTree(INVALIDATE_PAINT);
-    return changed;
-}
-
-int
-ui_tree_slider_continuous(SliderContinuousProps slider)
-{
-    return ui_tree_scalar_slider(slider, 0);
-}
-
-int
-ui_tree_slider_discrete(SliderDiscreteProps slider)
-{
-    return ui_tree_whole_slider(slider, 0);
-}
-
-int
-ui_tree_vslider_continuous(SliderContinuousProps slider)
-{
-    return ui_tree_scalar_slider(slider, 1);
-}
-
-int
-ui_tree_vslider_discrete(SliderDiscreteProps slider)
-{
-    return ui_tree_whole_slider(slider, 1);
-}
-
-int
-ui_tree_slider_angle(SliderAngleProps slider)
-{
-    NodeId id = ui_tree_add(slider.id, WidgetKindSlider,
-                            slider.bounds, NULL);
-    if(id >= 0) {
-        InvalidateTree(INVALIDATE_PAINT);
-        TreeNode *node = &ui_tree_nodes[id];
-        slider.bounds = node->bounds;
-        node->data.slider.props = (SliderProps){.bounds = slider.bounds,
-            .id = slider.id, .label = NULL, .kind = NumericFloat,
-            .float_value = slider.value, .min = slider.min_degrees,
-            .max = slider.max_degrees, .format = NULL,
-            .disabled = slider.disabled, .angle = 1,
-            .class_name = slider.class_name};
-        node->owned_text = ui_tree_numeric_text(slider.label,
-            slider.format != NULL ? slider.format :
-                InputDefaultFormat(NumericFloat),
-            &node->data.slider.format_offset);
-    }
-    int changed = ui_update_slider_angle(slider);
-    if(!ui_tree_building)
-        ui_paint_slider_angle(slider);
-    if(changed)
-        InvalidateTree(INVALIDATE_PAINT);
-    return changed;
-}
-
 int
 Slider(SliderProps slider)
 {
-    int count = slider.value_count;
-
-    if(count <= 0) count = 1;
-    if(slider.angle) {
-        return ui_tree_slider_angle((SliderAngleProps){
-            slider.bounds, slider.id, slider.label, slider.float_value,
-            (float)slider.min, (float)slider.max, slider.format,
-            slider.disabled, slider.class_name});
+    if(slider.value_count <= 0)
+        slider.value_count = 1;
+    slider.disabled |= ContentDisabled();
+    slider.bounds = ui_slider_bounds(slider);
+    NodeId id = ui_tree_add(slider.id, WidgetKindSlider, slider.bounds, NULL);
+    if(id >= 0) {
+        InvalidateTree(INVALIDATE_PAINT);
+        TreeNode *node = &ui_tree_nodes[id];
+        slider.bounds = node->bounds;
+        node->data.slider.props = slider;
+        const char *label = slider.label != NULL ? slider.label : "";
+        const char *format = slider.format != NULL ? slider.format :
+            InputDefaultFormat(slider.kind);
+        const char *value_format = slider.value_format != NULL ? slider.value_format : "";
+        size_t label_size = strlen(label) + 1;
+        size_t format_size = strlen(format) + 1;
+        size_t value_size = strlen(value_format) + 1;
+        node->owned_text = malloc(label_size + format_size + value_size);
+        if(node->owned_text != NULL) {
+            memcpy(node->owned_text, label, label_size);
+            memcpy(node->owned_text + label_size, format, format_size);
+            memcpy(node->owned_text + label_size + format_size, value_format, value_size);
+        }
+        node->data.slider.format_offset = label_size;
+        node->data.slider.props.label = NULL;
+        node->data.slider.props.format = NULL;
+        node->data.slider.props.value_format = NULL;
+        node->data.slider.props.measured_height = NULL;
     }
-    if(InputKindIsInt(slider.kind)) {
-        SliderDiscreteProps props = {slider.bounds, slider.id, slider.label,
-                                slider.int_values, count, (int)slider.min,
-                                (int)slider.max, slider.format,
-                                slider.disabled, slider.class_name};
-        return slider.vertical ? ui_tree_vslider_discrete(props) : ui_tree_slider_discrete(props);
-    }
-    SliderContinuousProps props = {slider.bounds, slider.id, slider.label,
-                              slider.float_values, count, (float)slider.min,
-                              (float)slider.max, slider.format,
-                              slider.disabled, slider.class_name};
-    return slider.vertical ? ui_tree_vslider_continuous(props) : ui_tree_slider_continuous(props);
+    if(slider.measured_height != NULL)
+        *slider.measured_height = slider.bounds.height;
+    int changed = ui_update_slider(slider);
+    if(!ui_tree_building)
+        ui_paint_slider(slider);
+    if(changed)
+        InvalidateTree(INVALIDATE_PAINT);
+    return changed;
 }
 
 static int

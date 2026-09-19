@@ -81,6 +81,88 @@ SliderTextPaint :: struct {
     text_y: float
 }
 
+# The header belongs to the widget. Only the interaction row is inset for
+# optional step buttons; labels always start at the outer bounds.
+SliderLayout :: struct {
+    bounds: Rectangle
+    label: Rectangle
+    value: Rectangle
+    track: Rectangle
+    decrement: Rectangle
+    increment: Rectangle
+    limits: Rectangle
+}
+
+SliderLayoutFor :: (bounds: Rectangle, line_height: float, label_height: float,
+    value_width: float, scale: float, multiple: bool, vertical: bool,
+    step_buttons: bool, show_limits: bool) -> SliderLayout #export {
+    layout: SliderLayout
+    if scale <= 0.0 { scale = 1.0 }
+    gap := 12.0 * scale
+    target := 48.0 * scale
+    label_width := bounds.width - value_width - gap
+    if label_width < 1.0 { label_width = 1.0 }
+    header := line_height
+    if label_height > header { header = label_height }
+    layout.label.x = bounds.x
+    layout.label.y = bounds.y
+    layout.label.width = label_width
+    layout.label.height = label_height
+    layout.value.x = bounds.x + bounds.width - value_width
+    layout.value.y = bounds.y
+    layout.value.width = value_width
+    layout.value.height = line_height
+    if multiple && label_height > 0.0 {
+        layout.label.width = bounds.width
+        layout.value.y += label_height + gap
+        header = label_height + gap + line_height
+    }
+    footer: float = 0.0
+    if show_limits { footer = line_height + 4.0 * scale }
+    extra: float = 0.0
+    if !vertical && step_buttons && bounds.width < target * 3.0 + gap * 2.0 {
+        extra = target + gap
+    }
+    minimum := header + gap + target + footer + extra
+    if bounds.height < minimum { bounds.height = minimum }
+    layout.bounds = bounds
+    layout.track.x = bounds.x
+    layout.track.y = bounds.y + header + gap
+    layout.track.width = bounds.width
+    layout.track.height = bounds.height - header - gap - footer - extra
+    if !vertical && step_buttons {
+        # At very narrow widths retain useful controls and grow vertically.
+        if bounds.width < target * 3.0 + gap * 2.0 {
+            layout.decrement.x = bounds.x
+            layout.decrement.y = layout.track.y
+            layout.decrement.width = target
+            layout.decrement.height = target
+            layout.increment.x = bounds.x + bounds.width - target
+            layout.increment.y = layout.track.y
+            layout.increment.width = target
+            layout.increment.height = target
+            layout.track.y += target + gap
+        } else {
+            layout.decrement.x = bounds.x
+            layout.decrement.y = layout.track.y
+            layout.decrement.width = target
+            layout.decrement.height = target
+            layout.increment.x = bounds.x + bounds.width - target
+            layout.increment.y = layout.track.y
+            layout.increment.width = target
+            layout.increment.height = target
+            layout.track.x += target + gap
+            layout.track.width -= (target + gap) * 2.0
+        }
+    }
+    layout.limits.x = layout.track.x
+    layout.limits.y = layout.track.y + layout.track.height +
+        4.0 * scale
+    layout.limits.width = layout.track.width
+    layout.limits.height = line_height
+    return layout
+}
+
 SliderCellTextPaintFor :: (bounds: Rectangle, inset: float,
     text_line_height: float) -> SliderTextPaint #export {
     paint: SliderTextPaint
@@ -544,6 +626,10 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
         (spec.disabled ? 0.18 : 0.36) * thumb_opacity)
     paint.thumb_highlight_color = Opacity(paint.thumb.value.foreground,
         (spec.disabled ? 0.08 : 0.20) * thumb_opacity)
+    if paint.thumb.value.material == (MaterialKind)MaterialFlat {
+        paint.thumb_shadow_color = 0
+        paint.thumb_highlight_color = 0
+    }
     paint.glow_color = Opacity(paint.thumb.value.focus,
         (spec.active ? 0.32 : (spec.hovered ? 0.18 : 0.0)) * thumb_opacity)
     return paint

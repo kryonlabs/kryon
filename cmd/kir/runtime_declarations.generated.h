@@ -1184,6 +1184,11 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    vertical: bool\n"
         "    angle: bool\n"
         "    class_name: i32\n"
+        "    value_scale: double\n"
+        "    value_format: const char*\n"
+        "    step_buttons: bool\n"
+        "    show_limits: bool\n"
+        "    measured_height: *float\n"
         "}\n"
     },
     {"runtime/spinbox_props.kry",
