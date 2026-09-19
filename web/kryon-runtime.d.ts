@@ -61,6 +61,7 @@ export interface Runtime {
       released: Record<number, boolean>;
     };
     scrollBounds: Map<string, { x: number; y: number; width: number; height: number }>;
+    scrollOffsets: Map<string, number>;
     dragDrop: unknown;
     menus: Map<number, unknown>;
     layoutBounds: Map<string, { x: number; y: number; width: number; height: number }>;

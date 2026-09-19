@@ -340,6 +340,7 @@ export function createRuntime(options = {}) {
         released: Object.create(null)
       },
       scrollBounds: new Map(),
+      scrollOffsets: new Map(),
       dragDrop: null,
       menus: new Map(),
       layoutBounds: new Map()
@@ -468,6 +469,7 @@ export function beginFrame(rt) {
     rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
     rt.input.layoutBounds = new Map();
+    rt.input.scrollOffsets = new Map();
   }
   return rt;
 }
@@ -1278,20 +1280,32 @@ function hasIdentifierBounds(args) {
   return /\.bounds\s*=\s*[A-Za-z_]\w*/.test(String(args || ""));
 }
 
+function directParentScrollOffset(rt, meta) {
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.scrollOffsets)
+    return 0;
+  return numberValue(rt.input.scrollOffsets.get(parent), 0);
+}
+
 function resolveLayoutBounds(rt, args, meta) {
   const bounds = parseBounds(args);
   const parent = parentLayoutBounds(rt, meta);
   if (!parent)
     return bounds;
+  const parentScrollOffset = directParentScrollOffset(rt, meta);
   const parts = boundsParts(args);
   if (parts && parts.length >= 4) {
     const x = resolveLayoutCoord(parts[0], "x", parent, bounds.x);
-    const y = resolveLayoutCoord(parts[1], "y", parent, bounds.y);
+    let y = resolveLayoutCoord(parts[1], "y", parent, bounds.y);
+    if (y !== bounds.y)
+      y -= parentScrollOffset;
     if (x !== bounds.x || y !== bounds.y)
       return { x, y, width: bounds.width, height: bounds.height };
   }
   if (hasIdentifierBounds(args) || (bounds.x === 0 && bounds.y === 0))
-    return { x: parent.x, y: parent.y, width: bounds.width, height: bounds.height };
+    return { x: parent.x, y: parent.y - parentScrollOffset, width: bounds.width, height: bounds.height };
+  if (parentScrollOffset)
+    return { x: bounds.x, y: bounds.y - parentScrollOffset, width: bounds.width, height: bounds.height };
   return bounds;
 }
 
@@ -1635,9 +1649,12 @@ function eventHitsWidget(rt, bounds, meta, ev) {
 function handleScroll(rt, args, meta) {
   const bounds = resolveLayoutBounds(rt, args, meta);
   const path = String(meta?.path || "");
-  if (path)
-    rt.input.scrollBounds.set(path, bounds);
   const offset = args && typeof args === "object" ? args.scroll_offset : null;
+  if (path) {
+    rt.input.scrollBounds.set(path, bounds);
+    rt.input.scrollOffsets.set(path,
+      offset && typeof offset === "object" && "value" in offset ? numberValue(offset.value, 0) : 0);
+  }
   const contentHeight = propNumber(args, "content_height", bounds.height);
   if (!offset || typeof offset !== "object" || !("value" in offset))
     return false;
@@ -1647,6 +1664,8 @@ function handleScroll(rt, args, meta) {
     return false;
   const maxOffset = Math.max(0, contentHeight - bounds.height);
   offset.value = Math.max(0, Math.min(maxOffset, numberValue(offset.value, 0) - numberValue(wheel.delta, 0) * 42));
+  if (path)
+    rt.input.scrollOffsets.set(path, numberValue(offset.value, 0));
   return true;
 }
 
