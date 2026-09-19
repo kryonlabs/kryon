@@ -10,7 +10,9 @@ Remaining:
 - Replace handwritten policy in Go/web host runtimes with generated decisions.
 - Execute scroll_content and the remaining composed_popup cases in JS with
   matching native/Go event sequences. Composition, drag_drop, and menus now run
-  their generated behavior checks in C/Go/JS, and composed_popup has partial JS
+  their generated behavior checks in C/Go/JS. Scroll_content has partial JS
+  coverage for clipping, wheel offset, nested content, mixed controls/text
+  editing, and basic tree opening; composed_popup has partial JS
   coverage for content/tools/tooltip/modal-open behavior. The web runtime has
   queued mouse move/down/up/wheel primitives and frame-scoped key/mouse queries;
   remaining fixture-level routing/capture promotion remains open. Extend

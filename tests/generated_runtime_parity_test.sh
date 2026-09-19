@@ -2493,6 +2493,7 @@ import * as progressMod from "./js/tests/parity/progress.js";
 import * as plotsMod from "./js/tests/parity/plots.js";
 import * as tableMod from "./js/tests/parity/table_view.js";
 import * as selectionMod from "./js/tests/parity/selection_images.js";
+import * as scrollContentMod from "./js/tests/parity/scroll_content.js";
 import * as dragDropMod from "./js/tests/parity/drag_drop.js";
 import * as menusMod from "./js/tests/parity/menus.js";
 import * as composedPopupMod from "./js/tests/parity/composed_popup.js";
@@ -2574,6 +2575,7 @@ const listBox = listBoxMod.createState();
 const treeView = treeViewMod.createState();
 const table = tableMod.createState();
 const selection = selectionMod.createState();
+const scrollContent = scrollContentMod.createState();
 const dragDrop = dragDropMod.createState();
 const menus = menusMod.createState();
 const composedPopup = composedPopupMod.createState();
@@ -2590,6 +2592,12 @@ const drawProgress = () => progressMod.frame(rt, progressMod.createState());
 const drawPlots = () => plotsMod.frame(rt, plotsMod.createState());
 const drawTableView = () => tableMod.frame(rt, table);
 const drawTabScope = () => selectionMod.SelectionImages_TabScopeFrame(rt, selection);
+const drawScrollContent = () => {
+  kryon.beginFrame(rt);
+  const result = scrollContentMod.ScrollContent_ScrollContentFrame(rt, scrollContent);
+  kryon.endFrame(rt);
+  return result;
+};
 const drawDragDrop = () => dragDropMod.frame(rt, dragDrop);
 const drawMenus = () => menusMod.frame(rt, menus);
 const drawComposedPopup = (fn) => {
@@ -2631,6 +2639,34 @@ assert.equal(composedPopup.tooltip_frames, hiddenTooltipFrames);
 drawComposedModal();
 assert.equal(composedPopup.modal_open, true);
 assert.equal(composedPopup.modal_frames, 1);
+
+drawScrollContent();
+rt.QueueTap(20, 90); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.scrolling_actions, 100);
+rt.QueueMouseMove(30, 30); rt.QueueMouseWheel(-1); drawScrollContent();
+assert.equal(scrollContent.scrolling_offset, 42);
+rt.QueueTap(120, 65); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.scrolling_actions, 100);
+rt.QueueTap(70, 65); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.scrolling_actions, 1100);
+rt.QueueTap(250, 20); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.mixed_flags, 4);
+rt.QueueTap(250, 115); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.mixed_actions, 0);
+rt.SetFocus(988); rt.QueueText("!"); drawScrollContent();
+assert.equal(scrollContent.mixed_text, "item!");
+assert.equal(scrollContent.mixed_cursor, 5);
+rt.QueueMouseMove(250, 80); rt.QueueMouseWheel(-1); drawScrollContent();
+assert.equal(scrollContent.mixed_offset, 42);
+rt.QueueTap(450, 20); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.branch_open, true);
+assert.equal(rt.Focus(), 990);
+rt.QueueTap(450, 50); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.nested_open, true);
+assert.equal(rt.Focus(), 991);
+rt.QueueTap(490, 85); drawScrollContent(); drawScrollContent();
+assert.equal(scrollContent.branch_actions, 1);
+rt.SetFocus(0);
 
 rt.SetFocus(940);
 rt.QueueKey(kryon.KeyDown); drawMenus();
@@ -2860,4 +2896,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry","tests/parity/menus.kry"],"native_go_only":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/composed_popup.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry","tests/parity/menus.kry"],"native_go_only":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"]}'

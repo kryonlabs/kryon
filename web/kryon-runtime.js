@@ -529,6 +529,8 @@ export function widget(rt, name, args, state = null, meta = null) {
   rt.frame.push(item);
   recordLayoutBounds(rt, args, item.meta);
   const result = handleWidget(rt, name, args, state, item.meta);
+  if (name === "TableCell")
+    recordLayoutBounds(rt, args, item.meta);
   if ((name === "TextField" || name === "TextArea") && state) {
     const props = parseTextInputProps(rt, args, state, name === "TextArea", item.meta);
     props.disabled = isTruthyProp(args, "disabled") || !!state[propIdent(args, "disabled")] || rt.disabledStack.some(Boolean);
@@ -1251,10 +1253,44 @@ function parentLayoutBounds(rt, meta) {
   return null;
 }
 
+function resolveLayoutCoord(part, axis, parent, fallback) {
+  if (!parent || typeof part !== "string")
+    return fallback;
+  const field = axis === "x" ? "x" : "y";
+  const pattern = "^[A-Za-z_]\\w*\\." + field + "(?:\\s*([+-])\\s*([0-9]+(?:\\.[0-9]+)?))?$";
+  const m = part.trim().match(new RegExp(pattern));
+  if (!m)
+    return fallback;
+  const delta = numberValue(m[2], 0) * (m[1] === "-" ? -1 : 1);
+  return parent[field] + delta;
+}
+
+function boundsParts(args) {
+  if (args && typeof args === "object")
+    return null;
+  const prop = String(args || "").match(/\.bounds\s*=\s*(?:\([^)]+\))?\{([^{}]+)\}/);
+  return prop ? splitTopLevel(prop[1]) : null;
+}
+
+function hasIdentifierBounds(args) {
+  if (args && typeof args === "object")
+    return false;
+  return /\.bounds\s*=\s*[A-Za-z_]\w*/.test(String(args || ""));
+}
+
 function resolveLayoutBounds(rt, args, meta) {
   const bounds = parseBounds(args);
   const parent = parentLayoutBounds(rt, meta);
-  if (parent && bounds.x === 0 && bounds.y === 0)
+  if (!parent)
+    return bounds;
+  const parts = boundsParts(args);
+  if (parts && parts.length >= 4) {
+    const x = resolveLayoutCoord(parts[0], "x", parent, bounds.x);
+    const y = resolveLayoutCoord(parts[1], "y", parent, bounds.y);
+    if (x !== bounds.x || y !== bounds.y)
+      return { x, y, width: bounds.width, height: bounds.height };
+  }
+  if (hasIdentifierBounds(args) || (bounds.x === 0 && bounds.y === 0))
     return { x: parent.x, y: parent.y, width: bounds.width, height: bounds.height };
   return bounds;
 }
@@ -1342,7 +1378,7 @@ function handleTextInput(rt, state, args, multiline, meta = null) {
   if (props.focusID) {
     if (!rt.input.focusOrder.includes(props.focusID))
       rt.input.focusOrder.push(props.focusID);
-    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(props.bounds, ev.x, ev.y));
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && eventHitsWidget(rt, props.bounds, meta, ev));
     if (tap) {
       rt.input.focus = props.focusID;
       if (state && props.cursorKey)
@@ -1355,7 +1391,7 @@ function handleTextInput(rt, state, args, multiline, meta = null) {
 
 function handleButton(rt, args, meta = null) {
   const bounds = resolveLayoutBounds(rt, args, meta);
-  return !!consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+  return !!consumeFirstEvent(rt, (ev) => ev.type === "tap" && eventHitsWidget(rt, bounds, meta, ev));
 }
 
 function isTruthyProp(args, name) {
@@ -1369,10 +1405,10 @@ function isTruthyPropAny(args, names) {
   return names.some((name) => isTruthyProp(args, name));
 }
 
-function handleCard(rt, args) {
+function handleCard(rt, args, meta = null) {
   if (!isTruthyProp(args, "clickable") && !isTruthyProp(args, "Clickable"))
     return false;
-  return handleButton(rt, args);
+  return handleButton(rt, args, meta);
 }
 
 function handlePopup(rt, args) {
@@ -1435,11 +1471,11 @@ function handleSlider(rt, state, args) {
   return true;
 }
 
-function handleToggle(rt, state, args) {
+function handleToggle(rt, state, args, meta = null) {
   if (String(args || "").includes("ToggleProps")) {
     const ref = propRef(args, "value");
-    const bounds = parseBounds(args);
-    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+    const bounds = resolveLayoutBounds(rt, args, meta);
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && eventHitsWidget(rt, bounds, meta, ev));
     if (!tap || !state || !ref)
       return false;
     state[ref] = state[ref] ? 0 : 1;
@@ -1455,13 +1491,13 @@ function handleToggle(rt, state, args) {
   return true;
 }
 
-function handleCheckbox(rt, state, args) {
+function handleCheckbox(rt, state, args, meta = null) {
   if (String(args || "").includes("CheckboxProps")) {
     const valueRef = propRef(args, "value");
     const flagsRef = propRef(args, "flags");
     const flagsValue = propNumber(args, "flags_value", 0);
-    const bounds = parseBounds(args);
-    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+    const bounds = resolveLayoutBounds(rt, args, meta);
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && eventHitsWidget(rt, bounds, meta, ev));
     if (!tap || !state || (!valueRef && !flagsRef))
       return false;
     if (flagsRef) {
@@ -1481,15 +1517,15 @@ function handleCheckbox(rt, state, args) {
   return true;
 }
 
-function handleDropdown(rt, state, args) {
+function handleDropdown(rt, state, args, meta = null) {
   if (String(args || "").includes("DropdownProps")) {
     const id = propNumber(args, "id", 0);
     const ref = propRef(args, "selected_index");
-    const bounds = parseBounds(args);
+    const bounds = resolveLayoutBounds(rt, args, meta);
     const count = propNumber(args, "option_count", 0);
     const tap = consumeFirstEvent(rt, (ev) =>
       ev.type === "tap" &&
-      (hit(bounds, ev.x, ev.y) ||
+      ((eventHitsWidget(rt, bounds, meta, ev)) ||
        (rt.input.dropdownOpen === id && hit({ x: bounds.x, y: bounds.y + bounds.height, width: bounds.width, height: bounds.height * count }, ev.x, ev.y))));
     if (!tap || !state || !ref)
       return false;
@@ -1561,32 +1597,119 @@ function stringStateValue(state, key) {
   return String(value ?? "");
 }
 
-function nearestScrollBounds(rt, meta) {
-  const parent = String(meta?.parentPath || "");
-  if (!parent || !rt.input?.scrollBounds)
-    return null;
-  const parts = parent.split("/");
-  while (parts.length > 0) {
-    const key = parts.join("/");
-    if (rt.input.scrollBounds.has(key))
-      return rt.input.scrollBounds.get(key);
-    parts.pop();
-  }
-  return null;
-}
-
 function pointerCanReachWidget(rt, bounds, meta) {
   const mouse = rt.input?.mouse;
   if (!mouse || !hit(bounds, mouse.x, mouse.y))
     return false;
-  const scroll = nearestScrollBounds(rt, meta);
-  return !scroll || hit(scroll, mouse.x, mouse.y);
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.scrollBounds)
+    return true;
+  const parts = parent.split("/");
+  while (parts.length > 0) {
+    const key = parts.join("/");
+    const scroll = rt.input.scrollBounds.get(key);
+    if (scroll && !hit(scroll, mouse.x, mouse.y))
+      return false;
+    parts.pop();
+  }
+  return true;
+}
+
+function eventHitsWidget(rt, bounds, meta, ev) {
+  if (!ev || !hit(bounds, ev.x, ev.y))
+    return false;
+  const mouse = rt.input?.mouse;
+  const previous = mouse ? { x: mouse.x, y: mouse.y } : null;
+  if (mouse) {
+    mouse.x = ev.x;
+    mouse.y = ev.y;
+  }
+  const ok = pointerCanReachWidget(rt, bounds, meta);
+  if (mouse && previous) {
+    mouse.x = previous.x;
+    mouse.y = previous.y;
+  }
+  return ok;
 }
 
 function handleScroll(rt, args, meta) {
+  const bounds = resolveLayoutBounds(rt, args, meta);
   const path = String(meta?.path || "");
   if (path)
-    rt.input.scrollBounds.set(path, parseBounds(args));
+    rt.input.scrollBounds.set(path, bounds);
+  const offset = args && typeof args === "object" ? args.scroll_offset : null;
+  const contentHeight = propNumber(args, "content_height", bounds.height);
+  if (!offset || typeof offset !== "object" || !("value" in offset))
+    return false;
+  const wheel = consumeFirstEvent(rt, (ev) =>
+    ev.type === "wheel" && hit(bounds, rt.input.mouse.x, rt.input.mouse.y));
+  if (!wheel)
+    return false;
+  const maxOffset = Math.max(0, contentHeight - bounds.height);
+  offset.value = Math.max(0, Math.min(maxOffset, numberValue(offset.value, 0) - numberValue(wheel.delta, 0) * 42));
+  return true;
+}
+
+function handleCollapsible(rt, state, args) {
+  if (!String(args || "").includes("CollapsibleProps") || isTruthyProp(args, "disabled"))
+    return false;
+  const id = propNumber(args, "id", 0);
+  const ref = propRef(args, "open");
+  const bounds = parseBounds(args);
+  if (id && !rt.input.focusOrder.includes(id))
+    rt.input.focusOrder.push(id);
+  const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+  if (tap) {
+    if (id)
+      rt.input.focus = id;
+    if (state && ref && !isTruthyProp(args, "leaf"))
+      state[ref] = !state[ref];
+    return true;
+  }
+  if (id && rt.input.focus === id && state && ref && !isTruthyProp(args, "leaf")) {
+    const key = consumeFirstEvent(rt, (ev) => ev.type === "key" &&
+      [KeyLeft, KeyRight, KeyEnter, KeySpace].includes(Number(ev.key)));
+    if (key) {
+      const code = Number(key.key);
+      if (code === KeyLeft)
+        state[ref] = false;
+      else if (code === KeyRight)
+        state[ref] = true;
+      else
+        state[ref] = !state[ref];
+      return true;
+    }
+  }
+  return false;
+}
+
+function handleTableCell(rt, args) {
+  if (!args || typeof args !== "object")
+    return false;
+  const table = args.table;
+  const out = args.bounds;
+  if (!table || !out || typeof out !== "object")
+    return false;
+  const tableBounds = parseBounds(table);
+  const rowHeight = numberValue(table.row_height, 24);
+  const headerHeight = numberValue(table.header_height, rowHeight);
+  const columnCount = Math.max(1, numberValue(table.column_count, 1));
+  const row = Math.max(0, numberValue(args.row, 0));
+  const column = Math.max(0, numberValue(args.column, 0));
+  let x = tableBounds.x;
+  let width = tableBounds.width / columnCount;
+  const widths = table.column_widths;
+  if (widths && typeof widths === "object") {
+    width = numberValue(widths[column] ?? width, width);
+    for (let i = 0; i < column; i++)
+      x += numberValue(widths[i] ?? width, width);
+  } else {
+    x += width * Math.min(column, columnCount - 1);
+  }
+  out.x = x;
+  out.y = tableBounds.y + headerHeight + row * rowHeight;
+  out.width = width;
+  out.height = rowHeight;
   return false;
 }
 
@@ -1775,10 +1898,14 @@ function handleWidget(rt, name, args, state, meta = null) {
   switch (name) {
   case "Scroll":
     return handleScroll(rt, args, meta);
+  case "Collapsible":
+    return handleCollapsible(rt, state, args);
+  case "TableCell":
+    return handleTableCell(rt, args);
   case "Button":
     return handleButton(rt, args, meta);
   case "Card":
-    return handleCard(rt, args);
+    return handleCard(rt, args, meta);
   case "Popup":
     return handlePopup(rt, args);
   case "TextField":
@@ -1787,11 +1914,11 @@ function handleWidget(rt, name, args, state, meta = null) {
   case "Slider":
     return handleSlider(rt, state, args);
   case "Toggle":
-    return handleToggle(rt, state, args);
+    return handleToggle(rt, state, args, meta);
   case "Checkbox":
-    return handleCheckbox(rt, state, args);
+    return handleCheckbox(rt, state, args, meta);
   case "Dropdown":
-    return handleDropdown(rt, state, args);
+    return handleDropdown(rt, state, args, meta);
   case "ListBox":
     return handleListBox(rt, state, args);
   case "TreeView":
