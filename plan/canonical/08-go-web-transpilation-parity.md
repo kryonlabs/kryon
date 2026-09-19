@@ -13,7 +13,7 @@ Remaining:
   their generated behavior checks in C/Go/JS. Scroll_content has partial JS
   coverage for clipping, wheel offset, nested content, mixed controls/text
   editing, dropdown overlay capture, dropdown keyboard/flipped-popup selection, dropdown scrollbar/edge-popup selection, rotated table hit geometry/resize, custom table-cell layout/disabled editing, and tree opening/keyboard navigation; composed_popup has
-  partial JS coverage for content/tools/tooltip/modal-open, modal capture/Escape, and context popup, popup-owned drag, and popup shortcut/tree routing behavior. The web runtime has
+  partial JS coverage for content/tools/tooltip/modal-open, early-exit scope restoration, modal capture/Escape, and context popup, popup-owned drag, and popup shortcut/tree routing behavior. The web runtime has
   queued mouse move/down/up/wheel primitives and frame-scoped key/mouse queries;
   remaining fixture-level routing/capture promotion remains open. Extend
   Disabled/TableCell/Canvas scope restoration, nesting and early-exit coverage.

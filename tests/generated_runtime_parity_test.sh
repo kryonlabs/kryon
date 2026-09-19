@@ -2613,6 +2613,12 @@ const drawComposedModal = () => drawComposedPopup(composedPopupMod.ComposedPopup
 const drawComposedContext = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedContextFrame);
 const drawComposedDrag = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupDragFrame);
 const drawComposedShortcut = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupShortcutFrame);
+const drawComposedEarlyExit = (leave) => {
+  kryon.beginFrame(rt);
+  const result = composedPopupMod.ComposedPopup_ComposedPopupEarlyExit(rt, composedPopup, leave);
+  kryon.endFrame(rt);
+  return result;
+};
 
 drawComposedContent();
 assert.equal(composedPopup.popup_content_open, true);
@@ -2620,7 +2626,9 @@ rt.QueueTap(30, 70); drawComposedContent(); drawComposedContent();
 assert.equal(composedPopup.popup_content_action, 1);
 composedPopup.popup_content_close = true; drawComposedContent();
 assert.equal(composedPopup.popup_content_open, false);
-composedPopup.popup_content_close = false; drawComposedContent();
+composedPopup.popup_content_close = false;
+drawComposedEarlyExit(true);
+drawComposedContent();
 rt.QueueTap(180, 70); drawComposedTools(); drawComposedTools();
 assert.equal(composedPopup.popup_action, 1);
 composedPopup.popup_close = true; drawComposedTools();
