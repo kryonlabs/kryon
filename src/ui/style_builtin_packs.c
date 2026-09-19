@@ -3,8 +3,13 @@
 #include "kss_parser.h"
 #include "embedded_assets.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef KRYON_USE_RELEASE_STYLE_TABLES
+bool RegisterCompiledBuiltInStylePacks(void);
+#endif
 
 #define BUILTIN_STYLE_RULE_MAX 320
 
@@ -73,6 +78,10 @@ register_builtin_style_pack(BuiltInStylePack *pack)
 bool
 RegisterBuiltInStylePacks(void)
 {
+#ifdef KRYON_USE_RELEASE_STYLE_TABLES
+    builtin_style_theme = "";
+    return RegisterCompiledBuiltInStylePacks();
+#else
     int count = (int)(sizeof(builtin_style_packs) /
                       sizeof(builtin_style_packs[0]));
 
@@ -80,6 +89,7 @@ RegisterBuiltInStylePacks(void)
         if(!register_builtin_style_pack(&builtin_style_packs[i]))
             return false;
     return SetActiveStylePack("material");
+#endif
 }
 
 bool
@@ -89,6 +99,21 @@ ReapplyBuiltInStyleTheme(const char *theme)
                       sizeof(builtin_style_packs[0]));
 
     builtin_style_theme = theme != NULL ? theme : "";
+#ifdef KRYON_USE_RELEASE_STYLE_TABLES
+    if(builtin_style_theme[0] == '\0') {
+        const char *active = GetActiveStylePackId();
+        char active_id[64];
+
+        active_id[0] = '\0';
+        if(active != NULL && active[0] != '\0')
+            snprintf(active_id, sizeof(active_id), "%s", active);
+        if(!RegisterCompiledBuiltInStylePacks())
+            return false;
+        if(active_id[0] != '\0')
+            return SetActiveStylePack(active_id);
+        return true;
+    }
+#endif
     for(int i = 0; i < count; i++)
         if(!register_builtin_style_pack(&builtin_style_packs[i]))
             return false;
@@ -101,14 +126,36 @@ EnsureBuiltInStylePacks(void)
     const char *active = GetActiveStylePackId();
     int count = (int)(sizeof(builtin_style_packs) /
                       sizeof(builtin_style_packs[0]));
+    char active_id[64];
+
+    active_id[0] = '\0';
+    if(active != NULL && active[0] != '\0')
+        snprintf(active_id, sizeof(active_id), "%s", active);
+
+#ifdef KRYON_USE_RELEASE_STYLE_TABLES
+    if(builtin_style_theme[0] == '\0') {
+        bool missing = GetActiveStylePack() == NULL;
+
+        for(int i = 0; i < count; i++)
+            if(FindStylePack(builtin_style_packs[i].id) == NULL)
+                missing = true;
+        if(missing && !RegisterCompiledBuiltInStylePacks())
+            return false;
+        if(active_id[0] != '\0')
+            return SetActiveStylePack(active_id);
+        if(GetActiveStylePack() != NULL)
+            return true;
+        return SetActiveStylePack("material");
+    }
+#endif
 
     for(int i = 0; i < count; i++)
         if(FindStylePack(builtin_style_packs[i].id) == NULL &&
            !register_builtin_style_pack(&builtin_style_packs[i]))
             return false;
 
-    if(active != NULL && active[0] != '\0')
-        return SetActiveStylePack(active);
+    if(active_id[0] != '\0')
+        return SetActiveStylePack(active_id);
     if(GetActiveStylePack() != NULL)
         return true;
     return SetActiveStylePack("material");

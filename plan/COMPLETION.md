@@ -249,13 +249,13 @@ host-service exceptions in P0's ledger before declaring all KSS migrated.
 - [ ] Verify live KSS reload in an actual host, including invalid-source
   recovery, theme overlays, and pack options. Record which downstream hosts
   support reload and test them during P6.
-- [ ] Wire emitted typed C style tables into the actual release/package startup
-  path, or document the release decision if source-loaded packs remain
-  intentional. `make style-release-table-repro-test` checks dynamic-vs-typed
-  reproducibility; `make style-release-table-emitter-test` and
-  `make style-release-table-import-emitter-test` generate and link typed build
-  artifacts for built-ins plus import/theme/variant overlays without tracking
-  generated tables as source.
+- [ ] Decide whether app-authored KSS registration emitted by `k2c`/`k2cpp`
+  and package flows should also switch from source registration to generated
+  typed tables. Built-in release startup uses generated C tables by default;
+  `make style-release-table-repro-test`, `make style-release-table-emitter-test`,
+  `make style-release-table-import-emitter-test`, and
+  `make style-release-startup-test` cover dynamic parity, imports/overlays, and
+  zero-parser startup without tracking generated tables as source.
 
 Exit: tools use canonical parsing/semantics, authors can inspect the painted
 result and its origin, and release styles match dynamic loading.
@@ -319,7 +319,7 @@ sh tests/public_api_names_test.sh
 sh tests/canonical_surface_test.sh
 make kss-parser-test kss-matched-test kss-formatter-test
 make style-policy-test style-sheet-policy-test style-pack-registry-test
-make style-pack-source-test style-release-table-repro-test style-release-table-emitter-test style-release-table-import-emitter-test style-assets-test style-builtins-test style-picker-test
+make style-pack-source-test style-release-table-repro-test style-release-table-emitter-test style-release-table-import-emitter-test style-release-startup-test style-assets-test style-builtins-test style-picker-test
 make style-widget-policy-test app-background-style-test
 make web-text-input-browser-test
 make build/linux-x86_64/tests/ui_tk_test

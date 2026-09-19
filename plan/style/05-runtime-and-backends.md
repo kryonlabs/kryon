@@ -61,8 +61,10 @@
   the parser. `style-release-table-emitter-test` and
   `style-release-table-import-emitter-test` now link generated C table artifacts
   emitted under `build/.../generated/src`, covering built-ins plus an imported
-  theme/variant fixture. Release startup integration is still tracked in
-  `06-tooling-and-workflow.md`.
+  theme/variant fixture. The default library build archives the generated
+  built-in table and `style-release-startup-test` proves built-in registration
+  no longer parses on startup; app-authored package registration remains tracked
+  in `06-tooling-and-workflow.md`.
 - Audit browser/terminal defaults for style leakage and remove any product
   decoration not represented by resolved style data.
 

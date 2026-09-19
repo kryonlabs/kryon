@@ -98,10 +98,14 @@
   `.kry`-generated KSS parser and writes typed C tables under
   `build/.../generated/src`. `style-release-table-emitter-test` links the
   generated built-in tables, and `style-release-table-import-emitter-test` links
-  a generated import/theme/variant table. The Go test covers repeated active
-  resolution and a typed-only theme switch. Generated release tables remain
-  build artifacts, not checked-in source; wiring them into the actual release
-  startup path remains open.
+  a generated import/theme/variant table. The default Make build now enables
+  `KRYON_RELEASE_STYLE_TABLES=1`, compiles the generated built-in table into
+  `libkryon.a`, and `style-release-startup-test` proves built-in registration
+  and default-theme reapply use it with zero parser invocations while preserving
+  the active pack. The Go test covers repeated active resolution and a
+  typed-only theme switch. Generated release tables remain build artifacts, not
+  checked-in source; app-authored KSS emitted by compiler/package flows remains
+  the open release-path decision.
 - Expand comparison captures to missing widget families/states, particularly
   popup/modal, navigation, table/menu/list/tree, and text/layout cases. Track
   uncovered cases through the testing matrix rather than rebuilding existing boards.

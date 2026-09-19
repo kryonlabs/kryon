@@ -85,6 +85,7 @@ EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 STYLE_RELEASE_TABLES_C = $(GENERATED_SRC_DIR)/ui/style_release_tables.c
 STYLE_RELEASE_IMPORT_TABLES_C = $(GENERATED_SRC_DIR)/ui/style_release_import_tables.c
+KRYON_RELEASE_STYLE_TABLES ?= 1
 FONT_SUBSET_OUT_DIR ?= $(BUILD_DIR)/fonts/subset
 FONT_SUBSET_SOURCE_DIR ?= $(KRYON_DIR)/fonts/noto
 FONT_SUBSET_PREFIX ?= App
@@ -257,6 +258,10 @@ endif
 
 SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) \
 	$(RUNTIME_C) $(KRYON_BACKEND_SRCS)
+ifeq ($(KRYON_RELEASE_STYLE_TABLES),1)
+  CPPFLAGS += -DKRYON_USE_RELEASE_STYLE_TABLES=1
+  SRCS += $(STYLE_RELEASE_TABLES_C)
+endif
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
@@ -619,6 +624,7 @@ widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIB
 .PHONY: style-release-tables
 .PHONY: style-release-table-emitter-test
 .PHONY: style-release-table-import-emitter-test
+.PHONY: style-release-startup-test
 .PHONY: app-background-style-test
 .PHONY: style-widget-policy-test
 .PHONY: text-policy-test
@@ -697,6 +703,10 @@ $(STYLE_RELEASE_IMPORT_TABLES_C): scripts/generate-c-style-tables.py tests/fixtu
 style-release-table-import-emitter-test: $(STYLE_RELEASE_IMPORT_TABLES_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_table_import_emitter_test.c $(STYLE_RELEASE_IMPORT_TABLES_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-table-import-emitter-test
 	$(BUILD_DIR)/style-release-table-import-emitter-test
+
+style-release-startup-test: $(STYLE_RELEASE_TABLES_C) $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -DKRYON_USE_RELEASE_STYLE_TABLES=1 -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_release_startup_test.c $(STYLE_RELEASE_TABLES_C) src/ui/style_builtin_packs.c src/core/embedded_assets.c $(EMBED_ASSETS_C) src/ui/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_parser.c $(GENERATED_SRC_DIR)/runtime/kss_formatter.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-release-startup-test
+	$(BUILD_DIR)/style-release-startup-test
 
 app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_background_style_test.c \
@@ -1008,6 +1018,7 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(MAKE) style-release-table-repro-test
 	$(MAKE) style-release-table-emitter-test
 	$(MAKE) style-release-table-import-emitter-test
+	$(MAKE) style-release-startup-test
 	$(MAKE) app-background-style-test
 	$(MAKE) style-widget-policy-test
 	$(MAKE) interaction-policy-matrix-test
