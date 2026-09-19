@@ -73,20 +73,19 @@ Arithmetic traps do not promise cleanup or foreign-stack unwinding.
 Save the example as `numbers.kry`, then run from the repository root:
 
 ```sh
-make k2c k2cpp k2go k2js
+make k2c k2cpp k2go
 build/linux-x86_64/bin/k2c --strict --no-main -o /tmp/numbers-c numbers.kry
 build/linux-x86_64/bin/k2cpp --strict --no-main -o /tmp/numbers-cpp numbers.kry
 build/linux-x86_64/bin/k2go --strict --no-main -o /tmp/numbers-go numbers.kry
-build/linux-x86_64/bin/k2js --strict --no-main -o /tmp/numbers-js numbers.kry
 make language-test
 ```
 
 Adjust `linux-x86_64` for your host build directory. C/C++ scalar translation units
 need standard headers but no UI inspection header. Pure generated Go omits its
-UI runtime import. JS output still includes its module/frame runtime scaffold;
-fully freestanding JS modules remain work to do.
+UI runtime import.
 
-`language-test` compiles and runs the same fixture in all four target languages.
+`language-test` compiles and runs the same fixture in the active scalar targets.
+The old JavaScript scalar output path is paused with the broader JS/web target.
 It covers cleanup, integer overflow, 64-bit exactness, signed division and shifts,
 casts, f32 rounding, evaluation order, short-circuiting, and arithmetic traps.
 

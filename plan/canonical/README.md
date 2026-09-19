@@ -54,8 +54,7 @@ Run from the repository root:
 make generate-runtime
 make fast-test
 make reorder-policy-test paragraph-policy-test text-policy-test image-policy-test icon-policy-test
-make generated-runtime-parity-test
-make k2go-syntax-test k2js-syntax-test k2js-runtime-snapshot-test
+make k2go-syntax-test
 make go-runtime-test
 python3 tests/canonical_widget_surface_doc_test.py
 sh tests/public_api_names_test.sh
@@ -80,11 +79,12 @@ proves the replacement. No compatibility alias is an acceptable fix.
 
 ## Verified in this cleanup
 
-Passed: runtime generation; fast/public-surface/header checks; menu,
-Collapsible, text-input, reorder, paragraph, text, image and icon policy tests;
-Go runtime tests; Go and JS syntax tests; web KSS control-style tests; JS
-snapshots; generated C/Go/JS parity; both real-browser DOM suites; retained
+Passed at the time of the earlier canonical migration: runtime generation;
+fast/public-surface/header checks; menu, Collapsible, text-input, reorder,
+paragraph, text, image and icon policy tests; Go runtime tests; retained
 `ui_tk_test` under Xvfb; and generated C syntax for the updated button example.
+Historical JS/web checks are no longer current completion evidence because the
+old JS target is paused.
 Initial failures in obsolete button styling, leaked web end-scope statements,
 and browser table-name fixtures were fixed and their checks rerun successfully.
 The root cross-module Go command was replaced with the real module test target.

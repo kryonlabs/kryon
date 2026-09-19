@@ -3,8 +3,10 @@
 
 The matrix is intentionally mechanical: it scans the checked-in .kry examples
 and generated-runtime parity fixtures, records which widget families each file
-exercises, and can verify that every listed source lowers through k2kir, k2c,
-k2cpp, k2go, k2js, and k2b.
+exercises, and can verify that every listed source lowers through the active
+native/package targets. The JavaScript/web lowering path is paused and kept out
+of the public status matrix until the future DOM/CSS/JS target replaces the old
+runtime-emulation approach.
 """
 
 from __future__ import annotations
@@ -51,12 +53,6 @@ PIPELINES = [
         "label": ".kry -> KIR -> Go",
         "tool": "build/linux-x86_64/bin/k2go",
         "evidence": "tests/k2go_syntax_test.sh plus conformance-matrix-check",
-    },
-    {
-        "id": "k2js",
-        "label": ".kry -> KIR -> JS",
-        "tool": "build/linux-x86_64/bin/k2js",
-        "evidence": "tests/k2js_syntax_test.sh plus conformance-matrix-check",
     },
     {
         "id": "k2b",
@@ -239,16 +235,10 @@ SOURCE_RENDERERS = [
 
 RUNTIME_PARITY_CHECKS = [
     {
-        "id": "generated-go-c-js",
-        "label": "Generated Go/C/JS runtime parity",
-        "command": ["make", "-C", ".", "generated-runtime-parity-test"],
-        "scope": "Lowers parity fixtures through k2go, k2c, and k2js, drives matching text/input/control workflows, renders Go/C frames where applicable, and compares final state JSON.",
-    },
-    {
-        "id": "generated-js-recorder",
-        "label": "Generated JS recorder snapshots",
-        "command": ["make", "-C", ".", "k2js-runtime-snapshot-test"],
-        "scope": "Lowers every conformance source through k2js, imports the generated ESM in Node, runs frame(), and compares the recorded widget stream.",
+        "id": "generated-go-c",
+        "label": "Generated Go/C runtime parity",
+        "command": ["make", "-C", ".", "runtime-parity-check"],
+        "scope": "Tracks native Go and clean C runtime API compatibility. JavaScript generated-runtime parity is paused and no longer advertised as an active status gate.",
     },
 ]
 
@@ -1869,7 +1859,7 @@ def verify_visual_comparison_matrix(data: dict) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="verify generated website JSON is current")
-    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2kir/k2c/k2cpp/k2go/k2js/k2b")
+    parser.add_argument("--verify-pipelines", action="store_true", help="run all listed sources through k2kir/k2c/k2cpp/k2go/k2b")
     parser.add_argument("--verify-krb-visuals", action="store_true", help="compare KRB headless PNGs against SDL readback PNGs")
     parser.add_argument("--verify-widget-coverage", action="store_true", help="verify every declared matrix widget appears in a .kry source")
     parser.add_argument("--verify-krb-web-visuals", action="store_true", help="compare KRB web wasm capture against native kry_sw for every source")

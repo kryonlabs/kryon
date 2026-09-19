@@ -13,12 +13,12 @@ intent until rerun at the revision being delivered.
 | Area | Source evidence | Consequence |
 |---|---|---|
 | Canonical API | Canonical plan records completed naming and release-call migrations; generated policy modules and surface guards exist. | Audit remaining behavior ownership. Do not repeat public renaming or the 34-call release-consumption migration. |
-| Web parity | `tests/generated_runtime_parity_test.sh` reports scroll_content and composed_popup as native/Go only; scroll_content now has partial JS coverage for clipping, wheel offset, visible nested content, mixed child controls, text editing, dropdown overlay capture, dropdown keyboard/flipped-popup selection, dropdown scrollbar/edge-popup selection, rotated table hit geometry/resize, custom table-cell layout/disabled editing, and tree opening/keyboard navigation, and composed_popup has partial JS coverage for content/tools/tooltip/modal-open, early-exit scope restoration, modal capture/Escape, and context popup, popup-owned drag, and popup shortcut/tree routing behavior. Composition, drag_drop, and menus execute their generated behavior checks in JS too. | Two fixtures still need complete JS execution. Preserve the distinction between partial scroll/popup coverage and full three-backend fixtures. |
+| Web/JS target | The old `k2js` + `web/kryon-runtime.js` path is paused and removed from default builds, preflight/test gates, packaged tools, and the public website matrix. | Do not continue widget-by-widget JS runtime parity work. Future web work belongs in `docs/WEB_JS_ROADMAP.md`: `.kry -> HTML/DOM + KSS/CSS + small JS` rather than a handwritten widget-emulation runtime. |
 | Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, shortcuts, queued mouse move/down/up/wheel, and frame-scoped public key/mouse queries covered by `tests/web_input_driver_test.mjs`. | Reuse the driver primitives to connect lifecycle routing/capture decisions to actual shared fixtures. Native DOM pointer handlers alone do not prove generated-runtime parity. |
-| Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, the web runtime no longer exports that placeholder, `sizeof(fixed_array)` lowers to the declared capacity for module state, globals, and function locals; the fixed-array count idiom `sizeof(array) / sizeof(array[0])` lowers to executable JavaScript. | Add real lowering for the remaining supported expression forms before claiming condition/activation parity. |
+| Expression lowering | Historical `k2js` placeholder fixes remain in the tree, but JS/web is paused. Active target lowering must still fail visibly for unsupported executable forms. | Add real lowering for supported expression forms in active targets before claiming condition/activation parity. Do not use paused JS syntax coverage as completion evidence. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
 | Theme switching | `src/ui/style_pack_source.c` implements `SetStyleTheme`; Go registers source packs in `go/kryon/style_pack.go`, but no Go `SetStyleTheme` definition was found. | Complete source retention and theme re-resolution in Go. |
-| DOM | Identity, source ranges, relationships, accessibility, commands, and mounted helpers already exist in `web/kryon-runtime.js`; `tests/k2js_syntax_test_runner.mjs` covers examples of these. | Treat DOM documents as contract audits; API existence does not establish all expression forms or element families. |
+| DOM | Existing `web/kryon-runtime.js` and k2js syntax-runner work are paused experimental evidence. | Treat DOM documents as future web-native contract audits; API existence does not establish current support. |
 | DOM names | The DOM plan lists `ColGroup`/`Col`; current test surface uses `TableColumnGroup`/`TableColumn`. | Reconcile with the canonical names. Do not introduce compatibility aliases from stale plan wording. |
 | Style allowances | `scripts/check-style-gates.py` classifies legacy theme calls, fallback background, content metrics, and recorder-generated source; its getter list also includes `ui_node_registry.c`, absent from the older summary. | Reinventory current call sites instead of trusting historical counts. A passing ratchet is not completion. |
 
@@ -29,7 +29,7 @@ Implementation constraint: keep KSS language and behavior in maintained `.kry`
 modules, including CSS-only declaration semantics. Hosts provide storage, I/O, DOM access, and output sinks. KSS serialization
 decisions also belong in `.kry`, along with parsing, matching, cascade,
 diagnostics, formatting, and CSS conversion. Most maintained runtime behavior
-should be `.kry`; generated C/Go/JS volume does not count as hand-written policy. Declaration interpretation, cascade comparisons,
+should be `.kry`; generated C/Go volume does not count as hand-written policy. The paused JS path also does not count as maintained policy. Declaration interpretation, cascade comparisons,
 specificity weights, attribute operators, nth-position formulas, state predicates,
 and basic structural rules now use shared `.kry` policy. Main selector lexing
 and atom parsing are also shared, including functional argument parsing in web
@@ -48,25 +48,17 @@ property table and border/effect decisions are removed. Exact cross-rule
 one-property aliases now cascade together in the web resolver (`foreground` /
 `color`, color-border aliases, `focus` / `outline-color`, `radius` /
 `border-radius`, and `typeface` / `font-family`) with focused web KSS
-coverage. The unresolved-expression web placeholder is removed: unsupported
-executable lowering now exits with an actionable diagnostic, the JS runtime no
-longer exports `kryon.expr`, and `tests/k2js_syntax_test.sh` rejects generated
-placeholder calls. Fixed-capacity module state/global/local `sizeof(...)` now
-lowers to the declared capacity in executable JS, fixed-array element-size
-operands support the common `sizeof(array) / sizeof(array[0])` count idiom,
-and `AcceleratorPressed((Accelerator){key,ctrl,shift,alt,id})` lowers to the
-web runtime accelerator helper for generated fixture execution. These paths have
-focused generated-runtime or syntax-runner coverage; broader computed capacities
-remain open.
+coverage. Historical JS lowering fixes remain reference material only while the
+JS/web target is paused; do not use them as current completion evidence. Broader
+computed capacities remain open for active targets where applicable.
 Broader shorthand/longhand side precedence remains open. Remaining compound matching,
 specificity conformance, and CSS export migration stay open (see the evidence
-ledger). Generated C, Go,
-and JavaScript are outputs, not policy owners.
+ledger). Generated C and Go are outputs, not policy owners; paused JavaScript output is reference material only.
 
 ## Execution order
 
 1. Establish the requirement, ownership, and coverage inventory (P0).
-2. Complete executable web lowering and lifecycle support (P1).
+2. Pause the old JavaScript/web runtime target and record the future web roadmap (P1).
 3. Close shared widget, text, and visual policy gaps (P2).
 4. Finish DOM compiler metadata and browser contracts (P3).
 5. Establish style backend conformance (P4).
@@ -74,8 +66,7 @@ and JavaScript are outputs, not policy owners.
 7. Migrate and verify downstream consumers (P6).
 8. Remove obsolete bridges and close the plans with evidence (P7).
 
-Dependencies: P1 and the DOM compiler portion of P3 both depend on P0 and must
-coordinate changes to KIR/k2js. P2 uses P1 to prove full interaction parity.
+Dependencies: P1 depends on P0 and stops the old JS parity track. Future DOM compiler work in P3 must coordinate through the web roadmap before reactivating any KIR-to-web compiler path. P2 proves interaction parity on active native/Go surfaces.
 P4 consumes P2's visual-policy inventory and P3's DOM facts. P5 inspector
 degradation reporting depends on P4; its formatter and Go theme work can start
 after P0. P6 follows the relevant upstream slices, not necessarily the entire
@@ -103,41 +94,26 @@ tooling backlog. P7 follows verified migration of every affected caller.
 Exit: every original requirement has an owner and a next action or closure
 record. No percentage-complete claim based only on file counts or scanners.
 
-## P1 — Make the remaining web fixtures executable
+## P1 — Pause the old JavaScript/web runtime target
 
-- [ ] Add queued pointer down/move/up and wheel events, preserving ordering,
-  pointer ownership, capture, cancellation, and focus transitions. The web
-  runtime now has queued mouse move/down/up/wheel primitives and frame-scoped
-  key/mouse queries; ownership/capture fixture promotion remains open.
-- [ ] Route Go context-menu activation/outside-close and web event-loop
-  decisions through generated policies. Keep queues and owner storage native.
-- [ ] Replace unresolved expression lowering in supported executable paths
-  with real evaluation. Unsupported forms must produce actionable diagnostics,
-  never a truthy placeholder. Add a scanner rejecting placeholders in fixtures
-  advertised as executable parity.
-- [ ] Execute scroll_content and composed_popup in JS using the same event
-  sequences and state assertions as C and Go. Drag/drop clipping/copy behavior
-  and generated menu keyboard submenu activation now run in C/Go/JS; composed
-  popup content/tools/tooltip/modal-open and early-exit scope-restoration checks now run as partial JS coverage.
-- [x] Complete composition parity for generated-runtime text behavior: selection,
-  preedit/commit/cancel, read-only mutation guards, clipboard, page movement,
-  newline insertion, and word deletion now run in C/Go/JS. Pointer/layout cases
-  remain covered by the broader scroll/pointer fixture work below.
-- [ ] Exercise Scroll/Popup/Disabled/TableCell/Canvas nesting, early return,
-  break, continue, clipping, disabled descendants, and captured children.
-  Assert restoration of outer scope state after each exit.
-- [ ] Compare intermediate states as well as final results. Emit fixture-level
-  coverage without promoting partial cases to three-backend parity.
+- [x] Remove `k2js` and generated JS runtime parity from default `all`, `tools`,
+  `test`, and `preflight` gates.
+- [x] Remove `k2js` and the generated web runtime from the tools package.
+- [x] Remove public green JS status from the website conformance matrix.
+- [x] Document the future web target as `.kry -> HTML/DOM + KSS/CSS + small JS`
+  in `docs/WEB_JS_ROADMAP.md`.
+- [ ] When web work resumes, design the web-native compiler path before adding
+  more widget-specific JavaScript runtime behavior.
 
-Exit: the currently excluded fixtures execute and compare on C/Go/JS; no
-placeholder can decide activation; missing required runtimes fail visibly.
+Exit: JS/web is clearly paused as a current target, and future work is tracked
+as a roadmap redesign rather than a remaining parity checklist.
 
 ## P2 — Complete shared behavior and drawing ownership
 
 - [ ] Audit capture, focus, navigation, owner-reset gates, and retained tree
   target selection around the already-migrated release calls.
 - [ ] Move remaining widget decisions and decorative metrics into the owning
-  `runtime/*.kry` modules. Regenerate C/Go/JS and remove duplicated host rules
+  `runtime/*.kry` modules. Regenerate active C/Go outputs and remove duplicated host rules
   only after their callers use the generated implementation.
 - [ ] Classify text reflow, line breaking, selection, and retained placement.
   Keep buffer storage, UTF-8 traversal, font measurement, glyph/atlas work,
@@ -207,7 +183,7 @@ Browser-only CSS features remain explicitly distinct from native StyleData.
   typed and web surfaces. Retain intentional web CSS extensions; resolve or
   explicitly document divergences such as numeric `px` handling. Do not assume
   unsupported nested token groups, computed colors, or transitions are promised.
-- [ ] Build a matrix with language targets C/Go/JS, KRB execution, and rendering
+- [ ] Build a matrix with active language targets C/Go, KRB execution, and rendering
   paths native/retained/DOM/canvas/libdraw/termi/null. Mark valid combinations,
   unsupported combinations, and unverified combinations separately.
 - [ ] Cover pack loading, imports, themes/env/variants, classes/roles/states,
@@ -325,8 +301,7 @@ make generate-runtime
 make fast-test
 make keyboard-policy-test input-policy-test focus-policy-test
 make reorder-policy-test paragraph-policy-test text-policy-test image-policy-test icon-policy-test
-make generated-runtime-parity-test
-make k2go-syntax-test k2js-syntax-test k2js-runtime-snapshot-test
+make k2go-syntax-test
 make go-runtime-test
 python3 tests/canonical_widget_surface_doc_test.py
 sh tests/public_api_names_test.sh
@@ -343,10 +318,7 @@ make test
 git diff --check
 ```
 
-`k2js-syntax-test` already invokes web KSS tests and `web-dom-browser-test`;
-the latter runs both DOM and inspector browser suites. Do not rerun those
-unchanged suites merely to produce extra logs. Run the individual targets when
-iterating on their area. `make test` includes formatter CLI coverage. Run all
+The old JS/web gates are paused; do not use them as completion evidence for current work. `make test` includes formatter CLI coverage. Run all
 five named `scripts/check-style-gates.py` gates when changing style ownership
 or allowances. Run `scripts/check-clean-text-api.py` on changed maintained
 source roots when changing text rendering. Use `make go-runtime-test` rather

@@ -35,8 +35,8 @@ an eight-byte buffer, an emoji replacement, and a preserved Unicode suffix.
 - `make web-text-input-browser-test`: live DOM events plus real Chromium keyboard
   and pointer input, wrapped rows, Home/End, Page Up/Down scrolling, backward Tab,
   native browser preedit, redraw, single commit, and screenshots.
-- `make generated-runtime-parity-test`: matched C/Go/JS fixtures; the composition
-  fixture additionally exercises web preedit, commit/cancel and read-only input.
+- JavaScript generated-runtime parity is paused with the broader JS/web target.
+  Keep native C/Go text behavior covered through active runtime and policy gates.
 - `make go-runtime-test` and the retained `ui_tk_test`: native ownership,
   navigation, focus, composition and retained-control regressions.
 

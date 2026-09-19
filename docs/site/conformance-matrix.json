@@ -25,11 +25,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -121,11 +116,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -223,11 +213,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -333,11 +318,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -430,11 +410,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -535,11 +510,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -631,11 +601,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -738,11 +703,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -839,11 +799,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -935,11 +890,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1042,11 +992,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -1140,11 +1085,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1245,11 +1185,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -1342,11 +1277,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1448,11 +1378,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -1545,11 +1470,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1648,11 +1568,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -1745,11 +1660,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -1851,11 +1761,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -1943,11 +1848,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2048,11 +1948,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -2140,11 +2035,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2243,11 +2133,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2384,11 +2269,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -2481,11 +2361,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2588,11 +2463,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -2684,11 +2554,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2786,11 +2651,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -2895,11 +2755,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -2995,11 +2850,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -3087,11 +2937,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -3191,11 +3036,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -3286,11 +3126,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -3393,11 +3228,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -3488,11 +3318,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -3593,11 +3418,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -3690,11 +3510,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -3796,11 +3611,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -3891,11 +3701,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -4002,11 +3807,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -4105,11 +3905,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -4200,11 +3995,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -4302,11 +4092,6 @@
           "status": "gated",
           "status_class": "ok"
         },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
         "k2kir": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
@@ -4397,11 +4182,6 @@
           "status_class": "ok"
         },
         "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
           "evidence": "conformance-matrix-check",
           "status": "gated",
           "status_class": "ok"
@@ -4546,13 +4326,6 @@
       "evidence": "tests/k2go_syntax_test.sh plus conformance-matrix-check",
       "id": "k2go",
       "label": ".kry -> KIR -> Go",
-      "status": "gated",
-      "status_class": "ok"
-    },
-    {
-      "evidence": "tests/k2js_syntax_test.sh plus conformance-matrix-check",
-      "id": "k2js",
-      "label": ".kry -> KIR -> JS",
       "status": "gated",
       "status_class": "ok"
     },
@@ -4706,16 +4479,10 @@
   ],
   "runtime_checks": [
     {
-      "command": "make -C . generated-runtime-parity-test",
-      "id": "generated-go-c-js",
-      "label": "Generated Go/C/JS runtime parity",
-      "scope": "Lowers parity fixtures through k2go, k2c, and k2js, drives matching text/input/control workflows, renders Go/C frames where applicable, and compares final state JSON."
-    },
-    {
-      "command": "make -C . k2js-runtime-snapshot-test",
-      "id": "generated-js-recorder",
-      "label": "Generated JS recorder snapshots",
-      "scope": "Lowers every conformance source through k2js, imports the generated ESM in Node, runs frame(), and compares the recorded widget stream."
+      "command": "make -C . runtime-parity-check",
+      "id": "generated-go-c",
+      "label": "Generated Go/C runtime parity",
+      "scope": "Tracks native Go and clean C runtime API compatibility. JavaScript generated-runtime parity is paused and no longer advertised as an active status gate."
     }
   ],
   "schema": 2,
@@ -4759,7 +4526,7 @@
     "libdraw_c_visual_cases": 32,
     "libdraw_c_visual_gaps": 12,
     "parity_fixtures": 20,
-    "pipeline_cells": 264,
+    "pipeline_cells": 220,
     "raylib_c_visual_cases": 37,
     "raylib_c_visual_gaps": 7,
     "renderer_source_cells": 264,

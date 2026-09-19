@@ -412,14 +412,13 @@ WEB_GENERATED_JS := $(addprefix web/,$(addsuffix .js,$(WEB_GENERATED_MODULES)))
 .PHONY: generate-web-runtime
 generate-web-runtime: $(WEB_GENERATED_JS)
 
-all tools k2js k2js-runtime-snapshot-test k2js-syntax-test generated-runtime-parity-test \
 widget-instance-test keyboard-policy-test web-text-capacity-test web-text-input-browser-test \
 web-dom-browser-test web-dom-inspector-browser-test runtime-declarations-check \
-generated-provenance-check web-generated-check: generate-web-runtime
+web-generated-check: generate-web-runtime
 
-all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
+all: $(LIB) $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 
-tools: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
+tools: $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL)
 
 install: $(KT) $(KRYON_CMD) $(KRY_FMT) $(KSSFMT) $(KRY_LOCALE_CHECK)
 	mkdir -p $(DESTDIR)$(BINDIR)
@@ -574,11 +573,11 @@ runtime-matrix-check:
 downstream-matrix-check:
 	python3 scripts/conformance-matrix.py --verify-downstream
 
-k2js-runtime-snapshot-test: $(K2JS)
-	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
+k2js-runtime-snapshot-test:
+	@echo "k2js runtime snapshot test is disabled while the JS/web target is paused"
 
-generated-runtime-parity-test: $(K2C) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS) web/text_input.js web/style_sheet.js
-	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
+generated-runtime-parity-test:
+	@echo "generated JS runtime parity is disabled while the JS/web target is paused"
 
 .PHONY: keyboard-policy-test
 keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test
@@ -916,7 +915,7 @@ link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runti
 canonical-surface-test:
 	sh tests/canonical_surface_test.sh .
 
-preflight: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
+preflight: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check
 	git diff --check
 
 fast-test: canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check image-policy-test
@@ -940,11 +939,8 @@ k2cpp-syntax-test: $(K2CPP) $(GENERATED_SRC_DIR)/runtime/kss_parser.h
 k2go-syntax-test: $(K2GO)
 	sh tests/k2go_syntax_test.sh $(K2GO)
 
-k2js-syntax-test: $(K2JS)
-	sh tests/k2js_syntax_test.sh $(K2JS)
-	node tests/web_kss_control_style_test.mjs web/kryon-runtime.js
-	node tests/web_kss_strict_test.mjs web/kryon-runtime.js
-	$(MAKE) web-dom-browser-test
+k2js-syntax-test:
+	@echo "k2js syntax test is disabled while the JS/web target is paused"
 
 web-dom-browser-test:
 	sh tests/web_dom_browser_test.sh .
@@ -957,12 +953,11 @@ clean-text-api-check:
 	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-glow-pack-check no-theme-chrome-check visual-props-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(NAVIGATION_BAR_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
 	sh tests/k2go_syntax_test.sh $(K2GO)
-	sh tests/k2js_syntax_test.sh $(K2JS)
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 	$(MAKE) surface-policy-test
 	$(MAKE) style-policy-test
@@ -981,8 +976,6 @@ test: submodule-urls-check style-facts-bridge-check paint-style-leak-check no-gl
 	$(MAKE) group-policy-test
 	$(MAKE) radio-policy-test
 	$(MAKE) spinbox-policy-test
-	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
-	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)
 	sh tests/kssfmt_cli_test.sh $(KSSFMT)
 	sh tests/krb_cartridge_test.sh $(K2B) $(KRB_WALK_TEST) .
@@ -1082,12 +1075,11 @@ public-headers-compile-changed-check: | $(BUILD_DIR)
 examples-manifest-check:
 	sh tests/examples_manifest_test.sh .
 
-generated-provenance-check: $(K2JS)
+generated-provenance-check:
 	sh tests/generated_provenance_test.sh .
-	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
 
-# The web runtime modules are k2js output of runtime/*.kry; hand edits in
-# generated web/*.js drift from the .kry source of truth and are caught here.
+# The paused experimental web runtime modules are k2js output of runtime/*.kry.
+# This manual target remains for reference checks when working on that path.
 .PHONY: web-generated-check
 web-generated-check: $(K2JS)
 	K2JS="$(abspath $(K2JS))" sh tests/web_generated_check.sh .
@@ -1287,21 +1279,21 @@ $(STATIC_DIST_ARCHIVE): $(LIB) $(RAYLIB_A) $(KRYON_SYNC_DEPS) $(KRYON_CURL_A) $(
 		> $(STATIC_DIST_ROOT)/lib/cmake/kryon/KryonConfig.cmake
 	tar -C $(BUILD_DIR)/dist -czf $@ kryon-$(VERSION)-static
 
-$(TOOLS_DIST_ARCHIVE): tools $(WEB_GENERATED_JS) README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh $(wildcard web/*.js) web/kryon-runtime.d.ts web/kryon-runtime.ts $(KRY_FMT) $(KRY_LOCALE_CHECK)
+$(TOOLS_DIST_ARCHIVE): tools README.md LICENSE THIRD_PARTY_NOTICES.md scripts/check-tools-package.sh $(KRY_FMT) $(KRY_LOCALE_CHECK)
 	rm -rf $(TOOLS_DIST_ROOT)
-	mkdir -p $(TOOLS_DIST_ROOT)/bin $(TOOLS_DIST_ROOT)/web $(DIST_DIR)
-	cp $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
+	mkdir -p $(TOOLS_DIST_ROOT)/bin $(DIST_DIR)
+	cp $(K2C) $(K2CPP) $(K2GO) $(K2KIR) $(K2B) $(KT) $(KRYON_PREVIEW) $(KRYON_CMD) $(KRY_FMT) $(KRY_LOCALE_CHECK) $(KRB_RUN) $(KRB_SDL) $(TOOLS_DIST_ROOT)/bin/
 	chmod 755 $(TOOLS_DIST_ROOT)/bin/*
 	printf '%s\n' '$(VERSION)' > $(TOOLS_DIST_ROOT)/VERSION
 	cp README.md LICENSE THIRD_PARTY_NOTICES.md $(TOOLS_DIST_ROOT)/
-	cp web/*.js web/kryon-runtime.d.ts web/kryon-runtime.ts $(TOOLS_DIST_ROOT)/web/
 	printf '%s\n' \
 		'{' \
 		'  "name": "kryon-tools",' \
 		'  "version": "$(VERSION)",' \
 		'  "target": "$(KRYON_PLATFORM)-$(KRYON_ARCH)",' \
-		'  "binaries": ["k2c", "k2cpp", "k2go", "k2js", "k2kir", "k2b", "kt", "kryon", "kry-fmt.sh", "kry-locale-check.sh", "kryon-preview", "krb-run", "krb-sdl"],' \
-		'  "web_runtime": "web/kryon-runtime.js"' \
+		'  "binaries": ["k2c", "k2cpp", "k2go", "k2kir", "k2b", "kt", "kryon", "kry-fmt.sh", "kry-locale-check.sh", "kryon-preview", "krb-run", "krb-sdl"],' \
+		'  "web_runtime": null,' \
+		'  "web_runtime_status": "paused; future web-native DOM/CSS/JS target"' \
 		'}' > $(TOOLS_DIST_ROOT)/manifest.json
 	tar -C $(BUILD_DIR)/dist -czf $@ $(notdir $(TOOLS_DIST_ROOT))
 

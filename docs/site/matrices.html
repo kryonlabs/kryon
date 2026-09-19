@@ -119,7 +119,7 @@
       </div>
       <div class="table-wrap">
         <table class="matrix-table source-matrix-table">
-          <thead><tr data-conformance-source-head><th>Source</th><th>Type</th><th>k2kir</th><th>k2c</th><th>k2go</th><th>k2js</th><th>k2b</th><th>Renderers</th><th>Widgets</th><th>State Evidence</th></tr></thead>
+          <thead><tr data-conformance-source-head><th>Source</th><th>Type</th><th>k2kir</th><th>k2c</th><th>k2go</th><th>k2b</th><th>Renderers</th><th>Widgets</th><th>State Evidence</th></tr></thead>
           <tbody data-conformance-sources></tbody>
         </table>
       </div>
@@ -142,7 +142,7 @@
           <tbody>
             <tr><td>C</td><td><code>k2c</code></td><td><code>cc</code> + <code>libkryon.a</code></td><td class="ok">Production path; most complete</td></tr>
             <tr><td>Go</td><td><code>k2go</code></td><td><code>go/kryon</code> native Go package</td><td class="ok">Declarative subset with executable CI gate</td></tr>
-            <tr><td>JS/Web</td><td><code>k2js</code></td><td><code>web/kryon-runtime.js</code> ESM recorder/presenter</td><td class="ok">Syntax, Node recorder snapshots, and generated runtime state parity gated</td></tr>
+            <tr><td>JS/Web</td><td><code>k2js</code></td><td>Paused experimental path</td><td class="na">Future roadmap target: <code>.kry -&gt; HTML/DOM + KSS/CSS + small JS</code></td></tr>
             <tr><td>KRB cartridge</td><td><code>k2b</code></td><td><code>KrbLoad</code>/<code>KrbExec</code> on a <code>KryBackend</code></td><td class="part">Portable widget subset; byte-exact renderer tests</td></tr>
             <tr><td>KIR</td><td><code>k2kir</code></td><td>Inspection artifact</td><td class="na">Debugging and tooling only</td></tr>
           </tbody>
@@ -167,7 +167,7 @@
     <section>
       <p class="section-eyebrow">Widgets</p>
       <h2>Widget Matrix</h2>
-      <p class="section-lead">Columns: C is the public runtime API. <code>k2c</code> follows C because library calls compile as C-close statements. <code>k2go</code>, <code>k2js</code>, and KRB deliberately cover smaller subsets.</p>
+      <p class="section-lead">Columns: C is the public runtime API. <code>k2c</code> follows C because library calls compile as C-close statements. <code>k2go</code> and KRB deliberately cover smaller subsets. <code>k2js</code> is paused and no longer has a public status column.</p>
 
       <h3>Display</h3>
       <div class="table-wrap">

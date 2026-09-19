@@ -11,10 +11,10 @@ The canonical public naming and migration review lives in
    These drive public widget APIs with `QueueTap`, `QueueText`, `QueueKey`,
    focus, selection, and frame rendering. They catch native Go runtime bugs.
 
-2. Generated runtime parity in `tests/generated_runtime_parity_test.sh`.
-   Fixtures in `tests/parity/*.kry` are lowered to Go, C, and JS, driven
-   through the same workflow, rendered where the target has a renderer in the
-   harness, and compared by final state JSON.
+2. Generated runtime parity for active targets.
+   Fixtures in `tests/parity/*.kry` should continue to cover Go and C behavior.
+   The old JS fixture path is paused and retained only as reference material for
+   a future web-native DOM/CSS/JS target.
 
 3. Backend or platform translation tests.
    Backend event adapters must translate native events into the same public

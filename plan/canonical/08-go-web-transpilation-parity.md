@@ -1,34 +1,27 @@
-# Remaining backend parity proof
+# Backend parity proof and paused web target
 
-`make generate-runtime` generates C/Go policy; focused keyboard policy tests
-also compile all runtime modules to JS and execute the new decisions.
-`make generated-runtime-parity-test` requires Node and compares shared fixture
-outputs. This establishes tested cases, not blanket runtime equivalence.
+`make generate-runtime` still generates C/Go policy modules, and focused policy
+tests cover the active generated decisions. The old JavaScript/web runtime path
+is paused: `k2js`, `web/kryon-runtime.js`, generated JS snapshot tests, and
+C/Go/JS fixture parity remain in the repository only as experimental reference
+material.
 
 Remaining:
 
-- Replace handwritten policy in Go/web host runtimes with generated decisions.
-- Execute scroll_content and the remaining composed_popup cases in JS with
-  matching native/Go event sequences. Composition, drag_drop, and menus now run
-  their generated behavior checks in C/Go/JS. Scroll_content has partial JS
-  coverage for clipping, wheel offset, nested content, mixed controls/text
-  editing, dropdown overlay capture, dropdown keyboard/flipped-popup selection, dropdown scrollbar/edge-popup selection, rotated table hit geometry/resize, custom table-cell layout/disabled editing, and tree opening/keyboard navigation; composed_popup has
-  partial JS coverage for content/tools/tooltip/modal-open, early-exit scope restoration, modal capture/Escape, and context popup, popup-owned drag, and popup shortcut/tree routing behavior. The web runtime has
-  queued mouse move/down/up/wheel primitives and frame-scoped key/mouse queries;
-  remaining fixture-level routing/capture promotion remains open. Extend
-  Disabled/TableCell/Canvas scope restoration, nesting and early-exit coverage.
-- Add real lowering for every supported expression form. Unsupported lowering
-  now fails visibly instead of emitting the removed `kryon.expr` runtime
-  placeholder, executable fixture generation rejects any placeholder calls, and
-  fixed-capacity module state/global/local `sizeof(...)` lowers to the
-  declared capacity, and fixed-array element-size operands support
-  `sizeof(array) / sizeof(array[0])`; accelerator compound literals lower
-  through the web runtime shortcut helper for generated fixture execution.
-  Broader computed capacities remain open.
-- Report coverage per backend and fixture; distinguish generating, executing,
-  comparing state, and checking rendered output.
-- Verify every policy change in C, Go, and JS; syntax and snapshots are useful
-  guards but do not establish interaction parity.
+- Keep replacing handwritten policy in active native/Go host runtimes with
+  generated decisions where that reduces duplication.
+- Do not continue promoting `scroll_content` or `composed_popup` through the
+  handwritten JavaScript widget runtime. Widget-by-widget JS runtime parity is
+  no longer the plan.
+- Future web transpilation should be redesigned as `.kry -> HTML/DOM + KSS/CSS
+  + small JS`, using browser-native structure, style, focus, controls, and
+  accessibility where possible. Track that work in `docs/WEB_JS_ROADMAP.md` and
+  the DOM plan instead of this parity checklist.
+- Add real lowering for every supported expression form in active targets.
+  Unsupported lowering must fail visibly instead of emitting placeholder runtime
+  calls.
+- Report coverage per active backend and fixture; distinguish generating,
+  executing, comparing state, and checking rendered output.
 
 Use `make go-runtime-test`, not the old cross-module root Go command. See
-`README.md` for the full validation sequence and completion requirements.
+`README.md` for the current validation sequence and completion requirements.

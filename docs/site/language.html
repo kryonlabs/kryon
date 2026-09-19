@@ -8,7 +8,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://kryonlabs.com/language.html">
   <meta property="og:title" content="Kry Language Reference">
-  <meta property="og:description" content="The documented .kry to KIR to C, Go, JS, and KRB language contract.">
+  <meta property="og:description" content="The documented .kry to KIR to C, Go, and KRB language contract; JS/web is a future roadmap target.">
   <meta name="theme-color" content="#f3f1ea">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="apple-touch-icon" href="icons/proj/kryon.png">
@@ -40,10 +40,9 @@
     <section class="doc-hero">
       <p class="section-eyebrow">Kry Source Language</p>
       <h1>Language Reference</h1>
-      <p class="section-lead">Kry is C-close application code for Kryon. This page mirrors the canonical source contract in <code>docs/KRY_LANGUAGE_SPEC.md</code>: source lowers into KIR first, then the same KIR can produce readable C, Go bindings, browser-loadable JS, or portable KRB cartridges.</p>
+      <p class="section-lead">Kry is C-close application code for Kryon. This page mirrors the canonical source contract in <code>docs/KRY_LANGUAGE_SPEC.md</code>: source lowers into KIR first, then the same KIR can produce readable C, Go bindings, or portable KRB cartridges. The old JavaScript/web target is paused and reserved for a future HTML/CSS/JS roadmap target.</p>
 <pre><code>.kry -> KIR -> C
 .kry -> KIR -> Go
-.kry -> KIR -> JS
 .kry -> KIR -> KRB</code></pre>
     </section>
 
@@ -58,7 +57,7 @@
             <tr><td>C-close expressions</td><td>Types, pointer expressions, calls, field access, and raw C escape lines stay familiar to C programmers.</td></tr>
             <tr><td>Declarative UI shape</td><td><code>#ui</code> functions declare named node hierarchies; the runtime owns reconciliation, layout, input routing, focus, and update order.</td></tr>
             <tr><td>Inspectable lowering</td><td><code>k2kir</code> prints imports, state, functions, statements, assertions, and simple structured expression trees for tooling.</td></tr>
-            <tr><td>Honest subsets</td><td>C is the full path. Go, JS, and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics.</td></tr>
+            <tr><td>Honest subsets</td><td>C is the full path. Go and KRB accept supported KIR and reject unsupported compile-time assertions instead of silently changing semantics. JS/web is paused.</td></tr>
           </tbody>
         </table>
       </div>
@@ -130,7 +129,7 @@ Counter :: (viewport: Rectangle, app: App*) #ui {
           <tbody>
             <tr><td><code>#defined(SYMBOL)</code></td><td class="ok">Available</td><td>Expands to a C preprocessor-style condition for guards and generated C.</td></tr>
             <tr><td><code>NAME :: #run INTEGER_EXPR</code></td><td class="ok">Available</td><td>Evaluated by the Kry frontend as a small integer constant. It is not a general compile-time function system.</td></tr>
-            <tr><td><code>#assert CONDITION, "message"</code></td><td class="ok">Available</td><td>Ungarded constant-false assertions fail during Kry parsing. C emits <code>#if/#error</code>. Go, JS, and KRB require known true assertions.</td></tr>
+            <tr><td><code>#assert CONDITION, "message"</code></td><td class="ok">Available</td><td>Ungarded constant-false assertions fail during Kry parsing. C emits <code>#if/#error</code>. Go and KRB require known true assertions; JS/web is paused.</td></tr>
             <tr><td><code>#if</code>, <code>#else</code>, <code>#endif</code></td><td class="ok">Available</td><td>Retained in KIR as expanded guards so backends know the active platform conditions.</td></tr>
           </tbody>
         </table>
@@ -144,7 +143,6 @@ Counter :: (viewport: Rectangle, app: App*) #ui {
 <pre><code>k2kir --root . -o build/ir src/app.kry
 k2c  --root . -o build/c  src/app.kry
 k2go  --root . -o build/go src/app.kry
-k2js --root . -o build/js src/app.kry
 k2b  --root . -o build/krb src/app.kry</code></pre>
     </section>
 
@@ -153,7 +151,7 @@ k2b  --root . -o build/krb src/app.kry</code></pre>
       <h2>Known Language Boundaries</h2>
       <ul class="link-list">
         <li><strong>No hidden macro language:</strong> Kry keeps compile-time behavior small and explicit. <code>#run</code> currently folds integer expressions only.</li>
-        <li><strong>Backend subsets are real:</strong> C is broadest; Go, JS, and KRB intentionally support smaller surfaces and must diagnose unsupported KIR.</li>
+        <li><strong>Backend subsets are real:</strong> C is broadest; Go and KRB intentionally support smaller surfaces and must diagnose unsupported KIR. JS/web is paused for a future web-native target.</li>
         <li><strong>Text system limits remain runtime limits:</strong> font fallback exists, but shaping, bidi, RTL mirroring, and IME preedit are not complete.</li>
         <li><strong>KRB is portable by design:</strong> it carries a smaller widget and capability surface than native C.</li>
       </ul>
@@ -164,13 +162,13 @@ k2b  --root . -o build/krb src/app.kry</code></pre>
       <h2>Conformance Summary</h2>
       <div class="table-wrap">
         <table class="matrix-table">
-          <thead><tr><th>Feature</th><th>KIR</th><th>C</th><th>Go</th><th>JS</th><th>KRB</th></tr></thead>
+          <thead><tr><th>Feature</th><th>KIR</th><th>C</th><th>Go</th><th>KRB</th><th>JS/Web Roadmap</th></tr></thead>
           <tbody>
-            <tr><td><code>#run</code> integer constants</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
-            <tr><td><code>#assert</code></td><td class="ok">Yes</td><td class="ok"><code>#if/#error</code></td><td class="part">Known true only</td><td class="part">Known true only</td><td class="part">Known true only</td></tr>
-            <tr><td>State block</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td></tr>
-            <tr><td>Raw C lines</td><td class="ok">Preserved</td><td class="ok">Yes</td><td class="no">No</td><td class="no">No</td><td class="no">No</td></tr>
-            <tr><td>Structured expression metadata</td><td class="part">Partial</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="part">Metadata</td></tr>
+            <tr><td><code>#run</code> integer constants</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="na">Future target</td></tr>
+            <tr><td><code>#assert</code></td><td class="ok">Yes</td><td class="ok"><code>#if/#error</code></td><td class="part">Known true only</td><td class="part">Known true only</td><td class="na">Future target</td></tr>
+            <tr><td>State block</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="na">Future target</td></tr>
+            <tr><td>Raw C lines</td><td class="ok">Preserved</td><td class="ok">Yes</td><td class="no">No</td><td class="no">No</td><td class="na">Future target</td></tr>
+            <tr><td>Structured expression metadata</td><td class="part">Partial</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="part">Metadata</td><td class="na">Future target</td></tr>
           </tbody>
         </table>
       </div>

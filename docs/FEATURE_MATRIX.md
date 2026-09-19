@@ -22,7 +22,6 @@ the columns diverge.
    ├── k2c  -> .c/.h + kryon_project.c/.h  -> cc + libkryon.a    -> native C app
    ├── k2cpp -> .cpp/.hpp + kryon_project.c/.h (extern "C" decls; same lowering as k2c)
    ├── k2go  -> .go (kryon.<Widget> calls)  -> go build + go/kryon -> Go app
-   ├── k2js -> .js (web runtime calls)      -> browser/Node ESM   -> Web app
    ├── k2b  -> .krb (+ .krb.c/.krb host)   -> KrbLoad/KrbExec on any KryBackend
    └── k2kir -> .kir (text IR dump; debugging, tests, Krait)
 ```
@@ -32,7 +31,7 @@ the columns diverge.
 | C | `k2c` | `cc` + `libkryon.a` (raylib/null/canvas/libdraw surface backend) | Most complete path; production use |
 | C++ | `k2cpp` | `c++` + `libkryon.a`; C++ codegen with C linkage, same lowering as `k2c` | Parity port of the `k2c` backend |
 | Go | `k2go` | `go/kryon` native Go package, no cgo | Declarative subset; executable CI gate |
-| JS/Web | `k2js` | `web/kryon-runtime.js` ESM recorder/presenter | Syntax, Node recorder snapshots, and generated runtime state parity gated |
+| JS/Web | `k2js` | paused experimental code path | Future target: `.kry -> HTML/DOM + KSS/CSS + small JS`; not shipped or release-gated |
 | KRB cartridge | `k2b` | `src/krb/krb.c` via the `KryBackend` vtable | Format v2; byte-exact across engines; CI-gated |
 | KIR | `k2kir` | — (inspection artifact) | Debugging/tooling only |
 
@@ -51,8 +50,9 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 `parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 140 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface;
-`k2js` records whitelisted standalone widget calls as browser-loadable runtime
-operations; and `k2b` lowers a subset of it:
+`k2js` is paused and no longer part of the active widget conformance surface;
+future web lowering should target browser-native DOM/CSS/JS. `k2b` lowers a
+subset of the widget surface:
 
 `AppBackground Background Text Paragraph Abbreviation Address Area Article Aside Base
 Box Line Bevel Icon Image Button Card Selectable Audio BidirectionalIsolate
@@ -287,13 +287,11 @@ declaration pass (`src/ui/ui_tree.c`).
   Remaining boundaries: a forward `goto` over declarations is a loud Go
   compile error, and C pointer/`Texture2D` values cannot be written (icons pass by
   `IconType`, option lists as joined strings or `[N]string`).
-- `k2js` emits ESM for the web recorder runtime. `make
-  k2js-runtime-snapshot-test` lowers every conformance source, imports the
-  generated ESM in Node, runs `frame()`, and compares the recorded widget
-  streams. `make generated-runtime-parity-test` also drives generated JS
-  through the same state/input workflows as generated Go and C, then diffs the
-  final state JSON. This is runtime state parity for the recorder surface, not
-  browser pixel comparison.
+- The old `k2js` recorder/runtime path is paused. It remains in the repository
+  only as experimental reference material and is not a supported status target,
+  package binary, or default test gate. The future web target should lower
+  `.kry` to native HTML/DOM structure, KSS/CSS styling, and small JavaScript
+  state/event glue instead of emulating every widget in JavaScript.
 - `k2b` drops unsupported widget calls and reports them per file; the
   cartridge widget set remains smaller than the C catalog (see matrix).
   `Dropdown` lowers to a dropdown-style control. `Progress` lowers to a read-only

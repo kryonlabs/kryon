@@ -222,7 +222,7 @@ valid Button content tree.
 
 ## Tooling
 
-`k2c`, `k2cpp`, `k2go`, and `k2js` accept `--strict`. This enables the shared
+`k2c`, `k2cpp`, and `k2go` accept `--strict` for active targets. The old `k2js` path is paused and not part of the supported language contract. This enables the shared
 scalar type checker before output generation. It checks lexical bindings,
 duplicate local declarations, scalar operand compatibility, assignments,
 function argument counts/types, return value types, and boolean conditions.

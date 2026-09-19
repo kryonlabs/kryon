@@ -18,8 +18,9 @@ desktop tray support, runtime asset downloads, and optional account/sync helpers
 - `icons/` - MingCute UI and full-color spritesheets embedded by `src/ui/ui_icon_assets.c`
 - `themes/` - built-in theme files for the runtime theme loader
 - `fonts/noto/` - bundled Noto Sans TTF/OTF font assets
-- `mk/` - Make fragments for native, web, Android, Windows, packaging, and
-  vendored dependency builds
+- `mk/` - Make fragments for native, Android, Windows, packaging, and
+  vendored dependency builds. Web/JS build work is paused and tracked as a
+  future target in `docs/WEB_JS_ROADMAP.md`.
 - `scripts/` - asset embedding, icon embedding, raylib preparation, and boundary
   check helpers
 - `examples/` - small programs that exercise Kryon UI features
@@ -46,10 +47,6 @@ Backend selection is link-time via `KRYON_BACKEND`. Supported backends are:
 - [`raylib`](https://github.com/raysan5/raylib) - the default desktop,
   Android, Windows, and WebGL path, with SDL2/OpenGL integration in the build
   rules.
-- [`canvas`](docs/CANVAS2D_PARITY.md) - the HTML5 Canvas2D/WebAudio backend
-  for Emscripten web builds.
-- [`dom`](src/backend/dom_backend.c) - the browser DOM/CSS backend for web UI
-  surfaces.
 - [`libdraw`](https://9fans.github.io/plan9port/man/man3/draw.html) - the
   plan9port libdraw/devdraw backend.
 - [`termi`](src/backend/termi_backend.c) - the terminal-cell backend.
@@ -88,10 +85,10 @@ Every successful CI run on `master` automatically advances the patch version,
 commits `include/kryon_version.h`, and starts the tag-driven `Release` workflow.
 The workflow validates the version, creates an annotated tag, builds and tests
 Kryon, and publishes both the static SDK and a checksummed native tools bundle.
-The tools bundle contains `k2c`, `k2cpp`, `k2go`, `k2js`, `k2kir`, `k2b`, `kt`, `kryon`,
-`kryon-preview`, `krb-run`, and `krb-sdl`. The renderer workflow also attaches
-the Linux, Windows, and macOS `krb-run` builds plus the web player to the same
-release.
+The tools bundle contains `k2c`, `k2cpp`, `k2go`, `k2kir`, `k2b`, `kt`, `kryon`,
+`kryon-preview`, `krb-run`, and `krb-sdl`. The JavaScript/web tooling is paused
+and is not shipped as a current release target; see `docs/WEB_JS_ROADMAP.md` for
+the future web-native direction.
 
 Maintainers can still run `Release` manually for the checked-in version. Use
 `scripts/bump-version.sh minor` / `major` before pushing when a non-patch bump is
@@ -128,7 +125,7 @@ Kryon owns the app command surface through `kryon`. From an app repository:
 
 ```sh
 kryon build native
-kryon build web
+# web builds are paused; see docs/WEB_JS_ROADMAP.md
 kryon build android-debug
 kryon package linux-desktop
 kryon package appimage
@@ -154,8 +151,9 @@ credentials and clock state remain isolated per node.
 
 App `project.kryon` files should use `target` entries that call `kryon`
 rather than embedding platform-specific build commands directly. Existing app
-Makefiles can remain as backend glue while repeated native, web, Android, and
-packaging logic moves into Kryon `mk/` fragments.
+Makefiles can remain as backend glue while repeated native, Android, and
+packaging logic moves into Kryon `mk/` fragments. Web packaging returns after
+the future web-native target is designed.
 
 ## Preview Projects
 
@@ -256,16 +254,15 @@ generated Go/C parity tests drive both runtimes through the same scripted input.
 This is an executable compatibility gate, not only a textual generated-source
 check.
 
-`k2c`, `k2js`, and `k2b` accept `.kry` source and run the KIR frontend
-internally. Native platform, storage, and performance-sensitive C code remains
-first-class through the C backend and through explicit KRB capabilities or host
-imports.
+`k2c` and `k2b` accept `.kry` source and run the KIR frontend internally. Native
+platform, storage, and performance-sensitive C code remains first-class through
+the C backend and through explicit KRB capabilities or host imports.
 
-### Generated browser runtime
+### JavaScript/web target
 
-Run `make generate-web-runtime` to generate the browser policy modules from
-`runtime/*.kry`. The nine generated `web/*.js` modules are ignored build output;
-only their `.kry` sources and handwritten browser adapters are maintained in Git.
-`make k2js`, web test targets, and tool packaging generate them automatically.
-Before importing `web/kryon-runtime.js` directly from a source checkout, run the
-generation target. Packaged tools include the complete generated runtime.
+The old JavaScript/web target is paused. It is kept in the source tree as
+experimental reference material, but it is no longer part of default builds,
+test/preflight gates, or packaged tools. Future web work should target native
+HTML/DOM structure, KSS/CSS styling, and small JavaScript state/event glue rather
+than growing the handwritten widget emulation runtime. See
+`docs/WEB_JS_ROADMAP.md`.

@@ -7,6 +7,15 @@ browser DOM, CSS, and events. Generated JavaScript should primarily hold app
 logic and runtime glue. Structure comes from Kry nodes; styling comes from KSS;
 the browser receives normal elements, attributes, CSS, and events.
 
+
+## Current Status
+
+This project is paused as an active release target. The existing JavaScript and
+DOM work remains useful design evidence, but it should not be presented as
+current support. When web work resumes, the target should be redesigned around
+`.kry -> HTML/DOM + KSS/CSS + small JavaScript state/event glue`, not around the
+old handwritten JavaScript widget-emulation runtime. See `WEB_JS_ROADMAP.md`.
+
 ## Architecture
 
 - `.kry` widget calls emit Web Document nodes with stable identity:
@@ -22,7 +31,7 @@ the browser receives normal elements, attributes, CSS, and events.
 - Generated JS remains responsible for logic actions, state providers, routing,
   and runtime calls, not hand-building application DOM.
 
-## Implemented Foundation
+## Existing Experimental Foundation
 
 - Stable node identity for named and anonymous `.kry` widgets, including
   multiline compiler source spans for UI blocks.

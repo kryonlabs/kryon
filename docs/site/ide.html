@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Kryon Playground</title>
-  <meta name="description" content="Edit .kry files in the browser, compile with Kryon WASM tools, and preview the generated KRB cartridge from one place.">
+  <meta name="description" content="Edit .kry files in the browser, inspect active Kryon outputs, and preview the generated KRB cartridge from one place. JS/web output is paused.">
   <link rel="icon" type="image/png" sizes="16x16" href="icons/proj/kryon.png">
   <link rel="stylesheet" href="styles.css">
   <script src="theme.js"></script>
@@ -36,6 +36,7 @@
         <div>
           <p class="section-eyebrow">Kryon Playground</p>
           <h1>Write, compile, and preview .kry</h1>
+          <p class="section-lead">The old JS/web output is paused. This playground shows active KIR, C, Go, and KRB outputs while future web work moves to a DOM/CSS/JS roadmap target.</p>
         </div>
         <div class="ide-actions">
           <button class="btn" type="button" data-action="load-sample">Sample</button>
@@ -90,7 +91,6 @@ App :: () #ui {
             <button type="button" data-tab="kir">KIR</button>
             <button type="button" data-tab="c">C</button>
             <button type="button" data-tab="go">Go</button>
-            <button type="button" data-tab="js">JS</button>
             <button type="button" data-tab="krb">KRB</button>
           </div>
           <pre class="artifact-output"><code data-artifact></code></pre>
@@ -103,7 +103,6 @@ App :: () #ui {
   <script src="ide-tools/k2b.js"></script>
   <script src="ide-tools/k2c.js"></script>
   <script src="ide-tools/k2go.js"></script>
-  <script src="ide-tools/k2js.js"></script>
   <script src="ide.js"></script>
 </body>
 </html>
