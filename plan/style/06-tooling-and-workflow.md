@@ -93,9 +93,15 @@
   tables inside the test process, compares source-loaded/dynamic resolution
   against typed-table resolution, verifies repeated parse output is
   reproducible, and asserts active resolution from those typed tables performs
-  zero parser invocations. The Go test covers repeated active resolution and a
-  typed-only theme switch. Shipping/package-time C table emission is still open;
-  generated release tables should be build artifacts, not checked-in source.
+  zero parser invocations. `scripts/generate-c-style-tables.py` is the
+  package-time emitter: it compiles a temporary native helper against the shared
+  `.kry`-generated KSS parser and writes typed C tables under
+  `build/.../generated/src`. `style-release-table-emitter-test` links the
+  generated built-in tables, and `style-release-table-import-emitter-test` links
+  a generated import/theme/variant table. The Go test covers repeated active
+  resolution and a typed-only theme switch. Generated release tables remain
+  build artifacts, not checked-in source; wiring them into the actual release
+  startup path remains open.
 - Expand comparison captures to missing widget families/states, particularly
   popup/modal, navigation, table/menu/list/tree, and text/layout cases. Track
   uncovered cases through the testing matrix rather than rebuilding existing boards.
