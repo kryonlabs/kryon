@@ -886,3 +886,10 @@ input queues in `runtime.go`. Focused `*_host.go` modules adapt button, numeric,
 menu, table, text, layout and other widgets to their generated `.kry` policy.
 Generated policy files retain their module names. This split changes host code
 organization without adding public widget entry points or another policy layer.
+
+Native Go selectable text maps measured paragraph runs back to original UTF-8
+byte offsets. Shared `.kry` pointer/drag/copy decisions control native range
+storage; Unicode segmentation, hit measurement and clipboard storage stay in
+the host. Linux X11 releases end a drag without injecting a second press. IBus
+focus lifetime follows the eligible editor, and candidate geometry reuses the
+painted row layout, font and scroll offset.

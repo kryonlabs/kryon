@@ -70,6 +70,22 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 		case FrameOpLine:
 			drawLine(img, op.Bounds, opaque(op.Color, BLACK))
 		case FrameOpText:
+			if op.Selected && op.SelectionEnd > op.SelectionStart {
+				start := clampCursor(op.Text, int(op.SelectionStart))
+				end := clampCursor(op.Text, int(op.SelectionEnd))
+				advance := func(offset int) int {
+					return runtimeTextWidthWithFont(op.Text[:offset], op.FontSize, op.FontID) +
+						max(utf8.RuneCountInString(op.Text[:offset])-1, 0)*int(op.LetterSpacing)
+				}
+				x0 := int(op.Bounds.X) + advance(start)
+				x1 := int(op.Bounds.X) + advance(end)
+				selected := image.Rect(x0, int(op.Bounds.Y), x1, int(op.Bounds.Y+op.Bounds.Height)).Intersect(img.Bounds())
+				for y := selected.Min.Y; y < selected.Max.Y; y++ {
+					for x := selected.Min.X; x < selected.Max.X; x++ {
+						blendPixel(img, x, y, op.SelectionColor)
+					}
+				}
+			}
 			if op.Rotation != 0 {
 				drawRotatedText(img, op)
 			} else {

@@ -848,6 +848,7 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 
 	t.Run("selectable text copy", func(t *testing.T) {
 		r.QueueTap(12, 12)
+		r.QueueShortcut(KeyA)
 		r.BeginFrame()
 		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Selectable: true})
 		if ops := r.FrameOps(); len(ops) != 1 || !ops[0].Selected {

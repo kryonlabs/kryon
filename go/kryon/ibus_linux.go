@@ -200,6 +200,11 @@ func (im *ibusInputMethod) focusOut() {
 	}
 	im.focused = false
 	im.hasCursor = false
+	im.preedit = false
+	clear(im.pending)
+	im.pending = im.pending[:0]
+	clear(im.forwarded)
+	im.forwarded = im.forwarded[:0]
 	im.mu.Unlock()
 	_, _ = im.conn.call(ibusService, im.path, ibusContextIface, "Reset", "", nil, ibusCloseTimeout)
 	_, _ = im.conn.call(ibusService, im.path, ibusContextIface, "FocusOut", "", nil, ibusCloseTimeout)
@@ -258,6 +263,12 @@ func (im *ibusInputMethod) handleSignal(message *dbusMessage) {
 	if message.path != im.path || message.iface != ibusContextIface {
 		return
 	}
+	im.mu.Lock()
+	focused := im.focused
+	im.mu.Unlock()
+	if !focused {
+		return
+	}
 	switch message.member {
 	case "CommitText":
 		values, err := dbusDecodeAll("v", message.body)
@@ -289,6 +300,10 @@ func (im *ibusInputMethod) handleSignal(message *dbusMessage) {
 			return
 		}
 		im.mu.Lock()
+		if !im.focused {
+			im.mu.Unlock()
+			return
+		}
 		phase := KRY_TEXT_COMPOSITION_UPDATE
 		if !im.preedit {
 			phase = KRY_TEXT_COMPOSITION_START
@@ -311,6 +326,10 @@ func (im *ibusInputMethod) handleSignal(message *dbusMessage) {
 			return
 		}
 		im.mu.Lock()
+		if !im.focused {
+			im.mu.Unlock()
+			return
+		}
 		if len(im.forwarded) == ibusPendingLimit {
 			copy(im.forwarded, im.forwarded[1:])
 			im.forwarded = im.forwarded[:len(im.forwarded)-1]
@@ -365,6 +384,9 @@ func (im *ibusInputMethod) enqueue(event KryTextCompositionEvent) {
 }
 
 func (im *ibusInputMethod) enqueueLocked(event KryTextCompositionEvent) {
+	if !im.focused {
+		return
+	}
 	if event.Phase == KRY_TEXT_COMPOSITION_UPDATE && len(im.pending) > 0 &&
 		im.pending[len(im.pending)-1].Phase == KRY_TEXT_COMPOSITION_UPDATE {
 		im.pending[len(im.pending)-1] = event

@@ -21,12 +21,13 @@ import (
 
 type windowRuntime struct {
 	Runtime
-	window  *x11Window
-	ime     *ibusInputMethod
-	fps     int
-	last    time.Time
-	closed  bool
-	focused bool
+	window     *x11Window
+	ime        *ibusInputMethod
+	fps        int
+	last       time.Time
+	closed     bool
+	focused    bool
+	imeFocusID int32
 
 	// frame *image.RGBA     reused target image (reallocation only on resize)
 	// prevOps/nextOps       double buffer for change detection
@@ -189,11 +190,10 @@ func (r *windowRuntime) pumpEvents() {
 				c.QueueMouseMove(float32(ev.x), float32(ev.y))
 			}
 		case x11EventRelease:
-			// A full click (press+release) feeds the widget layer: consumeTap
-			// reads the tap/click queues, which only QueueMouseButton fills —
-			// bare Up events left every Button widget click-dead under X11.
+			// ButtonPress already queued the tap. Release only ends the drag;
+			// synthesizing another press here activates controls twice.
 			if c, ok := r.Runtime.(mouseController); ok {
-				c.QueueMouseButton(ev.button, float32(ev.x), float32(ev.y))
+				c.QueueMouseButtonUp(ev.button, float32(ev.x), float32(ev.y))
 			}
 		case x11EventWheel:
 			if c, ok := r.Runtime.(interface{ QueueMouseWheel(float32) }); ok {
@@ -265,32 +265,28 @@ func (r *windowRuntime) updateInputMethod(ops []FrameOp) {
 	}
 	if !r.focused {
 		r.ime.focusOut()
+		r.imeFocusID = 0
 		return
 	}
 	for _, op := range ops {
 		if !editableTextInput(op) {
 			continue
 		}
+		if r.imeFocusID != op.FocusID {
+			r.ime.focusOut()
+			r.imeFocusID = op.FocusID
+		}
 		r.ime.focusIn()
-		cursor := clampRuneCursor(op.Text, int(op.Cursor))
-		prefix := op.Text[:cursor]
-		line := strings.Count(prefix, "\n")
-		if newline := strings.LastIndexByte(prefix, '\n'); newline >= 0 {
-			prefix = prefix[newline+1:]
-		}
-		x := op.Bounds.X + 6 + float32(runtimeTextWidth(prefix, op.FontSize))
-		y := op.Bounds.Y + float32(line+1)*float32(max(op.FontSize+4, int32(1)))
-		if y > op.Bounds.Y+op.Bounds.Height {
-			y = op.Bounds.Y + op.Bounds.Height
-		}
-		r.ime.setCursor(int32(x), int32(y), 1, max(op.FontSize, int32(1)))
+		caret := textInputCaretBounds(op)
+		r.ime.setCursor(int32(caret.X), int32(caret.Y), 1, int32(caret.Height))
 		return
 	}
 	r.ime.focusOut()
+	r.imeFocusID = 0
 }
 
 func editableTextInput(op FrameOp) bool {
-	return op.Focused && !op.ReadOnly && !op.Secure &&
+	return op.Focused && !op.ReadOnly && !op.Secure && !op.Disabled &&
 		(op.Kind == FrameOpTextField || op.Kind == FrameOpTextArea)
 }
 

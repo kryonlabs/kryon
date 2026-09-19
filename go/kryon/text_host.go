@@ -86,23 +86,13 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	if bounds.X == 0 && bounds.Y == 0 {
 		bounds = r.layoutRect(bounds)
 	}
-	var textKey KeyID
-	var textSelected bool
-	if props.Selectable && props.Text != "" && !props.Disabled && !inheritedDisabled {
-		textKey = Key(fmt.Sprintf("%g:%g:%s", bounds.X, bounds.Y, props.Text))
-		if r.consumeTap(bounds) {
-			r.selectableText = textKey
-		}
-		textSelected = r.selectableText == textKey
-		if textSelected && !r.contentDisabled() && !r.popupKeyboardCaptures() {
-			for _, event := range r.inputEvents {
-				if event.shortcut && event.key == KeyC {
-					r.clipboard = props.Text
-				}
-			}
-		}
-	}
 	startY := bounds.Y + Text_TextAlignmentOffset(bounds.Height, contentHeight, int32(props.VerticalAlign))
+	var selectionLines []selectableTextLine
+	var selectionStart, selectionEnd int
+	if props.Selectable && props.Text != "" && !props.Disabled && !inheritedDisabled {
+		selectionLines = selectableLines(props.Text, lines)
+		selectionStart, selectionEnd = r.selectTextRange(props, bounds, startY, lineHeight, lines, selectionLines, measure)
+	}
 	for i, line := range lines {
 		y := startY + float32(i)*lineHeight
 		// A partially visible line is clipped, not discarded. C draws the
@@ -121,11 +111,25 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			Bounds: Rectangle{X: x, Y: y, Width: lineWidth, Height: float32(textHeight(font, fontID))},
 			Clip:   bounds, HasClip: true, Text: line, Color: color, FontSize: font,
 			FontID: fontID, Disabled: props.Disabled || inheritedDisabled, LetterSpacing: spacing}
-		if textSelected {
-			op.ID = int32(textKey)
-			op.Selected = true
-			op.SelectionStart = 0
-			op.SelectionEnd = int32(len(line))
+		if selectionLines != nil && selectionEnd > selectionStart {
+			mapped := selectionLines[i]
+			for offset, sourceOffset := range mapped.offsets {
+				if sourceOffset <= selectionStart {
+					op.SelectionStart = int32(offset)
+				}
+				if sourceOffset < selectionEnd {
+					op.SelectionEnd = int32(offset + 1)
+				}
+			}
+			op.SelectionStart = int32(clampCursor(line, int(op.SelectionStart)))
+			op.SelectionEnd = int32(clampCursor(line, min(len(line), int(op.SelectionEnd))))
+			op.Selected = op.SelectionEnd > op.SelectionStart && selectionStart < mapped.end && selectionEnd > mapped.start
+			if !op.Selected {
+				op.SelectionStart, op.SelectionEnd = 0, 0
+			}
+			op.ID = int32(r.selectableText)
+			op.SelectionColor = color
+			op.SelectionColor.A = Text_TextSelectionDefaultAlpha()
 		}
 		r.record(op)
 	}

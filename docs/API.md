@@ -1940,8 +1940,17 @@ display preedit without changing the caller buffer, apply commits with UTF-8
 cursor/length handling, and discard preedit on focus loss, removal, disabling
 or popup capture. Unconsumed Go events expire at frame end. Both queues accept
 up to 16 events with at most 255 text bytes per event; submission returns 1 on
-success and 0 for an invalid phase or full queue. Native Go OS-window IME event
-delivery and detailed preedit cursor/selection rendering remain incomplete.
+success and 0 for an invalid phase or full queue. On Linux/X11, native Go receives IBus preedit and commits through the OS
+input context. Candidate geometry follows the wrapped/scrolled caret. Changing
+fields resets the context; disabled, read-only and secure editors do not activate
+IBus. Other native window platforms and detailed preedit cursor/selection
+rendering remain incomplete.
+
+Native Go `TextProps.Selectable` supports dragging a byte range across wrapped
+lines, Ctrl+A, and Ctrl+C. Endpoints follow grapheme boundaries; copying retains
+original source whitespace. Clicking elsewhere or focusing an editor releases
+selection ownership. Popup capture prevents background copying.
+See [native input verification](NATIVE_INPUT.md).
 
 Native Go `TextFieldProps.ReadOnly` and `TextAreaProps.ReadOnly` mirror C's
 `read_only` property. Read-only editors remain focusable and allow selection,

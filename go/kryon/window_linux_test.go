@@ -305,6 +305,41 @@ func TestX11DecodeMouseReleaseAndMotion(t *testing.T) {
 	}
 }
 
+func TestX11ReleaseDoesNotQueueAnotherPress(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	base := New(AppConfig{}).(*runtime)
+	rt := &windowRuntime{Runtime: base, window: &x11Window{conn: client}}
+	for _, kind := range []byte{x11EventButtonPress, x11EventButtonRelease} {
+		packet := make([]byte, 32)
+		packet[0], packet[1] = kind, 1
+		put16(packet[24:], 20)
+		put16(packet[26:], 30)
+		written := make(chan error, 1)
+		go func() {
+			_, err := server.Write(packet)
+			if err == nil && kind == x11EventButtonPress {
+				_, err = readFull(server, make([]byte, 12))
+			}
+			written <- err
+		}()
+		rt.pumpEvents()
+		if err := <-written; err != nil {
+			t.Fatal(err)
+		}
+		if kind == x11EventButtonPress {
+			if len(base.taps) != 1 || !base.MouseButtonDown(MouseButtonLeft) {
+				t.Fatal("press did not queue exactly one tap")
+			}
+			base.BeginFrame()
+			base.EndFrame()
+		} else if len(base.taps) != 0 || base.MouseButtonPressed(MouseButtonLeft) || base.MouseButtonDown(MouseButtonLeft) || !base.MouseButtonReleased(MouseButtonLeft) {
+			t.Fatal("release synthesized a second press or failed to end the drag")
+		}
+	}
+}
+
 func TestX11SetInputFocusRequest(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

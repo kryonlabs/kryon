@@ -432,6 +432,7 @@ func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
 	for _, inside := range []bool{false, true} {
 		r := New(AppConfig{}).(*runtime)
 		r.QueueTap(12, 12)
+		r.QueueShortcut(KeyA)
 		r.BeginFrame()
 		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Selectable: true})
 		r.EndFrame()

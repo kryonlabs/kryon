@@ -295,7 +295,9 @@ discarding it if focus changes in between. Composition events do not transfer
 to the next field during Tab navigation.
 Historical JavaScript keyboard and browser composition tests are future-roadmap
 reference only. JS/web remains paused. Native generated parity executes C and
-Go; OS IME candidate windows still require platform verification.
+Go. Linux/X11 IBus composition and real pointer/keyboard delivery are tested on
+a private virtual display; candidate coordinates are checked against the shared
+wrapped-row geometry. Other OS adapters remain separate platform work.
 
 Canvas camera selection and coordinate transforms belong to `runtime/canvas.kry`.
 C stores backend matrix snapshots per lexical scope; Go adapts frame-operation

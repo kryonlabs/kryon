@@ -5,6 +5,7 @@ package kryon
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -126,6 +127,56 @@ func TestIBusLiveConnection(t *testing.T) {
 		t.Fatal("IBus input context did not accept FocusIn")
 	}
 	im.close()
+}
+
+func TestIBusIgnoresLateCompositionAfterFocusOut(t *testing.T) {
+	im := &ibusInputMethod{}
+	var encoded dbusEncoder
+	err := dbusAppendValue(&encoded, "v", dbusVariant{Sig: "(sa{sv}sv)",
+		Val: dbusStruct{Sig: "(sa{sv}sv)", Val: []any{"IBusText", map[string]any{}, "late", dbusVariant{Sig: "s", Val: ""}}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	im.handleSignal(&dbusMessage{path: im.path, iface: ibusContextIface, member: "CommitText", body: encoded.buf})
+	if len(im.drain()) != 0 {
+		t.Fatal("unfocused input method accepted a late commit")
+	}
+}
+
+func TestIBusLiveHangulComposition(t *testing.T) {
+	if os.Getenv("KRYON_LIVE_IBUS_HANGUL_TEST") == "" {
+		t.Skip("set KRYON_LIVE_IBUS_HANGUL_TEST=1 in an isolated IBus session")
+	}
+	im, err := openIBusInputMethod()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer im.close()
+	im.focusIn()
+	if _, err := im.conn.call(ibusService, ibusRootPath, ibusService,
+		"SetGlobalEngine", "s", []any{"hangul"}, 3*time.Second); err != nil {
+		t.Fatal(err)
+	}
+	var events []KryTextCompositionEvent
+	for _, key := range []struct {
+		symbol uint32
+		code   uint8
+	}{{0xff31, 130}, {'r', 27}, {'k', 45}, {' ', 65}} {
+		im.processKey(key.symbol, key.code, 0)
+		im.processKey(key.symbol, key.code, ibusReleaseMask)
+		events = append(events, im.drain()...)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		events = append(events, im.drain()...)
+		for _, event := range events {
+			if event.Phase == KRY_TEXT_COMPOSITION_COMMIT && strings.Contains(event.Text, "가") {
+				return
+			}
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("Hangul engine did not commit 가: %+v", events)
 }
 
 func waitIBusEvents(t *testing.T, im *ibusInputMethod, count int) []KryTextCompositionEvent {

@@ -535,6 +535,7 @@ type runtime struct {
 	popupsSeen        map[int32]bool
 	tooltipPopupsSeen map[int32]bool
 	selectableText    KeyID
+	textSelection     selectableTextState
 	drag              scalarDrag
 	slider            scalarDrag
 	numericInputs     map[numericInputKey]*numericInputState
@@ -1044,6 +1045,10 @@ func (r *runtime) SetFocus(id int32) { r.setFocus(id) }
 func (r *runtime) Focus() int32 { return r.focusID }
 
 func (r *runtime) setFocus(id int32) {
+	if id != 0 {
+		r.selectableText = 0
+		r.textSelection = selectableTextState{}
+	}
 	if r.focusID == id {
 		return
 	}
