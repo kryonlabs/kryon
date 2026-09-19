@@ -90,6 +90,50 @@ kss_module_source(const KssName *name)
     return NULL;
 }
 
+
+static void
+kss_copy_file_name(char *out, size_t out_size, const KssSourceFile *file)
+{
+    int length;
+
+    if(out == NULL || out_size == 0)
+        return;
+    out[0] = '\0';
+    if(file == NULL)
+        return;
+    length = file->length;
+    if(length < 0)
+        length = 0;
+    if((size_t)length >= out_size)
+        length = (int)out_size - 1;
+    memcpy(out, file->name, (size_t)length);
+    out[length] = '\0';
+}
+
+static void
+kss_copy_rule_source(KssRuleSource *source, const KssParser *parser,
+                     const KssOrigin *origin, const KssRuleSpan *span)
+{
+    int file_index;
+
+    if(source == NULL || parser == NULL || origin == NULL || span == NULL)
+        return;
+    memset(source, 0, sizeof(*source));
+    file_index = span->file;
+    source->file_index = file_index;
+    source->line = origin->line;
+    source->column = origin->column;
+    source->selector_start = span->selector_start;
+    source->selector_length = span->selector_length;
+    source->body_start = span->body_start;
+    source->body_length = span->body_length;
+    source->group = span->group;
+    source->end = span->end;
+    if(file_index >= 0 && file_index < parser->file_count)
+        kss_copy_file_name(source->file, sizeof(source->file),
+                           &parser->files[file_index]);
+}
+
 static void
 kss_copy_diagnostic(char *diagnostic, size_t diagnostic_size,
                     const KssParser *parser)
@@ -122,8 +166,8 @@ KssResetParseInvocationCount(void)
 static bool
 kss_collect(const char *source, const StyleColorToken *colors, int color_count,
             const char *variant, const char *theme, StyleRule *rules,
-            int rule_capacity, KssParseResult *result, char *diagnostic,
-            size_t diagnostic_size)
+            KssRuleSource *sources, int rule_capacity, KssParseResult *result,
+            char *diagnostic, size_t diagnostic_size)
 {
     KssEnvironment environment = KssDefaultEnvironment();
     String empty = StringView(NULL, 0);
@@ -153,7 +197,11 @@ kss_collect(const char *source, const StyleColorToken *colors, int color_count,
                              "style rule capacity exceeded");
                 return false;
             }
-            rules[rule_count++] = parser.rule;
+            rules[rule_count] = parser.rule;
+            if(sources != NULL)
+                kss_copy_rule_source(&sources[rule_count], &parser,
+                                     &parser.origin, &parser.rule_span);
+            rule_count++;
             parser.status = KssStatusContinue;
             continue;
         }
@@ -223,7 +271,7 @@ kss_parse_variant(const char *source, const StyleColorToken *colors,
         return false;
     if(color_count < 0 || (color_count > 0 && colors == NULL))
         return false;
-    return kss_collect(source, colors, color_count, NULL, NULL, rules,
+    return kss_collect(source, colors, color_count, NULL, NULL, rules, NULL,
                        rule_capacity, result, diagnostic, diagnostic_size);
 }
 
@@ -234,6 +282,18 @@ kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
 {
     return kss_parse_variant(source, NULL, 0, rules, rule_capacity, result,
                              diagnostic, diagnostic_size);
+}
+
+bool
+kss_parse_trace_string(const char *source, StyleRule *rules,
+                       KssRuleSource *sources, int rule_capacity,
+                       KssParseResult *result, char *diagnostic,
+                       size_t diagnostic_size)
+{
+    if(source == NULL || rules == NULL || sources == NULL || rule_capacity < 0)
+        return false;
+    return kss_collect(source, NULL, 0, NULL, NULL, rules, sources,
+                       rule_capacity, result, diagnostic, diagnostic_size);
 }
 
 bool
@@ -255,8 +315,8 @@ kss_parse_with_environment(const char *source, const char *variant,
 {
     if(source == NULL || rules == NULL || rule_capacity < 0)
         return false;
-    return kss_collect(source, NULL, 0, variant, theme, rules, rule_capacity,
-                       result, diagnostic, diagnostic_size);
+    return kss_collect(source, NULL, 0, variant, theme, rules, NULL,
+                       rule_capacity, result, diagnostic, diagnostic_size);
 }
 
 int

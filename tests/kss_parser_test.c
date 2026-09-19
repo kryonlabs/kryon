@@ -59,6 +59,58 @@ assert_diagnostic_contains(const char *source, const char *message,
     assert(strstr(diagnostic, location) != NULL);
 }
 
+
+static void
+assert_rule_source(const KssRuleSource *source, const char *file, int file_index,
+                   int line, int column)
+{
+    assert(strcmp(source->file, file) == 0);
+    assert(source->file_index == file_index);
+    assert(source->line == line);
+    assert(source->column == column);
+    assert(source->selector_length > 0);
+    assert(source->body_length > 0);
+    assert(source->end > source->body_start);
+}
+
+static void
+test_trace_sources(void)
+{
+    const char *source =
+        "@pack inspect;\n"
+        "@import <base>;\n"
+        "@layer components;\n"
+        "Button { background: #222222; }\n"
+        "Button.primary { background: #333333; }\n"
+        "Button { foreground: #eeeeee; }\n";
+    StyleRule rules[8] = {0};
+    KssRuleSource sources[8] = {0};
+    KssParseResult result = {0};
+    char diagnostic[256];
+
+    ClearStyleModules();
+    assert(RegisterStyleModule("base",
+        "Surface { padding-x: 7; }\n"
+        "Button { background: #111111; }\n"));
+    assert(kss_parse_trace_string(source, rules, sources, 8, &result,
+                                  diagnostic, sizeof(diagnostic)));
+    assert(strcmp(result.pack_id, "inspect") == 0);
+    assert(result.rule_count == 5);
+
+    assert(rules[0].selector.kind == StyleKindSurface());
+    assert(rules[0].style.padding_x == 7.0f);
+    assert_rule_source(&sources[0], "base", 1, 1, 1);
+    assert(rules[1].selector.kind == StyleKindButton());
+    assert(rules[1].style.background == 0x111111ffu);
+    assert_rule_source(&sources[1], "base", 1, 2, 1);
+    assert(rules[3].selector.class_name == StyleClassId("primary"));
+    assert(rules[3].style.background == 0x333333ffu);
+    assert_rule_source(&sources[3], "", 0, 5, 1);
+    assert(rules[4].style.foreground == 0xeeeeeeffu);
+    assert_rule_source(&sources[4], "", 0, 6, 1);
+    ClearStyleModules();
+}
+
 static void
 test_diagnostics(void)
 {
@@ -125,6 +177,7 @@ int
 main(void)
 {
     test_diagnostics();
+    test_trace_sources();
     const char *source =
         "@pack sample;\n"
         "tokens {\n"

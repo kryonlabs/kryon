@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LEDGER = ROOT / "plan" / "KSS_HOST_SERVICE_LEDGER.md"
 
 CALLSITE = re.compile(
-    r"\b(kss_parse_string|kss_parse_with_|kss_format_string|KssFormat|"
+    r"\b(kss_parse_string|kss_parse_trace_string|kss_parse_with_|kss_format_string|KssFormat|"
     r"ParseStyleSheet|ParseStyleVariants|RegisterStylePackSource|"
     r"ResolveStyle\(|parseWebStyleSheet|resolveWebStyle|traceWebStyle|"
     r"webStyleSheetToCSS)\b"
@@ -19,6 +19,7 @@ SCAN_ROOTS = ("src", "include", "cmd", "go/kryon", "scripts", "web")
 SKIP_SUFFIXES = ("_test.go",)
 SKIP_PATHS = {
     "go/kryon/style_builtins.go",
+    "scripts/kss-host-ledger-check.py",
 }
 
 EXPECTED = {

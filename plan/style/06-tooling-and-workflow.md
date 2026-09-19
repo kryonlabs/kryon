@@ -17,7 +17,9 @@
   source-backed inspector traces: `ParseStyleSheetTrace` retains parser file
   names, origins, and selector/body spans, while `TraceStyleField` returns
   per-field candidates with source, layer, specificity, order,
-  winner/loser, missing-field, and current-priority facts.
+  winner/loser, missing-field, and current-priority facts. Native C now has the
+  same parser-side source trace through `kss_parse_trace_string`, returning a
+  `KssRuleSource` beside each emitted `StyleRule`.
   Historical web status: web sheets and style traces carry several core
   fields, but old JS/web inspector work is paused with the web target and is
   not an active release gate.
