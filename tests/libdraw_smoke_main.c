@@ -50,9 +50,59 @@ exit_key_test(const char *mode)
     return failures ? 1 : 0;
 }
 
+static int
+input_test(const char *path)
+{
+    FILE *log = fopen(path, "w");
+    if(log == NULL)
+        return 2;
+    InitWindow(240, 120, "Kryon keyboard input");
+    if(!IsWindowReady())
+        return 2;
+    SetExitKey(0);
+    SetTargetFPS(60);
+    double deadline = GetTime() + 15.0;
+    int focused = -1;
+    while(GetTime() < deadline && !WindowShouldClose()) {
+        int now_focused = IsWindowFocused();
+        if(now_focused != focused) {
+            fprintf(log, "focus %d\n", now_focused);
+            focused = now_focused;
+        }
+        int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
+        int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
+        if(IsKeyPressed(KEY_C))
+            fprintf(log, "copy %d\n", control);
+        if(IsKeyReleased(KEY_C))
+            fprintf(log, "release-c %d\n", IsKeyDown(KEY_C));
+        if(IsKeyReleased(KEY_LEFT_CONTROL))
+            fprintf(log, "release-control %d\n", control);
+        if(IsKeyPressed(KEY_A))
+            fprintf(log, "a %d\n", shift);
+        if(IsKeyReleased(KEY_A))
+            fprintf(log, "release-a %d\n", IsKeyDown(KEY_A));
+        if(IsKeyPressed(KEY_DELETE))
+            fprintf(log, "delete %d\n", IsKeyPressed(KEY_BACKSPACE));
+        if(IsKeyPressed(KEY_BACKSPACE))
+            fprintf(log, "backspace %d\n", IsKeyPressed(KEY_DELETE));
+        fflush(log);
+        if(IsKeyPressed(KEY_Q))
+            break;
+        BeginDrawing();
+        ClearBackground(WHITE);
+        EndDrawing();
+    }
+    CloseWindow();
+    fclose(log);
+    return failures ? 1 : 0;
+}
+
 int
 main(void)
 {
+    const char *input_path = getenv("KRYON_LIBDRAW_INPUT_TEST");
+    if(input_path != NULL)
+        return input_test(input_path);
     const char *exit_mode = getenv("KRYON_LIBDRAW_EXIT_KEY_TEST");
     if(exit_mode != NULL)
         return exit_key_test(exit_mode);

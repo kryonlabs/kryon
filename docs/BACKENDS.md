@@ -82,8 +82,10 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   RGBA buffer and presents it with libdraw, so the widget catalog shares the
   same software drawing behavior as the KRB hosts. TTF/TrueType-outline font
   data is rasterized into Kryon `Texture2D` atlases with `stb_truetype`
-  (header-only; no `libraylib` link). Plan9port owns the window, event,
-  keyboard, mouse, resize, and devdraw connection. Non-UI raylib areas such as
+  (header-only; no `libraylib` link). Plan9port owns the window, composed-text,
+  mouse, resize, and devdraw connection. On Linux X11, a private input observer
+  supplies physical key releases, modifiers and focus from that same window;
+  see [libdraw keyboard input](libdraw-input.md). Non-UI raylib areas such as
   3D, shaders, gestures, and audio fall back to the generated weak null stubs
   until a real libdraw implementation is added for them. `make libdraw-test`
   builds and runs

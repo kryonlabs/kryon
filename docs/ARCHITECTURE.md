@@ -5,6 +5,12 @@ backend implementations, format/tooling paths, and conformance tests. The
 runtime should expose primitives; downstream applications compose those
 primitives into product behavior.
 
+The Linux libdraw host observes physical keyboard/focus events on its own X11
+devdraw window through a private connection. Plan9port continues to provide
+composed text and rendering. Host event translation stays in the backend;
+application shortcuts and file actions remain downstream. See
+[libdraw input](libdraw-input.md) for transport limits and tests.
+
 The KSS parser and formatter are generated from `runtime/kss_parser.kry` and
 `runtime/kss_formatter.kry` for C, Go, and JavaScript. Named parse environments
 also pass through the shared parser module; hosts supply their platform default

@@ -5,6 +5,11 @@ generic examples, generic test fixtures, and documentation for integrating the
 runtime into downstream applications. It must not contain product behavior,
 branding, copy, assets, or fixtures from a downstream application.
 
+Linux libdraw key releases, modifier samples and focus events are backend host
+translation. The private X11 observer listens only to the runtime's own window;
+it does not implement desktop commands, selection policy or file operations.
+Those remain application behavior. See [libdraw input](libdraw-input.md).
+
 KSS grammar, environment-name interpretation, overlay decisions, cascade policy,
 and formatting belong to maintained `runtime/*.kry` modules. CSS declaration
 classification, scalar parsing, token lookup, and color overrides now run there

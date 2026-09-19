@@ -1884,6 +1884,12 @@ before an app applies or saves them.
 
 ## Input Handling
 
+The Linux X11 libdraw host supplies physical key presses/releases, modifier
+shortcuts and focus state while retaining plan9port's composed-text stream.
+`GetWindowHandle()` returns the X11 window ID and `IsWindowFocused()` reports its
+focus. Native Plan 9 retains rune input; see [libdraw input](libdraw-input.md)
+for host-specific behavior and verification.
+
 ### Unicode editing
 
 Native C and Go editors keep byte-offset cursors and selections, but normalize

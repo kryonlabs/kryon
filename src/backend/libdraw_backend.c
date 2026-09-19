@@ -1,6 +1,7 @@
 #include "kry_sw.h"
 #include "libdraw_internal.h"
 #include "kry_sw_png.h"
+#include "libdraw_x11_input.h"
 
 #ifndef KRYON_NATIVE_PLAN9
 #include <stdarg.h>
@@ -742,6 +743,9 @@ eresized(int new)
 void
 kry_libdraw_reset_edges(void)
 {
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    X11InputNextFrame();
+#endif
     memset(kry_libdraw_mouse_pressed, 0, sizeof(kry_libdraw_mouse_pressed));
     memset(kry_libdraw_mouse_released, 0, sizeof(kry_libdraw_mouse_released));
     memset(kry_libdraw_key_pressed, 0, sizeof(kry_libdraw_key_pressed));
@@ -866,9 +870,14 @@ kry_libdraw_poll(void)
             int ch = ekbd();
             int key = kry_libdraw_map_key(ch);
 
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+            if(X11InputReady())
+                key = 0;
+#endif
             if(key != 0)
                 kry_libdraw_push_key(key);
-            if((ch >= 32 && ch != 127) || ch == Kbs)
+            if((ch >= 32 && ch != 127 && ch != Kdown &&
+                !(ch >= KF && ch < KF + 256)) || ch == Kbs)
                 kry_libdraw_push_char(ch == Kbs ? 8 : ch);
             if(g_exit_key > 0 && key == g_exit_key)
                 kry_libdraw_should_close = 1;
@@ -877,6 +886,9 @@ kry_libdraw_poll(void)
         if(!handled)
             break;
     }
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    X11InputPoll();
+#endif
 }
 
 unsigned char *
@@ -1160,11 +1172,23 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
     kry_libdraw_width = width > 0 ? width : 800;
     kry_libdraw_height = height > 0 ? height : 600;
     ensure_sw(kry_libdraw_width, kry_libdraw_height);
-    if(initdraw(NULL, NULL, (char *)(title != NULL ? title : "Kryon")) < 0) {
+    const char *label = title != NULL ? title : "Kryon";
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    char input_title[80];
+    snprintf(input_title, sizeof(input_title), "Kryon input %ld", (long)getpid());
+    const char *initial_title = getenv("DISPLAY") != NULL ? input_title : label;
+#else
+    const char *initial_title = label;
+#endif
+    if(initdraw(NULL, NULL, (char *)initial_title) < 0) {
         kry_libdraw_ready = 0;
         return;
     }
     einit(Emouse | Ekeyboard);
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    X11InputOpen(initial_title);
+    drawsetlabel((char *)label);
+#endif
     reset_default_cursor();
     if(screen != nil) {
         kry_libdraw_width = Dx(screen->r);
@@ -1179,6 +1203,9 @@ KryonRaylibBackend_InitWindow(int width, int height, const char *title)
 void
 KryonRaylibBackend_CloseWindow(void)
 {
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    X11InputClose();
+#endif
     kry_libdraw_ready = 0;
     clear_text_draws();
     if(g_present != nil) {
@@ -1247,7 +1274,14 @@ KryonRaylibBackend_EndDrawing(void)
 }
 
 bool IsWindowReady(void) { return kry_libdraw_ready != 0; }
-bool IsWindowFocused(void) { return kry_libdraw_ready != 0; }
+bool IsWindowFocused(void)
+{
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    if(X11InputReady())
+        return X11InputFocused() != 0;
+#endif
+    return kry_libdraw_ready != 0;
+}
 bool IsWindowFullscreen(void) { return (g_window_state & FLAG_FULLSCREEN_MODE) != 0; }
 bool IsWindowHidden(void) { return (g_window_state & FLAG_WINDOW_HIDDEN) != 0; }
 bool IsWindowMinimized(void) { return (g_window_state & FLAG_WINDOW_MINIMIZED) != 0; }
@@ -1271,7 +1305,11 @@ void SetWindowIcons(Image *images, int count)
     (void)images;
     (void)count;
 }
-void SetWindowTitle(const char *title) { (void)title; }
+void SetWindowTitle(const char *title)
+{
+    if(kry_libdraw_ready && title != NULL)
+        drawsetlabel((char *)title);
+}
 void SetWindowPosition(int x, int y)
 {
     (void)x;
@@ -1290,7 +1328,14 @@ void SetWindowMaxSize(int width, int height)
 }
 void SetWindowOpacity(float opacity) { (void)opacity; }
 void SetWindowFocused(void) {}
-void *GetWindowHandle(void) { return NULL; }
+void *GetWindowHandle(void)
+{
+#if defined(__linux__) && !defined(KRYON_NATIVE_PLAN9)
+    return X11InputWindow();
+#else
+    return NULL;
+#endif
+}
 void SetConfigFlags(unsigned int flags) { (void)flags; }
 void SetTargetFPS(int fps) { kry_libdraw_target_fps = fps > 0 ? fps : 0; }
 void SetTraceLogLevel(int logLevel) { (void)logLevel; }

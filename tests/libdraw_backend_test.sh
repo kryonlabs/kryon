@@ -47,6 +47,8 @@ if command -v xvfb-run >/dev/null 2>&1; then
     if command -v xdotool >/dev/null 2>&1; then
         xvfb-run -a env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
             DEVDRAW="$plan9/bin/devdraw" python3 "$root/tests/libdraw_exit_key_test.py" "$bin"
+        xvfb-run -a env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
+            DEVDRAW="$plan9/bin/devdraw" python3 "$root/tests/libdraw_input_test.py" "$bin"
     fi
 elif [ -n "${DISPLAY:-}" ]; then
     env PLAN9="$plan9" PATH="$plan9/bin:$PATH" \
