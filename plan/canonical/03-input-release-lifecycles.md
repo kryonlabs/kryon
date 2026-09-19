@@ -14,8 +14,10 @@ Remaining:
 - Inventory the web event path: `createRuntime` currently queues taps, text,
   keys, shortcuts, and composition. Native-style down/move/up and wheel
   drivers are still missing; composition has partial executable coverage.
-- Verify release-without-press, drag cancellation, disabled controls, popup
-  capture, focus loss, and nested scope restoration across generated backends.
+- Active generated C/Go backends now have matched lifecycle matrix coverage for
+  release-without-press, drag cancellation, disabled controls, popup capture,
+  focus loss, and nested scope restoration. Keep future web-native checks out of
+  this current gate until the web target resumes.
 
 Native event queues and pointer-owner storage remain host services. The rules
 that change ownership must have a generated decision owner and tests.

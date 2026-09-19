@@ -22,8 +22,11 @@ the authoritative surface and ownership audit is `docs/CANONICAL_WIDGET_SURFACE.
   the separate `ConsumeRelease` definition is host input state. See the shared
   surface document for the file/owner table.
 - Added generated web and Go keyboard policy tests before the JS/web pause.
-  Native focused tests cover capture, simultaneous keys, and release boundaries.
   Historical JS/web checks no longer count as current completion evidence.
+- Active generated C/Go lifecycle matrix tests now cover disabled controls,
+  empty data, simultaneous keys, release-without-press, drag cancellation,
+  popup capture, focus loss, and nested owner restoration through shared `.kry`
+  policy APIs.
 - Updated the browser-generated table column fixture to canonical
   `TableColumnGroup`/`TableColumn` names.
 - Removed obsolete per-button style overrides from the button example; its

@@ -122,9 +122,11 @@ as a roadmap redesign rather than a remaining parity checklist.
 - [ ] Classify text reflow, line breaking, selection, and retained placement.
   Keep buffer storage, UTF-8 traversal, font measurement, glyph/atlas work,
   image decoding/upload/cache, and OS input as justified host services.
-- [ ] Add matched cases for disabled controls, empty data, simultaneous keys,
+- [x] Add matched cases for disabled controls, empty data, simultaneous keys,
   release without press, drag cancellation, popup capture, focus loss, and
-  nested ownership restoration.
+  nested ownership restoration. Active generated C/Go coverage lives in
+  `interaction-policy-matrix-test` and `TestInteractionPolicyMatrix*`; the
+  old JS/web leg remains paused.
 - [ ] Match text cases for wrap boundaries, empty lines, alignment, selection
   across lines, and text/image content in clipped scopes. Reuse the existing
   shared editor rather than introducing a second editor.
