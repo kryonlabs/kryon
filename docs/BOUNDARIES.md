@@ -242,6 +242,9 @@ second whitespace grammar or wrapping algorithm. Inline-icon measurement and
 painting remain native host services; this does not add Go texture rendering.
 Editable TextArea visual-row traversal and cross-line selection remain separate
 work in the text ownership audit.
+The native Go wrapped-text cache stores bounded host measurement results, not
+another layout algorithm. Its font-generation invalidation belongs to the font
+registry; color, alignment and clipping remain live per-frame paint decisions.
 
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.

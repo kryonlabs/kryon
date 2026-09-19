@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	xfont "golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
@@ -60,6 +61,7 @@ var (
 	fontsByID                 = map[uint32]*uiFontSource{}
 	fontsByName               = map[string]*uiFontSource{}
 	activeTextFontName string
+	fontGeneration     atomic.Uint64
 )
 
 const defaultTextFontName = "kryon-default"
@@ -126,6 +128,7 @@ func registerFontData(name, typ string, data []byte) (uint32, bool) {
 	}
 	fontMu.Lock()
 	defer fontMu.Unlock()
+	fontGeneration.Add(1)
 	if existing := fontsByName[name]; existing != nil && name != "" {
 		existing.typ = typ
 		existing.data = append(existing.data[:0], data...)
@@ -159,7 +162,10 @@ func useTextFont(name string) bool {
 	if fontsByName[name] == nil {
 		return false
 	}
-	activeTextFontName = name
+	if activeTextFontName != name {
+		activeTextFontName = name
+		fontGeneration.Add(1)
+	}
 	return true
 }
 

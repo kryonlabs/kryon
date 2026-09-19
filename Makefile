@@ -984,6 +984,10 @@ examples-syntax-test: $(K2C)
 go-runtime-test:
 	cd go/kryon && go test
 
+.PHONY: perf-frame-workloads
+perf-frame-workloads:
+	cd go/kryon && go test -run '^$$' -bench '^BenchmarkFrameWorkloads$$' -benchtime=100x -count=3
+
 k2c-syntax-test: $(K2C)
 	sh tests/k2c_syntax_test.sh $(K2C)
 

@@ -629,6 +629,7 @@ type runtime struct {
 	selection         map[int32]selection
 	layout            []layoutFrame
 	ops               []FrameOp
+	textLayouts       textLayoutCache
 	pageTitle         string
 	pageDescription   string
 	pageCanonicalURL  string
@@ -1234,8 +1235,12 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	}
 	bounds.Width = Text_TextExtent(bounds.Width, measuredWidth)
 	lines := []string{props.Text}
+	var lineWidths []float32
 	if bounded && props.Wrap == TextWrapAuto {
-		lines = layoutTextLines(props.Text, bounds.Width, measure)
+		result := r.textLayouts.layout(textLayoutKey{
+			text: props.Text, width: bounds.Width, font: font, fontID: fontID, spacing: spacing,
+		}, fontGeneration.Load(), measure)
+		lines, lineWidths = result.lines, result.widths
 	}
 	lineGap := Paragraph_ParagraphDefaultLineGap(1)
 	lineHeight := float32(Paragraph_ParagraphLineStride(textHeight(font, fontID), lineGap))
@@ -1268,7 +1273,12 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 		if y >= bounds.Y+bounds.Height {
 			break
 		}
-		lineWidth := float32(measure(line))
+		var lineWidth float32
+		if lineWidths != nil {
+			lineWidth = lineWidths[i]
+		} else {
+			lineWidth = float32(measure(line))
+		}
 		x := bounds.X + Text_TextAlignmentOffset(bounds.Width, lineWidth, int32(props.Align))
 		op := FrameOp{Kind: FrameOpText,
 			Bounds: Rectangle{X: x, Y: y, Width: lineWidth, Height: float32(textHeight(font, fontID))},

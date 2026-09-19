@@ -591,6 +591,12 @@ navigation use graphemes; codec helpers, capacity limits and IME preedit retain
 their existing byte/codepoint contracts. C click placement and editable wrapping
 traverse clusters, while measurement and visible-line buffers preserve long
 UTF-8 ranges instead of truncating them at a fixed byte count.
+Native Go wrapped `Text` retains measured line results in a per-runtime cache
+bounded by both entry count and text storage. Text, width, font identity/size and
+spacing form the key; font registration and active-font changes invalidate it.
+The cache does not own wrapping policy, which remains generated from
+`runtime/paragraph.kry`. Workloads, limits and measured results are documented in
+[`PERFORMANCE.md`](PERFORMANCE.md).
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while
