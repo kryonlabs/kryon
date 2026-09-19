@@ -1,5 +1,6 @@
 #module "layout"
 #import "drawing_props"
+#import "layout_props"
 
 LayoutMetrics :: struct {
     content: Rectangle
@@ -108,4 +109,86 @@ StackChildBounds :: (declared: Rectangle, current: Rectangle,
     if out.width <= 0.0 { out.width = metrics.content.width }
     if out.height <= 0.0 { out.height = metrics.content.height }
     return out
+}
+
+# Resolve the whole line before widgets handle input; no prior-frame geometry
+# or host-specific placement is needed for distributed spacing.
+BeginFlexCursor :: (props: FlexProps, count: i32,
+    total_item_extent: float) -> FlexCursor #export {
+    cursor: FlexCursor
+    metrics := LayoutMetricsFor(props.bounds, props.gap, props.padding)
+    horizontal := props.direction != (FlexDirection)FlexColumn
+    available := horizontal ? metrics.content.width : metrics.content.height
+    cursor.content = metrics.content
+    cursor.direction = props.direction
+    cursor.align_items = props.align_items
+    cursor.gap = (float)metrics.gap
+    cursor.position = horizontal ? metrics.content.x : metrics.content.y
+    if count <= 0 {
+        return cursor
+    }
+    cursor.remaining = count
+    if total_item_extent < 0.0 {
+        total_item_extent = 0.0
+    }
+    remaining := available - total_item_extent - cursor.gap * (float)(count - 1)
+    if remaining < 0.0 {
+        remaining = 0.0
+    }
+    offset: float = 0.0
+    if props.justify_content == (JustifyContent)JustifyCenter {
+        offset = remaining / 2.0
+    } else if props.justify_content == (JustifyContent)JustifyEnd {
+        offset = remaining
+    } else if props.justify_content == (JustifyContent)JustifySpaceBetween && count > 1 {
+        cursor.gap += remaining / (float)(count - 1)
+    } else if props.justify_content == (JustifyContent)JustifySpaceAround {
+        offset = remaining / (float)count / 2.0
+        cursor.gap += remaining / (float)count
+    } else if props.justify_content == (JustifyContent)JustifySpaceEvenly {
+        offset = remaining / ((float)count + 1.0)
+        cursor.gap += offset
+    }
+    cursor.position += offset
+    return cursor
+}
+
+FlexStep :: (cursor: FlexCursor, width: float, height: float) -> FlexCursor #export {
+    cursor.item = (Rectangle){0.0, 0.0, 0.0, 0.0}
+    if cursor.remaining <= 0 {
+        return cursor
+    }
+    if width < 0.0 {
+        width = 0.0
+    }
+    if height < 0.0 {
+        height = 0.0
+    }
+    horizontal := cursor.direction != (FlexDirection)FlexColumn
+    cross_size := horizontal ? cursor.content.height : cursor.content.width
+    extent := horizontal ? height : width
+    if cursor.align_items == (AlignItems)AlignStretch && extent <= 0.0 {
+        extent = cross_size
+    }
+    cross_remaining := cross_size - extent
+    if cross_remaining < 0.0 {
+        cross_remaining = 0.0
+    }
+    cross_offset: float = 0.0
+    if cursor.align_items == (AlignItems)AlignCenter {
+        cross_offset = cross_remaining / 2.0
+    } else if cursor.align_items == (AlignItems)AlignEnd {
+        cross_offset = cross_remaining
+    }
+    if horizontal {
+        cursor.item = (Rectangle){cursor.position,
+            cursor.content.y + cross_offset, width, extent}
+        cursor.position += width + cursor.gap
+    } else {
+        cursor.item = (Rectangle){cursor.content.x + cross_offset,
+            cursor.position, extent, height}
+        cursor.position += height + cursor.gap
+    }
+    cursor.remaining -= 1
+    return cursor
 }

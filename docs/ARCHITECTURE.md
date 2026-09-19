@@ -446,7 +446,11 @@ and execute commands in the receiving rasterizer. Style/theme acquisition, legac
 lifecycle still need migration to complete the widget body.
 Its content geometry uses shared InsetBounds and CenterChild functions: the C
 retained child layout and Go layout scope no longer implement separate inset,
-missing-dimension, or centering rules. User-defined widgets now accept typed
+missing-dimension, or centering rules. Measured single-line distribution lives
+in `runtime/layout.kry`: `BeginFlexCursor` resolves main-axis free space and
+`FlexStep` resolves each item's cross-axis alignment before drawing or input.
+Both generated runtimes consume this policy without host-side spacing math.
+User-defined widgets now accept typed
 slots with inline captured bodies. Shared KIR lifts nested bodies, resolves
 lexical captures, checks signatures and borrowed lifetimes, and emits callback
 environments for C/C++ or native Go/JavaScript closures. Built-in Button still

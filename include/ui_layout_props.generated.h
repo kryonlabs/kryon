@@ -30,4 +30,44 @@ typedef struct ColumnProps {
     KeyID key;
 } ColumnProps;
 
+typedef enum FlexDirection {
+    FlexRow = 0,
+    FlexColumn,
+} FlexDirection;
+
+typedef enum JustifyContent {
+    JustifyStart = 0,
+    JustifyCenter,
+    JustifyEnd,
+    JustifySpaceBetween,
+    JustifySpaceAround,
+    JustifySpaceEvenly,
+} JustifyContent;
+
+typedef enum AlignItems {
+    AlignStart = 0,
+    AlignCenter,
+    AlignEnd,
+    AlignStretch,
+} AlignItems;
+
+typedef struct FlexProps {
+    Rectangle bounds;
+    FlexDirection direction;
+    JustifyContent justify_content;
+    AlignItems align_items;
+    int32_t gap;
+    int32_t padding;
+} FlexProps;
+
+typedef struct FlexCursor {
+    Rectangle content;
+    Rectangle item;
+    FlexDirection direction;
+    AlignItems align_items;
+    float position;
+    float gap;
+    int32_t remaining;
+} FlexCursor;
+
 #endif /* K_RUNTIME_LAYOUT_PROPS_H */

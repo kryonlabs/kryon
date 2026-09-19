@@ -167,6 +167,10 @@ without converting it back to public Style solely for drawing.
 Inset scaling and child centering also belong to the shared declaration code.
 Tree traversal and layout-scope storage remain host responsibilities, while
 explicit-position bypass and missing-size behavior use the same functions.
+Measured flex distribution also belongs to `runtime/layout.kry`. Callers supply
+item count and total main-axis extent, then consume `FlexStep` rectangles for
+both painting and hit testing. Apps own item measurement and actions, not the
+start/center/end, space-distribution, or cross-axis alignment calculations.
 ContentBounds now returns the shared Rectangle contract; the duplicate
 ContentBox record has been removed.
 

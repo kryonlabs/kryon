@@ -55,6 +55,17 @@ disabled_loop_scope :: () {
 buttons_frame :: () #ui {
     label_align: TextAlign = TextAlignStart
     label_wrap: TextWrap = TextWrapNone
+    actions: FlexCursor = BeginFlexCursor((FlexProps){
+        .bounds = {10, 110, 300, 52},
+        .justify_content = JustifySpaceAround,
+        .align_items = AlignCenter
+    }, 3, 240.0)
+    actions = FlexStep(actions, 80.0, 32.0)
+    save_bounds: Rectangle = actions.item
+    actions = FlexStep(actions, 80.0, 32.0)
+    cancel_bounds: Rectangle = actions.item
+    actions = FlexStep(actions, 80.0, 32.0)
+    second_bounds: Rectangle = actions.item
     disabled_return_scope()
     disabled_loop_scope()
     Screen root: {
@@ -73,15 +84,15 @@ buttons_frame :: () #ui {
                     when = 2 >= 1
                     Disabled {
                         when = false
-                        if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save", .id = 501}) {
+                        if Button((ButtonProps){.bounds = save_bounds, .label = "Save", .id = 501}) {
                             buttons_action += 1
                         }
                     }
                 }
                 if buttons_reverse {
                     CancelAction second: {
-                        x = 220
-                        y = 120
+                        x = second_bounds.x
+                        y = second_bounds.y
                         width = 80
                         height = 32
                         id = 503
@@ -89,8 +100,8 @@ buttons_frame :: () #ui {
                     }
                 }
                 CancelAction cancel: {
-                    x = 120
-                    y = 120
+                    x = cancel_bounds.x
+                    y = cancel_bounds.y
                     width = 80
                     height = 32
                     id = 502
@@ -98,8 +109,8 @@ buttons_frame :: () #ui {
                 }
                 if !buttons_reverse {
                     CancelAction second: {
-                        x = 220
-                        y = 120
+                        x = second_bounds.x
+                        y = second_bounds.y
                         width = 80
                         height = 32
                         id = 503

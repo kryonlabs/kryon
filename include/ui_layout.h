@@ -2,6 +2,11 @@
 #define KRYON_LAYOUT_H
 
 #include <stdint.h>
+#include "ui_layout_props.generated.h"
+
+// Resolve single-line spacing before drawing widgets or handling their input.
+FlexCursor BeginFlexCursor(FlexProps props, int32_t count, float total_item_extent);
+FlexCursor FlexStep(FlexCursor cursor, float width, float height);
 
 // Set the view dimensions (should be called when window/viewport changes)
 void SetViewSize(int width, int height);

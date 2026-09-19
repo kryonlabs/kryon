@@ -636,6 +636,54 @@ void UpdateDPI(int view_width, int view_height);
 
 ### Layout
 
+#### Flex Alignment
+
+`ui_layout.h` provides a measured, single-line flex layout for immediate
+widgets. It resolves geometry before input handling, with no previous-frame
+dependency. The same `.kry` policy generates the C and native Go implementations.
+
+```c
+FlexCursor BeginFlexCursor(FlexProps props, int32_t count, float total_item_extent);
+FlexCursor FlexStep(FlexCursor cursor, float width, float height);
+```
+
+`FlexProps` accepts `bounds`, `gap`, `padding`, and:
+
+- `direction`: `FlexRow` (default) or `FlexColumn`.
+- `justify_content`: `JustifyStart` (default), `JustifyCenter`, `JustifyEnd`,
+  `JustifySpaceBetween`, `JustifySpaceAround`, or `JustifySpaceEvenly`.
+- `align_items`: `AlignStart` (default), `AlignCenter`, `AlignEnd`, or
+  `AlignStretch`. Stretch fills an unspecified (zero) cross-axis size; explicit
+  sizes are preserved.
+
+Pass the sum of item widths for a row, or heights for a column, as
+`total_item_extent`, excluding gaps and padding. Then call `FlexStep` once per
+item, passing its measured size, and use `cursor.item` as the widget bounds.
+For unequal items, measure all sizes before beginning the cursor.
+
+```c
+float size = 52;
+FlexCursor actions = BeginFlexCursor((FlexProps){
+    .bounds = {20, 80, 600, 60},
+    .justify_content = JustifySpaceAround,
+    .align_items = AlignCenter
+}, 3, size * 3);
+actions = FlexStep(actions, size, size);
+Button((ButtonProps){.bounds = actions.item, .icon_only = true,
+                     .icon_type = ICON_CALENDAR});
+```
+
+`gap` is a minimum gap, with distributed free space added to it. Space-around
+has half as much distributed space at the edges as between items; space-evenly
+has equal distributed edge and interior space. One item centers for around and
+evenly, but stays at the start for between. Empty or exhausted cursors return
+an empty item. Negative sizes, gaps, and padding clamp to zero. Overflow uses
+safe start alignment and never introduces negative gaps or shrinks controls.
+Sizes use caller coordinates; scale them before measuring when needed.
+
+This primitive does not wrap, grow/shrink items, or align text baselines. It is
+separate from retained `Row`/`Column` scopes and does not change their defaults.
+
 #### `SetViewSize`
 
 Set the view dimensions.

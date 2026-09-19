@@ -8,3 +8,43 @@ ColumnProps :: struct {
     padding: i32
     key: KeyID
 }
+
+FlexDirection :: enum {
+    FlexRow = 0
+    FlexColumn
+}
+
+JustifyContent :: enum {
+    JustifyStart = 0
+    JustifyCenter
+    JustifyEnd
+    JustifySpaceBetween
+    JustifySpaceAround
+    JustifySpaceEvenly
+}
+
+AlignItems :: enum {
+    AlignStart = 0
+    AlignCenter
+    AlignEnd
+    AlignStretch
+}
+
+FlexProps :: struct {
+    bounds: Rectangle
+    direction: FlexDirection
+    justify_content: JustifyContent
+    align_items: AlignItems
+    gap: i32
+    padding: i32
+}
+
+FlexCursor :: struct {
+    content: Rectangle
+    item: Rectangle
+    direction: FlexDirection
+    align_items: AlignItems
+    position: float
+    gap: float
+    remaining: i32
+}

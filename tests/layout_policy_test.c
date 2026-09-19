@@ -12,9 +12,85 @@ check_rect(Rectangle got, float x, float y, float width, float height)
     assert(fabsf(got.height - height) < 0.001f);
 }
 
+static void
+check_flex_alignment(void)
+{
+    const float starts[] = {14, 69, 124, 14, 41.5f, 50.666667f};
+    const float seconds[] = {44, 99, 154, 154, 126.5f, 117.333333f};
+    FlexProps props = {.bounds = {10, 20, 188, 88}, .gap = 10, .padding = 4};
+
+    for(int direction = FlexRow; direction <= FlexColumn; direction++) {
+        props.direction = (FlexDirection)direction;
+        props.bounds = direction == FlexRow
+            ? (Rectangle){10, 20, 188, 88} : (Rectangle){20, 10, 88, 188};
+        for(int justify = JustifyStart; justify <= JustifySpaceEvenly; justify++) {
+            props.justify_content = (JustifyContent)justify;
+            for(int align = AlignStart; align <= AlignStretch; align++) {
+                props.align_items = (AlignItems)align;
+                float cross = align == AlignCenter ? 49 : align == AlignEnd ? 74 : 24;
+                FlexCursor cursor = BeginFlexCursor(props, 2, 60);
+                cursor = FlexStep(cursor, direction == FlexRow ? 20 : 30,
+                                  direction == FlexRow ? 30 : 20);
+                if(direction == FlexRow)
+                    check_rect(cursor.item, starts[justify], cross, 20, 30);
+                else
+                    check_rect(cursor.item, cross, starts[justify], 30, 20);
+                cursor = FlexStep(cursor, direction == FlexRow ? 40 : 30,
+                                  direction == FlexRow ? 30 : 40);
+                if(direction == FlexRow)
+                    check_rect(cursor.item, seconds[justify], cross, 40, 30);
+                else
+                    check_rect(cursor.item, cross, seconds[justify], 30, 40);
+                assert(cursor.remaining == 0);
+                cursor = FlexStep(cursor, 10, 10);
+                check_rect(cursor.item, 0, 0, 0, 0);
+            }
+        }
+    }
+
+    props = (FlexProps){.bounds = {10, 20, 180, 80},
+                        .align_items = AlignStretch};
+    FlexCursor cursor = BeginFlexCursor(props, 1, 20);
+    cursor = FlexStep(cursor, 20, 0);
+    check_rect(cursor.item, 10, 20, 20, 80);
+    props.direction = FlexColumn;
+    cursor = BeginFlexCursor(props, 1, 20);
+    cursor = FlexStep(cursor, 0, 20);
+    check_rect(cursor.item, 10, 20, 180, 20);
+
+    props.direction = FlexRow;
+    for(int justify = JustifyStart; justify <= JustifySpaceEvenly; justify++) {
+        props.justify_content = (JustifyContent)justify;
+        props.align_items = AlignStart;
+        float x = justify == JustifyEnd ? 170 :
+            justify == JustifyCenter || justify == JustifySpaceAround ||
+            justify == JustifySpaceEvenly ? 90 : 10;
+        cursor = FlexStep(BeginFlexCursor(props, 1, 20), 20, 30);
+        check_rect(cursor.item, x, 20, 20, 30);
+        cursor = FlexStep(BeginFlexCursor(props, 0, 0), 20, 30);
+        check_rect(cursor.item, 0, 0, 0, 0);
+        cursor = FlexStep(BeginFlexCursor(props, -1, 0), 20, 30);
+        check_rect(cursor.item, 0, 0, 0, 0);
+
+        props.align_items = AlignCenter;
+        cursor = FlexStep(BeginFlexCursor(props, 1, 200), 200, 100);
+        check_rect(cursor.item, 10, 20, 200, 100);
+    }
+
+    props = (FlexProps){.bounds = {10, 20, 1, 1}, .padding = 4,
+                        .justify_content = JustifySpaceAround};
+    cursor = FlexStep(BeginFlexCursor(props, 1, -20), -20, -30);
+    check_rect(cursor.item, 14, 24, 0, 0);
+    props = (FlexProps){.bounds = {10, 20, 180, 80}, .gap = -8, .padding = -4};
+    cursor = FlexStep(BeginFlexCursor(props, 2, 40), 20, 30);
+    cursor = FlexStep(cursor, 20, 30);
+    check_rect(cursor.item, 30, 20, 20, 30);
+}
+
 int
 main(void)
 {
+    check_flex_alignment();
     Rectangle bounds = {10, 20, 100, 80};
     Rectangle child = {0, 0, 0, 18};
     LayoutMetrics metrics = LayoutMetricsFor(bounds, 6, 4);

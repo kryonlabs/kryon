@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import layout_props
 type LayoutMetrics struct {
 	Content Rectangle
 	Gap     int32
@@ -335,4 +336,315 @@ func Layout_StackChildBounds(declared Rectangle, current Rectangle, metrics Layo
 	}
 	var value_19 Rectangle = out
 	return value_19
+}
+
+func Layout_BeginFlexCursor(props FlexProps, count int32, total_item_extent float32) FlexCursor {
+	var cursor FlexCursor = FlexCursor{}
+	var value_0 Rectangle = props.Bounds
+	var value_1 int32 = props.Gap
+	var value_2 int32 = props.Padding
+	var value_3 LayoutMetrics = Layout_LayoutMetricsFor(value_0, value_1, value_2)
+	var metrics LayoutMetrics = value_3
+	var value_4 FlexDirection = FlexDirection(props.Direction)
+	var value_5 int32 = int32(FlexColumn)
+	var value_6 FlexDirection = FlexDirection(int32(number_runtime_bits(uint64(value_5), uint64(0), 32, true, 0)))
+	var value_7 bool = value_4 != value_6
+	var horizontal bool = value_7
+	var value_8 bool = horizontal
+	var value_9 float32 = 0
+	if value_8 {
+		var value_10 float32 = metrics.Content.Width
+		value_9 = value_10
+	} else {
+		var value_11 float32 = metrics.Content.Height
+		value_9 = value_11
+	}
+	var available float32 = value_9
+	var value_12 Rectangle = metrics.Content
+	cursor.Content = value_12
+	var value_13 FlexDirection = FlexDirection(props.Direction)
+	cursor.Direction = value_13
+	var value_14 AlignItems = AlignItems(props.AlignItems)
+	cursor.AlignItems = value_14
+	var value_15 int32 = metrics.Gap
+	var value_16 float32 = float32(value_15)
+	cursor.Gap = value_16
+	var value_17 bool = horizontal
+	var value_18 float32 = 0
+	if value_17 {
+		var value_19 float32 = metrics.Content.X
+		value_18 = value_19
+	} else {
+		var value_20 float32 = metrics.Content.Y
+		value_18 = value_20
+	}
+	cursor.Position = value_18
+	var value_21 int32 = count
+	var value_22 int32 = 0
+	var value_23 bool = value_21 <= value_22
+	if value_23 {
+		var value_24 FlexCursor = cursor
+		return value_24
+	}
+	var value_25 int32 = count
+	cursor.Remaining = value_25
+	var value_26 float32 = total_item_extent
+	var value_27 float32 = 0.0
+	var value_28 bool = value_26 < value_27
+	if value_28 {
+		var value_29 float32 = 0.0
+		total_item_extent = value_29
+	}
+	var value_30 float32 = available
+	var value_31 float32 = total_item_extent
+	var value_32 float32 = value_30 - value_31
+	var value_33 float32 = cursor.Gap
+	var value_34 int32 = count
+	var value_35 int32 = 1
+	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 2))
+	var value_37 float32 = float32(value_36)
+	var value_38 float32 = value_33 * value_37
+	var value_39 float32 = value_32 - value_38
+	var remaining float32 = value_39
+	var value_40 float32 = remaining
+	var value_41 float32 = 0.0
+	var value_42 bool = value_40 < value_41
+	if value_42 {
+		var value_43 float32 = 0.0
+		remaining = value_43
+	}
+	var value_44 float32 = 0.0
+	var offset float32 = value_44
+	var value_45 JustifyContent = JustifyContent(props.JustifyContent)
+	var value_46 int32 = int32(JustifyCenter)
+	var value_47 JustifyContent = JustifyContent(int32(number_runtime_bits(uint64(value_46), uint64(0), 32, true, 0)))
+	var value_48 bool = value_45 == value_47
+	if value_48 {
+		var value_49 float32 = remaining
+		var value_50 float32 = 2.0
+		var value_51 float32 = value_49 / value_50
+		offset = value_51
+	} else {
+		var value_52 JustifyContent = JustifyContent(props.JustifyContent)
+		var value_53 int32 = int32(JustifyEnd)
+		var value_54 JustifyContent = JustifyContent(int32(number_runtime_bits(uint64(value_53), uint64(0), 32, true, 0)))
+		var value_55 bool = value_52 == value_54
+		if value_55 {
+			var value_56 float32 = remaining
+			offset = value_56
+		} else {
+			var value_57 JustifyContent = JustifyContent(props.JustifyContent)
+			var value_58 int32 = int32(JustifySpaceBetween)
+			var value_59 JustifyContent = JustifyContent(int32(number_runtime_bits(uint64(value_58), uint64(0), 32, true, 0)))
+			var value_60 bool = value_57 == value_59
+			var value_61 bool = value_60
+			if value_61 {
+				var value_62 int32 = count
+				var value_63 int32 = 1
+				var value_64 bool = value_62 > value_63
+				value_61 = value_64
+			}
+			if value_61 {
+				var value_65 float32 = cursor.Gap
+				var value_66 float32 = remaining
+				var value_67 int32 = count
+				var value_68 int32 = 1
+				var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 2))
+				var value_70 float32 = float32(value_69)
+				var value_71 float32 = value_66 / value_70
+				cursor.Gap = value_65 + value_71
+			} else {
+				var value_72 JustifyContent = JustifyContent(props.JustifyContent)
+				var value_73 int32 = int32(JustifySpaceAround)
+				var value_74 JustifyContent = JustifyContent(int32(number_runtime_bits(uint64(value_73), uint64(0), 32, true, 0)))
+				var value_75 bool = value_72 == value_74
+				if value_75 {
+					var value_76 float32 = remaining
+					var value_77 int32 = count
+					var value_78 float32 = float32(value_77)
+					var value_79 float32 = value_76 / value_78
+					var value_80 float32 = 2.0
+					var value_81 float32 = value_79 / value_80
+					offset = value_81
+					var value_82 float32 = cursor.Gap
+					var value_83 float32 = remaining
+					var value_84 int32 = count
+					var value_85 float32 = float32(value_84)
+					var value_86 float32 = value_83 / value_85
+					cursor.Gap = value_82 + value_86
+				} else {
+					var value_87 JustifyContent = JustifyContent(props.JustifyContent)
+					var value_88 int32 = int32(JustifySpaceEvenly)
+					var value_89 JustifyContent = JustifyContent(int32(number_runtime_bits(uint64(value_88), uint64(0), 32, true, 0)))
+					var value_90 bool = value_87 == value_89
+					if value_90 {
+						var value_91 float32 = remaining
+						var value_92 int32 = count
+						var value_93 float32 = float32(value_92)
+						var value_94 float32 = 1.0
+						var value_95 float32 = value_93 + value_94
+						var value_96 float32 = value_91 / value_95
+						offset = value_96
+						var value_97 float32 = cursor.Gap
+						var value_98 float32 = offset
+						cursor.Gap = value_97 + value_98
+					}
+				}
+			}
+		}
+	}
+	var value_99 float32 = cursor.Position
+	var value_100 float32 = offset
+	cursor.Position = value_99 + value_100
+	var value_101 FlexCursor = cursor
+	return value_101
+}
+
+func Layout_FlexStep(cursor FlexCursor, width float32, height float32) FlexCursor {
+	var value_0 Rectangle = Rectangle{}
+	var value_1 float32 = 0.0
+	value_0.X = value_1
+	var value_2 float32 = 0.0
+	value_0.Y = value_2
+	var value_3 float32 = 0.0
+	value_0.Width = value_3
+	var value_4 float32 = 0.0
+	value_0.Height = value_4
+	cursor.Item = value_0
+	var value_5 int32 = cursor.Remaining
+	var value_6 int32 = 0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 FlexCursor = cursor
+		return value_8
+	}
+	var value_9 float32 = width
+	var value_10 float32 = 0.0
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 float32 = 0.0
+		width = value_12
+	}
+	var value_13 float32 = height
+	var value_14 float32 = 0.0
+	var value_15 bool = value_13 < value_14
+	if value_15 {
+		var value_16 float32 = 0.0
+		height = value_16
+	}
+	var value_17 FlexDirection = FlexDirection(cursor.Direction)
+	var value_18 int32 = int32(FlexColumn)
+	var value_19 FlexDirection = FlexDirection(int32(number_runtime_bits(uint64(value_18), uint64(0), 32, true, 0)))
+	var value_20 bool = value_17 != value_19
+	var horizontal bool = value_20
+	var value_21 bool = horizontal
+	var value_22 float32 = 0
+	if value_21 {
+		var value_23 float32 = cursor.Content.Height
+		value_22 = value_23
+	} else {
+		var value_24 float32 = cursor.Content.Width
+		value_22 = value_24
+	}
+	var cross_size float32 = value_22
+	var value_25 bool = horizontal
+	var value_26 float32 = 0
+	if value_25 {
+		var value_27 float32 = height
+		value_26 = value_27
+	} else {
+		var value_28 float32 = width
+		value_26 = value_28
+	}
+	var extent float32 = value_26
+	var value_29 AlignItems = AlignItems(cursor.AlignItems)
+	var value_30 int32 = int32(AlignStretch)
+	var value_31 AlignItems = AlignItems(int32(number_runtime_bits(uint64(value_30), uint64(0), 32, true, 0)))
+	var value_32 bool = value_29 == value_31
+	var value_33 bool = value_32
+	if value_33 {
+		var value_34 float32 = extent
+		var value_35 float32 = 0.0
+		var value_36 bool = value_34 <= value_35
+		value_33 = value_36
+	}
+	if value_33 {
+		var value_37 float32 = cross_size
+		extent = value_37
+	}
+	var value_38 float32 = cross_size
+	var value_39 float32 = extent
+	var value_40 float32 = value_38 - value_39
+	var cross_remaining float32 = value_40
+	var value_41 float32 = cross_remaining
+	var value_42 float32 = 0.0
+	var value_43 bool = value_41 < value_42
+	if value_43 {
+		var value_44 float32 = 0.0
+		cross_remaining = value_44
+	}
+	var value_45 float32 = 0.0
+	var cross_offset float32 = value_45
+	var value_46 AlignItems = AlignItems(cursor.AlignItems)
+	var value_47 int32 = int32(AlignCenter)
+	var value_48 AlignItems = AlignItems(int32(number_runtime_bits(uint64(value_47), uint64(0), 32, true, 0)))
+	var value_49 bool = value_46 == value_48
+	if value_49 {
+		var value_50 float32 = cross_remaining
+		var value_51 float32 = 2.0
+		var value_52 float32 = value_50 / value_51
+		cross_offset = value_52
+	} else {
+		var value_53 AlignItems = AlignItems(cursor.AlignItems)
+		var value_54 int32 = int32(AlignEnd)
+		var value_55 AlignItems = AlignItems(int32(number_runtime_bits(uint64(value_54), uint64(0), 32, true, 0)))
+		var value_56 bool = value_53 == value_55
+		if value_56 {
+			var value_57 float32 = cross_remaining
+			cross_offset = value_57
+		}
+	}
+	var value_58 bool = horizontal
+	if value_58 {
+		var value_59 Rectangle = Rectangle{}
+		var value_60 float32 = cursor.Position
+		value_59.X = value_60
+		var value_61 float32 = cursor.Content.Y
+		var value_62 float32 = cross_offset
+		var value_63 float32 = value_61 + value_62
+		value_59.Y = value_63
+		var value_64 float32 = width
+		value_59.Width = value_64
+		var value_65 float32 = extent
+		value_59.Height = value_65
+		cursor.Item = value_59
+		var value_66 float32 = cursor.Position
+		var value_67 float32 = width
+		var value_68 float32 = cursor.Gap
+		var value_69 float32 = value_67 + value_68
+		cursor.Position = value_66 + value_69
+	} else {
+		var value_70 Rectangle = Rectangle{}
+		var value_71 float32 = cursor.Content.X
+		var value_72 float32 = cross_offset
+		var value_73 float32 = value_71 + value_72
+		value_70.X = value_73
+		var value_74 float32 = cursor.Position
+		value_70.Y = value_74
+		var value_75 float32 = extent
+		value_70.Width = value_75
+		var value_76 float32 = height
+		value_70.Height = value_76
+		cursor.Item = value_70
+		var value_77 float32 = cursor.Position
+		var value_78 float32 = height
+		var value_79 float32 = cursor.Gap
+		var value_80 float32 = value_78 + value_79
+		cursor.Position = value_77 + value_80
+	}
+	var value_81 int32 = cursor.Remaining
+	var value_82 int32 = 1
+	cursor.Remaining = int32(number_runtime_bits(uint64(value_81), uint64(value_82), 32, true, 2))
+	var value_83 FlexCursor = cursor
+	return value_83
 }
