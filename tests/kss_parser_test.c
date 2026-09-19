@@ -74,10 +74,43 @@ test_diagnostics(void)
         "}\n",
         "unknown token group", "2:7");
     assert_diagnostic_contains(
+        "tokens {\n"
+        "  radius { control: 4; }\n"
+        "}\n",
+        "unknown token group", "2:9");
+    assert_diagnostic_contains(
+        "tokens {\n"
+        "  easing { standard: linear; }\n"
+        "}\n",
+        "unknown token group", "2:9");
+    assert_diagnostic_contains(
+        "tokens {\n"
+        "  length { control { pad: 4; } }\n"
+        "}\n",
+        "expected ':' after token name", "2:20");
+    assert_diagnostic_contains(
         "Button {\n"
         "  background: #123;\n"
         "}\n",
         "expected hex color", "2:19");
+    assert_diagnostic_contains(
+        "Button { background: color-mix(red, blue); }\n",
+        "expected hex color", "1:22");
+    assert_diagnostic_contains(
+        "Button { padding-x: 12px; }\n",
+        "expected ';'", "1:23");
+    assert_diagnostic_contains(
+        "Button, Surface { background: #111111; }\n",
+        "expected '{'", "1:7");
+    assert_diagnostic_contains(
+        "@layer base { Button { background: #111111; } }\n",
+        "expected ';'", "1:13");
+    assert_diagnostic_contains(
+        "Button { transition: opacity 100ms; }\n",
+        "unknown property", "1:21");
+    assert_diagnostic_contains(
+        "Button { font_family: system; }\n",
+        "unknown property", "1:22");
     assert_diagnostic_contains(
         "@theme dark;\n"
         "Button { background: #111111; }\n",

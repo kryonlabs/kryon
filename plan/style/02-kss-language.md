@@ -88,9 +88,11 @@ Remaining:
   module with identical winners. Historical web runtime fixture results are
   paused reference material; truncation sweeps and deterministic byte-mutation
   fuzz remain current evidence for active C and Go hosts. Focused diagnostic
-  assertions now cover unknown properties, unsupported token groups, invalid
-  hex colors, malformed `@theme`, and missing imports with stable line/column
-  locations in both active hosts.
+  assertions now cover unknown properties, unsupported token groups, nested
+  token groups, invalid hex colors, unsupported computed color functions,
+  typed-number `px` suffixes, comma selector lists, block-form `@layer`,
+  malformed `@theme`, and missing imports with stable line/column locations in
+  both active hosts.
 - Done: hot-cursor split in `kss_parser.kry`. The per-byte lexical functions
   thread a small `KssCursor` (source/pos/line/column/file) while the full
   parser state only moves at statement level; mid-tier functions sync

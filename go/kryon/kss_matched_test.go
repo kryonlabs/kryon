@@ -193,12 +193,72 @@ func TestKssDiagnosticsIncludeLineColumn(t *testing.T) {
 			location: "2:7",
 		},
 		{
+			name: "radius-token-group",
+			source: "tokens {\n" +
+				"  radius { control: 4; }\n" +
+				"}\n",
+			message:  "unknown token group",
+			location: "2:9",
+		},
+		{
+			name: "easing-token-group",
+			source: "tokens {\n" +
+				"  easing { standard: linear; }\n" +
+				"}\n",
+			message:  "unknown token group",
+			location: "2:9",
+		},
+		{
+			name: "nested-token-group",
+			source: "tokens {\n" +
+				"  length { control { pad: 4; } }\n" +
+				"}\n",
+			message:  "expected ':' after token name",
+			location: "2:20",
+		},
+		{
 			name: "hex",
 			source: "Button {\n" +
 				"  background: #123;\n" +
 				"}\n",
 			message:  "expected hex color",
 			location: "2:19",
+		},
+		{
+			name:     "color-function",
+			source:   "Button { background: color-mix(red, blue); }\n",
+			message:  "expected hex color",
+			location: "1:22",
+		},
+		{
+			name:     "typed-number-units",
+			source:   "Button { padding-x: 12px; }\n",
+			message:  "expected ';'",
+			location: "1:23",
+		},
+		{
+			name:     "selector-list",
+			source:   "Button, Surface { background: #111111; }\n",
+			message:  "expected '{'",
+			location: "1:7",
+		},
+		{
+			name:     "layer-block",
+			source:   "@layer base { Button { background: #111111; } }\n",
+			message:  "expected ';'",
+			location: "1:13",
+		},
+		{
+			name:     "transition-property",
+			source:   "Button { transition: opacity 100ms; }\n",
+			message:  "unknown property",
+			location: "1:21",
+		},
+		{
+			name:     "font-family-property",
+			source:   "Button { font_family: system; }\n",
+			message:  "unknown property",
+			location: "1:22",
 		},
 		{
 			name: "theme-syntax",
