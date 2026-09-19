@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "../backend/kry_input_internal.h"
 #include "runtime/scroll.h"
 
 static ScrollMetrics
@@ -226,6 +227,38 @@ BeginScrollContainer(ScrollArea area)
                     *area.scroll_offset, wheel, view.max_scroll, wheel_step);
             }
         }
+
+#if ANDROID_BUILD
+        {
+            Vector2 drag_start_screen;
+            Vector2 drag_current_screen;
+            if(kry_android_frame_drag(&drag_start_screen, &drag_current_screen)) {
+                Vector2 drag_start_world = GetScreenToWorld2D(drag_start_screen,
+                                                              g_ui_camera);
+                Vector2 drag_current_world = GetScreenToWorld2D(drag_current_screen,
+                                                                g_ui_camera);
+                int drag_delta_y = (int)drag_current_world.y -
+                                   (int)drag_start_world.y;
+                Rectangle drag_scrollbar_bounds = {
+                    (float)scrollbar_x,
+                    area.bounds.y,
+                    (float)scrollbar_w,
+                    area.bounds.height
+                };
+                if(view.max_scroll > 0 &&
+                   CheckCollisionPointRec(drag_start_world, area.bounds) &&
+                   !InputCapturesClick(drag_start_world) &&
+                   !CheckCollisionPointRec(drag_start_world,
+                                           drag_scrollbar_bounds) &&
+                   (drag_delta_y > drag_threshold ||
+                    drag_delta_y < -drag_threshold)) {
+                    *area.scroll_offset = ScrollDragDeltaOffsetFor(
+                        *area.scroll_offset, drag_delta_y, view.max_scroll);
+                    kry_android_consume_frame_drag();
+                }
+            }
+        }
+#endif
 
         if(g_ui_slider_active_id != 0 &&
            g_ui_pointer_owner == POINTER_OWNER_NONE &&

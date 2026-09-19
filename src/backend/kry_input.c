@@ -23,6 +23,11 @@ static int android_frame_release;
 static int android_frame_cancel;
 static int android_pointer_down;
 static Vector2 android_pointer_position;
+static int android_drag_sequence_active;
+static Vector2 android_drag_sequence_start;
+static int android_frame_drag_valid;
+static Vector2 android_frame_drag_start;
+static Vector2 android_frame_drag_current;
 
 static int32_t
 android_track_input(struct android_app *app, AInputEvent *event)
@@ -40,19 +45,36 @@ android_track_input(struct android_app *app, AInputEvent *event)
            action == AMOTION_EVENT_ACTION_POINTER_DOWN) {
             android_frame_press = 1;
             android_pointer_down = 1;
+            android_drag_sequence_active = 1;
+            android_drag_sequence_start = android_pointer_position;
+            android_frame_drag_start = android_pointer_position;
+            android_frame_drag_current = android_pointer_position;
         }
-        if(action == AMOTION_EVENT_ACTION_MOVE && pointer_count > 0)
+        if(action == AMOTION_EVENT_ACTION_MOVE && pointer_count > 0) {
             android_pointer_down = 1;
+            if(android_drag_sequence_active) {
+                android_frame_drag_valid = 1;
+                android_frame_drag_start = android_drag_sequence_start;
+                android_frame_drag_current = android_pointer_position;
+            }
+        }
         if(action == AMOTION_EVENT_ACTION_UP ||
            action == AMOTION_EVENT_ACTION_POINTER_UP) {
             android_frame_release = 1;
             android_pointer_down = 0;
+            if(android_drag_sequence_active) {
+                android_frame_drag_valid = 1;
+                android_frame_drag_start = android_drag_sequence_start;
+                android_frame_drag_current = android_pointer_position;
+            }
+            android_drag_sequence_active = 0;
         }
         if(action == AMOTION_EVENT_ACTION_CANCEL) {
             android_frame_press = 0;
             android_frame_release = 0;
             android_frame_cancel = 1;
             android_pointer_down = 0;
+            android_drag_sequence_active = 0;
         }
     }
     return android_previous_input != NULL
@@ -71,6 +93,24 @@ kry_android_touch_position(void)
     return android_pointer_position;
 }
 
+int
+kry_android_frame_drag(Vector2 *start, Vector2 *current)
+{
+    if(!android_frame_drag_valid)
+        return 0;
+    if(start != NULL)
+        *start = android_frame_drag_start;
+    if(current != NULL)
+        *current = android_frame_drag_current;
+    return 1;
+}
+
+void
+kry_android_consume_frame_drag(void)
+{
+    android_frame_drag_valid = 0;
+}
+
 void
 kry_android_prepare_input_poll(void)
 {
@@ -83,6 +123,7 @@ kry_android_prepare_input_poll(void)
     android_frame_press = 0;
     android_frame_release = 0;
     android_frame_cancel = 0;
+    android_frame_drag_valid = 0;
 }
 #endif
 
