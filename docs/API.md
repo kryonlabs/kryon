@@ -1943,13 +1943,34 @@ removing focus styling. Re-enabling editing does not replay rejected input.
 
 `GetAccessibilitySnapshot` projects the committed retained UI tree into
 backend-neutral roles, labels, bounds, focus, disabled, and checked state.
+Nodes also include the app's `focus_id`, committed editor `value`, `read_only`,
+`secure`, and `multiline` metadata. Secure fields expose an empty value and no
+password-derived label. TextArea placeholders provide a fallback label. Button
+descendant text supplies the button name without a duplicate text announcement;
+checkbox flag masks and disabled scopes are reflected in the snapshot.
 `SetAccessibilitySink` installs a host callback invoked after every retained
-frame. The DOM backend additionally publishes the snapshot as ARIA nodes.
+frame, including frames without controls (C retains its implicit screen node).
+The DOM backend
+additionally publishes the existing roles, labels, and states as ARIA nodes.
 
 ```c
 AccessibilityNode nodes[64];
 int count = GetAccessibilitySnapshot(nodes, 64);
 ```
+
+The C function returns the total node count even with a smaller output buffer;
+pass `NULL, 0` to query capacity. Strings are borrowed from the current tree or
+editor buffer and must be consumed before either changes.
+
+Native Go provides `GetAccessibilitySnapshot() []AccessibilityNode` and
+`SetAccessibilitySink(AccessibilitySink)` as package, Runtime, and Host methods.
+Call the snapshot API after `EndFrame` on the UI thread. Returned slices belong
+to the caller; callbacks run synchronously at frame end, including empty frames.
+Setting a nil sink removes the callback. Go snapshots cover ordinary/composed
+buttons, text editors, checkboxes, toggles, text, images, groups, and tables.
+Editor values exclude uncommitted IME preedit. These are flat host snapshots,
+not stable OS object trees: native screen-reader adapters, action routing, and
+complete composite-control coverage remain work in progress.
 
 ### Input Capture
 

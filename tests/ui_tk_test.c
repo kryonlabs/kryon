@@ -5554,10 +5554,105 @@ test_grapheme_cursor_placement(void)
               (int)strlen(long_line));
 }
 
+static int accessibility_calls;
+static int accessibility_last_count;
+
+static void
+capture_accessibility(const AccessibilityNode *nodes, int count, void *userdata)
+{
+    (void)userdata;
+    accessibility_calls++;
+    accessibility_last_count = count;
+    if(count > 0)
+        check_int("accessibility callback storage", nodes != NULL, 1);
+}
+
+static void
+test_accessibility_snapshot(void)
+{
+    char password[64] = "private-password";
+    char notes[64] = "Saved notes";
+    int pc = 16;
+    int nc = 11;
+    int flags = 6;
+    int enabled = 1;
+    AccessibilityNode nodes[16];
+    int found = 0;
+    unsigned seen = 0;
+
+    InjectReset();
+    SetAccessibilitySink(capture_accessibility, NULL);
+    SetFocus(7101);
+    BeginInterfaceFrame(500, 300, 1);
+    BeginTree(Key("accessibility-test"));
+    ButtonScope((ButtonProps){.bounds = {0, 0, 120, 30}, .id = 7101});
+    Column((ColumnProps){0});
+    Text((TextProps){.text = "Save"});
+    End();
+    End();
+    TextField((TextFieldProps){.bounds = {0, 40, 160, 30}, .text = password,
+        .text_size = sizeof(password), .cursor_position = &pc, .focus_id = 7102, .secure = true});
+    TextArea((TextAreaProps){.bounds = {0, 80, 160, 60}, .text = notes,
+        .text_size = sizeof(notes), .cursor_position = &nc, .focus_id = 7103,
+        .read_only = true, .placeholder = "Notes"});
+    Checkbox((CheckboxProps){.bounds = {0, 150, 120, 30}, .id = 7104,
+        .label = "Flags", .flags = &flags, .flags_value = 2});
+    Toggle((ToggleProps){.bounds = {0, 190, 120, 30}, .id = 7105,
+        .value = &enabled, .disabled = true, .off_label = "Off", .on_label = "On"});
+    DisabledScope(1);
+    Button((ButtonProps){.bounds = {200, 0, 120, 30}, .id = 7106, .label = "Disabled"});
+    DisabledEndScope();
+    EndTree();
+    EndInterfaceFrame();
+    int count = GetAccessibilitySnapshot(nodes, 16);
+    check_int("accessibility callback called", accessibility_calls, 1);
+    check_int("accessibility count query", GetAccessibilitySnapshot(NULL, 0), count);
+    check_int("accessibility short buffer returns total", GetAccessibilitySnapshot(nodes, 1), count);
+    GetAccessibilitySnapshot(nodes, 16);
+    for(int i = 0; i < count && i < 16; i++) {
+        AccessibilityNode node = nodes[i];
+        if(node.focus_id >= 7101 && node.focus_id <= 7106)
+            seen |= 1u << (node.focus_id - 7101);
+        check_int("accessibility password value protected", strcmp(node.value, password) != 0, 1);
+        check_int("accessibility password label protected", strcmp(node.label, password) != 0, 1);
+        if(strcmp(node.label, "Save") == 0) {
+            check_int("accessibility composed button name", strcmp(node.role, "button"), 0);
+            check_int("accessibility focused button", node.focused, 1);
+            found++;
+        }
+        if(node.focus_id == 7102)
+            check_int("accessibility secure field", node.secure && node.value[0] == '\0', 1);
+        if(node.focus_id == 7103)
+            check_int("accessibility read-only area", node.read_only && node.multiline &&
+                      strcmp(node.value, "Saved notes") == 0 && strcmp(node.label, "Notes") == 0, 1);
+        if(node.focus_id == 7104)
+            check_int("accessibility flag checkbox", node.checked, 1);
+        if(node.focus_id == 7105)
+            check_int("accessibility disabled toggle", node.checked && node.disabled &&
+                      !node.focused && strcmp(node.label, "On") == 0, 1);
+        if(node.focus_id == 7106)
+            check_int("accessibility inherited disabled", node.disabled, 1);
+    }
+    check_int("accessibility label is not duplicated", found, 1);
+    check_int("accessibility controls are present", (int)seen, 63);
+    BeginInterfaceFrame(500, 300, 1);
+    BeginTree(Key("accessibility-test"));
+    EndTree();
+    EndInterfaceFrame();
+    check_int("accessibility empty frame callback", accessibility_calls, 2);
+    check_int("accessibility empty frame retains only screen", accessibility_last_count, 1);
+    GetAccessibilitySnapshot(nodes, 16);
+    check_int("accessibility empty screen role", strcmp(nodes[0].role, "main"), 0);
+    check_int("accessibility screen has no focus target", nodes[0].focus_id, 0);
+    SetAccessibilitySink(NULL, NULL);
+    ClearFocus();
+}
+
 int
 main(void)
 {
     test_grapheme_cursor_placement();
+    test_accessibility_snapshot();
     SetThemeMode(THEME_MODE_LIGHT);
     check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
     check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);

@@ -251,6 +251,13 @@ The native Go wrapped-text cache stores bounded host measurement results, not
 another layout algorithm. Its font-generation invalidation belongs to the font
 registry; color, alignment and clipping remain live per-frame paint decisions.
 
+Accessibility projection is a host service over committed retained nodes (C)
+or completed frame operations (Go). It reuses widget state and checkbox flag
+policy, strips secure values, and publishes snapshots through the host sink.
+It must not infer duplicate controls from paint decoration or mutate editor
+buffers. Native screen-reader transports and action delivery remain separate
+adapter work; the flat snapshot is not an OS object-identity protocol.
+
 Menu Escape/dismissal suppression, Collapsible arrow priority/keyboard actions,
 and text shortcut/edit-command decisions belong to `runtime/*.kry`.
 `runtime/text_input.kry` also owns navigation and deletion intent, word-boundary

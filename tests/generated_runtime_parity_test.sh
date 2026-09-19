@@ -84,6 +84,7 @@ import (
 )
 
 type inputDriver interface {
+	GetAccessibilitySnapshot() []kryon.AccessibilityNode
 	QueueText(string)
 	QueueKey(int32)
 	QueueShiftKey(int32)
@@ -879,6 +880,23 @@ func main() {
 	requireRenderedFrame("form", 2500, drawForm)
 	driver.SetFocus(101)
 	drawForm()
+	accessibleFields := 0
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID < 101 || node.FocusID > 104 { continue }
+		accessibleFields++
+		if node.Role != "textbox" || node.Disabled { panic("generated editor accessibility role/state mismatch") }
+		switch node.FocusID {
+		case 101:
+			if !node.Focused || node.Value != "alpha" { panic("generated editor accessibility focus/value mismatch") }
+		case 102:
+			if node.Value != "beta" { panic("generated editor accessibility value mismatch") }
+		case 103:
+			if !node.Secure || node.Value != "" || node.Label != "" { panic("generated editor accessibility leaked password") }
+		case 104:
+			if !node.Multiline || node.Value != "notes" || node.Label != "Notes" { panic("generated area accessibility mismatch") }
+		}
+	}
+	if accessibleFields != 4 { panic("generated editor accessibility nodes missing") }
 	driver.QueueKey(kryon.KeyLeft)
 	drawForm()
 	driver.QueueText("é")
@@ -2052,6 +2070,32 @@ int main(void)
     draw_form();
     SetFocus(101);
     draw_form();
+    AccessibilityNode accessible_nodes[32];
+    int accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    int accessible_fields = 0;
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id < 101 || node.focus_id > 104)
+            continue;
+        accessible_fields++;
+        int valid = strcmp(node.role, "textbox") == 0 && !node.disabled;
+        if(node.focus_id == 101)
+            valid = valid && node.focused && strcmp(node.value, "alpha") == 0;
+        else if(node.focus_id == 102)
+            valid = valid && strcmp(node.value, "beta") == 0;
+        else if(node.focus_id == 103)
+            valid = valid && node.secure && node.value[0] == '\0' && node.label[0] == '\0';
+        else if(node.focus_id == 104)
+            valid = valid && node.multiline && strcmp(node.value, "notes") == 0 && strcmp(node.label, "Notes") == 0;
+        if(!valid) {
+            fprintf(stderr, "generated editor accessibility mismatch for %d\n", node.focus_id);
+            return 1;
+        }
+    }
+    if(accessible_fields != 4) {
+        fprintf(stderr, "generated editor accessibility nodes missing\n");
+        return 1;
+    }
     InjectKeyTap(KEY_LEFT);
     InjectPump();
     draw_form();

@@ -606,6 +606,15 @@ spacing form the key; font registration and active-font changes invalidate it.
 The cache does not own wrapping policy, which remains generated from
 `runtime/paragraph.kry`. Workloads, limits and measured results are documented in
 [`PERFORMANCE.md`](PERFORMANCE.md).
+Accessibility snapshots now have matching C/Go editor metadata, explicit focus
+IDs and password-value protection. C projects the retained tree; Go projects
+semantic frame operations without treating checkbox/toggle decoration as extra
+controls. Composed button text is attributed to its owning button. Host sinks
+are called for empty frames (including C's implicit screen root) so consumers
+can remove stale controls. Generated-form
+assertions compare editor roles, values, focus and secure-field behavior in both
+runtimes. Native OS accessibility object trees and action delivery are not yet
+implemented by this snapshot layer.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

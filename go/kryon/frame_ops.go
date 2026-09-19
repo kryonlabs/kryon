@@ -97,6 +97,9 @@ type FrameOp struct {
 	Link              string
 	Role              string
 	AltText           string
+	AccessibleLabel   string
+	AccessibleValue   string
+	AccessibleBounds  Rectangle
 	Level             int32
 	Columns           int32
 	ScrollY           int32

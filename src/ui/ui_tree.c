@@ -15,6 +15,7 @@
 #include "runtime/input.h"
 #include "runtime/drag.h"
 #include "runtime/toggle.h"
+#include "runtime/checkbox.h"
 #include "runtime/grid.h"
 #include "runtime/image.h"
 #include "ui_image_internal.h"
@@ -883,7 +884,7 @@ EndTree(void)
         AccessibilityNode *nodes = count > 0
             ? malloc((size_t)count * sizeof(*nodes)) : NULL;
 
-        if(nodes != NULL) {
+        if(count == 0 || nodes != NULL) {
             (void)GetAccessibilitySnapshot(nodes, count);
             if(kry_platform_accessibility_snapshot != NULL)
                 kry_platform_accessibility_snapshot(nodes, count);
@@ -2338,9 +2339,18 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
         const char *role = ui_accessibility_role(node->kind);
         const char *label = node->owned_text;
 
-        if(node->kind == WidgetKindText && node->parent >= 0 &&
-           ui_tree_button_like_kind(ui_committed_nodes[node->parent].kind))
-            continue;
+        if(node->kind == WidgetKindText) {
+            int parent = node->parent;
+            while(parent >= 0) {
+                TreeNode *ancestor = &ui_committed_nodes[parent];
+                if(ancestor->kind == WidgetKindButton ||
+                   (ancestor->kind == WidgetKindCard && ancestor->id > 0))
+                    break;
+                parent = ancestor->parent;
+            }
+            if(parent >= 0)
+                continue;
+        }
         if(node->kind == WidgetKindCard && node->data.button.props.id > 0)
             role = "button";
         if(role == NULL)
@@ -2359,14 +2369,54 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
             nodes[count].bounds = node->bounds;
             nodes[count].role = role;
             nodes[count].label = label != NULL ? label : "";
-            nodes[count].focused = node->kind == WidgetKindTextField &&
-                node->state != NULL &&
-                ((TextFieldState *)node->state)->focused;
-            nodes[count].disabled = ui_tree_button_like_kind(node->kind) &&
-                !CanActivate(node->data.button.props.disabled, node->data.button.props.loading);
-            nodes[count].checked = node->kind == WidgetKindCheckbox &&
-                node->data.checkbox.value != NULL &&
-                *node->data.checkbox.value != 0;
+            nodes[count].value = "";
+            nodes[count].focus_id = node->id;
+            if(strcmp(role, "main") == 0 || strcmp(role, "group") == 0 ||
+               strcmp(role, "text") == 0 || strcmp(role, "img") == 0 ||
+               strcmp(role, "progressbar") == 0)
+                nodes[count].focus_id = 0;
+            nodes[count].disabled = (node->flags & TreeNodeFlagScopeDisabled) != 0;
+            if(ui_tree_button_like_kind(node->kind))
+                nodes[count].disabled |= !CanActivate(node->data.button.props.disabled,
+                                                       node->data.button.props.loading);
+            if(node->kind == WidgetKindTextField) {
+                TextFieldProps field = node->data.text_field;
+                nodes[count].secure = field.secure;
+                nodes[count].read_only = field.read_only;
+                if(!field.secure && field.text != NULL)
+                    nodes[count].value = field.text;
+            } else if(node->kind == WidgetKindTextArea) {
+                TextAreaProps area = node->data.text_area;
+                nodes[count].multiline = 1;
+                nodes[count].read_only = area.read_only;
+                nodes[count].label = area.placeholder != NULL ? area.placeholder : "";
+                if(area.text != NULL)
+                    nodes[count].value = area.text;
+            } else if(node->kind == WidgetKindCheckbox) {
+                if(node->data.checkbox.flags != NULL) {
+                    unsigned value = (unsigned)*node->data.checkbox.flags;
+                    unsigned mask = (unsigned)node->data.checkbox.flags_value;
+                    nodes[count].checked = CheckboxFlagApply(value, mask, false).checked;
+                } else {
+                    nodes[count].checked = node->data.checkbox.value != NULL &&
+                        *node->data.checkbox.value != 0;
+                }
+            } else if(node->kind == WidgetKindToggle) {
+                nodes[count].checked = node->data.toggle.value != NULL &&
+                    *node->data.toggle.value != 0;
+                const char *active_label = nodes[count].checked
+                    ? node->data.toggle.on_label : node->data.toggle.off_label;
+                nodes[count].label = active_label != NULL ? active_label : "";
+            } else if(node->kind == WidgetKindImage) {
+                nodes[count].label = node->data.image.alt_text != NULL
+                    ? node->data.image.alt_text : "";
+            }
+            int focused = nodes[count].focus_id > 0 && IsFocusActive(nodes[count].focus_id);
+            if(node->id <= 0 && node->state != NULL &&
+               (node->kind == WidgetKindTextField || node->kind == WidgetKindTextArea))
+                focused = ((TextFieldState *)node->state)->focused;
+            nodes[count].focused = !nodes[count].disabled && focused &&
+                !ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node));
         }
         count++;
     }
@@ -2868,6 +2918,8 @@ Toggle(ToggleProps toggle)
         ui_tree_nodes[node].data.toggle.class_name = toggle.class_name;
         ui_tree_nodes[node].data.toggle.off_label = toggle.off_label;
         ui_tree_nodes[node].data.toggle.on_label = toggle.on_label;
+        if(toggle.disabled || value == NULL)
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     {
@@ -2912,6 +2964,10 @@ Checkbox(CheckboxProps checkbox)
     if(node >= 0) {
         ui_tree_nodes[node].data.checkbox.value = checkbox.value;
         ui_tree_nodes[node].data.checkbox.label = checkbox.label;
+        ui_tree_nodes[node].data.checkbox.flags = checkbox.flags;
+        ui_tree_nodes[node].data.checkbox.flags_value = checkbox.flags_value;
+        if(checkbox.disabled || (checkbox.value == NULL && checkbox.flags == NULL))
+            ui_tree_nodes[node].flags |= TreeNodeFlagScopeDisabled;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     changed = RenderCheckbox(checkbox);

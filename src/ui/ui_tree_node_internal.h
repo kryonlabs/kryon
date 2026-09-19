@@ -66,6 +66,8 @@ typedef union WidgetData {
     struct {
         int *value;
         const char *label;
+        int *flags;
+        int flags_value;
     } checkbox;
 } WidgetData;
 

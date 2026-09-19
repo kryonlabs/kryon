@@ -64,6 +64,11 @@ typedef struct {
     int focused;
     int disabled;
     int checked;
+    int focus_id;
+    const char *value;
+    int read_only;
+    int secure;
+    int multiline;
 } AccessibilityNode;
 
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);

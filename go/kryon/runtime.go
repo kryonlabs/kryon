@@ -477,6 +477,8 @@ type Accelerator struct {
 }
 
 type Runtime interface {
+	GetAccessibilitySnapshot() []AccessibilityNode
+	SetAccessibilitySink(AccessibilitySink)
 	InstanceValue(typeID any, key uint64, create func() any) any
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
@@ -630,6 +632,7 @@ type runtime struct {
 	layout            []layoutFrame
 	ops               []FrameOp
 	textLayouts       textLayoutCache
+	accessibilitySink AccessibilitySink
 	pageTitle         string
 	pageDescription   string
 	pageCanonicalURL  string
@@ -706,19 +709,20 @@ type themePalette struct {
 }
 
 type layoutFrame struct {
-	bounds       Rectangle
-	cursorX      float32
-	cursorY      float32
-	gap          float32
-	padding      float32
-	horizontal   bool
-	gridCursor   GridCursor
-	noLayout     bool
-	center       bool
-	textFont     int32
-	textColor    Color
-	textColorSet bool
-	textDisabled bool
+	accessibilityOwner int
+	bounds             Rectangle
+	cursorX            float32
+	cursorY            float32
+	gap                float32
+	padding            float32
+	horizontal         bool
+	gridCursor         GridCursor
+	noLayout           bool
+	center             bool
+	textFont           int32
+	textColor          Color
+	textColorSet       bool
+	textDisabled       bool
 }
 
 type inputEvent struct {
@@ -1116,6 +1120,9 @@ func (r *runtime) EndFrame() {
 		}
 	}
 	r.frames++
+	if r.accessibilitySink != nil {
+		r.accessibilitySink(r.GetAccessibilitySnapshot())
+	}
 }
 func (r *runtime) DisabledScope(disabled bool) {
 	r.disabledStack = append(r.disabledStack, disabled)
@@ -1175,6 +1182,7 @@ func (r *runtime) Text(props TextProps) {
 	r.textWithFont(props, 0)
 }
 func (r *runtime) textWithFont(props TextProps, fontID uint32) {
+	r.recordAccessibleText(props.Text)
 	var inheritedFont int32
 	var inheritedColor Color
 	var inheritedColorSet bool
@@ -1531,6 +1539,7 @@ func (r *runtime) Card(props CardProps) bool {
 	button.Label = ""
 	if !props.Clickable {
 		frame, _ := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
+		frame.Role = "group"
 		r.record(frame)
 		return false
 	}
@@ -1544,10 +1553,18 @@ func (r *runtime) CardScope(props CardProps) {
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
 	frame, _ := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
+	if !props.Clickable {
+		frame.Role = "group"
+	}
 	r.record(frame)
+	owner := 0
+	if props.Clickable {
+		owner = len(r.ops)
+	}
 	r.layout = append(r.layout, layoutFrame{
-		bounds: frame.Button.ContentBounds,
-		center: true, textFont: frame.Button.Font,
+		accessibilityOwner: owner,
+		bounds:             frame.Button.ContentBounds,
+		center:             true, textFont: frame.Button.Font,
 		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
 		textDisabled: frame.Disabled,
 	})
@@ -1561,8 +1578,9 @@ func (r *runtime) ButtonScope(props ButtonProps) {
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	r.record(frame)
 	r.layout = append(r.layout, layoutFrame{
-		bounds: frame.Button.ContentBounds,
-		center: true, textFont: frame.Button.Font,
+		accessibilityOwner: len(r.ops),
+		bounds:             frame.Button.ContentBounds,
+		center:             true, textFont: frame.Button.Font,
 		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
 		textDisabled: frame.Disabled,
 	})
@@ -1927,14 +1945,15 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: input.Pressed, Selected: checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: input.Pressed, Selected: checked, Focused: input.Focused,
+		Role: "checkbox", AccessibleLabel: props.Label, AccessibleBounds: props.Bounds})
 	if paint.ShowMark {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 	}
 	labelX := Checkbox_CheckboxLabelXFor(paint.SlotBounds, 1, label)
 	labelY := Checkbox_CheckboxLabelYFor(props.Bounds, float32(labelFont))
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: labelX, Y: labelY, Width: props.Bounds.Width - (labelX - props.Bounds.X), Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, Disabled: disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: labelX, Y: labelY, Width: props.Bounds.Width - (labelX - props.Bounds.X), Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, Disabled: disabled, Role: "presentation"})
 	return changed
 }
 
@@ -4679,6 +4698,12 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
 	trackOp.ID = props.ID
+	trackOp.Role = "checkbox"
+	trackOp.AccessibleBounds = bounds
+	trackOp.AccessibleLabel = props.OffLabel
+	if checked {
+		trackOp.AccessibleLabel = props.OnLabel
+	}
 	trackOp.Focused = input.Focused
 	trackOp.Hovered = input.Hovered
 	trackOp.Pressed = input.Pressed
@@ -4695,8 +4720,8 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		activeOp.Selected = true
 		activeOp.Disabled = disabled
 		r.record(activeOp)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled, Role: "presentation"})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, FontID: labelFontID, ID: props.ID, Disabled: disabled, Role: "presentation"})
 	} else {
 		if input.Hovered && !disabled {
 			r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+5), Color: unpackRGBA(paint.ThumbGlowColor), ID: props.ID, Hovered: true})
@@ -6648,6 +6673,9 @@ func systemPrefersDark() bool {
 }
 
 func (r *runtime) record(op FrameOp) {
+	if op.Kind == FrameOpText && r.recordAccessibleText(op.Text) {
+		op.Role = "presentation"
+	}
 	if len(r.scrollClips) > 0 {
 		scrollClip := r.scrollClips[len(r.scrollClips)-1]
 		if op.HasClip {
@@ -6678,6 +6706,7 @@ func intersectRectangles(a, b Rectangle) Rectangle {
 
 func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool, options ...textInputRecordOptions) {
 	text := string(buf[:zeroIndex(buf)])
+	value := text
 	pos := len(text)
 	if cursor != nil {
 		pos = clampCursor(text, int(*cursor))
@@ -6698,6 +6727,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		}
 	}
 	if secure {
+		value = ""
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
 	fieldFocused := r.focusID == focusID || focused != nil && *focused
@@ -6711,6 +6741,8 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		Kind:              kind,
 		Bounds:            bounds,
 		Text:              text,
+		AccessibleValue:   value,
+		AccessibleLabel:   opt.label,
 		Color:             paint.Background,
 		BorderColor:       paint.Border,
 		FocusColor:        paint.Focus,
@@ -6759,6 +6791,7 @@ func (r *runtime) recordTextArea(props TextAreaProps) {
 		scrollY = *props.ScrollY
 	}
 	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, metrics.Font, false, props.ReadOnly, textInputRecordOptions{
+		label:     props.Placeholder,
 		className: props.ClassName,
 		lineGap:   metrics.LineGap,
 		paddingX:  metrics.PaddingX,
@@ -6769,6 +6802,7 @@ func (r *runtime) recordTextArea(props TextAreaProps) {
 }
 
 type textInputRecordOptions struct {
+	label     string
 	className int32
 	lineGap   int32
 	paddingX  int32
