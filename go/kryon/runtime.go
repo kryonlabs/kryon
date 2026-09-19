@@ -5800,6 +5800,7 @@ func styleFrameRectOp(bounds, surface Rectangle, frame StyleFrame) FrameOp {
 		BorderWidth:      style.BorderWidth,
 		Opacity:          style.Opacity,
 		Material:         style.Material,
+		Fields:           frame.Value.Fields,
 	}
 }
 

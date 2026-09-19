@@ -10,7 +10,8 @@
   handling in later paint paths. Preserve explicit zero; remove product chrome
   defaults or document a real backend degradation.
   Status: FrameOp now carries the resolved style presence bits (`Fields`),
-  populated by the Surface, text-input, and text-area frame recorders. The
+  populated by the Surface, text-input, text-area, and shared
+  `styleFrameRectOp` frame recorders. The
   rasterizer's unstyled-value fallbacks are gated on presence: a missing
   border-width/opacity still gets the documented 1px/opaque fallback, an
   explicit zero keeps its zero (covered by
@@ -21,6 +22,8 @@
   folding them into pack data is part of the conformance-matrix work below.
 - Carry sufficient resolved field-presence/provenance through frame operations
   to distinguish missing values from explicit zero and explain the painted result.
+  Go frame operations now retain field-presence masks; source-span/winner
+  provenance still needs inspector-facing output before this row can close.
   Note: the structured JS emission notes are historical now that the old JS/web
   path is paused. Treat web pack parsing follow-ups as future web-roadmap input,
   not current style-backend completion gates.
