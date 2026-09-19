@@ -187,6 +187,10 @@ BeginScrollContainer(ScrollArea area)
     static int content_dragging = 0;
     static int content_drag_start_y = 0;
     static int content_drag_start_scroll = 0;
+#if ANDROID_BUILD
+    static int android_gesture_scroll_active = 0;
+    static int android_gesture_start_scroll = 0;
+#endif
     ScrollView view = MeasureScrollContainer(area);
     Vector2 mouse_world = ui_primary_pointer_world();
     int y = (int)area.bounds.y;
@@ -256,6 +260,32 @@ BeginScrollContainer(ScrollArea area)
                         *area.scroll_offset, drag_delta_y, view.max_scroll);
                     kry_android_consume_frame_drag();
                 }
+            }
+        }
+#endif
+
+#if ANDROID_BUILD
+        {
+            int gesture = GetGestureDetected();
+            Vector2 drag_vector = GetGestureDragVector();
+            int gesture_dragging = (gesture & GESTURE_DRAG) != 0;
+            int gesture_delta_y = (int)(drag_vector.y * (float)GetScreenHeight());
+
+            if(!gesture_dragging || !ui_primary_pointer_down())
+                android_gesture_scroll_active = 0;
+            if(view.max_scroll > 0 && gesture_dragging && inside &&
+               !captured && !on_scrollbar &&
+               (gesture_delta_y > drag_threshold ||
+                gesture_delta_y < -drag_threshold)) {
+                if(!android_gesture_scroll_active) {
+                    android_gesture_scroll_active = 1;
+                    android_gesture_start_scroll = *area.scroll_offset;
+                }
+                *area.scroll_offset = ScrollDragDeltaOffsetFor(
+                    android_gesture_start_scroll, gesture_delta_y,
+                    view.max_scroll);
+                view.content_y = y - *area.scroll_offset;
+                g_ui_pointer_owner = POINTER_OWNER_SCROLL;
             }
         }
 #endif
