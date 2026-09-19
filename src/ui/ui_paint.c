@@ -41,6 +41,11 @@ ui_draw_surface_direct(SurfaceDrawing command)
 void
 ui_draw_surface(SurfaceDrawing command)
 {
+    /* Colored blurred layers emit light. Keep the face, sharp edges, focus
+     * outline and black contact shadows when optional effects are disabled. */
+    if(!FancyEffectsEnabled() && command.layer.blur > 0.0f &&
+       ((command.layer.color | command.layer.end_color) & 0xffffff00u) != 0)
+        return;
     if(command.visible && !ui_draw_surface_cached(command))
         ui_draw_surface_direct(command);
 }

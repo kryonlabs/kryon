@@ -2244,6 +2244,10 @@ light that fades inward from the rounded edge. This inner light is clipped to
 the face and leaves the center clear; hover strengthens it and press reduces
 it. Ghost and link controls retain a softer treatment. Geometry and falloff
 are shared through `runtime/surface.kry` rather than separate renderer effects.
+`SetFancyEffectsEnabled(0)` suppresses optional outer glow while preserving the
+selected material, gradient fills, contact shadows, sharp edges, and interaction
+transitions. Apps can apply this preference when selecting a style without
+flattening that style's buttons.
 In dark surroundings, focus reduces face whitening and deepens the material
 while retaining a bright rim. That absorption fades with the focus track;
 hover and press take precedence over it.
@@ -2770,3 +2774,12 @@ Scroll/Canvas clipping are preserved. Missing or invalid assets paint nothing;
 the widget's KSS surface and semantic alt text still apply. The native cache
 retains at most 64 decoded assets and 32 MiB of pixels and reloads changed files
 when they are rendered. Individual decoded images are limited to 64 MiB.
+
+### Unstyled editor rendering
+
+Without a style pack, text fields and text areas keep content and interaction
+without adding a white surface or colored border. Layout containers paint no
+outline. Missing text/caret colors use a content fallback and a neutral selection
+highlight; explicit transparent foreground/focus colors and opacity zero are
+respected. Set appearance with KSS rules, including an explicit border width
+when a border is wanted.

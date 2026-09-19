@@ -1,4 +1,6 @@
 #include "../src/ui/ui_internal.h"
+#include "../src/ui/ui_style_internal.h"
+#include "../src/ui/ui_paint_internal.h"
 #include "kry_inject.h"
 #include "runtime/grid.h"
 #include "runtime/navigation_bar.h"
@@ -949,6 +951,43 @@ main(void)
         check_int("font token restores prior font",
                   ui_active_font_token(), 0);
         ClearTextFonts();
+    }
+    {
+        StyleFrame frame = {0};
+        frame.value.fields = StyleMaterial | StyleBackground | StyleBackgroundEnd;
+        frame.value.material = MaterialLightfield;
+        frame.value.background = 0x334466ffu;
+        frame.value.background_end = 0x667799ffu;
+        frame.fill = FillState(frame.value.fields, frame.value.background,
+                               frame.value.background_end);
+        SetFancyEffectsEnabled(0);
+        StyleFrame reduced = ui_style_apply_effects_frame(frame);
+        FillStates fill = ui_style_apply_effects_fill(frame.fill);
+        check_int("glow off preserves Lightfield material", reduced.value.material,
+                  MaterialLightfield);
+        check_int("glow off preserves gradient endpoint",
+                  reduced.value.background_end == frame.value.background_end, 1);
+        check_int("glow off preserves transition fill", reduced.fill.normal, 1);
+        check_int("glow off preserves material fill", fill.normal, 1);
+
+        SurfaceDrawing glow = {
+            .layer = {.width = 30, .height = 20, .blur = 3,
+                      .color = 0xaa66ffffu},
+            .bounds = {10, 10, 30, 20}, .area = {7, 7, 36, 26},
+            .surface = {10, 10, 30, 20}, .segment = {10, 10, 30, 20},
+            .scale = 1, .visible = true
+        };
+        draw_rectangle_calls = 0;
+        ui_draw_surface(glow);
+        check_int("glow off suppresses emitted light", draw_rectangle_calls, 0);
+        glow.layer.color = 0x000000ffu;
+        ui_draw_surface(glow);
+        check_int("glow off keeps contact shadows", draw_rectangle_calls > 0, 1);
+        SetFancyEffectsEnabled(1);
+        draw_rectangle_calls = 0;
+        glow.layer.color = 0xaa66ffffu;
+        ui_draw_surface(glow);
+        check_int("glow on restores emitted light", draw_rectangle_calls > 0, 1);
     }
     {
         RouterRoute routes[] = {

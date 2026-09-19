@@ -16,10 +16,6 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
                           Color focus, float focused, float opacity,
                           FillStates fill_states, MaterialKind material)
 {
-    if(!FancyEffectsEnabled()) {
-        material = MaterialFlat;
-        memset(&fill_states, 0, sizeof(fill_states));
-    }
     MaterialPaint paint = {
         .bounds = bounds, .surface = surface_bounds,
         .value = {.background = ColorToInt(background), .border = ColorToInt(border),
@@ -210,11 +206,7 @@ pack_style(Style value)
 StyleData
 ui_style_apply_effects_data(StyleData value)
 {
-    if(FancyEffectsEnabled())
-        return value;
-    value.material = MaterialFlat;
-    value.fields &= ~((uint32_t)StyleBackgroundEnd);
-    value.background_end = (uint32_t)0;
+    /* Optional glow must not replace the selected material or its colors. */
     return value;
 }
 
@@ -222,17 +214,12 @@ StyleFrame
 ui_style_apply_effects_frame(StyleFrame frame)
 {
     frame.value = ui_style_apply_effects_data(frame.value);
-    if(!FancyEffectsEnabled())
-        memset(&frame.fill, 0, sizeof(frame.fill));
     return frame;
 }
 
 FillStates
 ui_style_apply_effects_fill(FillStates fill)
 {
-    if(FancyEffectsEnabled())
-        return fill;
-    memset(&fill, 0, sizeof(fill));
     return fill;
 }
 
