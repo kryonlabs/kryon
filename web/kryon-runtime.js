@@ -1562,10 +1562,20 @@ function handlePopup(rt, args) {
   if (isTruthyProp(args, "disabled"))
     return false;
   const bounds = parseBounds(args);
+  const flags = propNumber(args, "flags", 0);
   const open = args && typeof args === "object" ? args.open : null;
   if (open && typeof open === "object" && "value" in open) {
     if (!open.value)
       return false;
+    if ((flags & PopupModal) !== 0) {
+      const escape = consumeFirstEvent(rt, (ev) => ev.type === "key" && Number(ev.key) === KeyEscape);
+      if (escape) {
+        open.value = false;
+        return false;
+      }
+      consumeFirstEvent(rt, (ev) => ev.type === "tap" && !hit(bounds, ev.x, ev.y));
+      return true;
+    }
     const outside = consumeFirstEvent(rt, (ev) =>
       ev.type === "tap" && !hit(bounds, ev.x, ev.y));
     if (outside) {
@@ -1574,7 +1584,6 @@ function handlePopup(rt, args) {
     }
     return true;
   }
-  const flags = propNumber(args, "flags", 0);
   if ((flags & PopupTooltip) !== 0) {
     const trigger = propRect(args, "trigger");
     const mouse = rt.input?.mouse || {x: 0, y: 0};

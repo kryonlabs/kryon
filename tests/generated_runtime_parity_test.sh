@@ -2639,6 +2639,13 @@ assert.equal(composedPopup.tooltip_frames, hiddenTooltipFrames);
 drawComposedModal();
 assert.equal(composedPopup.modal_open, true);
 assert.equal(composedPopup.modal_frames, 1);
+rt.QueueTap(290, 175);
+drawComposedModal(); drawComposedModal();
+assert.equal(composedPopup.modal_open, true);
+assert.equal(composedPopup.modal_background, 0);
+rt.QueueKey(kryon.KeyEscape);
+drawComposedModal();
+assert.equal(composedPopup.modal_open, false);
 
 drawScrollContent();
 rt.QueueTap(20, 90); drawScrollContent(); drawScrollContent();
