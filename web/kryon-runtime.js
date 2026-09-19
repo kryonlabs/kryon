@@ -330,6 +330,7 @@ export function createRuntime(options = {}) {
       deferredTextEvents: 0,
       dropdownOpen: null,
       dropdownPopup: null,
+      dropdownHighlight: new Map(),
       focusOrder: [],
       lastFocusOrder: [],
       keyPressed: Object.create(null),
@@ -1613,15 +1614,90 @@ function handleCheckbox(rt, state, args, meta = null) {
   return true;
 }
 
+function dropdownEffectiveCount(state, args, count) {
+  const itemsName = propIdent(args, "items") || propIdent(args, "options");
+  const items = itemsName && state ? state[itemsName] : null;
+  if (!items || typeof items !== "object")
+    return count;
+  let lastEnabled = -1;
+  for (let i = 0; i < count; i++) {
+    const item = items[i];
+    if (!item || !item.disabled)
+      lastEnabled = i;
+  }
+  return lastEnabled >= 0 ? lastEnabled + 1 : count;
+}
+
+function dropdownPopupBounds(rt, bounds, count) {
+  const height = bounds.height * count;
+  const vp = viewport(rt);
+  const viewportHeight = numberValue(vp.height, 600) > 0 ? numberValue(vp.height, 600) : 600;
+  const belowY = bounds.y + bounds.height;
+  const y = belowY + height > viewportHeight ? bounds.y - height : belowY;
+  return { x: bounds.x, y, width: bounds.width, height };
+}
+
+function setDropdownOpen(rt, id, bounds, count, selected) {
+  rt.input.dropdownOpen = id;
+  rt.input.dropdownPopup = { id, bounds: dropdownPopupBounds(rt, bounds, count) };
+  rt.input.dropdownHighlight.set(id, Math.max(0, Math.min(Math.max(0, count - 1), numberValue(selected, 0))));
+}
+
+function closeDropdown(rt) {
+  rt.input.dropdownOpen = null;
+  rt.input.dropdownPopup = null;
+}
+
+function dropdownPopupIndex(bounds, popupBounds, count, y) {
+  const raw = Math.floor((y - popupBounds.y) / Math.max(1, bounds.height));
+  return Math.max(0, Math.min(Math.max(0, count - 1), raw));
+}
+
 function handleDropdown(rt, state, args, meta = null) {
   if (String(args || "").includes("DropdownProps")) {
     const id = propNumber(args, "id", 0);
     const ref = propRef(args, "selected_index");
     const bounds = resolveLayoutBounds(rt, args, meta);
     const count = propNumber(args, "option_count", 0);
-    const popupBounds = { x: bounds.x, y: bounds.y + bounds.height, width: bounds.width, height: bounds.height * count };
+    const effectiveCount = dropdownEffectiveCount(state, args, count);
+    const selected = state && ref ? numberValue(state[ref], 0) : 0;
+    if (id && !rt.input.focusOrder.includes(id))
+      rt.input.focusOrder.push(id);
+    const popupBounds = dropdownPopupBounds(rt, bounds, count);
     if (rt.input.dropdownOpen === id)
       rt.input.dropdownPopup = { id, bounds: popupBounds };
+    const key = id && rt.input.focus === id ? consumeFirstEvent(rt, (ev) => ev.type === "key" &&
+      [KeySpace, KeyEnter, KeyHome, KeyEnd, KeyUp, KeyDown, KeyEscape].includes(Number(ev.key))) : null;
+    if (key) {
+      const code = Number(key.key);
+      if (rt.input.dropdownOpen !== id) {
+        if (code === KeySpace || code === KeyEnter || code === KeyDown || code === KeyUp) {
+          setDropdownOpen(rt, id, bounds, effectiveCount, selected);
+          return true;
+        }
+        return false;
+      }
+      let highlight = rt.input.dropdownHighlight.get(id);
+      if (!Number.isFinite(Number(highlight)))
+        highlight = selected;
+      highlight = Math.max(0, Math.min(Math.max(0, count - 1), numberValue(highlight, 0)));
+      if (code === KeyHome)
+        rt.input.dropdownHighlight.set(id, 0);
+      else if (code === KeyEnd)
+        rt.input.dropdownHighlight.set(id, Math.max(0, effectiveCount - 1));
+      else if (code === KeyDown)
+        rt.input.dropdownHighlight.set(id, Math.min(Math.max(0, effectiveCount - 1), highlight + 1));
+      else if (code === KeyUp)
+        rt.input.dropdownHighlight.set(id, Math.max(0, highlight - 1));
+      else if (code === KeyEscape)
+        closeDropdown(rt);
+      else if (code === KeyEnter || code === KeySpace) {
+        if (state && ref)
+          state[ref] = highlight;
+        closeDropdown(rt);
+      }
+      return true;
+    }
     const tap = consumeFirstEvent(rt, (ev) =>
       ev.type === "tap" &&
       ((hit(bounds, ev.x, ev.y)) ||
@@ -1629,15 +1705,19 @@ function handleDropdown(rt, state, args, meta = null) {
     if (!tap || !state || !ref)
       return false;
     if (hit(bounds, tap.x, tap.y)) {
-      rt.input.dropdownOpen = rt.input.dropdownOpen === id ? null : id;
-      rt.input.dropdownPopup = rt.input.dropdownOpen === id ? { id, bounds: popupBounds } : null;
+      if (rt.input.dropdownOpen === id)
+        closeDropdown(rt);
+      else {
+        if (id)
+          rt.input.focus = id;
+        setDropdownOpen(rt, id, bounds, effectiveCount, selected);
+      }
       return true;
     }
     if (rt.input.dropdownOpen === id) {
-      const index = Math.max(0, Math.floor((tap.y - (bounds.y + bounds.height)) / Math.max(1, bounds.height)));
-      state[ref] = Math.min(index, Math.max(0, count - 1));
-      rt.input.dropdownOpen = null;
-      rt.input.dropdownPopup = null;
+      const index = dropdownPopupIndex(bounds, popupBounds, effectiveCount, tap.y);
+      state[ref] = index;
+      closeDropdown(rt);
       return true;
     }
     return false;
