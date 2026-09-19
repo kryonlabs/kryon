@@ -1820,6 +1820,10 @@ payloads are internal.
 
 ### Controls
 
+`TextProps.strikethrough` draws a line through each rendered text line. The
+stroke follows the text's alignment, typeface, color, wrapping and clipping;
+it does not change text measurement or selection behavior.
+
 #### Sliders
 
 ```c

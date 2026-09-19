@@ -114,6 +114,24 @@ text_world_rect_to_screen(Rectangle rect)
     };
 }
 
+static int text_strikethrough;
+
+int
+ui_set_text_strikethrough(int enabled)
+{
+    int previous = text_strikethrough;
+    text_strikethrough = enabled;
+    return previous;
+}
+
+static void
+ui_draw_text_strikethrough(int x, int y, int width, int height, Color color)
+{
+    if(text_strikethrough && width > 0)
+        DrawRectangleRec(TextStrikethroughBounds((float)x, (float)y,
+            (float)width, (float)height, (float)Scale(1000) / 1000.0f), color);
+}
+
 static int
 font_valid(Font font)
 {
@@ -1526,6 +1544,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
 
     if(TextFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
         (void)TextFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
+        ui_draw_text_strikethrough(x, y, text_w, line_h, color);
         return;
     }
 
@@ -1578,6 +1597,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         cursor_x += (int)((float)glyph.advanceX * scale + 0.5f) + g_ui_text_letter_spacing;
         i += codepoint_byte_count;
     }
+    ui_draw_text_strikethrough(x, y, text_w, line_h, color);
 }
 
 static char *

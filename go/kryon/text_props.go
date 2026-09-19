@@ -27,4 +27,5 @@ type TextProps struct {
 	VerticalAlign TextAlign
 	Disabled      bool
 	Selectable    bool
+	Strikethrough bool
 }

@@ -43,6 +43,7 @@ typedef struct TextProps {
     TextAlign vertical_align;
     bool disabled;
     bool selectable;
+    bool strikethrough;
 } TextProps;
 
 #endif /* K_RUNTIME_TEXT_PROPS_H */

@@ -399,6 +399,7 @@ void ui_paint_text_box(const char *text, Rectangle bounds, int font,
                        Color color, int wrap, int align, int vertical_align,
                        int font_token, int letter_spacing);
 int ui_set_text_letter_spacing(int spacing);
+int ui_set_text_strikethrough(int enabled);
 int ui_get_text_letter_spacing(void);
 void RenderTransitionFade(const TransitionState *transition, int width,
                           int height, Color color);

@@ -45,6 +45,7 @@ typedef union WidgetData {
         int font;
         int font_token;
         int letter_spacing;
+        int strikethrough;
         int heading_level;
         int wrap;
         int align;

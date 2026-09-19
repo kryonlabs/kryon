@@ -22,4 +22,5 @@ TextProps :: struct {
     vertical_align: TextAlign
     disabled: bool
     selectable: bool
+    strikethrough: bool
 }

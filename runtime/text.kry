@@ -222,3 +222,15 @@ TextAlignmentOffset :: (available: float, measured: float, alignment: i32) -> fl
     }
     return 0.0
 }
+
+# Decorations use the same measured line geometry as the glyphs.
+TextStrikethroughBounds :: (x: float, y: float, width: float,
+    line_height: float, scale: float) -> Rectangle #export {
+    result: Rectangle
+    if scale < 1.0 { scale = 1.0 }
+    result.x = x
+    result.y = y + line_height * 0.5
+    result.width = width
+    result.height = scale
+    return result
+}

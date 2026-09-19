@@ -1450,6 +1450,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    vertical_align: TextAlign\n"
         "    disabled: bool\n"
         "    selectable: bool\n"
+        "    strikethrough: bool\n"
         "}\n"
     },
     {"runtime/title_bar_props.kry",

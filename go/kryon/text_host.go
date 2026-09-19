@@ -132,6 +132,11 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			op.SelectionColor.A = Text_TextSelectionDefaultAlpha()
 		}
 		r.record(op)
+		if props.Strikethrough && lineWidth > 0 {
+			r.record(FrameOp{Kind: FrameOpRect,
+				Bounds: Text_TextStrikethroughBounds(x, y, lineWidth, float32(textHeight(font, fontID)), float32(r.Scale(1000))/1000),
+				Clip:   bounds, HasClip: true, Color: color, Role: "presentation"})
+		}
 	}
 }
 

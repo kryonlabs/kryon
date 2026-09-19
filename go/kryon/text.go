@@ -574,3 +574,28 @@ func Text_TextAlignmentOffset(available float32, measured float32, alignment int
 	var value_14 float32 = 0.0
 	return value_14
 }
+
+func Text_TextStrikethroughBounds(x float32, y float32, width float32, line_height float32, scale float32) Rectangle {
+	var result Rectangle = Rectangle{}
+	var value_0 float32 = scale
+	var value_1 float32 = 1.0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = x
+	result.X = value_4
+	var value_5 float32 = y
+	var value_6 float32 = line_height
+	var value_7 float32 = 0.5
+	var value_8 float32 = value_6 * value_7
+	var value_9 float32 = value_5 + value_8
+	result.Y = value_9
+	var value_10 float32 = width
+	result.Width = value_10
+	var value_11 float32 = scale
+	result.Height = value_11
+	var value_12 Rectangle = result
+	return value_12
+}

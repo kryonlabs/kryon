@@ -1758,11 +1758,13 @@ UpdateTree(void)
     }
 }
 
-void
-ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
-                  int wrap, int align, int vertical_align, int font_token, int letter_spacing)
+static void
+ui_paint_text_box_decorated(const char *value, Rectangle bounds, int font, Color color,
+                  int wrap, int align, int vertical_align, int font_token, int letter_spacing,
+                  int strikethrough)
 {
     int previous_font = ui_active_font_token();
+    int previous_strikethrough = ui_set_text_strikethrough(strikethrough);
     int previous_spacing = ui_set_text_letter_spacing(Scale(letter_spacing));
     int y = (int)bounds.y;
     int text_width;
@@ -1799,8 +1801,17 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
     }
     if(needs_clip)
         EndClip();
+    ui_set_text_strikethrough(previous_strikethrough);
     PopTextFont(previous_font);
     ui_set_text_letter_spacing(previous_spacing);
+}
+
+void
+ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
+                  int wrap, int align, int vertical_align, int font_token, int letter_spacing)
+{
+    ui_paint_text_box_decorated(value, bounds, font, color, wrap, align,
+        vertical_align, font_token, letter_spacing, 0);
 }
 
 static void
@@ -1926,12 +1937,13 @@ DrawTree(void)
                 ui_tree_heading_semantic(
                     node->owned_text != NULL ? node->owned_text : "",
                     node->data.primitive.heading_level);
-            ui_paint_text_box(
+            ui_paint_text_box_decorated(
                 node->owned_text != NULL ? node->owned_text : "", node->bounds,
                 node->data.primitive.font, node->data.primitive.color,
                 node->data.primitive.wrap, node->data.primitive.align,
                 node->data.primitive.vertical_align,
-                node->data.primitive.font_token, node->data.primitive.letter_spacing);
+                node->data.primitive.font_token, node->data.primitive.letter_spacing,
+                node->data.primitive.strikethrough);
             break;
         case WidgetKindBox:
             if(node->data.primitive.styled) {
@@ -3040,6 +3052,7 @@ Text(TextProps props)
         ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
         ui_tree_nodes[node].data.primitive.letter_spacing = letter_spacing;
+        ui_tree_nodes[node].data.primitive.strikethrough = props.strikethrough;
         ui_tree_nodes[node].data.primitive.color = color;
         ui_tree_nodes[node].data.primitive.style = style;
         ui_tree_nodes[node].data.primitive.wrap = props.wrap;
@@ -3054,14 +3067,14 @@ Text(TextProps props)
     int selectable_token = PushTextSelectable(props.selectable);
     if(ui_tree_building && IsWindowReady() &&
        !ui_tree_node_uses_retained_layout(node)) {
-        ui_paint_text_box(value, bounds, font, color, props.wrap,
+        ui_paint_text_box_decorated(value, bounds, font, color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token(), letter_spacing);
+                          ui_active_font_token(), letter_spacing, props.strikethrough);
         ui_tree_mark_painted_immediate(node);
     } else if(!ui_tree_building) {
-        ui_paint_text_box(value, bounds, font, color, props.wrap,
+        ui_paint_text_box_decorated(value, bounds, font, color, props.wrap,
                           props.align, props.vertical_align,
-                          ui_active_font_token(), letter_spacing);
+                          ui_active_font_token(), letter_spacing, props.strikethrough);
     }
     PopTextSelectable(selectable_token);
     ui_set_text_letter_spacing(previous_spacing);
