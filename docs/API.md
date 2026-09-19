@@ -35,8 +35,47 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Layout Components](#layout-components)
 - [Input Handling](#input-handling)
 - [Focus System](#focus-system)
+- [Preview And Diagnostics](#preview-and-diagnostics)
 
 ---
+
+## Preview And Diagnostics
+
+Build the native tools with `make tools`. In an app with a `kryon-host` Make
+target producing `build/kryon/app_host.so`, run:
+
+```sh
+kryon --project /path/to/app preview --source src/main.kry
+# Equivalent direct command:
+kryon-preview watch --project /path/to/app --source src/main.kry
+```
+
+The visible preview rebuilds after source changes while the previous host keeps
+drawing. Build, load, missing-callback, and initialization failures retain that
+host and its state. A successful replacement creates fresh app state; this is
+not state migration. `--width`, `--height`, `--style`, and `--theme` select the
+preview presentation. F12 toggles the existing inspector; the status strip
+shows the selected widget's source, bounds, and current focus ID. Compiler
+errors take precedence. `--frames N --output path.png` supports bounded capture
+runs. Closing the window or sending SIGINT/SIGTERM cleans up the build and
+session files.
+
+The watcher polls every 250 ms and debounces changes for 150 ms. It watches
+source, style, Makefile, and common asset extensions inside the project; hidden,
+build, vendor, dist, and node_modules directories and symlinks are skipped.
+External imports require an in-project change to trigger rebuilding. `MAKE`
+may name a make executable, and `KRYON_DIR` is passed as a literal make variable.
+
+`k2c`, `k2cpp`, `k2go`, and `k2kir` accept `--diagnostics=json` or
+`--diagnostics=text`. `KRYON_DIAGNOSTICS=json` selects JSON for shared frontend
+errors; an explicit option overrides the environment. Text remains the default.
+Each JSON diagnostic is one stderr line containing `severity`, `code`,
+`message`, `path`, `line`, `column`, `end_line`, and `end_column`. Positions are
+one-based; unavailable positions are zero. When only a start position is
+known, the end repeats it. Parser errors often identify a line rather than an
+exact token range. Backend/tool invocation errors can still be plain text.
+Preview requests this format and displays the first structured error while
+streaming the full build output to stderr.
 
 ## Initialization
 

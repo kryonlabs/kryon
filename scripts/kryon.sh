@@ -8,6 +8,7 @@ usage: kryon [--project DIR] COMMAND [TARGET]
 
 Commands:
   host                    build the generated Kryon app host
+  preview [OPTIONS]       watch sources and run the live app preview
   run [native]            run the native app
   build TARGET            build native, web, android-debug, android-release,
                           android-bundle, windows, or dist
@@ -32,6 +33,7 @@ die()
 }
 
 project=.
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [ "${1:-}" = "--project" ]; then
     [ $# -ge 3 ] || { usage >&2; exit 2; }
     project=$2
@@ -41,6 +43,18 @@ fi
 [ $# -ge 1 ] || { usage >&2; exit 2; }
 command=$1
 target=${2:-}
+
+if [ "$command" = "preview" ]; then
+    shift
+    if [ -x "$script_dir/kryon-preview" ]; then
+        preview_cmd=$script_dir/kryon-preview
+    elif command -v kryon-preview >/dev/null 2>&1; then
+        preview_cmd=kryon-preview
+    else
+        die "kryon-preview is not installed; build or install Kryon's native tools"
+    fi
+    exec "$preview_cmd" watch --project "$project" "$@"
+fi
 
 cd "$project"
 project_id=$(pwd | cksum | awk '{print $1}')

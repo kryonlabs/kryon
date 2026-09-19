@@ -2,6 +2,7 @@
 #include "kir_text.h"
 #include "kir_emit.h"
 #include "kir_expr.h"
+#include "kir_diagnostic.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -49,7 +50,7 @@ error(Checker *c, KirSourceSpan span, const char *message, const char *detail)
 {
     c->errors++;
     if(!c->strict) return;
-    fprintf(stderr, "%s:%d:%d: %s%s%s\n", span.path, span.line, span.column,
+    KirDiagnostic(span, "check.type", "%s%s%s",
             message, detail && *detail ? ": " : "", detail ? detail : "");
 }
 
@@ -276,8 +277,8 @@ contextual_slot(Checker *c, int index, const char *expected)
         }
     }
     if(!matches) {
-        fprintf(stderr, "%s:%d: function does not match slot signature %s: %s\n",
-                value->span.path, value->span.line, expected, value->name);
+        KirDiagnostic(value->span, "check.slot_signature",
+                      "function does not match slot signature %s: %s", expected, value->name);
         c->errors++;
         c->failed = 1;
         return;
@@ -578,8 +579,7 @@ static int
 record_declaration_error(const KirType *record, const char *message,
                          const char *field)
 {
-    fprintf(stderr, "%s:%d:%d: %s: %s%s%s\n",
-            record->span.path, record->span.line, record->span.column,
+    KirDiagnostic(record->span, "check.record", "%s: %s%s%s",
             message, record->name, field && *field ? "." : "",
             field ? field : "");
     return 0;
@@ -823,7 +823,7 @@ lower_widget_block(Checker *c, int index, const KirModule *owner,
     free(lowered.stmts);
     return replacement_count;
 failed:
-    fprintf(stderr, "%s:%d: %s: %s\n", span.path, span.line, diagnostic, source->widget);
+    KirDiagnostic(span, "check.widget", "%s: %s", diagnostic, source->widget);
     free(lowered.stmts);
     c->failed = 1;
     return -1;
@@ -870,14 +870,13 @@ resolve_widget_blocks(Checker *c)
         else if(count < 1 || count == 64 || props == NULL || props->is_enum || props->is_slot)
             diagnostic = "widget declaration requires one typed record parameter";
         if(diagnostic != NULL) {
-            fprintf(stderr, "%s:%d:%d: %s: %s\n", statement->span.path,
-                    statement->span.line, statement->span.column, diagnostic, statement->widget);
+            KirDiagnostic(statement->span, "check.widget", "%s: %s", diagnostic, statement->widget);
             c->failed = 1;
             return 0;
         }
         if(KirFindType(c->module, type, NULL) != props) {
-            fprintf(stderr, "%s:%d: widget props type is shadowed or not directly imported: %s\n",
-                    statement->span.path, statement->span.line, type);
+            KirDiagnostic(statement->span, "check.widget_type",
+                          "widget props type is shadowed or not directly imported: %s", type);
             c->failed = 1;
             return 0;
         }
@@ -887,8 +886,8 @@ resolve_widget_blocks(Checker *c)
             char *begin = strchr(statement->args, '{');
             char *end = strrchr(statement->args, '}');
             if(begin == NULL || end == NULL || end <= begin) {
-                fprintf(stderr, "%s:%d: invalid leaf widget properties: %s\n",
-                        statement->span.path, statement->span.line, statement->widget);
+                KirDiagnostic(statement->span, "check.widget", "invalid leaf widget properties: %s",
+                              statement->widget);
                 c->failed = 1;
                 return 0;
             }
@@ -931,8 +930,7 @@ check_function(Checker *c, KirFunction *fn)
     c->fn->uses_host = c->fn->is_extern && c->fn->extern_kind == KIR_EXTERN_HOST;
     const KirType *return_slot = KirFindType(c->module, c->fn->return_type, NULL);
     if(return_slot != NULL && return_slot->is_slot) {
-        fprintf(stderr, "%s:%d: slot values cannot escape through returns\n",
-                c->fn->span.path, c->fn->span.line);
+        KirDiagnostic(c->fn->span, "check.slot_escape", "slot values cannot escape through returns");
         return 0;
     }
     /* Imports are linked now. Rebuild expressions so imported types
@@ -988,8 +986,7 @@ check_function(Checker *c, KirFunction *fn)
             if(local_type != NULL && local_type->is_slot) {
                 has_slots = 1;
                 if(st->expr_root < 0) {
-                    fprintf(stderr, "%s:%d: slot bindings require an initializer\n",
-                            st->span.path, st->span.line);
+                    KirDiagnostic(st->span, "check.slot_initializer", "slot bindings require an initializer");
                     c->failed = 1;
                 }
             }
@@ -1007,8 +1004,8 @@ check_function(Checker *c, KirFunction *fn)
                 while(local >= 0 && strcmp(c->bindings[local].name, name))
                     local--;
                 if(local < 0 || c->bindings[local].depth != c->depth) {
-                    fprintf(stderr, "%s:%d: slot assignment cannot escape its lexical block: %s\n",
-                            st->span.path, st->span.line, name);
+                    KirDiagnostic(st->span, "check.slot_escape",
+                                  "slot assignment cannot escape its lexical block: %s", name);
                     c->failed = 1;
                 }
             }
@@ -1049,14 +1046,14 @@ check_function(Checker *c, KirFunction *fn)
         has_instances |= c->fn->stmts[i].is_instance;
     c->fn->uses_host |= has_instances;
     if(has_instances && (!c->fn->checked || !KirCanEmitBody(c->module, c->fn))) {
-        fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
-                c->fn->span.path, c->fn->span.line, c->fn->name);
+        KirDiagnostic(c->fn->span, "check.instance_body",
+                      "instance state requires a fully checked portable body: %s", c->fn->name);
         c->failed = 1;
     }
     if(has_slots && !c->fn->is_extern &&
        (!c->fn->checked || !KirCanEmitBody(c->module, c->fn))) {
-        fprintf(stderr, "%s:%d: slot parameters require a fully checked portable body: %s\n",
-                c->fn->span.path, c->fn->span.line, c->fn->name);
+        KirDiagnostic(c->fn->span, "check.slot_body",
+                      "slot parameters require a fully checked portable body: %s", c->fn->name);
         c->failed = 1;
     }
     if(strict && c->fn->checked && !c->fn->is_extern && !KirCanEmitBody(c->module, c->fn)) {
@@ -1094,8 +1091,8 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                            strcmp(import->target, stem) != 0)
                             continue;
                         if(import->resolved_module && import->resolved_module != candidate) {
-                            fprintf(stderr, "%s:%d:%d: ambiguous Kry import: %s\n",
-                                    import->span.path, import->span.line, import->span.column, import->target);
+                            KirDiagnostic(import->span, "check.import", "ambiguous Kry import: %s",
+                                          import->target);
                             return 0;
                         }
                         import->resolved_module = candidate;
@@ -1115,7 +1112,9 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                 c.module->state_fields[i - c.module->global_count].type;
             const KirType *slot = KirFindType(c.module, type, NULL);
             if(slot != NULL && slot->is_slot) {
-                fprintf(stderr, "%s: slot values cannot be stored in globals or state\n", c.module->source_path);
+                KirSourceSpan span = i < c.module->global_count ? c.module->globals[i].span :
+                    c.module->state_fields[i - c.module->global_count].span;
+                KirDiagnostic(span, "check.slot_escape", "slot values cannot be stored in globals or state");
                 free(c.bindings);
                 return 0;
             }

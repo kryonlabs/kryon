@@ -7,6 +7,7 @@
 #include "kir_text.h"
 #include "kir_cleanup.h"
 #include "kir_expr.h"
+#include "kir_diagnostic.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -26,10 +27,19 @@ die(const char *fmt, ...)
     va_list ap;
 
     va_start(ap, fmt);
-    fprintf(stderr, "k2kir: ");
-    vfprintf(stderr, fmt, ap);
-    fputc('\n', stderr);
+    KirDiagnosticV(KirSpan("", 0, 0), "parse.fatal", fmt, ap);
     va_end(ap);
+    exit(1);
+}
+
+static void
+die_at(KirSourceSpan span, const char *fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    KirDiagnosticV(span, "parse.syntax", fmt, args);
+    va_end(args);
     exit(1);
 }
 
@@ -187,7 +197,7 @@ classify_extern_target(const char *target, char *symbol, size_t symbol_size,
         return KIR_EXTERN_HOST;
     if(strncmp(target, "c.", 2) == 0) {
         if(!is_c_ident(target + 2))
-            die("%s:%d: C extern target must be c.<symbol>", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "C extern target must be c.<symbol>");
         snprintf(symbol, symbol_size, "%s", target + 2);
         return KIR_EXTERN_C;
     }
@@ -902,8 +912,7 @@ widget_block_append_prop(WidgetBlock *block, const char *field, const char *valu
     int length = snprintf(block->props + used, sizeof(block->props) - used,
                           ".%s = %s, ", field, value);
     if(length < 0 || (size_t)length >= sizeof(block->props) - used)
-        die("%s:%d: widget properties exceed the declaration size limit: %s",
-            span.path, span.line, block->widget);
+        die_at(span, "widget properties exceed the declaration size limit: %s", block->widget);
     block->prop_count++;
     if(strcmp(field, "key") == 0 || strcmp(field, "Key") == 0)
         block->has_key = 1;
@@ -1966,8 +1975,7 @@ widget_block_format(char *destination, size_t capacity, KirSourceSpan span,
     int length = vsnprintf(destination, capacity, format, arguments);
     va_end(arguments);
     if(length < 0 || (size_t)length >= capacity)
-        die("%s:%d: widget properties exceed the lowering size limit",
-            span.path, span.line);
+        die_at(span, "widget properties exceed the lowering size limit");
 }
 
 static void
@@ -1988,17 +1996,17 @@ widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int c
         const char *height = (block->scope_fields & 2) ? block->scope_args[1] : "0";
         const char *offset = (block->scope_fields & 4) ? block->scope_args[2] : "nil";
         if(!(block->scope_fields & 1))
-            die("%s:%d: Scroll requires 'bounds'", span.path, span.line);
+            die_at(span, "Scroll requires 'bounds'");
         const char *source_bounds = kir_skip_ws(block->scope_args[0]);
         int n = snprintf(bounds, sizeof(bounds), "%s%s",
                          *source_bounds == '{' ? "(Rectangle)" : "", source_bounds);
         if(n < 0 || (size_t)n >= sizeof(bounds))
-            die("%s:%d: Scroll bounds expression is too long", span.path, span.line);
+            die_at(span, "Scroll bounds expression is too long");
         n = snprintf(call, sizeof(call), "%s%sScrollScope(%s, %s, %s)",
                      block->name, block->name[0] ? ": Rectangle = " : "",
                      bounds, height, offset);
         if(n < 0 || (size_t)n >= sizeof(call))
-            die("%s:%d: Scroll arguments are too long", span.path, span.line);
+            die_at(span, "Scroll arguments are too long");
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         statement = KirFunctionAddStmt(fn,
                                        block->name[0] ? KIR_STMT_DECL
@@ -2020,9 +2028,9 @@ widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int c
         KirStmt *statement;
 
         if(block->name[0] == '\0')
-            die("%s:%d: TableCell requires a rectangle binding name", span.path, span.line);
+            die_at(span, "TableCell requires a rectangle binding name");
         if(table == NULL || row == NULL || column == NULL)
-            die("%s:%d: TableCell requires table, row and column", span.path, span.line);
+            die_at(span, "TableCell requires table, row and column");
         widget_block_format(call, sizeof(call), span,
                         "%s: Rectangle = TableCellScope(%s, %s, %s)",
                         block->name, table, row, column);
@@ -2043,9 +2051,9 @@ widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int c
         KirStmt *statement;
 
         if(block->name[0] == '\0')
-            die("%s:%d: Canvas requires a result binding name", span.path, span.line);
+            die_at(span, "Canvas requires a result binding name");
         if(!(block->scope_fields & 1))
-            die("%s:%d: Canvas requires 'bounds'", span.path, span.line);
+            die_at(span, "Canvas requires 'bounds'");
         widget_block_format(spec_name, sizeof(spec_name), span, "%s_spec", block->name);
         widget_block_format(args, sizeof(args), span, "(Canvas){%s}", block->props);
         widget_block_format(call, sizeof(call), span, "%s: Canvas = %s",
@@ -2129,8 +2137,7 @@ widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int c
     prop_type = widget_block_prop_type(block->widget);
     if(prop_type == NULL) {
         if(!closing)
-            die("%s:%d: declared widget blocks do not yet accept child content: %s",
-                span.path, span.line, block->widget);
+            die_at(span, "declared widget blocks do not yet accept child content: %s", block->widget);
         KirStmt *statement = KirFunctionAddWidget(fn, block->widget,
                                                   block->props, "",
                                                   source_span);
@@ -2144,8 +2151,7 @@ widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int c
     }
     if(prop_type[0] == '\0') {
         if(block->props[0] != '\0')
-            die("%s:%d: native web block accepts only DOM metadata before child content: %s",
-                span.path, span.line, block->widget);
+            die_at(span, "native web block accepts only DOM metadata before child content: %s", block->widget);
         widget_block_format(call, sizeof(call), span, "%s()", block->widget);
         KirStmt *statement = KirFunctionAddWidget(fn, block->widget, "", call,
                                                   source_span);
@@ -2381,8 +2387,8 @@ parse_import_line(KirModule *module, const char *path, int line_no,
      * quotes and control bytes would let a crafted path escape the literal. */
     for(const char *p = target; *p != '\0'; p++)
         if(*p == '"' || *p == '>' || (unsigned char)*p < 0x20)
-            die("%s:%d: #import target contains a character that cannot "
-                "appear in an include path", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "#import target contains a character that cannot "
+                "appear in an include path");
     if(parse_symbol_before_colons(line, name, sizeof(name)))
         kind = KIR_IMPORT_MODULE;
     else {
@@ -2437,19 +2443,18 @@ parse_style_line(KirModule *module, const char *path, int line_no,
     alias[0] = '\0';
     quoted = parse_quoted(directive, target, sizeof(target));
     if(!quoted && !parse_angled(directive, target, sizeof(target)))
-        die("%s:%d: #style requires \"file.kss\" or <builtin.pack>",
-            path, line_no);
+        die_at(KirSpan(path, line_no, 1), "#style requires \"file.kss\" or <builtin.pack>");
     for(const char *p = target; *p != '\0'; p++)
         if(*p == '"' || *p == '>' || (unsigned char)*p < 0x20)
-            die("%s:%d: #style target contains a character that cannot "
-                "appear in a style path", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "#style target contains a character that cannot "
+                "appear in a style path");
     if(!parse_style_alias(directive, alias, sizeof(alias)))
-        die("%s:%d: #style alias must be `as name`", path, line_no);
+        die_at(KirSpan(path, line_no, 1), "#style alias must be `as name`");
     imp = KirModuleAddStyleImport(module,
         quoted ? KIR_STYLE_IMPORT_FILE : KIR_STYLE_IMPORT_BUILTIN,
         target, alias, KirSpan(path, line_no, 1));
     if(imp == NULL)
-        die("%s:%d: out of memory while recording #style", path, line_no);
+        die_at(KirSpan(path, line_no, 1), "out of memory while recording #style");
     return 1;
 }
 
@@ -2495,7 +2500,7 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
             snprintf(backend, sizeof(backend), "%s", b);
         }
         if(strcmp(backend, "web") != 0)
-            die("%s:%d: unknown intrinsic backend '%s'", path, line_no,
+            die_at(KirSpan(path, line_no, 1), "unknown intrinsic backend '%s'",
                 backend);
         if(arrow != NULL && arrow < intrinsic) {
             size_t n = 0;
@@ -2509,11 +2514,11 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
             ret[n] = '\0';
         }
         if(strcmp(ret, "int") != 0)
-            die("%s:%d: web intrinsic '%s' must return int", path, line_no,
+            die_at(KirSpan(path, line_no, 1), "web intrinsic '%s' must return int",
                 name);
         if(strcmp(name, "web_download_file") != 0 &&
             strcmp(name, "web_context_click_in_bounds") != 0)
-            die("%s:%d: unknown web intrinsic '%s'", path, line_no, name);
+            die_at(KirSpan(path, line_no, 1), "unknown web intrinsic '%s'", name);
     } else {
         const char *dir = strstr(line, "#extern");
 
@@ -3114,7 +3119,7 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
         char *comma;
 
         if(body[0] == '\0')
-            die("%s:%d: #assert needs a condition", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "#assert needs a condition");
         comma = find_top_comma(body);
         if(comma != NULL) {
             *comma = '\0';
@@ -3130,7 +3135,7 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
             int known = eval_const_condition(cond, &value);
 
             if(guard[0] == '\0' && known && !value)
-                die("%s:%d: #assert failed: %s", path, line_no, msg);
+                die_at(KirSpan(path, line_no, 1), "#assert failed: %s", msg);
             a = KirModuleAddAssert(module, cond, msg, KirSpan(path, line_no, 1));
             if(a != NULL) {
                 a->known = known;
@@ -3145,7 +3150,7 @@ parse_compile_check(KirModule *module, const char *path, int line_no,
         char *body = kir_trim(line + 6);
 
         if(body[0] == '\0')
-            die("%s:%d: #error needs a message", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "#error needs a message");
         a = KirModuleAddAssert(module, "0", body, KirSpan(path, line_no, 1));
         if(a != NULL) {
             a->known = 1;
@@ -3248,7 +3253,7 @@ cond_top_step(char *line, KirCondFrame *frames, int *count, char *guard,
         char expanded[KIR_TEXT_MAX];
 
         if(*count >= 8)
-            die("%s:%d: too many nested #if blocks", path, line_no);
+            die_at(KirSpan(path, line_no, 1), "too many nested #if blocks");
         expand_compile_expr(expanded, sizeof(expanded), consts, cnd);
         fr = &frames[(*count)++];
         kir_copy(fr->cond, sizeof(fr->cond), expanded);
@@ -3365,8 +3370,7 @@ read_source_line(char *line, size_t size, FILE *file, const char **source,
         if(fgets(line, (int)size, file) == NULL)
             return NULL;
         if(!feof(file) && strchr(line, '\n') == NULL)
-            die("%s:%d: source line exceeds %d characters",
-                path, line_no + 1, (int)size - 1);
+            die_at(KirSpan(path, line_no + 1, 1), "source line exceeds %d characters", (int)size - 1);
         return line;
     }
     if(**source == '\0')
@@ -3379,8 +3383,7 @@ read_source_line(char *line, size_t size, FILE *file, const char **source,
             break;
     }
     if(**source != '\0' && length > 0 && line[length - 1] != '\n')
-        die("%s:%d: source line exceeds %d characters",
-            path, line_no + 1, (int)size - 1);
+        die_at(KirSpan(path, line_no + 1, 1), "source line exceeds %d characters", (int)size - 1);
     line[length] = '\0';
     return line;
 }
@@ -3793,7 +3796,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
             char route_id[KIR_NAME_MAX];
 
             if(!parse_route_header(t, route_id, sizeof(route_id)))
-                die("%s:%d: route block must be `route name {`", rel, line_no);
+                die_at(KirSpan(rel, line_no, 1), "route block must be `route name {`");
             route = KirModuleAddRoute(module, route_id, KirSpan(rel, line_no, 1));
             if(route != NULL)
                 snprintf(route->guard, sizeof(route->guard), "%s", cur_guard);
@@ -3842,8 +3845,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
             } else if(starts_word(t, "font") && strstr(t, "examples")) {
                 module->app.font_examples = 1;
             } else if(starts_word(t, "frame")) {
-                die("%s:%d: app frame property is not supported; declare a #ui function",
-                    rel, line_no);
+                die_at(KirSpan(rel, line_no, 1), "app frame property is not supported; declare a #ui function");
             } else if(starts_word(t, "init")) {
                 sscanf(t, "init %127s", module->app.init);
             } else if(starts_word(t, "scene")) {
@@ -3855,7 +3857,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                   (starts_word(t, "screen") || starts_word(t, "preview") ||
                    starts_word(t, "page") || starts_word(t, "frame") ||
                    starts_word(t, "fn"))) {
-            die("%s:%d: declare UI with Name :: (...) #ui", rel, line_no);
+            die_at(KirSpan(rel, line_no, 1), "declare UI with Name :: (...) #ui");
         } else if(mode == TOP && looks_like_function_header(t)) {
             char name[KIR_NAME_MAX];
             char args[KIR_TEXT_MAX];
@@ -3868,7 +3870,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                   ret, sizeof(ret), t);
             if(strstr(t, "#slot") != NULL) {
                 if(has_body || is_extern || is_ui || strcmp(ret, "void") != 0)
-                    die("%s:%d: slot declarations require a bodyless void signature", rel, line_no);
+                    die_at(KirSpan(rel, line_no, 1), "slot declarations require a bodyless void signature");
                 KirType *slot = KirModuleAddType(module, name, KirSpan(rel, line_no, 1));
                 slot->is_slot = 1;
                 kir_copy(slot->body, sizeof(slot->body), args);
@@ -4075,8 +4077,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 expr++;
             if(cname[0] != '\0' && *expr != '\0') {
                 if(starts_word(expr, "#define"))
-                    die("%s:%d: use '%s :: value'; #define is not Kry syntax",
-                        rel, line_no, cname);
+                    die_at(KirSpan(rel, line_no, 1), "use '%s :: value'; #define is not Kry syntax", cname);
                 else {
                     char run_value[KIR_TEXT_MAX];
                     KirDefine *def;
@@ -4098,8 +4099,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         expand_compile_expr(expanded, sizeof(expanded),
                                             &consts, kir_trim((char *)(expr + 4)));
                         if(!eval_const_condition(expanded, &value))
-                            die("%s:%d: #run expression is not a constant: %s",
-                                rel, line_no, expanded);
+                            die_at(KirSpan(rel, line_no, 1), "#run expression is not a constant: %s", expanded);
                         snprintf(run_value, sizeof(run_value), "%ld", value);
                         expr = run_value;
                     }
@@ -4146,7 +4146,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     ty->is_enum = strncmp(after, "enum", 4) == 0;
                     ty->is_extern = strstr(after, "#extern") != NULL;
                     if(ty->is_enum && ty->is_extern)
-                        die("%s:%d: #extern type contracts require a struct", rel, line_no);
+                        die_at(KirSpan(rel, line_no, 1), "#extern type contracts require a struct");
                     snprintf(ty->guard, sizeof(ty->guard), "%s", cur_guard);
                     mode = TYPE;
                 }
@@ -4214,7 +4214,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     snprintf(raw, sizeof(raw), "#else");
                 } else if(bck == 1) {
                     if(body_mcount >= 8)
-                        die("%s:%d: too many nested #if blocks", rel, line_no);
+                        die_at(KirSpan(rel, line_no, 1), "too many nested #if blocks");
                     body_mdepth[body_mcount++] = depth;
                     expand_compile_expr(expanded, sizeof(expanded), &consts,
                                         bcnd);
@@ -4238,7 +4238,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 /* comment inside a body — skip (directives are top-level) */
             } else if(t[0] == '}' && slot_frame_count > 0 && depth == 1 && widget_block_count == 0) {
                 if(*kir_skip_ws(t + 1))
-                    die("%s:%d: slot body closing brace must be on its own line", rel, line_no);
+                    die_at(KirSpan(rel, line_no, 1), "slot body closing brace must be on its own line");
                 SlotParseFrame *frame = &slot_frames[--slot_frame_count];
                 fn = &module->functions[frame->function_index];
                 depth = frame->depth;
@@ -4328,7 +4328,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 if(parse_slot_header(t, slot_binding, sizeof(slot_binding),
                                      slot_arguments, sizeof(slot_arguments))) {
                     if(slot_frame_count == 64)
-                        die("%s:%d: too many nested slot bodies", rel, line_no);
+                        die_at(KirSpan(rel, line_no, 1), "too many nested slot bodies");
                     SlotParseFrame *frame = &slot_frames[slot_frame_count++];
                     frame->function_index = (int)(fn - module->functions);
                     frame->depth = depth;
@@ -4372,7 +4372,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                       KirSpan(rel, line_no,
                                               pending_start_column), 0);
                     if(widget_block_count >= WIDGET_BLOCK_CAP)
-                        die("%s:%d: too many nested widget blocks", rel, line_no);
+                        die_at(KirSpan(rel, line_no, 1), "too many nested widget blocks");
                     block = &widget_blocks[widget_block_count++];
                     memset(block, 0, sizeof(*block));
                     block->statement_index = -1;
@@ -4434,7 +4434,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                     strcmp(prop_field, "scroll_y") == 0 ? 2 :
                                     strcmp(prop_field, "zoom") == 0 ? 3 : -1;
                         if(field < 0)
-                            die("%s:%d: %s accepts only %s", rel, line_no,
+                            die_at(KirSpan(rel, line_no, 1), "%s accepts only %s",
                                 block->widget,
                                 strcmp(block->widget, "Scroll") == 0
                                     ? "bounds, content_height and scroll_offset"
@@ -4442,8 +4442,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                           ? "table, row and column"
                                           : "bounds, scroll_x, scroll_y and zoom");
                         if(block->scope_fields & (1u << field))
-                            die("%s:%d: duplicate %s '%s' property",
-                                rel, line_no, block->widget, prop_field);
+                            die_at(KirSpan(rel, line_no, 1), "duplicate %s '%s' property", block->widget, prop_field);
                         if(strcmp(block->widget, "Canvas") == 0)
                             widget_block_append_prop(block, prop_field, prop_value,
                                                  KirSpan(rel, line_no, 1));
@@ -4456,9 +4455,9 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         block->scope_fields |= 1u << field;
                     } else if(strcmp(block->widget, "Disabled") == 0) {
                         if(strcmp(prop_field, "when") != 0)
-                            die("%s:%d: Disabled only accepts the 'when' property", rel, line_no);
+                            die_at(KirSpan(rel, line_no, 1), "Disabled only accepts the 'when' property");
                         if(block->prop_count != 0)
-                            die("%s:%d: duplicate Disabled 'when' property", rel, line_no);
+                            die_at(KirSpan(rel, line_no, 1), "duplicate Disabled 'when' property");
                         kir_copy(block->props, sizeof(block->props), prop_value);
                         block->prop_count = 1;
                     } else if(widget_block_set_web_prop(block, prop_field,
@@ -4474,8 +4473,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
                 const char *scope_hook = authored_scope_hook_name(t);
                 if(scope_hook != NULL)
-                    die("%s:%d: %s is a compiler-generated hook; use the lexical widget block form instead",
-                        rel, pending_start_line, scope_hook);
+                    die_at(KirSpan(rel, pending_start_line, 1), "%s is a compiler-generated hook; use the lexical widget block form instead", scope_hook);
 
                 if(widget_block_count > 0 &&
                    !widget_blocks[widget_block_count - 1].opened &&
@@ -4526,7 +4524,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         }
     }
     if(slot_frame_count)
-        die("%s:%d: unterminated slot body", rel, line_no);
+        die_at(KirSpan(rel, line_no, 1), "unterminated slot body");
     if(in != NULL)
         fclose(in);
     for(int mi = 0; mi < program->module_count; mi++)
@@ -4549,7 +4547,7 @@ kir_parse_file(const char *path, const char *root)
 {
     FILE *in = fopen(path, "rb");
     if(in == NULL)
-        die("%s: open failed: %s", path, strerror(errno));
+        die_at(KirSpan(path, 0, 0), "open failed: %s", strerror(errno));
     return parse_source(path, root, in, NULL);
 }
 

@@ -240,7 +240,7 @@ func render(native, cleanC methodSet) (string, bool) {
 			name, display(ng, nok), display(cs, cok), status))
 	}
 	b.WriteString("\n## Generated Runtime Semantics\n\n")
-	b.WriteString("JavaScript generated-runtime parity is paused and no longer a release status gate. Native runtime parity continues to track the Go runtime against the clean C entrypoint surface. The old C/Go/JS fixture harness remains in the repository as experimental reference material for a future web-native target; it should not be used to claim active JS support.\n")
+	b.WriteString("`make runtime-parity-check` compares the native Go and clean C entrypoint surfaces. `make generated-runtime-parity-test` generates and executes 17 fixtures in both native runtimes, asserts interactions, and compares final state. The executable suite is also part of `make test`; it covers the fixtures, not every runtime behavior. `make generate-native-runtime` regenerates C and Go policy without requiring a JavaScript toolchain. JavaScript generated-runtime parity remains paused and is not a release status gate.\n")
 	b.WriteString("\n## Native Host Text Input\n\n")
 	b.WriteString("`go/kryon` tests run the native `Host` through thousands of text-input frames with cursor navigation on every typed character, Tab traversal between fields, stable frame operation counts, and bounded focus/selection bookkeeping.\n")
 	return b.String(), ok

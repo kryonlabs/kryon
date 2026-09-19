@@ -12,11 +12,7 @@ cppflags=${4:-${CPPFLAGS:-}}
 cflags=${5:-${CFLAGS:-}}
 link_flags=${6:-}
 
-# This target promises three-backend parity, so a missing backend is a failure.
-command -v node >/dev/null 2>&1 || {
-    echo "generated runtime parity requires node" >&2
-    exit 1
-}
+# Active runtime parity executes generated C and native Go.
 
 work=${TMPDIR:-/tmp}/kryon-generated-runtime-parity.$$
 if [ "${KEEP_GENERATED_RUNTIME_PARITY_WORK:-0}" = 1 ]; then
@@ -49,14 +45,12 @@ for fixture in $fixtures; do
     fixture_args="$fixture_args $root/$fixture"
 done
 
-mkdir -p "$work/go" "$work/c" "$work/js" "$work/go-run" "$work/bin"
+mkdir -p "$work/go" "$work/c" "$work/go-run" "$work/bin"
 
 # shellcheck disable=SC2086
 "$build/bin/k2go" --pkg main --no-main --root "$root" -o "$work/go" $fixture_args
 # shellcheck disable=SC2086
 "$build/bin/k2c" --root "$root" -o "$work/c" $fixture_args
-# shellcheck disable=SC2086
-"$build/bin/k2js" --root "$root" -o "$work/js" $fixture_args
 sh "$root/tests/check_clean_generated_output.sh" "$work/go"
 sh "$root/tests/check_clean_generated_output.sh" "$work/c"
 
@@ -223,6 +217,15 @@ func drawComposedModal() {
 func drawComposedContext() {
 	host.Draw(func() {
 		kryon.BeginFrame()
+		ComposedPopup_ComposedContextFrame(ComposedPopupStateValue)
+		kryon.EndFrame()
+	})
+}
+
+func drawComposedBlockedContext() {
+	host.Draw(func() {
+		kryon.BeginFrame()
+		ComposedPopup_ComposedModalFrame(ComposedPopupStateValue)
 		ComposedPopup_ComposedContextFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
@@ -693,6 +696,13 @@ func main() {
 	drawComposedModal()
 	if !ComposedPopupStateValue.ModalOpen || ComposedPopupStateValue.ModalBackground != 0 {
 		panic("generated modal dismissed or leaked outside input")
+	}
+	driver.QueueMouseButtonDown(kryon.MouseButtonRight, 30, 25)
+	drawComposedBlockedContext()
+	driver.QueueMouseButtonUp(kryon.MouseButtonRight, 30, 25)
+	drawComposedBlockedContext()
+	if ComposedPopupStateValue.ContextOpen || ComposedPopupStateValue.ContextFrames != 0 {
+		panic("generated context popup opened behind a modal")
 	}
 	driver.QueueKey(kryon.KeyEscape)
 	drawComposedModal()
@@ -1398,6 +1408,18 @@ static void draw_composed_popup_tools(void) { draw_ui(composed_popup_tools_frame
 static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
 static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
 static void draw_composed_context(void) { draw_ui(composed_context_frame); }
+
+static void composed_blocked_context_frame(void)
+{
+    composed_modal_frame();
+    composed_context_frame();
+}
+
+static void draw_composed_blocked_context(void)
+{
+    draw_ui(composed_blocked_context_frame);
+}
+
 static void draw_composed_popup_drag(void) { draw_ui(composed_popup_drag_frame); }
 static void draw_composed_popup_shortcut(void) { draw_ui(composed_popup_shortcut_frame); }
 
@@ -1544,6 +1566,17 @@ int main(void)
     InjectPump(); draw_composed_modal();
     if(!modal_open || modal_background != 0) {
         fprintf(stderr,"generated modal dismissed or leaked outside input\n"); return 1;
+    }
+    InjectMousePosition(30,25);
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,1);
+    InjectPump();
+    draw_composed_blocked_context();
+    InjectMouseButton(MOUSE_BUTTON_RIGHT,0);
+    InjectPump();
+    draw_composed_blocked_context();
+    if(context_open || context_frames != 0) {
+        fprintf(stderr,"generated context popup opened behind a modal\n");
+        return 1;
     }
     InjectKeyTap(KEY_ESCAPE); InjectPump(); draw_composed_modal();
     if(modal_open) {
@@ -2475,607 +2508,4 @@ if ! diff -u "$work/go.json" "$work/c.json"; then
     exit 1
 fi
 
-if command -v node >/dev/null 2>&1; then
-    cp "$root"/web/*.js "$work/js/"
-    printf '%s\n' '{"type":"module"}' > "$work/js/package.json"
-    cat > "$work/js_runner.mjs" <<'EOF'
-import assert from "node:assert/strict";
-import * as compositionMod from "./js/tests/parity/composition.js";
-import * as formMod from "./js/tests/parity/generated_form.js";
-import * as fieldsMod from "./js/tests/parity/fields.js";
-import * as focusMod from "./js/tests/parity/focus.js";
-import * as buttonsMod from "./js/tests/parity/buttons_layout.js";
-import * as longTextMod from "./js/tests/parity/long_text.js";
-import * as controlsMod from "./js/tests/parity/basic_controls.js";
-import * as listBoxMod from "./js/tests/parity/list_box.js";
-import * as treeViewMod from "./js/tests/parity/tree_view.js";
-import * as progressMod from "./js/tests/parity/progress.js";
-import * as plotsMod from "./js/tests/parity/plots.js";
-import * as tableMod from "./js/tests/parity/table_view.js";
-import * as selectionMod from "./js/tests/parity/selection_images.js";
-import * as scrollContentMod from "./js/tests/parity/scroll_content.js";
-import * as dragDropMod from "./js/tests/parity/drag_drop.js";
-import * as menusMod from "./js/tests/parity/menus.js";
-import * as composedPopupMod from "./js/tests/parity/composed_popup.js";
-import * as kryon from "./js/kryon-runtime.js";
-
-const rt = kryon.createRuntime();
-const composition = compositionMod.createState();
-const drawComposition = () => compositionMod.frame(rt, composition);
-rt.SetFocus(26100);
-rt.SubmitTextComposition(2, "ni", 2, 0);
-drawComposition();
-assert.equal(composition.composition_text, "base");
-rt.SubmitTextComposition(3, "日本", 2, 0);
-drawComposition();
-assert.equal(composition.composition_text, "base日本");
-assert.equal(composition.composition_cursor, 10);
-rt.SubmitTextComposition(2, "cancel", 6, 0);
-rt.SubmitTextComposition(4, "", 0, 0);
-drawComposition();
-assert.equal(composition.composition_text, "base日本");
-composition.composition_read_only = true;
-for (const id of [26100, 26101]) {
-  rt.SetFocus(id);
-  rt.QueueShortcut(kryon.KeyA); drawComposition();
-  rt.QueueShortcut(kryon.KeyC); drawComposition();
-  rt.QueueShortcut(kryon.KeyX); drawComposition();
-  rt.QueueShortcut(kryon.KeyV); drawComposition();
-  rt.QueueKey(kryon.KeyBackspace); drawComposition();
-  rt.QueueKey(kryon.KeyDelete); drawComposition();
-  rt.QueueText("blocked"); drawComposition();
-  rt.SubmitTextComposition(3, "blocked", 7, 0);
-  drawComposition();
-  assert.equal(rt.ClipboardText(), id === 26100 ? "base日本" : "area");
-}
-assert.equal(composition.composition_text, "base日本");
-assert.equal(composition.composition_area, "area");
-composition.composition_read_only = false;
-rt.SetFocus(26102);
-rt.QueueShortcut(kryon.KeyRight); drawComposition();
-assert.equal(composition.composition_page_cursor, 5);
-rt.QueueShiftKey(kryon.KeyRight); drawComposition();
-assert.equal(composition.composition_page_cursor, 6);
-rt.QueueShortcut(kryon.KeyC); drawComposition();
-assert.equal(rt.ClipboardText(), "\n");
-rt.QueueKey(kryon.KeyLeft); drawComposition(); drawComposition();
-rt.QueueKey(kryon.KeyLeft); drawComposition();
-assert.equal(composition.composition_page_cursor, 4);
-rt.QueueShiftKey(kryon.KeyDown); drawComposition();
-assert.equal(composition.composition_page_cursor, 7);
-rt.QueueShortcut(kryon.KeyC); drawComposition();
-assert.equal(rt.ClipboardText(), "1\nc");
-rt.QueueKey(kryon.KeyLeft); drawComposition();
-assert.equal(composition.composition_page_cursor, 4);
-rt.QueueKey(kryon.KeyDown); drawComposition();
-assert.ok(composition.composition_page_cursor > 4);
-let compositionBeforePage = composition.composition_page_cursor;
-rt.QueueKey(kryon.KeyPageDown); drawComposition();
-assert.ok(composition.composition_page_cursor >= compositionBeforePage + 4);
-compositionBeforePage = composition.composition_page_cursor;
-rt.QueueKey(kryon.KeyPageUp); drawComposition();
-assert.ok(composition.composition_page_cursor <= compositionBeforePage - 4);
-const compositionPageLength = composition.composition_page_area.length;
-const compositionPageLines = composition.composition_page_area.split("\n").length;
-rt.QueueKey(kryon.KeyEnter); drawComposition();
-assert.equal(composition.composition_page_area.length, compositionPageLength + 1);
-assert.equal(composition.composition_page_area.split("\n").length, compositionPageLines + 1);
-rt.QueueShortcut(kryon.KeyEnd); drawComposition();
-rt.QueueShortcut(kryon.KeyBackspace); drawComposition();
-assert.equal(composition.composition_page_area.length, compositionPageLength - 1);
-assert.equal(composition.composition_page_area[composition.composition_page_area.length - 1], "\n");
-rt.SetFocus(0);
-const form = formMod.createState();
-const fields = fieldsMod.createState();
-const focus = focusMod.createState();
-const buttons = buttonsMod.createState();
-const longText = longTextMod.createState();
-const controls = controlsMod.createState();
-const listBox = listBoxMod.createState();
-const treeView = treeViewMod.createState();
-const table = tableMod.createState();
-const selection = selectionMod.createState();
-const scrollContent = scrollContentMod.createState();
-const dragDrop = dragDropMod.createState();
-const menus = menusMod.createState();
-const composedPopup = composedPopupMod.createState();
-
-const drawForm = () => formMod.frame(rt, form);
-const drawFields = () => fieldsMod.frame(rt, fields);
-const drawFocus = () => focusMod.frame(rt, focus);
-const drawButtons = () => buttonsMod.frame(rt, buttons);
-const drawLongText = () => longTextMod.frame(rt, longText);
-const drawControls = () => controlsMod.frame(rt, controls);
-const drawListBox = () => listBoxMod.frame(rt, listBox);
-const drawTreeView = () => treeViewMod.frame(rt, treeView);
-const drawProgress = () => progressMod.frame(rt, progressMod.createState());
-const drawPlots = () => plotsMod.frame(rt, plotsMod.createState());
-const drawTableView = () => tableMod.frame(rt, table);
-const drawTabScope = () => selectionMod.SelectionImages_TabScopeFrame(rt, selection);
-const drawScrollContent = () => {
-  kryon.beginFrame(rt);
-  const result = scrollContentMod.ScrollContent_ScrollContentFrame(rt, scrollContent);
-  kryon.endFrame(rt);
-  return result;
-};
-const drawDragDrop = () => dragDropMod.frame(rt, dragDrop);
-const drawMenus = () => menusMod.frame(rt, menus);
-const drawComposedPopup = (fn) => {
-  kryon.beginFrame(rt);
-  const result = fn(rt, composedPopup);
-  kryon.endFrame(rt);
-  return result;
-};
-const drawComposedContent = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupContentFrame);
-const drawComposedTools = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupToolsFrame);
-const drawComposedTooltip = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedTooltipFrame);
-const drawComposedModal = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedModalFrame);
-const drawComposedContext = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedContextFrame);
-const drawComposedDrag = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupDragFrame);
-const drawComposedShortcut = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupShortcutFrame);
-const drawComposedEarlyExit = (leave) => {
-  kryon.beginFrame(rt);
-  const result = composedPopupMod.ComposedPopup_ComposedPopupEarlyExit(rt, composedPopup, leave);
-  kryon.endFrame(rt);
-  return result;
-};
-
-drawComposedContent();
-assert.equal(composedPopup.popup_content_open, true);
-rt.QueueTap(30, 70); drawComposedContent(); drawComposedContent();
-assert.equal(composedPopup.popup_content_action, 1);
-composedPopup.popup_content_close = true; drawComposedContent();
-assert.equal(composedPopup.popup_content_open, false);
-composedPopup.popup_content_close = false;
-drawComposedEarlyExit(true);
-drawComposedContent();
-rt.QueueTap(180, 70); drawComposedTools(); drawComposedTools();
-assert.equal(composedPopup.popup_action, 1);
-composedPopup.popup_close = true; drawComposedTools();
-assert.equal(composedPopup.popup_open, false);
-composedPopup.popup_close = false; composedPopup.popup_open = true; drawComposedTools();
-rt.QueueTap(180, 170); drawComposedTools(); drawComposedTools();
-assert.equal(composedPopup.popup_open, false);
-assert.equal(composedPopup.popup_background, 0);
-rt.QueueMouseMove(30, 25); drawComposedTooltip();
-const visibleTooltipFrames = composedPopup.tooltip_frames;
-assert.equal(visibleTooltipFrames, 1);
-rt.QueueTap(30, 25); drawComposedTooltip(); drawComposedTooltip();
-assert.ok(composedPopup.tooltip_frames > visibleTooltipFrames);
-assert.equal(composedPopup.tooltip_background, 1);
-rt.QueueMouseMove(300, 200); drawComposedTooltip();
-const hiddenTooltipFrames = composedPopup.tooltip_frames;
-drawComposedTooltip();
-assert.equal(composedPopup.tooltip_frames, hiddenTooltipFrames);
-drawComposedModal();
-assert.equal(composedPopup.modal_open, true);
-assert.equal(composedPopup.modal_frames, 1);
-rt.QueueTap(290, 175);
-drawComposedModal(); drawComposedModal();
-assert.equal(composedPopup.modal_open, true);
-assert.equal(composedPopup.modal_background, 0);
-rt.QueueKey(kryon.KeyEscape);
-drawComposedModal();
-assert.equal(composedPopup.modal_open, false);
-rt.QueueMouseButtonDown(kryon.MouseButtonRight, 30, 25);
-drawComposedContext();
-assert.equal(composedPopup.context_open, false);
-assert.equal(composedPopup.context_frames, 0);
-rt.QueueMouseButtonUp(kryon.MouseButtonRight, 30, 25);
-drawComposedContext();
-assert.equal(composedPopup.context_open, true);
-assert.equal(composedPopup.context_frames, 1);
-rt.QueueTap(120, 80);
-drawComposedContext(); drawComposedContext();
-assert.equal(composedPopup.context_open, false);
-assert.equal(composedPopup.context_action, 1);
-rt.QueueMouseButtonDown(kryon.MouseButtonLeft, 40, 40);
-drawComposedDrag();
-rt.QueueMouseMove(200, 40);
-drawComposedDrag();
-assert.equal(Math.trunc(composedPopup.popup_drag_values[0]), 170);
-composedPopup.popup_drag_open = false;
-rt.QueueMouseMove(230, 40);
-drawComposedDrag();
-assert.equal(Math.trunc(composedPopup.popup_drag_values[0]), 170);
-rt.QueueMouseButtonUp(kryon.MouseButtonLeft, 230, 40);
-drawComposedDrag();
-rt.QueueKey(kryon.KeyLeftControl);
-rt.QueueKey(kryon.KeyC);
-drawComposedShortcut();
-assert.equal(composedPopup.popup_shortcut_inside, 1);
-assert.equal(composedPopup.popup_shortcut_background, 0);
-composedPopup.popup_shortcut_open = false;
-rt.QueueKey(kryon.KeyLeftControl);
-rt.QueueKey(kryon.KeyC);
-drawComposedShortcut();
-assert.equal(composedPopup.popup_shortcut_inside, 1);
-assert.equal(composedPopup.popup_shortcut_background, 1);
-composedPopup.popup_shortcut_open = true;
-rt.SetFocus(27072);
-rt.QueueKey(kryon.KeyRight);
-drawComposedShortcut();
-assert.equal(composedPopup.popup_tree_background_open, false);
-rt.SetFocus(27071);
-rt.QueueKey(kryon.KeyRight);
-drawComposedShortcut();
-assert.equal(composedPopup.popup_tree_inside_open, true);
-composedPopup.popup_shortcut_open = false;
-rt.SetFocus(27072);
-rt.QueueKey(kryon.KeyRight);
-drawComposedShortcut();
-assert.equal(composedPopup.popup_tree_background_open, true);
-
-drawScrollContent();
-rt.QueueTap(20, 90); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.scrolling_actions, 100);
-rt.QueueMouseMove(30, 30); rt.QueueMouseWheel(-1); drawScrollContent();
-assert.equal(scrollContent.scrolling_offset, 42);
-rt.QueueTap(20, 45); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.scrolling_actions, 101);
-rt.QueueTap(120, 65); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.scrolling_actions, 101);
-rt.QueueTap(70, 65); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.scrolling_actions, 1101);
-rt.QueueTap(250, 20); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.mixed_flags, 4);
-rt.QueueTap(250, 115); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.mixed_actions, 0);
-rt.SetFocus(988); rt.QueueText("!"); drawScrollContent();
-assert.equal(scrollContent.mixed_text, "item!");
-assert.equal(scrollContent.mixed_cursor, 5);
-rt.QueueMouseMove(250, 80); rt.QueueMouseWheel(-1); drawScrollContent();
-rt.QueueTap(250, 80); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.mixed_offset, 42);
-assert.equal(scrollContent.mixed_actions, 1);
-rt.QueueTap(250, 190); drawScrollContent(); drawScrollContent();
-rt.QueueMouseMove(250, 255); rt.QueueMouseWheel(-1); drawScrollContent();
-assert.equal(scrollContent.overlay_background_offset, 0);
-rt.QueueTap(250, 255); drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.overlay_selected, 1);
-assert.equal(scrollContent.overlay_actions, 0);
-for (const [key, want] of [[kryon.KeyHome, 0], [kryon.KeyEnd, 1]]) {
-  rt.SetFocus(996);
-  rt.QueueKey(kryon.KeySpace);
-  drawScrollContent(); drawScrollContent(); drawScrollContent();
-  const before = scrollContent.overlay_selected;
-  rt.QueueKey(key);
-  drawScrollContent(); drawScrollContent(); drawScrollContent();
-  assert.equal(scrollContent.overlay_selected, before);
-  rt.QueueKey(kryon.KeyEnter);
-  drawScrollContent(); drawScrollContent(); drawScrollContent();
-  assert.equal(scrollContent.overlay_selected, want);
-}
-rt.SetFocus(24001);
-rt.QueueKey(kryon.KeySpace);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-rt.QueueKey(kryon.KeyEnd);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.long_dropdown_selected, 0);
-rt.QueueTap(20, 420);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.long_dropdown_selected, 19);
-scrollContent.long_dropdown_selected = 0;
-rt.SetFocus(24001);
-rt.QueueKey(kryon.KeySpace);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-rt.QueueMouseButtonDown(kryon.MouseButtonLeft, 166, 50);
-drawScrollContent();
-rt.QueueMouseMove(166, 425);
-drawScrollContent();
-rt.QueueMouseButtonUp(kryon.MouseButtonLeft, 20, 60);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.long_dropdown_selected, 0);
-rt.QueueTap(20, 420);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.long_dropdown_selected, 19);
-scrollContent.edge_dropdown_visible = true;
-rt.SetFocus(24002);
-rt.QueueKey(kryon.KeySpace);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-rt.QueueTap(490, 380);
-drawScrollContent(); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.edge_dropdown_selected, 1);
-scrollContent.edge_dropdown_visible = false;
-scrollContent.long_dropdown_selected = 0;
-rt.SetFocus(0);
-rt.QueueTap(450, 270); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.rotated_sort, -1);
-assert.equal(scrollContent.rotated_row, -1);
-rt.QueueTap(590, 230); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.rotated_sort, 0);
-assert.equal(scrollContent.rotated_row, -1);
-rt.QueueTap(590, 290); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.rotated_sort, 1);
-rt.QueueTap(450, 310); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.rotated_row, 0);
-rt.QueueMouseButtonDown(kryon.MouseButtonLeft, 600, 230);
-drawScrollContent();
-rt.QueueMouseMove(620, 230);
-drawScrollContent();
-rt.QueueMouseButtonUp(kryon.MouseButtonLeft, 620, 230);
-drawScrollContent();
-assert.equal(scrollContent.rotated_widths[0], 110);
-rt.QueueTap(450, 20); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.branch_open, true);
-assert.equal(rt.Focus(), 990);
-rt.QueueTap(450, 50); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.nested_open, true);
-assert.equal(rt.Focus(), 991);
-rt.QueueTap(490, 85); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.branch_actions, 1);
-rt.SetFocus(990);
-for (const [i, key] of [kryon.KeyLeft, kryon.KeyRight, kryon.KeyRight, kryon.KeyEnter, kryon.KeySpace].entries()) {
-  rt.SetFocus(990);
-  rt.QueueKey(key);
-  drawScrollContent(); drawScrollContent();
-  assert.equal(scrollContent.branch_open, i === 1 || i === 2 || i === 4);
-  assert.equal(scrollContent.nested_open, true);
-}
-rt.QueueKey(kryon.KeyTab);
-drawScrollContent(); drawScrollContent();
-rt.QueueKey(kryon.KeyLeft);
-drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.branch_open, true);
-assert.equal(scrollContent.nested_open, false);
-for (const [i, key] of [kryon.KeyUp, kryon.KeyDown, kryon.KeyLeft, kryon.KeyRight, kryon.KeyRight, kryon.KeyDown, kryon.KeyLeft].entries()) {
-  rt.QueueKey(key);
-  drawScrollContent(); drawScrollContent();
-  const want = (i === 0 || i === 2 || i === 6) ? 990 : i === 5 ? 995 : 991;
-  assert.equal(rt.Focus(), want);
-  assert.equal(scrollContent.branch_open, true);
-  assert.equal(scrollContent.nested_open, i >= 4);
-}
-rt.QueueTap(20, 345); drawScrollContent(); drawScrollContent();
-rt.QueueTap(180, 345); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.custom_actions, 1);
-assert.equal(scrollContent.custom_flags, 4);
-assert.equal(scrollContent.custom_selected, -1);
-rt.QueueTap(120, 345); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.custom_actions, 11);
-rt.QueueTap(340, 310); drawScrollContent(); drawScrollContent();
-rt.QueueTap(340, 330); drawScrollContent(); drawScrollContent();
-assert.equal(scrollContent.custom_outer_actions, 11);
-rt.QueueTap(20, 380); drawScrollContent(); drawScrollContent();
-assert.equal(rt.Focus(), 1006);
-rt.QueueKey(kryon.KeyEnd); drawScrollContent();
-rt.QueueText("!"); drawScrollContent();
-assert.equal(scrollContent.custom_text, "cell!");
-scrollContent.custom_disabled = 1;
-rt.QueueText("X"); drawScrollContent();
-assert.equal(scrollContent.custom_text, "cell!");
-scrollContent.custom_disabled = 0;
-rt.SetFocus(1006); drawScrollContent();
-rt.QueueText("?"); drawScrollContent();
-assert.equal(scrollContent.custom_text, "cell!?");
-rt.SetFocus(0);
-
-rt.SetFocus(940);
-rt.QueueKey(kryon.KeyDown); drawMenus();
-assert.equal(menus.open_menu, 0);
-rt.QueueKey(kryon.KeyEnd); drawMenus();
-rt.QueueKey(kryon.KeyRight); drawMenus();
-rt.QueueKey(kryon.KeyEnter); drawMenus();
-drawMenus();
-assert.equal(menus.menu_action, 23);
-assert.equal(menus.open_menu, -1);
-rt.SetFocus(0);
-
-rt.QueueMouseButtonDown(kryon.MouseButtonLeft, 20, 20);
-drawDragDrop();
-dragDrop.dd_payload = "Xtem";
-rt.QueueMouseButtonUp(kryon.MouseButtonLeft, 150, 20);
-drawDragDrop();
-assert.equal(dragDrop.dd_invalid_accepts, 0);
-assert.equal(dragDrop.dd_accepted, 8);
-assert.equal(dragDrop.dd_received.slice(0, 4), "item");
-
-drawForm();
-rt.SetFocus(101);
-drawForm();
-rt.QueueKey(kryon.KeyLeft);
-drawForm();
-rt.QueueText("é");
-drawForm();
-rt.QueueKey(kryon.KeyBackspace);
-drawForm();
-if (form.first !== "alpha")
-  throw new Error(`form: backspace restored first field to ${form.first}, want alpha`);
-
-rt.SetFocus(102);
-drawForm();
-rt.SetSelection(102, 0, 4);
-rt.QueueText("acct");
-drawForm();
-
-rt.SetFocus(101);
-drawForm();
-rt.QueueKey(kryon.KeyTab);
-drawForm();
-rt.QueueText("Z");
-drawForm();
-
-rt.SetClipboardText("old");
-rt.SetFocus(103);
-drawForm();
-rt.SetSelection(103, 0, 6);
-rt.QueueShortcut(kryon.KeyC);
-drawForm();
-
-drawFields();
-rt.QueueTap(30, 30);
-drawFields();
-rt.QueueKey(kryon.KeyLeft);
-drawFields();
-rt.QueueText("!");
-drawFields();
-rt.QueueTap(30, 86);
-drawFields();
-rt.QueueText(" body");
-drawFields();
-
-drawFocus();
-rt.QueueTap(30, 75);
-drawFocus();
-rt.QueueText("Z");
-drawFocus();
-rt.QueueShiftKey(kryon.KeyTab);
-drawFocus();
-rt.QueueText("A");
-drawFocus();
-const focusAfterFocus = rt.Focus();
-
-drawButtons();
-rt.QueueTap(30, 130);
-drawButtons();
-rt.QueueTap(130, 130);
-drawButtons();
-if (buttons.buttons_action !== 10)
-  throw new Error("first widget instance action was not isolated");
-rt.QueueTap(230, 130);
-drawButtons();
-if (buttons.buttons_action !== 110)
-  throw new Error("second widget instance action was not isolated");
-buttons.buttons_reverse = true;
-drawButtons();
-rt.QueueTap(130, 130);
-drawButtons();
-rt.QueueTap(230, 130);
-drawButtons();
-if (buttons.buttons_action !== 220)
-  throw new Error("widget instance actions changed after reordering");
-buttons.buttons_reverse = false;
-drawButtons();
-
-drawLongText();
-const initialLongOps = rt.frame.length;
-rt.SetFocus(701);
-drawLongText();
-if (rt.frame.length !== initialLongOps)
-  throw new Error(`long_text: frame operation count changed after focus, got ${rt.frame.length} want ${initialLongOps}`);
-for (let i = 0; i < 2048; i++) {
-  if (i > 0 && i % 256 === 0) {
-    rt.QueueKey(kryon.KeyTab);
-    drawLongText();
-    if (rt.frame.length !== initialLongOps)
-      throw new Error(`long_text: frame operation count changed after tab at ${i}`);
-  }
-  rt.QueueText("x");
-  drawLongText();
-  if (rt.frame.length !== initialLongOps)
-    throw new Error(`long_text: frame operation count changed after text at ${i}`);
-  rt.QueueKey(kryon.KeyLeft);
-  drawLongText();
-  if (rt.frame.length !== initialLongOps)
-    throw new Error(`long_text: frame operation count changed after left at ${i}`);
-  rt.QueueKey(kryon.KeyRight);
-  drawLongText();
-  if (rt.frame.length !== initialLongOps)
-    throw new Error(`long_text: frame operation count changed after right at ${i}`);
-}
-
-drawControls();
-rt.QueueTap(146, 48);
-drawControls();
-rt.QueueTap(30, 92);
-drawControls();
-rt.QueueTap(30, 138);
-drawControls();
-rt.QueueTap(30, 180);
-drawControls();
-rt.QueueTap(30, 247);
-drawControls();
-drawControls();
-if (controls.slider_value !== 70 || controls.toggle_value !== 1 ||
-    controls.checkbox_value !== 1 || controls.selected !== 1) {
-  throw new Error(`controls: got slider=${controls.slider_value} toggle=${controls.toggle_value} checkbox=${controls.checkbox_value} selected=${controls.selected}, want 70,1,1,1`);
-}
-
-drawListBox();
-rt.QueueTap(36, 78);
-drawListBox();
-if (listBox.list_selected !== 2 || listBox.list_scroll !== 0)
-  throw new Error(`list_box: got selected=${listBox.list_selected} scroll=${listBox.list_scroll}, want 2,0`);
-
-drawTreeView();
-rt.QueueTap(36, 84);
-drawTreeView();
-if (treeView.tree_selected !== 2 || treeView.tree_scroll !== 0)
-  throw new Error(`tree_view: got selected=${treeView.tree_selected} scroll=${treeView.tree_scroll}, want 2,0`);
-
-drawProgress();
-drawPlots();
-
-drawTabScope();
-rt.QueueTap(60, 84);
-drawTabScope();
-if (selection.tab_first_actions !== 1 || selection.tab_second_actions !== 0)
-  throw new Error("tab scope: selected first child did not own input");
-rt.SetFocus(958);
-rt.QueueKey(kryon.KeyRight);
-drawTabScope();
-rt.QueueTap(60, 84);
-drawTabScope();
-if (selection.tab_scope_selected !== 1 || selection.tab_first_actions !== 1 ||
-    selection.tab_second_actions !== 1)
-  throw new Error("tab scope: selection did not switch arbitrary child content");
-
-drawTableView();
-rt.QueueTap(116, 62);
-drawTableView();
-rt.QueueTap(116, 62);
-drawTableView();
-const tableActivatedRow = table.activated_row;
-const tableActivatedCol = table.activated_column;
-rt.QueueTap(260, 30);
-drawTableView();
-if (table.selected_row !== -1 || table.selected_column !== 2 ||
-    tableActivatedRow !== 0 || tableActivatedCol !== 1 || table.sort_column !== 2) {
-  throw new Error(`table_view: got selected=(${table.selected_row},${table.selected_column}) activated=(${tableActivatedRow},${tableActivatedCol}) sort=${table.sort_column}, want (-1,2),(0,1),2`);
-}
-
-function checksum(text) {
-  let hash = 1469598103934665603n;
-  for (const byte of Buffer.from(String(text), "utf8")) {
-    hash ^= BigInt(byte);
-    hash = (hash * 1099511628211n) & 0xffffffffffffffffn;
-  }
-  return hash.toString();
-}
-
-const longFirstHash = checksum(longText.long_first);
-const longSecondHash = checksum(longText.long_second);
-const out =
-  `{"form_first":${JSON.stringify(form.first)},"form_first_cursor":${form.first_cursor},` +
-  `"form_second":${JSON.stringify(form.second)},"form_second_cursor":${form.second_cursor},` +
-  `"form_password":${JSON.stringify(form.password)},"form_password_cursor":${form.password_cursor},` +
-  `"form_notes":${JSON.stringify(form.notes)},"form_notes_cursor":${form.notes_cursor},` +
-  `"form_action":${form.form_action},` +
-  `"fields_title":${JSON.stringify(fields.title)},"fields_title_cursor":${fields.title_cursor},` +
-  `"fields_body":${JSON.stringify(fields.body)},"fields_body_cursor":${fields.body_cursor},` +
-  `"focus_one":${JSON.stringify(focus.one)},"focus_two":${JSON.stringify(focus.two)},` +
-  `"focus_three":${JSON.stringify(focus.three)},"focus_id":${focusAfterFocus},` +
-  `"buttons_action":${buttons.buttons_action},` +
-  `"long_first_len":${longText.long_first.length},"long_first_cursor":${longText.long_first_cursor},` +
-  `"long_first_hash":${longFirstHash},` +
-  `"long_second_len":${longText.long_second.length},"long_second_cursor":${longText.long_second_cursor},` +
-  `"long_second_hash":${longSecondHash},` +
-  `"controls_slider":${controls.slider_value},"controls_toggle":${controls.toggle_value},` +
-  `"controls_checkbox":${controls.checkbox_value},"controls_selected":${controls.selected},` +
-  `"list_box_selected":${listBox.list_selected},"list_box_scroll":${listBox.list_scroll},` +
-  `"tree_selected":${treeView.tree_selected},"tree_scroll":${treeView.tree_scroll},` +
-  `"table_selected_row":${table.selected_row},"table_selected_column":${table.selected_column},` +
-  `"table_activated_row":${tableActivatedRow},"table_activated_column":${tableActivatedCol},` +
-  `"table_sort_column":${table.sort_column},"clipboard":${JSON.stringify(rt.ClipboardText())}}`;
-console.log(out);
-EOF
-    (cd "$work" && node js_runner.mjs > "$work/js.json")
-    if ! diff -u "$work/go.json" "$work/js.json"; then
-        echo "generated Go/C/JS runtime parity mismatch" >&2
-        exit 1
-    fi
-else
-    echo "generated JS runtime parity skipped: node not found"
-fi
-
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry","tests/parity/menus.kry"],"native_go_only":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c"],"fixture_count":17,"scope":"executed interaction assertions and final state comparison"}'

@@ -6,6 +6,7 @@
 #include "kir_parse.h"
 #include "kir_check.h"
 #include "kir_laws.h"
+#include "kir_diagnostic.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +16,7 @@
 static void
 usage(void)
 {
-    fprintf(stderr, "usage: k2kir --root DIR -o DIR file.kry ...\n");
+    fprintf(stderr, "usage: k2kir [--diagnostics=text|json] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -28,7 +29,12 @@ main(int argc, char **argv)
     int i;
 
     for(i = 1; i < argc; i++) {
-        if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
+        if(strncmp(argv[i], "--diagnostics=", 14) == 0) {
+            if(!KirSetDiagnosticFormat(argv[i] + 14)) {
+                usage();
+                return 1;
+            }
+        } else if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
             root = argv[++i];
         } else if(strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out_dir = argv[++i];

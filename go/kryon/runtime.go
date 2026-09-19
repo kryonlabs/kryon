@@ -5559,6 +5559,13 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 	if props.ID == 0 {
 		return 0
 	}
+	if props.Open != nil && *props.Open == 0 {
+		delete(r.contextMenus, props.ID)
+		delete(r.openSubmenus, props.ID)
+		if state := r.menuNavigation[props.ID]; state != nil {
+			state.Path = state.Path[:0]
+		}
+	}
 	if props.Open != nil && *props.Open != 0 {
 		pos := r.mousePos
 		if props.X != nil {
@@ -5569,8 +5576,12 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 		}
 		r.contextMenus[props.ID] = pos
 	}
-	if !r.contentDisabled() && r.mouseReleased[MouseButtonRight] && pointInRect(r.mousePos.X, r.mousePos.Y, props.Trigger) {
-		r.contextMenus[props.ID] = r.mousePos
+	activation := PopupPolicy_PopupContextActivationFor(
+		PopupPolicy_PopupDecisionFor(uint32(PopupContext), false), r.scrollClip(props.Trigger),
+		r.mousePos, r.contentDisabled(), r.popupCaptures(r.mousePos.X, r.mousePos.Y),
+		r.mouseReleased[MouseButtonRight])
+	if activation.Open {
+		r.contextMenus[props.ID] = activation.Origin
 		r.setFocus(props.ID)
 		resetMenuPath(r.menuNav(props.ID), limitedMenuItems(props.Items, props.ItemCount))
 		if props.Open != nil {
@@ -5578,10 +5589,10 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 			*props.Open = boolInt(openResult.Open)
 		}
 		if props.X != nil {
-			*props.X = int32(r.mousePos.X)
+			*props.X = int32(activation.Origin.X)
 		}
 		if props.Y != nil {
-			*props.Y = int32(r.mousePos.Y)
+			*props.Y = int32(activation.Origin.Y)
 		}
 	}
 	pos, open := r.contextMenus[props.ID]
@@ -5605,10 +5616,18 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 	handled := false
 	selected, panel := r.drawPopupMenu(props.ID, props.ClassName, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount), props.ID, 0, &handled)
 	closeMenu := selected != 0
-	if !closeMenu && !r.contentDisabled() {
+	if !closeMenu {
 		for i := range r.taps {
-			if !r.taps[i].consumed && !pointInRect(r.taps[i].x, r.taps[i].y, panel) {
+			tap := r.taps[i]
+			suppress := r.contentDisabled() || r.popupCaptures(tap.x, tap.y) ||
+				Menu_MenuContextShouldSuppressClose(activation.Open,
+					pointInRect(tap.x, tap.y, props.Trigger), true)
+			decision := Menu_MenuContextOutsideCloseDecisionFor(props.ID, props.ID,
+				suppress, !tap.consumed, true, pointInRect(tap.x, tap.y, panel))
+			if decision.ConsumeRelease {
 				r.taps[i].consumed = true
+			}
+			if decision.CloseOpen {
 				closeMenu = true
 				break
 			}

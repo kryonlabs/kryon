@@ -73,6 +73,11 @@ of packaged tools do not need a source build to obtain browser runtime files.
 
 ## Belongs In Applications
 
+The preview executable owns watching, build/reload orchestration, diagnostics,
+and inspection. These are native developer tools, not public widget APIs.
+Applications supply the existing host ABI and own their state initialization
+and persistence; preview does not add app-specific state migration logic.
+
 - product screens, routes, onboarding, workflows, and state machines
 - product names, screenshots, icons, store metadata, app IDs, and domains
 - app-specific copy, locale keys, settings semantics, and persistence policy

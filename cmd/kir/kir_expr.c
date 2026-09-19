@@ -1,4 +1,5 @@
 #include "kir_expr.h"
+#include "kir_diagnostic.h"
 #include "kir_token.h"
 #include "kir_text.h"
 
@@ -359,8 +360,7 @@ KirStructureFunction(KirFunction *fn, const KirModule *module)
                         tail = kir_skip_ws(tail + 1);
                     key = (char *)kir_skip_ws(key);
                     if(*key != '(' || end == NULL || *tail != '\0') {
-                        fprintf(stderr, "%s:%d: expected #instance(key) after a record type\n",
-                                st->span.path, st->span.line);
+                        KirDiagnostic(st->span, "parse.instance", "expected #instance(key) after a record type");
                         exit(1);
                     }
                     *annotation = '\0';

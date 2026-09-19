@@ -1,5 +1,7 @@
 #include "kryon.h"
 #include "ui_style_sheet.h"
+#include "session.h"
+#include "watch.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -9,8 +11,18 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define KP_PATH_MAX 1024
+
+static volatile sig_atomic_t preview_stopping;
+
+static void
+stop_preview(int signal_number)
+{
+    (void)signal_number;
+    preview_stopping = 1;
+}
 
 typedef struct PreviewOptions {
     const char *command;
@@ -23,20 +35,16 @@ typedef struct PreviewOptions {
     int width;
     int height;
     int count;
+    int frames;
 } PreviewOptions;
-
-typedef struct PreviewSession {
-    void *dylib;
-    AppHost *host;
-    DestroyAppHostCallback destroy_host;
-    unsigned long generation;
-} PreviewSession;
 
 static void
 usage(void)
 {
     fprintf(stderr,
             "usage:\n"
+            "  kryon-preview watch --project ROOT [--source REL --width W --height H]\n"
+            "                      [--frames N --output PNG]\n"
             "  kryon-preview capture --project ROOT --source REL --output PNG [--width W --height H]\n"
             "  kryon-preview reload --project ROOT --source REL [--count N --width W --height H]\n"
             "  kryon-preview capture-all --project ROOT --source-dir DIR --out-dir DIR [--width W --height H]\n"
@@ -106,6 +114,11 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
             if(value == NULL)
                 return 0;
             opt->count = atoi(value);
+        } else if(strcmp(argv[i], "--frames") == 0) {
+            value = arg_value(argc, argv, &i);
+            if(value == NULL)
+                return 0;
+            opt->frames = atoi(value);
         } else if(strcmp(argv[i], "--style") == 0) {
             value = arg_value(argc, argv, &i);
             if(value == NULL)
@@ -126,6 +139,8 @@ parse_args(int argc, char **argv, PreviewOptions *opt)
         opt->height = 480;
     if(opt->count <= 0)
         opt->count = 1;
+    if(strcmp(opt->command, "watch") == 0)
+        return opt->project != NULL;
     if(strcmp(opt->command, "capture") == 0)
         return opt->project != NULL && opt->source != NULL && opt->out != NULL;
     if(strcmp(opt->command, "reload") == 0)
@@ -161,38 +176,6 @@ has_suffix(const char *path, const char *suffix)
 }
 
 static int
-copy_file(const char *src, const char *dst)
-{
-    FILE *in = fopen(src, "rb");
-    FILE *out;
-    char buf[16384];
-    size_t n;
-
-    if(in == NULL)
-        return 0;
-    out = fopen(dst, "wb");
-    if(out == NULL) {
-        fclose(in);
-        return 0;
-    }
-    while((n = fread(buf, 1, sizeof(buf), in)) > 0) {
-        if(fwrite(buf, 1, n, out) != n) {
-            fclose(out);
-            fclose(in);
-            return 0;
-        }
-    }
-    if(ferror(in)) {
-        fclose(out);
-        fclose(in);
-        return 0;
-    }
-    fclose(out);
-    fclose(in);
-    return 1;
-}
-
-static int
 mkdir_p(const char *path)
 {
     char tmp[KP_PATH_MAX];
@@ -210,76 +193,18 @@ mkdir_p(const char *path)
 }
 
 static int
-build_host(const char *project)
-{
-    char command[KP_PATH_MAX * 4];
-    const char *kryon_dir = getenv("KRYON_DIR");
-    int rc;
-
-    if(kryon_dir == NULL || kryon_dir[0] == '\0')
-        kryon_dir = "/usr/home/wao/src/kryon";
-    snprintf(command, sizeof(command),
-             "cd '%s' && gmake kryon-host KRYON_DIR='%s' >/tmp/kryon-preview-build.log 2>&1",
-             project, kryon_dir);
-    rc = system(command);
-    return rc != -1 && WIFEXITED(rc) && WEXITSTATUS(rc) == 0;
-}
-
-static void
-preview_close(PreviewSession *session)
-{
-    if(session->destroy_host != NULL && session->host != NULL)
-        session->destroy_host(session->host);
-    if(session->dylib != NULL)
-        kry_dylib_close(session->dylib);
-    session->dylib = NULL;
-    session->host = NULL;
-    session->destroy_host = NULL;
-}
-
-static int
 preview_open(PreviewSession *session, const char *project)
 {
-    char host_path[KP_PATH_MAX];
-    char copy_path[KP_PATH_MAX];
-    CreateAppHostCallback create_host;
+    int result;
 
-    preview_close(session);
-    if(!build_host(project)) {
-        fprintf(stderr, "kryon-preview: host build failed, see /tmp/kryon-preview-build.log\n");
+    if(PreviewStartBuild(session, project) < 0)
         return 0;
-    }
-    path_join(host_path, sizeof(host_path), project, "build/kryon/app_host.so");
-    snprintf(copy_path, sizeof(copy_path), "%s.preview.%lu.so", host_path,
-             ++session->generation);
-    if(!copy_file(host_path, copy_path)) {
-        fprintf(stderr, "kryon-preview: could not copy %s\n", host_path);
-        return 0;
-    }
-    session->dylib = kry_dylib_load(copy_path);
-    if(session->dylib == NULL) {
-        fprintf(stderr, "kryon-preview: load failed: %s\n",
-                kry_dylib_error() != NULL ? kry_dylib_error() : copy_path);
-        return 0;
-    }
-    create_host = (CreateAppHostCallback)kry_dylib_sym(session->dylib,
-                                                       "CreateAppHost");
-    session->destroy_host =
-        (DestroyAppHostCallback)kry_dylib_sym(session->dylib,
-                                              "DestroyAppHost");
-    if(create_host == NULL || session->destroy_host == NULL) {
-        fprintf(stderr, "kryon-preview: host missing app symbols\n");
-        preview_close(session);
-        return 0;
-    }
-    session->host = create_host(APP_HOST_ABI_VERSION, project);
-    if(session->host == NULL) {
-        fprintf(stderr, "kryon-preview: host rejected ABI %d\n",
-                APP_HOST_ABI_VERSION);
-        preview_close(session);
-        return 0;
-    }
-    return 1;
+    do {
+        result = PreviewPollBuild(session);
+        if(result == 0)
+            WaitTime(0.01);
+    } while(result == 0 && !preview_stopping);
+    return result > 0 && !preview_stopping;
 }
 
 static int
@@ -319,11 +244,13 @@ run_capture(const PreviewOptions *opt)
     PreviewSession session = {0};
     int ok;
 
-    if(!preview_open(&session, opt->project))
+    if(!preview_open(&session, opt->project)) {
+        PreviewClose(&session);
         return 1;
+    }
     ok = capture_source(&session, opt->source, opt->out,
                         opt->width, opt->height);
-    preview_close(&session);
+    PreviewClose(&session);
     return ok ? 0 : 1;
 }
 
@@ -357,11 +284,13 @@ run_capture_style(const PreviewOptions *opt)
     size_t name_len;
     int ok = 1;
 
-    if(!preview_open(&session, opt->project))
+    if(!preview_open(&session, opt->project)) {
+        PreviewClose(&session);
         return 1;
+    }
     if(!mkdir_p(opt->out)) {
         fprintf(stderr, "kryon-preview: could not create %s\n", opt->out);
-        preview_close(&session);
+        PreviewClose(&session);
         return 1;
     }
     for(size_t i = 0; i < sizeof(kp_style_packs) / sizeof(kp_style_packs[0]); i++) {
@@ -381,7 +310,7 @@ run_capture_style(const PreviewOptions *opt)
             ok = 0;
     }
     EnsureBuiltInStylePacks();
-    preview_close(&session);
+    PreviewClose(&session);
     return ok ? 0 : 1;
 }
 
@@ -391,15 +320,17 @@ run_reload(const PreviewOptions *opt)
     PreviewSession session = {0};
 
     for(int i = 0; i < opt->count; i++) {
-        if(!preview_open(&session, opt->project))
+        if(!preview_open(&session, opt->project)) {
+            PreviewClose(&session);
             return 1;
+        }
         if(!capture_source(&session, opt->source, "/tmp/kryon-preview-reload.png",
                            opt->width, opt->height)) {
-            preview_close(&session);
+            PreviewClose(&session);
             return 1;
         }
     }
-    preview_close(&session);
+    PreviewClose(&session);
     return 0;
 }
 
@@ -467,10 +398,12 @@ run_capture_all(const PreviewOptions *opt)
 
     if(!mkdir_p(opt->out))
         return 1;
-    if(!preview_open(&session, opt->project))
+    if(!preview_open(&session, opt->project)) {
+        PreviewClose(&session);
         return 1;
+    }
     ok = capture_all_dir(&session, opt, opt->source_dir, &total);
-    preview_close(&session);
+    PreviewClose(&session);
     fprintf(stderr, "kryon-preview: captured=%d failed=%d\n", total, ok ? 0 : 1);
     return ok ? 0 : 1;
 }
@@ -641,10 +574,136 @@ run_cartridge(const PreviewOptions *opt)
     return 1;
 }
 
+static int
+run_watch(const PreviewOptions *opt)
+{
+    PreviewSession session = {0};
+    uint64_t observed = 0;
+    uint64_t attempted = 0;
+    double next_scan = 0;
+    double changed_at = 0;
+    int pending = 1;
+    int frame = 0;
+    int scan_failed = 0;
+    int exit_status = 1;
+
+    SetExitKey(KEY_NULL);
+    SetInspectEnabled(1);
+    SetInspectVisible(0);
+    EnsureBuiltInStylePacks();
+    if(!PreviewSourceStamp(opt->project, &observed)) {
+        fprintf(stderr, "kryon-preview: cannot scan project sources\n");
+        return 1;
+    }
+    attempted = observed;
+    while(!preview_stopping && !WindowShouldClose() && (opt->frames <= 0 || frame < opt->frames)) {
+        double now = GetTime();
+        int width = GetScreenWidth();
+        int height = GetScreenHeight();
+        int status_height = height > 120 ? 48 : height / 3;
+        int content_height = height - status_height;
+        const char *status;
+        char details[2304];
+        InspectSelection selection;
+        int chrome;
+
+        frame++;
+        if(now >= next_scan) {
+            uint64_t current;
+
+            next_scan = now + 0.25;
+            scan_failed = !PreviewSourceStamp(opt->project, &current);
+            if(!scan_failed && current != observed) {
+                observed = current;
+                changed_at = now;
+                pending = 1;
+            }
+        }
+        if(session.build_pid > 0) {
+            int result = PreviewPollBuild(&session);
+
+            if(result != 0) {
+                exit_status = result < 0;
+                if(result > 0) {
+                    if(opt->source == NULL ||
+                       !SetAppScreenBySourcePath(session.host, opt->source))
+                        SetAppScreen(session.host, 0);
+                    if(opt->style != NULL)
+                        apply_style_pack(opt->style);
+                    if(opt->theme != NULL)
+                        SetStyleTheme(opt->theme);
+                    fprintf(stderr, "kryon-preview: loaded generation %lu\n", session.generation);
+                }
+                if(observed != attempted)
+                    pending = 1;
+            }
+        }
+        if(pending && !scan_failed && session.build_pid == 0 && now - changed_at >= 0.15) {
+            pending = 0;
+            attempted = observed;
+            if(PreviewStartBuild(&session, opt->project) < 0)
+                exit_status = 1;
+        }
+        BeginDrawing();
+        ClearBackground(GetThemeBackground());
+        BeginInterfaceFrame(width, height, 1.0f);
+        if(session.host != NULL) {
+            ResizeAppHost(session.host, width, content_height);
+            SetAppHostFocused(session.host, IsWindowFocused());
+            BeginScissorMode(0, 0, width, content_height);
+            DrawAppScreen(session.host, (Rectangle){0, 0, (float)width, (float)content_height});
+            EndScissorMode();
+        }
+        if(scan_failed)
+            status = "Cannot scan project sources";
+        else if(session.build_pid > 0)
+            status = "Building...";
+        else if(session.diagnostic_count > 0) {
+            const PreviewDiagnostic *diagnostic = &session.diagnostics[0];
+
+            snprintf(details, sizeof(details), "%s:%d:%d [%s] %s",
+                     diagnostic->path, diagnostic->line, diagnostic->column,
+                     diagnostic->code, diagnostic->message);
+            status = details;
+        } else if(session.error[0] != '\0')
+            status = session.error;
+        else
+            status = opt->source != NULL ? opt->source : opt->project;
+        selection = InspectGetSelection();
+        if(selection.valid && !scan_failed && session.build_pid == 0 &&
+           session.diagnostic_count == 0 && session.error[0] == '\0') {
+            snprintf(details, sizeof(details), "%s %s | %s:%d | %.0f,%.0f %.0fx%.0f | focus %d",
+                     selection.kind, selection.id, selection.source_path, selection.source_line,
+                     selection.bounds.x, selection.bounds.y, selection.bounds.width,
+                     selection.bounds.height, GetFocus());
+            status = details;
+        }
+        chrome = PushInspectChrome(1);
+        Text((TextProps){.text = status, .font = 14,
+                        .bounds = {8, (float)content_height + 4, (float)width - 16,
+                                   (float)status_height - 8}});
+        PopInspectChrome(chrome);
+        EndInterfaceFrame();
+        EndDrawing();
+    }
+    if(opt->out != NULL && frame > 0) {
+        Image image = LoadImageFromScreen();
+
+        if(image.data == NULL || !ExportImage(image, opt->out)) {
+            fprintf(stderr, "kryon-preview: cannot capture window to %s\n", opt->out);
+            exit_status = 1;
+        }
+        UnloadImage(image);
+    }
+    PreviewClose(&session);
+    return exit_status;
+}
+
 int
 main(int argc, char **argv)
 {
     PreviewOptions opt;
+    char title[160];
     int rc;
 
     if(!parse_args(argc, argv, &opt)) {
@@ -652,10 +711,19 @@ main(int argc, char **argv)
         return 2;
     }
     SetTraceLogLevel(LOG_WARNING);
-    SetConfigFlags(FLAG_WINDOW_HIDDEN);
-    InitWindow(opt.width, opt.height, "Kryon Preview");
+    setenv("KRYON_DIAGNOSTICS", "json", 1);
+    if(strcmp(opt.command, "watch") == 0 && opt.out != NULL)
+        setenv("KRYON_SHOT_ARM", "1", 1);
+    SetConfigFlags(strcmp(opt.command, "watch") == 0 ? FLAG_WINDOW_RESIZABLE : FLAG_WINDOW_HIDDEN);
+    snprintf(title, sizeof(title), "Kryon Preview [%ld]", (long)getpid());
+    InitWindow(opt.width, opt.height, title);
+    if(strcmp(opt.command, "watch") == 0)
+        SetWindowMinSize(240, 160);
     SetTargetFPS(60);
     InitInterface(opt.width, opt.height, 1.0f);
+    /* The native window initializes its own termination handlers. */
+    signal(SIGINT, stop_preview);
+    signal(SIGTERM, stop_preview);
     SetCurrentTheme(THEME_MONO, 0);
     setenv("KRYON_INSPECT", "1", 1);
     if(opt.theme != NULL && !SetStyleTheme(opt.theme)) {
@@ -664,7 +732,9 @@ main(int argc, char **argv)
     }
     if(opt.style != NULL && !apply_style_pack(opt.style))
         return 1;
-    if(strcmp(opt.command, "capture") == 0)
+    if(strcmp(opt.command, "watch") == 0)
+        rc = run_watch(&opt);
+    else if(strcmp(opt.command, "capture") == 0)
         rc = run_capture(&opt);
     else if(strcmp(opt.command, "reload") == 0)
         rc = run_reload(&opt);

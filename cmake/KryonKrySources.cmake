@@ -22,16 +22,15 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
         message(FATAL_ERROR "kryon_generate_kry_sources requires SOURCES")
     endif()
 
-    file(GLOB KRYGEN_K2C_SOURCES CONFIGURE_DEPENDS "${KRYGEN_KRYON_DIR}/cmd/k2c/*.c")
+    file(GLOB KRYGEN_K2C_SOURCES CONFIGURE_DEPENDS
+        "${KRYGEN_KRYON_DIR}/cmd/k2c/*.c"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/*.c")
     list(APPEND KRYGEN_K2C_SOURCES
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_parse.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_text.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_token.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_expr.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_cleanup.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_check.c"
-        "${KRYGEN_KRYON_DIR}/cmd/kir/kir_emit.c")
+        "${KRYGEN_KRYON_DIR}/src/kry_std/kry_json.c")
+    file(GLOB KRYGEN_K2C_HEADERS CONFIGURE_DEPENDS
+        "${KRYGEN_KRYON_DIR}/cmd/k2c/*.h"
+        "${KRYGEN_KRYON_DIR}/cmd/kir/*.h")
+    list(APPEND KRYGEN_K2C_HEADERS "${KRYGEN_KRYON_DIR}/include/kry_json.h")
     if(KRYON_HOST_CC)
         set(KRYGEN_HOST_CC "${KRYON_HOST_CC}")
     else()
@@ -96,11 +95,12 @@ function(kryon_generate_kry_sources out_sources out_include_dir)
         OUTPUT "${KRYGEN_K2C}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/kryon-host-tools"
         COMMAND "${KRYGEN_HOST_CC}" -Wall -Wextra -O2
+            -I${KRYGEN_KRYON_DIR}/include
             -I${KRYGEN_KRYON_DIR}/cmd/kir
             -I${KRYGEN_KRYON_DIR}/cmd/k2c
             -o "${KRYGEN_K2C}"
             ${KRYGEN_K2C_SOURCES}
-        DEPENDS ${KRYGEN_K2C_SOURCES}
+        DEPENDS ${KRYGEN_K2C_SOURCES} ${KRYGEN_K2C_HEADERS}
         VERBATIM
     )
 

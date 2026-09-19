@@ -724,6 +724,24 @@ Kryon capabilities, not downstream product screens. Exact rendering and parity
 fixtures should be generic enough that they can run in any app-independent
 Kryon build.
 
+## Live Preview
+
+`cmd/kryon-preview/session.c` owns build processes, private session directories,
+diagnostics, and loaded app hosts. The watch loop polls builds without blocking
+rendering. A candidate is copied to a unique library path and must load, expose
+both host lifecycle symbols, accept the ABI, and provide a draw callback before
+the old host is destroyed. Failures preserve the old host; successful swaps do
+not migrate application state. Closing cancels the build process group and
+removes session files. Arbitrary side effects inside an application's host
+constructor are outside this replacement guarantee.
+
+`watch.c` fingerprints project source metadata, ignoring generated and vendored
+trees. `cmd/kir/kir_diagnostic.c` owns shared frontend diagnostic formatting;
+compiler drivers select text or JSON Lines, and preview reads the structured
+records without parsing human error strings. Session and diagnostic regression
+tests run in `make fast-test` and `make test`. `make preview-watch-test` uses
+Xvfb to exercise a real generated app through a syntax failure and recovery.
+
 ## Tests And Matrices
 
 Kryon uses several test layers:
@@ -736,6 +754,12 @@ Kryon uses several test layers:
 - generated-file checks for docs, compatibility headers, icons, and matrices
 - parser, runtime, sync, update, platform, and widget tests
 - conformance and visual matrix checks across renderers and runtime paths
+
+`make generated-runtime-parity-test` executes generated C and Go fixtures with
+interaction assertions and final-state comparisons. It runs in `make test`,
+separately from the API inventory check `make runtime-parity-check`. Context
+menu activation and outside-release dismissal in Go use the shared popup/menu
+policies, including clipping, disabled content, and popup capture decisions.
 
 Use `make preflight` before committing focused Kryon changes. Use `make test`
 for the broader local regression suite. Use `make test-asan` or

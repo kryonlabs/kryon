@@ -6,6 +6,7 @@
  * match them; lenient builds count violations silently, like kir_check.c.
  */
 #include "kir_laws.h"
+#include "kir_diagnostic.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +22,7 @@ violation(LawCheck *c, KirSourceSpan span, const char *detail)
 {
 	c->violations++;
 	if(!c->strict) return;
-	fprintf(stderr, "%s:%d:%d: law %s: %s\n", span.path, span.line,
-	        span.column, c->current, detail);
+	KirDiagnostic(span, c->current, "law %s: %s", c->current, detail);
 }
 
 /* Same blocked set as tools/check-kryon-laws-api.sh: low-level texture

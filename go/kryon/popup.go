@@ -16,12 +16,13 @@ func (r *runtime) PopupScope(p PopupProps) bool {
 	if !PopupPolicy_PopupCanBegin(decision, p.ID, p.Bounds, p.Trigger, p.Open != nil) {
 		return false
 	}
-	if decision.Context && !p.Disabled && r.mouseReleased[MouseButtonRight] {
-		if r.pointerCanReach(p.Trigger) {
-			openResult := PopupPolicy_PopupOpenFor(*p.Open, true, false, p.Open != nil)
-			*p.Open = openResult.Open
-			r.mouseReleased[MouseButtonRight] = false
-		}
+	activation := PopupPolicy_PopupContextActivationFor(decision, r.scrollClip(p.Trigger),
+		r.mousePos, p.Disabled || r.contentDisabled(), r.popupCaptures(r.mousePos.X, r.mousePos.Y),
+		r.mouseReleased[MouseButtonRight])
+	if activation.Open {
+		openResult := PopupPolicy_PopupOpenFor(*p.Open, true, false, p.Open != nil)
+		*p.Open = openResult.Open
+		r.mouseReleased[MouseButtonRight] = false
 	}
 	if decision.Tooltip {
 		if p.Disabled || !pointInRect(r.mousePos.X, r.mousePos.Y, p.Trigger) {

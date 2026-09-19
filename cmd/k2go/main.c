@@ -10,6 +10,7 @@
 #include "kir_parse.h"
 #include "kir_check.h"
 #include "kir_laws.h"
+#include "kir_diagnostic.h"
 #include "k2go_lower.h"
 
 #include <stdio.h>
@@ -21,7 +22,7 @@ usage(void)
 {
     fprintf(stderr,
             "usage: k2go [--strict] [--no-main] [--runtime-implementation] [--pkg NAME] "
-            "--root DIR -o DIR file.kry ...\n");
+            "[--diagnostics=text|json] --root DIR -o DIR file.kry ...\n");
 }
 
 int
@@ -41,7 +42,12 @@ main(int argc, char **argv)
     int first_file = 0;
 
     for(i = 1; i < argc; i++) {
-        if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
+        if(strncmp(argv[i], "--diagnostics=", 14) == 0) {
+            if(!KirSetDiagnosticFormat(argv[i] + 14)) {
+                usage();
+                return 1;
+            }
+        } else if(strcmp(argv[i], "--root") == 0 && i + 1 < argc) {
             root = argv[++i];
         } else if(strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             out_dir = argv[++i];

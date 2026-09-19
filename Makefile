@@ -547,7 +547,7 @@ docs-site:
 .PHONY: language-test
 language-test: $(K2C) $(K2CPP) $(K2GO)
 	@mkdir -p $(BUILD_DIR)/tests
-	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c $(KIR_SRCS) -o $(BUILD_DIR)/tests/kir_expression_test
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir tests/kir_expression_test.c $(KIR_SRCS) -o $(BUILD_DIR)/tests/kir_expression_test
 	$(BUILD_DIR)/tests/kir_expression_test
 	python3 tests/language_semantics_test.py $(BUILD_DIR)
 	python3 tests/runtime_numbers_test.py $(BUILD_DIR)
@@ -589,8 +589,9 @@ downstream-matrix-check:
 k2js-runtime-snapshot-test:
 	@echo "k2js runtime snapshot test is disabled while the JS/web target is paused"
 
-generated-runtime-parity-test:
-	@echo "generated JS runtime parity is disabled while the JS/web target is paused"
+generated-runtime-parity-test: generate-native-runtime $(K2C) $(K2GO) $(LIB) $(KRYON_BACKEND_LIBS)
+	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" \
+		"$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
 .PHONY: keyboard-policy-test
 keyboard-policy-test: $(K2JS) menu-policy-test collapsible-policy-test text-input-policy-test
@@ -1209,17 +1210,17 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	rm -f $(BUILD_DIR)/.backend-*
 	touch $@
 
-KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_laws.c cmd/kir/kir_emit.c cmd/kir/kir_style_imports.c
+KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_laws.c cmd/kir/kir_emit.c cmd/kir/kir_style_imports.c cmd/kir/kir_diagnostic.c src/kry_std/kry_json.c
 cmd/kir/runtime_declarations.generated.h: scripts/embed-runtime-declarations.py $(wildcard runtime/*_props.kry)
 	python3 scripts/embed-runtime-declarations.py $@
 
-KIR_HDRS := cmd/kir/runtime_declarations.generated.h cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_laws.h cmd/kir/kir_emit.h cmd/kir/kir_style_imports.h
+KIR_HDRS := cmd/kir/runtime_declarations.generated.h cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_laws.h cmd/kir/kir_emit.h cmd/kir/kir_style_imports.h cmd/kir/kir_diagnostic.h include/kry_json.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
 
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2C_SRCS)
 
 # Compile the complete shared module set once, including newly added widgets.
 # Grouped outputs also regenerate correctly when one generated file is missing.
@@ -1251,10 +1252,12 @@ $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h
 
-.PHONY: generate-runtime generate-button-policy
+.PHONY: generate-runtime generate-native-runtime generate-button-policy
 generate-button-policy: generate-runtime
 RUNTIME_PROPS_H := $(patsubst runtime/%.kry,include/ui_%.generated.h,$(wildcard runtime/*_props.kry))
-generate-runtime: generate-web-runtime $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js web/text_input.js web/style_sheet.js $(RUNTIME_PROPS_H)
+generate-runtime: generate-native-runtime generate-web-runtime web/instance.js web/control_props.js web/text_input.js web/style_sheet.js
+
+generate-native-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) $(RUNTIME_PROPS_H)
 	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
 
@@ -1278,19 +1281,19 @@ K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
 K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)
 
 $(K2CPP): $(K2CPP_SRCS) $(K2CPP_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2CPP_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2CPP_SRCS)
 
 K2GO_SRCS := $(sort $(wildcard cmd/k2go/*.c)) $(KIR_SRCS)
 $(K2GO): $(K2GO_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2GO_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2GO_SRCS)
 
 K2JS_SRCS := $(sort $(wildcard cmd/k2js/*.c)) $(KIR_SRCS)
 $(K2JS): $(K2JS_SRCS) cmd/k2js/k2js_lower.h $(KIR_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Icmd/k2js -Icmd/kir -o $@ $(K2JS_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/k2js -Icmd/kir -o $@ $(K2JS_SRCS)
 
 K2KIR_SRCS := $(sort $(wildcard cmd/k2kir/*.c)) $(KIR_SRCS)
 $(K2KIR): $(K2KIR_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2KIR_SRCS)
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir -o $@ $(K2KIR_SRCS)
 
 K2B_SRCS := $(sort $(wildcard cmd/k2b/*.c)) $(KIR_SRCS)
 $(K2B): $(K2B_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
@@ -1305,7 +1308,16 @@ PREVIEW_HDRS := $(sort $(wildcard cmd/kryon-preview/*.h))
 preview-session-test:
 	python3 tests/preview_session_test.py
 
-fast-test: preview-session-test
+.PHONY: compiler-diagnostics-test
+compiler-diagnostics-test: $(K2C) $(K2CPP) $(K2GO) $(K2KIR)
+	python3 tests/compiler_diagnostics_test.py $(BUILD_DIR)/bin
+
+fast-test: preview-session-test compiler-diagnostics-test
+test: preview-session-test compiler-diagnostics-test generated-runtime-parity-test
+
+.PHONY: preview-watch-test
+preview-watch-test: $(KRYON_PREVIEW) $(K2C)
+	xvfb-run -a python3 tests/preview_watch_test.py $(KRYON_PREVIEW)
 
 $(KRYON_PREVIEW): $(PREVIEW_SRCS) $(PREVIEW_HDRS) $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(PREVIEW_SRCS) \
@@ -1750,9 +1762,9 @@ $(ANIMATION_TEST): tests/animation_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_P
 		$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(KIR_TEST): tests/kir_test.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c cmd/kir/kir.h | $(BUILD_DIR)
+$(KIR_TEST): tests/kir_test.c $(KIR_SRCS) $(KIR_HDRS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -Icmd/kir tests/kir_test.c cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c -o $@
+	$(CC) $(CFLAGS) -Iinclude -Icmd/kir tests/kir_test.c $(KIR_SRCS) -o $@
 
 $(K2KIR_TEST): tests/k2kir_test.sh $(K2KIR) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
