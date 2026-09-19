@@ -194,7 +194,7 @@ between them, and no visual fallback hidden inside widgets.
 - Remove every raw visual value from app-facing widget props.
 - Remove visual defaults from widget implementations.
 - Make style sheets the only app-facing visual styling system.
-- Ship Material as the default style, with TK and Lightfield as optional packs.
+- Ship Material as the default style, with Classic and Lightfield as optional packs.
 - Let apps import several style packs and switch between them at runtime with
   a standard style picker/dropdown.
 - Keep `.kry` structural and readable.
@@ -273,7 +273,7 @@ Kryon can ship optional packs:
 |---|---|
 | `<reset>` | minimum readable/debug affordances and normalized inherited tokens |
 | `<material>` | default attached app pack: clean Material-like controls, restrained surfaces, flat/cheap paint |
-| `<tk>` | toolkit-native pack for dense desktop utilities and easy picker previews |
+| `<classic>` | toolkit-native pack for dense desktop utilities and easy picker previews |
 | `<lightfield>` | premium Lightfield/Button/Dropdown visual language, including glow-capable treatment, opt-in because it is more performance intensive |
 | `<high-contrast>` | accessibility-oriented overlay or full pack |
 | `<terminal>` | termi-focused mapping for cell backends |
@@ -285,9 +285,9 @@ embedded `.kss` pack sources only when needed and preserves any active app
 selection. If nothing is active, Material becomes active.
 
 For host code that wants to force the shipped catalog back to its baseline,
-`RegisterBuiltInStylePacks()` loads Material, TK, and Lightfield
+`RegisterBuiltInStylePacks()` loads Material, Classic, and Lightfield
 as ordinary `StylePack` values and selects Material. Apps can immediately
-switch to TK, Lightfield, or a product pack through
+switch to Classic, Lightfield, or a product pack through
 `StylePicker`; the picker lazily ensures the built-in catalog when the registry
 is empty. Lightfield must never be the automatic default: it is beautiful, but
 its translucent layered treatment is a premium opt-in rendering path, not the
@@ -307,7 +307,7 @@ labels, lavender active tabs/sliders/toggles, and no glow, blur, or Lightfield
 volume. It should feel native, calm, and cheap to draw. This is the pack new
 Kryon apps attach on startup.
 
-TK should be equally real, not a placeholder: compact spacing, square-ish
+Classic should be equally real, not a placeholder: compact spacing, square-ish
 controls, light desktop colors, hard borders, and dense utility ergonomics so
 an app can preview and choose it immediately.
 
@@ -376,7 +376,7 @@ app state or host preferences:
 
 ```kry
 #style <material> as material
-#style <tk> as tk
+#style <classic> as classic
 #style <lightfield> as lightfield
 #style "brand.kss" as brand
 
@@ -384,7 +384,7 @@ App {
     SettingsPanel {
         StylePicker theme_style {
             value = active_style
-            options = [material, tk, lightfield, brand]
+            options = [material, classic, lightfield, brand]
         }
     }
 
@@ -433,7 +433,7 @@ The active visual state is:
 style pack + theme overlay + environment overlay + scoped rules
 ```
 
-Material supplies the default look. TK and Lightfield are selectable alternatives.
+Material supplies the default look. Classic and Lightfield are selectable alternatives.
 Color variations belong to theme overlays within each style; widget behavior
 remains shared and does not contain hidden styling defaults.
 
@@ -1080,7 +1080,7 @@ Unsupported visual properties degrade; they do not fork style resolution.
 
 - Add `<reset>` for zero-opinion readability/debug affordances.
 - Add `<material>` as the default template-attached app pack.
-- Add `<tk>` as the dense toolkit-native picker option.
+- Add `<classic>` as the dense toolkit-native picker option.
 - Move the current approved Lightfield/Button/Dropdown look into
   `<lightfield>` as an opt-in premium pack, with glow as a Lightfield
   treatment rather than a separate stylesheet.
@@ -1125,7 +1125,7 @@ Unsupported visual properties degrade; they do not fork style resolution.
   `<material>` only when no pack is active.
 - Project templates explicitly include `<material>` so generated source
   still shows the baseline style choice.
-- Alternative styles remain available through explicit `<tk>` and
+- Alternative styles remain available through explicit `<classic>` and
   `<lightfield>` imports.
 - `KRYON_STYLE=none` becomes a required test mode for behavior/layout.
 - Leak scanners flip to zero exemptions.
@@ -1155,7 +1155,7 @@ The plan is complete when:
 - every app-facing widget can render in `KRYON_STYLE=none`;
 - legacy theme files, theme import/export, and theme-style compatibility modes
   are gone from the app-facing styling surface;
-- `<material>`, `<tk>`, and
+- `<material>`, `<classic>`, and
   `<lightfield>` are ordinary style packs, not hidden runtime modes;
 - apps can register multiple packs and expose a `StylePicker` dropdown to
   switch between them quickly;

@@ -642,7 +642,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	}
 	packIDs := []string{
 		"material",
-		"tk",
+		"classic",
 		"lightfield",
 	}
 
@@ -652,7 +652,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	if GetActiveStylePackID() != "material" {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
-	if FindStylePack("tk") == nil ||
+	if FindStylePack("classic") == nil ||
 		FindStylePack("lightfield") == nil {
 		t.Fatalf("missing built-ins: %#v", GetStylePackOptions())
 	}

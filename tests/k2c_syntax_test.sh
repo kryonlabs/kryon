@@ -30,7 +30,7 @@ EOF
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
-#style <tk> as tk
+#style <classic> as classic
 #style "brand.kss" as brand
 
 # Anonymous enums are declarations, not top-level `#` comments.
@@ -205,7 +205,7 @@ grep -Fq 'SetThemeSource(THEME_SOURCE_APP);' "$project"
 grep -Fq 'SetThemeMode(THEME_MODE_LIGHT);' "$project"
 grep -Fq 'SetCurrentTheme(THEME_OCEAN, 0);' "$project"
 grep -Fq 'EnsureBuiltInStylePacks();' "$project"
-grep -Fq 'SetActiveStylePack("tk");' "$project"
+grep -Fq 'SetActiveStylePack("classic");' "$project"
 grep -Fq 'RegisterStylePackSource("@pack brand;\nButton { background: #123456; foreground: #ffffff; }\n", "brand", "")' "$project"
 grep -Fq 'SetActiveStylePack("brand");' "$project"
 

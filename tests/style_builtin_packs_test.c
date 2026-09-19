@@ -279,7 +279,7 @@ main(void)
     };
     const char *pack_ids[] = {
         "material",
-        "tk",
+        "classic",
         "lightfield",
     };
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -298,7 +298,7 @@ main(void)
     assert(GetStylePackCount() == 3);
     assert(strcmp(GetActiveStylePackId(), "material") == 0);
     assert(FindStylePack("material") != NULL);
-    assert(FindStylePack("tk") != NULL);
+    assert(FindStylePack("classic") != NULL);
     assert(FindStylePack("lightfield") != NULL);
     assert(FindStylePack("glow") == NULL);
 
@@ -342,7 +342,7 @@ main(void)
     assert(resolved.material == MaterialLightfield);
     assert(resolved.background_end == 0x222936eeu);
 
-    assert(SetActiveStylePack("tk"));
+    assert(SetActiveStylePack("classic"));
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0x2f6bffffu);
     assert(resolved.radius == 3.0f);

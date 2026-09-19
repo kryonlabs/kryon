@@ -284,7 +284,7 @@ main(void)
     assert(strstr(diagnostic, "unknown token group") != NULL);
 
     assert_pack_parses("styles/kryon/material.kss", "material");
-    assert_pack_parses("styles/kryon/tk.kss", "tk");
+    assert_pack_parses("styles/kryon/classic.kss", "classic");
     assert_pack_parses("styles/kryon/lightfield.kss", "lightfield");
 
     return 0;

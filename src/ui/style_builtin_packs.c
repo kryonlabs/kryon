@@ -25,10 +25,10 @@ static BuiltInStylePack builtin_style_packs[] = {
         .path = "styles/kryon/material.kss",
     },
     {
-        .id = "tk",
-        .label = "TK",
+        .id = "classic",
+        .label = "Classic",
         .description = "Dense toolkit controls for desktop utilities",
-        .path = "styles/kryon/tk.kss",
+        .path = "styles/kryon/classic.kss",
     },
     {
         .id = "lightfield",

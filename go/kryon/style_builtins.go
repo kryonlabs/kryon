@@ -2061,7 +2061,7 @@ TextArea {
 }
 `
 
-const tkStyleSource = `@pack tk;
+const classicStyleSource = `@pack classic;
 
 tokens {
   color {
@@ -6200,7 +6200,7 @@ func RegisterBuiltInStylePacks() bool {
 		id, label, description, source string
 	}{
 		{"material", "Material", "Clean Material-like controls with flat paint", materialStyleSource},
-		{"tk", "TK", "Dense toolkit controls for desktop utilities", tkStyleSource},
+		{"classic", "Classic", "Dense toolkit controls for desktop utilities", classicStyleSource},
 		{"lightfield", "Lightfield", "Premium translucent controls with glow-capable treatment", lightfieldStyleSource},
 	} {
 		if !RegisterStylePackSource(pack.source, pack.label, pack.description) {

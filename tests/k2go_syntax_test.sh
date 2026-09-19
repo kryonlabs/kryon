@@ -39,7 +39,7 @@ EOF
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 #import "src/helper"
-#style <tk> as tk
+#style <classic> as classic
 #style "brand.kss" as brand
 
 ANSWER :: #run 21 * 2
@@ -466,7 +466,7 @@ grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q '_ValidRuntime = kr.Open(kr.AppConfig{' "$out"
 grep -q 'kr.EnsureBuiltInStylePacks()' "$out"
-grep -q 'kr.SetActiveStylePack("tk")' "$out"
+grep -q 'kr.SetActiveStylePack("classic")' "$out"
 grep -q 'kr.RegisterStylePackSource("@pack brand;\\nButton { background: #123456; foreground: #ffffff; }\\n", "brand", "")' "$out"
 grep -q 'kr.SetActiveStylePack("brand")' "$out"
 grep -q '_ValidRuntime.BeginFrame()' "$out"

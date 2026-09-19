@@ -918,7 +918,7 @@ Color GetThemeLink(void);
 
 #### Theme Metrics
 
-The shipped KSS style packs are Material (the default), TK, and Lightfield.
+The shipped KSS style packs are Material (the default), Classic, and Lightfield.
 Style selection belongs in the Appearance dropdown. Color variations use theme
 overlays within the selected pack.
 

@@ -43,7 +43,7 @@ func TestStyleThemeSourceRegistry(t *testing.T) {
 		if palette.Sheet[0].Style.Background != 0x00ff00ff {
 			t.Fatal("theme switch changed explicit color substitutions")
 		}
-		for _, id := range []string{"material", "tk", "lightfield"} {
+		for _, id := range []string{"material", "classic", "lightfield"} {
 			if pack := FindStylePack(id); pack == nil || len(pack.Sheet) == 0 {
 				t.Fatalf("lost built-in %s", id)
 			}

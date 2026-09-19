@@ -6,8 +6,8 @@ from pathlib import Path
 PACKS = [
     ("material", "material", "Material",
      "Clean Material-like controls with flat paint", "styles/kryon/material.kss"),
-    ("tk", "tk", "TK",
-     "Dense toolkit controls for desktop utilities", "styles/kryon/tk.kss"),
+    ("classic", "classic", "Classic",
+     "Dense toolkit controls for desktop utilities", "styles/kryon/classic.kss"),
     ("lightfield", "lightfield", "Lightfield",
      "Premium translucent controls with glow-capable treatment", "styles/kryon/lightfield.kss"),
 ]

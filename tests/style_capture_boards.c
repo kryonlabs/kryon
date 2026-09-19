@@ -15,7 +15,7 @@
    board renders the same interaction-free specimen. */
 
 static const char *const board_packs[] = {
-    "material", "tk", "lightfield", "none",
+    "material", "classic", "lightfield", "none",
 };
 
 static void

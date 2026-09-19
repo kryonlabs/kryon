@@ -22,7 +22,7 @@ int
 main(void)
 {
     assert_style_asset("styles/kryon/material.kss", "@pack material");
-    assert_style_asset("./styles/kryon/tk.kss", "@pack tk");
+    assert_style_asset("./styles/kryon/classic.kss", "@pack classic");
     assert_style_asset("/styles/kryon/lightfield.kss",
                        "@pack lightfield");
     return 0;

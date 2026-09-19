@@ -43,7 +43,7 @@ usage(void)
             "  kryon-preview capture-style --project ROOT --source REL --out-dir DIR [--width W --height H]\n"
             "  kryon-preview cartridge --source FILE.kry|FILE.krb --output PNG [--project ROOT] [--width W --height H]\n"
             "\n"
-            "  --style PACK   run one command with a built-in style pack (material, tk,\n"
+            "  --style PACK   run one command with a built-in style pack (material, classic,\n"
             "                 lightfield) or 'none' for no-style mode\n"
             "  --theme NAME   re-resolve packs under a theme overlay (light, dark, or none)\n");
 }
@@ -328,7 +328,7 @@ run_capture(const PreviewOptions *opt)
 }
 
 static const char *const kp_style_packs[] = {
-    "material", "tk", "lightfield", "none",
+    "material", "classic", "lightfield", "none",
 };
 
 static void png_name(char *dst, size_t dst_size, const char *rel);
