@@ -19,8 +19,8 @@ function temporary(run) {
     });
 }
 
-function run(command, args) {
-    const result = spawnSync(command, args, { encoding: 'utf8', timeout: 30000 });
+function run(command, args, options = {}) {
+    const result = spawnSync(command, args, { encoding: 'utf8', timeout: 30000, ...options });
     assert.ifError(result.error);
     assert.equal(result.status, 0, `${command}: ${result.stdout}\n${result.stderr}`);
     return result;
@@ -132,4 +132,97 @@ test('the native comparison rejects inert and reversed generated implementations
             assert.match(result.stderr, /focus\.tab\.direction/);
         });
     }
+});
+
+test('an omitted domain case is rejected by the checker', async () => {
+    await temporary(async directory => {
+        fs.cpSync(packageDir, directory, { recursive: true });
+        const file = path.join(directory, 'main.bend');
+        const source = fs.readFileSync(file, 'utf8');
+        // Omit the shift_down True case: the match is no longer exhaustive.
+        const mutated = source.replace('        case True{}:\n          Backward{}\n', '');
+        assert.notEqual(mutated, source, 'mutation must apply');
+        fs.writeFileSync(file, mutated);
+        await assert.rejects(checkLaws(path.join(directory, 'PROOF.bend')));
+    });
+});
+
+test('the checked table agrees with generated C++ and Go', async () => {
+    const rows = nativeRows(await checkLaws(path.join(packageDir, 'PROOF.bend')));
+    const binDir = path.resolve(generated, '..', '..');
+    const runtimeKry = fs.readdirSync(path.join(root, 'runtime'))
+        .filter(f => f.endsWith('.kry'))
+        .map(f => path.join(root, 'runtime', f))
+        .sort();
+    await temporary(async directory => {
+        // C++ leg: lower the whole runtime with k2cpp, link only focus.cpp.
+        const cppOut = path.join(directory, 'cpp');
+        run(path.join(binDir, 'bin', 'k2cpp'),
+            ['--strict', '--no-main', '--root', root, '-o', cppOut, ...runtimeKry],
+            { timeout: 120000 });
+        const cppDriver = path.join(directory, 'driver.cpp');
+        fs.writeFileSync(cppDriver, `#include "runtime/focus.hpp"
+#include <cstdio>
+int main(void) {
+    const int cases[][3] = {
+${rows.map(row => `        {${row.join(', ')}},`).join('\n')}
+    };
+    for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        int actual = FocusTabDirectionFor(cases[i][0] != 0, cases[i][1] != 0);
+        if (actual != cases[i][2]) {
+            std::fprintf(stderr, "focus.tab.direction cpp: case %u: got %d, expected %d\\n",
+                    i, actual, cases[i][2]);
+            return 1;
+        }
+    }
+    return 0;
+}
+`);
+        const cppCheck = path.join(directory, 'check-cpp');
+        run(process.env.CXX || 'c++', ['-std=c++11', '-O1', '-Wall', '-Werror',
+            '-I' + cppOut, '-I' + path.join(root, 'include'), cppDriver,
+            path.join(cppOut, 'runtime', 'focus.cpp'), '-o', cppCheck], { timeout: 120000 });
+        run(cppCheck, []);
+
+        // Go leg: compare against the Go runtime package (go/kryon), resolved
+        // through a local module replace (no network). Freshness of go/kryon
+        // against runtime/*.kry is gated separately by RUNTIME_GO and
+        // go-runtime-test; the committed package is the production artifact.
+        const goOut = path.join(directory, 'go');
+        fs.mkdirSync(goOut, { recursive: true });
+        fs.writeFileSync(path.join(goOut, 'go.mod'), `module check
+
+go 1.25
+
+require github.com/waozixyz/kryon/go/kryon v0.0.0-00010101000000-000000000000
+
+replace github.com/waozixyz/kryon/go/kryon => ${root}/go/kryon
+`);
+        fs.writeFileSync(path.join(goOut, 'main.go'), `package main
+
+import (
+    "os"
+
+    kryon "github.com/waozixyz/kryon/go/kryon"
+)
+
+func main() {
+    cases := [][3]int{
+${rows.map(row => `        {${row.join(', ')}},`).join('\n')}
+    }
+    for _, c := range cases {
+        if actual := kryon.Focus_FocusTabDirectionFor(c[0] != 0, c[1] != 0); int(actual) != c[2] {
+            os.Stderr.WriteString("focus.tab.direction go: case mismatch\\n")
+            os.Exit(1)
+        }
+    }
+}
+`);
+        const goCheck = path.join(directory, 'check-go');
+        run('go', ['build', '-buildvcs=false', '-o', goCheck, '.'], {
+            cwd: goOut, timeout: 180000,
+            env: { ...process.env, GO111MODULE: 'on', GOFLAGS: '-mod=mod' },
+        });
+        run(goCheck, []);
+    });
 });

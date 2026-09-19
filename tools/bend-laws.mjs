@@ -137,11 +137,38 @@ export async function checkLaws(proofFile) {
     return { laws, files, table, version: pin.version, commit: pin.commit };
 }
 
+// Bounded checker runner (law plan phase 2): proof checking happens in a
+// separate process with a wall-clock timeout and a memory cap, so a stalled
+// or runaway check fails with a diagnostic instead of hanging a gate.
+import { spawnSync } from 'node:child_process';
+export async function checkLawsProcess(proofFile, opts = {}) {
+    const timeoutMs = opts.timeoutMs ?? 120000;
+    const maxOldSpaceMb = opts.maxOldSpaceMb ?? 1024;
+    const args = [`--max-old-space-size=${maxOldSpaceMb}`,
+        new URL('bend-laws.mjs', import.meta.url).pathname, '--json', proofFile];
+    const result = spawnSync(process.execPath, args, { encoding: 'utf8', timeout: timeoutMs });
+    if (result.error) {
+        const reason = result.error.code === 'ETIMEDOUT'
+            ? `checker exceeded ${timeoutMs}ms wall-clock limit`
+            : `checker could not run: ${result.error.message}`;
+        throw new Error(`proof.bounded: ${reason}`);
+    }
+    if (result.status !== 0) {
+        throw new Error(`proof.bounded: checker rejected the package:\n${result.stderr.trim()}`);
+    }
+    return JSON.parse(result.stdout);
+}
+
 if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
     try {
-        requireLaw(process.argv.length === 3, 'usage: node tools/bend-laws.mjs path/to/PROOF.bend');
-        const proof = await checkLaws(process.argv[2]);
-        console.log(`Bend ${proof.version}: ${proof.laws.length} laws proved; no holes or open declarations`);
+        requireLaw(process.argv.length === 3 || (process.argv.length === 4 && process.argv[2] === '--json'),
+            'usage: node tools/bend-laws.mjs [--json] path/to/PROOF.bend');
+        const proof = await checkLaws(process.argv[process.argv.length - 1]);
+        if (process.argv.includes('--json')) {
+            console.log(JSON.stringify({ laws: proof.laws, files: proof.files, version: proof.version, commit: proof.commit }));
+        } else {
+            console.log(`Bend ${proof.version}: ${proof.laws.length} laws proved; no holes or open declarations`);
+        }
     } catch (error) {
         console.error(error.message);
         process.exitCode = 1;
