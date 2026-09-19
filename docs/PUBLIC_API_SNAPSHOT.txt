@@ -1314,6 +1314,7 @@ include/theme_meta.h function GetThemeLabel
 include/theme_meta.h function GetThemeMeta
 include/theme_meta.h function NormalizeTheme
 include/theme_meta.h macro THEME_COUNT
+include/ui_accessibility_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_button_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_canvas_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_card_props.generated.h macro KIR_STRING_VALUE_DEFINED
@@ -1879,6 +1880,7 @@ include/ui_tree.h function PanedView
 include/ui_tree.h function Paragraph
 include/ui_tree.h function Plot
 include/ui_tree.h function Progress
+include/ui_tree.h function QueueAccessibilityAction
 include/ui_tree.h function Radio
 include/ui_tree.h function ReconcileTree
 include/ui_tree.h function Ring

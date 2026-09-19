@@ -5650,11 +5650,236 @@ test_accessibility_snapshot(void)
     ClearFocus();
 }
 
+static AccessibilityNode
+accessibility_target(int id)
+{
+    AccessibilityNode nodes[64];
+    int count = GetAccessibilitySnapshot(nodes, 64);
+    for(int i = 0; i < count && i < 64; i++) {
+        if(nodes[i].focus_id == id)
+            return nodes[i];
+    }
+    fprintf(stderr, "missing accessibility target %d\n", id);
+    exit(1);
+}
+
+static int accessibility_action_clicks;
+static int accessibility_action_flags;
+static int accessibility_action_toggle;
+
+static void
+accessibility_action_frame(int change)
+{
+    static char text[32] = "private";
+    static int cursor = 7;
+    BeginInterfaceFrame(400, 300, 1);
+    BeginTree(Key("accessibility-actions"));
+    DisabledScope(change == 3);
+    if(change == 5) {
+        Checkbox((CheckboxProps){.id = 7201, .bounds = {0, 0, 100, 30},
+                                 .value = &accessibility_action_toggle});
+    } else if(change != 4) {
+        if(Button((ButtonProps){.id = 7201, .label = "Run", .bounds = {0, 0, 100, 30},
+                                .disabled = change == 1, .loading = change == 2}))
+            accessibility_action_clicks++;
+    }
+    DisabledEndScope();
+    Checkbox((CheckboxProps){.id = 7202, .bounds = {0, 40, 100, 30},
+        .flags = &accessibility_action_flags, .flags_value = 2});
+    Toggle((ToggleProps){.id = 7203, .bounds = {0, 80, 100, 30},
+                         .value = &accessibility_action_toggle});
+    TextField((TextFieldProps){.focus_id = 7204, .bounds = {0, 120, 100, 30},
+        .text = text, .text_size = sizeof(text), .cursor_position = &cursor,
+        .secure = true, .read_only = true});
+    EndTree();
+    EndInterfaceFrame();
+}
+
+static void
+test_accessibility_actions(void)
+{
+    InjectReset();
+    ClearFocus();
+    accessibility_action_clicks = 0;
+    accessibility_action_flags = 6;
+    accessibility_action_toggle = 0;
+    accessibility_action_frame(0);
+    AccessibilityNode button = accessibility_target(7201);
+    check_int("button action capabilities", button.actions,
+              AccessibilityActionFocus | AccessibilityActionActivate);
+    for(int id = 7201; id <= 7203; id++) {
+        AccessibilityNode node = accessibility_target(id);
+        check_int("queue activation", QueueAccessibilityAction(id, node.generation, AccessibilityActionActivate), 1);
+        check_int("coalesce duplicate", QueueAccessibilityAction(id, node.generation, AccessibilityActionActivate), 1);
+    }
+    AccessibilityNode field = accessibility_target(7204);
+    check_int("secure read-only field capabilities", field.actions, AccessibilityActionFocus);
+    check_int("reject field activation", QueueAccessibilityAction(7204, field.generation, AccessibilityActionActivate), 0);
+    check_int("queue editor focus", QueueAccessibilityAction(7204, field.generation, AccessibilityActionFocus), 1);
+    accessibility_action_frame(0);
+    check_int("button action delivered", accessibility_action_clicks, 1);
+    check_int("flag action delivered", accessibility_action_flags, 4);
+    check_int("toggle action delivered", accessibility_action_toggle, 1);
+    check_int("editor focus delivered", IsFocusActive(7204), 1);
+    accessibility_action_frame(0);
+    check_int("button action not replayed", accessibility_action_clicks, 1);
+    check_int("flag action not replayed", accessibility_action_flags, 4);
+    check_int("toggle action not replayed", accessibility_action_toggle, 1);
+    check_int("stale snapshot rejected", QueueAccessibilityAction(7201, button.generation, AccessibilityActionActivate), 0);
+
+    for(int change = 1; change <= 5; change++) {
+        accessibility_action_frame(0);
+        button = accessibility_target(7201);
+        check_int("queue before replacement", QueueAccessibilityAction(7201, button.generation, AccessibilityActionActivate), 1);
+        accessibility_action_frame(change);
+        check_int("ineligible target not activated", accessibility_action_clicks, 1);
+        check_int("different kind not activated", accessibility_action_toggle, 1);
+        if(change <= 3) {
+            button = accessibility_target(7201);
+            check_int("disabled target capabilities", button.actions, 0);
+            check_int("disabled target rejected", QueueAccessibilityAction(7201, button.generation, AccessibilityActionFocus), 0);
+        }
+        accessibility_action_frame(0);
+        check_int("discarded request not replayed", accessibility_action_clicks, 1);
+    }
+    button = accessibility_target(7201);
+    check_int("missing target rejected", QueueAccessibilityAction(99999, button.generation, AccessibilityActionActivate), 0);
+    check_int("invalid action rejected", QueueAccessibilityAction(7201, button.generation, (AccessibilityAction)3), 0);
+    BeginInterfaceFrame(400, 300, 1);
+    BeginTree(Key("accessibility-actions"));
+    check_int("mid-frame action rejected", QueueAccessibilityAction(7201, button.generation, AccessibilityActionFocus), 0);
+    Button((ButtonProps){.id = 7201, .bounds = {0, 0, 100, 30}});
+    Button((ButtonProps){.id = 7201, .bounds = {0, 40, 100, 30}});
+    EndTree();
+    EndInterfaceFrame();
+    button = accessibility_target(7201);
+    check_int("ambiguous target rejected", QueueAccessibilityAction(7201, button.generation, AccessibilityActionActivate), 0);
+    ClearFocus();
+}
+
+static void
+test_accessibility_popup_actions(void)
+{
+    PopupInput *context = ui_popup_input_create();
+    int clicks = 0;
+    InjectReset();
+    for(int frame = 0; frame < 3; frame++) {
+        BeginInterfaceFrame(240, 180, 1);
+        ui_popup_input_frame(context);
+        PopupInput *previous = ui_popup_input_bind(context);
+        BeginTree(Key("accessibility-popup-actions"));
+        PopupInputToken token = ui_popup_input_begin(context, 7300, (Rectangle){0, 0, 140, 100});
+        if(Button((ButtonProps){.id = 7301, .label = "Inside", .bounds = {10, 10, 100, 30}}))
+            clicks++;
+        ui_popup_input_end(token);
+        check_int("background action blocked", Button((ButtonProps){.id = 7302,
+            .label = "Behind", .bounds = {150, 120, 80, 30}}), 0);
+        EndTree();
+        AccessibilityNode inside = accessibility_target(7301);
+        AccessibilityNode behind = accessibility_target(7302);
+        check_int("modal child capabilities", inside.actions,
+                  AccessibilityActionFocus | AccessibilityActionActivate);
+        check_int("modal background capabilities", behind.actions, 0);
+        check_int("modal background request rejected",
+            QueueAccessibilityAction(7302, behind.generation, AccessibilityActionActivate), 0);
+        if(frame == 0)
+            check_int("modal child request accepted",
+                QueueAccessibilityAction(7301, inside.generation, AccessibilityActionActivate), 1);
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        EndInterfaceFrame();
+    }
+    check_int("modal action delivered once", clicks, 1);
+    ui_popup_input_destroy(context);
+    ClearFocus();
+    InjectReset();
+}
+
+static void
+queue_accessibility_from_sink(const AccessibilityNode *nodes, int count, void *userdata)
+{
+    int *queued = userdata;
+    if(*queued)
+        return;
+    for(int i = 0; i < count; i++) {
+        if(nodes[i].focus_id == 7201)
+            *queued = QueueAccessibilityAction(7201, nodes[i].generation,
+                                               AccessibilityActionActivate);
+    }
+}
+
+static void
+test_accessibility_action_limits_and_variants(void)
+{
+    int queued = 0;
+    accessibility_action_clicks = 0;
+    SetAccessibilitySink(queue_accessibility_from_sink, &queued);
+    for(int frame = 0; frame < 3; frame++)
+        accessibility_action_frame(0);
+    SetAccessibilitySink(NULL, NULL);
+    check_int("sink can queue action", queued, 1);
+    check_int("sink action delivered once", accessibility_action_clicks, 1);
+
+    BeginInterfaceFrame(400, 300, 1);
+    BeginTree(Key("accessibility-capacity"));
+    for(int id = 7401; id <= 7433; id++)
+        Button((ButtonProps){.id = id, .bounds = {0, 0, 10, 10}});
+    EndTree();
+    EndInterfaceFrame();
+    uint64_t generation = accessibility_target(7401).generation;
+    for(int id = 7401; id <= 7432; id++)
+        check_int("bounded queue accepts request",
+            QueueAccessibilityAction(id, generation, AccessibilityActionFocus), 1);
+    check_int("full queue rejects request",
+        QueueAccessibilityAction(7433, generation, AccessibilityActionFocus), 0);
+    check_int("full queue coalesces duplicate",
+        QueueAccessibilityAction(7401, generation, AccessibilityActionFocus), 1);
+
+    for(int variant = 0; variant < 4; variant++) {
+        int clicks = 0;
+        int click_events = 0;
+        Event event;
+        while(NextEvent(&event)) {}
+        for(int frame = 0; frame < 3; frame++) {
+            BeginInterfaceFrame(240, 180, 1);
+            BeginTree(Key("accessibility-variants"));
+            if(variant == 1) {
+                clicks += Card((CardProps){.id = 7501, .clickable = true, .bounds = {0, 0, 100, 30}});
+            } else {
+                ButtonState state = variant == 2 ? ButtonStateDisabled :
+                    variant == 3 ? ButtonStateLoading : ButtonStateAuto;
+                clicks += Button((ButtonProps){.id = 7501, .bounds = {0, 0, 100, 30},
+                    .info = variant == 0, .state = state});
+            }
+            EndTree();
+            EndInterfaceFrame();
+            while(NextEvent(&event)) {
+                if(event.kind == EVENT_CLICK)
+                    click_events++;
+            }
+            if(frame == 0) {
+                AccessibilityNode node = accessibility_target(7501);
+                check_int("variant capabilities", node.actions,
+                    variant < 2 ? AccessibilityActionFocus | AccessibilityActionActivate : 0);
+                check_int("variant request acceptance",
+                    QueueAccessibilityAction(7501, node.generation, AccessibilityActionActivate), variant < 2);
+            }
+        }
+        check_int("variant activation once", clicks, variant < 2);
+        check_int("variant activation event once", click_events, variant < 2);
+    }
+    ClearFocus();
+    InjectReset();
+}
+
 int
 main(void)
 {
     test_grapheme_cursor_placement();
     test_accessibility_snapshot();
+    test_accessibility_actions();
+    test_accessibility_popup_actions();
+    test_accessibility_action_limits_and_variants();
     SetThemeMode(THEME_MODE_LIGHT);
     check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
     check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);

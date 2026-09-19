@@ -16,6 +16,7 @@
 #include "runtime/drag.h"
 #include "runtime/toggle.h"
 #include "runtime/checkbox.h"
+#include "runtime/accessibility_policy.h"
 #include "runtime/grid.h"
 #include "runtime/image.h"
 #include "ui_image_internal.h"
@@ -119,6 +120,19 @@ static double ui_tree_backspace_next_repeat_at = 0.0;
 static double ui_tree_delete_next_repeat_at = 0.0;
 static AccessibilitySink ui_accessibility_sink;
 static void *ui_accessibility_sink_userdata;
+typedef struct AccessibilityRequest {
+    int id;
+    int kind;
+    AccessibilityAction action;
+} AccessibilityRequest;
+
+#define ACCESSIBILITY_QUEUE_CAPACITY 32
+static AccessibilityRequest ui_accessibility_pending[ACCESSIBILITY_QUEUE_CAPACITY];
+static AccessibilityRequest ui_accessibility_active[ACCESSIBILITY_QUEUE_CAPACITY];
+static int ui_accessibility_pending_count;
+static int ui_accessibility_active_count;
+static int ui_accessibility_activation;
+static int ui_accessibility_building;
 #if defined(__GNUC__) || defined(__clang__)
 extern void kry_platform_accessibility_snapshot(
     const AccessibilityNode *nodes, int count) __attribute__((weak));
@@ -819,6 +833,12 @@ BeginTree(KeyID screen_key)
 {
     NodeId root;
     ui_tree_declaration++;
+    memcpy(ui_accessibility_active, ui_accessibility_pending,
+           (size_t)ui_accessibility_pending_count * sizeof(AccessibilityRequest));
+    ui_accessibility_active_count = ui_accessibility_pending_count;
+    ui_accessibility_pending_count = 0;
+    ui_accessibility_activation = 0;
+    ui_accessibility_building = 1;
 
     /* Embedders that never call SetFrameCamera still need valid screen-to-world
      * math for input routing; a zero camera would turn every hit test into
@@ -878,6 +898,9 @@ EndTree(void)
     UpdateTree();
     update = GetTime();
     DrawTree();
+    ui_accessibility_active_count = 0;
+    ui_accessibility_activation = 0;
+    ui_accessibility_building = 0;
     if(ui_accessibility_sink != NULL ||
        kry_platform_accessibility_snapshot != NULL) {
         int count = GetAccessibilitySnapshot(NULL, 0);
@@ -2328,6 +2351,19 @@ ui_tree_first_text(const TreeNode *nodes, int count, int parent)
     return NULL;
 }
 
+static int
+ui_accessibility_node_disabled(const TreeNode *node)
+{
+    int disabled = (node->flags & TreeNodeFlagScopeDisabled) != 0;
+    if(ui_tree_button_like_kind(node->kind)) {
+        ButtonProps props = node->data.button.props;
+        StateFlags flags = ResolveFlags((int)props.state, props.disabled,
+                                        props.loading, props.selected);
+        disabled |= !CanActivate(flags.disabled, flags.loading);
+    }
+    return disabled;
+}
+
 int
 GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
 {
@@ -2375,10 +2411,7 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
                strcmp(role, "text") == 0 || strcmp(role, "img") == 0 ||
                strcmp(role, "progressbar") == 0)
                 nodes[count].focus_id = 0;
-            nodes[count].disabled = (node->flags & TreeNodeFlagScopeDisabled) != 0;
-            if(ui_tree_button_like_kind(node->kind))
-                nodes[count].disabled |= !CanActivate(node->data.button.props.disabled,
-                                                       node->data.button.props.loading);
+            nodes[count].disabled = ui_accessibility_node_disabled(node);
             if(node->kind == WidgetKindTextField) {
                 TextFieldProps field = node->data.text_field;
                 nodes[count].secure = field.secure;
@@ -2417,6 +2450,10 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
                 focused = ((TextFieldState *)node->state)->focused;
             nodes[count].focused = !nodes[count].disabled && focused &&
                 !ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node));
+            nodes[count].generation = ui_tree_declaration;
+            nodes[count].actions = AccessibilityActionsFor(node->kind,
+                nodes[count].focus_id, nodes[count].disabled,
+                ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(node)));
         }
         count++;
     }
@@ -2428,6 +2465,84 @@ SetAccessibilitySink(AccessibilitySink sink, void *userdata)
 {
     ui_accessibility_sink = sink;
     ui_accessibility_sink_userdata = userdata;
+}
+
+int
+QueueAccessibilityAction(int focus_id, uint64_t generation, AccessibilityAction action)
+{
+    TreeNode *target = NULL;
+    int i;
+
+    if(ui_accessibility_building || generation == 0 ||
+       generation != ui_tree_declaration || focus_id <= 0)
+        return 0;
+    for(i = 0; i < ui_committed_node_count; i++) {
+        TreeNode *node = &ui_committed_nodes[i];
+        if(node->id != focus_id ||
+           AccessibilityActionsFor(node->kind, focus_id, false, false) == 0)
+            continue;
+        if(target != NULL)
+            return 0;
+        target = node;
+    }
+    if(target == NULL)
+        return 0;
+    unsigned actions = AccessibilityActionsFor(target->kind, focus_id,
+        ui_accessibility_node_disabled(target),
+        ui_popup_input_snapshot_keyboard_captures(ui_tree_input_snapshot(target)));
+    if(!AccessibilityActionAllowed(actions, action))
+        return 0;
+    for(i = 0; i < ui_accessibility_pending_count; i++) {
+        if(ui_accessibility_pending[i].id == focus_id &&
+           ui_accessibility_pending[i].action == action)
+            return 1;
+    }
+    if(ui_accessibility_pending_count == ACCESSIBILITY_QUEUE_CAPACITY)
+        return 0;
+    ui_accessibility_pending[ui_accessibility_pending_count++] =
+        (AccessibilityRequest){focus_id, target->kind, action};
+    InvalidateTree(INVALIDATE_PAINT);
+    return 1;
+}
+
+void
+ui_accessibility_prepare(int id, int kind, int enabled)
+{
+    if(ui_accessibility_active_count == 0)
+        return;
+    unsigned actions = AccessibilityActionsFor(kind, id,
+        !enabled || ContentDisabled(), ui_popup_input_keyboard_captures());
+    int i;
+
+    for(i = 0; i < ui_accessibility_active_count; i++) {
+        AccessibilityRequest request = ui_accessibility_active[i];
+        if(request.id != id || id <= 0)
+            continue;
+        ui_accessibility_active[i].id = 0;
+        if(request.kind != kind || !AccessibilityActionAllowed(actions, request.action))
+            continue;
+        SetFocus(id);
+        if(request.action == AccessibilityActionActivate)
+            ui_accessibility_activation = id;
+    }
+}
+
+int
+ui_accessibility_take_activation(int id)
+{
+    if(id <= 0 || ui_accessibility_activation != id)
+        return 0;
+    ui_accessibility_activation = 0;
+    if(ui_tree_building) {
+        for(int i = ui_tree_node_count - 1; i >= 0; i--) {
+            if(ui_tree_nodes[i].id == id &&
+               ui_tree_button_like_kind(ui_tree_nodes[i].kind)) {
+                ui_tree_mark_build_activation(i, 1);
+                break;
+            }
+        }
+    }
+    return 1;
 }
 
 int
@@ -2871,6 +2986,7 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
 int
 TextField(TextFieldProps field)
 {
+    ui_accessibility_prepare(field.focus_id, WidgetKindTextField, 1);
     NodeId node = ui_tree_add(field.focus_id, WidgetKindTextField,
                                 field.bounds, NULL);
 
@@ -2906,6 +3022,8 @@ Dropdown(DropdownProps dropdown)
 int
 Toggle(ToggleProps toggle)
 {
+    ui_accessibility_prepare(toggle.id, WidgetKindToggle,
+                             !toggle.disabled && toggle.value != NULL);
     int focused = 0;
     int changed;
     int paint_value;
@@ -2958,6 +3076,8 @@ Toggle(ToggleProps toggle)
 int
 Checkbox(CheckboxProps checkbox)
 {
+    ui_accessibility_prepare(checkbox.id, WidgetKindCheckbox,
+        !checkbox.disabled && (checkbox.value != NULL || checkbox.flags != NULL));
     int changed;
     NodeId node = ui_tree_add(checkbox.id, WidgetKindCheckbox,
                               checkbox.bounds, NULL);
@@ -3431,6 +3551,7 @@ TableView(TableViewProps table)
 int
 TextArea(TextAreaProps area)
 {
+    ui_accessibility_prepare(area.focus_id, WidgetKindTextArea, 1);
     NodeId node = ui_tree_add(area.focus_id, WidgetKindTextArea,
                                 area.bounds, NULL);
 
@@ -3662,9 +3783,20 @@ Button(ButtonProps button)
         Rectangle bounds = info.bounds;
         NodeId node = ui_tree_add(button.id, WidgetKindButton,
                                   bounds, NULL);
+        StateFlags flags = ResolveFlags((int)button.state, button.disabled,
+                                        button.loading, button.selected);
+        int enabled = CanActivate(flags.disabled, flags.loading) &&
+                      !ContentDisabled();
+        if(node >= 0)
+            ui_tree_nodes[node].data.button.props = button;
+        ui_accessibility_prepare(button.id, WidgetKindButton, enabled);
+        int activated = ui_accessibility_take_activation(button.id);
+        if(enabled && button.id > 0)
+            RegisterFocus(button.id, bounds);
         int clicked = RenderButtonInfoIndicator((int)(bounds.x + bounds.width / 2),
-                                       (int)(bounds.y + bounds.height / 2),
-                                       info.diameter);
+                                                (int)(bounds.y + bounds.height / 2),
+                                                info.diameter);
+        clicked = enabled && (clicked || activated || IsFocusActivatePressed(button.id));
         ui_tree_mark_build_activation(node, clicked);
         ui_tree_mark_painted_immediate(node);
         return clicked;

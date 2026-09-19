@@ -1288,7 +1288,7 @@ $(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
 $(BUILD_DIR)/ui/ui_titlebar.o: $(GENERATED_SRC_DIR)/runtime/title_bar.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h $(GENERATED_SRC_DIR)/runtime/accessibility_policy.h
 
 .PHONY: generate-runtime generate-native-runtime generate-button-policy
 generate-button-policy: generate-runtime

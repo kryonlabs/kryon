@@ -1,0 +1,6 @@
+#module "accessibility_props"
+
+AccessibilityAction :: enum {
+    AccessibilityActionFocus = 1
+    AccessibilityActionActivate = 2
+}

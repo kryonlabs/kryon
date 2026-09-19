@@ -1973,9 +1973,35 @@ Call the snapshot API after `EndFrame` on the UI thread. Returned slices belong
 to the caller; callbacks run synchronously at frame end, including empty frames.
 Setting a nil sink removes the callback. Go snapshots cover ordinary/composed
 buttons, text editors, checkboxes, toggles, text, images, groups, and tables.
-Editor values exclude uncommitted IME preedit. These are flat host snapshots,
-not stable OS object trees: native screen-reader adapters, action routing, and
-complete composite-control coverage remain work in progress.
+Editor values exclude uncommitted IME preedit.
+
+Each node also carries `generation` and an `actions` bitmask. Native C and Go
+provide `QueueAccessibilityAction(focus_id, generation, action)` (Go uses
+`int32`, `uint64`, and `AccessibilityAction` and returns `bool`; C returns an
+acceptance `int`). Go exposes package, Runtime, and Host methods. Supported
+actions are `AccessibilityActionFocus` and `AccessibilityActionActivate`.
+Buttons, clickable cards, checkboxes, and toggles support both; text editors
+support focus, including secure/read-only editors. Unsupported controls,
+disabled/loading controls, and controls behind a capturing popup expose no
+actions. Applications must give actionable controls unique, stable positive
+focus IDs.
+
+Call on the UI thread between frames, including from the accessibility sink,
+with the generation from the current completed snapshot. Requests with stale
+generations, unknown/ambiguous IDs, or unsupported actions are rejected. At most
+32 distinct requests may be pending; repeated requests for the same target and
+action coalesce. Accepted requests are delivered once during the next frame's
+widget declarations, in declaration order, using the ordinary focus and
+activation path. The host must schedule that frame. Acceptance does not promise
+delivery: current disabled/loading state, widget kind, and popup capture are
+checked again. Missing or newly ineligible targets are discarded at frame end,
+never replayed when they reappear. Activation preserves widget return values,
+checkbox flag-mask updates, and normal application handlers; it does not inject
+pointer coordinates or an Enter key.
+
+These are flat host snapshots, not stable OS object trees. Native screen-reader
+adapters, value/selection actions, and complete composite-control coverage
+remain work in progress.
 
 ### Input Capture
 

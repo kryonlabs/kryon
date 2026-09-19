@@ -902,13 +902,15 @@ ReadActivation(Rectangle bounds, int id, bool enabled)
 {
     Activation input = {0};
     int hovered = 0;
+    int accessibility = ui_accessibility_take_activation(id);
     input.activated = HandleClick(bounds, !enabled, &hovered);
     input.hovered = hovered;
     input.focused = enabled && id > 0 && RegisterFocus(id, bounds);
     int keyboard = IsFocusActivatePressed(id);
     input.pressed = (hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ||
                     (input.focused && keyboard);
-    input.activated = input.activated || keyboard;
+    input.activated = input.activated || keyboard || (enabled && accessibility);
+    input.pressed = input.pressed || (enabled && accessibility);
     return input;
 }
 

@@ -22,6 +22,7 @@ extern "C" {
 #include "ui_image.h"
 #include "ui_router_props.generated.h"
 #include "ui_tk.h"
+#include "ui_accessibility_props.generated.h"
 
 struct TransitionState;
 
@@ -89,6 +90,8 @@ const TreeNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);
 int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
+int QueueAccessibilityAction(int focus_id, uint64_t generation,
+                             AccessibilityAction action);
 
 void AppBackground(void);
 void Background(Color color);

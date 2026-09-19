@@ -85,6 +85,7 @@ import (
 
 type inputDriver interface {
 	GetAccessibilitySnapshot() []kryon.AccessibilityNode
+	QueueAccessibilityAction(int32, uint64, kryon.AccessibilityAction) bool
 	QueueText(string)
 	QueueKey(int32)
 	QueueShiftKey(int32)
@@ -897,6 +898,23 @@ func main() {
 		}
 	}
 	if accessibleFields != 4 { panic("generated editor accessibility nodes missing") }
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 201 && !driver.QueueAccessibilityAction(201, node.Generation, kryon.AccessibilityActionActivate) {
+			panic("generated button accessibility action rejected")
+		}
+	}
+	drawForm()
+	if form.FormAction != 1 { panic("generated button accessibility action not delivered") }
+	drawForm()
+	if form.FormAction != 1 { panic("generated button accessibility action replayed") }
+	form.FormAction = 0
+	for _, node := range driver.GetAccessibilitySnapshot() {
+		if node.FocusID == 101 && !driver.QueueAccessibilityAction(101, node.Generation, kryon.AccessibilityActionFocus) {
+			panic("generated editor accessibility focus rejected")
+		}
+	}
+	drawForm()
+	if driver.Focus() != 101 { panic("generated editor accessibility focus not delivered") }
 	driver.QueueKey(kryon.KeyLeft)
 	drawForm()
 	driver.QueueText("é")
@@ -2094,6 +2112,37 @@ int main(void)
     }
     if(accessible_fields != 4) {
         fprintf(stderr, "generated editor accessibility nodes missing\n");
+        return 1;
+    }
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 201 && !QueueAccessibilityAction(201, node.generation, AccessibilityActionActivate)) {
+            fprintf(stderr, "generated button accessibility action rejected\n");
+            return 1;
+        }
+    }
+    draw_form();
+    if(form_action != 1) {
+        fprintf(stderr, "generated button accessibility action not delivered\n");
+        return 1;
+    }
+    draw_form();
+    if(form_action != 1) {
+        fprintf(stderr, "generated button accessibility action replayed\n");
+        return 1;
+    }
+    form_action = 0;
+    accessible_count = GetAccessibilitySnapshot(accessible_nodes, 32);
+    for(int i = 0; i < accessible_count && i < 32; i++) {
+        AccessibilityNode node = accessible_nodes[i];
+        if(node.focus_id == 101 && !QueueAccessibilityAction(101, node.generation, AccessibilityActionFocus)) {
+            fprintf(stderr, "generated editor accessibility focus rejected\n");
+            return 1;
+        }
+    }
+    draw_form();
+    if(!IsFocusActive(101)) {
+        fprintf(stderr, "generated editor accessibility focus not delivered\n");
         return 1;
     }
     InjectKeyTap(KEY_LEFT);

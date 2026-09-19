@@ -613,8 +613,11 @@ controls. Composed button text is attributed to its owning button. Host sinks
 are called for empty frames (including C's implicit screen root) so consumers
 can remove stale controls. Generated-form
 assertions compare editor roles, values, focus and secure-field behavior in both
-runtimes. Native OS accessibility object trees and action delivery are not yet
-implemented by this snapshot layer.
+runtimes. `runtime/accessibility_policy.kry` owns shared action eligibility;
+hosts own bounded request queues, snapshot-generation validation, and next-frame
+delivery into ordinary focus/activation sampling. Removed or newly ineligible
+controls cannot replay pending requests. Native OS accessibility object trees,
+platform adapters, and value/selection actions are not yet implemented.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

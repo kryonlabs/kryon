@@ -69,6 +69,8 @@ typedef struct {
     int read_only;
     int secure;
     int multiline;
+    uint64_t generation;
+    unsigned actions;
 } AccessibilityNode;
 
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);

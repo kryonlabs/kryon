@@ -479,6 +479,7 @@ type Accelerator struct {
 type Runtime interface {
 	GetAccessibilitySnapshot() []AccessibilityNode
 	SetAccessibilitySink(AccessibilitySink)
+	QueueAccessibilityAction(int32, uint64, AccessibilityAction) bool
 	InstanceValue(typeID any, key uint64, create func() any) any
 	SubmitTextComposition(KryTextCompositionPhase, string, int32, int32) int32
 	PollTextComposition(*KryTextCompositionEvent) int32
@@ -633,6 +634,7 @@ type runtime struct {
 	ops               []FrameOp
 	textLayouts       textLayoutCache
 	accessibilitySink AccessibilitySink
+	accessibility     accessibilityState
 	pageTitle         string
 	pageDescription   string
 	pageCanonicalURL  string
@@ -1008,6 +1010,7 @@ func (r *runtime) Close() {
 }
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame() {
+	r.beginAccessibilityFrame()
 	r.applyThemeFamily()
 	now := time.Now()
 	if r.config.FrameClock != nil {
@@ -1122,6 +1125,7 @@ func (r *runtime) EndFrame() {
 		}
 	}
 	r.frames++
+	r.endAccessibilityFrame()
 	if r.accessibilitySink != nil {
 		r.accessibilitySink(r.GetAccessibilitySnapshot())
 	}
@@ -1540,6 +1544,7 @@ func (r *runtime) Card(props CardProps) bool {
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
 	if !props.Clickable {
+		r.prepareAccessibility(props.ID, int32(WidgetKindCard), false)
 		frame, _ := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
 		frame.Role = "group"
 		r.record(frame)
@@ -1551,6 +1556,9 @@ func (r *runtime) Card(props CardProps) bool {
 }
 
 func (r *runtime) CardScope(props CardProps) {
+	if !props.Clickable {
+		r.prepareAccessibility(props.ID, int32(WidgetKindCard), false)
+	}
 	button := r.resolveSurfaceButtonPropsForKind(cardButtonProps(props), false, StyleSheet_StyleKindCard())
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
@@ -1655,6 +1663,12 @@ func (r *runtime) surfaceButtonFrameForKind(props ButtonProps, surfaceBounds Rec
 func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds Rectangle, disclosure bool, styleKind int32, role int32) (FrameOp, bool) {
 	props = r.resolveSurfaceButtonPropsForRoleKind(props, disclosure, styleKind, role)
 	props.ID = r.resolveFocusID(props.ID)
+	kind := int32(WidgetKindButton)
+	if styleKind == StyleSheet_StyleKindCard() {
+		kind = int32(WidgetKindCard)
+	}
+	flags := Style_ResolveFlags(int32(props.State), props.Disabled, props.Loading, props.Selected)
+	r.prepareAccessibility(props.ID, kind, !flags.Disabled && !flags.Loading)
 	input := r.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
 		props.Disabled, props.Loading, props.Selected)
 	metrics := r.themeMetrics()
@@ -1677,8 +1691,9 @@ func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds
 		Bounds: resolved.Props.Bounds, SurfaceBounds: surfaceBounds, Text: resolved.Props.Label, ID: resolved.Props.ID,
 		FontID:     registeredTypeface(resolved.Appearance.Value.Typeface),
 		Disclosure: disclosure, ElapsedMS: float64(r.elapsedTime) / float64(time.Millisecond),
-		Disabled: resolved.Props.Disabled, Pressed: input.Interaction.Pressed,
-		Focused: input.Interaction.Focused, Hovered: input.Interaction.Hovered}
+		Disabled: resolved.Props.Disabled, Loading: resolved.Props.Loading, Pressed: input.Interaction.Pressed,
+		accessibilityKind: kind,
+		Focused:           input.Interaction.Focused, Hovered: input.Interaction.Hovered}
 	return frame, input.Activated
 }
 
@@ -1824,9 +1839,10 @@ func (r *runtime) ReadActivation(bounds Rectangle, id int32, enabled bool) Activ
 // disabled scopes, and popup keyboard ownership consistent across controls.
 func (r *runtime) focusablePress(bounds Rectangle, id int32, disabled bool) (pressed, focused bool) {
 	enabled := !disabled && !r.contentDisabled()
+	accessibility := r.takeAccessibilityActivation(id)
 	if enabled {
 		r.registerField(id)
-		pressed = r.consumeTap(bounds)
+		pressed = r.consumeTap(bounds) || accessibility
 	}
 	if pressed && id > 0 {
 		r.setFocus(id)
@@ -1903,6 +1919,7 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 func (r *runtime) Checkbox(props CheckboxProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	disabled := props.Disabled || (props.Value == nil && props.Flags == nil)
+	r.prepareAccessibility(props.ID, int32(WidgetKindCheckbox), !disabled)
 	input := r.ReadActivation(props.Bounds, props.ID, !disabled)
 	checked := false
 	changed := false
@@ -1948,7 +1965,8 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		fill = unpackRGBA(paint.FillColor)
 	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: input.Pressed, Selected: checked, Focused: input.Focused,
-		Role: "checkbox", AccessibleLabel: props.Label, AccessibleBounds: props.Bounds})
+		Role: "checkbox", AccessibleLabel: props.Label, AccessibleBounds: props.Bounds,
+		accessibilityKind: int32(WidgetKindCheckbox)})
 	if paint.ShowMark {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
@@ -4600,6 +4618,7 @@ func (r *runtime) iconAction(props iconActionProps) bool {
 	return pressed
 }
 func (r *runtime) Toggle(props ToggleProps) bool {
+	r.prepareAccessibility(props.ID, int32(WidgetKindToggle), !props.Disabled && props.Value != nil)
 	if props.Value == nil {
 		return false
 	}
@@ -4698,6 +4717,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
 	trackOp.ID = props.ID
 	trackOp.Role = "checkbox"
+	trackOp.accessibilityKind = int32(WidgetKindToggle)
 	trackOp.AccessibleBounds = bounds
 	trackOp.AccessibleLabel = props.OffLabel
 	if checked {
@@ -5722,6 +5742,7 @@ func (r *runtime) recordToast() {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, Opacity: label.Opacity, FontSize: labelFont, FontID: labelFontID})
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
+	r.prepareAccessibility(props.FocusID, int32(WidgetKindTextArea), true)
 	props.Bounds = r.layoutRect(props.Bounds)
 	changed := r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, nil, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
@@ -6584,6 +6605,7 @@ func themeLabel(id int32) string {
 }
 
 func (r *runtime) TextField(props TextFieldProps) {
+	r.prepareAccessibility(props.FocusID, int32(WidgetKindTextField), true)
 	props.Bounds = r.layoutRect(props.Bounds)
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), props.ClassName, Text16)

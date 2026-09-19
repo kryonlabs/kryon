@@ -11,6 +11,7 @@
 #include "runtime/segmented_control.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
+#include "runtime/widget_kind.h"
 
 static StyleData
 ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
@@ -285,6 +286,12 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     ButtonProps props = button.props;
     ButtonInput input;
     if(handle_input) {
+        StateFlags flags = ResolveFlags((int)props.state, props.disabled,
+                                        props.loading, props.selected);
+        int kind = button.style_kind == StyleKindCard()
+            ? WidgetKindCard : WidgetKindButton;
+        ui_accessibility_prepare(props.id, kind,
+                                 CanActivate(flags.disabled, flags.loading));
         input = ReadButtonInput(props.bounds, props.id, (int)props.state,
             props.disabled, props.loading, props.selected);
     } else {
@@ -839,6 +846,12 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
     hover = interaction.hovered;
     if(active)
         MarkClickable();
+
+    if(!IsWindowReady()) {
+        if(interaction.consume_release)
+            ConsumeRelease();
+        return interaction.activated;
+    }
 
     {
         ButtonProps props = {.tone = ButtonToneNeutral,

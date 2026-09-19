@@ -3,20 +3,140 @@ package kryon
 // AccessibilityNode is a semantic projection of a completed frame. Secure
 // editor values are omitted; other editor values exclude uncommitted preedit.
 type AccessibilityNode struct {
-	Bounds    Rectangle
-	Role      string
-	Label     string
-	Focused   bool
-	Disabled  bool
-	Checked   bool
-	FocusID   int32
-	Value     string
-	ReadOnly  bool
-	Secure    bool
-	Multiline bool
+	Bounds     Rectangle
+	Role       string
+	Label      string
+	Focused    bool
+	Disabled   bool
+	Checked    bool
+	FocusID    int32
+	Value      string
+	ReadOnly   bool
+	Secure     bool
+	Multiline  bool
+	Generation uint64
+	Actions    uint32
 }
 
 type AccessibilitySink func([]AccessibilityNode)
+
+type accessibilityRequest struct {
+	id     int32
+	kind   int32
+	action AccessibilityAction
+}
+
+type accessibilityState struct {
+	pending    []accessibilityRequest
+	active     []accessibilityRequest
+	activation int32
+	building   bool
+}
+
+// QueueAccessibilityAction accepts requests only against the current completed
+// snapshot. Delivery happens at the next declaration and is revalidated there.
+func QueueAccessibilityAction(focusID int32, generation uint64, action AccessibilityAction) bool {
+	return activeRuntime != nil && activeRuntime.QueueAccessibilityAction(focusID, generation, action)
+}
+
+func (h *Host) QueueAccessibilityAction(focusID int32, generation uint64, action AccessibilityAction) bool {
+	return h != nil && h.runtime != nil && h.runtime.QueueAccessibilityAction(focusID, generation, action)
+}
+
+func (r *runtime) QueueAccessibilityAction(focusID int32, generation uint64, action AccessibilityAction) bool {
+	if r.closed || r.accessibility.building || generation == 0 || generation != uint64(r.frames) || focusID <= 0 {
+		return false
+	}
+	kind := int32(0)
+	actions := uint32(0)
+	for _, op := range r.ops {
+		candidate := accessibilityKind(op)
+		id := op.ID
+		if op.FocusID != 0 {
+			id = op.FocusID
+		}
+		if id != focusID || AccessibilityPolicy_AccessibilityActionsFor(candidate, id, false, false) == 0 {
+			continue
+		}
+		if kind != 0 {
+			return false
+		}
+		kind = candidate
+		actions = AccessibilityPolicy_AccessibilityActionsFor(kind, id, op.Disabled || op.Loading, r.popupFocusCaptures(id))
+	}
+	if !AccessibilityPolicy_AccessibilityActionAllowed(actions, action) {
+		return false
+	}
+	for _, request := range r.accessibility.pending {
+		if request.id == focusID && request.action == action {
+			return true
+		}
+	}
+	if len(r.accessibility.pending) == 32 {
+		return false
+	}
+	r.accessibility.pending = append(r.accessibility.pending, accessibilityRequest{focusID, kind, action})
+	return true
+}
+
+func (r *runtime) beginAccessibilityFrame() {
+	r.accessibility.active, r.accessibility.pending = r.accessibility.pending, r.accessibility.active[:0]
+	r.accessibility.activation = 0
+	r.accessibility.building = true
+}
+
+func (r *runtime) endAccessibilityFrame() {
+	r.accessibility.active = r.accessibility.active[:0]
+	r.accessibility.activation = 0
+	r.accessibility.building = false
+}
+
+func (r *runtime) prepareAccessibility(id, kind int32, enabled bool) {
+	if len(r.accessibility.active) == 0 {
+		return
+	}
+	actions := AccessibilityPolicy_AccessibilityActionsFor(kind, id, !enabled || r.contentDisabled(), r.popupKeyboardCaptures())
+	for i, request := range r.accessibility.active {
+		if request.id != id || id <= 0 {
+			continue
+		}
+		r.accessibility.active[i].id = 0
+		if request.kind != kind || !AccessibilityPolicy_AccessibilityActionAllowed(actions, request.action) {
+			continue
+		}
+		r.setFocus(id)
+		if request.action == AccessibilityActionActivate {
+			r.accessibility.activation = id
+		}
+	}
+}
+
+func (r *runtime) takeAccessibilityActivation(id int32) bool {
+	if id <= 0 || r.accessibility.activation != id {
+		return false
+	}
+	r.accessibility.activation = 0
+	return true
+}
+
+func accessibilityKind(op FrameOp) int32 {
+	if op.Kind == FrameOpButton && accessibilityRole(op) != "button" {
+		return 0
+	}
+	if op.accessibilityKind != 0 {
+		return op.accessibilityKind
+	}
+	switch op.Kind {
+	case FrameOpButton:
+		return int32(WidgetKindButton)
+	case FrameOpTextField:
+		return int32(WidgetKindTextField)
+	case FrameOpTextArea:
+		return int32(WidgetKindTextArea)
+	default:
+		return 0
+	}
+}
 
 // GetAccessibilitySnapshot returns an owned slice. Call after EndFrame on the
 // runtime's UI thread. This host API does not install an OS screen-reader bridge.
@@ -103,6 +223,9 @@ func (r *runtime) GetAccessibilitySnapshot() []AccessibilityNode {
 			focused = node.FocusID == r.focusID && !r.popupFocusCaptures(node.FocusID)
 		}
 		node.Focused = !node.Disabled && focused
+		node.Generation = uint64(r.frames)
+		node.Actions = AccessibilityPolicy_AccessibilityActionsFor(accessibilityKind(op), node.FocusID,
+			node.Disabled, r.popupFocusCaptures(node.FocusID))
 		nodes = append(nodes, node)
 	}
 	return nodes

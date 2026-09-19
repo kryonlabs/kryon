@@ -144,8 +144,15 @@ direct Go package imports stay stateless. Application host bridges remain
 separate from runtime implementation; no runtime-wide mutable service setter is
 generated. MeasureTextWidth supplies font-specific measurement without making
 widget size decisions and restores the C host's previous typeface after use.
-ReadActivation supplies pointer and keyboard samples using the host's focus and
-popup ownership rules. `runtime/input_props.kry` owns the sample contract.
+Accessibility action capabilities belong to `runtime/accessibility_policy.kry`.
+Hosts project semantic nodes, validate snapshot generations and target identity,
+and own bounded next-frame request queues. Focus/activation requests enter the
+ordinary control input path after live eligibility and popup-ownership checks;
+they do not mutate application values out of band. OS screen-reader adapters
+remain platform services and must marshal requests to the UI thread.
+ReadActivation supplies pointer, keyboard, and accessibility samples using the
+host's focus and popup ownership rules. `runtime/input_props.kry` owns the sample
+contract.
 Button interprets that sample in `.kry`, including disabled/loading gating and
 explicit visual states. Deferred painting resolves its stored sample without
 polling the host again. Its retained motion consumes that same resolved input.

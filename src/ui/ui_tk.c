@@ -476,7 +476,7 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
         HoverEffectsEnabled() != 0, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
         ReleaseConsumed() != 0, press_started_inside(bounds) != 0);
     int hot = interaction.active;
-    int active = 0;
+    int active = ui_accessibility_take_activation(id) && enabled;
 
     *focused = 0;
     if(enabled && id > 0)

@@ -1,0 +1,24 @@
+#module "accessibility_policy"
+#import "accessibility_props"
+#import "widget_kind"
+
+AccessibilityActionsFor :: (kind: i32, focus_id: i32, disabled: bool,
+captured: bool) -> u32 #export {
+    if focus_id <= 0 || disabled || captured { return (u32)0 }
+    if kind == (i32)WidgetKindButton || kind == (i32)WidgetKindCard ||
+    kind == (i32)WidgetKindCheckbox || kind == (i32)WidgetKindToggle {
+        return (u32)AccessibilityActionFocus | (u32)AccessibilityActionActivate
+    }
+    if kind == (i32)WidgetKindTextField || kind == (i32)WidgetKindTextArea {
+        return (u32)AccessibilityActionFocus
+    }
+    return (u32)0
+}
+
+AccessibilityActionAllowed :: (actions: u32, action: AccessibilityAction) -> bool #export {
+    if action != (AccessibilityAction)AccessibilityActionFocus &&
+    action != (AccessibilityAction)AccessibilityActionActivate {
+        return false
+    }
+    return (actions & (u32)action) != (u32)0
+}

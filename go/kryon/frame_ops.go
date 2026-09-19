@@ -98,6 +98,7 @@ type FrameOp struct {
 	Role              string
 	AltText           string
 	AccessibleLabel   string
+	accessibilityKind int32
 	AccessibleValue   string
 	AccessibleBounds  Rectangle
 	Level             int32
