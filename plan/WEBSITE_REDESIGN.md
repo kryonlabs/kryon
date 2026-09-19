@@ -1,7 +1,7 @@
 # Kryon Labs website improvement plan
 
 Date: 2026-09-19
-Status: Implemented and locally validated; production rollout pending verification.
+Status: Implemented, published, and verified at https://kryonlabs.com/.
 Site: https://kryonlabs.com/
 Owner: `kryonlabs/kryon`, with website source in `docs/site/`.
 
@@ -162,7 +162,7 @@ workflows still function.
 - [x] Aim for at most 250 KB per optimized editorial illustration and 150 KB
   total for required homepage fonts. Lazy-load below-fold screenshots; do not
   preload compiler assets on marketing pages. Measure actual transfer sizes.
-- [ ] Publish through the existing Cloudflare Pages workflow after successful
+- [x] Publish through the existing Cloudflare Pages workflow after successful
   validation; confirm the production commit, routes, images, and core tools.
 
 Completion: successful deployment and a short record of the checks, screenshots,
@@ -228,3 +228,17 @@ the relevant tests. Never modify a downstream vendor copy for site work.
 
 Local design review artifacts: `waozi-design-proposals/2026-09-19/kryonlabs/`.
 Publishing uses the existing `Cloudflare Pages` workflow and project `kryon`.
+
+### Production verification
+
+Published website commit: `667a36f0490c941e1d38bbba04ca6465b98b4704`.
+[Successful build and production deployment](https://github.com/kryonlabs/kryon/actions/runs/35451762905).
+
+Verified all ten production routes and their updated metadata, workshop image,
+social card, example capture, downloadable source, and compiler binaries.
+The public homepage loads the three selected registry projects. The live
+Playground compiles the exact homepage example into KIR, C, Go, and KRB, and
+its greeting is visible in the preview.
+
+Final desktop and Playground production captures are retained beside the
+approved proposal under `kryonlabs/implementation/`.
