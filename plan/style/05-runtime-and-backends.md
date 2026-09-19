@@ -17,9 +17,13 @@
   explicit zero keeps its zero (covered by
   `TestRenderPreservesExplicitZeroBorder`), and an explicit transparent
   background no longer paints the white debug fill. The remaining hardcoded
-  colors in renderTextInput's fully-unstyled branch (white fill, gray/blue
-  borders, selection blue) are the documented no-style debug affordance;
-  folding them into pack data is part of the conformance-matrix work below.
+  colors in renderTextInput's fully-unstyled branch are now covered as no-style
+  debug affordances: text fields paint a white fill, gray unfocused border,
+  blue focused border, and gray fallback caret; text fields and text areas use
+  the blue fallback selection color unless an op supplies a selection color. A
+  fully unstyled text area leaves the frame background intact while still
+  painting fallback selection/caret affordances. Folding these into pack data is
+  part of the conformance-matrix work below.
 - Carry sufficient resolved field-presence/provenance through frame operations
   to distinguish missing values from explicit zero and explain the painted result.
   Go frame operations now retain field-presence masks; source-span/winner
