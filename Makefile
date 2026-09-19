@@ -1169,7 +1169,11 @@ backend-capabilities-check:
 backend-style-degradation-check:
 	sh tests/backend_style_degradation_test.sh .
 
-laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test
+
+.PHONY: bend-laws-test
+bend-laws-test:
+	node --test tests/bend_laws_test.mjs
 
 runtime-laws-test: $(SLIDER_LAWS_TEST) $(LAYOUT_LAWS_TEST) $(SEMANTIC_TREE_LAWS_TEST)
 	$(SLIDER_LAWS_TEST)

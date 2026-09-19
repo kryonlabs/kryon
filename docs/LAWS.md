@@ -23,6 +23,33 @@ prove a property for every possible input. Keep that distinction explicit.
 |---|---|
 | `image.surface.no_low_level_calls` | `.kry` must draw images through `Image(ImageProps)`, not raw `Texture`/`DrawTexture*`/`UIText*`/`UIRender*`/`TextInputControl` host calls |
 
+## Proof tier
+
+`tools/bend-laws.mjs` checks paired `LAWS.bend` / `PROOF.bend` packages with
+the upstream Bend 2 checker. Bend is pinned in `vendor/bend`; its checker and
+Base library hashes are checked before loading. Node.js 22.18+ is a host build
+dependency. The checker rejects holes, open declarations, `@unsafe`, foreign
+implementations, remote imports, and imports outside the package. No Bend
+runtime or network fetch is needed on the target device.
+
+Run `node tools/bend-laws.mjs path/to/PROOF.bend`. For finite policies, import
+`checkLaws` and use the returned `table(functionName)` to enumerate every input
+constructor and normalize the checked implementation directly in the kernel.
+Only finite, nonempty enumerations without fields are accepted as inputs;
+outputs are closed constructors and U32 values. The consumer must validate
+its domain mapping and compile the generated table into the application.
+
+These are proofs of the declared pure policy, conditional on the pinned
+checker and Base semantics. The small host generator, C adapter, build graph,
+and target compiler remain trusted integration code and need regression tests.
+This does not prove arbitrary `.kry`, network delivery, or UI behavior. Keep
+application policy and its laws in the application repository. Changes to
+contracts and this trust boundary require review separately from implementation
+changes; a modifiable repository cannot make its own checks immutable.
+
+`make bend-laws-test` verifies acceptance, evaluation, and rejection paths and
+is part of `make laws-test`. This is distinct from the runtime tests below.
+
 ## Runtime tier
 
 Property laws over generated inputs, run by `make runtime-laws-test`

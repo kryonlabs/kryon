@@ -46,6 +46,11 @@ jobs:
             libsdl2-dev libdrm-dev libgbm-dev libegl1-mesa-dev libgles2-mesa-dev \
             ripgrep python3 xvfb xauth xdotool imagemagick libgl1-mesa-dev libx11-dev
 
+      - name: Set up Node.js for Bend proofs
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
       - name: Build
         run: |
           set -euo pipefail
@@ -110,7 +115,7 @@ jobs:
             pkg install -y gmake cmake pkgconf \
               sdl2 libdrm mesa-libs gtk3 \
               curl openssl zstd brotli \
-              git go python3 ripgrep
+              git go python3 ripgrep node22
           run: |
             set -eu
             gmake clean
