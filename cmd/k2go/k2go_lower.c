@@ -252,10 +252,6 @@ qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
     const KirType *declared = type_scope != NULL ? KirFindType(type_scope, type, NULL) : NULL;
     int local = declared != NULL && !declared->is_extern &&
                 declared != KirFindRuntimeType(type, NULL);
-    if(!runtime_output && is_runtime_go_type(type)) {
-        snprintf(dst, dst_size, "%s.%s", K2GO_RUNTIME_PKG, type);
-        return;
-    }
     if(!runtime_output && !local && is_runtime_go_type(type))
         snprintf(dst, dst_size, "%s.%s", K2GO_RUNTIME_PKG, type);
     else

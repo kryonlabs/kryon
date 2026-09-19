@@ -765,4 +765,52 @@ if "$k2go" --root "$work" -o "$work/out" "$work/src/assert_unknown.kry" 2>"$work
 fi
 grep -q 'unresolved #assert is not supported by the Go backend' "$work/assert_unknown.err"
 
+
+mkdir -p "$work/shadow"
+cat > "$work/shadow/cards.kry" <<'EOF'
+#module "cards"
+CardProps :: struct {
+    value: i32
+}
+state {
+    sum: i32 = 0
+}
+Card :: (props: CardProps) #ui {
+    sum += props.value
+    props.value = 99
+}
+Reset :: () {
+    sum = 0
+}
+Read :: () -> i32 {
+    return sum
+}
+EOF
+cat > "$work/shadow/consumer.kry" <<'EOF'
+#module "consumer"
+#import "cards"
+Run :: () -> i32 {
+    Reset()
+    Card first: {
+        value = 3
+    }
+    Card second: {
+        value = 4
+    }
+    props: CardProps
+    props.value = 5
+    Card(props)
+    return Read() + props.value
+}
+EOF
+rm -rf "$work/shadow-out"
+"$k2go" --no-main --root "$work/shadow" -o "$work/shadow-out" \
+    "$work/shadow/consumer.kry" "$work/shadow/cards.kry"
+grep -q 'func Cards_Card(st \*CardsState, props CardProps)' "$work/shadow-out/cards.go"
+grep -q 'var widget_value_1 CardProps = CardProps{}' "$work/shadow-out/consumer.go"
+if grep -q 'props kr\.CardProps\|widget_value_1 kr\.CardProps' "$work/shadow-out/cards.go" "$work/shadow-out/consumer.go"; then
+    echo "declared CardProps was qualified as runtime CardProps" >&2
+    exit 1
+fi
+
 echo "k2go syntax ok"
