@@ -21,10 +21,12 @@ func (r *runtime) GetThemeLink() Color { return r.theme().link }
 // background tone serves as SurfaceVariant.
 func (r *runtime) GetThemePrimary() Color { return r.theme().circle }
 
-func (r *runtime) GetThemeOnPrimary() Color { return materialOnColor(r.theme().circle) }
+func (r *runtime) GetThemeOnPrimary() Color {
+	return unpackRGBA(Theme_OnColor(packRGBA(r.theme().circle)))
+}
 
 func (r *runtime) GetThemeSurfaceVariant() Color {
-	return materialTone(r.theme().background, 10, 18, r.effectiveDark())
+	return unpackRGBA(Theme_ToneFor(packRGBA(r.theme().background), 10, 18, r.effectiveDark()))
 }
 
 func (r *runtime) GetThemeScheme() DefaultScheme {

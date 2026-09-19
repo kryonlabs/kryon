@@ -1,0 +1,6 @@
+# All values are hexadecimal. Inputs: background surface text primary secondary dark disabled_alpha.
+# Outputs: primary on_primary secondary on_secondary surface on_surface surface_container surface_variant on_surface_variant outline error on_error disabled_container disabled_content.
+# Light mode: transparent surface falls back to background, tone channels clamp at zero, text alpha survives.
+050afaff 12345600 20283080 102030ff eeeeee44 0 60 102030ff ffffffff eeeeee44 1d1b20ff 050afaff 20283080 0106f6ff 0000f0ff 00060e80 0000ceff ba1a1aff ffffffff 0000ec60 20283060
+# Dark mode: explicit translucent surface survives, high channels clamp, contrast changes at luminance 128.
+faf0e612 12345634 0102f380 7f7f7f00 80808000 1 0 7f7f7f00 ffffffff 80808000 1d1b20ff 12345634 0102f380 fffaf012 fffff812 1d1eff80 ffffff12 f2b8b5ff 1d1b20ff fffef400 0102f300

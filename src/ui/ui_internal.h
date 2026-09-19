@@ -316,7 +316,6 @@ int ui_touch_target_min(void);
 Color ui_alpha(Color color, unsigned char alpha);
 Rectangle ui_centered_min_hit_rect(int x, int y, int w, int h,
                                    int min_w, int min_h);
-Color ui_default_on_color(Color color);
 ThemeScheme ui_default_scheme(void);
 void ui_default_elevation(Rectangle bounds, float radius, int level);
 void ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed);

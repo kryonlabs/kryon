@@ -341,6 +341,14 @@ truncated toward zero. Theme system/light/dark resolution uses the generated
 `ThemePolicy` enum in `runtime/theme.kry`; host-facing theme APIs may still
 bridge from native `ThemeMode` at their boundary.
 
+Derived theme roles also live in `runtime/theme.kry`. `SchemeFor`, `OnColor`
+and `ToneFor` own tone clamping, contrast ink, transparent-surface fallback and
+disabled-role alpha. Native C and Go adapt packed colors to their existing
+`ThemeScheme`/`DefaultScheme` results; C keeps its palette-keyed cache. Both
+targets now use white contrast ink on dark accents (C previously used
+off-white). The existing theme catalog bridge remains until its downstream
+callers migrate to KSS; it no longer carries a second role derivation.
+
 Each widget must have one canonical declaration in `.kry`. That declaration
 owns its typed props and defaults, per-instance state, events, measurement and
 layout policy, child composition, and appearance. Generated C and native Go

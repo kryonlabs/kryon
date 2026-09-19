@@ -180,6 +180,13 @@ frame timing, and scale. AdvanceFrame owns retained motion and appearance
 resolution before BuildFrame assembles the result. BuildFrame owns normalized content flags, font fallback, opacity, content bounds, and
 repaint eligibility. Content drawing consumes the same resolved StyleData,
 without converting it back to public Style solely for drawing.
+
+The native theme APIs derive their color roles through `runtime/theme.kry`.
+Hosts supply the current palette, dark-mode state and shared disabled alpha,
+then unpack `SchemeFor` results. Contrast selection and tone arithmetic must
+not be reimplemented in the host adapters. OS palette discovery and cache
+storage remain native services.
+
 Inset scaling and child centering also belong to the shared declaration code.
 Tree traversal and layout-scope storage remain host responsibilities, while
 explicit-position bypass and missing-size behavior use the same functions.

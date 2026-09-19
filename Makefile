@@ -630,6 +630,15 @@ widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIB
 .PHONY: style-release-startup-test
 .PHONY: app-background-style-test
 .PHONY: style-widget-policy-test
+.PHONY: theme-policy-test
+test: theme-policy-test
+theme-policy-test: $(GENERATED_SRC_DIR)/runtime/theme.c $(GENERATED_SRC_DIR)/runtime/theme.h $(K2CPP)
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/theme_policy_test.c $(GENERATED_SRC_DIR)/runtime/theme.c -o $(BUILD_DIR)/theme-policy-test
+	$(BUILD_DIR)/theme-policy-test tests/fixtures/theme/scheme.txt
+	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/theme-cpp runtime/theme.kry
+	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/theme-cpp tests/theme_policy_test.c $(BUILD_DIR)/tests/theme-cpp/runtime/theme.cpp -o $(BUILD_DIR)/tests/theme-cpp/check
+	$(BUILD_DIR)/tests/theme-cpp/check tests/fixtures/theme/scheme.txt
+
 .PHONY: text-policy-test
 text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test

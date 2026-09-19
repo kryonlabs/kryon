@@ -1421,7 +1421,9 @@ func main() {
 }
 EOF
 
-(cd "$work/go-run" && GOCACHE=${GOCACHE:-$work/go-cache} go run . > "$work/go.json")
+# Let the disposable fixture follow the native runtime's pinned transitive
+# dependencies without modifying the repository's module files.
+(cd "$work/go-run" && GOWORK=off GOCACHE=${GOCACHE:-$work/go-cache} go run -mod=mod . > "$work/go.json")
 
 cat > "$work/c_runner.c" <<EOF
 #include "kryon.h"

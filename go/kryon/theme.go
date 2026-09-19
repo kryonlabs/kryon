@@ -42,6 +42,23 @@ type Palette struct {
 	Shadow        uint32
 }
 
+type Scheme struct {
+	Primary           uint32
+	OnPrimary         uint32
+	Secondary         uint32
+	OnSecondary       uint32
+	Surface           uint32
+	OnSurface         uint32
+	SurfaceContainer  uint32
+	SurfaceVariant    uint32
+	OnSurfaceVariant  uint32
+	Outline           uint32
+	Error             uint32
+	OnError           uint32
+	DisabledContainer uint32
+	DisabledContent   uint32
+}
+
 type Metrics struct {
 	RadiusSmall          float32
 	RadiusMedium         float32
@@ -105,6 +122,274 @@ func Theme_PackedColor(rgb uint32, alpha uint32) uint32 {
 	var value_4 uint32 = alpha
 	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, false, 9))
 	return value_5
+}
+
+func Theme_OnColor(color uint32) uint32 {
+	var value_0 uint32 = color
+	var value_1 int32 = 24
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 7))
+	var value_4 int32 = 255
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, false, 8))
+	var red uint32 = value_6
+	var value_7 uint32 = color
+	var value_8 int32 = 16
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 7))
+	var value_11 int32 = 255
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 8))
+	var green uint32 = value_13
+	var value_14 uint32 = color
+	var value_15 int32 = 8
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_16), 32, false, 7))
+	var value_18 int32 = 255
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(value_19), 32, false, 8))
+	var blue uint32 = value_20
+	var value_21 uint32 = red
+	var value_22 int32 = 299
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 3))
+	var value_25 uint32 = green
+	var value_26 int32 = 587
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 3))
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_28), 32, false, 1))
+	var value_30 uint32 = blue
+	var value_31 int32 = 114
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(value_32), 32, false, 3))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_33), 32, false, 1))
+	var value_35 int32 = 1000
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(value_36), 32, false, 4))
+	var luminance uint32 = value_37
+	var value_38 uint32 = luminance
+	var value_39 int32 = 128
+	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
+	var value_41 bool = value_38 < value_40
+	if value_41 {
+		var value_42 int32 = 16777215
+		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
+		var value_44 int32 = 255
+		var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
+		var value_46 uint32 = Theme_PackedColor(value_43, value_45)
+		return value_46
+	}
+	var value_47 int32 = 1907488
+	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
+	var value_49 int32 = 255
+	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+	var value_51 uint32 = Theme_PackedColor(value_48, value_50)
+	return value_51
+}
+
+func Theme_ClampChannel(value int32) uint32 {
+	var value_0 int32 = value
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+		return value_4
+	}
+	var value_5 int32 = value
+	var value_6 int32 = 255
+	var value_7 bool = value_5 > value_6
+	if value_7 {
+		var value_8 int32 = 255
+		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+		return value_9
+	}
+	var value_10 int32 = value
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+	return value_11
+}
+
+func Theme_ToneFor(base uint32, light_delta int32, dark_delta int32, dark bool) uint32 {
+	var value_0 int32 = dark_delta
+	var delta int32 = value_0
+	var value_1 bool = dark
+	var value_2 bool = !value_1
+	if value_2 {
+		var value_3 int32 = light_delta
+		delta = value_3
+	}
+	var value_4 int32 = delta
+	var value_5 int32 = -255
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = -255
+		delta = value_7
+	}
+	var value_8 int32 = delta
+	var value_9 int32 = 255
+	var value_10 bool = value_8 > value_9
+	if value_10 {
+		var value_11 int32 = 255
+		delta = value_11
+	}
+	var value_12 bool = dark
+	var value_13 bool = !value_12
+	if value_13 {
+		var value_14 int32 = delta
+		var value_15 int32 = int32(number_runtime_bits(uint64(0), uint64(value_14), 32, true, 2))
+		delta = value_15
+	}
+	var value_16 uint32 = base
+	var value_17 int32 = 24
+	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(value_18), 32, false, 7))
+	var value_20 int32 = 255
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 8))
+	var value_23 int32 = int32(number_runtime_bits(uint64(value_22), uint64(0), 32, true, 0))
+	var value_24 int32 = delta
+	var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 1))
+	var value_26 uint32 = Theme_ClampChannel(value_25)
+	var red uint32 = value_26
+	var value_27 uint32 = base
+	var value_28 int32 = 16
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(value_29), 32, false, 7))
+	var value_31 int32 = 255
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(value_32), 32, false, 8))
+	var value_34 int32 = int32(number_runtime_bits(uint64(value_33), uint64(0), 32, true, 0))
+	var value_35 int32 = delta
+	var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 1))
+	var value_37 uint32 = Theme_ClampChannel(value_36)
+	var green uint32 = value_37
+	var value_38 uint32 = base
+	var value_39 int32 = 8
+	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(value_40), 32, false, 7))
+	var value_42 int32 = 255
+	var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
+	var value_44 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(value_43), 32, false, 8))
+	var value_45 int32 = int32(number_runtime_bits(uint64(value_44), uint64(0), 32, true, 0))
+	var value_46 int32 = delta
+	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 1))
+	var value_48 uint32 = Theme_ClampChannel(value_47)
+	var blue uint32 = value_48
+	var value_49 uint32 = red
+	var value_50 int32 = 24
+	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
+	var value_52 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(value_51), 32, false, 6))
+	var value_53 uint32 = green
+	var value_54 int32 = 16
+	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(value_55), 32, false, 6))
+	var value_57 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(value_56), 32, false, 9))
+	var value_58 uint32 = blue
+	var value_59 int32 = 8
+	var value_60 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(0), 32, false, 0))
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(value_60), 32, false, 6))
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(value_61), 32, false, 9))
+	var value_63 uint32 = base
+	var value_64 int32 = 255
+	var value_65 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(0), 32, false, 0))
+	var value_66 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(value_65), 32, false, 8))
+	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_62), uint64(value_66), 32, false, 9))
+	return value_67
+}
+
+func Theme_SchemeFor(background uint32, surface uint32, text uint32, primary uint32, secondary uint32, dark bool, disabled_alpha uint8) Scheme {
+	var scheme Scheme = Scheme{}
+	var value_0 uint32 = primary
+	scheme.Primary = value_0
+	var value_1 uint32 = primary
+	var value_2 uint32 = Theme_OnColor(value_1)
+	scheme.OnPrimary = value_2
+	var value_3 uint32 = secondary
+	scheme.Secondary = value_3
+	var value_4 uint32 = secondary
+	var value_5 uint32 = Theme_OnColor(value_4)
+	scheme.OnSecondary = value_5
+	var value_6 uint32 = surface
+	scheme.Surface = value_6
+	var value_7 uint32 = surface
+	var value_8 int32 = 255
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 8))
+	var value_11 int32 = 0
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 bool = value_10 == value_12
+	if value_13 {
+		var value_14 uint32 = background
+		scheme.Surface = value_14
+	}
+	var value_15 uint32 = text
+	scheme.OnSurface = value_15
+	var value_16 uint32 = background
+	var value_17 int32 = 4
+	var value_18 int32 = 10
+	var value_19 bool = dark
+	var value_20 uint32 = Theme_ToneFor(value_16, value_17, value_18, value_19)
+	scheme.SurfaceContainer = value_20
+	var value_21 uint32 = background
+	var value_22 int32 = 10
+	var value_23 int32 = 18
+	var value_24 bool = dark
+	var value_25 uint32 = Theme_ToneFor(value_21, value_22, value_23, value_24)
+	scheme.SurfaceVariant = value_25
+	var value_26 uint32 = text
+	var value_27 int32 = 34
+	var value_28 int32 = 28
+	var value_29 bool = dark
+	var value_30 uint32 = Theme_ToneFor(value_26, value_27, value_28, value_29)
+	scheme.OnSurfaceVariant = value_30
+	var value_31 uint32 = background
+	var value_32 int32 = 44
+	var value_33 int32 = 42
+	var value_34 bool = dark
+	var value_35 uint32 = Theme_ToneFor(value_31, value_32, value_33, value_34)
+	scheme.Outline = value_35
+	var value_36 int32 = 12196378
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_38 int32 = 255
+	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
+	var value_40 uint32 = Theme_PackedColor(value_37, value_39)
+	scheme.Error = value_40
+	var value_41 bool = dark
+	if value_41 {
+		var value_42 int32 = 15906997
+		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
+		var value_44 int32 = 255
+		var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
+		var value_46 uint32 = Theme_PackedColor(value_43, value_45)
+		scheme.Error = value_46
+	}
+	var value_47 uint32 = scheme.Error
+	var value_48 uint32 = Theme_OnColor(value_47)
+	scheme.OnError = value_48
+	var value_49 uint32 = background
+	var value_50 int32 = 14
+	var value_51 int32 = 14
+	var value_52 bool = dark
+	var value_53 uint32 = Theme_ToneFor(value_49, value_50, value_51, value_52)
+	var value_54 int32 = 255
+	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(^uint64(0)), 32, false, 10))
+	var value_57 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(value_56), 32, false, 8))
+	var value_58 uint8 = disabled_alpha
+	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
+	var value_60 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(value_59), 32, false, 9))
+	scheme.DisabledContainer = value_60
+	var value_61 uint32 = text
+	var value_62 int32 = 255
+	var value_63 uint32 = uint32(number_runtime_bits(uint64(value_62), uint64(0), 32, false, 0))
+	var value_64 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(^uint64(0)), 32, false, 10))
+	var value_65 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(value_64), 32, false, 8))
+	var value_66 uint8 = disabled_alpha
+	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_66), uint64(0), 32, false, 0))
+	var value_68 uint32 = uint32(number_runtime_bits(uint64(value_65), uint64(value_67), 32, false, 9))
+	scheme.DisabledContent = value_68
+	var value_69 Scheme = scheme
+	return value_69
 }
 
 func Theme_DefaultPalette(dark bool) Palette {

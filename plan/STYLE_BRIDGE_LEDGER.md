@@ -30,3 +30,8 @@ calls. `ApplyCurrentTheme` is still called by Kryon and maintained Uku, Krait an
 Rill entry points; it is not an unused API. Its remaining palette supplies
 `GetThemeScheme` and the text-content fallback, not widget chrome. Migrating that
 live contract is a separate downstream change, not a reason to keep dead globals.
+
+The role derivation behind B-001 now comes from `runtime/theme.kry`:
+`SchemeFor`, `OnColor` and `ToneFor` are shared by C, C++ and Go. The C cache and
+native color adapters remain host services. `theme-policy-test` and Go tests
+exercise the same fixtures, including alpha and channel-clamping boundaries.

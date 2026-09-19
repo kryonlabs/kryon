@@ -119,17 +119,7 @@ GetDefaultThemeMetrics(void)
 
     /* Field-wise assembly (rather than a designated compound literal) so
      * the same source builds with the strict native Plan 9 compiler. */
-    tokens.control_radius = 2.0f;
-    tokens.panel_radius = 0.0f;
-    tokens.control_alpha = 255;
-    tokens.panel_alpha = 255;
-    tokens.title_bar_alpha = 255;
-    tokens.border_alpha = 255;
-    tokens.shadow_alpha = 0;
-    tokens.shine_alpha = 0;
     tokens.bevel_enabled = 0;
-    tokens.touch_target_min = 36;
-    tokens.shadow_offset_y = 0;
     tokens.control_radius = 4.0f;
     tokens.panel_radius = 8.0f;
     tokens.control_alpha = 222;
@@ -418,42 +408,6 @@ ui_alpha(Color color, unsigned char alpha)
     return color;
 }
 
-static int
-ui_color_luminance(Color color)
-{
-    return ((int)color.r * 299 + (int)color.g * 587 + (int)color.b * 114) / 1000;
-}
-
-Color
-ui_default_on_color(Color color)
-{
-    return ui_color_luminance(color) < 128 ? RAYWHITE : (Color){0x1D, 0x1B, 0x20, 0xFF};
-}
-
-static Color
-ui_default_tone(Color base, int light_delta, int dark_delta)
-{
-    int delta = GetEffectiveThemeDarkMode() ? dark_delta : -light_delta;
-    int r = (int)base.r + delta;
-    int g = (int)base.g + delta;
-    int b = (int)base.b + delta;
-
-    if(r < 0)
-        r = 0;
-    if(r > 255)
-        r = 255;
-    if(g < 0)
-        g = 0;
-    if(g > 255)
-        g = 255;
-    if(b < 0)
-        b = 0;
-    if(b > 255)
-        b = 255;
-
-    return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, base.a};
-}
-
 ThemeScheme
 ui_default_scheme(void)
 {
@@ -465,10 +419,10 @@ ui_default_scheme(void)
     static int cache_valid = 0;
     static Color key_bg, key_surface, key_text, key_circle, key_button;
     static int key_dark;
-    Color input_surface = c_surface.a != 0 ? c_surface : c_bg;
+    Color input_surface = c_surface;
     int dark = GetEffectiveThemeDarkMode();
     ThemeScheme scheme;
-    Color disabled = c_text;
+    Scheme roles;
 
     if(cache_valid && dark == key_dark &&
        key_bg.r == c_bg.r && key_bg.g == c_bg.g && key_bg.b == c_bg.b &&
@@ -483,24 +437,23 @@ ui_default_scheme(void)
        key_button.b == c_button.b && key_button.a == c_button.a)
         return cache;
 
-    scheme.primary = c_circle;
-    scheme.on_primary = ui_default_on_color(scheme.primary);
-    scheme.secondary = c_button;
-    scheme.on_secondary = ui_default_on_color(scheme.secondary);
-    scheme.surface = input_surface;
-    scheme.on_surface = c_text;
-    scheme.surface_container = ui_default_tone(c_bg, 4, 10);
-    scheme.surface_variant = ui_default_tone(c_bg, 10, 18);
-    scheme.on_surface_variant = ui_default_tone(c_text, 34, 28);
-    scheme.outline = ui_default_tone(c_bg, 44, 42);
-    scheme.error = dark
-                       ? (Color){0xF2, 0xB8, 0xB5, 0xFF}
-                       : (Color){0xBA, 0x1A, 0x1A, 0xFF};
-    scheme.on_error = ui_default_on_color(scheme.error);
-    scheme.disabled_container = ui_default_tone(c_bg, 14, 14);
-    scheme.disabled_container.a = StyleDisabledAlpha();
-    disabled.a = StyleDisabledAlpha();
-    scheme.disabled_content = disabled;
+    roles = SchemeFor(ColorToInt(c_bg), ColorToInt(input_surface),
+                      ColorToInt(c_text), ColorToInt(c_circle),
+                      ColorToInt(c_button), dark != 0, StyleDisabledAlpha());
+    scheme.primary = GetColor(roles.primary);
+    scheme.on_primary = GetColor(roles.on_primary);
+    scheme.secondary = GetColor(roles.secondary);
+    scheme.on_secondary = GetColor(roles.on_secondary);
+    scheme.surface = GetColor(roles.surface);
+    scheme.on_surface = GetColor(roles.on_surface);
+    scheme.surface_container = GetColor(roles.surface_container);
+    scheme.surface_variant = GetColor(roles.surface_variant);
+    scheme.on_surface_variant = GetColor(roles.on_surface_variant);
+    scheme.outline = GetColor(roles.outline);
+    scheme.error = GetColor(roles.error);
+    scheme.on_error = GetColor(roles.on_error);
+    scheme.disabled_container = GetColor(roles.disabled_container);
+    scheme.disabled_content = GetColor(roles.disabled_content);
 
     cache = scheme;
     cache_valid = 1;

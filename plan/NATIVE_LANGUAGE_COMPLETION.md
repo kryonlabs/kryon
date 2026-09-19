@@ -41,3 +41,28 @@ checkout and is outside this change's ownership.
   widget chrome; shared `.kry` policy owns text content fallback.
 - Native input, image resources, measured row reuse and host organization are
   committed. Linux input verification runs on a private Xvfb/IBus session.
+- Theme role derivation now comes from `.kry`, with shared C/C++/Go fixtures.
+  Removed the duplicate C/Go tone and contrast implementations and overwritten
+  metric defaults. Live theme catalog callers still require migration.
+
+## Remaining implementation order
+
+1. Specify array value construction, copying, parameter passing and returns,
+   then implement the same rules in strict C, C++ and Go emission. Current
+   support covers fixed arrays inside records; a diagnostic for an unsupported
+   array value does not complete this work.
+2. Define slice bounds, mutation and storage lifetime before accepting slices
+   as portable values. Cover valid operations, out-of-bounds access and escaping
+   borrowed storage across the three native targets.
+3. Extend callable types beyond the existing synchronous borrowed `#slot`
+   contract. Specify return values, captured storage and lifetime first; keep
+   rejected escape cases explicit until the ownership contract is implemented.
+4. Migrate maintained Uku, Krait and Rill theme catalog callers to KSS, making
+   reusable changes upstream first and updating only downstream submodule
+   pointers. Remove `ApplyCurrentTheme` and its remaining global palette only
+   after those callers and Kryon's own initialization stop relying on them.
+   Structural font/layout fallbacks and actual OS services remain documented
+   exceptions, not appearance policy to duplicate in hosts.
+5. Run the native compiler fixtures, generated-runtime parity and applicable
+   virtual-display tests after those migrations, then close the acceptance
+   checklist. Per-batch checks already pass; this final pass is still pending.

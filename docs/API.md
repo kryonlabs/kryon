@@ -1033,6 +1033,12 @@ ThemeMetrics GetDefaultThemeMetrics(void);
 ThemeScheme GetThemeScheme(void);
 ```
 
+`GetThemeScheme` uses the shared `.kry` theme policy on native C and Go.
+Dark accents receive white contrast text; light accents receive dark text.
+Tone adjustments clamp each color channel and preserve alpha. A fully
+transparent scheme surface falls back to the theme background; disabled roles
+use the shared disabled alpha. Explicit KSS colors keep their own rules.
+
 ---
 
 ### Locale

@@ -802,8 +802,7 @@ func resetSystemThemeForTest() {
 	systemThemeRefreshes = 0
 }
 
-// DefaultScheme mirrors the C ThemeScheme: the Default color roles
-// derived from the live theme palette (src/ui/ui_style.c ui_default_scheme).
+// DefaultScheme exposes the shared runtime/theme.kry roles as native colors.
 type DefaultScheme struct {
 	Primary           Color
 	OnPrimary         Color
@@ -821,48 +820,24 @@ type DefaultScheme struct {
 	DisabledContent   Color
 }
 
-func materialOnColor(c Color) Color {
-	if luminance(c) < 128 {
-		return Color{0xFF, 0xFF, 0xFF, 0xFF}
-	}
-	return Color{0x1D, 0x1B, 0x20, 0xFF}
-}
-
-func materialTone(base Color, lightDelta, darkDelta int, dark bool) Color {
-	delta := -lightDelta
-	if dark {
-		delta = darkDelta
-	}
-	return Color{clampByte(int(base.R) + delta), clampByte(int(base.G) + delta), clampByte(int(base.B) + delta), base.A}
-}
-
 func materialScheme(p themePalette, dark bool) DefaultScheme {
-	surface := p.surface
-	if surface.A == 0 {
-		surface = p.background
-	}
-	errorColor := Color{0xBA, 0x1A, 0x1A, 0xFF}
-	if dark {
-		errorColor = Color{0xF2, 0xB8, 0xB5, 0xFF}
-	}
-	disabledContainer := materialTone(p.background, 14, 14, dark)
-	disabledContainer.A = 96
-	disabledContent := p.text
-	disabledContent.A = 96
+	roles := Theme_SchemeFor(packRGBA(p.background), packRGBA(p.surface),
+		packRGBA(p.text), packRGBA(p.circle), packRGBA(p.button), dark,
+		Style_StyleDisabledAlpha())
 	return DefaultScheme{
-		Primary:           p.circle,
-		OnPrimary:         materialOnColor(p.circle),
-		Secondary:         p.button,
-		OnSecondary:       materialOnColor(p.button),
-		Surface:           surface,
-		OnSurface:         p.text,
-		SurfaceContainer:  materialTone(p.background, 4, 10, dark),
-		SurfaceVariant:    materialTone(p.background, 10, 18, dark),
-		OnSurfaceVariant:  materialTone(p.text, 34, 28, dark),
-		Outline:           materialTone(p.background, 44, 42, dark),
-		Error:             errorColor,
-		OnError:           materialOnColor(errorColor),
-		DisabledContainer: disabledContainer,
-		DisabledContent:   disabledContent,
+		Primary:           unpackRGBA(roles.Primary),
+		OnPrimary:         unpackRGBA(roles.OnPrimary),
+		Secondary:         unpackRGBA(roles.Secondary),
+		OnSecondary:       unpackRGBA(roles.OnSecondary),
+		Surface:           unpackRGBA(roles.Surface),
+		OnSurface:         unpackRGBA(roles.OnSurface),
+		SurfaceContainer:  unpackRGBA(roles.SurfaceContainer),
+		SurfaceVariant:    unpackRGBA(roles.SurfaceVariant),
+		OnSurfaceVariant:  unpackRGBA(roles.OnSurfaceVariant),
+		Outline:           unpackRGBA(roles.Outline),
+		Error:             unpackRGBA(roles.Error),
+		OnError:           unpackRGBA(roles.OnError),
+		DisabledContainer: unpackRGBA(roles.DisabledContainer),
+		DisabledContent:   unpackRGBA(roles.DisabledContent),
 	}
 }

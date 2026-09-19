@@ -49,6 +49,77 @@ PackedColor :: (rgb: u32, alpha: u32) -> u32 #export {
     return (rgb << (u32)8) | alpha
 }
 
+# Derived roles for the existing native theme APIs. Hosts supply their current
+# palette and unpack the result; tone, contrast and fallback decisions live here.
+Scheme :: struct {
+    primary: u32
+    on_primary: u32
+    secondary: u32
+    on_secondary: u32
+    surface: u32
+    on_surface: u32
+    surface_container: u32
+    surface_variant: u32
+    on_surface_variant: u32
+    outline: u32
+    error: u32
+    on_error: u32
+    disabled_container: u32
+    disabled_content: u32
+}
+
+OnColor :: (color: u32) -> u32 #export {
+    red: u32 = (color >> (u32)24) & (u32)255
+    green: u32 = (color >> (u32)16) & (u32)255
+    blue: u32 = (color >> (u32)8) & (u32)255
+    luminance: u32 = (red * (u32)299 + green * (u32)587 + blue * (u32)114) / (u32)1000
+    if luminance < (u32)128 {
+        return PackedColor((u32)0xFFFFFF, (u32)255)
+    }
+    return PackedColor((u32)0x1D1B20, (u32)255)
+}
+
+ClampChannel :: (value: i32) -> u32 {
+    if value < 0 { return (u32)0 }
+    if value > 255 { return (u32)255 }
+    return (u32)value
+}
+
+ToneFor :: (base: u32, light_delta: i32, dark_delta: i32, dark: bool) -> u32 #export {
+    delta: i32 = dark_delta
+    if !dark { delta = light_delta }
+    # Clamp before negating or adding, including for extreme signed inputs.
+    if delta < -255 { delta = -255 }
+    if delta > 255 { delta = 255 }
+    if !dark { delta = -delta }
+    red: u32 = ClampChannel((i32)((base >> (u32)24) & (u32)255) + delta)
+    green: u32 = ClampChannel((i32)((base >> (u32)16) & (u32)255) + delta)
+    blue: u32 = ClampChannel((i32)((base >> (u32)8) & (u32)255) + delta)
+    return (red << (u32)24) | (green << (u32)16) | (blue << (u32)8) | (base & (u32)255)
+}
+
+SchemeFor :: (background: u32, surface: u32, text: u32, primary: u32,
+              secondary: u32, dark: bool, disabled_alpha: u8) -> Scheme #export {
+    scheme: Scheme
+    scheme.primary = primary
+    scheme.on_primary = OnColor(primary)
+    scheme.secondary = secondary
+    scheme.on_secondary = OnColor(secondary)
+    scheme.surface = surface
+    if (surface & (u32)255) == (u32)0 { scheme.surface = background }
+    scheme.on_surface = text
+    scheme.surface_container = ToneFor(background, 4, 10, dark)
+    scheme.surface_variant = ToneFor(background, 10, 18, dark)
+    scheme.on_surface_variant = ToneFor(text, 34, 28, dark)
+    scheme.outline = ToneFor(background, 44, 42, dark)
+    scheme.error = PackedColor((u32)0xBA1A1A, (u32)255)
+    if dark { scheme.error = PackedColor((u32)0xF2B8B5, (u32)255) }
+    scheme.on_error = OnColor(scheme.error)
+    scheme.disabled_container = (ToneFor(background, 14, 14, dark) & ~(u32)255) | (u32)disabled_alpha
+    scheme.disabled_content = (text & ~(u32)255) | (u32)disabled_alpha
+    return scheme
+}
+
 DefaultPalette :: (dark: bool) -> Palette #export {
     palette: Palette
     if dark {
