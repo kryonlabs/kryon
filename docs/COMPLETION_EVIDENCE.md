@@ -673,3 +673,58 @@ runtime successfully. Root provenance/reproducibility checks and the tools
 archive check pass. Logs: `build/css-inline/clean-web-build.log`,
 `untracked-web-check.log`, and `tools-package.log`. This removes about 39,500
 lines of generated JavaScript from Git, not the necessary browser build outputs.
+
+## Website redesign completion (2026-09-19)
+
+Recorded by commits `667a36f0` (implementation) and `d6108fd9` (verification).
+The completed website plan was removed on 2026-09-19. The checks below are
+preserved historical results, not a new production audit.
+
+- Rebuilt all ten public content/tool pages, with the older examples route
+  forwarding its example and artifact parameters to the Playground.
+- Generated the approved workshop artwork and a matching social card; exact
+  prompts and font licenses are in `docs/site/assets/editorial/`. The original
+  generated images are retained with the approved design artifacts.
+- Homepage app metadata comes from the existing showcase registry. The example
+  image is a real Kryon-owned KRB capture of the downloadable `hello.kry`.
+- Verified the exact sample with native C generation, KRB compilation, and the
+  SDL native host capture. The quickstart explicitly starts with the KRB subset.
+- Built the site in an isolated checkout, including all five JavaScript/WASM
+  tool pairs. The first baseline build lacked the raylib header submodule;
+  initializing the pinned dependency resolved it without source changes.
+- Checked all ten content/tool pages at 390, 768, and 1440 pixels in both themes:
+  60 combinations, no document overflow, one primary heading, valid skip link.
+- Checked Docs keyboard tabs, showcase filters and missing data, API contents
+  filtering and anchors, matrix filtering, mobile menu/Escape, reduced motion,
+  theme persistence, compiler outputs, error diagnostics, draft recovery, failed
+  compiler downloads, and the older example/output-tab links.
+- Corrected the Playground's theme-color decoding (signed bit comparison made
+  text invisible), obsolete default sample, incomplete output count, and draft
+  loss when switching examples. These are website-tool changes, not runtime APIs.
+- Checked generated API links under the Markdown renderer, including stable
+  heading IDs, older style-section links, and links to repository documents.
+- Validated local assets, internal links/fragments, metadata, scripts, and
+  unique IDs. Text palette contrast on the page background is at least 5.05:1
+  in light mode and 7.73:1 in dark mode.
+- Hero WebP: 210,322 bytes. Both required fonts together: 82,104 bytes.
+  The homepage does not load compiler modules; app images load lazily.
+- Benchmark data, coverage evidence, paused JS-target status, and KRB subset
+  limits remain explicit. No fresh benchmark numbers or broader target support
+  are claimed by this redesign.
+
+Local design review artifacts: `waozi-design-proposals/2026-09-19/kryonlabs/`.
+Publishing uses the existing `Cloudflare Pages` workflow and project `kryon`.
+
+### Production verification
+
+Published website commit: `667a36f0490c941e1d38bbba04ca6465b98b4704`.
+[Successful build and production deployment](https://github.com/kryonlabs/kryon/actions/runs/35451762905).
+
+Verified all ten production routes and their updated metadata, workshop image,
+social card, example capture, downloadable source, and compiler binaries.
+The public homepage loads the three selected registry projects. The live
+Playground compiles the exact homepage example into KIR, C, Go, and KRB, and
+its greeting is visible in the preview.
+
+Final desktop and Playground production captures are retained beside the
+approved proposal under `kryonlabs/implementation/`.
