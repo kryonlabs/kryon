@@ -455,12 +455,26 @@ ui_update_primary_pointer_input(void)
 {
     int touch_count = GetTouchPointCount();
     int touch_down = touch_count > 0;
-    int touch_active = touch_down || g_ui_primary_touch_was_down;
+    int touch_active;
     Vector2 mouse = GetMousePosition();
     Vector2 position = mouse;
 
+#if ANDROID_BUILD
+    if(kry_android_touch_down()) {
+        touch_count = 1;
+        touch_down = 1;
+        position = kry_android_touch_position();
+    }
+#endif
+    touch_active = touch_down || g_ui_primary_touch_was_down;
+
     if(touch_down) {
+#if ANDROID_BUILD
+        if(!kry_android_touch_down())
+            position = GetTouchPosition(0);
+#else
         position = GetTouchPosition(0);
+#endif
         g_ui_primary_last_touch_screen = position;
     } else if(g_ui_primary_touch_was_down) {
         position = g_ui_primary_last_touch_screen;

@@ -8,5 +8,9 @@ void kry_sdl_prepare_input_poll(void);
 void kry_sdl_finish_input_poll(void);
 #endif
 Vector2 kry_mouse_press_position(Vector2 fallback);
+#if ANDROID_BUILD
+int kry_android_touch_down(void);
+Vector2 kry_android_touch_position(void);
+#endif
 
 #endif
