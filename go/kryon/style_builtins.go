@@ -1526,7 +1526,7 @@ Progress[role=Label] {
 
 Button {
   background: panel;
-  background-end: surface;
+  background-end: panel;
   foreground: text;
   border: border;
   focus: focus;
@@ -1543,13 +1543,13 @@ Button {
 
 Button:hover {
   background: panel-hover;
-  background-end: panel;
+  background-end: panel-hover;
   border: border-hover;
 }
 
 Button:pressed {
   background: panel-pressed;
-  background-end: panel;
+  background-end: panel-pressed;
 }
 
 Button:selected {
@@ -1573,14 +1573,14 @@ Button:loading {
 
 Button[tone=Accent] {
   background: accent;
-  background-end: accent-hover;
+  background-end: accent;
   foreground: accent-ink;
   border: accent-border;
 }
 
 Button[tone=Accent]:hover {
   background: accent-hover;
-  background-end: accent;
+  background-end: accent-hover;
 }
 
 Button[tone=Accent]:focus {
@@ -1593,21 +1593,62 @@ Button[tone=Accent]:loading {
 
 Button[tone=Danger] {
   background: danger;
+  background-end: danger;
   foreground: danger-ink;
   border: danger-border;
 }
 
 Button[emphasis=Outline] {
   background: transparent;
+  background-end: transparent;
   foreground: text;
   border: border-hover-strong;
 }
 
 Button[emphasis=Ghost] {
   background: transparent;
+  background-end: transparent;
   foreground: text;
   border: transparent;
   border-width: border.none;
+}
+
+Button[tone=Accent][emphasis=Outline] {
+  foreground: accent;
+  border: accent;
+}
+
+Button[tone=Accent][emphasis=Ghost] {
+  foreground: accent;
+}
+
+Button[tone=Danger][emphasis=Outline] {
+  foreground: danger;
+  border: danger;
+}
+
+Button[tone=Danger][emphasis=Ghost] {
+  foreground: danger;
+}
+
+Button[emphasis=Ghost]:hover {
+  background: panel-hover;
+  background-end: panel-hover;
+}
+
+Button[emphasis=Ghost]:pressed {
+  background: panel-pressed;
+  background-end: panel-pressed;
+}
+
+Button[emphasis=Outline]:hover {
+  background: panel-hover;
+  background-end: panel-hover;
+}
+
+Button[emphasis=Outline]:pressed {
+  background: panel-pressed;
+  background-end: panel-pressed;
 }
 
 Button[size=Small] {
@@ -1833,12 +1874,13 @@ Toggle[role=Track] {
   padding-x: 54;
   padding-y: 32;
   gap: 4;
+  radius: 999;
   opacity: 1;
 }
 
 Toggle[role=Label] {
   foreground: text;
-  padding-x: 16;
+  padding-x: 10;
   font-size: font.md;
   opacity: 1;
 }
@@ -1855,6 +1897,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: accent-border;
+  radius: 999;
   gap: 3;
 }
 
@@ -3858,12 +3901,13 @@ Toggle[role=Track] {
   padding-x: 46;
   padding-y: 24;
   gap: 2;
+  radius: 999;
   opacity: 1;
 }
 
 Toggle[role=Label] {
   foreground: text;
-  padding-x: 12;
+  padding-x: 10;
   font-size: font;
   opacity: 1;
 }
@@ -3881,6 +3925,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: accent-border;
+  radius: 999;
   gap: 2;
 }
 
@@ -5954,12 +5999,13 @@ Toggle[role=Track] {
   padding-x: 54;
   padding-y: 32;
   gap: 4;
+  radius: 999;
   opacity: 1;
 }
 
 Toggle[role=Label] {
   foreground: text;
-  padding-x: 16;
+  padding-x: 10;
   font-size: font;
   opacity: 1;
 }
@@ -5979,6 +6025,7 @@ Toggle[role=Fill] {
   background-end: accent-end;
   foreground: accent-ink;
   border: accent-border;
+  radius: 999;
   gap: 3;
 }
 

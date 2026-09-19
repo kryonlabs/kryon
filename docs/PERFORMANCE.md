@@ -41,3 +41,23 @@ The document improvement comes from avoiding repeat layout and measurement of
 unchanged paragraphs. The form and editable-buffer paths do not use this cache;
 their small timing differences are within run-to-run variation. First-frame,
 constantly changing text, and cache-thrashing workloads still pay layout cost.
+
+## Bounded Surface Raster Cache
+
+The native Go renderer caches sampled material layers, including rounded panel
+fills and borders. Sampling policy remains in the shared Kryon runtime; cached
+opaque spans use row copies, and translucent spans retain the same source-over
+blending and rounding as uncached rendering. The key includes the complete
+surface command and pixel clip, so changes to position, scale, colors, segments,
+or material parameters cannot reuse an incompatible raster.
+
+An LRU retains at most 128 entries and 32 MiB of accounted pixel/span storage,
+plus bounded map/entry overhead. Entries over 8 MiB are not retained. Cold frames,
+resizing, and changing material parameters still incur sampling work.
+
+On the same machine and date as above, a synthetic 1600×900 dashboard with
+rounded panels and 30 recommendations took 250 ms per warm repaint before the
+cache and a median 4.85 ms afterward (three runs of 30 frames). This includes
+frame construction and CPU rasterization, but excludes presentation and network
+requests. Pixel comparisons cover flat, lightfield, and glass materials with
+clipping, fractional coordinates, scaling, gradients, and translucent targets.

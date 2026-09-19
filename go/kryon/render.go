@@ -153,7 +153,7 @@ func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
 	return Material_MaterialContentBounds(paint)
 }
 
-func renderSurfaceDrawing(img *image.RGBA, command SurfaceDrawing) {
+func renderSurfaceDrawingUncached(img *image.RGBA, command SurfaceDrawing) {
 	if !command.Visible {
 		return
 	}
