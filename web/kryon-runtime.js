@@ -1630,11 +1630,16 @@ function dropdownEffectiveCount(state, args, count) {
 
 function dropdownPopupBounds(rt, bounds, count) {
   const height = bounds.height * count;
+  const gap = 4;
   const vp = viewport(rt);
-  const viewportHeight = numberValue(vp.height, 600) > 0 ? numberValue(vp.height, 600) : 600;
-  const belowY = bounds.y + bounds.height;
-  const y = belowY + height > viewportHeight ? bounds.y - height : belowY;
-  return { x: bounds.x, y, width: bounds.width, height };
+  const rawViewportWidth = numberValue(vp.width, 640);
+  const rawViewportHeight = numberValue(vp.height, 480);
+  const viewportWidth = rt.target || rt.app ? (rawViewportWidth > 0 ? rawViewportWidth : 640) : 640;
+  const viewportHeight = rt.target || rt.app ? (rawViewportHeight > 0 ? rawViewportHeight : 480) : 480;
+  const belowY = bounds.y + bounds.height + gap;
+  const x = bounds.x + bounds.width > viewportWidth ? Math.max(0, viewportWidth - bounds.width) : bounds.x;
+  const y = belowY + height > viewportHeight ? bounds.y - gap - height : belowY;
+  return { x, y, width: bounds.width, height };
 }
 
 function setDropdownOpen(rt, id, bounds, count, selected) {
@@ -1649,8 +1654,13 @@ function closeDropdown(rt) {
 }
 
 function dropdownPopupIndex(bounds, popupBounds, count, y) {
-  const raw = Math.floor((y - popupBounds.y) / Math.max(1, bounds.height));
+  const rowHeight = Math.max(1, bounds.height);
+  const raw = Math.floor((y - popupBounds.y) / rowHeight);
   return Math.max(0, Math.min(Math.max(0, count - 1), raw));
+}
+
+function dropdownHitsScrollbar(popupBounds, x) {
+  return x >= popupBounds.x + Math.max(0, popupBounds.width - 12);
 }
 
 function handleDropdown(rt, state, args, meta = null) {
@@ -1715,6 +1725,8 @@ function handleDropdown(rt, state, args, meta = null) {
       return true;
     }
     if (rt.input.dropdownOpen === id) {
+      if (dropdownHitsScrollbar(popupBounds, tap.x))
+        return true;
       const index = dropdownPopupIndex(bounds, popupBounds, effectiveCount, tap.y);
       state[ref] = index;
       closeDropdown(rt);
