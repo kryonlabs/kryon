@@ -3,8 +3,12 @@
 Status: the phase 1 completeness gate already fails on unregistered surface (missing
 module rows, disk/surface drift) with mutation tests; the law program is merged to
 master (fast-forward through `6375aad3`), so downstream vendor-pointer bumps and
-consumer verification are now unblocked. Those migrations and the CI completeness
-enforcement beyond the inventory gate remain open.
+consumer verification are now unblocked. First downstream sweep recorded in
+[laws/evidence/phase-9-downstream-2026-09-19.md](../../laws/evidence/phase-9-downstream-2026-09-19.md):
+atr builds and keeps the bump; inbe is blocked by the slice checkpoint's
+array-body rule; krait and uku need their own API migrations (exact error
+signatures recorded). Those migrations and the CI completeness enforcement
+beyond the inventory gate remain open.
 Estimate: **15–30 focused engineer-days; 700–1,800 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 
