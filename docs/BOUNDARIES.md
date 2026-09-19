@@ -248,7 +248,10 @@ and text shortcut/edit-command decisions belong to `runtime/*.kry`.
 `runtime/text_input.kry` also owns navigation and deletion intent, word-boundary
 classification, and composition phase/range decisions. C and Go use the generated
 word-boundary rule; Go applies generated navigation, deletion and composition
-decisions. Hosts traverse UTF-8 bytes to resolve the requested cursor movement.
+decisions. Hosts resolve character movement through private Unicode grapheme
+adapters (utf8proc in C, clipperhouse/uax29 in native Go); neither duplicates the
+Unicode segmentation tables or the shared editing policy. Byte-offset storage,
+scalar-count limits and platform IME preedit offsets are separate contracts.
 Native and Go event loops sample keys and apply those decisions; clipboard IO, buffer
 storage, focus registration and pointer-event queues remain host services.
 The web queued editor and live DOM text fields use generated text-input policy,

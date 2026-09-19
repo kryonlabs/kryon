@@ -61,6 +61,7 @@ module kryon-generated-runtime-parity
 go 1.25.0
 
 require (
+	github.com/clipperhouse/uax29/v2 v2.7.0
 	github.com/waozixyz/kryon/go/kryon v0.0.0
 	golang.org/x/image v0.45.0
 	golang.org/x/sys v0.47.0
@@ -887,6 +888,26 @@ func main() {
 	if got := text64(form.First); got != "alpha" {
 		panic(fmt.Sprintf("form: backspace restored first field to %q, want alpha", got))
 	}
+	for _, cluster := range []string{"e\u0301", "\U0001f469\u200d\U0001f4bb", "\U0001f1f5\U0001f1fe", "\U0001f44d\U0001f3fd", "\u0915\u094d\u0937"} {
+		for _, key := range []int32{kryon.KeyDelete, kryon.KeyBackspace} {
+			clear(form.First[:])
+			copy(form.First[:], "A"+cluster+"Z")
+			form.FirstCursor = int32(1 + len(cluster))
+			driver.SetSelection(101, form.FirstCursor, form.FirstCursor)
+			if key == kryon.KeyDelete {
+				driver.QueueKey(kryon.KeyLeft)
+				drawForm()
+				if form.FirstCursor != 1 { panic("generated TextField left split grapheme") }
+			}
+			driver.QueueKey(key)
+			drawForm()
+			if text64(form.First) != "AZ" || form.FirstCursor != 1 { panic("generated TextField deletion split grapheme") }
+		}
+	}
+	clear(form.First[:])
+	copy(form.First[:], "alpha")
+	form.FirstCursor = 4
+	driver.SetSelection(101, 4, 4)
 
 	driver.SetFocus(102)
 	drawForm()
@@ -2044,6 +2065,38 @@ int main(void)
         fprintf(stderr, "form: backspace restored first field to '%s', want alpha\n", first);
         return 1;
     }
+
+    const char *clusters[] = {
+        "e\xcc\x81", "\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x92\xbb",
+        "\xf0\x9f\x87\xb5\xf0\x9f\x87\xbe", "\xf0\x9f\x91\x8d\xf0\x9f\x8f\xbd",
+        "\xe0\xa4\x95\xe0\xa5\x8d\xe0\xa4\xb7"
+    };
+    for(size_t i = 0; i < sizeof(clusters) / sizeof(clusters[0]); i++) {
+        for(int backward = 0; backward < 2; backward++) {
+            snprintf(first, sizeof(first), "A%sZ", clusters[i]);
+            first_cursor = 1 + (int)strlen(clusters[i]);
+            SetSelection(101, first_cursor, first_cursor);
+            if(!backward) {
+                InjectKeyTap(KEY_LEFT);
+                InjectPump();
+                draw_form();
+                if(first_cursor != 1) {
+                    fprintf(stderr, "generated TextField left split grapheme\n");
+                    return 1;
+                }
+            }
+            InjectKeyTap(backward ? KEY_BACKSPACE : KEY_DELETE);
+            InjectPump();
+            draw_form();
+            if(strcmp(first, "AZ") != 0 || first_cursor != 1) {
+                fprintf(stderr, "generated TextField deletion split grapheme\n");
+                return 1;
+            }
+        }
+    }
+    snprintf(first, sizeof(first), "alpha");
+    first_cursor = 4;
+    SetSelection(101, 4, 4);
 
     SetFocus(102);
     draw_form();

@@ -524,7 +524,7 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 				fillRectPixels(img, sx, y+fontHeight-2, sw, 2, cursorColor)
 			}
 		}
-		cursor := clampCursor(op.Text, int(op.Cursor))
+		cursor := clampRuneCursor(op.Text, int(op.Cursor))
 		if op.Focused && !op.ReadOnly && cursor >= line.start && cursor <= line.end {
 			prefix := op.Text[line.start:cursor]
 			cursorX := x + textAdvance(prefix, int32(len(prefix)), op.FontSize, op.FontID)

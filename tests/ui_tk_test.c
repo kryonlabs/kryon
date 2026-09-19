@@ -5524,9 +5524,34 @@ test_control_style_resolution(void)
     ClearThemeMetricsOverride();
 }
 
+static void
+test_grapheme_cursor_placement(void)
+{
+    const char *text = "Ae\xcc\x81\r\nB\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x92\xbbZ";
+    char long_line[2048];
+    int anchor = 4;
+    int cursor = 4;
+
+    check_int("CRLF line end", ui_text_line_end(text, 0), 4);
+    check_int("CRLF next line", ui_grapheme_next_offset(text, 4), 6);
+    TextNavigationInput input = {.text = text, .key = TextNavLeft(), .shift = 1};
+    check_int("grapheme navigation consumed", ui_text_navigate(input, &anchor, &cursor), 1);
+    check_int("grapheme selection anchor", anchor, 4);
+    check_int("grapheme selection cursor", cursor, 1);
+    for(int x = 0; x < 400; x++) {
+        cursor = ui_text_cursor_at_x(text, Text16, 0, x);
+        check_int("click at grapheme boundary", ui_grapheme_floor_offset(text, cursor), cursor);
+    }
+    memset(long_line, 'x', sizeof(long_line) - 4);
+    memcpy(long_line + sizeof(long_line) - 4, "e\xcc\x81", 4);
+    check_int("long line click reaches end", ui_text_cursor_at_x(long_line, Text16, 0, 1000000),
+              (int)strlen(long_line));
+}
+
 int
 main(void)
 {
+    test_grapheme_cursor_placement();
     SetThemeMode(THEME_MODE_LIGHT);
     check_color("default light background", GetThemeBackground(), ThemeDefaultLight().colors.background);
     check_color("default light border", GetThemeBorder(), ThemeDefaultLight().colors.border);

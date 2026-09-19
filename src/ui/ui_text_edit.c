@@ -87,8 +87,8 @@ ui_text_composition_view(const char *text, int selection_start,
 
     text_len = (int)strlen(text);
     preedit_len = (int)strlen(preedit);
-    start = ui_utf8_clamp_offset(text, selection_start);
-    end = ui_utf8_clamp_offset(text, selection_end);
+    start = ui_grapheme_floor_offset(text, selection_start);
+    end = ui_grapheme_floor_offset(text, selection_end);
     if(start > end) {
         int swap = start;
         start = end;
@@ -158,9 +158,9 @@ ui_text_word_left(const char *text, int cursor)
     if(text == NULL)
         return 0;
     cursor = TextCursorForLength(cursor, (int)strlen(text));
-    cursor = ui_utf8_prev_offset(text, cursor);
+    cursor = ui_grapheme_prev_offset(text, cursor);
     while(cursor > 0 && !ui_text_is_word_boundary(text, cursor))
-        cursor = ui_utf8_prev_offset(text, cursor);
+        cursor = ui_grapheme_prev_offset(text, cursor);
     return cursor;
 }
 
@@ -173,9 +173,9 @@ ui_text_word_right(const char *text, int cursor)
         return 0;
     len = (int)strlen(text);
     cursor = TextCursorForLength(cursor, len);
-    cursor = ui_utf8_next_offset(text, cursor);
+    cursor = ui_grapheme_next_offset(text, cursor);
     while(cursor < len && !ui_text_is_word_boundary(text, cursor))
-        cursor = ui_utf8_next_offset(text, cursor);
+        cursor = ui_grapheme_next_offset(text, cursor);
     return cursor;
 }
 
@@ -260,6 +260,8 @@ ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
 
     if(text == NULL || anchor == NULL || cursor == NULL)
         return 0;
+    *anchor = ui_grapheme_floor_offset(text, *anchor);
+    *cursor = ui_grapheme_floor_offset(text, *cursor);
     range = TextSelectionRangeFor(*anchor, *cursor);
     start = range.start;
     end = range.end;
@@ -277,9 +279,9 @@ ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
         else if(decision.word_direction > 0)
             end = ui_text_word_right(text, *cursor);
         else if(decision.char_direction < 0)
-            start = ui_utf8_prev_offset(text, *cursor);
+            start = ui_grapheme_prev_offset(text, *cursor);
         else if(decision.char_direction > 0)
-            end = ui_utf8_next_offset(text, *cursor);
+            end = ui_grapheme_next_offset(text, *cursor);
     }
     if(!ui_text_delete_range(text, text_size, cursor, start, end))
         return 0;

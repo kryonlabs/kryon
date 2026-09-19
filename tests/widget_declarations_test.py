@@ -315,6 +315,7 @@ func TestDeclarations(t *testing.T) {
                 (output / "go.mod").write_text(
                     "module widgets\n\ngo 1.25.0\n\nrequire (\n"
                     "\tgithub.com/waozixyz/kryon/go/kryon v0.0.0\n"
+                    "\tgithub.com/clipperhouse/uax29/v2 v2.7.0\n"
                     "\tgolang.org/x/image v0.45.0\n"
                     "\tgolang.org/x/sys v0.47.0\n"
                     "\tgolang.org/x/text v0.41.0\n)\n"

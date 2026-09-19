@@ -325,6 +325,31 @@ reject_digits_filter(int codepoint, void *user_data)
 }
 
 static void
+test_grapheme_delete(void)
+{
+    const char *clusters[] = {"e\xcc\x81", "\xf0\x9f\x91\xa9\xe2\x80\x8d\xf0\x9f\x92\xbb",
+        "\xf0\x9f\x87\xb5\xf0\x9f\x87\xbe", "\xf0\x9f\x91\x8d\xf0\x9f\x8f\xbd",
+        "\xe0\xa4\x95\xe0\xa5\x8d\xe0\xa4\xb7"};
+
+    for(size_t i = 0; i < sizeof(clusters) / sizeof(clusters[0]); i++) {
+        char text[128];
+        int cursor = 1 + (int)strlen(clusters[i]);
+        int anchor = cursor;
+
+        snprintf(text, sizeof(text), "A%sZ", clusters[i]);
+        check_true("grapheme backspace", ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                   TextDeleteBackspace(), 0, 0));
+        check_str("whole grapheme removed", text, "AZ");
+        check_int("grapheme cursor", cursor, 1);
+        snprintf(text, sizeof(text), "A%sZ", clusters[i]);
+        cursor = anchor = 1;
+        check_true("grapheme delete", ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
+                   TextDeleteForward(), 0, 0));
+        check_str("whole forward grapheme removed", text, "AZ");
+    }
+}
+
+static void
 test_insert_text_bulk(void)
 {
     char buf[64] = "ac";
@@ -379,6 +404,7 @@ main(void)
     test_insert_codepoint();
     test_delete_range();
     test_delete_key();
+    test_grapheme_delete();
     test_insert_text_bulk();
     if(failures != 0) {
         fprintf(stderr, "%d text-edit test(s) failed\n", failures);

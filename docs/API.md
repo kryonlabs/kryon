@@ -1879,6 +1879,21 @@ before an app applies or saves them.
 
 ## Input Handling
 
+### Unicode editing
+
+Native C and Go editors keep byte-offset cursors and selections, but normalize
+committed-text positions to Unicode 17 extended grapheme boundaries. Left/right,
+Backspace/Delete, selection endpoints, and click placement treat combining
+sequences, joined emoji, flags, and Indic conjuncts as whole characters. CRLF is
+one cursor step. C TextArea soft wrapping does not split a grapheme, and long
+visible lines are no longer truncated at 1023 bytes.
+
+Buffer capacities remain bytes and `max_codepoints` remains a scalar-value
+limit, not a grapheme limit. IME preedit offsets retain their codepoint contract;
+platforms can position the composing caret inside a not-yet-committed cluster.
+This does not add bidirectional cursor ordering, Unicode word segmentation,
+font shaping, or native Go visual-row wrapping.
+
 ### Text composition
 
 Platform adapters submit UTF-8 IME preedit and commit events through the shared

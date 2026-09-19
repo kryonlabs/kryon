@@ -272,7 +272,7 @@ func (r *windowRuntime) updateInputMethod(ops []FrameOp) {
 			continue
 		}
 		r.ime.focusIn()
-		cursor := clampCursor(op.Text, int(op.Cursor))
+		cursor := clampRuneCursor(op.Text, int(op.Cursor))
 		prefix := op.Text[:cursor]
 		line := strings.Count(prefix, "\n")
 		if newline := strings.LastIndexByte(prefix, '\n'); newline >= 0 {

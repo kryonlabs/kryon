@@ -20,6 +20,7 @@
 #include "ui_widget_internal.h"
 #include "ui_rows_internal.h"
 #include "ui_text_layout.h"
+#include "ui_grapheme.h"
 #include "runtime/text_input.h"
 
 #include <math.h>

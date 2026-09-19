@@ -1619,9 +1619,19 @@ $(OPEN_URI_TEST): tests/open_uri_test.c src/platform/open_uri.c include/kry_uri.
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/open_uri_test.c src/platform/open_uri.c -o $@
 
-$(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c include/kryon.h $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
+$(UI_TEXT_EDIT_TEST): tests/ui_text_edit_test.c src/ui/ui_text_edit.c src/ui/ui_grapheme.c src/ui/ui_grapheme.h vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc_data.c include/kryon.h $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_text_edit_test.c src/ui/ui_text_edit.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_text_edit_test.c src/ui/ui_text_edit.c src/ui/ui_grapheme.c $(GENERATED_SRC_DIR)/runtime/text_input.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c -lm -o $@
+
+$(BUILD_DIR)/ui/ui_grapheme.o: src/ui/ui_grapheme.h vendor/utf8proc/utf8proc.c vendor/utf8proc/utf8proc.h vendor/utf8proc/utf8proc_data.c
+
+.PHONY: grapheme-test
+grapheme-test: $(UI_TEXT_EDIT_TEST)
+	$(UI_TEXT_EDIT_TEST)
+	CC="$(CC)" python3 tests/grapheme_test.py
+	cd go/kryon && go test -run 'Test(Grapheme|TextFieldEditsWholeGraphemes)'
+
+fast-test test: grapheme-test
 
 $(UI_TREE_API_TEST): tests/ui_tree_api_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

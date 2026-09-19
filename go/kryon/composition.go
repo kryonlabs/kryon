@@ -82,8 +82,8 @@ func makeTextCompositionView(text string, selectionStart, selectionEnd int, pree
 	}
 	selectionStart = clampCursor(text, selectionStart)
 	selectionEnd = clampCursor(text, selectionEnd)
-	preeditCursor := clampCursor(preedit.Text, int(preedit.Cursor))
-	preeditSelectionEnd := clampCursor(preedit.Text, preeditCursor+int(preedit.SelectionLength))
+	preeditCursor := clampRuneCursor(preedit.Text, int(preedit.Cursor))
+	preeditSelectionEnd := clampRuneCursor(preedit.Text, preeditCursor+int(preedit.SelectionLength))
 	view := TextInput_TextCompositionViewRangeFor(int32(selectionStart), int32(selectionEnd),
 		int32(len(preedit.Text)), int32(preeditCursor), int32(preeditSelectionEnd))
 	return textCompositionView{

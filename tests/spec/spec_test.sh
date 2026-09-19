@@ -48,6 +48,7 @@ mv "$work/go-check/language_contract.go.tmp" "$work/go-check/language_contract.g
     printf '%s\n' 'go 1.25.0'
     printf '\n'
     printf '%s\n' 'require ('
+    printf '%s\n' '	github.com/clipperhouse/uax29/v2 v2.7.0'
     printf '%s\n' '	github.com/waozixyz/kryon/go/kryon v0.0.0'
     printf '%s\n' '	golang.org/x/image v0.45.0'
     printf '%s\n' '	golang.org/x/sys v0.47.0'

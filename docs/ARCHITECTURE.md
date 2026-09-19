@@ -581,6 +581,16 @@ also guards ordinary typing, cut/paste and deletion, not just composition
 commits. The generated composition fixture verifies read-only TextField and
 TextArea buffers and copying in both native runtimes; Go tests cover preedit
 cancellation, byte-for-byte buffer preservation and re-enabling without replay.
+Native editing resolves movement intent into Unicode 17 extended grapheme
+boundaries. The private C adapter compiles the pinned utf8proc submodule; the
+native Go adapter uses clipperhouse/uax29 without cgo. Both run the same 766-case
+official Unicode conformance corpus, including byte-offset cursor checks.
+Generated C/Go forms additionally exercise deletion of combining text, joined
+emoji, flags, skin-tone modifiers and Indic conjuncts. Committed selection and
+navigation use graphemes; codec helpers, capacity limits and IME preedit retain
+their existing byte/codepoint contracts. C click placement and editable wrapping
+traverse clusters, while measurement and visible-line buffers preserve long
+UTF-8 ranges instead of truncating them at a fixed byte count.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while

@@ -1074,9 +1074,9 @@ ui_selection_range(TextSelection selection, const char *text,
                                                            len);
 
     if(start != NULL)
-        *start = range.start;
+        *start = ui_grapheme_floor_offset(text, range.start);
     if(end != NULL)
-        *end = range.end;
+        *end = ui_grapheme_floor_offset(text, range.end);
 }
 
 static int
@@ -1532,7 +1532,6 @@ void
 EndFocusScope(void)
 {
     int current_index = -1;
-    int next_index;
 
     if(!g_ui_focus_frame_open)
         return;
@@ -1552,28 +1551,19 @@ EndFocusScope(void)
     }
     g_ui_focus_count = eligible;
 
-    if(g_ui_focus_count <= 0) {
-        g_ui_focus_active_id = 0;
-        g_ui_focus_tab_dir = 0;
-        return;
-    }
-
-    if(g_ui_focus_tab_dir == 0)
-        return;
-
-    for(int i = 0; i < g_ui_focus_count; i++) {
-        if(g_ui_focus_ids[i] == g_ui_focus_active_id) {
+    for (int i = 0; i < g_ui_focus_count; i++) {
+        if (g_ui_focus_ids[i] == g_ui_focus_active_id) {
             current_index = i;
             break;
         }
     }
-
-    if(current_index < 0)
-        next_index = g_ui_focus_tab_dir > 0 ? 0 : g_ui_focus_count - 1;
-    else
-        next_index = (current_index + g_ui_focus_tab_dir + g_ui_focus_count) % g_ui_focus_count;
-
-    g_ui_focus_active_id = g_ui_focus_ids[next_index];
+    FocusTraversal traversal = FocusTraversalFor(current_index, g_ui_focus_count,
+                                                 g_ui_focus_tab_dir);
+    if (traversal.clear) {
+        g_ui_focus_active_id = 0;
+    } else if (traversal.move) {
+        g_ui_focus_active_id = g_ui_focus_ids[traversal.index];
+    }
     g_ui_focus_tab_dir = 0;
 }
 
@@ -2137,16 +2127,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     }
 
     if(focused && cursor_visible) {
-        char before_cursor[1024];
-        int len = (int)strlen(value);
-        int clamped_cursor = TextCursorForLength(cursor_position, len);
-        int copy_len = clamped_cursor;
-        if(copy_len >= (int)sizeof(before_cursor))
-            copy_len = (int)sizeof(before_cursor) - 1;
-        memcpy(before_cursor, value, (size_t)copy_len);
-        before_cursor[copy_len] = '\0';
-
-        int cursor_x = text_x + TextWidth(before_cursor, font);
+        int cursor_x = text_x + ui_text_width_before_cursor(value, font, cursor_position);
         DrawRectangle(cursor_x, cursor_y, stroke_width, cursor_h,
                       ui_default_style() ? c_circle : cursor_color);
     }
@@ -2164,9 +2145,29 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
 }
 
 static int
+ui_text_range_width(const char *text, int start, int end, int font)
+{
+    char local[1024];
+    int length = end - start;
+    char *prefix;
+    int width;
+
+    if(length <= 0)
+        return 0;
+    prefix = length < (int)sizeof(local) ? local : malloc((size_t)length + 1);
+    if(prefix == NULL)
+        return 0;
+    memcpy(prefix, text + start, (size_t)length);
+    prefix[length] = '\0';
+    width = TextWidth(prefix, font);
+    if(prefix != local)
+        free(prefix);
+    return width;
+}
+
+static int
 ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
 {
-    char prefix[1024];
     int len;
 
     if(text == NULL)
@@ -2176,14 +2177,12 @@ ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
     if(mouse_x <= text_x)
         return 0;
 
-    for(int i = 1; i <= len; i++) {
-        int copy_len = i;
-        if(copy_len >= (int)sizeof(prefix))
-            copy_len = (int)sizeof(prefix) - 1;
-        memcpy(prefix, text, (size_t)copy_len);
-        prefix[copy_len] = '\0';
-        if(text_x + TextWidth(prefix, font) >= mouse_x)
+    for(int i = ui_grapheme_next_boundary(text, len, 0); i <= len && i > 0;) {
+        if(text_x + ui_text_range_width(text, 0, i, font) >= mouse_x)
             return i;
+        if(i == len)
+            break;
+        i = ui_grapheme_next_boundary(text, len, i);
     }
     return len;
 }
@@ -2191,7 +2190,6 @@ ui_text_cursor_from_x(const char *text, int font, int text_x, int mouse_x)
 static int
 ui_text_width_before_cursor(const char *text, int font, int cursor_position)
 {
-    char before_cursor[1024];
     int len;
     int copy_len;
 
@@ -2200,11 +2198,7 @@ ui_text_width_before_cursor(const char *text, int font, int cursor_position)
 
     len = (int)strlen(text);
     copy_len = TextCursorForLength(cursor_position, len);
-    if(copy_len >= (int)sizeof(before_cursor))
-        copy_len = (int)sizeof(before_cursor) - 1;
-    memcpy(before_cursor, text, (size_t)copy_len);
-    before_cursor[copy_len] = '\0';
-    return TextWidth(before_cursor, font);
+    return ui_text_range_width(text, 0, copy_len, font);
 }
 
 int
@@ -2236,7 +2230,7 @@ EditText(TextEdit edit)
         return 0;
 
     len = (int)strlen(edit.text);
-    *edit.cursor_position = TextCursorForLength(*edit.cursor_position, len);
+    *edit.cursor_position = ui_grapheme_floor_offset(edit.text, *edit.cursor_position);
     if(!IsKeyboardInputEnabled())
         return 0;
 
@@ -2486,7 +2480,7 @@ ui_text_line_end(const char *text, int cursor)
     cursor = TextCursorForLength(cursor, len);
     for(i = cursor; i < len; i++) {
         if(text[i] == '\n')
-            return i;
+            return ui_grapheme_floor_offset(text, i);
     }
     return len;
 }
@@ -2494,37 +2488,26 @@ ui_text_line_end(const char *text, int cursor)
 static int
 ui_text_column_x(const char *text, int start, int cursor, int font)
 {
-    char prefix[1024];
-    int len;
-
     if(text == NULL || cursor <= start)
         return 0;
-    len = cursor - start;
-    if(len >= (int)sizeof(prefix))
-        len = (int)sizeof(prefix) - 1;
-    memcpy(prefix, text + start, (size_t)len);
-    prefix[len] = '\0';
-    return TextWidth(prefix, font);
+    return ui_text_range_width(text, start, cursor, font);
 }
 
 static int
 ui_text_cursor_from_line_x(const char *text, int start, int end, int font, int target_x)
 {
-    char prefix[1024];
     int i;
 
     if(target_x <= 0)
         return start;
-    for(i = start + 1; i <= end; i++) {
-        int len = i - start;
-        if(len >= (int)sizeof(prefix))
-            len = (int)sizeof(prefix) - 1;
-        memcpy(prefix, text + start, (size_t)len);
-        prefix[len] = '\0';
-        if(TextWidth(prefix, font) >= target_x)
+    for(i = ui_grapheme_next_boundary(text, end, start); i <= end && i > start;) {
+        if(ui_text_range_width(text, start, i, font) >= target_x)
             return i;
+        if(i == end)
+            break;
+        i = ui_grapheme_next_boundary(text, end, i);
     }
-    return end;
+    return ui_grapheme_floor_offset(text, end);
 }
 
 static int
@@ -2534,7 +2517,7 @@ ui_text_cursor_from_line_column(const char *text, int start, int end,
     int cursor = start;
 
     while(column-- > 0 && cursor < end) {
-        int next = ui_utf8_next_offset(text, cursor);
+        int next = ui_grapheme_next_boundary(text, end, cursor);
 
         if(next <= cursor)
             break;
@@ -2560,13 +2543,13 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
     if(dir < 0) {
         if(start == 0)
             return cursor;
-        other_end = start - 1;
+        other_end = ui_grapheme_prev_offset(text, start);
         other_start = ui_text_line_start(text, other_end);
     } else {
         int len = (int)strlen(text);
         if(end >= len)
             return cursor;
-        other_start = end + 1;
+        other_start = ui_grapheme_next_offset(text, end);
         other_end = ui_text_line_end(text, other_start);
     }
     if(target_x <= 0 && cursor > start) {
@@ -2574,7 +2557,7 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
         int column_cursor = start;
 
         while(column_cursor < cursor) {
-            int next = ui_utf8_next_offset(text, column_cursor);
+            int next = ui_grapheme_next_offset(text, column_cursor);
 
             if(next <= column_cursor)
                 break;
@@ -2626,6 +2609,8 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
 
     if(input.text == NULL || anchor == NULL || cursor == NULL)
         return 0;
+    *anchor = ui_grapheme_floor_offset(input.text, *anchor);
+    *cursor = ui_grapheme_floor_offset(input.text, *cursor);
     range = TextSelectionRangeFor(*anchor, *cursor);
     start = range.start;
     end = range.end;
@@ -2653,9 +2638,9 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
     } else if(decision.word_direction > 0) {
         target = ui_text_word_right(input.text, target);
     } else if(decision.char_direction < 0) {
-        target = ui_utf8_prev_offset(input.text, target);
+        target = ui_grapheme_prev_offset(input.text, target);
     } else if(decision.char_direction > 0) {
-        target = ui_utf8_next_offset(input.text, target);
+        target = ui_grapheme_next_offset(input.text, target);
     } else if(decision.vertical_direction != 0) {
         if(input.area == NULL)
             return 0;
@@ -2695,27 +2680,30 @@ static int
 ui_text_area_wrap_chunk_end(const char *text, int start, int end, int font,
                             int wrap_width)
 {
-    char line[1024];
-    int chunk_len;
-    int remaining = end - start;
+    int chunk_end;
 
     if(wrap_width <= 0 || start >= end)
         return end;
-    if(remaining >= (int)sizeof(line))
-        remaining = (int)sizeof(line) - 1;
-    memcpy(line, text + start, (size_t)remaining);
-    line[remaining] = '\0';
-    if(TextWidth(line, font) <= wrap_width)
+    if(ui_text_range_width(text, start, end, font) <= wrap_width)
         return end;
 
-    chunk_len = 1;
-    while(start + chunk_len < end && chunk_len + 1 < (int)sizeof(line)) {
-        snprintf(line, sizeof(line), "%.*s", chunk_len + 1, text + start);
-        if(TextWidth(line, font) > wrap_width)
+    chunk_end = ui_grapheme_next_boundary(text, end, start);
+    while(chunk_end < end) {
+        int next = ui_grapheme_next_boundary(text, end, chunk_end);
+
+        if(next > end || ui_text_range_width(text, start, next, font) > wrap_width)
             break;
-        chunk_len++;
+        chunk_end = next;
     }
-    return start + chunk_len;
+    return chunk_end;
+}
+
+static int
+ui_text_line_content_end(const char *text, int start, int end)
+{
+    if(end > start && text[end] == '\n' && text[end - 1] == '\r')
+        return end - 1;
+    return end;
 }
 
 static int
@@ -2729,17 +2717,18 @@ ui_text_area_content_height_uncached(const char *text, int font, int line_gap,
         text = "";
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
-            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int end = ui_text_line_content_end(text, line_start, i);
+            int line_font = ui_text_area_line_font(text, line_start, end, font);
             int line_h = TextLineHeight(line_font) + line_gap;
 
-            if(wrap_width <= 0 || line_start >= i) {
+            if(wrap_width <= 0 || line_start >= end) {
                 height += line_h;
             } else {
                 int chunk_start = line_start;
 
-                while(chunk_start < i) {
+                while(chunk_start < end) {
                     int chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, i, line_font, wrap_width);
+                        text, chunk_start, end, line_font, wrap_width);
                     height += line_h;
                     if(chunk_end <= chunk_start)
                         break;
@@ -2810,20 +2799,22 @@ ui_text_area_cursor_from_point(const char *text, int font, int line_gap,
         target_y = 0;
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
-            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int end = ui_text_line_content_end(text, line_start, i);
+            int line_font = ui_text_area_line_font(text, line_start, end, font);
             int line_h = TextLineHeight(line_font) + line_gap;
-            if(wrap_width <= 0 || line_start >= i) {
+            if(wrap_width <= 0 || line_start >= end) {
                 if(target_y < draw_y + line_h || text[i] == '\0')
-                    return ui_text_cursor_from_line_x(text, line_start, i,
+                    return ui_text_cursor_from_line_x(text, line_start, end,
                                                       line_font, mouse_x - x);
                 draw_y += line_h;
             } else {
                 int chunk_start = line_start;
 
-                while(chunk_start < i) {
+                while(chunk_start < end) {
                     int chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, i, line_font, wrap_width);
-                    if(target_y < draw_y + line_h || chunk_end >= i)
+                        text, chunk_start, end, line_font, wrap_width);
+                    if(target_y < draw_y + line_h ||
+                       (text[i] == '\0' && chunk_end >= end))
                         return ui_text_cursor_from_line_x(
                             text, chunk_start, chunk_end, line_font,
                             mouse_x - x);
@@ -2853,21 +2844,22 @@ ui_text_area_cursor_y(const char *text, int cursor, int font, int line_gap,
     cursor = TextCursorForLength(cursor, len);
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
-            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int end = ui_text_line_content_end(text, line_start, i);
+            int line_font = ui_text_area_line_font(text, line_start, end, font);
             int line_h = TextLineHeight(line_font) + line_gap;
             int chunk_start = line_start;
-            int chunk_end = i;
+            int chunk_end = end;
 
             do {
-                if(wrap_width > 0 && chunk_start < i)
+                if(wrap_width > 0 && chunk_start < end)
                     chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, i, line_font, wrap_width);
+                        text, chunk_start, end, line_font, wrap_width);
                 else
-                    chunk_end = i;
+                    chunk_end = end;
                 /* A cursor at a soft-wrap boundary belongs to the next
                  * visual line, except at the logical end of the line. */
                 if(cursor >= chunk_start && cursor <= chunk_end &&
-                   (cursor < chunk_end || chunk_end == i)) {
+                   (cursor < chunk_end || chunk_end == end)) {
                     if(cursor_height != NULL)
                         *cursor_height = TextLineHeight(line_font);
                     return draw_y;
@@ -2876,7 +2868,7 @@ ui_text_area_cursor_y(const char *text, int cursor, int font, int line_gap,
                 if(chunk_end <= chunk_start)
                     break;
                 chunk_start = chunk_end;
-            } while(wrap_width > 0 && chunk_start < i);
+            } while(wrap_width > 0 && chunk_start < end);
 
             line_start = i + 1;
         }
@@ -3138,20 +3130,24 @@ static void
 ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                     SyntaxMode syntax, TextInputAppearance style)
 {
-    char token[1024];
+    char local[1024];
     int offset = 0;
     int first_token = 1;
 
     while(offset < len) {
         int token_len = ui_syntax_token_len(line, len, offset, syntax,
                                             first_token);
+        char *token = local;
         Color color;
         int token_is_first;
 
         if(token_len <= 0)
             break;
-        if(token_len >= (int)sizeof(token))
-            token_len = (int)sizeof(token) - 1;
+        if(token_len >= (int)sizeof(local)) {
+            token = malloc((size_t)token_len + 1);
+            if(token == NULL)
+                break;
+        }
         memcpy(token, line + offset, (size_t)token_len);
         token[token_len] = '\0';
         token_is_first = first_token;
@@ -3161,6 +3157,8 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
             first_token = 0;
         RenderText(token, x, y, font, color);
         x += TextWidth(token, font);
+        if(token != local)
+            free(token);
         offset += token_len;
     }
 }
@@ -3176,7 +3174,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     // The editor owns selection; rendered lines must not claim it or copy
     // a second, single-line selection over the editor clipboard contents.
     int selectable = PushTextSelectable(0);
-    char line[1024];
+    char local[1024];
     int len;
     int line_start = 0;
     TextInputMetrics metrics = ui_text_input_metrics_for_appearance(
@@ -3195,24 +3193,30 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     len = (int)strlen(text);
     for(int i = 0; i <= len; i++) {
         if(text[i] == '\n' || text[i] == '\0') {
-            int line_font = ui_text_area_line_font(text, line_start, i, font);
+            int end = ui_text_line_content_end(text, line_start, i);
+            int line_font = ui_text_area_line_font(text, line_start, end, font);
             int line_h = TextLineHeight(line_font) + line_gap;
             int chunk_start = line_start;
-            int chunk_end = i;
+            int chunk_end = end;
 
             do {
                 int line_len;
 
-                if(wrap_width > 0 && chunk_start < i)
+                if(wrap_width > 0 && chunk_start < end)
                     chunk_end = ui_text_area_wrap_chunk_end(
-                        text, chunk_start, i, line_font, wrap_width);
+                        text, chunk_start, end, line_font, wrap_width);
                 else
-                    chunk_end = i;
+                    chunk_end = end;
 
                 line_len = chunk_end - chunk_start;
                 if(draw_y + line_h >= clip_top && draw_y <= clip_bottom) {
-                    if(line_len >= (int)sizeof(line))
-                        line_len = (int)sizeof(line) - 1;
+                    char *line = local;
+
+                    if(line_len >= (int)sizeof(local)) {
+                        line = malloc((size_t)line_len + 1);
+                        if(line == NULL)
+                            break;
+                    }
                     if(line_len > 0)
                         memcpy(line, text + chunk_start, (size_t)line_len);
                     line[line_len] = '\0';
@@ -3225,12 +3229,14 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                     else
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                             line_font, syntax, style);
+                    if(line != local)
+                        free(line);
                     ui_draw_text_area_composition(
                         text, chunk_start, chunk_end, text_x, draw_y,
                         line_font, style.cursor, composition_start,
                         composition_end);
                     if(focused && cursor >= chunk_start && cursor <= chunk_end &&
-                       (cursor < chunk_end || chunk_end == i) &&
+                       (cursor < chunk_end || chunk_end == end) &&
                        ui_caret_blink_visible()) {
                         int cursor_x = text_x + ui_text_column_x(
                             text, chunk_start, cursor, line_font);
@@ -3243,7 +3249,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                 if(chunk_end <= chunk_start)
                     break;
                 chunk_start = chunk_end;
-            } while(wrap_width > 0 && chunk_start < i);
+            } while(wrap_width > 0 && chunk_start < end);
 
             line_start = i + 1;
             if(draw_y > clip_bottom)

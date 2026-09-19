@@ -7061,9 +7061,9 @@ func (r *runtime) editText(bounds Rectangle, buf []byte, cursor *int32, focused 
 			case navigation.WordDirection > 0:
 				target = textWordRight(text, pos)
 			case navigation.CharDirection < 0:
-				target = prevRune(text, pos)
+				target = previousGrapheme(text, pos)
 			case navigation.CharDirection > 0:
-				target = nextRune(text, pos)
+				target = nextGrapheme(text, pos)
 			case navigation.VerticalDirection != 0:
 				target = textMoveVertical(text, pos, int(navigation.VerticalDirection), 1)
 			case navigation.PageDirection != 0:
@@ -7244,7 +7244,7 @@ func cursorAtTap(text string, bounds Rectangle, x float32) int {
 	target := int(rel / charWidth)
 	pos := 0
 	for i := 0; i < target && pos < len(text); i++ {
-		pos = nextRune(text, pos)
+		pos = nextGrapheme(text, pos)
 	}
 	return pos
 }
@@ -7476,7 +7476,7 @@ func CString(buf []byte) string {
 	return string(buf[:zeroIndex(buf)])
 }
 
-func clampCursor(text string, pos int) int {
+func clampRuneCursor(text string, pos int) int {
 	if pos < 0 {
 		return 0
 	}
@@ -7493,7 +7493,7 @@ func clampCursor(text string, pos int) int {
 }
 
 func prevRune(text string, pos int) int {
-	pos = clampCursor(text, pos)
+	pos = clampRuneCursor(text, pos)
 	if pos == 0 {
 		return 0
 	}
@@ -7501,17 +7501,8 @@ func prevRune(text string, pos int) int {
 	return pos - size
 }
 
-func nextRune(text string, pos int) int {
-	pos = clampCursor(text, pos)
-	if pos >= len(text) {
-		return len(text)
-	}
-	_, size := utf8.DecodeRuneInString(text[pos:])
-	return pos + size
-}
-
 func textCodepointAt(text string, pos int) rune {
-	pos = clampCursor(text, pos)
+	pos = clampRuneCursor(text, pos)
 	if pos >= len(text) {
 		return 0
 	}
@@ -7529,17 +7520,17 @@ func textIsWordBoundary(text string, pos int) bool {
 }
 
 func textWordLeft(text string, pos int) int {
-	pos = prevRune(text, pos)
+	pos = previousGrapheme(text, pos)
 	for pos > 0 && !textIsWordBoundary(text, pos) {
-		pos = prevRune(text, pos)
+		pos = previousGrapheme(text, pos)
 	}
 	return pos
 }
 
 func textWordRight(text string, pos int) int {
-	pos = nextRune(text, pos)
+	pos = nextGrapheme(text, pos)
 	for pos < len(text) && !textIsWordBoundary(text, pos) {
-		pos = nextRune(text, pos)
+		pos = nextGrapheme(text, pos)
 	}
 	return pos
 }
@@ -7552,6 +7543,9 @@ func textDeleteKey(
 	word bool,
 	secure bool,
 ) (string, int, selection, bool) {
+	pos = clampCursor(text, pos)
+	current.Anchor = clampCursor(text, current.Anchor)
+	current.Cursor = clampCursor(text, current.Cursor)
 	start, end := selectionRange(current)
 	action := TextInput_TextDeleteNone()
 	if key == KeyBackspace {
@@ -7575,9 +7569,9 @@ func textDeleteKey(
 		case decision.WordDirection > 0:
 			end = textWordRight(text, pos)
 		case decision.CharDirection < 0:
-			start = prevRune(text, pos)
+			start = previousGrapheme(text, pos)
 		case decision.CharDirection > 0:
-			end = nextRune(text, pos)
+			end = nextGrapheme(text, pos)
 		}
 	}
 	if end <= start {
@@ -7599,14 +7593,14 @@ func textLineStart(text string, pos int) int {
 func textLineEnd(text string, pos int) int {
 	pos = clampCursor(text, pos)
 	if end := strings.IndexByte(text[pos:], '\n'); end >= 0 {
-		return pos + end
+		return clampCursor(text, pos+end)
 	}
 	return len(text)
 }
 
 func textMoveVertical(text string, pos, direction, rows int) int {
 	start := textLineStart(text, pos)
-	column := utf8.RuneCountInString(text[start:clampCursor(text, pos)])
+	column := graphemeCount(text[start:clampCursor(text, pos)])
 	for step := 0; step < max(1, rows); step++ {
 		if direction < 0 {
 			if start == 0 {
@@ -7619,13 +7613,13 @@ func textMoveVertical(text string, pos, direction, rows int) int {
 			if end == len(text) {
 				break
 			}
-			start = end + 1
+			start = nextGrapheme(text, end)
 		}
 	}
 	pos = start
 	end := textLineEnd(text, start)
 	for column > 0 && pos < end {
-		pos = nextRune(text, pos)
+		pos = nextGrapheme(text, pos)
 		column--
 	}
 	return pos
