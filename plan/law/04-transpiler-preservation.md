@@ -1,9 +1,12 @@
 # Phase 4 — Prove supported transpilation preserves semantics
 
-Status: not started; the executable effect-ordering fixtures this phase supplements
-already exist (`tests/array_values_test.py` ordering cases, focus mutation checks).
-The preservation proof architecture requires strong review before any rule is
-implemented, per this document.
+Status: first vertical executable case landed 2026-09-19: the phase 3
+evaluator checks scalar assignment with one temporary and ordered addition
+(`KirSemTemp`) against the k2c lowering, and an operand-swap mutation on the
+non-commutative case is detected. This is test-tier evidence connected to the
+semantic encoder; the preservation proof architecture (typed target ASTs,
+reviewed certificate validator) still requires strong review before
+rule-by-rule implementation, per this document.
 Estimate: **20–40 focused engineer-days; 1,000–2,500 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

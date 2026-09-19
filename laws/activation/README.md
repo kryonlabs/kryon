@@ -20,4 +20,5 @@ rejects and times out. `make activation-bend-laws-test` (part of
 
 This is the phase 6 pilot extension of the phase 2 proof-to-production
 connection: finite-domain native execution evidence, not a formal compiler
-preservation proof. C++/Go legs for this policy are still open.
+preservation proof. The comparison covers generated C, a fresh `k2cpp`
+lowering and the `go/kryon` runtime package.

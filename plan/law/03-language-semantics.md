@@ -1,8 +1,15 @@
 # Phase 3 — Executable language and KIR semantics
 
-Status: not started; missing premise recorded 2026-09-19. `k2kir` inspection dumps
-are declaration-level only (no function bodies), so the reviewed typed-KIR export
-the encoder must consume does not exist yet and needs design review first.
+Status: first vertical case implemented 2026-09-19 on `law/program`. The
+earlier recorded premise was wrong: `k2kir`'s inspection dump already contains
+statement and expression trees. `tools/kir-semantics.mjs` parses the dump,
+encodes a restricted checked subset (integer literals, identifiers, binary
+`+ - * / %`, unary minus, scalar declarations, assignments, return) and
+evaluates with exact i32 wrapping; `tests/kir_semantics_test.mjs` compares it
+against the production k2c lowering over boundary inputs, rejects constructs
+outside the subset with source spans, and detects operand-order mutations.
+The operational semantics for the remaining constructs, stores, effects,
+traps and divergence still need reviewed specification.
 Estimate: **10–20 focused engineer-days; 500–1,200 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

@@ -27,7 +27,6 @@ function run(command, args, options = {}) {
     assert.equal(result.status, 0, `${command}: ${result.stdout}\n${result.stderr}`);
     return result;
 }
-
 const booleans = new Map([['False', 0], ['True', 1]]);
 
 function nativeRows(checked) {
@@ -121,4 +120,80 @@ test('the bounded process runner checks, rejects and times out', async () => {
     });
     await assert.rejects(checkLawsProcess(path.join(packageDir, 'PROOF.bend'), { timeoutMs: 1 }),
         /wall-clock limit/);
+});
+
+test('the checked activation table agrees with generated C++ and the Go runtime', async () => {
+    const rows = nativeRows(await checkLaws(path.join(packageDir, 'PROOF.bend')));
+    const binDir = path.resolve(generated, '..', '..');
+    const runtimeKry = fs.readdirSync(path.join(root, 'runtime'))
+        .filter(f => f.endsWith('.kry'))
+        .map(f => path.join(root, 'runtime', f))
+        .sort();
+    await temporary(async directory => {
+        const cppOut = path.join(directory, 'cpp');
+        run(path.join(binDir, 'bin', 'k2cpp'),
+            ['--strict', '--no-main', '--root', root, '-o', cppOut, ...runtimeKry],
+            { timeout: 120000 });
+        const cppDriver = path.join(directory, 'driver.cpp');
+        fs.writeFileSync(cppDriver, `#include "runtime/focus.hpp"
+#include <cstdio>
+int main(void) {
+    const int cases[][8] = {
+${rows.map(row => `        {${row.join(', ')}},`).join('\n')}
+    };
+    for (unsigned i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        const int *c = cases[i];
+        bool actual = FocusActivationFor(c[0] != 0, c[1] != 0, c[2] != 0,
+            c[3] != 0, c[4] != 0, c[5] != 0, c[6] != 0);
+        if (actual != (c[7] != 0)) {
+            std::fprintf(stderr, "focus.activation cpp: case %u\\n", i);
+            return 1;
+        }
+    }
+    return 0;
+}
+`);
+        const cppCheck = path.join(directory, 'check-cpp');
+        run(process.env.CXX || 'c++', ['-std=c++11', '-O1', '-Wall', '-Werror',
+            '-I' + cppOut, '-I' + path.join(root, 'include'), cppDriver,
+            path.join(cppOut, 'runtime', 'focus.cpp'), '-o', cppCheck], { timeout: 120000 });
+        run(cppCheck, []);
+
+        const goOut = path.join(directory, 'go');
+        fs.mkdirSync(goOut, { recursive: true });
+        fs.writeFileSync(path.join(goOut, 'go.mod'), `module check
+
+go 1.25
+
+require github.com/waozixyz/kryon/go/kryon v0.0.0-00010101000000-000000000000
+
+replace github.com/waozixyz/kryon/go/kryon => ${root}/go/kryon
+`);
+        fs.writeFileSync(path.join(goOut, 'main.go'), `package main
+
+import (
+    "os"
+
+    kryon "github.com/waozixyz/kryon/go/kryon"
+)
+
+func main() {
+    cases := [][8]int{
+${rows.map(row => `        {${row.join(', ')}},`).join('\n')}
+    }
+    for _, c := range cases {
+        if actual := kryon.Focus_FocusActivationFor(c[0] != 0, c[1] != 0, c[2] != 0, c[3] != 0, c[4] != 0, c[5] != 0, c[6] != 0); actual != (c[7] != 0) {
+            os.Stderr.WriteString("focus.activation go: case mismatch\\n")
+            os.Exit(1)
+        }
+    }
+}
+`);
+        const goCheck = path.join(directory, 'check-go');
+        run('go', ['build', '-buildvcs=false', '-o', goCheck, '.'], {
+            cwd: goOut, timeout: 180000,
+            env: { ...process.env, GO111MODULE: 'on', GOFLAGS: '-mod=mod' },
+        });
+        run(goCheck, []);
+    });
 });

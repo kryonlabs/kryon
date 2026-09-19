@@ -2,8 +2,9 @@
 
 Status: first patch registered 2026-09-19: array ABI argument/result isolation is
 inventory law `array.abi.argument.isolation` (implementation-connected on C, C++ and
-Go via `tests/array_values_test.py`). Lifetime/borrow soundness proofs and callable
-laws remain open.
+Go via `tests/array_values_test.py`), and slice bounds/borrow rejection are
+registered as `slice.values.bounded` and `kir.borrow.conservative`.
+Lifetime/borrow soundness proofs and callable laws remain open.
 Estimate: **15–30 focused engineer-days; 800–2,000 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

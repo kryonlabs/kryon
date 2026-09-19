@@ -1216,7 +1216,7 @@ backend-capabilities-check:
 backend-style-degradation-check:
 	sh tests/backend_style_degradation_test.sh .
 
-laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test activation-bend-laws-test law-inventory-check law-release-boundary-check law-cleanroom-probe
+laws-test: runtime-laws-test api-laws-test backend-capability-laws-test cross-target-laws-test bend-laws-test focus-bend-laws-test activation-bend-laws-test kir-semantics-test law-inventory-check law-release-boundary-check law-cleanroom-probe
 
 .PHONY: bend-laws-test
 bend-laws-test:
@@ -1230,7 +1230,12 @@ focus-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/
 # Phase 6 pilot extension: activation policy checked against generated C.
 .PHONY: activation-bend-laws-test
 activation-bend-laws-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h
-	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/activation_bend_laws_test.mjs
+	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" CXX="$(CXX)" node --test tests/activation_bend_laws_test.mjs
+
+# Phase 3 vertical case: checked KIR semantic evaluator vs the k2c lowering.
+.PHONY: kir-semantics-test
+kir-semantics-test: $(K2C) $(K2KIR)
+	KRYON_LAW_GENERATED_DIR="$(abspath $(GENERATED_SRC_DIR))" CC="$(CC)" node --test tests/kir_semantics_test.mjs
 
 # Phase 1 law-plan gates: inventory completeness and the proof-dependency boundary.
 .PHONY: law-inventory-check

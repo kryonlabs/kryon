@@ -1,0 +1,25 @@
+#module "kir_semantics"
+
+KirSemAdd :: (a: i32, b: i32) -> i32 #export {
+    return a + b
+}
+
+KirSemSub :: (a: i32, b: i32) -> i32 #export {
+    return a - b
+}
+
+KirSemDiv :: (a: i32, b: i32) -> i32 #export {
+    return a / b
+}
+
+KirSemTemp :: (a: i32, b: i32) -> i32 #export {
+    t: i32 = a + b
+    u: i32 = t * 3
+    t = t - 1
+    return t + u
+}
+
+KirSemBranch :: (flag: bool) -> i32 #export {
+    if flag { return 1 }
+    return 0
+}
