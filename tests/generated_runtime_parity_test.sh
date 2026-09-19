@@ -2502,25 +2502,64 @@ rt.SetFocus(26100);
 rt.SubmitTextComposition(2, "ni", 2, 0);
 drawComposition();
 assert.equal(composition.composition_text, "base");
-rt.SubmitTextComposition(3, "日本", 6, 0);
+rt.SubmitTextComposition(3, "日本", 2, 0);
 drawComposition();
 assert.equal(composition.composition_text, "base日本");
 assert.equal(composition.composition_cursor, 10);
-rt.SubmitTextComposition(2, "ni", 2, 0);
-drawComposition();
+rt.SubmitTextComposition(2, "cancel", 6, 0);
 rt.SubmitTextComposition(4, "", 0, 0);
 drawComposition();
 assert.equal(composition.composition_text, "base日本");
 composition.composition_read_only = true;
 for (const id of [26100, 26101]) {
   rt.SetFocus(id);
-  rt.QueueText("blocked");
-  rt.QueueKey(259);
+  rt.QueueShortcut(kryon.KeyA); drawComposition();
+  rt.QueueShortcut(kryon.KeyC); drawComposition();
+  rt.QueueShortcut(kryon.KeyX); drawComposition();
+  rt.QueueShortcut(kryon.KeyV); drawComposition();
+  rt.QueueKey(kryon.KeyBackspace); drawComposition();
+  rt.QueueKey(kryon.KeyDelete); drawComposition();
+  rt.QueueText("blocked"); drawComposition();
   rt.SubmitTextComposition(3, "blocked", 7, 0);
   drawComposition();
+  assert.equal(rt.ClipboardText(), id === 26100 ? "base日本" : "area");
 }
 assert.equal(composition.composition_text, "base日本");
 assert.equal(composition.composition_area, "area");
+composition.composition_read_only = false;
+rt.SetFocus(26102);
+rt.QueueShortcut(kryon.KeyRight); drawComposition();
+assert.equal(composition.composition_page_cursor, 5);
+rt.QueueShiftKey(kryon.KeyRight); drawComposition();
+assert.equal(composition.composition_page_cursor, 6);
+rt.QueueShortcut(kryon.KeyC); drawComposition();
+assert.equal(rt.ClipboardText(), "\n");
+rt.QueueKey(kryon.KeyLeft); drawComposition(); drawComposition();
+rt.QueueKey(kryon.KeyLeft); drawComposition();
+assert.equal(composition.composition_page_cursor, 4);
+rt.QueueShiftKey(kryon.KeyDown); drawComposition();
+assert.equal(composition.composition_page_cursor, 7);
+rt.QueueShortcut(kryon.KeyC); drawComposition();
+assert.equal(rt.ClipboardText(), "1\nc");
+rt.QueueKey(kryon.KeyLeft); drawComposition();
+assert.equal(composition.composition_page_cursor, 4);
+rt.QueueKey(kryon.KeyDown); drawComposition();
+assert.ok(composition.composition_page_cursor > 4);
+let compositionBeforePage = composition.composition_page_cursor;
+rt.QueueKey(kryon.KeyPageDown); drawComposition();
+assert.ok(composition.composition_page_cursor >= compositionBeforePage + 4);
+compositionBeforePage = composition.composition_page_cursor;
+rt.QueueKey(kryon.KeyPageUp); drawComposition();
+assert.ok(composition.composition_page_cursor <= compositionBeforePage - 4);
+const compositionPageLength = composition.composition_page_area.length;
+const compositionPageLines = composition.composition_page_area.split("\n").length;
+rt.QueueKey(kryon.KeyEnter); drawComposition();
+assert.equal(composition.composition_page_area.length, compositionPageLength + 1);
+assert.equal(composition.composition_page_area.split("\n").length, compositionPageLines + 1);
+rt.QueueShortcut(kryon.KeyEnd); drawComposition();
+rt.QueueShortcut(kryon.KeyBackspace); drawComposition();
+assert.equal(composition.composition_page_area.length, compositionPageLength - 1);
+assert.equal(composition.composition_page_area[composition.composition_page_area.length - 1], "\n");
 rt.SetFocus(0);
 const form = formMod.createState();
 const fields = fieldsMod.createState();
@@ -2754,4 +2793,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/composition.kry"]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry"],"native_go_only":["tests/parity/menus.kry","tests/parity/scroll_content.kry","tests/parity/drag_drop.kry","tests/parity/composed_popup.kry"],"web_partial":[]}'

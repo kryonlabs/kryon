@@ -13,7 +13,7 @@ intent until rerun at the revision being delivered.
 | Area | Source evidence | Consequence |
 |---|---|---|
 | Canonical API | Canonical plan records completed naming and release-call migrations; generated policy modules and surface guards exist. | Audit remaining behavior ownership. Do not repeat public renaming or the 34-call release-consumption migration. |
-| Web parity | `tests/generated_runtime_parity_test.sh` reports menus, scroll_content, drag_drop, and composed_popup as native/Go only, and composition as web partial. Its JS runner imports and executes composition. | Four fixtures need JS execution; composition needs completion, not a new implementation from zero. Correct the older claim that none of its JS cases execute. |
+| Web parity | `tests/generated_runtime_parity_test.sh` reports menus, scroll_content, drag_drop, and composed_popup as native/Go only; composition now executes its text composition, read-only, selection, clipboard, page navigation, newline, and word-delete checks in JS too. | Four fixtures still need JS execution. Correct the older claim that none of the composition JS cases execute; composition is now a three-backend fixture. |
 | Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, and shortcuts; no equivalent queued down/move/up/wheel driver is present there. | Reuse composition support. Add the missing lifecycle driver and connect it to actual shared decisions. Native DOM pointer handlers alone do not prove generated-runtime parity. |
 | Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, the web runtime no longer exports that placeholder, `sizeof(fixed_array)` lowers to the declared capacity for module state, globals, and function locals; the fixed-array count idiom `sizeof(array) / sizeof(array[0])` lowers to executable JavaScript. | Add real lowering for the remaining supported expression forms before claiming condition/activation parity. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
@@ -116,8 +116,10 @@ record. No percentage-complete claim based only on file counts or scanners.
   advertised as executable parity.
 - [ ] Execute menus, scroll_content, drag_drop, and composed_popup in JS using
   the same event sequences and state assertions as C and Go.
-- [ ] Complete composition parity, including selection, preedit/commit/cancel,
-  read-only behavior, and the missing layout/pointer cases.
+- [x] Complete composition parity for generated-runtime text behavior: selection,
+  preedit/commit/cancel, read-only mutation guards, clipboard, page movement,
+  newline insertion, and word deletion now run in C/Go/JS. Pointer/layout cases
+  remain covered by the broader scroll/pointer fixture work below.
 - [ ] Exercise Scroll/Popup/Disabled/TableCell/Canvas nesting, early return,
   break, continue, clipping, disabled descendants, and captured children.
   Assert restoration of outer scope state after each exit.
