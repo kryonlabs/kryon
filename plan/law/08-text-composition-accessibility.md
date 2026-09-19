@@ -1,9 +1,13 @@
 # Phase 8 — Text, composition, overlays and accessibility laws
 
-Status: blocked premise recorded 2026-09-19: the finite Bend table path enumerates
-only fieldless constructor domains, so integer-parameter policies such as
-`AccessibilityItemSelectionFor` need a reviewed domain extension before model proofs.
-Existing accessibility/text tests remain the coverage; no rows were faked.
+Status: first patch landed 2026-09-19 on `law/program` (commit `06cf09b1`):
+the recorded integer-domain blocker is resolved without checker changes —
+[laws/selection](../../laws/selection/README.md) models the bounded subdomain
+{-1,0,1} x {-1,0,1} x 4 representative actions with fieldless ADTs, checks
+nine laws, and compares all 36 rows against generated C
+(`make selection-bend-laws-test`). Values outside the subdomain, richer
+integer domains, text/IME/composition policies and platform adapter evidence
+remain open.
 Estimate: **15–30 focused engineer-days; 700–1,800 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

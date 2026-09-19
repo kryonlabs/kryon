@@ -2,6 +2,39 @@
   "schema": 1,
   "laws": [
     {
+      "id": "accessibility.selection.single",
+      "domain": "policy",
+      "summary": "AccessibilitySingleSelectionFor over the bounded subdomain {-1,0,1} x {-1,0,1} x 4 representative actions",
+      "sources": [
+        "runtime/accessibility_policy.kry"
+      ],
+      "symbols": [
+        "AccessibilitySingleSelectionFor"
+      ],
+      "phase": 8,
+      "targets": [
+        "c"
+      ],
+      "status": "model-proved",
+      "mechanism": "bend-proof",
+      "contract": "laws/selection/LAWS.bend",
+      "proof": "laws/selection/PROOF.bend",
+      "evidence": {
+        "c": "exhaustive-test"
+      },
+      "evidence_revision": "06cf09b1",
+      "assumptions": [
+        "Pinned Bend 2 checker and Base hashes (tools/bend-pin.json)",
+        "Subdomain model with fieldless ADTs; no checker changes",
+        "Values outside the subdomain and unmodeled actions remain uncovered"
+      ],
+      "scope": [
+        "c",
+        "cpp",
+        "go"
+      ]
+    },
+    {
       "id": "api.app.blocked-ui-surface",
       "domain": "compiler",
       "summary": "Examples and fixtures never call the blocked texture/UI surface",
@@ -685,7 +718,7 @@
     {
       "id": "kir.semantics.vertical",
       "domain": "kir",
-      "summary": "Checked KIR semantic evaluator (literals, idents, + - * / %, scalar decl/assign/return, exact i32 wrapping) agrees with the k2c lowering",
+      "summary": "Checked KIR semantic evaluator (literals, idents, arithmetic, comparisons, &&/||, if branches, scalar decl/assign/return, exact i32 wrapping) agrees with the k2c lowering",
       "sources": [
         "tools/kir-semantics.mjs",
         "tests/fixtures/kir_semantics.kry",
@@ -700,7 +733,7 @@
       "evidence": {
         "c": "test-suite"
       },
-      "evidence_revision": "34946141",
+      "evidence_revision": "06cf09b1",
       "assumptions": [
         "Restricted subset only; unsupported constructs reject with a source span",
         "Division by zero traps on both sides; INT_MIN/-1 excluded (C UB)"
@@ -1476,7 +1509,10 @@
         "go"
       ],
       "status": "proposed",
-      "mechanism": "planned:policy-proof"
+      "mechanism": "planned:policy-proof",
+      "laws": [
+        "accessibility.selection.single"
+      ]
     },
     {
       "id": "widget.bevel",

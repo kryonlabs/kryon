@@ -35,7 +35,7 @@ KirSemClamp :: (v: i32, limit: i32) -> i32 #export {
     return v
 }
 
-KirSemLoop :: (n: i32) -> i32 #export {
+KirSemLoop :: (n: i32, unused: i32) -> i32 #export {
     total: i32 = 0
     i: i32 = 0
     while i < n {
@@ -43,4 +43,13 @@ KirSemLoop :: (n: i32) -> i32 #export {
         i = i + 1
     }
     return total
+}
+
+KirSemAbs :: (v: i32) -> i32 #export {
+    if v < 0 { return -v }
+    return v
+}
+
+KirSemCall :: (v: i32) -> i32 #export {
+    return KirSemAbs(v)
 }

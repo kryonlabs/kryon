@@ -35,6 +35,7 @@ const cases = [
     [0, 0], [1, 2], [7, 3], [-7, 3], [-7, 2], [100, -7],
     [2147483647, 1], [-2147483648, 1], [-2147483648, 2], [12345, -999],
 ];
+const compared = ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch', 'Loop'];
 
 async function groundTruth(directory) {
     // Production truth: lower the fixture with k2c and execute it.
@@ -42,8 +43,9 @@ async function groundTruth(directory) {
     run(path.join(binDir, 'bin', 'k2c'),
         ['--strict', '--no-main', '--root', root, '-o', out, fixture]);
     const driver = path.join(directory, 'driver.c');
-    const calls = ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch'].flatMap(name =>
-        cases.filter(([a, b]) => name !== 'Div' || b !== 0)
+    const calls = compared.flatMap(name =>
+        cases.filter(([a, b]) => (name !== 'Div' || b !== 0)
+            && (name !== 'Loop' || (a >= 0 && a <= 100)))
             .map(([a, b]) => `    printf("%d\\n", KirSem${name}(${a}, ${b}));`)).join('\n');
     fs.writeFileSync(driver, `#include <stdio.h>
 #include "tests/fixtures/kir_semantics.h"
@@ -72,9 +74,10 @@ test('checked evaluator agrees with the k2c lowering over exact i32 semantics', 
             Max: encodeChecked(findFunction(program, 'KirSemMax')),
             Clamp: encodeChecked(findFunction(program, 'KirSemClamp')),
             Branch: encodeChecked(findFunction(program, 'KirSemBranch')),
+            Loop: encodeChecked(findFunction(program, 'KirSemLoop')),
         };
         let index = 0;
-        for (const name of ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch']) {
+        for (const name of compared) {
             for (const [a, b] of cases) {
                 if (name === 'Div' && b === 0) {
                     // Division by zero is a trap on both sides; the evaluator
@@ -82,6 +85,7 @@ test('checked evaluator agrees with the k2c lowering over exact i32 semantics', 
                     assert.throws(() => evaluate(encoders[name], [a, b]), Unsupported);
                     continue;
                 }
+                if (name === 'Loop' && !(a >= 0 && a <= 100)) continue;
                 const expected = truth[index++];
                 const actual = evaluate(encoders[name], [a, b]);
                 assert.equal(actual, BigInt(expected),
@@ -95,10 +99,21 @@ test('constructs outside the reviewed subset are rejected with a span', async ()
     await temporary(async directory => {
         const program = dumpProgram(binDir, root,
             fixture, path.join(directory, 'kir'));
-        assert.throws(() => encodeChecked(findFunction(program, 'KirSemLoop')),
+        assert.throws(() => encodeChecked(findFunction(program, 'KirSemCall')),
             error => error instanceof Unsupported
-                && /statement kind while/.test(error.message)
+                && /expression kind call/.test(error.message)
                 && /kir_semantics\.kry:\d+/.test(error.span));
+    });
+});
+
+test('loop fuel exhaustion is inconclusive, not a semantic claim', async () => {
+    await temporary(async directory => {
+        const program = dumpProgram(binDir, root,
+            fixture, path.join(directory, 'kir'));
+        const encoded = encodeChecked(findFunction(program, 'KirSemLoop'));
+        assert.equal(evaluate(encoded, [10, 0]), 45n);
+        assert.throws(() => evaluate(encoded, [1000000, 0], { fuel: 10 }),
+            error => error instanceof Unsupported && /fuel exhausted/.test(error.message));
     });
 });
 

@@ -70,6 +70,21 @@ generated C, run by `make activation-bend-laws-test` (part of
 checker in a separate process with a wall-clock timeout and memory cap
 (`node tools/bend-laws.mjs --json` prints machine-readable results).
 
+[laws/selection](../laws/selection/README.md) covers
+`AccessibilitySingleSelectionFor` over a bounded subdomain with fieldless
+ADTs (no checker changes): nine checked laws and a 36-row comparison against
+generated C, run by `make selection-bend-laws-test`. Values outside the
+subdomain remain uncovered.
+
+`tools/kir-semantics.mjs` is the phase 3 checked semantic evaluator: it
+parses the `k2kir` dump, encodes a restricted subset (literals, arithmetic,
+comparisons, `&&`/`||`, `if` branches, fuel-bounded `while` loops, scalar
+declarations, assignments, `return`) and evaluates with exact i32 wrapping.
+`make kir-semantics-test` compares it against the k2c lowering over
+boundary inputs, rejects constructs outside the subset with source spans,
+treats loop fuel exhaustion as inconclusive, and detects operand-order
+mutations.
+
 The [ten-phase law plan](../plan/law/README.md) describes the remaining formal
 connection, broader widget coverage and dependency-free release gates.
 

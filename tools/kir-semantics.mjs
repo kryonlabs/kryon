@@ -157,6 +157,11 @@ export function encodeChecked(fn) {
             case 'block_close':
                 body.push({ stmt: 'block_close', span: stmt.span });
                 break;
+            case 'while': {
+                if (stmt.expr === null) throw new Unsupported('while without condition', stmt.span);
+                body.push({ stmt: 'while', expr: null, cond: encodeExpr(stmt.expr), span: stmt.span });
+                break;
+            }
             default:
                 throw new Unsupported(`statement kind ${stmt.kind}`, stmt.span);
         }
@@ -176,15 +181,15 @@ export function structureBody(encoded) {
             if (step.stmt === 'block_close') {
                 throw new Unsupported('unbalanced or standalone block structure', step.span);
             }
-            if (step.stmt === 'if') {
+            if (step.stmt === 'if' || step.stmt === 'while') {
                 let depth = 1;
                 let j = i + 1;
                 for (; j < end && depth > 0; j++) {
                     const inner = encoded.body[j];
-                    if (inner.stmt === 'if') depth++;
+                    if (inner.stmt === 'if' || inner.stmt === 'while') depth++;
                     else if (inner.stmt === 'block_close') depth--;
                 }
-                if (depth !== 0) throw new Unsupported('unterminated if block', step.span);
+                if (depth !== 0) throw new Unsupported('unterminated block', step.span);
                 out.push({ ...step, then: build(i + 1, j - 1) });
                 i = j;
                 continue;
@@ -198,8 +203,11 @@ export function structureBody(encoded) {
 }
 // Evaluate an encoded function with exact two's-complement i32 semantics.
 // Division and remainder follow C truncation toward zero; && and || short
-// circuit and yield 0/1 like C.
-export function evaluate(encoded, argumentValues) {
+// circuit and yield 0/1 like C. Loops run under an explicit fuel budget:
+// exhaustion means the run is inconclusive (Unsupported), never a claim of
+// termination or equality.
+export function evaluate(encoded, argumentValues, opts = {}) {
+    let fuel = opts.fuel ?? 10000;
     if (argumentValues.length !== encoded.args.length) {
         throw new Unsupported(`arity mismatch for ${encoded.name}`);
     }
@@ -250,6 +258,15 @@ export function evaluate(encoded, argumentValues) {
                 return { value: evalExpr(step.expr) };
             } else if (step.stmt === 'if') {
                 if (evalExpr(step.expr) !== 0n) {
+                    const done = exec(step.then);
+                    if (done) return done;
+                }
+            } else if (step.stmt === 'while') {
+                while (evalExpr(step.cond) !== 0n) {
+                    if (fuel <= 0) {
+                        throw new Unsupported('loop fuel exhausted: inconclusive, not a semantic claim', step.span);
+                    }
+                    fuel--;
                     const done = exec(step.then);
                     if (done) return done;
                 }

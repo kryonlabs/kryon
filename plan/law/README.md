@@ -1,13 +1,14 @@
 # Kryon law refactor: ten working phases
 
-Requested 2026-09-19. Status: **phase 1 implemented; first patches landed for
-phases 2–10 (commits `dc863456`..`34946141` on branch `law/program`), including
-the phase 3 semantic vertical case — but no phase is accepted yet**. Phase 4's
-preservation proof architecture and phase 8's integer-domain extension remain
-strong-review gated; phase 9 downstream migrations wait for the master merge.
-Existing law tooling and the starter are foundations, not completion of the
-phases. Each phase produces a usable Kryon revision and an evaluation report
-before subsequent work is scheduled.
+Requested 2026-09-19. Status: **phase 1 implemented; every phase 2–10 has
+landed, verified first patches (commits `dc863456`..`HEAD` on branch
+`law/program`), including branch/loop semantics and the accessibility
+subdomain laws — but no phase is accepted yet**. The formal preservation
+proof architecture (phases 3–5) and the phase 9 downstream migrations (after
+the master merge) remain the structural gates. Existing law tooling and the
+starter are foundations, not completion of the phases. Each phase produces a
+usable Kryon revision and an evaluation report before subsequent work is
+scheduled.
 
 ## Outcome and boundaries
 
