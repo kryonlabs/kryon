@@ -2610,6 +2610,7 @@ const drawComposedContent = () => drawComposedPopup(composedPopupMod.ComposedPop
 const drawComposedTools = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupToolsFrame);
 const drawComposedTooltip = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedTooltipFrame);
 const drawComposedModal = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedModalFrame);
+const drawComposedContext = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedContextFrame);
 
 drawComposedContent();
 assert.equal(composedPopup.popup_content_open, true);
@@ -2646,6 +2647,18 @@ assert.equal(composedPopup.modal_background, 0);
 rt.QueueKey(kryon.KeyEscape);
 drawComposedModal();
 assert.equal(composedPopup.modal_open, false);
+rt.QueueMouseButtonDown(kryon.MouseButtonRight, 30, 25);
+drawComposedContext();
+assert.equal(composedPopup.context_open, false);
+assert.equal(composedPopup.context_frames, 0);
+rt.QueueMouseButtonUp(kryon.MouseButtonRight, 30, 25);
+drawComposedContext();
+assert.equal(composedPopup.context_open, true);
+assert.equal(composedPopup.context_frames, 1);
+rt.QueueTap(120, 80);
+drawComposedContext(); drawComposedContext();
+assert.equal(composedPopup.context_open, false);
+assert.equal(composedPopup.context_action, 1);
 
 drawScrollContent();
 rt.QueueTap(20, 90); drawScrollContent(); drawScrollContent();

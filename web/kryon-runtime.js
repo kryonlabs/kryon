@@ -1565,8 +1565,18 @@ function handlePopup(rt, args) {
   const flags = propNumber(args, "flags", 0);
   const open = args && typeof args === "object" ? args.open : null;
   if (open && typeof open === "object" && "value" in open) {
-    if (!open.value)
+    if (!open.value) {
+      if ((flags & PopupContext) !== 0) {
+        const trigger = propRect(args, "trigger");
+        const release = consumeFirstEvent(rt, (ev) => ev.type === "mouse" && ev.action === "up" &&
+          Number(ev.button) === MouseButtonRight && hit(trigger, ev.x, ev.y));
+        if (release) {
+          open.value = true;
+          return true;
+        }
+      }
       return false;
+    }
     if ((flags & PopupModal) !== 0) {
       const escape = consumeFirstEvent(rt, (ev) => ev.type === "key" && Number(ev.key) === KeyEscape);
       if (escape) {
