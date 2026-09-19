@@ -4,14 +4,12 @@ package kryon
 // Entries persist until dismissal or frame-end owner removal, so background
 // widgets declared before the popup cannot consume last frame's popup input.
 type popupInputPanel struct {
-	bounds       Rectangle
-	parent       int32
-	hasParent    bool
-	seen, order  uint64
-	restoreFocus int32
-	lastFocus    int32
-	hasLastFocus bool
-	autofocus    bool
+	bounds      Rectangle
+	parent      int32
+	hasParent   bool
+	seen, order uint64
+	alive       bool
+	focus       PopupFocusState
 }
 
 type popupInputToken struct {
@@ -41,16 +39,17 @@ func (r *runtime) popupInputOwnerCaptures(owner popupInputOwner) bool {
 }
 
 func (r *runtime) popupDescendsFrom(owner, ancestor int32) bool {
-	for {
-		panel, ok := r.popupPanels[owner]
-		if !ok || !panel.hasParent {
-			return false
-		}
-		if panel.parent == ancestor {
-			return true
-		}
+	// Callers ask for proper descendants; the shared ancestry walk includes self.
+	if owner == ancestor {
+		return false
+	}
+	state := PopupAncestry{}
+	for !state.Done {
+		panel, found := r.popupPanels[owner]
+		state = PopupOwnership_PopupAncestryAdvance(found, owner == ancestor, panel.hasParent)
 		owner = panel.parent
 	}
+	return state.Contains
 }
 
 func (r *runtime) beginPopupInput(owner int32, bounds Rectangle) popupInputToken {
@@ -65,10 +64,7 @@ func (r *runtime) beginPopupInput(owner int32, bounds Rectangle) popupInputToken
 	token := popupInputToken{r, r.paintLayerFrame, owner, len(r.popupInputScopes)}
 	r.popupInputOrder++
 	panel, existed := r.popupPanels[owner]
-	if !existed {
-		panel.restoreFocus = r.focusID
-		panel.autofocus = true
-	}
+	panel.focus = PopupOwnership_PopupFocusInitialize(panel.focus, existed, r.focusID)
 	panel.bounds = bounds
 	panel.seen = r.paintLayerFrame
 	panel.order = r.popupInputOrder
@@ -80,6 +76,8 @@ func (r *runtime) beginPopupInput(owner int32, bounds Rectangle) popupInputToken
 			panic("popup ownership cycle")
 		}
 	}
+	parent, foundParent := r.popupPanels[panel.parent]
+	panel.alive = PopupOwnership_PopupOwnerAlive(panel.hasParent, foundParent && parent.alive)
 	r.popupPanels[owner] = panel
 	r.popupInputScopes = append(r.popupInputScopes, token)
 	return token
@@ -101,8 +99,8 @@ func (r *runtime) closePopupInput(owner int32) {
 		if r.popupDescendsFrom(id, owner) {
 			removed = append(removed, id)
 		}
-		if (id == owner || r.popupDescendsFrom(id, owner)) &&
-			child.hasLastFocus && child.lastFocus == r.focusID {
+		if PopupOwnership_PopupFocusRestore(child.focus, r.focusID,
+			id == owner || r.popupDescendsFrom(id, owner), false) {
 			restore = true
 		}
 	}
@@ -114,7 +112,7 @@ func (r *runtime) closePopupInput(owner int32) {
 		delete(r.popupPanels, id)
 	}
 	if found && restore {
-		r.setFocus(panel.restoreFocus)
+		r.setFocus(panel.focus.RestoreFocus)
 	}
 }
 
@@ -124,7 +122,7 @@ func (r *runtime) prunePopupInput() {
 	}
 	var missing []int32
 	for id, panel := range r.popupPanels {
-		if panel.seen != r.paintLayerFrame {
+		if PopupOwnership_PopupOwnerRetired(panel.alive, panel.seen, r.paintLayerFrame) {
 			missing = append(missing, id)
 		}
 	}
@@ -136,37 +134,35 @@ func (r *runtime) prunePopupInput() {
 // Compare whole branches, not just the two leaf timestamps. All descendants
 // of a later sibling layer paint above an earlier sibling's descendants.
 func (r *runtime) popupAbove(a, b int32) bool {
-	path := func(owner int32) []int32 {
-		var result []int32
-		for {
-			result = append(result, owner)
-			panel := r.popupPanels[owner]
-			if !panel.hasParent {
-				return result
-			}
-			owner = panel.parent
+	originA, originB := a, b
+	state := PopupOrder{}
+	hasA, hasB := true, true
+	for !state.Done {
+		ap, foundA := r.popupPanels[a]
+		bp, foundB := r.popupPanels[b]
+		hasA, hasB = hasA && foundA, hasB && foundB
+		sameParent := ap.hasParent == bp.hasParent && (!ap.hasParent || ap.parent == bp.parent)
+		state = PopupOwnership_PopupOrderAdvance(state, hasA, hasB, a == b && hasA && hasB,
+			sameParent, ap.order, bp.order)
+		if state.ResetA {
+			a, hasA = originA, true
+		} else if state.MoveA {
+			a, hasA = ap.parent, ap.hasParent
+		}
+		if state.ResetB {
+			b, hasB = originB, true
+		} else if state.MoveB {
+			b, hasB = bp.parent, bp.hasParent
 		}
 	}
-	ap, bp := path(a), path(b)
-	i, j := len(ap)-1, len(bp)-1
-	for i >= 0 && j >= 0 && ap[i] == bp[j] {
-		i--
-		j--
-	}
-	if j < 0 {
-		return i >= 0
-	}
-	if i < 0 {
-		return false
-	}
-	return r.popupPanels[ap[i]].order > r.popupPanels[bp[j]].order
+	return state.Above
 }
 
 func (r *runtime) popupCaptures(x, y float32) bool {
 	var top int32
 	found := false
 	for id, panel := range r.popupPanels {
-		if !pointInRect(x, y, panel.bounds) {
+		if !panel.alive || !pointInRect(x, y, panel.bounds) {
 			continue
 		}
 		if !found || r.popupAbove(id, top) {
@@ -175,12 +171,10 @@ func (r *runtime) popupCaptures(x, y float32) bool {
 	}
 	if n := len(r.popupInputScopes); n != 0 {
 		owner := r.popupInputScopes[n-1].owner
-		if _, alive := r.popupPanels[owner]; !alive {
-			return true
-		}
-		return found && owner != top
+		panel, exists := r.popupPanels[owner]
+		return PopupOwnership_PopupInputCaptured(true, exists && panel.alive, found, owner == top)
 	}
-	return found
+	return PopupOwnership_PopupInputCaptured(false, false, found, false)
 }
 
 func (r *runtime) closeDropdown(owner int32) {
@@ -205,18 +199,19 @@ func (r *runtime) popupKeyboardCaptures() bool {
 func (r *runtime) popupKeyboardCapturesOwner(owner int32, hasOwner bool) bool {
 	var top int32
 	found := false
-	for id := range r.popupPanels {
+	for id, panel := range r.popupPanels {
+		if !panel.alive {
+			continue
+		}
 		if !found || r.popupAbove(id, top) {
 			top, found = id, true
 		}
 	}
 	if hasOwner {
-		if _, alive := r.popupPanels[owner]; !alive {
-			return true
-		}
-		return found && owner != top
+		panel, exists := r.popupPanels[owner]
+		return PopupOwnership_PopupInputCaptured(true, exists && panel.alive, found, owner == top)
 	}
-	return found
+	return PopupOwnership_PopupInputCaptured(false, false, found, false)
 }
 
 type popupFocusOwner struct {
@@ -233,13 +228,11 @@ func (r *runtime) registerPopupFocus(id int32) {
 	if n := len(r.popupInputScopes); n != 0 {
 		owner.owner, owner.hasOwner = r.popupInputScopes[n-1].owner, true
 		panel := r.popupPanels[owner.owner]
-		if panel.autofocus && !r.popupKeyboardCapturesOwner(owner.owner, true) {
+		decision := PopupOwnership_PopupFocusRegister(panel.focus, id, r.focusID,
+			panel.alive, true, r.popupKeyboardCapturesOwner(owner.owner, true))
+		panel.focus = decision.State
+		if decision.Acquire {
 			r.setFocus(id)
-			panel.autofocus = false
-		}
-		if r.focusID == id {
-			panel.lastFocus = id
-			panel.hasLastFocus = true
 		}
 		r.popupPanels[owner.owner] = panel
 	}

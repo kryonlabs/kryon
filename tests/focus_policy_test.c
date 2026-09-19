@@ -15,6 +15,14 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
+    FocusTraversal traversal = FocusTraversalFor(-1, 0, 1);
+    assert(traversal.clear && !traversal.move);
+    assert(FocusTraversalFor(-1, 3, 1).index == 0);
+    assert(FocusTraversalFor(-1, 3, -1).index == 2);
+    assert(FocusTraversalFor(0, 3, -1).index == 2);
+    assert(FocusTraversalFor(2, 3, 1).index == 0);
+    assert(!FocusTraversalFor(1, 3, 0).move);
+    assert(FocusTraversalFor(100, 3, 1).index == 0);
     StyleFrame frame = {0};
     frame.value.padding_x = 5.0f;
     frame.value.border_width = 3.0f;

@@ -532,6 +532,15 @@ popup suites exercise trigger blocking, nested Escape and focus restoration.
 Modal outside releases remain non-dismissing. The input registry saves focus
 when a top popup first opens, focuses its first eligible child, and restores the
 parent or background after nested close, root close, or missing-owner retirement.
+Popup registries execute ancestry and branch-order traversal through the
+streaming `PopupOrder` / `PopupAncestry` drivers in `popup_ownership.kry`.
+C supplies linked parent cursors and Go supplies map entries. Both apply shared
+capture, autofocus, restoration and retirement decisions. A child opened after
+its parent closes remains inactive and retires at frame end. Tab traversal uses
+`FocusTraversalFor`, with host-owned focus-ID storage and token validation.
+Composed Scroll scopes use `ScrollScopeFrameFor` for bounds, wheel handling,
+thumb movement and closure. Their host drag tokens retain popup ownership, so a
+closed owner or a disappearing scrollbar cannot keep changing the offset.
 Long-lived drag values, sliders, splitters and table resizers store the same
 persistent owner identity, allowing out-of-bounds continuation only while that
 branch remains topmost and cancelling on dismissal or ownership changes.

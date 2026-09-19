@@ -1714,6 +1714,11 @@ the background. Pointer releases outside the panel are blocked without closing
 it; Escape, clearing the caller-owned `open` value, disabling it, or omitting
 its owner closes it. Modal and tooltip flags are mutually exclusive.
 
+Nested popup ownership applies to ongoing scrollbar drags as well as clicks.
+Closing the owning popup cancels its drag; removing a scrollbar by shrinking its
+content also releases that drag. Tab and Shift+Tab wrap within eligible controls
+of the active popup branch.
+
 With `PopupContext`, a right-button release inside `trigger` sets the
 caller-owned `open` value and enters the same arbitrary-child popup scope.
 The caller supplies the panel position in `bounds`; this keeps placement stable

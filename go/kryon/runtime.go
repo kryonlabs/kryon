@@ -683,6 +683,7 @@ type runtime struct {
 	scrollClips       []Rectangle
 	scrollDragOffset  *int32
 	scrollDragGrab    float32
+	scrollDragOwner   popupInputOwner
 	disabledCount     int32
 }
 
@@ -1346,72 +1347,49 @@ func (r *runtime) ScrollScope(bounds Rectangle, contentHeight int32, offset *int
 		ButtonProps{Size: ControlSizeSmall, Pill: true}, ButtonStateNormal,
 		false, 0, 0, 0, StyleSheet_StyleKindScroll())
 	metrics := Scroll_ScrollMetricsFor(1, trackMetricFrame, thumbMetricFrame)
+	value := int32(0)
 	if offset != nil {
-		maximum := max32(0, contentHeight-int32(bounds.Height))
-		*offset = clamp32(*offset, 0, maximum)
-		if r.pointerCanReach(clip) && r.mouseWheel != 0 {
-			*offset = clamp32(*offset-int32(r.mouseWheel*float32(metrics.DefaultWheelStep)), 0, maximum)
-			r.mouseWheel = 0
-		}
-		if maximum > 0 && bounds.Width > float32(metrics.ScrollbarWidth) && bounds.Height > 0 {
-			trackW := float32(metrics.ScrollbarWidth)
-			track := Rectangle{X: bounds.X + bounds.Width - trackW, Y: bounds.Y, Width: trackW, Height: bounds.Height}
-			thumbH := min(bounds.Height, max(float32(metrics.ThumbMinHeight), bounds.Height*bounds.Height/float32(contentHeight)))
-			travel := bounds.Height - thumbH
-			thumbY := bounds.Y
-			if travel > 0 {
-				thumbY += travel * float32(*offset) / float32(maximum)
-			}
-			thumbInset := float32(metrics.ThumbInset)
-			if thumbInset < 0 {
-				thumbInset = 0
-			}
-			if thumbInset*2 > track.Width {
-				thumbInset = track.Width / 2
-			}
-			thumbRect := Rectangle{X: track.X + thumbInset, Y: thumbY,
-				Width: track.Width - thumbInset*2, Height: thumbH}
-			if !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(track) {
-				r.scrollDragOffset = offset
-				r.scrollDragGrab = thumbH / 2
-				if r.mousePos.Y >= thumbY && r.mousePos.Y < thumbY+thumbH {
-					r.scrollDragGrab = r.mousePos.Y - thumbY
-				}
-			}
-			if r.scrollDragOffset == offset {
-				if r.contentDisabled() {
-					r.scrollDragOffset = nil
-				} else if travel > 0 && (r.mouseDown[MouseButtonLeft] || r.mousePressed[MouseButtonLeft]) {
-					*offset = clamp32(int32((r.mousePos.Y-bounds.Y-r.scrollDragGrab)*float32(maximum)/travel), 0, maximum)
-				}
-				if r.mouseReleased[MouseButtonLeft] {
-					r.scrollDragOffset = nil
-				}
-			}
-			thumbY = bounds.Y + travel*float32(*offset)/float32(maximum)
-			thumbRect.Y = thumbY
-			thumbState := ButtonStateNormal
-			if r.scrollDragOffset == offset {
-				thumbState = ButtonStatePressed
-			} else if r.pointerCanReach(thumbRect) {
-				thumbState = ButtonStateHover
-			}
-			thumbFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
-				ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled,
-					Size: ControlSizeSmall, Pill: true},
-				thumbState, false, 0, 0, 0, StyleSheet_StyleKindScrollThumb())
-			r.record(styleFrameRectOp(track, Rectangle{}, trackFrame))
-			r.record(styleFrameRectOp(thumbRect, track, thumbFrame))
-			bounds.Width -= trackW
-			clip = r.scrollClip(bounds)
+		value = *offset
+	}
+	ownsDrag := offset != nil && r.scrollDragOffset == offset
+	frame := Scroll_ScrollScopeFrameFor(ScrollScopeInput{
+		Bounds: bounds, ContentHeight: contentHeight, HasOffset: offset != nil, Offset: value,
+		PointerAllowed: r.pointerCanReach(clip), Disabled: r.contentDisabled(), Mouse: r.mousePos,
+		Pressed: r.mousePressed[MouseButtonLeft], Down: r.mouseDown[MouseButtonLeft],
+		Released: r.mouseReleased[MouseButtonLeft], Wheel: r.mouseWheel,
+		OwnsDrag: ownsDrag, OwnerCaptured: ownsDrag && r.popupInputOwnerCaptures(r.scrollDragOwner),
+		Grab: r.scrollDragGrab,
+	}, metrics)
+	if offset != nil {
+		*offset = frame.Offset
+	}
+	if frame.StartDrag {
+		r.scrollDragOffset = offset
+		r.scrollDragGrab = frame.Grab
+		r.scrollDragOwner = r.currentPopupInputOwner()
+		r.consumeTap(frame.Paint.TrackBounds)
+	}
+	if frame.ClearDrag {
+		r.scrollDragOffset = nil
+	}
+	if frame.ConsumeRelease {
+		for i := range r.taps {
+			r.taps[i].consumed = true
 		}
 	}
-	r.scrollClips = append(r.scrollClips, clip)
-	if offset != nil {
-		bounds.Y -= float32(*offset)
+	if frame.ConsumeWheel {
+		r.mouseWheel = 0
 	}
-	bounds.Height = float32(max32(0, contentHeight))
-	return bounds
+	if frame.Scrollbar {
+		thumbFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
+			ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled,
+				Size: ControlSizeSmall, Pill: true},
+			ButtonState(frame.ThumbState), false, 0, 0, 0, StyleSheet_StyleKindScrollThumb())
+		r.record(styleFrameRectOp(frame.Paint.TrackBounds, Rectangle{}, trackFrame))
+		r.record(styleFrameRectOp(frame.Paint.ThumbBounds, frame.Paint.TrackBounds, thumbFrame))
+	}
+	r.scrollClips = append(r.scrollClips, r.scrollClip(frame.Clip))
+	return frame.Content
 }
 func (r *runtime) Scroll(props ScrollProps, body func(Rectangle)) {
 	content := r.ScrollScope(props.Bounds, props.ContentHeight, props.Offset)
@@ -4162,6 +4140,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 			thumbY += travel * float32(*offset) / float32(maximum)
 		}
 		r.scrollDragOffset = offset
+		r.scrollDragOwner = r.currentPopupInputOwner()
 		r.scrollDragGrab = thumbH / 2
 		if r.mousePos.Y >= thumbY && r.mousePos.Y < thumbY+thumbH {
 			r.scrollDragGrab = r.mousePos.Y - thumbY
@@ -7361,9 +7340,6 @@ func (r *runtime) nextFocus(current int32, reverse bool) int32 {
 		}
 	}
 	order = eligible
-	if len(order) == 0 {
-		return 0
-	}
 	index := -1
 	for i, id := range order {
 		if id == current {
@@ -7371,16 +7347,15 @@ func (r *runtime) nextFocus(current int32, reverse bool) int32 {
 			break
 		}
 	}
-	if index < 0 {
-		if reverse {
-			return order[len(order)-1]
-		}
-		return order[0]
-	}
+	direction := int32(1)
 	if reverse {
-		return order[(index+len(order)-1)%len(order)]
+		direction = -1
 	}
-	return order[(index+1)%len(order)]
+	traversal := Focus_FocusTraversalFor(int32(index), int32(len(order)), direction)
+	if traversal.Clear {
+		return 0
+	}
+	return order[traversal.Index]
 }
 
 func (r *runtime) normalizedSelection(focusID int32, text string, pos int) selection {

@@ -809,6 +809,16 @@ popup-policy-test: $(GENERATED_SRC_DIR)/runtime/popup_policy.c $(GENERATED_SRC_D
 	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/popup-cpp tests/popup_policy_test.c $(BUILD_DIR)/tests/popup-cpp/runtime/popup_policy.cpp -lm -o $(BUILD_DIR)/tests/popup-cpp/check
 	$(BUILD_DIR)/tests/popup-cpp/check
 
+# Ownership decisions execute in both generated native policy targets.
+.PHONY: popup-ownership-policy-test
+popup-policy-test: popup-ownership-policy-test
+popup-ownership-policy-test: $(GENERATED_SRC_DIR)/runtime/popup_ownership.c $(GENERATED_SRC_DIR)/runtime/popup_ownership.h $(K2CPP)
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/popup_ownership_policy_test.c $(GENERATED_SRC_DIR)/runtime/popup_ownership.c -o $(BUILD_DIR)/popup-ownership-policy-test
+	$(BUILD_DIR)/popup-ownership-policy-test
+	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/popup-ownership-cpp runtime/popup_ownership.kry
+	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/popup-ownership-cpp tests/popup_ownership_policy_test.c $(BUILD_DIR)/tests/popup-ownership-cpp/runtime/popup_ownership.cpp -o $(BUILD_DIR)/tests/popup-ownership-cpp/check
+	$(BUILD_DIR)/tests/popup-ownership-cpp/check
+
 menu-policy-test: $(GENERATED_SRC_DIR)/runtime/menu.c $(GENERATED_SRC_DIR)/runtime/menu.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/menu_policy_test.c $(GENERATED_SRC_DIR)/runtime/menu.c -lm -o $(MENU_POLICY_TEST)
 	$(MENU_POLICY_TEST)

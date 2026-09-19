@@ -228,8 +228,13 @@ open state, dismissal, input bounds and backdrop policy. C `popup.c` and Go
 `popup.go` apply those results. Hosts retain paint/input tokens, event queues,
 open-pointer storage and scope restoration. Keyboard ownership is sampled
 **after** beginning the popup input scope; moving that query earlier changes
-nested Escape behavior. The input registry's ancestry, focus restoration and
-missing-owner retirement remain native work in the ownership inventory.
+nested Escape behavior. `runtime/popup_ownership.kry` owns ancestry traversal, branch ordering, capture,
+autofocus, focus restoration and owner retirement. Hosts supply parent cursors,
+opaque identity equality and registry storage; they validate token lifetimes.
+`FocusTraversalFor` owns Tab target indices and wrapping after the host filters
+its stored focus IDs. `ScrollScopeFrameFor` owns scroll geometry, wheel use,
+thumb dragging, release consumption and cancellation when ownership is lost or
+the scrollbar disappears. Hosts retain clip/paint stacks and drag identities.
 
 ## Keyboard and release policy
 

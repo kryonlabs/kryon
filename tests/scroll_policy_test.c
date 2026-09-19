@@ -215,5 +215,42 @@ main(void)
     assert((int)paint.thumb_bounds.y == 30);
     assert((int)paint.thumb_bounds.width == 0);
 
+    ScrollScopeInput scope = {0};
+    ScrollMetrics scope_metrics = {0};
+    scope_metrics.scrollbar_width = 10;
+    scope_metrics.thumb_min_height = 16;
+    scope_metrics.thumb_inset = 2;
+    scope_metrics.default_wheel_step = 42;
+    scope.bounds = (Rectangle){0, 0, 100, 50};
+    scope.content_height = 200;
+    scope.has_offset = true;
+    scope.pointer_allowed = true;
+    scope.wheel = -1;
+    ScrollScopeFrame scope_frame = ScrollScopeFrameFor(scope, scope_metrics);
+    assert(scope_frame.offset == 42 && scope_frame.consume_wheel);
+    assert(scope_frame.clip.width == 90 && scope_frame.content.height == 200);
+    assert(scope_frame.content.y == -42);
+    scope.wheel = 0;
+    scope.mouse = (Vector2){95, 30};
+    scope.pressed = true;
+    scope_frame = ScrollScopeFrameFor(scope, scope_metrics);
+    assert(scope_frame.start_drag && scope_frame.offset > 0);
+    scope.offset = scope_frame.offset;
+    scope.grab = scope_frame.grab;
+    scope.pressed = false;
+    scope.owns_drag = true;
+    scope.released = true;
+    scope_frame = ScrollScopeFrameFor(scope, scope_metrics);
+    assert(scope_frame.clear_drag && scope_frame.consume_release);
+    scope.released = false;
+    scope.down = true;
+    scope.owner_captured = true;
+    scope_frame = ScrollScopeFrameFor(scope, scope_metrics);
+    assert(scope_frame.clear_drag && scope_frame.offset == scope.offset);
+    scope.owner_captured = false;
+    scope.content_height = 10;
+    scope_frame = ScrollScopeFrameFor(scope, scope_metrics);
+    assert(scope_frame.clear_drag && !scope_frame.scrollbar && scope_frame.offset == 0);
+
     return 0;
 }

@@ -62,6 +62,37 @@ type ScrollClipGeometry struct {
 	VisualBleed        int32
 }
 
+type ScrollScopeInput struct {
+	Bounds         Rectangle
+	ContentHeight  int32
+	HasOffset      bool
+	Offset         int32
+	PointerAllowed bool
+	Disabled       bool
+	Mouse          Vector2
+	Pressed        bool
+	Down           bool
+	Released       bool
+	Wheel          float32
+	OwnsDrag       bool
+	OwnerCaptured  bool
+	Grab           float32
+}
+
+type ScrollScopeFrame struct {
+	Clip           Rectangle
+	Content        Rectangle
+	Paint          ScrollBarPaint
+	Offset         int32
+	Grab           float32
+	Scrollbar      bool
+	StartDrag      bool
+	ClearDrag      bool
+	ConsumeRelease bool
+	ConsumeWheel   bool
+	ThumbState     int32
+}
+
 func Scroll_ScrollMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -1244,4 +1275,290 @@ func Scroll_ScrollBarPaintFor(x int32, y int32, viewport_h int32, content_h int3
 	paint.ScrollPerPixel = value_125
 	var value_132 ScrollBarPaint = paint
 	return value_132
+}
+
+func Scroll_ScrollPointInside(point Vector2, bounds Rectangle) bool {
+	var value_0 float32 = point.X
+	var value_1 float32 = bounds.X
+	var value_2 bool = value_0 >= value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 float32 = point.Y
+		var value_5 float32 = bounds.Y
+		var value_6 bool = value_4 >= value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if value_7 {
+		var value_8 float32 = point.X
+		var value_9 float32 = bounds.X
+		var value_10 float32 = bounds.Width
+		var value_11 float32 = value_9 + value_10
+		var value_12 bool = value_8 < value_11
+		value_7 = value_12
+	}
+	var value_13 bool = value_7
+	if value_13 {
+		var value_14 float32 = point.Y
+		var value_15 float32 = bounds.Y
+		var value_16 float32 = bounds.Height
+		var value_17 float32 = value_15 + value_16
+		var value_18 bool = value_14 < value_17
+		value_13 = value_18
+	}
+	return value_13
+}
+
+func Scroll_ScrollScopeFrameFor(input ScrollScopeInput, metrics ScrollMetrics) ScrollScopeFrame {
+	var frame ScrollScopeFrame = ScrollScopeFrame{}
+	var value_0 Rectangle = input.Bounds
+	frame.Clip = value_0
+	var value_1 float32 = input.Grab
+	frame.Grab = value_1
+	var value_2 int32 = int32(ButtonStateNormal)
+	var value_3 int32 = int32(number_runtime_bits(uint64(value_2), uint64(0), 32, true, 0))
+	frame.ThumbState = value_3
+	var value_4 int32 = input.ContentHeight
+	var value_5 float32 = input.Bounds.Height
+	var value_6 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_5), 32, true)), uint64(0), 32, true, 0))
+	var value_7 int32 = Scroll_ScrollMax(value_4, value_6)
+	var maximum int32 = value_7
+	var value_8 bool = input.OwnsDrag
+	var active bool = value_8
+	var value_9 bool = input.HasOffset
+	if value_9 {
+		var value_10 int32 = input.Offset
+		var value_11 int32 = maximum
+		var value_12 int32 = Scroll_ScrollClamp(value_10, value_11)
+		frame.Offset = value_12
+		var value_13 bool = input.PointerAllowed
+		var value_14 bool = value_13
+		if value_14 {
+			var value_15 bool = input.Disabled
+			var value_16 bool = !value_15
+			value_14 = value_16
+		}
+		var value_17 bool = value_14
+		if value_17 {
+			var value_18 float32 = input.Wheel
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 != value_19
+			value_17 = value_20
+		}
+		if value_17 {
+			var value_21 int32 = frame.Offset
+			var value_22 float32 = input.Wheel
+			var value_23 int32 = maximum
+			var value_24 int32 = metrics.DefaultWheelStep
+			var value_25 int32 = Scroll_ScrollWheelOffsetFor(value_21, value_22, value_23, value_24)
+			frame.Offset = value_25
+			var value_26 bool = true
+			frame.ConsumeWheel = value_26
+		}
+		var value_27 int32 = maximum
+		var value_28 int32 = 0
+		var value_29 bool = value_27 > value_28
+		var value_30 bool = value_29
+		if value_30 {
+			var value_31 float32 = input.Bounds.Width
+			var value_32 int32 = metrics.ScrollbarWidth
+			var value_33 float32 = float32(value_32)
+			var value_34 bool = value_31 > value_33
+			value_30 = value_34
+		}
+		var value_35 bool = value_30
+		if value_35 {
+			var value_36 float32 = input.Bounds.Height
+			var value_37 float32 = 0.0
+			var value_38 bool = value_36 > value_37
+			value_35 = value_38
+		}
+		frame.Scrollbar = value_35
+	}
+	var value_39 bool = frame.Scrollbar
+	var value_40 bool = !value_39
+	var value_41 bool = value_40
+	if !value_41 {
+		var value_42 bool = input.Disabled
+		value_41 = value_42
+	}
+	var value_43 bool = value_41
+	if !value_43 {
+		var value_44 bool = input.OwnerCaptured
+		value_43 = value_44
+	}
+	if value_43 {
+		var value_45 bool = active
+		frame.ClearDrag = value_45
+		var value_46 bool = active
+		var value_47 bool = value_46
+		if value_47 {
+			var value_48 bool = input.Released
+			value_47 = value_48
+		}
+		frame.ConsumeRelease = value_47
+		var value_49 bool = false
+		active = value_49
+	}
+	var value_50 bool = frame.Scrollbar
+	if value_50 {
+		var value_51 float32 = input.Bounds.X
+		var value_52 float32 = input.Bounds.Width
+		var value_53 float32 = value_51 + value_52
+		var value_54 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_53), 32, true)), uint64(0), 32, true, 0))
+		var value_55 int32 = metrics.ScrollbarWidth
+		var value_56 int32 = int32(number_runtime_bits(uint64(value_54), uint64(value_55), 32, true, 2))
+		var x int32 = value_56
+		var value_57 int32 = x
+		var value_58 float32 = input.Bounds.Y
+		var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
+		var value_60 float32 = input.Bounds.Height
+		var value_61 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_60), 32, true)), uint64(0), 32, true, 0))
+		var value_62 int32 = input.ContentHeight
+		var value_63 int32 = frame.Offset
+		var value_64 int32 = maximum
+		var value_65 ScrollMetrics = metrics
+		var value_66 ScrollBarPaint = Scroll_ScrollBarPaintFor(value_57, value_59, value_61, value_62, value_63, value_64, value_65)
+		frame.Paint = value_66
+		var value_67 bool = input.Disabled
+		var value_68 bool = !value_67
+		var value_69 bool = value_68
+		if value_69 {
+			var value_70 bool = input.OwnerCaptured
+			var value_71 bool = !value_70
+			value_69 = value_71
+		}
+		var value_72 bool = value_69
+		if value_72 {
+			var value_73 bool = input.PointerAllowed
+			value_72 = value_73
+		}
+		var value_74 bool = value_72
+		if value_74 {
+			var value_75 bool = input.Pressed
+			value_74 = value_75
+		}
+		var value_76 bool = value_74
+		if value_76 {
+			var value_77 Vector2 = input.Mouse
+			var value_78 Rectangle = frame.Paint.TrackBounds
+			var value_79 bool = Scroll_ScrollPointInside(value_77, value_78)
+			value_76 = value_79
+		}
+		if value_76 {
+			var value_80 bool = true
+			frame.StartDrag = value_80
+			var value_81 bool = false
+			frame.ClearDrag = value_81
+			var value_82 bool = true
+			active = value_82
+			var value_83 float32 = frame.Paint.ThumbBounds.Height
+			var value_84 float32 = 2.0
+			var value_85 float32 = value_83 / value_84
+			frame.Grab = value_85
+			var value_86 Vector2 = input.Mouse
+			var value_87 Rectangle = frame.Paint.ThumbBounds
+			var value_88 bool = Scroll_ScrollPointInside(value_86, value_87)
+			if value_88 {
+				var value_89 float32 = input.Mouse.Y
+				var value_90 float32 = frame.Paint.ThumbBounds.Y
+				var value_91 float32 = value_89 - value_90
+				frame.Grab = value_91
+			}
+		}
+		var value_92 bool = active
+		if value_92 {
+			var value_93 int32 = frame.Paint.TrackSpan
+			var value_94 int32 = 0
+			var value_95 bool = value_93 > value_94
+			var value_96 bool = value_95
+			if value_96 {
+				var value_97 bool = input.Down
+				var value_98 bool = value_97
+				if !value_98 {
+					var value_99 bool = input.Pressed
+					value_98 = value_99
+				}
+				value_96 = value_98
+			}
+			if value_96 {
+				var value_100 float32 = input.Mouse.Y
+				var value_101 float32 = frame.Paint.TrackBounds.Y
+				var value_102 float32 = frame.Grab
+				var value_103 int32 = maximum
+				var value_104 ScrollBarPaint = frame.Paint
+				var value_105 int32 = Scroll_ScrollDragOffsetFor(value_100, value_101, value_102, value_103, value_104)
+				frame.Offset = value_105
+			}
+			var value_106 bool = input.Released
+			if value_106 {
+				var value_107 bool = true
+				frame.ConsumeRelease = value_107
+				var value_108 bool = true
+				frame.ClearDrag = value_108
+				var value_109 bool = false
+				active = value_109
+			}
+		}
+		var value_110 int32 = x
+		var value_111 float32 = input.Bounds.Y
+		var value_112 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_111), 32, true)), uint64(0), 32, true, 0))
+		var value_113 float32 = input.Bounds.Height
+		var value_114 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_113), 32, true)), uint64(0), 32, true, 0))
+		var value_115 int32 = input.ContentHeight
+		var value_116 int32 = frame.Offset
+		var value_117 int32 = maximum
+		var value_118 ScrollMetrics = metrics
+		var value_119 ScrollBarPaint = Scroll_ScrollBarPaintFor(value_110, value_112, value_114, value_115, value_116, value_117, value_118)
+		frame.Paint = value_119
+		var value_120 bool = active
+		if value_120 {
+			var value_121 int32 = int32(ButtonStatePressed)
+			var value_122 int32 = int32(number_runtime_bits(uint64(value_121), uint64(0), 32, true, 0))
+			frame.ThumbState = value_122
+		} else {
+			var value_123 bool = input.Disabled
+			var value_124 bool = !value_123
+			var value_125 bool = value_124
+			if value_125 {
+				var value_126 bool = input.PointerAllowed
+				value_125 = value_126
+			}
+			var value_127 bool = value_125
+			if value_127 {
+				var value_128 Vector2 = input.Mouse
+				var value_129 Rectangle = frame.Paint.ThumbBounds
+				var value_130 bool = Scroll_ScrollPointInside(value_128, value_129)
+				value_127 = value_130
+			}
+			if value_127 {
+				var value_131 int32 = int32(ButtonStateHover)
+				var value_132 int32 = int32(number_runtime_bits(uint64(value_131), uint64(0), 32, true, 0))
+				frame.ThumbState = value_132
+			}
+		}
+		var value_133 Rectangle = input.Bounds
+		var value_134 bool = true
+		var value_135 ScrollMetrics = metrics
+		var value_136 Rectangle = Scroll_ScrollScopeContentBounds(value_133, value_134, value_135)
+		frame.Clip = value_136
+	}
+	var value_137 Rectangle = frame.Clip
+	frame.Content = value_137
+	var value_138 float32 = frame.Content.Y
+	var value_139 int32 = frame.Offset
+	var value_140 float32 = float32(value_139)
+	frame.Content.Y = value_138 - value_140
+	var value_141 int32 = input.ContentHeight
+	var value_142 float32 = float32(value_141)
+	frame.Content.Height = value_142
+	var value_143 float32 = frame.Content.Height
+	var value_144 float32 = 0.0
+	var value_145 bool = value_143 < value_144
+	if value_145 {
+		var value_146 float32 = 0.0
+		frame.Content.Height = value_146
+	}
+	var value_147 ScrollScopeFrame = frame
+	return value_147
 }

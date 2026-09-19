@@ -9,11 +9,14 @@ Remaining:
 
 - Audit surrounding capture, focus, navigation and owner-reset gates, beyond
   the consume calls themselves. Include retained tree target selection.
-- Bring handwritten Go context-menu activation/outside-close handling and other
-  event-loop decisions under the same generated policies as C.
-- Inventory the web event path: `createRuntime` currently queues taps, text,
-  keys, shortcuts, and composition. Native-style down/move/up and wheel
-  drivers are still missing; composition has partial executable coverage.
+- Go context-menu activation/outside-close handling now uses shared policy.
+  Popup ancestry, branch order, capture, focus and retirement execute through
+  `runtime/popup_ownership.kry`, and Tab target selection through
+  `FocusTraversalFor`. Composed scroll drag release/cancellation uses
+  `ScrollScopeFrameFor`, including loss of popup ownership.
+- The old web event path is paused. Its historical down/move/up and wheel
+  driver work is reference material for the future web-native target; it is
+  not an active native migration task.
 - Active generated C/Go backends now have matched lifecycle matrix coverage for
   release-without-press, drag cancellation, disabled controls, popup capture,
   focus loss, and nested scope restoration. Keep future web-native checks out of

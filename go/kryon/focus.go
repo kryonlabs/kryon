@@ -16,6 +16,12 @@ type FocusDebugOverlayPaint struct {
 	LabelVisible  bool
 }
 
+type FocusTraversal struct {
+	Index int32
+	Move  bool
+	Clear bool
+}
+
 func Focus_FocusBoxRole() int32 {
 	var value_0 int32 = 9
 	return value_0
@@ -241,4 +247,87 @@ func Focus_FocusDebugOverlayPaintFor(bounds Rectangle, font_height int32, has_la
 	paint.LabelVisible = value_11
 	var value_12 FocusDebugOverlayPaint = paint
 	return value_12
+}
+
+func Focus_FocusTraversalFor(current int32, count int32, direction int32) FocusTraversal {
+	var result FocusTraversal = FocusTraversal{}
+	var value_0 int32 = current
+	result.Index = value_0
+	var value_1 int32 = count
+	var value_2 int32 = 0
+	var value_3 bool = value_1 <= value_2
+	if value_3 {
+		var value_4 int32 = -1
+		result.Index = value_4
+		var value_5 bool = true
+		result.Clear = value_5
+		var value_6 FocusTraversal = result
+		return value_6
+	}
+	var value_7 int32 = direction
+	var value_8 int32 = 0
+	var value_9 bool = value_7 == value_8
+	if value_9 {
+		var value_10 FocusTraversal = result
+		return value_10
+	}
+	var value_11 bool = true
+	result.Move = value_11
+	var value_12 int32 = current
+	var value_13 int32 = 0
+	var value_14 bool = value_12 < value_13
+	var value_15 bool = value_14
+	if !value_15 {
+		var value_16 int32 = current
+		var value_17 int32 = count
+		var value_18 bool = value_16 >= value_17
+		value_15 = value_18
+	}
+	if value_15 {
+		var value_19 int32 = 0
+		result.Index = value_19
+		var value_20 int32 = direction
+		var value_21 int32 = 0
+		var value_22 bool = value_20 < value_21
+		if value_22 {
+			var value_23 int32 = count
+			var value_24 int32 = 1
+			var value_25 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_24), 32, true, 2))
+			result.Index = value_25
+		}
+		var value_26 FocusTraversal = result
+		return value_26
+	}
+	var value_27 int32 = direction
+	var value_28 int32 = 0
+	var value_29 bool = value_27 < value_28
+	if value_29 {
+		var value_30 int32 = current
+		var value_31 int32 = 1
+		var value_32 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_31), 32, true, 2))
+		result.Index = value_32
+		var value_33 int32 = result.Index
+		var value_34 int32 = 0
+		var value_35 bool = value_33 < value_34
+		if value_35 {
+			var value_36 int32 = count
+			var value_37 int32 = 1
+			var value_38 int32 = int32(number_runtime_bits(uint64(value_36), uint64(value_37), 32, true, 2))
+			result.Index = value_38
+		}
+	} else {
+		var value_39 int32 = current
+		var value_40 int32 = 1
+		var value_41 int32 = int32(number_runtime_bits(uint64(value_39), uint64(value_40), 32, true, 1))
+		result.Index = value_41
+		var value_42 int32 = result.Index
+		var value_43 int32 = count
+		var value_44 bool = value_42 == value_43
+		if value_44 {
+			var value_45 int32 = 0
+			result.Index = value_45
+		}
+	}
+	var value_46 FocusTraversal = result
+	return value_46
 }

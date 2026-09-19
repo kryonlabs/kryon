@@ -147,6 +147,7 @@ surface review:
 | `runtime/transition_props.kry` | Transition phase enum names | `.kry support` |
 | `runtime/modal.kry` | Modal layout, frame geometry, message line-gap, outside-dismissal, prompt availability/focus fallback, prompt input/result, and action row policy | `.kry canonical` |
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
+| `runtime/popup_ownership.kry` | Popup ancestry, branch ordering, input capture, focus acquisition/restoration, and owner retirement | `.kry support` |
 | `runtime/overlay.kry` | Internal dismissible overlay viewport, dismissal, and release-consumption policy | `.kry support` |
 | `runtime/tree_view.kry` | TreeView row/window, paint geometry, marker text, and row-selection decision policy | `.kry canonical` |
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |

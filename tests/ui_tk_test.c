@@ -4770,6 +4770,12 @@ test_nested_popup_input_ownership(void)
     nested = ui_popup_input_begin(context,1,(Rectangle){0,0,100,100});
     ui_popup_input_close(context,0);
     check_int("closing parent disables active child",ui_popup_input_captures(context,(Vector2){60,60}),1);
+    PopupInputToken late_child = ui_popup_input_begin(context, 29899, (Rectangle){10,10,100,100});
+    int prior_focus = GetFocus();
+    ui_popup_input_register_focus(29900, late_child, 1);
+    check_int("late child of closed owner cannot capture focus", GetFocus(), prior_focus);
+    check_int("late child of closed owner cannot reclaim input", ui_popup_input_captures(context,(Vector2){60,60}), 1);
+    ui_popup_input_end(late_child);
     ui_popup_input_end(nested); ui_popup_input_end(outer);
     ui_popup_input_finish(context);
     check_int("closed and missing branches retired",ui_popup_input_current_captures((Vector2){60,60}),0);

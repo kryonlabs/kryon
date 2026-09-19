@@ -24,7 +24,7 @@ FocusLabelRole :: () -> i32 #export {
 }
 
 FocusMetric :: (fields: u32, field: u32, value: float,
-    fallback: float, scale: float) -> i32 {
+fallback: float, scale: float) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
     return (i32)(value * scale)
 }
@@ -35,10 +35,10 @@ FocusStrokeWidthFor :: (scale: float) -> i32 #export {
 }
 
 FocusActivationFor :: (active: bool, keyboard_enabled: bool,
-    content_disabled: bool, captured: bool, enter_pressed: bool,
-    space_pressed: bool, text_input_active: bool) -> bool #export {
+content_disabled: bool, captured: bool, enter_pressed: bool,
+space_pressed: bool, text_input_active: bool) -> bool #export {
     return active && keyboard_enabled && !content_disabled && !captured &&
-        (enter_pressed || (!text_input_active && space_pressed))
+    (enter_pressed || (!text_input_active && space_pressed))
 }
 
 FocusTabDirectionFor :: (tab_pressed: bool, shift_down: bool) -> i32 #export {
@@ -61,9 +61,9 @@ FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float) -> Rectangle #exp
 FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
     pad: i32 = FocusMetric(frame.value.fields, (u32)StylePaddingX,
-        frame.value.padding_x, 3.0, scale)
+    frame.value.padding_x, 3.0, scale)
     stroke: i32 = FocusMetric(frame.value.fields, (u32)StyleBorderWidth,
-        frame.value.border_width, 2.0, scale)
+    frame.value.border_width, 2.0, scale)
     paint: FocusPaint
     paint.bounds.x = bounds.x - (float)pad
     paint.bounds.y = bounds.y - (float)pad
@@ -82,4 +82,35 @@ FocusDebugOverlayPaintFor :: (bounds: Rectangle, font_height: i32, has_label: bo
     paint.stroke_width = 1
     paint.label_visible = has_label
     return paint
+}
+
+FocusTraversal :: struct {
+    index: i32
+    move: bool
+    clear: bool
+}
+
+FocusTraversalFor :: (current: i32, count: i32, direction: i32) -> FocusTraversal #export {
+    result: FocusTraversal
+    result.index = current
+    if count <= 0 {
+        result.index = -1
+        result.clear = true
+        return result
+    }
+    if direction == 0 { return result }
+    result.move = true
+    if current < 0 || current >= count {
+        result.index = 0
+        if direction < 0 { result.index = count - 1 }
+        return result
+    }
+    if direction < 0 {
+        result.index = current - 1
+        if result.index < 0 { result.index = count - 1 }
+    } else {
+        result.index = current + 1
+        if result.index == count { result.index = 0 }
+    }
+    return result
 }

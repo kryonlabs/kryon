@@ -1,4 +1,5 @@
 #include "ui_popup_input_internal.h"
+#include "runtime/popup_ownership.h"
 #include <stdlib.h>
 #include <limits.h>
 
@@ -7,7 +8,7 @@ typedef struct PopupPanel {
     Rectangle bounds;
     unsigned long seen, order;
     int owner, alive;
-    int restore_focus, last_focus, has_last_focus, autofocus;
+    PopupFocusState focus;
 } PopupPanel;
 
 typedef struct PopupFocus {
@@ -39,21 +40,31 @@ static void clear_focus(PopupInput *context)
 
 static int descends(PopupPanel *panel, PopupPanel *ancestor)
 {
-    for(; panel; panel = panel->parent) if(panel == ancestor) return 1;
-    return 0;
+    PopupAncestry state = {0};
+    while (!state.done) {
+        state = PopupAncestryAdvance(panel != NULL, panel && panel == ancestor,
+                                     panel && panel->parent);
+        if (panel) {
+            panel = panel->parent;
+        }
+    }
+    return state.contains;
 }
 
 static int above(PopupPanel *a, PopupPanel *b)
 {
-    if(descends(a,b)) return a != b;
-    if(descends(b,a)) return 0;
-    int ad = 0, bd = 0;
-    for(PopupPanel *p = a; p; p = p->parent) ad++;
-    for(PopupPanel *p = b; p; p = p->parent) bd++;
-    while(ad > bd) { a = a->parent; ad--; }
-    while(bd > ad) { b = b->parent; bd--; }
-    while(a->parent != b->parent) { a = a->parent; b = b->parent; }
-    return a->order > b->order;
+    PopupPanel *origin_a = a, *origin_b = b;
+    PopupOrder state = {0};
+    while (!state.done) {
+        state = PopupOrderAdvance(state, a != NULL, b != NULL, a == b,
+            a && b && a->parent == b->parent,
+            a ? a->order : 0, b ? b->order : 0);
+        if (state.reset_a) a = origin_a;
+        else if (state.move_a) a = a->parent;
+        if (state.reset_b) b = origin_b;
+        else if (state.move_b) b = b->parent;
+    }
+    return state.above;
 }
 
 static PopupPanel *top_panel(PopupInput *context)
@@ -122,14 +133,14 @@ PopupInputToken ui_popup_input_begin(PopupInput *context, int owner, Rectangle b
         panel->next = context->panels;
         context->panels = panel;
         panel->owner = owner;
-        panel->restore_focus = GetFocus();
-        panel->autofocus = 1;
+        panel->focus = PopupFocusInitialize(panel->focus, false, GetFocus());
     }
     panel->parent = context->active;
     panel->bounds = bounds;
     panel->seen = context->frame;
     panel->order = ++context->order;
-    panel->alive = !panel->parent || panel->parent->alive;
+    panel->alive = PopupOwnerAlive(panel->parent != NULL,
+                                  panel->parent && panel->parent->alive);
     context->active = panel;
     return (PopupInputToken){context,context->frame,panel->order,owner};
 }
@@ -157,10 +168,10 @@ void ui_popup_input_close(PopupInput *context, int owner)
         }
         for(PopupPanel *child = context->panels; child; child = child->next) {
             if(!descends(child,panel)) continue;
-            if(child->has_last_focus && child->last_focus == focused) restore = 1;
+            if(PopupFocusRestore(child->focus, focused, true, false)) restore = 1;
             child->alive = 0;
         }
-        if(restore) SetFocus(panel->restore_focus);
+        if(restore) SetFocus(panel->focus.restore_focus);
         return;
     }
 }
@@ -169,7 +180,7 @@ void ui_popup_input_retire_missing(PopupInput *context)
 {
     if(!context || context->finished) return;
     for(PopupPanel *panel = context->panels; panel; panel = panel->next)
-        if(panel->seen != context->frame) ui_popup_input_close(context,panel->owner);
+        if(PopupOwnerRetired(panel->alive != 0, panel->seen, context->frame)) ui_popup_input_close(context,panel->owner);
 }
 
 void ui_popup_input_finish(PopupInput *context)
@@ -188,11 +199,11 @@ void ui_popup_input_finish(PopupInput *context)
 static int captures(PopupInput *context, PopupPanel *active, Vector2 point)
 {
     if(!context) return 0;
-    if(active && !active->alive) return 1;
     PopupPanel *top = NULL;
     for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->alive && CheckCollisionPointRec(point,panel->bounds) && (!top || above(panel,top))) top = panel;
-    return top && top != active;
+    return PopupInputCaptured(active != NULL, active && active->alive,
+                              top != NULL, top == active);
 }
 
 int ui_popup_input_captures(PopupInput *context, Vector2 point)
@@ -253,7 +264,8 @@ int ui_popup_input_snapshot_keyboard_captures(PopupInputToken token)
     PopupPanel *top = NULL;
     for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->alive && (!top || above(panel,top))) top = panel;
-    int captured = top && top != active;
+    int captured = PopupInputCaptured(active != NULL, active && active->alive,
+                                      top != NULL, top == active);
     if(captured) context->keyboard_captured = 1;
     return captured;
 }
@@ -296,7 +308,8 @@ int ui_popup_input_owner_captures(PopupInputOwner owner)
         return 1;
     }
     top = top_panel(context);
-    return top && (!owner.has_owner || top != current);
+    return PopupInputCaptured(owner.has_owner != 0, current && current->alive,
+                              top != NULL, top == current);
 }
 
 void ui_popup_input_register_focus(int id, PopupInputToken token, int eligible)
@@ -321,15 +334,13 @@ void ui_popup_input_register_focus(int id, PopupInputToken token, int eligible)
         PopupPanel *panel = context->panels;
         while(panel && (panel->owner != token.owner ||
               panel->order != token.order)) panel = panel->next;
-        if(panel && panel->alive) {
-            if(eligible && panel->autofocus &&
-               !ui_popup_input_snapshot_keyboard_captures(token)) {
+        if (panel) {
+            PopupFocusDecision decision = PopupFocusRegister(panel->focus, id,
+                GetFocus(), panel->alive != 0, eligible != 0,
+                ui_popup_input_snapshot_keyboard_captures(token) != 0);
+            panel->focus = decision.state;
+            if (decision.acquire) {
                 SetFocus(id);
-                panel->autofocus = 0;
-            }
-            if(GetFocus() == id) {
-                panel->last_focus = id;
-                panel->has_last_focus = 1;
             }
         }
     }

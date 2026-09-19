@@ -1,0 +1,143 @@
+#module "popup_ownership"
+
+# Hosts provide parent links and opaque identity equality. This driver compares
+# whole branches: a child of an earlier sibling stays below the later sibling.
+# Parent cursors and their storage are owned by the host, not copied into KIR.
+PopupOrder :: struct {
+    phase: i32
+    depth_a: i32
+    depth_b: i32
+    a_deeper: bool
+    move_a: bool
+    move_b: bool
+    reset_a: bool
+    reset_b: bool
+    done: bool
+    above: bool
+}
+
+PopupOrderAdvance :: (state: PopupOrder, has_a: bool, has_b: bool,
+same: bool, same_parent: bool, order_a: u64, order_b: u64) -> PopupOrder #export {
+    result: PopupOrder = state
+    result.move_a = false
+    result.move_b = false
+    result.reset_a = false
+    result.reset_b = false
+    if state.done { return result }
+    if state.phase == 0 {
+        if has_a {
+            result.depth_a += 1
+            result.move_a = true
+        } else {
+            result.phase = 1
+            result.reset_a = true
+        }
+        return result
+    }
+    if state.phase == 1 {
+        if has_b {
+            result.depth_b += 1
+            result.move_b = true
+        } else {
+            result.phase = 2
+            result.reset_b = true
+            result.a_deeper = state.depth_a > state.depth_b
+        }
+        return result
+    }
+    if state.depth_a > state.depth_b {
+        result.depth_a -= 1
+        result.move_a = true
+        return result
+    }
+    if state.depth_b > state.depth_a {
+        result.depth_b -= 1
+        result.move_b = true
+        return result
+    }
+    if same || !has_a || !has_b {
+        result.done = true
+        result.above = same && has_a && result.a_deeper
+        return result
+    }
+    if same_parent {
+        result.done = true
+        result.above = order_a > order_b
+        return result
+    }
+    result.move_a = true
+    result.move_b = true
+    result.depth_a -= 1
+    result.depth_b -= 1
+    return result
+}
+
+PopupAncestry :: struct {
+    done: bool
+    contains: bool
+}
+
+PopupAncestryAdvance :: (has_owner: bool, same: bool,
+has_parent: bool) -> PopupAncestry #export {
+    result: PopupAncestry
+    result.contains = has_owner && same
+    result.done = !has_owner || same || !has_parent
+    return result
+}
+
+PopupInputCaptured :: (has_owner: bool, alive: bool,
+has_top: bool, same_top: bool) -> bool #export {
+    if has_owner && !alive { return true }
+    return has_top && (!has_owner || !same_top)
+}
+
+PopupOwnerAlive :: (has_parent: bool, parent_alive: bool) -> bool #export {
+    return !has_parent || parent_alive
+}
+
+PopupOwnerRetired :: (alive: bool, seen: u64, frame: u64) -> bool #export {
+    return !alive || seen != frame
+}
+
+PopupFocusState :: struct {
+    restore_focus: i32
+    last_focus: i32
+    has_last_focus: bool
+    autofocus: bool
+}
+
+PopupFocusDecision :: struct {
+    state: PopupFocusState
+    acquire: bool
+}
+
+PopupFocusInitialize :: (state: PopupFocusState, exists: bool,
+focused: i32) -> PopupFocusState #export {
+    if exists { return state }
+    result: PopupFocusState
+    result.restore_focus = focused
+    result.autofocus = true
+    return result
+}
+
+PopupFocusRegister :: (state: PopupFocusState, id: i32, focused: i32,
+alive: bool, eligible: bool, keyboard_captured: bool) -> PopupFocusDecision #export {
+    result: PopupFocusDecision
+    result.state = state
+    if !alive || id <= 0 { return result }
+    result.acquire = state.autofocus && eligible && !keyboard_captured
+    if result.acquire {
+        result.state.autofocus = false
+    }
+    if result.acquire || focused == id {
+        result.state.last_focus = id
+        result.state.has_last_focus = true
+    }
+    return result
+}
+
+PopupFocusRestore :: (state: PopupFocusState, focused: i32,
+in_branch: bool, registered: bool) -> bool #export {
+    return in_branch && (registered ||
+    (state.has_last_focus && state.last_focus == focused))
+}
