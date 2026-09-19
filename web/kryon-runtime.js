@@ -70,6 +70,9 @@ export const KeyX = 88;
 export const MouseButtonLeft = 0;
 export const MouseButtonRight = 1;
 export const MouseButtonMiddle = 2;
+export const PopupTooltip = 1;
+export const PopupModal = 2;
+export const PopupContext = 4;
 export const KEY_SPACE = KeySpace;
 export const KEY_ESCAPE = KeyEscape;
 export const KEY_ENTER = KeyEnter;
@@ -338,7 +341,8 @@ export function createRuntime(options = {}) {
       },
       scrollBounds: new Map(),
       dragDrop: null,
-      menus: new Map()
+      menus: new Map(),
+      layoutBounds: new Map()
     }
   };
   rt.QueueText = (text) => { rt.input.events.push({ type: "text", text: String(text) }); };
@@ -463,6 +467,7 @@ export function beginFrame(rt) {
     rt.input.textHandoff = 0;
     rt.input.deferredTextEvents = 0;
     rt.input.focusOrder = [];
+    rt.input.layoutBounds = new Map();
   }
   return rt;
 }
@@ -522,9 +527,10 @@ export function widget(rt, name, args, state = null, meta = null) {
   if (name === "Disabled" && String(args || "").trim() === "end")
     return handleWidget(rt, name, args, state, item.meta);
   rt.frame.push(item);
+  recordLayoutBounds(rt, args, item.meta);
   const result = handleWidget(rt, name, args, state, item.meta);
   if ((name === "TextField" || name === "TextArea") && state) {
-    const props = parseTextInputProps(args, state, name === "TextArea");
+    const props = parseTextInputProps(rt, args, state, name === "TextArea", item.meta);
     props.disabled = isTruthyProp(args, "disabled") || !!state[propIdent(args, "disabled")] || rt.disabledStack.some(Boolean);
     if (props.textKey && props.cursorKey)
       registerTextEditor(item, {rt, state, props});
@@ -1168,6 +1174,31 @@ function parseBounds(args) {
   return { x: 0, y: 0, width: 0, height: 0 };
 }
 
+function propRect(args, prop, fallback = { x: 0, y: 0, width: 0, height: 0 }) {
+  if (args && typeof args === "object") {
+    const value = args[prop];
+    if (value && typeof value === "object")
+      return {
+        x: numberValue(value.x ?? value[0], fallback.x),
+        y: numberValue(value.y ?? value[1], fallback.y),
+        width: numberValue(value.width ?? value[2], fallback.width),
+        height: numberValue(value.height ?? value[3], fallback.height)
+      };
+    return fallback;
+  }
+  const text = String(args || "");
+  const m = text.match(new RegExp("\\." + prop + "\\s*=\\s*(?:\\([^)]+\\))?\\{([^{}]+)\\}"));
+  if (!m)
+    return fallback;
+  const p = splitTopLevel(m[1]);
+  return {
+    x: numberValue(p[0], fallback.x),
+    y: numberValue(p[1], fallback.y),
+    width: numberValue(p[2], fallback.width),
+    height: numberValue(p[3], fallback.height)
+  };
+}
+
 function propNumber(args, prop, fallback = 0) {
   if (args && typeof args === "object")
     return numberValue(args[prop], fallback);
@@ -1204,6 +1235,35 @@ function writeStateValue(state, name, index, value) {
   }
   state[name] = value;
   return true;
+}
+
+function parentLayoutBounds(rt, meta) {
+  const parent = String(meta?.parentPath || "");
+  if (!parent || !rt.input?.layoutBounds)
+    return null;
+  const parts = parent.split("/");
+  while (parts.length > 0) {
+    const key = parts.join("/");
+    if (rt.input.layoutBounds.has(key))
+      return rt.input.layoutBounds.get(key);
+    parts.pop();
+  }
+  return null;
+}
+
+function resolveLayoutBounds(rt, args, meta) {
+  const bounds = parseBounds(args);
+  const parent = parentLayoutBounds(rt, meta);
+  if (parent && bounds.x === 0 && bounds.y === 0)
+    return { x: parent.x, y: parent.y, width: bounds.width, height: bounds.height };
+  return bounds;
+}
+
+function recordLayoutBounds(rt, args, meta) {
+  const path = String(meta?.path || "");
+  if (!path || !rt.input?.layoutBounds)
+    return;
+  rt.input.layoutBounds.set(path, resolveLayoutBounds(rt, args, meta));
 }
 
 function hit(bounds, x, y) {
@@ -1256,8 +1316,8 @@ function applyTextInput(rt, state, props) {
   return changed;
 }
 
-function parseTextInputProps(args, state, multiline) {
-  const bounds = parseBounds(args);
+function parseTextInputProps(rt, args, state, multiline, meta = null) {
+  const bounds = resolveLayoutBounds(rt, args, meta);
   const textKey = propIdent(args, "text");
   return {
     bounds,
@@ -1274,8 +1334,8 @@ function parseTextInputProps(args, state, multiline) {
   };
 }
 
-function handleTextInput(rt, state, args, multiline) {
-  const props = parseTextInputProps(args, state, multiline);
+function handleTextInput(rt, state, args, multiline, meta = null) {
+  const props = parseTextInputProps(rt, args, state, multiline, meta);
   if (state && props.commitKey) state[props.commitKey] = false;
   if (props.readOnly || rt.input.focus !== props.focusID)
     rt.input.preedit.delete(props.focusID);
@@ -1293,8 +1353,8 @@ function handleTextInput(rt, state, args, multiline) {
   return false;
 }
 
-function handleButton(rt, args) {
-  const bounds = parseBounds(args);
+function handleButton(rt, args, meta = null) {
+  const bounds = resolveLayoutBounds(rt, args, meta);
   return !!consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
 }
 
@@ -1315,14 +1375,31 @@ function handleCard(rt, args) {
   return handleButton(rt, args);
 }
 
-function handlePopup(args) {
+function handlePopup(rt, args) {
   if (isTruthyProp(args, "disabled"))
     return false;
+  const bounds = parseBounds(args);
   const open = args && typeof args === "object" ? args.open : null;
-  if (open && typeof open === "object" && "value" in open)
-    return !!open.value;
+  if (open && typeof open === "object" && "value" in open) {
+    if (!open.value)
+      return false;
+    const outside = consumeFirstEvent(rt, (ev) =>
+      ev.type === "tap" && !hit(bounds, ev.x, ev.y));
+    if (outside) {
+      open.value = false;
+      return false;
+    }
+    return true;
+  }
   const flags = propNumber(args, "flags", 0);
-  return (flags & 1) !== 0;
+  if ((flags & PopupTooltip) !== 0) {
+    const trigger = propRect(args, "trigger");
+    const mouse = rt.input?.mouse || {x: 0, y: 0};
+    return hit(trigger, mouse.x, mouse.y);
+  }
+  if ((flags & PopupModal) !== 0)
+    return true;
+  return (flags & PopupContext) !== 0;
 }
 
 function handleSlider(rt, state, args) {
@@ -1699,14 +1776,14 @@ function handleWidget(rt, name, args, state, meta = null) {
   case "Scroll":
     return handleScroll(rt, args, meta);
   case "Button":
-    return handleButton(rt, args);
+    return handleButton(rt, args, meta);
   case "Card":
     return handleCard(rt, args);
   case "Popup":
-    return handlePopup(args);
+    return handlePopup(rt, args);
   case "TextField":
   case "TextArea":
-    return handleTextInput(rt, state, args, name === "TextArea");
+    return handleTextInput(rt, state, args, name === "TextArea", meta);
   case "Slider":
     return handleSlider(rt, state, args);
   case "Toggle":

@@ -2495,6 +2495,7 @@ import * as tableMod from "./js/tests/parity/table_view.js";
 import * as selectionMod from "./js/tests/parity/selection_images.js";
 import * as dragDropMod from "./js/tests/parity/drag_drop.js";
 import * as menusMod from "./js/tests/parity/menus.js";
+import * as composedPopupMod from "./js/tests/parity/composed_popup.js";
 import * as kryon from "./js/kryon-runtime.js";
 
 const rt = kryon.createRuntime();
@@ -2575,6 +2576,7 @@ const table = tableMod.createState();
 const selection = selectionMod.createState();
 const dragDrop = dragDropMod.createState();
 const menus = menusMod.createState();
+const composedPopup = composedPopupMod.createState();
 
 const drawForm = () => formMod.frame(rt, form);
 const drawFields = () => fieldsMod.frame(rt, fields);
@@ -2590,6 +2592,45 @@ const drawTableView = () => tableMod.frame(rt, table);
 const drawTabScope = () => selectionMod.SelectionImages_TabScopeFrame(rt, selection);
 const drawDragDrop = () => dragDropMod.frame(rt, dragDrop);
 const drawMenus = () => menusMod.frame(rt, menus);
+const drawComposedPopup = (fn) => {
+  kryon.beginFrame(rt);
+  const result = fn(rt, composedPopup);
+  kryon.endFrame(rt);
+  return result;
+};
+const drawComposedContent = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupContentFrame);
+const drawComposedTools = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedPopupToolsFrame);
+const drawComposedTooltip = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedTooltipFrame);
+const drawComposedModal = () => drawComposedPopup(composedPopupMod.ComposedPopup_ComposedModalFrame);
+
+drawComposedContent();
+assert.equal(composedPopup.popup_content_open, true);
+rt.QueueTap(30, 70); drawComposedContent(); drawComposedContent();
+assert.equal(composedPopup.popup_content_action, 1);
+composedPopup.popup_content_close = true; drawComposedContent();
+assert.equal(composedPopup.popup_content_open, false);
+composedPopup.popup_content_close = false; drawComposedContent();
+rt.QueueTap(180, 70); drawComposedTools(); drawComposedTools();
+assert.equal(composedPopup.popup_action, 1);
+composedPopup.popup_close = true; drawComposedTools();
+assert.equal(composedPopup.popup_open, false);
+composedPopup.popup_close = false; composedPopup.popup_open = true; drawComposedTools();
+rt.QueueTap(180, 170); drawComposedTools(); drawComposedTools();
+assert.equal(composedPopup.popup_open, false);
+assert.equal(composedPopup.popup_background, 0);
+rt.QueueMouseMove(30, 25); drawComposedTooltip();
+const visibleTooltipFrames = composedPopup.tooltip_frames;
+assert.equal(visibleTooltipFrames, 1);
+rt.QueueTap(30, 25); drawComposedTooltip(); drawComposedTooltip();
+assert.ok(composedPopup.tooltip_frames > visibleTooltipFrames);
+assert.equal(composedPopup.tooltip_background, 1);
+rt.QueueMouseMove(300, 200); drawComposedTooltip();
+const hiddenTooltipFrames = composedPopup.tooltip_frames;
+drawComposedTooltip();
+assert.equal(composedPopup.tooltip_frames, hiddenTooltipFrames);
+drawComposedModal();
+assert.equal(composedPopup.modal_open, true);
+assert.equal(composedPopup.modal_frames, 1);
 
 rt.SetFocus(940);
 rt.QueueKey(kryon.KeyDown); drawMenus();
@@ -2819,4 +2860,4 @@ else
     echo "generated JS runtime parity skipped: node not found"
 fi
 
-printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry","tests/parity/menus.kry"],"native_go_only":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":[]}'
+printf '%s\n' '{"generated_runtime_parity":"ok","runtimes":["go","c","js"],"fixtures":["tests/parity/generated_form.kry","tests/parity/fields.kry","tests/parity/focus.kry","tests/parity/buttons_layout.kry","tests/parity/long_text.kry","tests/parity/basic_controls.kry","tests/parity/list_box.kry","tests/parity/tree_view.kry","tests/parity/progress.kry","tests/parity/plots.kry","tests/parity/selection_images.kry","tests/parity/table_view.kry","tests/parity/composition.kry","tests/parity/drag_drop.kry","tests/parity/menus.kry"],"native_go_only":["tests/parity/scroll_content.kry","tests/parity/composed_popup.kry"],"web_partial":["tests/parity/composed_popup.kry"]}'

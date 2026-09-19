@@ -13,7 +13,7 @@ intent until rerun at the revision being delivered.
 | Area | Source evidence | Consequence |
 |---|---|---|
 | Canonical API | Canonical plan records completed naming and release-call migrations; generated policy modules and surface guards exist. | Audit remaining behavior ownership. Do not repeat public renaming or the 34-call release-consumption migration. |
-| Web parity | `tests/generated_runtime_parity_test.sh` reports scroll_content and composed_popup as native/Go only; composition, drag_drop, and menus now execute their generated behavior checks in JS too. | Two fixtures still need JS execution. Correct older claims that composition, drag_drop, or menus JS cases are only partial; all three are now three-backend fixtures. |
+| Web parity | `tests/generated_runtime_parity_test.sh` reports scroll_content and composed_popup as native/Go only; composed_popup now has partial JS coverage for content/tools/tooltip/modal-open behavior, while composition, drag_drop, and menus execute their generated behavior checks in JS too. | Two fixtures still need complete JS execution. Preserve the distinction between partial composed-popup coverage and full three-backend fixtures. |
 | Web input | `createRuntime` in `web/kryon-runtime.js` exposes `SubmitTextComposition`, taps, text, keys, shortcuts, queued mouse move/down/up/wheel, and frame-scoped public key/mouse queries covered by `tests/web_input_driver_test.mjs`. | Reuse the driver primitives to connect lifecycle routing/capture decisions to actual shared fixtures. Native DOM pointer handlers alone do not prove generated-runtime parity. |
 | Expression lowering | `cmd/k2js/k2js_lower.c` now fails visibly instead of emitting `kryon.expr`, the web runtime no longer exports that placeholder, `sizeof(fixed_array)` lowers to the declared capacity for module state, globals, and function locals; the fixed-array count idiom `sizeof(array) / sizeof(array[0])` lowers to executable JavaScript. | Add real lowering for the remaining supported expression forms before claiming condition/activation parity. |
 | KSS language | Shared parser, formatter, matched fixtures, and generated modules exist; recent commits add variants, provenance, formatter CLI, and theme switching. | Several parser-removal and formatter tasks are stale. Verify routing and close them instead of rebuilding them. |
@@ -117,7 +117,8 @@ record. No percentage-complete claim based only on file counts or scanners.
   advertised as executable parity.
 - [ ] Execute scroll_content and composed_popup in JS using the same event
   sequences and state assertions as C and Go. Drag/drop clipping/copy behavior
-  and generated menu keyboard submenu activation now run in C/Go/JS.
+  and generated menu keyboard submenu activation now run in C/Go/JS; composed
+  popup content/tools/tooltip/modal-open checks now run as partial JS coverage.
 - [x] Complete composition parity for generated-runtime text behavior: selection,
   preedit/commit/cancel, read-only mutation guards, clipboard, page movement,
   newline insertion, and word deletion now run in C/Go/JS. Pointer/layout cases

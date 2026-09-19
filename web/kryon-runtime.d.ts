@@ -63,6 +63,7 @@ export interface Runtime {
     scrollBounds: Map<string, { x: number; y: number; width: number; height: number }>;
     dragDrop: unknown;
     menus: Map<number, unknown>;
+    layoutBounds: Map<string, { x: number; y: number; width: number; height: number }>;
   };
   QueueText(text: string): void;
   QueueKey(key: number): void;
@@ -1555,6 +1556,9 @@ export const KeyX: number;
 export const MouseButtonLeft: number;
 export const MouseButtonRight: number;
 export const MouseButtonMiddle: number;
+export const PopupTooltip: number;
+export const PopupModal: number;
+export const PopupContext: number;
 export const KEY_SPACE: number;
 export const KEY_ESCAPE: number;
 export const KEY_ENTER: number;
