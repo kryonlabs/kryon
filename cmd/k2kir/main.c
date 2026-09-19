@@ -54,8 +54,8 @@ main(int argc, char **argv)
         if(program == NULL)
             return 1;
         check_ok = KirCheckPrograms(&program, 1, 0);
-            laws_ok = KirCheckLaws(&program, 1, 0);
-            if(!check_ok || !laws_ok) {
+        laws_ok = KirCheckLaws(&program, 1);
+        if(!check_ok || !laws_ok) {
             KirProgramFree(program);
             return 1;
         }

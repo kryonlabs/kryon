@@ -86,7 +86,7 @@ main(int argc, char **argv)
         k2cpp_build_syms(progs[i], &syms[i]);
     }
     check_ok = KirCheckPrograms(progs, file_count, strict);
-    laws_ok = KirCheckLaws(progs, file_count, strict);
+    laws_ok = KirCheckLaws(progs, file_count);
     if(!check_ok || !laws_ok) {
         for(i = 0; i < file_count; i++) KirProgramFree(progs[i]);
         free(progs);

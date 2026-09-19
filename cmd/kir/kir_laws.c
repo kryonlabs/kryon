@@ -1,9 +1,9 @@
 /*
  * kir_laws.c - named .kry laws enforced after semantic checking.
  *
- * A law is an invariant over the parsed program that gates strict builds.
+ * A law is an invariant over the parsed program that gates every build.
  * Diagnostics carry the stable dotted law name so tests and callers can
- * match them; lenient builds count violations silently, like kir_check.c.
+ * match them, independently of optional strict type checking.
  */
 #include "kir_laws.h"
 #include "kir_diagnostic.h"
@@ -13,7 +13,6 @@
 
 typedef struct LawCheck {
 	const char *current;   /* active law name */
-	int strict;
 	int violations;
 } LawCheck;
 
@@ -21,7 +20,6 @@ static void
 violation(LawCheck *c, KirSourceSpan span, const char *detail)
 {
 	c->violations++;
-	if(!c->strict) return;
 	KirDiagnostic(span, c->current, "law %s: %s", c->current, detail);
 }
 
@@ -71,13 +69,12 @@ static const struct { const char *name; LawFn check; } laws[] = {
 };
 
 int
-KirCheckLaws(KirProgram **programs, int count, int strict)
+KirCheckLaws(KirProgram **programs, int count)
 {
 	LawCheck c = {0};
-	c.strict = strict;
 	for(size_t i = 0; i < sizeof(laws) / sizeof(laws[0]); i++) {
 		c.current = laws[i].name;
 		laws[i].check(&c, programs, count);
 	}
-	return !(c.strict && c.violations);
+	return c.violations == 0;
 }

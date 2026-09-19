@@ -1,7 +1,7 @@
 # Kryon laws
 
 A law is a named invariant that is checked by a machine, not by review.
-Laws gate strict compiler builds and the `make laws-test` target, so code
+Compiler laws gate every compiler build; runtime laws gate tests, so code
 that violates one cannot merge green. Each law has a stable dotted name
 that appears in diagnostics and test output; agents and humans can grep
 for it. To add a law: extend `cmd/kir/kir_laws.c` (compiler tier), add a
@@ -10,9 +10,14 @@ for it. To add a law: extend `cmd/kir/kir_laws.c` (compiler tier), add a
 
 ## Compiler tier
 
-Enforced by `KirCheckLaws` (`cmd/kir/kir_laws.c`) on every strict compile
-(`k2c --strict`, `k2cpp --strict`, `k2go --strict`, `k2js --strict`);
-lenient builds count violations silently, mirroring `KirCheckPrograms`.
+Enforced by `KirCheckLaws` (`cmd/kir/kir_laws.c`) before lowering in `k2c`,
+`k2cpp`, `k2go`, `k2js`, `k2kir`, and `k2b`. Default builds, `--strict`, and
+`--no-strict` all enforce laws. The strictness flags only control the broader
+type checker; `k2b --allow-unsupported` cannot disable a law either.
+
+These compiler laws are checks over parsed syntax, not general proofs of
+program behavior. Runtime property tests exercise generated cases and do not
+prove a property for every possible input. Keep that distinction explicit.
 
 | Law | Enforces |
 |---|---|
@@ -63,5 +68,5 @@ api-laws-test` and `make backend-capability-laws-test`.
 ## Running
 
 - Everything: `make laws-test` (also part of `make test` and `preflight`)
-- Compiler laws only: compile any `.kry` with `k2c --strict`
+- Compiler laws: every `.kry` compile; regression coverage runs in `make spec-test`
 - One runtime binary: `make build/linux-x86_64/tests/layout_laws_test && ./build/linux-x86_64/tests/layout_laws_test`

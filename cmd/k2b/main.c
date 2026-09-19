@@ -5,6 +5,7 @@
  */
 #include "kir.h"
 #include "kir_parse.h"
+#include "kir_laws.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,6 +81,10 @@ main(int argc, char **argv)
 
         if(prog == NULL) {
             fprintf(stderr, "k2b: failed to parse %s\n", argv[i]);
+            return 1;
+        }
+        if(!KirCheckLaws(&prog, 1)) {
+            KirProgramFree(prog);
             return 1;
         }
         for(int m = 0; m < prog->module_count; m++) {
