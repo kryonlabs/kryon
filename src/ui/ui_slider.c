@@ -735,7 +735,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         if(paint.has_labels) {
             active_frame = ui_style_apply_effects_frame(paint.active);
             active_style = ui_unpack_style(active_frame.value);
-            ui_draw_material(paint.active_bounds, paint.track_bounds,
+            ui_draw_material(paint.active_bounds, (Rectangle){0},
                              active_style.background, active_style.border,
                              active_style.border, active_style.radius,
                              active_style.border_width,

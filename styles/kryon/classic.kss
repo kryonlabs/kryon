@@ -1795,6 +1795,7 @@ Toggle[role=Track] {
   padding-x: 46;
   padding-y: 24;
   gap: 2;
+  radius: 999;
   opacity: 1;
 }
 
@@ -1818,6 +1819,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: accent-border;
+  radius: 999;
   gap: 2;
 }
 

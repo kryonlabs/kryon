@@ -318,10 +318,20 @@ main(void)
         StyleFacts selected = StyleControlFacts(StyleKindButton(), 0, 0,
             ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
             ButtonStateSelected);
+        StyleFacts toggle_track = StyleControlRoleFacts(StyleKindToggle(), 0, 0,
+            4, ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+            ButtonStateNormal);
+        StyleFacts toggle_fill = StyleControlRoleFacts(StyleKindToggle(), 0, 0,
+            5, ButtonToneAccent, ButtonEmphasisFilled, ControlSizeMedium,
+            ButtonStateNormal);
         assert(SetActiveStylePack(pack_ids[p]));
         resolved = ResolveActiveStyle(base, selected, ButtonStateSelected);
         assert(resolved.border_width == 2.0f);
         assert(resolved.border == resolved.focus);
+        resolved = ResolveActiveStyle(base, toggle_track, ButtonStateNormal);
+        assert(resolved.radius == 999.0f);
+        resolved = ResolveActiveStyle(base, toggle_fill, ButtonStateNormal);
+        assert(resolved.radius == 999.0f);
         resolved = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindDropdown()),
                                       ButtonStateNormal);
         assert(resolved.offset_x >= resolved.icon_size / 2.0f);
