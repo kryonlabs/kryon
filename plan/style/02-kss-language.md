@@ -1,5 +1,13 @@
 # KSS language: remaining work
 
+Status reconciled 2026-09-19: the implementation batches below are shipped,
+but the ownership ledger still marks support/diagnostic reconciliation partial.
+Unsupported syntax below is a declared boundary, not an automatic requirement
+to implement every proposed feature. Active-variant inspector presentation is
+owned by `06-tooling-and-workflow.md`; paused web work is future scope. Keep
+this document until the support record is reconciled with maintained docs and
+tests, then preserve that record outside the task list before removing it.
+
 Implemented and verified (single implementation in `runtime/kss_parser.kry`,
 lowered to active C and Go hosts by the shared transpilers; old JavaScript
 lowering is paused and kept only as future-roadmap reference material):

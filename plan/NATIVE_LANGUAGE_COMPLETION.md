@@ -90,7 +90,7 @@ to restart completed parser, editor, image or naming work.
 ## Milestone 2 — Direct fixed-array parameters and returns
 
 Implementation contract and source audit:
-[`ARRAY_CALL_ABI.md`](ARRAY_CALL_ABI.md). Six strict compiler probes on
+[`docs/ARRAY_CALL_ABI.md`](../docs/ARRAY_CALL_ABI.md). Six strict compiler probes on
 2026-09-19 established the original rejection on C, C++ and Go. Ordinary
 function array calls are now implemented. Array/record execution, all native
 syntax suites, 17 generated parity fixtures, runtime/provenance guards and Go

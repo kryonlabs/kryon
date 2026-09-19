@@ -1,6 +1,6 @@
 # Style: remaining work
 
-Updated 2026-09-15 against Kryon master.
+Status reconciled 2026-09-19 against the detailed plans and ownership ledger.
 This folder contains unfinished implementation and verification work only.
 The design reference is [STYLE_SEPARATION_PROPOSALS.md](../../docs/STYLE_SEPARATION_PROPOSALS.md);
 shipped behavior is documented in [API.md](../../docs/API.md).
@@ -21,7 +21,7 @@ future web-reference call sites.
 
 | Order | Remaining area | Task document |
 |---|---|---|
-| 1 | Complete (value-set reconciliation, fuzz fixtures, web delegation, hot-cursor split, `@variant` pack options) | [KSS language](02-kss-language.md) |
+| 1 | Grammar implementation batch shipped; support/diagnostic reconciliation and linked tooling follow-ups remain | [KSS language](02-kss-language.md) |
 | 2 | Residual widget metrics and paint policy | [Widget migration](04-widget-migration.md) |
 | 3 | Renderer fallbacks and full backend style parity | [Runtime and backends](05-runtime-and-backends.md) |
 | 4 | Inspector, formatter, hot reload, compiled release styles | [Tooling](06-tooling-and-workflow.md) |

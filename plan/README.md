@@ -8,7 +8,7 @@ every subsystem; the linked evidence and completion gates remain authoritative.
 |---|---|---|
 | Overall completion | [Completion](COMPLETION.md), [ownership](OWNERSHIP_LEDGER.md) | Partial; requirement reconciliation and final evidence remain open. |
 | Native language | [Language completion](NATIVE_LANGUAGE_COMPLETION.md), [slices](SLICE_VALUES.md) | Active; slices, callable values, integration and validation remain. |
-| Fixed-array calls | [Array ABI](ARRAY_CALL_ABI.md) | Implemented for ordinary functions with recorded native integration checks; retained during concurrent edits and evidence reconciliation. |
+| Fixed-array calls | [ABI contract and evidence](../docs/ARRAY_CALL_ABI.md) | Complete for ordinary functions; task plan removed, durable contract retained in docs. |
 | Native accessibility | [Accessibility completion](NATIVE_ACCESSIBILITY_COMPLETION.md) | Partial; Linux trees and list selection implemented, other controls and platform adapters remain. |
 | Shared widget policy | [Canonical index](canonical/README.md) | Partial; shipped policy slices coexist with ownership audits, native IME and platform verification. |
 | Styling | [Style index](style/00-status.md) | Partial; tooling, backend verification, migration and legacy removal remain. |
@@ -35,6 +35,6 @@ conveniences should not delay current native correctness fixes.
 Remove a plan only when all in-scope work is closed, its evidence and durable
 contracts are preserved in documentation/tests, and inbound references are
 updated. Deferred or unsupported work is not completed work. Leave files under
-concurrent edits intact. In particular, the style index labels the KSS language
-batch complete while its detailed plan and ownership ledger still contain
-follow-ups; reconcile those before deleting that document.
+concurrent edits intact. The KSS language implementation batch is shipped, but
+the detailed plan retains support/diagnostic reconciliation and links to open
+tooling work; the style index now distinguishes that from full completion.

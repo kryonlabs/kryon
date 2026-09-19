@@ -1,22 +1,10 @@
-# Direct fixed-array call ABI
+# Direct Fixed-Array Call ABI
 
-Status: implemented for ordinary functions; native integration checks passed.
-Initial audit: 2026-09-19 after `265ff394`. Belongs to milestone 2 of
-`NATIVE_LANGUAGE_COMPLETION.md`.
-
-## Gap established before implementation
-
-Separate strict sources declaring `Take(values: [3]i32) -> i32` and
-`Make() -> [3]i32` were compiled with `k2c`, `k2cpp` and `k2go`. All six exited
-1 with source-located parameter/return portable-value-semantics diagnostics.
-Parsing reaches the checker: the first barrier is not new array syntax.
-
-`cmd/kir/kir_check.c:check_function` deliberately rejects these signatures.
-`cmd/k2c/k2c_lower.c:convert_args` and its C++ counterpart already print array
-parameter declarations, but C adjusts those declarations to pointers. That is
-not the required value ABI. `cmd/kir/kir_emit.c:assign_value` uses the destination
-size for whole-array copies; leaving a parameter as a pointer would give the
-wrong copy size. Returning a raw C array is invalid regardless of local copies.
+Ordinary portable functions implement this contract in C, C++ and Go. The
+implementation landed in `aa07f3f4`; integration evidence was recorded in
+`de5374f9`. This is a maintained contract, not an open implementation plan.
+Foreign array signatures, slices and general callable storage are separate
+contracts. See [language specification](KRY_LANGUAGE_SPEC.md).
 
 ## Language behavior
 
@@ -66,45 +54,6 @@ supports the signature. Existing explicit external/host calling conventions
 must not silently acquire the internal output parameter; retain a specific
 source diagnostic for foreign array signatures without a defined adapter.
 
-## Implementation locations and order
-
-1. Normalize linked function parameter/return array types before call checking,
-   independent of module/function iteration order. Reuse checked bound
-   resolution; preserve declaring-module scope and source diagnostics.
-2. Add a shared KIR signature-lowering helper for hidden parameters and generated
-   names. Route all three signature sites in each of `k2c_lower.c` and
-   `k2cpp_lower.c` through it. Keep ordinary scalar/record signatures unchanged.
-3. Extend `KirEmitBody` parameter initialization with true local array copies.
-   Reuse `declare_array`/`assign_value`; do not duplicate copy-size rules in the
-   target-specific body fallbacks.
-4. Extend `emit_call`/`emit_expr` to allocate array result storage and perform the
-   hidden-output call exactly once. Keep argument snapshots in source order.
-5. Extend `KIR_STMT_RETURN` emission to populate hidden output storage. Verify
-   early returns and existing cleanup expansion, not only a final return.
-6. Enable the checker only for signatures whose complete lowering is supported.
-   Go signature lowering must resolve the same normalized imported types.
-7. Add execution/rejection fixtures before marking support in the language spec.
-
-## Required evidence
-
-Use the existing multi-target aggregate fixture harness, extending it with an
-imported module and native drivers. Execute all positive cases on C, C++ and Go:
-
-- Copy isolation on element writes and whole-array parameter assignment.
-- Returned local arrays, empty initialization and partial initialization.
-- A result forwarded through another function and nested calls.
-- Multiple arrays plus scalar/record arguments with observable side effects.
-- Returning and then modifying a result without altering another array value.
-- Numeric/named equivalent bounds and imported function/record element types.
-- Early return branches and supported borrowed callback captures of parameters.
-- Existing debug read/write bounds traps on parameters and returned values.
-
-Reject mismatched capacities/elements, invalid bounds, unsupported stored types
-and foreign signatures lacking a defined array convention with source spans.
-Compile C/C++ with warning-as-error settings; run existing record, local-array,
-string, syntax and generated native parity guards to catch ABI regressions.
-No milestone closure until these are executable tests, not just this checklist.
-
 ## Implementation verification (2026-09-19)
 
 The extended `tests/array_values_test.py` passes on C, C++ and Go, including
@@ -122,3 +71,6 @@ C/Go tap coordinates; expected interaction results were preserved.
 Evidence applies to compiler `aa07f3f4` with `d8cc3a9f` and the current shared
 slider/style worktree. It does not assert that the unrelated slider/style work
 has been committed or that final platform validation for the whole goal is done.
+
+The completed task plan was retired on 2026-09-19. Verification above preserves
+its original scope; this documentation cleanup did not rerun compiler tests.
