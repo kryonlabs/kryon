@@ -96,6 +96,26 @@ with tempfile.TemporaryDirectory(prefix="kryon-array-values-") as directory:
             assert result.returncode != 0, (target, name, "invalid import scope accepted")
             assert diagnostic in result.stderr, (target, name, result.stderr)
 
+    invalid_calls = {
+        "argument_shape": ("Take :: (a: [2]i32) {\n}\nCheck :: () {\na: [3]i32\nTake(a)\n}", "argument type mismatch"),
+        "return_shape": ("Bad :: () -> [2]i32 {\na: [3]i32\nreturn a\n}", "return type mismatch"),
+        "missing_return": ("Bad :: () -> [2]i32 {\n}", "return on every path"),
+        "partial_return": ("Bad :: (yes: bool) -> [2]i32 {\nif yes { return ([2]i32){1} }\n}", "return on every path"),
+        "bare_return": ("Bad :: () -> [2]i32 {\nreturn\n}", "return value does not match"),
+        "unknown_signature": ("Bad :: (a: [MISSING]i32) {\n}", "known integer constant"),
+    }
+    for name, (source_text, diagnostic) in invalid_calls.items():
+        source = work / f"{name}.kry"
+        source.write_text(source_text + "\n")
+        for target in targets:
+            result = subprocess.run(
+                [str(bin_dir / target), "--strict", "--no-main", "--root", str(work),
+                 "-o", str(work / name / target), str(source)], capture_output=True, text=True,
+            )
+            assert result.returncode != 0, (target, name, "invalid array call accepted")
+            assert diagnostic in result.stderr, (target, name, result.stderr)
+            assert f"{name}.kry:" in result.stderr, (target, name, "missing source location")
+
     for target in targets:
         out = work / target
         args = [str(bin_dir / target), "--strict", "--no-main", "--root", str(root), "-o", str(out)]
@@ -143,7 +163,8 @@ int main(int argc, char **argv) {
             run(["c++" if cpp else os.environ.get("CC", "cc"),
                  "-std=c++11" if cpp else "-std=c99", "-Wall", "-Werror", "-DKRYON_BOUNDS_CHECK",
                  "-I" + str(out), "-I" + str(root / "include"), str(driver),
-                 str(out / f"tests/fixtures/array_values.{extension}"), "-o", str(executable)])
+                 str(out / f"tests/fixtures/array_values.{extension}"),
+                 str(out / f"tests/fixtures/array_bound_types.{extension}"), "-o", str(executable)])
         run([str(executable), "valid"])
         for mode in ("read", "write", "negative"):
             result = subprocess.run([str(executable), mode], capture_output=True, text=True)

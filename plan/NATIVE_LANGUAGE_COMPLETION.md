@@ -91,20 +91,22 @@ to restart completed parser, editor, image or naming work.
 
 Implementation contract and source audit:
 [`ARRAY_CALL_ABI.md`](ARRAY_CALL_ABI.md). Six strict compiler probes on
-2026-09-19 confirmed that both direct parameters and returns still reject on
-C, C++ and Go; existing local-array tests do not establish this milestone.
+2026-09-19 established the original rejection on C, C++ and Go. Ordinary
+function array calls are now implemented. Array/record execution and C/C++
+syntax checks pass; concurrent slider source/generated-host mismatches currently
+block final runtime generation and Go integration (see the ABI evidence).
 
-- [ ] Specify value-copy behavior for direct array arguments and results,
+- [x] Specify value-copy behavior for direct array arguments and results,
   mutation isolation, evaluation order, type identity and imported signatures.
-- [ ] Define the C/C++ representation and calling convention in KIR/shared
+- [x] Define the C/C++ representation and calling convention in KIR/shared
   lowering, then implement matching native Go behavior. Internal representation
   must not leak into app-facing compatibility APIs.
-- [ ] Support declaration, call, return, assignment of results and forwarding
+- [x] Support declaration, call, return, assignment of results and forwarding
   through another function. Preserve numeric/named bound equivalence and arrays
   whose elements are supported records, strings or scalar types.
-- [ ] Diagnose incompatible shapes, unsupported element storage and invalid
+- [x] Diagnose incompatible shapes, unsupported element storage and invalid
   returns at source locations before generating output.
-- [ ] Execute the same fixtures on C, C++ and Go: caller/callee copy isolation,
+- [x] Execute the same fixtures on C, C++ and Go: caller/callee copy isolation,
   returned local storage, evaluation order with side effects, imported functions,
   boundary indexing and rejected mismatches.
 

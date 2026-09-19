@@ -927,3 +927,14 @@ Go does not add debug widget fills or borders; explicit zero alpha and opacity
 remain transparent. C immediate text areas, avatar tiles, menu panels and
 navigation bars use resolved material painting. The constant default-style
 switch and its unreachable alternative renderers have been removed.
+
+### Fixed-array function values
+
+Ordinary portable `.kry` functions pass and return fixed arrays by value. The
+checker resolves signature bounds before checking any body. Shared KIR emission
+captures call arguments in source order. For C/C++, `KirArrayAbiArgs` supplies
+collision-checked input names and a hidden result buffer; function bodies copy
+inputs into true local arrays and copy returned array temporaries into the
+caller-owned result buffer. Go retains native array signatures. Existing host
+`char` buffers keep their C-string convention. Foreign/slot array signatures and
+slice ownership remain separate contracts; see `docs/KRY_LANGUAGE_SPEC.md`.

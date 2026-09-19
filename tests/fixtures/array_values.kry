@@ -94,16 +94,93 @@ Check :: () -> i32 #export {
     four: [4]i32 = imported_values
     imported_buffer.values = four
     if imported_buffer.values[3] != 4 { return 20 }
+    calls: [3]i32 = {2, 3, 4}
+    changed: [CAPACITY]i32 = ChangeArray(calls, false)
+    if calls[0] != 2 || changed[0] != 12 { return 22 }
+    replaced: [3]i32 = ChangeArray(calls, true)
+    if calls[0] != 2 || replaced[0] != 7 || replaced[2] != 0 { return 23 }
+    forwarded: [3]i32 = ForwardArray(calls)
+    if forwarded[0] != 22 || calls[0] != 2 { return 24 }
+    order: i32 = ObserveArray(calls, calls[0]++)
+    if order != 2 || calls[0] != 3 { return 25 }
+    external: [4]i32 = ImportedCopy(four)
+    if external[0] != 11 || four[0] != 1 { return 26 }
+    if ForwardArray(replaced)[0] != 27 { return 27 }
+    records: [2]Entry = {(Entry){.value = 3, .label = "yes"}}
+    returned_records: [2]Entry = CopyEntries(records)
+    returned_records[0].value = 9
+    if records[0].value != 3 || returned_records[0].label != "yes" { return 28 }
+    picked: [3]i32 = PickArray(calls, forwarded, true)
+    other: [3]i32 = PickArray(calls, forwarded, false)
+    if picked[0] != 3 || other[0] != 22 { return 29 }
+    empty: [3]i32 = EmptyArray()
+    if empty[0] != 0 || empty[2] != 0 { return 30 }
+    words: [2]string = {"first", "second"}
+    copied_words: [2]string = CopyWords(words)
+    copied_words[0] = "changed"
+    if words[0] != "first" || copied_words[1] != "second" { return 31 }
     return 0
 }
 
 Read :: (index: i32) -> i32 #export {
     values: [2]i32 = {7, 9}
-    return values[index]
+    return CopyPair(values)[index]
 }
 
 Write :: (index: i32) -> i32 #export {
     values: [2]i32
-    values[index] = 11
+    changed: [2]i32 = WritePair(values, index)
+    return changed[0]
+}
+
+ChangeArray :: (values: [ALIAS_CAPACITY]i32, replace: bool) -> [CAPACITY]i32 {
+    array_input_0_0: i32 = 10
+    if replace {
+        values = ([3]i32){7}
+        return values
+    }
+    update: Action = () #slot {
+        values[0] = values[0] + array_input_0_0
+    }
+    update()
+    return values
+}
+
+ForwardArray :: (values: [3]i32) -> [3]i32 {
+    return ChangeArray(ChangeArray(values, false), false)
+}
+
+ObserveArray :: (values: [3]i32, later: i32) -> i32 {
+    if later != 2 { return -1 }
     return values[0]
+}
+
+CopyEntries :: (values: [2]Entry) -> [2]Entry {
+    return values
+}
+
+CopyPair :: (values: [2]i32) -> [2]i32 {
+    return values
+}
+
+WritePair :: (values: [2]i32, index: i32) -> [2]i32 {
+    values[index] = 11
+    return values
+}
+
+PickArray :: (first: [3]i32, second: [3]i32, choose: bool) -> [3]i32 {
+    if choose {
+        return first
+    } else {
+        return second
+    }
+}
+
+EmptyArray :: () -> [3]i32 {
+    values: [3]i32
+    return values
+}
+
+CopyWords :: (values: [2]string) -> [2]string {
+    return values
 }

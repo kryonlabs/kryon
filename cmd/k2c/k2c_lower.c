@@ -498,6 +498,8 @@ convert_args(const KirModule *m, const char *args, char *dst, size_t dst_size)
 
                         split_array_type(type, pbase, sizeof(pbase),
                                          psuffix, sizeof(psuffix));
+                        strip_alias_type(m, pbase, type, sizeof(type));
+                        kir_copy(pbase, sizeof(pbase), type);
                         if(!first && n + 2 < dst_size)
                             dst[n++] = ',';
                         if(!first && n + 1 < dst_size)
@@ -1584,8 +1586,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(!fn->is_public)
             continue;   /* private functions are file-static */
         function_c_name(m, fn, cname, sizeof(cname));
-        convert_args(m, fn->args, cargs, sizeof(cargs));
-        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        char abi_args[KIR_TEXT_MAX];
+        KirArrayAbiArgs(fn, abi_args, sizeof(abi_args));
+        convert_args(m, abi_args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type[0] == '[' ? "void" : fn->return_type,
+                         cret, sizeof(cret));
         emit_guard_open(h, fn->guard);
         fprintf(h, "%s %s(%s);\n",
                 cret[0] ? cret : "void", cname, cargs);
@@ -1669,8 +1674,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(fn->is_public || fn->is_extern)
             continue;
         function_c_name(m, fn, cname, sizeof(cname));
-        convert_args(m, fn->args, cargs, sizeof(cargs));
-        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        char abi_args[KIR_TEXT_MAX];
+        KirArrayAbiArgs(fn, abi_args, sizeof(abi_args));
+        convert_args(m, abi_args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type[0] == '[' ? "void" : fn->return_type,
+                         cret, sizeof(cret));
         emit_guard_open(c, fn->guard);
         fprintf(c, "static KRYON_PRIVATE_UNUSED %s %s(%s);\n",
                 cret[0] ? cret : "void", cname, cargs);
@@ -1735,8 +1743,11 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         char cret[LOWER_NAME_MAX];
 
         function_c_name(m, fn, cname, sizeof(cname));
-        convert_args(m, fn->args, cargs, sizeof(cargs));
-        strip_alias_type(m, fn->return_type, cret, sizeof(cret));
+        char abi_args[KIR_TEXT_MAX];
+        KirArrayAbiArgs(fn, abi_args, sizeof(abi_args));
+        convert_args(m, abi_args, cargs, sizeof(cargs));
+        strip_alias_type(m, fn->return_type[0] == '[' ? "void" : fn->return_type,
+                         cret, sizeof(cret));
         if(fn->is_extern) {
             /* extern: prototype only, no body */
             fprintf(c, "\n");

@@ -91,8 +91,7 @@ Strict checking validates stored record shapes, including nested records and
 fixed-array element types. It rejects unknown types, zero/invalid capacities,
 recursive value layouts, nested fixed arrays, and borrowed slots stored through
 aggregates or pointers. C-header imports retain their foreign-type boundary.
-Slices and array-valued parameters/returns receive explicit diagnostics until
-portable ownership and value semantics are implemented. Array and string byte
+Slices receive explicit diagnostics until portable ownership is implemented. Array and string byte
 indices must be integers. C/C++ debug bounds checks now cover writes as well as
 reads, including symbolic capacities; Go checks indices natively.
 
@@ -102,8 +101,12 @@ borrowed callback captures. The shared emitter snapshots array values and uses
 explicit copies for C/C++, preserving Go's array value behavior. Named bounds
 now normalize through a checked integer constant evaluator, including imported
 constants, local aliases and evaluated `#run` results. Literal counts and array
-copies are checked against the resolved size. General compile-time evaluation
-and direct array parameters/returns remain unfinished.
+copies are checked against the resolved size. Ordinary functions now accept and
+return fixed-array values, including imported signatures and nested calls. C/C++
+use incoming snapshots, local parameter copies and a hidden output buffer; Go
+uses native array values. Return branches copy from true array temporaries, so
+copy sizes never come from decayed parameter pointers. General compile-time
+evaluation, slices and array signatures for foreign/slot functions remain open.
 
 `tests/aggregate_types_test.py` executes positive indexing and read/write traps
 on C, C++ and Go and compares source diagnostics across all three compilers.

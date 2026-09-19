@@ -9,6 +9,10 @@ typedef void (*KirResolveTarget)(void *context, const char *text, char *out, siz
 const char *KirTargetType(const char *type, KirTarget target);
 int KirScalarLiteral(const char *type, const char *text, KirTarget target,
                       KirSourceSpan span, char *out, size_t size);
+/* C/C++ private ABI names and source-shaped arguments for array values. */
+int KirArrayValueType(const char *type);
+void KirArrayAbiName(const KirFunction *fn, int parameter, char *out, size_t size);
+void KirArrayAbiArgs(const KirFunction *fn, char *out, size_t size);
 int KirCanEmitBody(const KirModule *module, const KirFunction *fn);
 /* Stream a portable record's zero value or deep copy; no output if unsupported. */
 int KirEmitJsRecordValue(FILE *out, const KirModule *module, const char *type,

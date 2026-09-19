@@ -23,9 +23,8 @@ cases = {
     "slot_array": ("Content :: () #slot\nBox :: struct {\nvalue: [2]Content\n}", "slot values cannot be stored"),
     "float_index": ("Box :: struct {\nvalue: [2]i32\n}\nRead :: (box: Box) -> i32 {\nreturn box.value[0.5]\n}", "array index requires an integer"),
     "float_string_index": ('Read :: (text: string) -> u8 {\nreturn text[0.5]\n}', "string index requires an integer"),
-    "array_parameter": ("Read :: (items: [2]i32) -> i32 {\nreturn items[0]\n}", "parameters require portable value semantics"),
-    "slice_parameter": ("Read :: (items: []i32) {}", "parameters require portable value semantics"),
-    "array_return": ("Read :: () -> [2]i32 {}", "return types require portable value semantics"),
+    "slice_parameter": ("Read :: (items: []i32) {}", "slices do not yet have portable storage semantics"),
+    "slice_return": ("Read :: () -> []i32 {}", "slices do not yet have portable storage semantics"),
     "unknown_state": ("state {\nitem: Missing\n}", "unknown stored type"),
     "slot_pointer_state": ("Content :: () #slot\nstate {\nitem: Content*\n}", "slot values cannot be stored"),
 }

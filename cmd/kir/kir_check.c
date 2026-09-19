@@ -1242,11 +1242,68 @@ resolve_widget_blocks(Checker *c)
 }
 
 static int
+return_block_end(const KirFunction *fn, int begin, int end)
+{
+    int depth = 1;
+    for(int i = begin + 1; i < end; i++) {
+        KirStmtKind kind = fn->stmts[i].kind;
+        if(kind == KIR_STMT_IF || kind == KIR_STMT_WHILE || kind == KIR_STMT_BLOCK_OPEN)
+            depth++;
+        if(kind == KIR_STMT_BLOCK_CLOSE && --depth == 0)
+            return i;
+    }
+    return end;
+}
+
+static int sequence_returns(const KirFunction *fn, int begin, int end);
+
+static int
+branch_returns(const KirFunction *fn, int begin, int end, int *last)
+{
+    *last = return_block_end(fn, begin, end);
+    int returns = sequence_returns(fn, begin + 1, *last);
+    if(fn->stmts[begin].expr_root < 0)
+        return returns;
+    int next = *last + 1;
+    if(next < end && fn->stmts[next].kind == KIR_STMT_IF &&
+       !strncmp(fn->stmts[next].text, "else", 4)) {
+        int alternative = branch_returns(fn, next, end, last);
+        return returns && alternative;
+    }
+    return 0;
+}
+
+static int
+sequence_returns(const KirFunction *fn, int begin, int end)
+{
+    for(int i = begin; i < end; i++) {
+        KirStmtKind kind = fn->stmts[i].kind;
+        if(kind == KIR_STMT_RETURN)
+            return 1;
+        if(kind == KIR_STMT_BREAK || kind == KIR_STMT_CONTINUE)
+            return 0;
+        if(kind == KIR_STMT_IF) {
+            int last;
+            if(branch_returns(fn, i, end, &last))
+                return 1;
+            i = last;
+        } else if(kind == KIR_STMT_WHILE || kind == KIR_STMT_BLOCK_OPEN) {
+            int last = return_block_end(fn, i, end);
+            if(kind == KIR_STMT_BLOCK_OPEN && sequence_returns(fn, i + 1, last))
+                return 1;
+            i = last;
+        }
+    }
+    return 0;
+}
+
+static int
 check_function(Checker *c, KirFunction *fn)
 {
     int strict = c->strict;
     int errors_before = c->errors;
     int has_slots = fn->is_closure;
+    int has_arrays = fn->return_type[0] == '[';
     char params[64][KIR_TEXT_MAX];
     int n;
     c->fn = fn; c->count = 0; c->depth = 0;
@@ -1256,8 +1313,6 @@ check_function(Checker *c, KirFunction *fn)
         KirDiagnostic(c->fn->span, "check.slot_escape", "slot values cannot escape through returns");
         return 0;
     }
-    if(c->strict && c->fn->return_type[0] == '[')
-        error(c, c->fn->span, "array and slice return types require portable value semantics", c->fn->return_type);
     /* Imports are linked now. Rebuild expressions so imported types
      * participate in cast/grouping decisions before type checking. */
     KirStructureFunction(c->fn, c->module);
@@ -1271,8 +1326,7 @@ check_function(Checker *c, KirFunction *fn)
             *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
             const KirType *parameter_type = KirFindType(c->module, colon, NULL);
             has_slots |= parameter_type != NULL && parameter_type->is_slot;
-            if(c->strict && colon[0] == '[')
-                error(c, c->fn->span, "array and slice parameters require portable value semantics", params[a]);
+            has_arrays |= KirArrayValueType(colon);
             bind(c, params[a], colon, c->fn->span);
         } else error(c, c->fn->span, "strict parameters require name: type", params[a]);
     }
@@ -1372,6 +1426,28 @@ check_function(Checker *c, KirFunction *fn)
         if((st->declared_widget || st->is_instance) && c->errors != errors_before_expression)
             c->failed = 1;
     }
+    for(int i = 0; i < fn->expr_count; i++) {
+        const KirExpr *call = &fn->exprs[i];
+        if(call->kind != KIR_EXPR_CALL)
+            continue;
+        const KirFunction *callee = NULL;
+        const KirModule *owner = NULL;
+        if(KirResolveFunction(c->module, call->name, &owner, &callee) <= 0 ||
+           callee == NULL || callee->is_extern)
+            continue;
+        has_arrays |= KirArrayValueType(callee->return_type);
+        char parameters[64][KIR_TEXT_MAX];
+        int count = *kir_skip_ws(callee->args) ?
+            kir_split_top(callee->args, parameters[0], 64, sizeof(parameters[0])) : 0;
+        for(int parameter = 0; parameter < count; parameter++) {
+            const char *colon = strchr(parameters[parameter], ':');
+            if(colon != NULL)
+                has_arrays |= KirArrayValueType(kir_skip_ws(colon + 1));
+        }
+    }
+    if(!fn->is_extern && fn->return_type[0] == '[' &&
+       !sequence_returns(fn, 0, fn->stmt_count))
+        error(c, fn->span, "array result requires a return on every path", fn->name);
     c->fn->checked = c->errors == errors_before;
     for(int expression = 0; expression < c->fn->expr_count; expression++)
         has_slots |= c->fn->exprs[expression].is_function_value;
@@ -1390,11 +1466,74 @@ check_function(Checker *c, KirFunction *fn)
                       "slot parameters require a fully checked portable body: %s", c->fn->name);
         c->failed = 1;
     }
+    if(has_arrays && !fn->is_extern &&
+       (!fn->checked || !KirCanEmitBody(c->module, fn))) {
+        KirDiagnostic(fn->span, "check.array_body",
+                      "array value calls require a fully checked portable body: %s", fn->name);
+        c->failed = 1;
+    }
     if(strict && c->fn->checked && !c->fn->is_extern && !KirCanEmitBody(c->module, c->fn)) {
         error(c,c->fn->span,"function is not supported by portable scalar emission",c->fn->name);
         c->fn->checked=0;
     }
     return !c->failed;
+}
+
+/* Resolve every declaration before checking bodies, so imported and forward
+ * calls compare the same array shapes regardless of traversal order. */
+static int
+normalize_function_arrays(const KirModule *module, KirFunction *fn)
+{
+    if(fn->return_type[0] != '[' && strchr(fn->args, '[') == NULL)
+        return 1;
+    char parts[64][KIR_TEXT_MAX];
+    char arguments[sizeof(fn->args)];
+    size_t used = 0;
+    int count = *kir_skip_ws(fn->args) ?
+        kir_split_top(fn->args, parts[0], 64, sizeof(parts[0])) : 0;
+    arguments[0] = '\0';
+    for(int i = -1; i < count; i++) {
+        char *type = fn->return_type;
+        size_t capacity = sizeof(fn->return_type);
+        if(i >= 0) {
+            char *colon = strchr(parts[i], ':');
+            if(colon == NULL) {
+                KirDiagnostic(fn->span, "check.signature", "parameters require name: type: %s", parts[i]);
+                return 0;
+            }
+            type = colon + 1;
+            kir_trim_in_place(type);
+            capacity = sizeof(parts[i]) - (size_t)(type - parts[i]);
+        }
+        int host_buffer = i >= 0 && KirArrayElementType(type, NULL, 0, NULL) &&
+                          !KirArrayValueType(type);
+        if(type[0] == '[' && !host_buffer) {
+            ValidatedRecords checked = {0};
+            const char *problem = storage_type_error(module, type, NULL, 0, &checked);
+            free(checked.items);
+            if(problem == NULL && (fn->is_extern || fn->is_closure))
+                problem = "direct array signatures require an ordinary Kry function";
+            int bound = -1;
+            if(problem == NULL && array_capacity(module, type, &bound) != 1)
+                problem = "array signatures require a resolved capacity";
+            if(problem != NULL) {
+                KirDiagnostic(fn->span, "check.array_signature", "%s: %s", problem, type);
+                return 0;
+            }
+            normalize_array(module, type, capacity);
+        }
+        if(i >= 0) {
+            int length = snprintf(arguments + used, sizeof(arguments) - used,
+                                  "%s%s", used ? ", " : "", parts[i]);
+            if(length < 0 || (size_t)length >= sizeof(arguments) - used) {
+                KirDiagnostic(fn->span, "check.array_signature", "function signature exceeds size limit");
+                return 0;
+            }
+            used += (size_t)length;
+        }
+    }
+    kir_copy(fn->args, sizeof(fn->args), arguments);
+    return 1;
 }
 
 int
@@ -1432,6 +1571,15 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                         import->resolved_module = candidate;
                     }
                 }
+            }
+        }
+    }
+    for(int p = 0; p < count; p++) {
+        for(int m = 0; m < programs[p]->module_count; m++) {
+            KirModule *module = &programs[p]->modules[m];
+            for(int f = 0; f < module->function_count; f++) {
+                if(!normalize_function_arrays(module, &module->functions[f]))
+                    return 0;
             }
         }
     }

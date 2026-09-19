@@ -289,6 +289,15 @@ Rules:
   capacity must be 1 through 1,048,576. Unknown, ambiguous, cyclic, invalid and
   overflowing bounds are errors. Foreign header macros may remain opaque for
   existing host storage, but cannot initialize portable array literals.
+- Ordinary Kry functions accept and return fixed arrays by value. Arguments are
+  evaluated and copied left to right; callee mutations do not change the caller's
+  array. Returned local arrays remain valid after return, and calls can be nested
+  or forwarded across imported modules. Every path of an array-returning function
+  must explicitly return a matching value; loops alone do not prove a return.
+  Direct array signatures on external functions or slot closures remain rejected
+  until their separate calling conventions support them. Existing host `char`
+  buffers retain their C-string interop convention; they are not portable array
+  values.
 - Arrays can be captured by existing synchronous borrowed `#slot` callbacks.
   Captures refer to the lexical array, so writes through a callback are visible
   to its caller. Existing callback escape restrictions still apply.
@@ -307,9 +316,8 @@ Rules:
   compile to plain indexing. Checks apply to both reads and writes, including
   arrays with symbolic capacities. Go bounds-checks natively.
 - Strict stored-type validation rejects unknown types, zero-capacity arrays,
-  recursive record value layouts, and stored borrowed slots. Slices and direct
-  array/slice function parameters or returns are rejected until portable
-  storage, ownership and value semantics are specified.
+  recursive record value layouts, and stored borrowed slots. Slices remain
+  rejected until portable storage and ownership semantics are implemented.
 
 ## Trust model
 

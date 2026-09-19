@@ -1,9 +1,10 @@
 # Direct fixed-array call ABI
 
-Status: implementation contract, not shipped support. Audited 2026-09-19 after
-`265ff394`; belongs to milestone 2 of `NATIVE_LANGUAGE_COMPLETION.md`.
+Status: implemented for ordinary functions; final integration checks pending.
+Initial audit: 2026-09-19 after `265ff394`. Belongs to milestone 2 of
+`NATIVE_LANGUAGE_COMPLETION.md`.
 
-## Proven current gap
+## Gap established before implementation
 
 Separate strict sources declaring `Take(values: [3]i32) -> i32` and
 `Make() -> [3]i32` were compiled with `k2c`, `k2cpp` and `k2go`. All six exited
@@ -32,6 +33,8 @@ wrong copy size. Returning a raw C array is invalid regardless of local copies.
 - Equal resolved capacities and canonical element types define compatibility.
   Imported declarations resolve bounds/types in the declaring module, not the
   consumer's scope. Local, private and exported functions obey the same rules.
+- Host `char` buffers retain their existing C-string interop convention and
+  are not part of the portable array-value ABI.
 - Existing element/storage restrictions remain. Slice ownership and general
   callable storage are separate milestones, not accidental ABI side effects.
 
@@ -48,12 +51,14 @@ resolve to that local array, including whole-array writes and borrowed captures.
 Generated input names must avoid every source parameter/local/capture name.
 
 For C/C++ results, lower the function return type to `void` and add a hidden
-pointer to a fixed array of the resolved result shape. The caller allocates the
-result array and passes its address. Every value-return branch evaluates its
+output parameter declared with the resolved array shape (an element pointer
+after C parameter adjustment). The caller allocates the result array and passes
+its storage. Every value-return branch evaluates its
 expression, copies the full array into that output and then returns. Hidden
 output storage belongs to the caller and must never point into expired callee
-storage. Do not confuse the array pointer with an element pointer when computing
-copy sizes or generating declarations.
+storage. The copy size is taken from the captured true array value, never from
+the adjusted output parameter. This avoids per-shape wrapper types and works
+with the same C and C++ signature helper.
 
 This convention must be identical in exported headers, private forward
 prototypes, definitions, imported calls and any generated callback adapter that
@@ -99,3 +104,18 @@ and foreign signatures lacking a defined array convention with source spans.
 Compile C/C++ with warning-as-error settings; run existing record, local-array,
 string, syntax and generated native parity guards to catch ABI regressions.
 No milestone closure until these are executable tests, not just this checklist.
+
+## Implementation verification (2026-09-19)
+
+The extended `tests/array_values_test.py` passes on C, C++ and Go, including
+imported calls, early returns, named bounds, captured argument ordering,
+parameter mutation isolation, borrowed callbacks, record/string elements,
+zero-valued returns and bounds traps on parameters/results. The full record,
+string and aggregate fixture suite also passes. C and C++ syntax suites pass.
+
+Go syntax passed before the latest concurrent slider host changes, but the
+latest integration run fails on missing generated `SliderProps` fields.
+Full runtime generation fails on the concurrently edited `runtime/slider.kry`
+layout expressions. Generated runtime parity and final Go integration therefore
+remain unverified for the combined checkout. These failures must be resolved
+and the gates rerun before closing the milestone's integration requirement.

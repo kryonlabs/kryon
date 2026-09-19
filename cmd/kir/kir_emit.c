@@ -24,6 +24,66 @@ format(char *out, size_t size, const char *format_string, ...)
     return n;
 }
 
+int
+KirArrayValueType(const char *type)
+{
+    char element[KIR_NAME_MAX];
+    /* Host char buffers retain their explicit C-string interop convention. */
+    return KirArrayElementType(type, element, sizeof(element), NULL) &&
+           strcmp(element, "char") != 0;
+}
+
+/* These names share a deterministic collision check between declarations and
+ * bodies. Negative parameter denotes the hidden array result. */
+void
+KirArrayAbiName(const KirFunction *fn, int parameter, char *out, size_t size)
+{
+    int serial = 0;
+    int collision;
+    do {
+        format(out, size, "array_%s_%d_%d", parameter < 0 ? "result" : "input",
+               parameter < 0 ? 0 : parameter, serial++);
+        collision = strstr(fn->args, out) != NULL;
+        for(int i = 0; i < fn->stmt_count; i++) {
+            collision |= strstr(fn->stmts[i].text, out) != NULL;
+            collision |= strstr(fn->stmts[i].args, out) != NULL;
+        }
+        for(int i = 0; i < fn->capture_count; i++)
+            collision |= strstr(fn->captures[i].name, out) != NULL;
+    } while(collision);
+}
+
+void
+KirArrayAbiArgs(const KirFunction *fn, char *out, size_t size)
+{
+    if(fn->return_type[0] != '[' && strchr(fn->args, '[') == NULL) {
+        kir_copy(out, size, fn->args);
+        return;
+    }
+    char parameters[64][KIR_TEXT_MAX];
+    int count = *kir_skip_ws(fn->args) ?
+        kir_split_top(fn->args, parameters[0], 64, sizeof(parameters[0])) : 0;
+    size_t used = 0;
+    out[0] = '\0';
+    if(KirArrayElementType(fn->return_type, NULL, 0, NULL)) {
+        char name[KIR_NAME_MAX];
+        KirArrayAbiName(fn, -1, name, sizeof(name));
+        used += (size_t)format(out, size, "%s: %s", name, fn->return_type);
+    }
+    for(int i = 0; i < count; i++) {
+        char *colon = strchr(parameters[i], ':');
+        if(colon != NULL && KirArrayValueType(kir_skip_ws(colon + 1))) {
+            char name[KIR_NAME_MAX];
+            KirArrayAbiName(fn, i, name, sizeof(name));
+            used += (size_t)format(out + used, size - used, "%s%s: %s",
+                                   used ? ", " : "", name, kir_skip_ws(colon + 1));
+        } else {
+            used += (size_t)format(out + used, size - used, "%s%s",
+                                   used ? ", " : "", parameters[i]);
+        }
+    }
+}
+
 static const char *
 canonical(const char *type)
 {
@@ -862,7 +922,7 @@ KirScalarLiteral(const char *type, const char *text, KirTarget target,
 }
 
 static void
-emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
+emit_call(Emitter *e, const KirExpr *expr, const char *array_result, char *out, size_t size)
 {
     char text[KIR_TEXT_MAX];
     int count=0;
@@ -881,6 +941,10 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
         }
     } else {
         n = (size_t)format(text, sizeof(text), "%s(", expr->name);
+    }
+    if(array_result != NULL) {
+        n += (size_t)format(text + n, sizeof(text) - n, "%s%s", count ? "," : "", array_result);
+        count++;
     }
     for(int child=expr->first_child;child>=0;child=e->fn->exprs[child].next_sibling) {
         char argument[KIR_TEXT_MAX];
@@ -1216,7 +1280,16 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         break;
     }
     case KIR_EXPR_CALL:
-        emit_call(e,expr,result,sizeof(result));
+        if((e->target == KIR_C || e->target == KIR_CPP) &&
+           KirArrayElementType(type, NULL, 0, NULL)) {
+            fresh(e, temp);
+            declare_array(e, temp, type, NULL);
+            emit_call(e, expr, temp, result, sizeof(result));
+            line(e, "%s;", result);
+            kir_copy(out, size, temp);
+            return;
+        }
+        emit_call(e, expr, NULL, result, sizeof(result));
         if(!strcmp(type,"void")) {line(e,"%s%s",result,e->target==KIR_GO?"":";");out[0]=0;return;}
         break;
     case KIR_EXPR_CONDITIONAL:
@@ -1441,7 +1514,19 @@ emit_sequence(Emitter *e,int begin,int end)
                 assign_value(e, lhs, e->fn->exprs[st->lhs_root].type, result);
             break;
         case KIR_STMT_RETURN:
-            if(st->expr_root>=0) {emit_expr(e,st->expr_root,e->fn->return_type,value,sizeof(value));line(e,"return %s%s",value,e->target==KIR_GO?"":";");}
+            if(st->expr_root >= 0) {
+                emit_expr(e, st->expr_root, e->fn->return_type, value, sizeof(value));
+                if((e->target == KIR_C || e->target == KIR_CPP) &&
+                   KirArrayElementType(e->fn->return_type, NULL, 0, NULL)) {
+                    char output[KIR_NAME_MAX];
+                    KirArrayAbiName(e->fn, -1, output, sizeof(output));
+                    /* value is a captured true array; output is an ABI pointer. */
+                    line(e, "memmove(%s, %s, sizeof(%s));", output, value, value);
+                    line(e, "return;");
+                } else {
+                    line(e, "return %s%s", value, e->target == KIR_GO ? "" : ";");
+                }
+            }
             else line(e,e->target==KIR_GO?"return":"return;");
             e->local_count=saved;e->depth--;return;
         case KIR_STMT_IF:i=emit_if(e,i,end);break;
@@ -1489,6 +1574,12 @@ KirEmitBody(FILE *out,const KirModule *module,const KirFunction *fn,KirTarget ta
         char *colon=strchr(params[i],':');*colon++=0;kir_trim_in_place(params[i]);
         kir_copy(e.locals[e.local_count++].name,KIR_NAME_MAX,params[i]);
         const char *type=canonical(kir_skip_ws(colon));
+        if((target == KIR_C || target == KIR_CPP) &&
+           KirArrayValueType(type)) {
+            char incoming[KIR_NAME_MAX];
+            KirArrayAbiName(fn, i, incoming, sizeof(incoming));
+            declare_array(&e, params[i], type, incoming);
+        }
         if(target == KIR_JS && enum_type(module, type))
             line(&e, "%s = %s_value(%s,32,true);", params[i], e.numbers, params[i]);
         if(target==KIR_JS && width(type))line(&e,"%s = %s_value(%s,%d,%s);",params[i],e.numbers,params[i],width(type),signed_type(type)?"true":"false");
