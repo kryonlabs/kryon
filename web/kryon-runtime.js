@@ -329,6 +329,7 @@ export function createRuntime(options = {}) {
       textHandoff: 0,
       deferredTextEvents: 0,
       dropdownOpen: null,
+      dropdownPopup: null,
       focusOrder: [],
       lastFocusOrder: [],
       keyPressed: Object.create(null),
@@ -1537,20 +1538,25 @@ function handleDropdown(rt, state, args, meta = null) {
     const ref = propRef(args, "selected_index");
     const bounds = resolveLayoutBounds(rt, args, meta);
     const count = propNumber(args, "option_count", 0);
+    const popupBounds = { x: bounds.x, y: bounds.y + bounds.height, width: bounds.width, height: bounds.height * count };
+    if (rt.input.dropdownOpen === id)
+      rt.input.dropdownPopup = { id, bounds: popupBounds };
     const tap = consumeFirstEvent(rt, (ev) =>
       ev.type === "tap" &&
-      ((eventHitsWidget(rt, bounds, meta, ev)) ||
-       (rt.input.dropdownOpen === id && hit({ x: bounds.x, y: bounds.y + bounds.height, width: bounds.width, height: bounds.height * count }, ev.x, ev.y))));
+      ((hit(bounds, ev.x, ev.y)) ||
+       (rt.input.dropdownOpen === id && hit(popupBounds, ev.x, ev.y))));
     if (!tap || !state || !ref)
       return false;
     if (hit(bounds, tap.x, tap.y)) {
       rt.input.dropdownOpen = rt.input.dropdownOpen === id ? null : id;
+      rt.input.dropdownPopup = rt.input.dropdownOpen === id ? { id, bounds: popupBounds } : null;
       return true;
     }
     if (rt.input.dropdownOpen === id) {
       const index = Math.max(0, Math.floor((tap.y - (bounds.y + bounds.height)) / Math.max(1, bounds.height)));
       state[ref] = Math.min(index, Math.max(0, count - 1));
       rt.input.dropdownOpen = null;
+      rt.input.dropdownPopup = null;
       return true;
     }
     return false;
@@ -1629,8 +1635,13 @@ function pointerCanReachWidget(rt, bounds, meta) {
   return true;
 }
 
+function dropdownOwnsEvent(rt, ev) {
+  const popup = rt.input?.dropdownPopup;
+  return !!(popup && ev && hit(popup.bounds, ev.x, ev.y));
+}
+
 function eventHitsWidget(rt, bounds, meta, ev) {
-  if (!ev || !hit(bounds, ev.x, ev.y))
+  if (!ev || dropdownOwnsEvent(rt, ev) || !hit(bounds, ev.x, ev.y))
     return false;
   const mouse = rt.input?.mouse;
   const previous = mouse ? { x: mouse.x, y: mouse.y } : null;
@@ -1659,7 +1670,8 @@ function handleScroll(rt, args, meta) {
   if (!offset || typeof offset !== "object" || !("value" in offset))
     return false;
   const wheel = consumeFirstEvent(rt, (ev) =>
-    ev.type === "wheel" && hit(bounds, rt.input.mouse.x, rt.input.mouse.y));
+    ev.type === "wheel" && !dropdownOwnsEvent(rt, { ...ev, x: rt.input.mouse.x, y: rt.input.mouse.y }) &&
+    hit(bounds, rt.input.mouse.x, rt.input.mouse.y));
   if (!wheel)
     return false;
   const maxOffset = Math.max(0, contentHeight - bounds.height);

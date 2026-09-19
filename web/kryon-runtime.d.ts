@@ -46,6 +46,7 @@ export interface Runtime {
     clipboard: string;
     selections: Map<number, { anchor: number; cursor: number }>;
     dropdownOpen: number | null;
+    dropdownPopup: { id: number; bounds: { x: number; y: number; width: number; height: number } } | null;
     focusOrder: number[];
     lastFocusOrder: number[];
     keyPressed: Record<number, boolean>;
