@@ -13,8 +13,8 @@
  * v1 scope: the declarative app subset translates fully — state blocks,
  * app metadata (-> generated main unless --no-main), frames, widget calls,
  * and scalar expressions (compound literals, casts, state refs). Imperative
- * constructs are best-effort; anything unsupported is emitted as a
- * commented TODO line instead of silently miscompiling.
+ * constructs supported by the backend retain their types. Unsupported types
+ * and statements fail with a source diagnostic; no placeholder code is emitted.
  */
 int k2go_lower(const KirProgram *const *progs, int prog_count,
               const char *root, const char *out_dir, const char *pkg,

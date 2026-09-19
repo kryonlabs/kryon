@@ -29,6 +29,8 @@ if [ ! -f "$k2go" ]; then
     exit 1
 fi
 
+python3 "$root/tests/go_type_diagnostics_test.py" "$k2go"
+
 mkdir -p "$work/src" "$work/out" "$work/hierarchy-out" "$work/pure-out"
 
 cat > "$work/src/brand.kss" <<'EOF'

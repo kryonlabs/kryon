@@ -33,6 +33,9 @@ the remaining work; the current contract remains `KRY_LANGUAGE_SPEC.md`.
 - Historical JS execution experiments remain in the tree only as paused
   reference material for a future web-native target.
 - Go output omits its UI runtime import when generated code does not use it.
+- Go lowering rejects unresolved types, unsupported C typedefs, and unsupported
+  statements with source locations. It never substitutes `any` or a comment for
+  executable code, and publishes a module only after lowering succeeds.
 
 ## Remaining: complete typed KIR
 

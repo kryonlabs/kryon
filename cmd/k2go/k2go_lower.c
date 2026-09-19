@@ -6,6 +6,7 @@
 #include "kir_emit.h"
 #include "kir_check.h"
 #include "kir_expr.h"
+#include "kir_diagnostic.h"
 #include "kir_style_imports.h"
 
 #include <ctype.h>
@@ -153,6 +154,7 @@ is_runtime_go_type(const char *type)
     if(KirFindRuntimeType(type, NULL) != NULL)
         return 1;
     static const char *types[] = {
+		"Animation", "AnimTrack", "Keyframe", "AnimInterp", "NodeId",
 		"KeyID",
 		"Accelerator",
 		"MenuItemKind", "MenuItem", "MenuGroup", "MenuMode", "MenuResult", "MenuProps",
@@ -258,7 +260,7 @@ qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
         snprintf(dst, dst_size, "%s", type);
 }
 
-/* C-ish type -> Go type. Returns 0 when unknown (caller falls back). */
+/* C-ish type -> Go type. Unknown shapes must be diagnosed by the caller. */
 static int
 go_type(const char *type, char *dst, size_t dst_size)
 {
@@ -378,14 +380,15 @@ go_type(const char *type, char *dst, size_t dst_size)
             snprintf(dst, dst_size, "*%s", gt);
             return 1;
         }
-        /* unknown base: keep the identifier (module typedef pointer) */
+        /* Native contracts and declared module types retain their names. */
         {
             int identish = base[0] != '\0';
 
             for(char *c = base; *c != '\0'; c++)
                 if(!kir_is_ident_char((unsigned char)*c))
                     identish = 0;
-            if(identish) {
+            if(identish && (is_runtime_go_type(base) ||
+                           KirFindType(type_scope, base, NULL) != NULL)) {
                 char qualified[K2GO_NAME_MAX * 2];
 
                 qualify_runtime_go_type(base, qualified, sizeof(qualified));
@@ -395,19 +398,29 @@ go_type(const char *type, char *dst, size_t dst_size)
         }
         return 0;
     }
-    /* bare unknown identifier: a module typedef (struct/enum) */
+    /* A name alone is not evidence that a type exists. */
     {
         int identish = t[0] != '\0';
 
         for(char *c = t; *c != '\0'; c++)
             if(!kir_is_ident_char((unsigned char)*c))
                 identish = 0;
-        if(identish) {
+        if(identish && (is_runtime_go_type(t) ||
+                       KirFindType(type_scope, t, NULL) != NULL)) {
             qualify_runtime_go_type(t, dst, dst_size);
             return 1;
         }
     }
     return 0;
+}
+
+static void
+require_go_type(const char *type, char *dst, size_t size, KirSourceSpan span)
+{
+    if(go_type(type, dst, size))
+        return;
+    KirDiagnostic(span, "k2go.type", "unsupported or unresolved Go type: %s", type);
+    exit(1);
 }
 
 static int
@@ -2696,8 +2709,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 char gt[K2GO_NAME_MAX];
                 size_t al;
 
-                if(colon == NULL)
-                    continue;
+                if(colon == NULL) {
+                    KirDiagnostic(fn->span, "k2go.parameter", "parameters require name: type: %s", parts[i]);
+                    exit(1);
+                }
                 al = (size_t)(colon - parts[i]);
                 while(al > 0 && parts[i][al - 1] == ' ')
                     al--;
@@ -2710,14 +2725,14 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     k2go_go_local_ident(aname, mapped, sizeof(mapped));
                     snprintf(aname, sizeof(aname), "%s", mapped);
                 }
-                if(!go_type(atype, gt, sizeof(gt)))
-                    snprintf(gt, sizeof(gt), "/* TODO %s */ any", atype);
+                require_go_type(atype, gt, sizeof(gt), fn->span);
                 fprintf(f, "%s%s %s", emitted ? ", " : "", aname, gt);
                 emitted = 1;
             }
         }
         fprintf(f, ")");
-        if(go_type(fn->return_type, ret, sizeof(ret)) && ret[0] != '\0')
+        require_go_type(fn->return_type, ret, sizeof(ret), fn->span);
+        if(ret[0] != '\0')
             fprintf(f, " %s", ret);
         fprintf(f, " {\n");
     }
@@ -2927,8 +2942,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 snprintf(tbuf, sizeof(tbuf), "%s", colon + 1);
                 if(assign != NULL)
                     tbuf[assign - (colon + 1)] = '\0';
-                if(!go_type(tbuf, gt, sizeof(gt)))
-                    snprintf(gt, sizeof(gt), "/* TODO %s */ any", tbuf);
+                require_go_type(tbuf, gt, sizeof(gt), st->span);
                 if(assign != NULL) {
                     const char *init = kir_skip_ws(assign + 2);
                     const char *source_assign = strstr(st->text, "= ");
@@ -2938,7 +2952,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                      * Re-enter the source compound-literal path so designated
                      * fields on props records become Go field names. */
                     if(*init == '{' && source_assign != NULL &&
-                       strstr(gt, "TODO") == NULL && gt[0] != '[') {
+                       gt[0] != '[') {
                         char typed[K2GO_TEXT_MAX];
                         char source_type[K2GO_TEXT_MAX];
 
@@ -2951,11 +2965,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                                  kir_skip_ws(source_assign + 2));
                         tx_expr(m, typed, translated, sizeof(translated));
                         fprintf(f, "var %s = %s\n", aname, translated);
-                    } else if(*init == '{' && strstr(gt, "TODO") == NULL &&
+                    } else if(*init == '{' &&
                        k2go_translate_array_literal(m, gt, init, translated,
                                                    sizeof(translated)))
                         fprintf(f, "var %s = %s\n", aname, translated);
-                    else if(*init == '{' && strstr(gt, "TODO") == NULL)
+                    else if(*init == '{')
                         fprintf(f, "var %s = %s%s\n", aname, gt, init);
                     else
                         fprintf(f, "var %s %s = %s\n", aname, gt, assign + 2);
@@ -2970,7 +2984,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             } else if(colon != NULL) { /* ':=' */
                 fprintf(f, "%s\n", rw);
             } else {
-                fprintf(f, "// TODO k2go decl: %s\n", st->text);
+                KirDiagnostic(st->span, "k2go.declaration", "unsupported declaration: %s", st->text);
+                exit(1);
             }
             break;
         }
@@ -3032,10 +3047,18 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 fprintf(f, "%s\n", rw);
             }
             break;
-        default:
+        case KIR_STMT_UNUSED: {
+            const char *value = kir_skip_ws(rw);
+            if(strncmp(value, "unused", 6) == 0 && !kir_is_ident_char((unsigned char)value[6]))
+                value = kir_skip_ws(value + 6);
             emit_indent(f, indent);
-            fprintf(f, "// TODO k2go %s: %s\n", KirStmtKindName(st->kind), rw);
+            fprintf(f, "_ = %s\n", value);
             break;
+        }
+        default:
+            KirDiagnostic(st->span, "k2go.statement", "unsupported %s statement: %s",
+                          KirStmtKindName(st->kind), st->text);
+            exit(1);
         }
     }
     fprintf(f, "}\n\n");
@@ -3208,10 +3231,10 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             k2go_register_arrays_module(m);
             snprintf(path, sizeof(path), "%s/%s.go", out_dir, stem);
             mkdir_parent(path);
-            f = fopen(path, "w+b");
+            f = tmpfile();
             if(f == NULL) {
                 fprintf(stderr, "k2go: cannot write %s\n", path);
-                continue;
+                return 1;
             }
             type_scope = m;
             runtime_output = runtime_implementation;
@@ -3296,12 +3319,12 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         char aname[K2GO_NAME_MAX];
 
                         kir_camel_ident(ex->pnames[a], aname, sizeof(aname));
-                        if(!go_type(ex->ptypes[a], gt, sizeof(gt)))
-                            snprintf(gt, sizeof(gt), "any");
+                        require_go_type(ex->ptypes[a], gt, sizeof(gt), m->span);
                         fprintf(f, "%s%s %s", a > 0 ? ", " : "", aname, gt);
                     }
                     fprintf(f, ")");
-                    if(go_type(ex->ret, gt, sizeof(gt)) && gt[0] != '\0')
+                    require_go_type(ex->ret, gt, sizeof(gt), m->span);
+                    if(gt[0] != '\0')
                         fprintf(f, " %s", gt);
                     fprintf(f, "\n");
                 }
@@ -3323,6 +3346,11 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 const KirType *t = &m->types[i];
                 if(t->is_extern && !runtime_output)
                     continue;
+
+                if(!t->is_enum && t->name[0] == '#') {
+                    KirDiagnostic(t->span, "k2go.type", "C typedef has no portable Go representation: %s", t->body);
+                    exit(1);
+                }
 
                 if(t->is_slot) {
                     KirEmitSlotType(f, t, KIR_GO, resolve_slot_type, NULL);
@@ -3381,8 +3409,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         while((status = KirTypeNextField(t, &offset, &field)) == 1) {
                             char fname[K2GO_NAME_MAX], gt[K2GO_NAME_MAX];
                             kir_go_field_ident(field.name, fname, sizeof(fname));
-                            if(!go_type(field.type, gt, sizeof(gt)))
-                                snprintf(gt, sizeof(gt), "/* TODO %s */ any", field.type);
+                            require_go_type(field.type, gt, sizeof(gt), t->span);
                             if(strcmp(t->name, "TableViewProps") == 0 &&
                                (strcmp(fname, "CopyText") == 0 ||
                                 strcmp(fname, "PastedText") == 0))
@@ -3436,12 +3463,11 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 char gname[K2GO_NAME_MAX], gt[K2GO_NAME_MAX], ginit[K2GO_TEXT_MAX];
 
                 kir_camel_ident(g->name, gname, sizeof(gname));
-                if(!go_type(g->type, gt, sizeof(gt)))
-                    snprintf(gt, sizeof(gt), "/* TODO %s */ any", g->type);
+                require_go_type(g->type, gt, sizeof(gt), g->span);
                 if(!KirScalarLiteral(g->type,g->init,KIR_GO,g->span,ginit,sizeof(ginit)))
                     tx_expr(m, g->init, ginit, sizeof(ginit));
                 if(ginit[0] != '\0') {
-                    if(ginit[0] == '{' && strstr(gt, "TODO") == NULL)
+                    if(ginit[0] == '{')
                         fprintf(f, "var %s = %s%s\n", gname, gt, ginit);
                     else
                         fprintf(f, "var %s %s = %s\n", gname, gt, ginit);
@@ -3456,8 +3482,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     char fname[K2GO_NAME_MAX], gt[K2GO_NAME_MAX];
 
                     kir_camel_ident(sf->name, fname, sizeof(fname));
-                    if(!go_type(sf->type, gt, sizeof(gt)))
-                        snprintf(gt, sizeof(gt), "/* TODO %s */ any", sf->type);
+                    require_go_type(sf->type, gt, sizeof(gt), sf->span);
                     fprintf(f, "\t%s %s\n", fname, gt);
                 }
                 fprintf(f, "}\n\n");
@@ -3468,8 +3493,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     char gt[K2GO_NAME_MAX];
 
                     kir_camel_ident(sf->name, fname, sizeof(fname));
-                    if(!go_type(sf->type, gt, sizeof(gt)))
-                        snprintf(gt, sizeof(gt), "any");
+                    require_go_type(sf->type, gt, sizeof(gt), sf->span);
                     if(!KirScalarLiteral(sf->type,sf->init,KIR_GO,sf->span,finit,sizeof(finit)))
                         tx_expr(m, sf->init, finit, sizeof(finit));
                     if(finit[0] != '\0' &&
@@ -3480,7 +3504,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                             fprintf(f,
                                     "\t%s: func() %s { var v %s; copy(v[:], %s); return v }(),\n",
                                     fname, gt, gt, finit);
-                        else if(finit[0] == '{' && strstr(gt, "TODO") == NULL)
+                        else if(finit[0] == '{')
                             fprintf(f, "\t%s: %s%s,\n", fname, gt, finit);
                         else
                             fprintf(f, "\t%s: %s,\n", fname, finit);
@@ -3580,7 +3604,29 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 for(long k = runtime_import_begin; k < runtime_import_end; k++)
                     fputc(k == runtime_import_end - 1 ? '\n' : ' ', f);
             }
+            rewind(f);
+            FILE *output = fopen(path, "wb");
+            if(output == NULL) {
+                fprintf(stderr, "k2go: cannot write %s\n", path);
+                fclose(f);
+                return 1;
+            }
+            char buffer[8192];
+            size_t bytes;
+            int failed = 0;
+            while((bytes = fread(buffer, 1, sizeof(buffer), f)) != 0) {
+                if(fwrite(buffer, 1, bytes, output) != bytes) {
+                    failed = 1;
+                    break;
+                }
+            }
+            failed |= ferror(f) != 0;
+            failed |= fclose(output) != 0;
             fclose(f);
+            if(failed) {
+                fprintf(stderr, "k2go: cannot finish %s\n", path);
+                return 1;
+            }
         }
     }
     if(runtime_implementation) {
