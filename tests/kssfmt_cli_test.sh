@@ -33,9 +33,7 @@ Button {
     background: accent;
       radius: 0;
 }
-Button:pressed {
-            background: #304050;
-}
+Button:pressed { background: #304050; opacity: 0.5; }
 EOF
 cp "$tmp/ugly.kss" "$tmp/original.kss"
 
@@ -43,6 +41,8 @@ cp "$tmp/ugly.kss" "$tmp/original.kss"
 grep -q '^// keep me' "$tmp/ugly.kss"
 grep -q '^        accent: #112233;' "$tmp/ugly.kss"
 grep -q '^Button {$' "$tmp/ugly.kss"
+grep -q '^Button:pressed {$' "$tmp/ugly.kss"
+grep -q '^    opacity: 0.5;$' "$tmp/ugly.kss"
 
 # Idempotent: a second run changes nothing and --check is clean.
 cp "$tmp/ugly.kss" "$tmp/formatted.kss"

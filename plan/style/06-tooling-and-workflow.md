@@ -59,8 +59,10 @@
   The CLI entry point landed as `kssfmt` (mirroring kry-fmt: in-place by
   default, `--check` for CI), built from `cmd/kssfmt` against the shared
   formatter, installed alongside the other tools, and covered by
-  `tests/kssfmt_cli_test.sh` in `make test`. Still open: declaration re-flow
-  (joining/splitting one-line rule bodies).
+  `tests/kssfmt_cli_test.sh` in `make test`. Declaration reflow now splits
+  single-line token and rule bodies into canonical multi-line blocks in the
+  shared `.kry` formatter, with C, Go, and CLI tests covering idempotence and
+  parse-equivalent winners.
 - Verify live KSS reload in a real app host, including invalid-source recovery.
   Extend preview controls for theme overlays and pack options as their grammar
   Status: `--theme light|dark` re-resolves registered packs (source packs,

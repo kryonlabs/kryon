@@ -27,9 +27,7 @@ static const char *ugly =
     "    background: accent;\n"
     "      radius: 0;\n"
     "}\n"
-    "Button:pressed {\n"
-    "            background: #304050;\n"
-    "}";
+    "Button:pressed { background: #304050; opacity: 0.5; }";
 
 int
 main(void)
@@ -51,6 +49,10 @@ main(void)
     /* Comments survive. */
     assert(strstr(once, "// lead comment") != NULL);
     assert(strstr(once, "/* block comment */") != NULL);
+
+    /* Single-line declaration blocks are reflowed. */
+    assert(strstr(once, "    length {\n        pad: 12;\n    }") != NULL);
+    assert(strstr(once, "Button:pressed {\n    background: #304050;\n    opacity: 0.5;\n}") != NULL);
 
     /* Idempotent. */
     length = kss_format_string(once, twice, sizeof(twice), diagnostic,

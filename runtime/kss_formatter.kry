@@ -260,7 +260,134 @@ KssFormatDropNested :: (state: KssFormatState) -> KssFormatState {
 }
 
 # Emit one construct with its lines re-indented by brace depth. Construct
-# text is copied verbatim per line; only leading whitespace is dropped.
+# text is copied verbatim per line; only leading whitespace is dropped unless a
+# single-line declaration block can be reflowed structurally.
+
+KssFormatTrimStart :: (state: KssFormatState, start: i32, end: i32) -> i32 {
+    pos: i32 = start
+    while pos < end {
+        byte: u8 = state.source[pos]
+        if byte == 32 || byte == 9 || byte == 13 {
+            pos = pos + 1
+        } else {
+            break
+        }
+    }
+    return pos
+}
+
+KssFormatTrimEnd :: (state: KssFormatState, start: i32, end: i32) -> i32 {
+    pos: i32 = end
+    while pos > start {
+        byte: u8 = state.source[pos - 1]
+        if byte == 32 || byte == 9 || byte == 13 {
+            pos = pos - 1
+        } else {
+            break
+        }
+    }
+    return pos
+}
+
+KssFormatLineHasComments :: (state: KssFormatState, start: i32, end: i32) -> bool {
+    pos: i32 = start
+    while pos + 1 < end {
+        if state.source[pos] == 47 {
+            next: u8 = state.source[pos + 1]
+            if next == 47 || next == 42 {
+                return true
+            }
+        }
+        pos = pos + 1
+    }
+    return false
+}
+
+KssFormatLineCanReflow :: (state: KssFormatState, start: i32, end: i32) -> bool {
+    if KssFormatLineHasComments(state, start, end) {
+        return false
+    }
+    open_seen: bool = false
+    semicolon_seen: bool = false
+    close_seen: bool = false
+    pos: i32 = start
+    while pos < end {
+        byte: u8 = state.source[pos]
+        if byte == 123 {
+            open_seen = true
+        } else if byte == 59 && open_seen {
+            semicolon_seen = true
+        } else if byte == 125 && semicolon_seen {
+            close_seen = true
+        }
+        pos = pos + 1
+    }
+    return open_seen && semicolon_seen && close_seen
+}
+
+KssFormatEmitLineStart :: (state: KssFormatState, leading_break: bool,
+    first_line: bool, spaces: i32) -> KssFormatState {
+    if leading_break && first_line {
+        state = KssFormatEmitIndent(state, 0)
+        state = KssFormatEmitIndent(state, 0)
+    } else if !first_line {
+        state = KssFormatEmitIndent(state, spaces)
+    }
+    return state
+}
+
+KssFormatEmitTrimmedRange :: (state: KssFormatState, start: i32, end: i32) -> KssFormatState {
+    trimmed_start: i32 = KssFormatTrimStart(state, start, end)
+    trimmed_end: i32 = KssFormatTrimEnd(state, trimmed_start, end)
+    if trimmed_start < trimmed_end {
+        state = KssFormatEmitCopy(state, trimmed_start, trimmed_end - trimmed_start)
+    }
+    return state
+}
+
+KssFormatEmitReflowLine :: (state: KssFormatState, start: i32, end: i32,
+    base_depth: i32, leading_break: bool, first_line: bool) -> KssFormatState {
+    cursor: i32 = start
+    token_start: i32 = start
+    depth: i32 = base_depth
+    emitted: bool = false
+    while cursor < end {
+        byte: u8 = state.source[cursor]
+        if byte == 123 {
+            state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
+            state = KssFormatEmitTrimmedRange(state, token_start, cursor)
+            state = KssFormatEmitAtom(state, 32)
+            state = KssFormatEmitAtom(state, 123)
+            emitted = true
+            depth = depth + 1
+            token_start = cursor + 1
+        } else if byte == 59 {
+            state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
+            state = KssFormatEmitTrimmedRange(state, token_start, cursor + 1)
+            emitted = true
+            token_start = cursor + 1
+        } else if byte == 125 {
+            if KssFormatTrimStart(state, token_start, cursor) < KssFormatTrimEnd(state, token_start, cursor) {
+                state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
+                state = KssFormatEmitTrimmedRange(state, token_start, cursor)
+                emitted = true
+            }
+            if depth > 0 {
+                depth = depth - 1
+            }
+            state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
+            state = KssFormatEmitAtom(state, 125)
+            emitted = true
+            token_start = cursor + 1
+        }
+        cursor = cursor + 1
+    }
+    if KssFormatTrimStart(state, token_start, end) < KssFormatTrimEnd(state, token_start, end) {
+        state = KssFormatEmitLineStart(state, leading_break, first_line && !emitted, depth * 4)
+        state = KssFormatEmitTrimmedRange(state, token_start, end)
+    }
+    return state
+}
 
 KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct, leading_break: bool) -> KssFormatState {
     depth: i32 = 0
@@ -288,13 +415,14 @@ KssFormatEmitConstruct :: (state: KssFormatState, construct: KssFormatConstruct,
             if state.source[trimmed] == 125 && depth > 0 {
                 indent = depth - 1
             }
-            if leading_break && first {
-                state = KssFormatEmitIndent(state, 0)
-                state = KssFormatEmitIndent(state, 0)
-            } else if !first {
-                state = KssFormatEmitIndent(state, indent * 4)
+            if KssFormatLineCanReflow(state, trimmed, line_end) {
+                state = KssFormatEmitReflowLine(state, trimmed, line_end,
+                    indent, leading_break, first)
+            } else {
+                state = KssFormatEmitLineStart(state, leading_break, first,
+                    indent * 4)
+                state = KssFormatEmitCopy(state, trimmed, line_end - trimmed)
             }
-            state = KssFormatEmitCopy(state, trimmed, line_end - trimmed)
             scan: i32 = trimmed
             while scan < line_end {
                 byte: u8 = state.source[scan]

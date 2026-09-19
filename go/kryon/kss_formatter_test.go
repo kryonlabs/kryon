@@ -37,6 +37,12 @@ func TestKssFormatterRoundTrip(t *testing.T) {
 		t.Fatalf("format failed: %s", string(first.Diagnostic[:first.DiagnosticLength]))
 	}
 	once := assembleKssFormat(ugly, first)
+	if !strings.Contains(once, "    color {\n        accent: #112233;\n    }") {
+		t.Fatalf("token declaration was not reflowed:\n%s", once)
+	}
+	if !strings.Contains(once, "Button:pressed {\n    background: #304050;\n}") {
+		t.Fatalf("rule declaration was not reflowed:\n%s", once)
+	}
 	second := host.KssFormatter_KssFormat(once)
 	if !second.Ok {
 		t.Fatalf("reformat failed: %s", string(second.Diagnostic[:second.DiagnosticLength]))
