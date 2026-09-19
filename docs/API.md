@@ -2558,6 +2558,11 @@ ignored so one semantic palette can color several packs. Invalid input leaves
 an existing variant unchanged. Re-register an ID to update its palette, then
 select it with `SetActiveStylePack`.
 
+Active-pack style resolution caches rule results independently of each widget's
+base values. Registering, replacing, clearing, or switching packs invalidates
+those results. Re-register a pack after changing its rule table; direct
+`ResolveStyle` calls always read the supplied table without caching.
+
 `SetStyleTheme(theme)` re-resolves every registered pack - built-ins, source
 packs, and their declared variants - under a theme overlay ("light", "dark",
 or empty), preserving the active pack; `kryon-preview --theme NAME` exposes

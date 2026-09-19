@@ -7,6 +7,30 @@ static int style_pack_count;
 static int active_style_pack = -1;
 static uint64_t style_pack_version;
 
+#define STYLE_CACHE_COUNT 256
+typedef struct {
+    uint64_t version;
+    int valid;
+    int active_state;
+    StyleFacts facts;
+    StyleData value;
+} StyleCacheEntry;
+
+static StyleCacheEntry active_style_cache[STYLE_CACHE_COUNT];
+
+static unsigned int
+style_cache_slot(StyleFacts facts, int active_state)
+{
+    uint32_t values[] = {facts.kind, facts.name, facts.class_name, facts.role,
+        facts.tone, facts.emphasis, facts.size, facts.state, facts.validation,
+        facts.orientation, facts.placement, active_state};
+    uint32_t hash = 2166136261u;
+
+    for(unsigned int i = 0; i < sizeof(values) / sizeof(values[0]); i++)
+        hash = (hash ^ values[i]) * 16777619u;
+    return hash % STYLE_CACHE_COUNT;
+}
+
 static int
 style_pack_index(const char *id)
 {
@@ -152,8 +176,11 @@ ResolveStyle(const StyleSheet *sheet, StyleData base, StyleFacts facts,
         return base;
 
     cascade = BeginStyleCascade(base);
-    for(int i = 0; i < sheet->rule_count; i++)
-        cascade = ApplyStyleRule(cascade, sheet->rules[i], facts, active_state);
+    for(int i = 0; i < sheet->rule_count; i++) {
+        /* Avoid copying the entire per-field cascade for an unmatched rule. */
+        if(StyleRuleMatches(sheet->rules[i], facts, active_state))
+            cascade = ApplyStyleRule(cascade, sheet->rules[i], facts, active_state);
+    }
     return FinishStyleCascade(cascade);
 }
 
@@ -161,7 +188,20 @@ StyleData
 ResolveActiveStyle(StyleData base, StyleFacts facts, int active_state)
 {
     const StylePack *pack = GetActiveStylePack();
+    StyleCacheEntry *entry;
 
-    return ResolveStyle(pack != NULL ? pack->sheet : NULL, base, facts,
-                        active_state);
+    if(pack == NULL)
+        return base;
+    entry = &active_style_cache[style_cache_slot(facts, active_state)];
+    if(!entry->valid || entry->version != style_pack_version ||
+       entry->active_state != active_state ||
+       memcmp(&entry->facts, &facts, sizeof(facts)) != 0) {
+        entry->value = ResolveStyle(pack->sheet, (StyleData){0}, facts, active_state);
+        entry->facts = facts;
+        entry->active_state = active_state;
+        entry->version = style_pack_version;
+        entry->valid = 1;
+    }
+    /* Cache only sheet declarations: live base values must still pass through. */
+    return MergeValues(base, entry->value);
 }

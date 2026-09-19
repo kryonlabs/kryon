@@ -18,6 +18,31 @@ var activeStylePack = -1
 var stylePackVersion uint64
 var activeStyleTheme string
 
+type styleCacheKey struct {
+	Facts StyleFacts
+	State int32
+}
+
+type styleCacheEntry struct {
+	key     styleCacheKey
+	version uint64
+	valid   bool
+	value   StyleData
+}
+
+var activeStyleCache [256]styleCacheEntry
+
+func styleCacheSlot(facts StyleFacts, state int32) uint32 {
+	values := [...]int32{facts.Kind, facts.Name, facts.ClassName, facts.Role,
+		facts.Tone, facts.Emphasis, facts.Size, facts.State, facts.Validation,
+		facts.Orientation, facts.Placement, state}
+	hash := uint32(2166136261)
+	for _, value := range values {
+		hash = (hash ^ uint32(value)) * 16777619
+	}
+	return hash % uint32(len(activeStyleCache))
+}
+
 func RegisterStylePack(pack StylePack) bool {
 	if pack.ID == "" || pack.Sheet == nil {
 		return false
@@ -207,7 +232,9 @@ func ResolveStyle(sheet []StyleRule, base StyleData, facts StyleFacts, activeSta
 	}
 	cascade := StyleSheet_BeginStyleCascade(base)
 	for _, rule := range sheet {
-		cascade = StyleSheet_ApplyStyleRule(cascade, rule, facts, activeState)
+		if StyleSheet_StyleRuleMatches(rule, facts, activeState) {
+			cascade = StyleSheet_ApplyStyleRule(cascade, rule, facts, activeState)
+		}
 	}
 	return StyleSheet_FinishStyleCascade(cascade)
 }
@@ -217,7 +244,13 @@ func ResolveActiveStyle(base StyleData, facts StyleFacts, activeState int32) Sty
 	if pack == nil {
 		return base
 	}
-	return ResolveStyle(pack.Sheet, base, facts, activeState)
+	key := styleCacheKey{Facts: facts, State: activeState}
+	entry := &activeStyleCache[styleCacheSlot(facts, activeState)]
+	if !entry.valid || entry.version != stylePackVersion || entry.key != key {
+		*entry = styleCacheEntry{key: key, version: stylePackVersion, valid: true,
+			value: ResolveStyle(pack.Sheet, StyleData{}, facts, activeState)}
+	}
+	return Style_MergeValues(base, entry.value)
 }
 
 func (r *runtime) StylePicker(props StylePickerProps) bool {

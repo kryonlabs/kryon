@@ -14,9 +14,56 @@ background_rule(int kind, unsigned int color)
     return rule;
 }
 
+static void
+test_cached_resolution(void)
+{
+    StyleRule rules[4] = {
+        background_rule(StyleKindButton(), 0x112233ffu),
+        background_rule(StyleKindButton(), 0x334455ffu),
+        background_rule(StyleKindButton(), 0x556677ffu),
+        background_rule(StyleKindButton(), 0),
+    };
+    StyleSheet sheet = {rules, 4};
+    StylePack pack = {.id = "cache", .sheet = &sheet};
+    rules[1].selector.class_name = 7;
+    rules[2].state = ButtonStateHover;
+    rules[2].order = 2;
+    rules[3].selector.role = 3;
+    rules[3].order = 3;
+    ClearStylePacks();
+    assert(RegisterStylePack(pack));
+    for(int i = 0; i < 2000; i++) {
+        StyleFacts facts = StyleControlRoleFacts(StyleKindButton(), i % 5,
+            i % 8, i % 4, i % 3, i % 5, i % 3, i % 8);
+        facts.validation = i % 3;
+        facts.orientation = i % 2;
+        facts.placement = i % 4;
+        for(int repeat = 0; repeat < 2; repeat++) {
+            StyleData base = {.fields = StyleOpacity | StyleRadius,
+                .opacity = repeat ? 0.25f : 1.0f, .radius = (float)i,
+                .foreground = (unsigned int)(i + repeat)};
+            StyleData expected = ResolveStyle(&sheet, base, facts, i % 8);
+            StyleData actual = ResolveActiveStyle(base, facts, i % 8);
+            assert(actual.fields == expected.fields);
+            assert(actual.background == expected.background);
+            assert(actual.foreground == expected.foreground);
+            assert(actual.radius == expected.radius);
+            assert(actual.opacity == expected.opacity);
+        }
+    }
+    StyleFacts facts = StyleDefaultFacts(StyleKindButton());
+    assert(ResolveActiveStyle((StyleData){0}, facts, ButtonStateNormal).background == 0x112233ffu);
+    rules[0].style.background = 0xaabbccffu;
+    assert(RegisterStylePack(pack));
+    assert(ResolveActiveStyle((StyleData){0}, facts, ButtonStateNormal).background == 0xaabbccffu);
+    ClearStylePacks();
+    assert(ResolveActiveStyle((StyleData){0}, facts, ButtonStateNormal).fields == 0);
+}
+
 int
 main(void)
 {
+    test_cached_resolution();
     StyleRule first_rules[1] = {
         background_rule(StyleKindButton(), 0x111111ffu),
     };

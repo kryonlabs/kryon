@@ -4,6 +4,13 @@
 static Rectangle g_ui_clip_stack[CLIP_STACK_MAX];
 static int g_ui_clip_stack_count = 0;
 
+static int
+same_scissor(Rectangle a, Rectangle b)
+{
+    return (int)a.x == (int)b.x && (int)a.y == (int)b.y &&
+        (int)a.width == (int)b.width && (int)a.height == (int)b.height;
+}
+
 ClipState
 ui_clip_save(void)
 {
@@ -69,24 +76,32 @@ BeginClip(int x, int y, int w, int h)
         bounds.height = 0;
 
     bounds = GetClipEffective(bounds);
+    int unchanged = g_ui_clip_stack_count > 0 &&
+        same_scissor(g_ui_clip_stack[g_ui_clip_stack_count - 1], bounds);
     if(g_ui_clip_stack_count < CLIP_STACK_MAX)
         g_ui_clip_stack[g_ui_clip_stack_count++] = bounds;
 
-    BeginScissorMode((int)bounds.x, (int)bounds.y,
+    if(!unchanged)
+        BeginScissorMode((int)bounds.x, (int)bounds.y,
                      (int)bounds.width, (int)bounds.height);
 }
 
 void
 EndClip(void)
 {
-    EndScissorMode();
-    if(g_ui_clip_stack_count > 0)
-        g_ui_clip_stack_count--;
+    if(g_ui_clip_stack_count == 0) {
+        EndScissorMode();
+        return;
+    }
+    Rectangle previous = g_ui_clip_stack[--g_ui_clip_stack_count];
     if(g_ui_clip_stack_count > 0) {
         Rectangle bounds = g_ui_clip_stack[g_ui_clip_stack_count - 1];
-        BeginScissorMode((int)bounds.x, (int)bounds.y,
+        /* Updating an enabled scissor restores the parent with one flush. */
+        if(!same_scissor(previous, bounds))
+            BeginScissorMode((int)bounds.x, (int)bounds.y,
                          (int)bounds.width, (int)bounds.height);
-    }
+    } else
+        EndScissorMode();
 }
 
 void

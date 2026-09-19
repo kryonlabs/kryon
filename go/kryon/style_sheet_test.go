@@ -2,6 +2,47 @@ package kryon
 
 import "testing"
 
+func TestActiveStyleCachePreservesLiveBaseAndReplacement(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	selector := StyleSheet_StyleDefaultSelector()
+	selector.Kind = StyleSheet_StyleKindButton()
+	rules := []StyleRule{
+		{Selector: selector, Style: StyleData{Fields: uint32(StyleBackground), Background: 0x112233ff}},
+		{Selector: selector, State: int32(ButtonStateHover), Order: 1,
+			Style: StyleData{Fields: uint32(StyleBackground), Background: 0x334455ff}},
+		{Selector: selector, Order: 2, Style: StyleData{Fields: uint32(StyleBackground), Background: 0}},
+	}
+	rules[2].Selector.ClassName = 7
+	pack := StylePack{ID: "cache", Sheet: rules}
+	if !RegisterStylePack(pack) {
+		t.Fatal("register cache fixture")
+	}
+	for i := int32(0); i < 2000; i++ {
+		facts := StyleSheet_StyleControlRoleFacts(selector.Kind, i%5, i%8, i%4, i%3, i%5, i%3, i%8)
+		facts.Validation, facts.Orientation, facts.Placement = i%3, i%2, i%4
+		for repeat := 0; repeat < 2; repeat++ {
+			base := StyleData{Fields: uint32(StyleOpacity | StyleRadius), Opacity: float32(repeat),
+				Radius: float32(i), Foreground: uint32(i) + uint32(repeat)}
+			want := ResolveStyle(rules, base, facts, i%8)
+			if got := ResolveActiveStyle(base, facts, i%8); got != want {
+				t.Fatalf("cached style differs at %d/%d: got %+v, want %+v", i, repeat, got, want)
+			}
+		}
+	}
+	facts := StyleSheet_StyleDefaultFacts(selector.Kind)
+	ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateNormal))
+	rules[0].Style.Background = 0xaabbccff
+	RegisterStylePack(pack)
+	if got := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateNormal)); got.Background != 0xaabbccff {
+		t.Fatal("re-registering the same table must invalidate cached rules")
+	}
+	ClearStylePacks()
+	if got := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateNormal)); got.Fields != 0 {
+		t.Fatal("clearing packs must discard cached rules")
+	}
+}
+
 func TestStyleSheetCascadeInGo(t *testing.T) {
 	button := StyleSheet_StyleDefaultSelector()
 	button.Kind = StyleSheet_StyleKindButton()

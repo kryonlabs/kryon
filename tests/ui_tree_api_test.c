@@ -11,6 +11,8 @@
 static int failures;
 static int draw_rectangle_calls;
 static Rectangle last_scissor;
+static int scissor_begin_calls;
+static int scissor_end_calls;
 
 static void
 check_int(const char *name, int got, int want);
@@ -860,6 +862,25 @@ main(void)
     }
 
     {
+        ResetClip();
+        scissor_begin_calls = 0;
+        scissor_end_calls = 0;
+        BeginClip(10, 20, 100, 80);
+        BeginClip(0, 0, 200, 200);
+        check_int("containing clip reuses parent scissor", scissor_begin_calls, 1);
+        BeginClip(30, 40, 20, 10);
+        check_int("restrictive clip updates scissor", scissor_begin_calls, 2);
+        EndClip();
+        check_int("parent scissor restored directly", scissor_begin_calls, 3);
+        check_int("nested clip does not disable scissor", scissor_end_calls, 0);
+        check_int("restored parent x", (int)last_scissor.x, 10);
+        check_int("restored parent width", (int)last_scissor.width, 100);
+        EndClip();
+        check_int("equal parent clip avoids a flush", scissor_begin_calls, 3);
+        EndClip();
+        check_int("outermost clip disables scissor", scissor_end_calls, 1);
+    }
+    {
         Camera2D saved_camera = g_ui_camera;
         Rectangle bounds = {24, 180, 260, 88};
 
@@ -1113,10 +1134,12 @@ __wrap_DrawLine(int startPosX, int startPosY, int endPosX, int endPosY,
 void
 __wrap_BeginScissorMode(int x, int y, int width, int height)
 {
+    scissor_begin_calls++;
     last_scissor = (Rectangle){(float)x, (float)y, (float)width, (float)height};
 }
 
 void
 __wrap_EndScissorMode(void)
 {
+    scissor_end_calls++;
 }
