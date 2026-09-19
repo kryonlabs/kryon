@@ -2,6 +2,14 @@
 const calls = [];
 const rec = (name) => function (...a) { calls.push(name); };
 const grad = { addColorStop: rec('addColorStop') };
+let transform = [1, 0, 0, 1, 0, 0];
+const transforms = [];
+function multiplyTransform(next) {
+    const [a, b, c, d, e, f] = transform;
+    const [g, h, i, j, k, l] = next;
+    transform = [a*g + c*h, b*g + d*h, a*i + c*j, b*i + d*j,
+                 a*k + c*l + e, b*k + d*l + f];
+}
 const ctxState = {
     canvas: {width: 320, height: 240},
     font: '', textBaseline: '', fillStyle: '', strokeStyle: '',
@@ -20,10 +28,23 @@ const ctxState = {
                     [sx, sy, sw, sh].join(',') + ' vs ' + img.width + 'x' + img.height);
         }
     },
-    save: rec('save'), restore: rec('restore'),
+    save() { calls.push('save'); transforms.push([...transform]); },
+    restore() {
+        calls.push('restore');
+        if (transforms.length) transform = transforms.pop();
+    },
     clip: rec('clip'), rect: rec('rect'),
-    translate: rec('translate'), rotate: rec('rotate'), scale: rec('scale'),
-    setTransform: rec('setTransform'),
+    translate(x, y) { multiplyTransform([1, 0, 0, 1, x, y]); },
+    rotate(angle) {
+        const c = Math.cos(angle), s = Math.sin(angle);
+        multiplyTransform([c, s, -s, c, 0, 0]);
+    },
+    scale(x, y) { multiplyTransform([x, 0, 0, y, 0, 0]); },
+    setTransform(...values) { calls.push('setTransform'); transform = values; },
+    getTransform() {
+        const [a, b, c, d, e, f] = transform;
+        return {a, b, c, d, e, f};
+    },
     createLinearGradient: () => grad,
     createRadialGradient: () => grad,
     fillText: rec('fillText'),

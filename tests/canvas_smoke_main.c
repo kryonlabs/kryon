@@ -1,6 +1,8 @@
 #include "kryon.h"
 
 #include <string.h>
+#include <math.h>
+#include <emscripten.h>
 
 static int post_frame_count;
 
@@ -104,6 +106,29 @@ int main(void)
     target = LoadRenderTexture(32, 32);
     if(!IsRenderTextureValid(target))
         return 9;
+    {
+        Matrix projection = rlGetMatrixProjection();
+        Matrix captured;
+        Matrix restored;
+
+        emscripten_run_script("globalThis.__kryCanvas.dpi = 2");
+        BeginDrawing();
+        BeginMode2D((Camera2D){.offset = {31, 47}, .target = {4, 6},
+                              .rotation = 90, .zoom = 2});
+        captured = rlGetMatrixModelview();
+        EndMode2D();
+        BeginTextureMode(target);
+        rlSetMatrixProjection(projection);
+        rlSetMatrixModelview(captured);
+        restored = rlGetMatrixModelview();
+        if(fabsf(restored.m0) > 0.001f || fabsf(restored.m1 + 2) > 0.001f ||
+           fabsf(restored.m4 - 2) > 0.001f || fabsf(restored.m5) > 0.001f ||
+           fabsf(restored.m12 - 19) > 0.001f || fabsf(restored.m13 - 55) > 0.001f)
+            return 35;
+        EndTextureMode();
+        EndDrawing();
+        emscripten_run_script("globalThis.__kryCanvas.dpi = 1");
+    }
     font = GetFontDefault();
     if(!IsFontValid(font) || MeasureText("hello", 16) <= 0)
         return 10;

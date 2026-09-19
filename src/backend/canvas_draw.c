@@ -535,6 +535,60 @@ void EndMode2D(void)
     js_ctx_call(12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
+/* Paint layers capture logical transforms and replay them on another canvas.
+ * Keep the window's backing-store scale out of that snapshot: render textures
+ * use one pixel per logical unit, while the window may have a higher DPI. */
+EM_JS(void, js_get_modelview, (float *values), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K && K.ctxNow();
+    if (!ctx) return;
+    var transform = ctx.getTransform();
+    var scale = K.target.length ? 1 : K.dpi;
+    HEAPF32[values / 4] = transform.a / scale;
+    HEAPF32[values / 4 + 1] = transform.b / scale;
+    HEAPF32[values / 4 + 2] = transform.c / scale;
+    HEAPF32[values / 4 + 3] = transform.d / scale;
+    HEAPF32[values / 4 + 4] = transform.e / scale;
+    HEAPF32[values / 4 + 5] = transform.f / scale;
+});
+
+EM_JS(void, js_set_modelview, (double a, double b, double c, double d,
+                              double e, double f), {
+    var K = globalThis.__kryCanvas;
+    var ctx = K && K.ctxNow();
+    if (!ctx) return;
+    var scale = K.target.length ? 1 : K.dpi;
+    ctx.setTransform(a * scale, b * scale, c * scale, d * scale,
+                     e * scale, f * scale);
+});
+
+Matrix rlGetMatrixProjection(void)
+{
+    /* Canvas2D already projects logical pixels onto its backing store. */
+    return (Matrix){.m0 = 1, .m5 = 1, .m10 = 1, .m15 = 1};
+}
+
+void rlSetMatrixProjection(Matrix projection)
+{
+    (void)projection;
+}
+
+Matrix rlGetMatrixModelview(void)
+{
+    float values[6] = {1, 0, 0, 1, 0, 0};
+
+    js_get_modelview(values);
+    return (Matrix){.m0 = values[0], .m1 = values[1],
+                    .m4 = values[2], .m5 = values[3], .m10 = 1,
+                    .m12 = values[4], .m13 = values[5], .m15 = 1};
+}
+
+void rlSetMatrixModelview(Matrix modelview)
+{
+    js_set_modelview(modelview.m0, modelview.m1, modelview.m4, modelview.m5,
+                     modelview.m12, modelview.m13);
+}
+
 #else /* !__EMSCRIPTEN__ */
 
 /* Native builds that sweep kryon's src/ tree (every vendoring app's
