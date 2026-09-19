@@ -1,6 +1,10 @@
 # Phase 1 — Baseline, law inventory and dependency boundary
 
-Status: planned, not implemented by this planning change.
+Status: implemented 2026-09-19 on branch `law/program` (commit `dc863456`):
+law inventory, validator, mutation tests and the dependency-boundary probe
+gate `make laws-test`. Evidence: [phase 1 record](../../laws/evidence/phase-1-baseline.md).
+Acceptance is pending user review; clean-room package probes and per-row
+contracts remain open as recorded there.
 Estimate: **3–5 focused engineer-days; 120–250 thousand model tokens**.
 Assumptions and shared gates: [plan index](README.md).
 

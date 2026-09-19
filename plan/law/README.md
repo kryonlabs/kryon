@@ -1,9 +1,11 @@
 # Kryon law refactor: ten working phases
 
-Requested 2026-09-19. Status: **planned; a starter focus-law package now exists, but no phase is
-accepted yet**. Existing law tooling and the starter are foundations, not
-completion of the phases. Each phase produces a usable Kryon revision
-and an evaluation report before subsequent work is scheduled.
+Requested 2026-09-19. Status: **phase 1 implemented 2026-09-19 on branch
+`law/program` — machine-readable inventory, validator/boundary gates and the
+baseline record exist — but no phase is accepted yet**. Existing law tooling
+and the starter are foundations, not completion of the phases. Each phase
+produces a usable Kryon revision and an evaluation report before subsequent
+work is scheduled.
 
 ## Outcome and boundaries
 

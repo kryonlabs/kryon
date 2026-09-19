@@ -537,6 +537,7 @@ include/kry_signal.h function SignalEmit
 include/kry_signal.h macro SIGNAL_CONNECTIONS_MAX
 include/kry_signal.h macro SIGNAL_NAME_MAX
 include/kry_signal.h typedef SignalHandlerFn
+include/kry_slice.h function SliceIndex
 include/kry_sw.h function KrySwAdvance
 include/kry_sw.h function KrySwBackend
 include/kry_sw.h function KrySwButtonDown
