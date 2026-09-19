@@ -1395,7 +1395,6 @@ include/ui_core.h function SetFocusTextInputActive
 include/ui_core.h function SetFrameCamera
 include/ui_core.h function SetInterfaceIcons
 include/ui_core.h function SetKeyboardInputEnabled
-include/ui_core.h function SetLinkColor
 include/ui_core.h function SetModalCapture
 include/ui_core.h function SetMouseWorldOverride
 include/ui_core.h function SetTextInputPlatformCallback

@@ -29,3 +29,15 @@ do not introduce alternate parsers, image APIs, or compatibility aliases.
 
 Website and accessibility action work is underway independently in this shared
 checkout and is outside this change's ownership.
+
+## Completed batches
+
+- Compiler diagnostics fail closed in native Go. Strict aggregate checks now
+  cover malformed shapes, borrowed-slot storage, integer-only indices and
+  debug bounds checking on array writes. General slice/callable ownership and
+  array values remain part of the language work, not completed by diagnostics.
+- Removed obsolete style branches, recorder theme snippets and unused palette
+  setters/globals. KSS presence reaches native rasterization without debug
+  widget chrome; shared `.kry` policy owns text content fallback.
+- Native input, image resources, measured row reuse and host organization are
+  committed. Linux input verification runs on a private Xvfb/IBus session.

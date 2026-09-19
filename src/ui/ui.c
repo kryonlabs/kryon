@@ -74,7 +74,7 @@ ui_scope_scroll_metrics(void)
 /* Global UI state */
 int ui_view_width = 320;
 int ui_view_height = 560;
-Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon, c_link;
+Color c_text, c_bg, c_surface, c_circle, c_button;
 Camera2D g_ui_camera;
 static int *g_ui_cursor_clickable = NULL;
 static int *g_ui_cursor_disabled = NULL;
@@ -4942,22 +4942,13 @@ IsDesktopMode(void)
 
 static void
 ui_set_theme_colors(Color text, Color bg, Color surface, Color circle,
-                    Color button, Color button_hover, Color icon)
+                    Color button)
 {
     c_text = text;
     c_bg = bg;
     c_surface = surface;
     c_circle = circle;
     c_button = button;
-    c_button_hover = button_hover;
-    c_icon = icon;
-    c_link = GetThemeLink();
-}
-
-void
-SetLinkColor(Color link)
-{
-    c_link = link;
 }
 
 void
@@ -4967,10 +4958,7 @@ ApplyCurrentTheme(void)
                         GetThemeBackground(),
                         GetThemeSurface(),
                         GetThemeCircle(),
-                        GetThemeButton(),
-                        GetThemeButtonHover(),
-                        GetThemeIcon());
-    SetLinkColor(GetThemeLink());
+                        GetThemeButton());
 }
 
 Camera2D

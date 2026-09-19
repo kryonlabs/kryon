@@ -107,7 +107,6 @@ Set the active theme. UI controls automatically use the active theme colors.
 
 ```c
 void SetCurrentTheme(int theme_id, int current_dark_mode);
-void SetLinkColor(Color link);
 ```
 
 ### `SetFrameCamera`

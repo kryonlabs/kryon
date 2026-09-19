@@ -71,7 +71,7 @@ GETTER_ALLOWLIST = {
     # downstream apps migrate off the pre-KSS
     # theme API; removal is tracked by plan/style/09-legacy-removal.md.
     # Classified: legacy bridge, not new-code product chrome.
-    "src/ui/ui.c": 9,
+    "src/ui/ui.c": 5,
     # System bridge: when no pack resolves the App rule the app background
     # falls back to the platform theme color. Classified: documented
     # degradation, not product decoration.

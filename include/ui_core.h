@@ -43,7 +43,6 @@ typedef struct FrameState {
 
 void InitInterface(int width, int height, float dpi);
 void SetDefaultFontAutoLoad(int enabled);
-void SetLinkColor(Color link);
 void ApplyCurrentTheme(void);
 int IsDesktopMode(void);
 Camera2D GetDefaultCamera(void);

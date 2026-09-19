@@ -7,7 +7,7 @@ exists while downstream migrations continue.
 
 | ID | Bridge surface | File/symbol | Maintained caller | Replacement owner | Deletion condition | Regression gate |
 |---|---|---|---|---|---|---|
-| B-001 | Legacy theme catalog application | `src/ui/ui.c`: `ApplyCurrentTheme`, `ui_set_theme_colors`, `GetThemeText`, `GetThemeBackground`, `GetThemeSurface`, `GetThemeCircle`, `GetThemeButton`, `GetThemeButtonHover`, `GetThemeIcon`, `GetThemeLink` | `InitUI` applies the pre-KSS global theme palette for legacy callers. | Built-in KSS packs plus `SetStyleTheme`/`ResolveActiveStyle`; platform preference remains a host service. | Delete after downstream apps no longer depend on the global color catalog and the app theme bridge is migrated to KSS overlays. | `paint-style-leak-check`, `no-theme-chrome-check`, style pack/theme tests. |
+| B-001 | Legacy theme catalog application | `src/ui/ui.c`: `ApplyCurrentTheme`, `ui_set_theme_colors`, `GetThemeText`, `GetThemeBackground`, `GetThemeSurface`, `GetThemeCircle`, `GetThemeButton` | `InitUI` applies the pre-KSS global theme palette for legacy callers. | Built-in KSS packs plus `SetStyleTheme`/`ResolveActiveStyle`; platform preference remains a host service. | Delete after downstream apps no longer depend on the global color catalog and the app theme bridge is migrated to KSS overlays. | `paint-style-leak-check`, `no-theme-chrome-check`, style pack/theme tests. |
 | B-002 | Platform background fallback | `src/ui/ui_tree.c`: `AppBackground` calls `GetThemeBackground` only when no KSS `App` background resolves. | App frame background painting. | KSS `App` rule; platform/system background service only as an explicit fallback. | Keep as a documented host degradation until every supported host supplies an explicit app background or the fallback moves behind a named platform service. | `paint-style-leak-check`, `no-theme-chrome-check`, app/background runtime tests. |
 | B-004 | Native structural style bases | `src/ui/ui_page.c`: `page_box_style`, `page_text_style` seed page spacing and font metrics. | Page/section semantic layout and text measurement. | KSS rules own decoration; these bases are structural zero spacing and font fallback metrics. | Shrink/delete when Page/Section style rules can express all page layout defaults without host-side structural bases. | `no-theme-chrome-check`, `page-policy-test`. |
 | B-005 | Go structural style bases | `go/kryon/control_style_host.go`: `styleForClassKind`, `defaultTextStyle`, `defaultTextStyleForKind`, `defaultTextStyleForClassKind`. | Go runtime layout/text measurement paths. | KSS rules own decoration; bases only seed spacing/font/opacity metrics required for measurement/content visibility. | Shrink/delete when Go runtime can resolve these metrics entirely from packs without changing no-style content behavior. | `no-theme-chrome-check`, `go-runtime-test`. |
@@ -23,3 +23,10 @@ callers.
 B-003 was removed: recorder Background, Box and Group snippets now use the
 canonical `Surface(Rectangle, Style)` with an empty style resolved through KSS.
 Its getter allowance was deleted, so theme getter snippets cannot return.
+
+The unused `SetLinkColor` setter and the unconsumed hover/icon/link globals were
+removed after scanning maintained source callers. B-001 now has five getter
+calls. `ApplyCurrentTheme` is still called by Kryon and maintained Uku, Krait and
+Rill entry points; it is not an unused API. Its remaining palette supplies
+`GetThemeScheme` and the text-content fallback, not widget chrome. Migrating that
+live contract is a separate downstream change, not a reason to keep dead globals.
