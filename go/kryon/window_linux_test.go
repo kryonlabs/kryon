@@ -215,6 +215,103 @@ func TestX11DecodeExposeEvent(t *testing.T) {
 	}
 }
 
+func TestX11DecodeSelectionRequestEvent(t *testing.T) {
+	win := &x11Window{}
+	buf := make([]byte, 32)
+	buf[0] = x11EventSelectionRequestNotify
+	put32(buf[4:], 11)
+	put32(buf[8:], 22)
+	put32(buf[12:], 33)
+	put32(buf[16:], 44)
+	put32(buf[20:], 55)
+	put32(buf[24:], 66)
+
+	event, ok := win.decodeEvent(buf)
+	if !ok || event.kind != x11EventSelectionRequest ||
+		event.time != 11 || event.owner != 22 || event.requestor != 33 ||
+		event.selection != 44 || event.target != 55 || event.property != 66 {
+		t.Fatalf("selection request = %+v, ok=%v", event, ok)
+	}
+}
+
+func TestX11SetClipboardTextOwnsSelection(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	win := &x11Window{conn: client, window: 0x01020304, clipboardAtom: 0x0a0b0c0d}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- win.setClipboardText("hello")
+	}()
+
+	buf := make([]byte, 16)
+	if _, err := readFull(server, buf); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
+	}
+
+	want := []byte{22, 0, 4, 0, 4, 3, 2, 1, 13, 12, 11, 10, 0, 0, 0, 0}
+	if !bytes.Equal(buf, want) {
+		t.Fatalf("SetSelectionOwner request = %#v, want %#v", buf, want)
+	}
+	if !win.clipboardOwned || win.clipboardSelectionText != "hello" {
+		t.Fatalf("clipboard state owned=%v text=%q", win.clipboardOwned, win.clipboardSelectionText)
+	}
+}
+
+func TestX11RespondSelectionRequestWritesUTF8Text(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	win := &x11Window{
+		conn:               client,
+		clipboardAtom:      0x100,
+		utf8StringAtom:     0x101,
+		targetsAtom:        0x102,
+		kryonClipboardAtom: 0x103,
+	}
+	ev := x11Event{
+		time:      0x02030405,
+		requestor: 0x0a0b0c0d,
+		selection: 0x100,
+		target:    0x101,
+		property:  0x0e0f1011,
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- win.respondSelectionRequest(ev, "hello")
+	}()
+
+	change := make([]byte, 32)
+	if _, err := readFull(server, change); err != nil {
+		t.Fatal(err)
+	}
+	if change[0] != 18 || get32(change[4:]) != ev.requestor ||
+		get32(change[8:]) != ev.property || get32(change[12:]) != ev.target ||
+		change[16] != 8 || get32(change[20:]) != 5 || string(change[24:29]) != "hello" {
+		t.Fatalf("ChangeProperty request = %#v", change)
+	}
+
+	notify := make([]byte, 44)
+	if _, err := readFull(server, notify); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errCh; err != nil {
+		t.Fatal(err)
+	}
+	event := notify[12:]
+	if notify[0] != 25 || event[0] != x11EventSelectionNotify ||
+		get32(event[4:]) != ev.time || get32(event[8:]) != ev.requestor ||
+		get32(event[12:]) != ev.selection || get32(event[16:]) != ev.target ||
+		get32(event[20:]) != ev.property {
+		t.Fatalf("SelectionNotify request = %#v", notify)
+	}
+}
+
 func TestX11LoadKeyboardMappingRequestAndDecode(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

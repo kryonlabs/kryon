@@ -37,6 +37,8 @@ type windowRuntime struct {
 	prevOps []FrameOp
 	nextOps []FrameOp
 	dirty   bool
+
+	clipboardText string
 }
 
 func (w *windowRuntime) textWithFont(props TextProps, fontID uint32) {
@@ -93,6 +95,7 @@ func (r *windowRuntime) EndFrame() {
 	if r.window == nil {
 		return
 	}
+	r.publishChangedClipboard()
 	if bus := r.accessibility.current(); bus != nil {
 		bus.windowActive(r.focused)
 		r.window.requestScreenOrigin()
@@ -199,6 +202,10 @@ func (r *windowRuntime) pumpEvents() {
 			if r.ime != nil {
 				r.ime.focusOut()
 			}
+		case x11EventSelectionRequest:
+			_ = r.window.respondSelectionRequest(ev, r.localClipboardText())
+		case x11EventSelectionClear:
+			r.window.clipboardOwned = false
 		case x11EventTap:
 			if c, ok := r.Runtime.(mouseController); ok {
 				c.QueueMouseButtonDown(ev.button, float32(ev.x), float32(ev.y))
@@ -249,6 +256,9 @@ func (r *windowRuntime) queueDecodedKey(event x11Event) {
 	c, ok := r.Runtime.(inputController)
 	if !ok {
 		return
+	}
+	if event.shortcut == KeyV {
+		r.pullClipboard()
 	}
 	if event.shortcut != 0 {
 		if modified, ok := r.Runtime.(modifiedInputController); ok {
@@ -358,6 +368,62 @@ func (r *windowRuntime) FrameOps() []FrameOp {
 	return nil
 }
 
+func (r *windowRuntime) SetClipboardText(text string) {
+	r.setLocalClipboardText(text)
+	r.publishClipboard(text)
+}
+
+func (r *windowRuntime) ClipboardText() string {
+	if r.pullClipboard() {
+		return r.localClipboardText()
+	}
+	return r.localClipboardText()
+}
+
+func (r *windowRuntime) localClipboardText() string {
+	if c, ok := r.Runtime.(clipboardController); ok {
+		return c.ClipboardText()
+	}
+	return ""
+}
+
+func (r *windowRuntime) setLocalClipboardText(text string) {
+	if c, ok := r.Runtime.(clipboardController); ok {
+		c.SetClipboardText(text)
+	}
+}
+
+func (r *windowRuntime) publishChangedClipboard() {
+	text := r.localClipboardText()
+	if text == r.clipboardText {
+		return
+	}
+	r.publishClipboard(text)
+}
+
+func (r *windowRuntime) publishClipboard(text string) {
+	r.clipboardText = text
+	if r.window == nil {
+		return
+	}
+	if err := r.window.setClipboardText(text); err != nil && os.Getenv("KRYON_WINDOW_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "kryon: set clipboard: %v\n", err)
+	}
+}
+
+func (r *windowRuntime) pullClipboard() bool {
+	if r.window == nil {
+		return false
+	}
+	text, ok := r.window.readClipboardText(150 * time.Millisecond)
+	if !ok {
+		return false
+	}
+	r.clipboardText = text
+	r.setLocalClipboardText(text)
+	return true
+}
+
 func (r *windowRuntime) MousePosition() Vector2 {
 	if c, ok := r.Runtime.(compatInputRuntime); ok {
 		return c.MousePosition()
@@ -418,16 +484,19 @@ func (r *windowRuntime) CharPressed() int32 {
 }
 
 const (
-	x11EventKeyPress         = 2
-	x11EventKeyReleaseNotify = 3
-	x11EventButtonPress      = 4
-	x11EventButtonRelease    = 5
-	x11EventMotionNotify     = 6
-	x11EventFocusInNotify    = 9
-	x11EventFocusOutNotify   = 10
-	x11EventExpose           = 12
-	x11EventConfigureNotify  = 22
-	x11EventClientMessage    = 33
+	x11EventKeyPress               = 2
+	x11EventKeyReleaseNotify       = 3
+	x11EventButtonPress            = 4
+	x11EventButtonRelease          = 5
+	x11EventMotionNotify           = 6
+	x11EventFocusInNotify          = 9
+	x11EventFocusOutNotify         = 10
+	x11EventExpose                 = 12
+	x11EventConfigureNotify        = 22
+	x11EventSelectionClearNotify   = 29
+	x11EventSelectionRequestNotify = 30
+	x11EventSelectionNotify        = 31
+	x11EventClientMessage          = 33
 
 	x11InputOutput = 1
 	x11ZPixmap     = 2
@@ -444,7 +513,8 @@ const (
 	x11CWBackPixel = 1 << 1
 	x11CWEventMask = 1 << 11
 
-	x11AtomAtom = 4
+	x11AtomAtom   = 4
+	x11AtomString = 31
 
 	x11ShiftMask    = 1
 	x11ControlMask  = 4
@@ -488,6 +558,13 @@ type x11Window struct {
 	wmProtocols    uint32
 	wmDeleteWindow uint32
 
+	clipboardAtom          uint32
+	utf8StringAtom         uint32
+	targetsAtom            uint32
+	kryonClipboardAtom     uint32
+	clipboardOwned         bool
+	clipboardSelectionText string
+
 	minKeycode uint8
 	maxKeycode uint8
 	keysyms    map[uint8][]uint32
@@ -507,20 +584,28 @@ const (
 	x11EventExposeKind
 	x11EventFocusIn
 	x11EventFocusOut
+	x11EventSelectionRequest
+	x11EventSelectionClear
 )
 
 type x11Event struct {
-	kind     x11EventKind
-	x, y     int
-	button   int32
-	wheel    float32
-	key      int32
-	shortcut int32
-	shift    bool
-	text     string
-	keysym   uint32
-	keycode  uint8
-	state    uint32
+	kind      x11EventKind
+	x, y      int
+	button    int32
+	wheel     float32
+	key       int32
+	shortcut  int32
+	shift     bool
+	text      string
+	keysym    uint32
+	keycode   uint8
+	state     uint32
+	time      uint32
+	owner     uint32
+	requestor uint32
+	selection uint32
+	target    uint32
+	property  uint32
 }
 
 func openX11Window(config AppConfig) (*x11Window, error) {
@@ -774,6 +859,9 @@ func (w *x11Window) create(config AppConfig) error {
 	if err == nil {
 		_ = w.changeAtomProperty(w.wmProtocols, []uint32{w.wmDeleteWindow})
 	}
+	if err := w.initClipboardAtoms(); err != nil {
+		return err
+	}
 	if err := w.createGC(); err != nil {
 		return err
 	}
@@ -866,17 +954,212 @@ func (w *x11Window) changeStringProperty(name, value string) error {
 }
 
 func (w *x11Window) changeAtomProperty(property uint32, atoms []uint32) error {
-	req := make([]byte, 24+len(atoms)*4)
-	req[0] = 18
-	put16(req[2:], uint16(len(req)/4))
-	put32(req[4:], w.window)
-	put32(req[8:], property)
-	put32(req[12:], x11AtomAtom)
-	req[16] = 32
-	put32(req[20:], uint32(len(atoms)))
-	for i, atom := range atoms {
-		put32(req[24+i*4:], atom)
+	return w.changeProperty32(w.window, property, x11AtomAtom, atoms)
+}
+
+func (w *x11Window) initClipboardAtoms() error {
+	var err error
+	if w.clipboardAtom, err = w.internAtom("CLIPBOARD"); err != nil {
+		return err
 	}
+	if w.utf8StringAtom, err = w.internAtom("UTF8_STRING"); err != nil {
+		return err
+	}
+	if w.targetsAtom, err = w.internAtom("TARGETS"); err != nil {
+		return err
+	}
+	if w.kryonClipboardAtom, err = w.internAtom("KRYON_CLIPBOARD"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (w *x11Window) setClipboardText(text string) error {
+	if w.conn == nil || w.clipboardAtom == 0 {
+		return nil
+	}
+	w.clipboardSelectionText = text
+	w.clipboardOwned = true
+	req := make([]byte, 16)
+	req[0] = 22
+	put16(req[2:], 4)
+	put32(req[4:], w.window)
+	put32(req[8:], w.clipboardAtom)
+	put32(req[12:], 0)
+	return w.write(req)
+}
+
+func (w *x11Window) respondSelectionRequest(ev x11Event, text string) error {
+	if w.conn == nil || ev.requestor == 0 {
+		return nil
+	}
+	property := ev.property
+	if property == 0 {
+		property = ev.target
+	}
+	notifyProperty := uint32(0)
+	if ev.selection == w.clipboardAtom {
+		switch ev.target {
+		case w.targetsAtom:
+			atoms := []uint32{w.targetsAtom, w.utf8StringAtom, x11AtomString}
+			if err := w.changeProperty32(ev.requestor, property, x11AtomAtom, atoms); err == nil {
+				notifyProperty = property
+			}
+		case w.utf8StringAtom, x11AtomString:
+			if err := w.changeProperty8(ev.requestor, property, ev.target, []byte(text)); err == nil {
+				notifyProperty = property
+			}
+		}
+	}
+	return w.sendSelectionNotify(ev.requestor, ev.selection, ev.target, notifyProperty, ev.time)
+}
+
+func (w *x11Window) sendSelectionNotify(requestor, selection, target, property, eventTime uint32) error {
+	req := make([]byte, 44)
+	req[0] = 25
+	put16(req[2:], 11)
+	put32(req[4:], requestor)
+	put32(req[8:], 0)
+	event := req[12:]
+	event[0] = x11EventSelectionNotify
+	put32(event[4:], eventTime)
+	put32(event[8:], requestor)
+	put32(event[12:], selection)
+	put32(event[16:], target)
+	put32(event[20:], property)
+	return w.write(req)
+}
+
+func (w *x11Window) readClipboardText(timeout time.Duration) (string, bool) {
+	if w.conn == nil || w.clipboardAtom == 0 || w.utf8StringAtom == 0 || w.kryonClipboardAtom == 0 {
+		return "", false
+	}
+	if w.clipboardOwned {
+		return w.clipboardSelectionText, true
+	}
+	if text, ok := w.convertClipboardTarget(w.utf8StringAtom, timeout); ok {
+		return text, true
+	}
+	return w.convertClipboardTarget(x11AtomString, timeout)
+}
+
+func (w *x11Window) convertClipboardTarget(target uint32, timeout time.Duration) (string, bool) {
+	if err := w.deleteProperty(w.window, w.kryonClipboardAtom); err != nil {
+		return "", false
+	}
+	req := make([]byte, 24)
+	req[0] = 24
+	put16(req[2:], 6)
+	put32(req[4:], w.window)
+	put32(req[8:], w.clipboardAtom)
+	put32(req[12:], target)
+	put32(req[16:], w.kryonClipboardAtom)
+	put32(req[20:], 0)
+	if err := w.write(req); err != nil {
+		return "", false
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		if err := w.conn.SetReadDeadline(deadline); err != nil {
+			return "", false
+		}
+		buf := make([]byte, 32)
+		if _, err := readFull(w.conn, buf); err != nil {
+			_ = w.conn.SetReadDeadline(time.Time{})
+			return "", false
+		}
+		switch buf[0] & 0x7f {
+		case x11EventSelectionNotify:
+			_ = w.conn.SetReadDeadline(time.Time{})
+			if get32(buf[12:]) != w.clipboardAtom || get32(buf[16:]) != target {
+				continue
+			}
+			property := get32(buf[20:])
+			if property == 0 {
+				return "", false
+			}
+			return w.getTextProperty(w.window, property, target)
+		default:
+			if ev, ok := w.decodeEvent(buf); ok && ev.kind == x11EventSelectionRequest {
+				_ = w.respondSelectionRequest(ev, w.clipboardSelectionText)
+			}
+		}
+		if time.Now().After(deadline) {
+			_ = w.conn.SetReadDeadline(time.Time{})
+			return "", false
+		}
+	}
+}
+
+func (w *x11Window) getTextProperty(window, property, target uint32) (string, bool) {
+	req := make([]byte, 24)
+	req[0] = 20
+	req[1] = 0
+	put16(req[2:], 6)
+	put32(req[4:], window)
+	put32(req[8:], property)
+	put32(req[12:], target)
+	put32(req[16:], 0)
+	put32(req[20:], 1<<20)
+	if err := w.write(req); err != nil {
+		return "", false
+	}
+	reply, err := w.readReply()
+	if err != nil {
+		return "", false
+	}
+	if reply[1] != 8 || get32(reply[8:]) == 0 {
+		return "", false
+	}
+	dataLen := int(get32(reply[4:])) * 4
+	data := make([]byte, dataLen)
+	if _, err := readFull(w.conn, data); err != nil {
+		return "", false
+	}
+	n := int(get32(reply[16:]))
+	if n > len(data) {
+		n = len(data)
+	}
+	return string(data[:n]), true
+}
+
+func (w *x11Window) changeProperty8(window, property, typ uint32, data []byte) error {
+	padded := padBytes(data)
+	req := make([]byte, 24+len(padded))
+	req[0] = 18
+	req[1] = 0
+	put16(req[2:], uint16(len(req)/4))
+	put32(req[4:], window)
+	put32(req[8:], property)
+	put32(req[12:], typ)
+	req[16] = 8
+	put32(req[20:], uint32(len(data)))
+	copy(req[24:], padded)
+	return w.write(req)
+}
+
+func (w *x11Window) changeProperty32(window, property, typ uint32, values []uint32) error {
+	req := make([]byte, 24+len(values)*4)
+	req[0] = 18
+	req[1] = 0
+	put16(req[2:], uint16(len(req)/4))
+	put32(req[4:], window)
+	put32(req[8:], property)
+	put32(req[12:], typ)
+	req[16] = 32
+	put32(req[20:], uint32(len(values)))
+	for i, value := range values {
+		put32(req[24+i*4:], value)
+	}
+	return w.write(req)
+}
+
+func (w *x11Window) deleteProperty(window, property uint32) error {
+	req := make([]byte, 12)
+	req[0] = 19
+	put16(req[2:], 3)
+	put32(req[4:], window)
+	put32(req[8:], property)
 	return w.write(req)
 }
 
@@ -944,6 +1227,9 @@ func (w *x11Window) readReply() ([]byte, error) {
 		}
 		if head[0] == 0 {
 			return nil, fmt.Errorf("x11 error opcode=%d code=%d", head[10], head[1])
+		}
+		if ev, ok := w.decodeEvent(head); ok && ev.kind == x11EventSelectionRequest {
+			_ = w.respondSelectionRequest(ev, w.clipboardSelectionText)
 		}
 	}
 }
@@ -1140,6 +1426,20 @@ func (w *x11Window) decodeEvent(buf []byte) (x11Event, bool) {
 		return x11Event{kind: x11EventFocusOut}, true
 	case x11EventExpose:
 		return x11Event{kind: x11EventExposeKind}, true
+	case x11EventSelectionRequestNotify:
+		return x11Event{
+			kind:      x11EventSelectionRequest,
+			time:      get32(buf[4:]),
+			owner:     get32(buf[8:]),
+			requestor: get32(buf[12:]),
+			selection: get32(buf[16:]),
+			target:    get32(buf[20:]),
+			property:  get32(buf[24:]),
+		}, true
+	case x11EventSelectionClearNotify:
+		if w.clipboardAtom != 0 && get32(buf[12:]) == w.clipboardAtom {
+			return x11Event{kind: x11EventSelectionClear}, true
+		}
 	}
 	return x11Event{}, false
 }
