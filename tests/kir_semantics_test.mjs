@@ -8,7 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 import {
-    dumpProgram, findFunction, encodeChecked, evaluate, Unsupported, wrapInt32,
+    dumpProgram, findFunction, encodeChecked, encodeProgram, evaluate, Unsupported, wrapInt32,
 } from '../tools/kir-semantics.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -35,7 +35,7 @@ const cases = [
     [0, 0], [1, 2], [7, 3], [-7, 3], [-7, 2], [100, -7],
     [2147483647, 1], [-2147483648, 1], [-2147483648, 2], [12345, -999],
 ];
-const compared = ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch', 'Loop'];
+const compared = ['Add', 'Sub', 'Div', 'Temp', 'Max', 'Clamp', 'Branch', 'Loop', 'Call', 'Rec'];
 
 async function groundTruth(directory) {
     // Production truth: lower the fixture with k2c and execute it.
@@ -45,7 +45,8 @@ async function groundTruth(directory) {
     const driver = path.join(directory, 'driver.c');
     const calls = compared.flatMap(name =>
         cases.filter(([a, b]) => (name !== 'Div' || b !== 0)
-            && (name !== 'Loop' || (a >= 0 && a <= 100)))
+            && (name !== 'Loop' || (a >= 0 && a <= 100))
+            && (name !== 'Rec' || (a >= 0 && a <= 100)))
             .map(([a, b]) => `    printf("%d\\n", KirSem${name}(${a}, ${b}));`)).join('\n');
     fs.writeFileSync(driver, `#include <stdio.h>
 #include "tests/fixtures/kir_semantics.h"
@@ -66,16 +67,9 @@ test('checked evaluator agrees with the k2c lowering over exact i32 semantics', 
         const program = dumpProgram(binDir, root,
             fixture, path.join(directory, 'kir'));
         const truth = await groundTruth(directory);
-        const encoders = {
-            Add: encodeChecked(findFunction(program, 'KirSemAdd')),
-            Sub: encodeChecked(findFunction(program, 'KirSemSub')),
-            Div: encodeChecked(findFunction(program, 'KirSemDiv')),
-            Temp: encodeChecked(findFunction(program, 'KirSemTemp')),
-            Max: encodeChecked(findFunction(program, 'KirSemMax')),
-            Clamp: encodeChecked(findFunction(program, 'KirSemClamp')),
-            Branch: encodeChecked(findFunction(program, 'KirSemBranch')),
-            Loop: encodeChecked(findFunction(program, 'KirSemLoop')),
-        };
+        const encoders = {};
+        const moduleFunctions = encodeProgram(program);
+        for (const name of compared) encoders[name] = moduleFunctions.get(`KirSem${name}`);
         let index = 0;
         for (const name of compared) {
             for (const [a, b] of cases) {
@@ -85,7 +79,7 @@ test('checked evaluator agrees with the k2c lowering over exact i32 semantics', 
                     assert.throws(() => evaluate(encoders[name], [a, b]), Unsupported);
                     continue;
                 }
-                if (name === 'Loop' && !(a >= 0 && a <= 100)) continue;
+                if ((name === 'Loop' || name === 'Rec') && !(a >= 0 && a <= 100)) continue;
                 const expected = truth[index++];
                 const actual = evaluate(encoders[name], [a, b]);
                 assert.equal(actual, BigInt(expected),
@@ -99,10 +93,21 @@ test('constructs outside the reviewed subset are rejected with a span', async ()
     await temporary(async directory => {
         const program = dumpProgram(binDir, root,
             fixture, path.join(directory, 'kir'));
-        assert.throws(() => encodeChecked(findFunction(program, 'KirSemCall')),
+        assert.throws(() => encodeChecked(findFunction(program, 'KirSemFloat')),
             error => error instanceof Unsupported
-                && /expression kind call/.test(error.message)
+                && /type float not in subset/.test(error.message)
                 && /kir_semantics\.kry:\d+/.test(error.span));
+    });
+});
+
+test('call depth exhaustion is inconclusive, not a semantic claim', async () => {
+    await temporary(async directory => {
+        const program = dumpProgram(binDir, root,
+            fixture, path.join(directory, 'kir'));
+        const rec = encodeProgram(program).get('KirSemRec');
+        assert.equal(evaluate(rec, [10, 0]), 10n);
+        assert.throws(() => evaluate(rec, [50, 0], { callDepth: 10 }),
+            error => error instanceof Unsupported && /call budget exhausted/.test(error.message));
     });
 });
 

@@ -50,6 +50,16 @@ KirSemAbs :: (v: i32) -> i32 #export {
     return v
 }
 
-KirSemCall :: (v: i32) -> i32 #export {
+KirSemCall :: (v: i32, unused: i32) -> i32 #export {
     return KirSemAbs(v)
+}
+
+KirSemRec :: (n: i32, unused: i32) -> i32 #export {
+    if n <= 0 { return 0 }
+    return KirSemRec(n - 1, 0) + 1
+}
+
+KirSemFloat :: (v: i32) -> i32 #export {
+    x: float = 1.5
+    return v + (i32)x
 }

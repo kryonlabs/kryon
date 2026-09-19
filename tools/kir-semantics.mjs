@@ -124,6 +124,12 @@ export function encodeChecked(fn) {
                     left: encodeExpr(node.children[0]), right: encodeExpr(node.children[1]),
                     span: node.span,
                 };
+            case 'call':
+                if (!node.name) throw new Unsupported('call without a callee name', node.span);
+                return {
+                    op: 'call', callee: node.name,
+                    args: node.children.map(encodeExpr), span: node.span,
+                };
             default:
                 throw new Unsupported(`expression kind ${node.kind}`, node.span);
         }
@@ -203,16 +209,20 @@ export function structureBody(encoded) {
 }
 // Evaluate an encoded function with exact two's-complement i32 semantics.
 // Division and remainder follow C truncation toward zero; && and || short
-// circuit and yield 0/1 like C. Loops run under an explicit fuel budget:
-// exhaustion means the run is inconclusive (Unsupported), never a claim of
-// termination or equality.
+// circuit and yield 0/1 like C. Calls inline same-module encoded callees
+// with left-to-right argument evaluation and fresh environments. Loops and
+// call depth run under explicit fuel budgets: exhaustion means the run is
+// inconclusive (Unsupported), never a claim of termination or equality.
 export function evaluate(encoded, argumentValues, opts = {}) {
     let fuel = opts.fuel ?? 10000;
+    let callDepth = opts.callDepth ?? 256;
+    const callees = opts.callees ?? encoded.callees ?? null;
     if (argumentValues.length !== encoded.args.length) {
         throw new Unsupported(`arity mismatch for ${encoded.name}`);
     }
+    const runFunction = (fn, argValues) => {
     const env = new Map();
-    encoded.args.forEach((arg, i) => env.set(arg.name, wrapInt32(BigInt(argumentValues[i]))));
+    fn.args.forEach((arg, i) => env.set(arg.name, wrapInt32(BigInt(argValues[i]))));
     const evalExpr = node => {
         switch (node.op) {
             case 'lit': return node.value;
@@ -243,6 +253,20 @@ export function evaluate(encoded, argumentValues, opts = {}) {
                 if (node.kind === '>=') return left >= right ? 1n : 0n;
                 if (right === 0n) throw new Unsupported('division by zero is a trap, not a value', node.span);
                 return wrapInt32(left / right); // BigInt division truncates toward zero
+            }
+            case 'call': {
+                const callee = callees?.get(node.callee);
+                if (!callee) throw new Unsupported(`call to unencodable or unknown function ${node.callee}`, node.span);
+                if (node.args.length !== callee.args.length) {
+                    throw new Unsupported(`call arity mismatch for ${node.callee}`, node.span);
+                }
+                if (callDepth <= 0 || fuel <= 0) {
+                    throw new Unsupported('call budget exhausted: inconclusive, not a semantic claim', node.span);
+                }
+                callDepth--;
+                fuel--;
+                const values = node.args.map(evalExpr); // arguments evaluate left to right
+                return runFunction(callee, values);
             }
             default: throw new Unsupported(`encoded op ${node.op}`, node.span);
         }
@@ -276,9 +300,30 @@ export function evaluate(encoded, argumentValues, opts = {}) {
         }
         return undefined;
     };
-    const done = exec(encoded.body);
-    if (!done) throw new Unsupported(`no return reached in ${encoded.name}`, encoded.span);
+    const done = exec(fn.body);
+    if (!done) throw new Unsupported(`no return reached in ${fn.name}`, fn.span);
     return done.value;
+    };
+    return runFunction(encoded, argumentValues);
+}
+
+// Encode every function in a program that fits the reviewed subset. Calls
+// resolve against the successfully encoded functions; calling anything else
+// stays unsupported. Each encoded function carries the module map so the
+// evaluator can inline callees.
+export function encodeProgram(program) {
+    const encoded = new Map();
+    for (const module of program.modules) {
+        for (const fn of module.functions) {
+            try {
+                encoded.set(fn.name, encodeChecked(fn));
+            } catch (error) {
+                if (!(error instanceof Unsupported)) throw error;
+            }
+        }
+    }
+    for (const fn of encoded.values()) fn.callees = encoded;
+    return encoded;
 }
 
 // Run k2kir over one source file and return the parsed dump.
