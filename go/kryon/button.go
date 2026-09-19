@@ -1352,67 +1352,89 @@ func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFra
 		var value_7 string = ""
 		props.Label = value_7
 	}
-	var value_8 ButtonProps = props
-	result.Props = value_8
-	var value_9 StyleFrame = appearance
-	result.Appearance = value_9
-	var value_10 Rectangle = props.Bounds
-	result.Material.Bounds = value_10
-	var value_11 Rectangle = surface
-	result.Material.Surface = value_11
-	var value_12 StyleData = appearance.Value
-	result.Material.Value = value_12
-	var value_13 uint32 = appearance.Value.Border
-	result.Material.Light = value_13
-	var value_14 uint32 = ambient
-	result.Material.Ambient = value_14
-	var value_15 float32 = motion.Hover.Value
-	result.Material.Hover = value_15
-	var value_16 float32 = motion.Press.Value
-	result.Material.Press = value_16
-	var value_17 float32 = motion.Focus.Value
-	result.Material.Focus = value_17
-	var value_18 bool = props.Disabled
-	result.Material.Disabled = value_18
-	var value_19 FillStates = appearance.Fill
-	result.Material.Fill = value_19
-	var value_20 bool = true
-	result.Material.FillValid = value_20
-	var value_21 float32 = scale
-	result.Material.Scale = value_21
-	var value_22 MaterialPaint = result.Material
-	var value_23 MaterialPaint = Material_PrepareMaterial(value_22)
-	result.Material = value_23
-	var value_24 Rectangle = props.Bounds
-	var value_25 float32 = appearance.Value.PaddingX
-	var value_26 float32 = appearance.Value.PaddingY
-	var value_27 float32 = result.Material.Scale
-	var value_28 Rectangle = Style_InsetBounds(value_24, value_25, value_26, value_27)
-	result.ContentBounds = value_28
-	var value_29 int32 = 0
-	var value_30 int32 = style_font
-	var value_31 int32 = fallback_font
-	var value_32 int32 = Style_ResolveFont(value_29, value_30, value_31)
-	result.Font = value_32
-	var value_33 uint32 = appearance.Value.Foreground
-	var value_34 float32 = appearance.Value.Opacity
-	var value_35 uint32 = Surface_Opacity(value_33, value_34)
-	result.Foreground = value_35
-	var value_36 bool = motion.Active
-	var value_37 bool = value_36
-	if !value_37 {
-		var value_38 bool = props.Loading
-		var value_39 bool = value_38
-		if value_39 {
-			var value_40 bool = props.Disabled
-			var value_41 bool = !value_40
-			value_39 = value_41
+	var value_8 bool = props.Circle
+	if value_8 {
+		var value_9 float32 = scale
+		var shape_scale float32 = value_9
+		var value_10 float32 = shape_scale
+		var value_11 float32 = 0.0
+		var value_12 bool = value_10 <= value_11
+		if value_12 {
+			var value_13 float32 = 1.0
+			shape_scale = value_13
 		}
-		value_37 = value_39
+		var value_14 float32 = props.Bounds.Height
+		var value_15 float32 = 0.5
+		var value_16 float32 = value_14 * value_15
+		var value_17 float32 = shape_scale
+		var value_18 float32 = value_16 / value_17
+		appearance.Value.Radius = value_18
+		var value_19 uint32 = appearance.Value.Fields
+		var value_20 int32 = int32(StyleRadius)
+		var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+		appearance.Value.Fields = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 9))
 	}
-	result.Repaint = value_37
-	var value_42 ButtonFrame = result
-	return value_42
+	var value_22 ButtonProps = props
+	result.Props = value_22
+	var value_23 StyleFrame = appearance
+	result.Appearance = value_23
+	var value_24 Rectangle = props.Bounds
+	result.Material.Bounds = value_24
+	var value_25 Rectangle = surface
+	result.Material.Surface = value_25
+	var value_26 StyleData = appearance.Value
+	result.Material.Value = value_26
+	var value_27 uint32 = appearance.Value.Border
+	result.Material.Light = value_27
+	var value_28 uint32 = ambient
+	result.Material.Ambient = value_28
+	var value_29 float32 = motion.Hover.Value
+	result.Material.Hover = value_29
+	var value_30 float32 = motion.Press.Value
+	result.Material.Press = value_30
+	var value_31 float32 = motion.Focus.Value
+	result.Material.Focus = value_31
+	var value_32 bool = props.Disabled
+	result.Material.Disabled = value_32
+	var value_33 FillStates = appearance.Fill
+	result.Material.Fill = value_33
+	var value_34 bool = true
+	result.Material.FillValid = value_34
+	var value_35 float32 = scale
+	result.Material.Scale = value_35
+	var value_36 MaterialPaint = result.Material
+	var value_37 MaterialPaint = Material_PrepareMaterial(value_36)
+	result.Material = value_37
+	var value_38 Rectangle = props.Bounds
+	var value_39 float32 = appearance.Value.PaddingX
+	var value_40 float32 = appearance.Value.PaddingY
+	var value_41 float32 = result.Material.Scale
+	var value_42 Rectangle = Style_InsetBounds(value_38, value_39, value_40, value_41)
+	result.ContentBounds = value_42
+	var value_43 int32 = 0
+	var value_44 int32 = style_font
+	var value_45 int32 = fallback_font
+	var value_46 int32 = Style_ResolveFont(value_43, value_44, value_45)
+	result.Font = value_46
+	var value_47 uint32 = appearance.Value.Foreground
+	var value_48 float32 = appearance.Value.Opacity
+	var value_49 uint32 = Surface_Opacity(value_47, value_48)
+	result.Foreground = value_49
+	var value_50 bool = motion.Active
+	var value_51 bool = value_50
+	if !value_51 {
+		var value_52 bool = props.Loading
+		var value_53 bool = value_52
+		if value_53 {
+			var value_54 bool = props.Disabled
+			var value_55 bool = !value_54
+			value_53 = value_55
+		}
+		value_51 = value_53
+	}
+	result.Repaint = value_51
+	var value_56 ButtonFrame = result
+	return value_56
 }
 
 func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float64, disclosure bool, surface SurfacePainter, draw Painter) {

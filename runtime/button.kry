@@ -543,6 +543,12 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     props.selected = input.flags.selected
     props.pill = props.pill || props.circle
     if props.loading { props.label = "" }
+    if props.circle {
+        shape_scale: float = scale
+        if shape_scale <= 0.0 { shape_scale = 1.0 }
+        appearance.value.radius = props.bounds.height * 0.5 / shape_scale
+        appearance.value.fields |= (u32)StyleRadius
+    }
     result.props = props
     result.appearance = appearance
     result.material.bounds = props.bounds

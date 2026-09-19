@@ -67,5 +67,13 @@ main(void)
     assert(ButtonArrowGlyph(ArrowUp) == 94);
     assert(ButtonArrowGlyph(ArrowDown) == 118);
     assert(ButtonArrowGlyph(ArrowLeft) == 60);
+    StyleFrame appearance = {0};
+    appearance.value.radius = 8;
+    ButtonFrame circle = BuildFrame((ButtonProps){
+        .bounds = {0, 0, 96, 96}, .circle = true},
+        (ButtonInput){0}, appearance, (InteractionMotion){0},
+        (Rectangle){0}, 0, 2, 16, 16);
+    assert(circle.material.value.radius == 24);
+    assert(circle.appearance.value.radius == 24);
     return 0;
 }

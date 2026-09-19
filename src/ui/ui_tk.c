@@ -2990,11 +2990,11 @@ ui_update_slider(SliderProps slider)
             NUMERIC_EDIT_SLIDER_INT : NUMERIC_EDIT_SLIDER_FLOAT, slider.id, 0);
         double value = ui_slider_value(slider, 0);
         int decrement = Button((ButtonProps){.id = state->token + 1,
-            .bounds = layout.decrement, .label = "−", .pill = 1,
+            .bounds = layout.decrement, .label = "-", .circle = 1,
             .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
             .disabled = slider.disabled || value <= slider.min || slider.max <= slider.min});
         int increment = Button((ButtonProps){.id = state->token + 2,
-            .bounds = layout.increment, .label = "+", .pill = 1,
+            .bounds = layout.increment, .label = "+", .circle = 1,
             .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
             .disabled = slider.disabled || value >= slider.max || slider.max <= slider.min});
         int direction = increment - decrement;

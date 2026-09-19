@@ -993,9 +993,9 @@ func (r *runtime) Slider(props SliderProps) bool {
 		}
 		input := r.numericInputState(numericInputKey{kind: kind, widgetID: props.ID}, "")
 		value := sliderValue(props, 0)
-		decrement := r.Button(ButtonProps{ID: input.token + 1, Bounds: layout.Decrement, Label: "−", Pill: true,
+		decrement := r.Button(ButtonProps{ID: input.token + 1, Bounds: layout.Decrement, Label: "-", Circle: true,
 			Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: props.Disabled || value <= props.Min || props.Max <= props.Min})
-		increment := r.Button(ButtonProps{ID: input.token + 2, Bounds: layout.Increment, Label: "+", Pill: true,
+		increment := r.Button(ButtonProps{ID: input.token + 2, Bounds: layout.Increment, Label: "+", Circle: true,
 			Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: props.Disabled || value >= props.Max || props.Max <= props.Min})
 		direction := 0
 		if decrement {
