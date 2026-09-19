@@ -167,7 +167,8 @@ check_popup_capture(void)
     PopupDecision modal = PopupDecisionFor(2, false);
     PopupDecision tooltip = PopupDecisionFor(1, false);
     PopupDismissDecision dismiss;
-    PopupEscapeDecision escape;
+    PopupLifecycle escape;
+    PopupFrameInput input = {0};
 
     assert(plain.captures_input);
     assert(modal.captures_input);
@@ -177,9 +178,13 @@ check_popup_capture(void)
     assert(!dismiss.close);
     assert(!dismiss.consume_release);
 
-    escape = PopupEscapeFor(true, true, true);
-    assert(!escape.close);
-    assert(!escape.end_input);
+    input.id = 1;
+    input.bounds = (Rectangle){0, 0, 100, 80};
+    input.open = true;
+    input.has_open = true;
+    escape = PopupLifecycleKeyboard(PopupLifecycleBegin(0, input), true, true);
+    assert(escape.visible);
+    assert(!escape.close_input);
 }
 
 static void

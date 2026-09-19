@@ -108,8 +108,11 @@ func TestInteractionPolicyMatrixPopupCapture(t *testing.T) {
 		t.Fatalf("popup ignored consumed release changed: %+v", dismiss)
 	}
 
-	escape := PopupPolicy_PopupEscapeFor(true, true, true)
-	if escape.Close || escape.EndInput {
+	state := PopupPolicy_PopupLifecycleBegin(0, PopupFrameInput{
+		ID: 1, Bounds: NewRectangle(0, 0, 100, 80), Open: true, HasOpen: true,
+	})
+	escape := PopupPolicy_PopupLifecycleKeyboard(state, true, true)
+	if !escape.Visible || escape.CloseInput {
 		t.Fatalf("popup keyboard capture suppression changed: %+v", escape)
 	}
 }

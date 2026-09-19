@@ -1653,7 +1653,8 @@ dismissal uses the same caller-owned state: set the `open` value to false.
 Tooltip, modal, and context behavior are selected by popup flags.
 
 With `PopupTooltip`, `open` is optional and visibility is derived from pointer
-hover over `trigger`. The tooltip uses the same arbitrary-child paint and layout
+hover over `trigger`. Clipped, disabled or input-captured triggers do not show
+the tooltip. The tooltip uses the same arbitrary-child paint and layout
 scope, but does not enter popup input capture: controls beneath it continue to
 receive input. Tooltip bounds and child positions are explicit, keeping sizing
 and placement in the retained layout rather than creating a second text-only

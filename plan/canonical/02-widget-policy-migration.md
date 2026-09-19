@@ -5,8 +5,9 @@ is an implementation inventory, not another API rename.
 
 - Audit branches and defaults in `src/ui/ui.c`, `src/ui/ui_tk.c`,
   `src/ui/ui_text.c`, and `src/ui/ui_text_layout.c`.
-- Include handwritten `go/kryon/runtime.go` and `web/kryon-runtime.js` in the
-  inventory. Generated policy files existing beside them is insufficient.
+- Include handwritten `go/kryon/runtime.go` in the active inventory. Retain
+  `web/kryon-runtime.js` only as historical input for the future web target.
+  Generated policy files existing beside hosts is insufficient.
 - Record the owning `.kry` function or a specific storage/measurement/paint/OS
   reason for every retained behavior. Move unowned decisions into `runtime/`.
 - Regenerate outputs and test behavior through the host callers, including
@@ -16,5 +17,15 @@ Completed in this cleanup: C text shortcuts, menu Escape/dismissal suppression,
 Collapsible key priority, and Go menu Escape/Collapsible/text command routing.
 Do not reintroduce separate implementations while finishing the other callers.
 
+Composed popup admission, hover/context activation, release dismissal,
+Escape and explicit/caller close now execute through `PopupLifecycle` in
+`runtime/popup_policy.kry` in both native hosts. The standalone Escape wrappers
+and native lifecycle branches have been removed. `make popup-policy-test`
+covers C/C++ transitions; C and Go host tests cover blocked tooltip triggers,
+modal capture, nested Escape/focus restoration and scope closure. Generated
+C/Go composed-popup parity remains an active gate. The input registry's
+ancestry/focus/retirement algorithms and other composed widgets remain open.
+
 Done when the ownership inventory has no unexplained policy and each moved
-rule has C/Go/web evidence. Validation commands are in `README.md`.
+rule has active C/Go evidence. Future web work has a separate roadmap.
+Validation commands are in `README.md`.

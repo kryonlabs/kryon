@@ -3912,6 +3912,92 @@ test_composed_tooltip_scope(void)
 }
 
 static void
+test_composed_tooltip_trigger_visibility(void)
+{
+    PopupInput *context = ui_popup_input_create();
+    for (int scenario = 0; scenario < 5; scenario++) {
+        bool open = true;
+        InjectReset();
+        InjectMousePosition(scenario == 4 ? 100 : 30, 25);
+        InjectPump();
+        BeginInterfaceFrame(240, 180, 1);
+        ui_popup_input_frame(context);
+        PopupInput *previous = ui_popup_input_bind(context);
+        if (scenario == 1) {
+            DisabledScope(1);
+        }
+        if (scenario == 2) {
+            PushInputClip((Rectangle){60, 10, 40, 40});
+        }
+        if (scenario == 3) {
+            check_int("tooltip blocker modal opens", PopupScope((PopupProps){
+                .id = 29800, .bounds = {80, 60, 120, 80},
+                .open = &open, .flags = PopupModal}), 1);
+            PopupEndScope();
+        }
+        int visible = PopupScope((PopupProps){
+            .id = 29801, .bounds = {80, 60, 120, 80},
+            .trigger = {20, 20, 80, 30}, .flags = PopupTooltip, .open = &open});
+        check_int("tooltip requires reachable trigger", visible, scenario == 0);
+        if (visible) {
+            popup_close_scope();
+            check_int("tooltip close leaves caller state alone", open, 1);
+            PopupEndScope();
+        }
+        if (scenario == 1) {
+            DisabledEndScope();
+        }
+        if (scenario == 2) {
+            PopInputClip();
+        }
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        EndInterfaceFrame();
+    }
+    ui_popup_input_destroy(context);
+    InjectReset();
+}
+
+static void
+test_composed_popup_nested_escape(void)
+{
+    bool parent = true, child = true;
+    PopupInput *context = ui_popup_input_create();
+    InjectReset();
+    SetFocus(29820);
+    for (int frame = 0; frame < 2; frame++) {
+        if (frame == 1) {
+            InjectKeyTap(KEY_ESCAPE);
+            InjectPump();
+        }
+        BeginInterfaceFrame(240, 180, 1);
+        ui_popup_input_frame(context);
+        PopupInput *previous = ui_popup_input_bind(context);
+        BeginTree(Key("nested Escape ownership"));
+        check_int("nested Escape keeps parent open", PopupScope((PopupProps){
+            .id = 29821, .bounds = {10, 10, 200, 150}, .open = &parent}), 1);
+        Button((ButtonProps){.id = 29822, .bounds = {20, 20, 80, 24}, .label = "Parent"});
+        int visible = PopupScope((PopupProps){
+            .id = 29823, .bounds = {80, 60, 120, 80}, .open = &child});
+        check_int("nested Escape closes child", visible, frame == 0);
+        if (visible) {
+            Button((ButtonProps){.id = 29824, .bounds = {90, 70, 80, 24}, .label = "Child"});
+            PopupEndScope();
+        }
+        PopupEndScope();
+        EndTree();
+        ui_popup_input_finish(context);
+        ui_popup_input_bind(previous);
+        EndInterfaceFrame();
+    }
+    check_int("nested Escape preserves parent state", parent, 1);
+    check_int("nested Escape updates child state", child, 0);
+    check_int("nested Escape restores parent focus", GetFocus(), 29822);
+    ui_popup_input_destroy(context);
+    InjectReset();
+}
+
+static void
 test_composed_modal_scope(void)
 {
     bool open = true;
@@ -5679,6 +5765,8 @@ main(void)
     test_composed_popup_children_scope();
     test_composed_popup_scope();
     test_composed_tooltip_scope();
+    test_composed_tooltip_trigger_visibility();
+    test_composed_popup_nested_escape();
     test_composed_modal_scope();
     test_composed_context_popup_scope();
     test_composed_popup_focus_lifecycle();

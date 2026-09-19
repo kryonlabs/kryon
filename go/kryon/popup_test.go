@@ -362,3 +362,112 @@ func TestComposedPopupScopeBalance(t *testing.T) {
 	}()
 	r.PopupEndScope()
 }
+
+func TestComposedTooltipTriggerVisibility(t *testing.T) {
+	for _, scenario := range []string{"available", "disabled", "clipped", "modal", "edge"} {
+		t.Run(scenario, func(t *testing.T) {
+			r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+			r.QueueMouseMove(30, 25)
+			if scenario == "edge" {
+				r.QueueMouseMove(100, 25)
+			}
+			r.BeginFrame()
+			if scenario == "disabled" {
+				r.DisabledScope(true)
+			}
+			if scenario == "clipped" {
+				r.scrollClips = append(r.scrollClips, NewRectangle(60, 10, 40, 40))
+			}
+			if scenario == "modal" {
+				open := true
+				if !r.PopupScope(PopupProps{ID: 29800, Bounds: NewRectangle(80, 60, 120, 80), Open: &open, Flags: PopupModal}) {
+					t.Fatal("modal did not open")
+				}
+				r.PopupEndScope()
+			}
+			visible := r.PopupScope(PopupProps{
+				ID: 29801, Bounds: NewRectangle(80, 60, 120, 80),
+				Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupTooltip,
+			})
+			if visible {
+				r.PopupEndScope()
+			}
+			if scenario == "disabled" {
+				r.DisabledEndScope()
+			}
+			if scenario == "clipped" {
+				r.scrollClips = r.scrollClips[:len(r.scrollClips)-1]
+			}
+			r.EndFrame()
+			if visible != (scenario == "available") {
+				t.Fatalf("tooltip visible=%v for %s trigger", visible, scenario)
+			}
+		})
+	}
+}
+
+func TestComposedTooltipExplicitCloseDropsPaint(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	callerOpen := true
+	r.QueueMouseMove(30, 25)
+	r.BeginFrame()
+	if !r.PopupScope(PopupProps{ID: 29810, Bounds: NewRectangle(80, 60, 120, 80),
+		Trigger: NewRectangle(20, 20, 80, 30), Flags: PopupTooltip, Open: &callerOpen}) {
+		t.Fatal("tooltip did not open")
+	}
+	r.popupCloseScope()
+	r.PopupEndScope()
+	r.EndFrame()
+	if !callerOpen {
+		t.Fatal("hover-derived tooltip changed caller-owned open state")
+	}
+	for _, op := range r.FrameOps() {
+		if op.ID == 29810 {
+			t.Fatal("explicitly closed tooltip retained its paint")
+		}
+	}
+}
+
+func TestComposedPopupEscapeClosesOnlyNestedOwner(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	parent, child := true, true
+	r.setFocus(29820)
+	for frame := 0; frame < 2; frame++ {
+		if frame == 1 {
+			r.QueueKey(KeyEscape)
+		}
+		r.BeginFrame()
+		if !r.PopupScope(PopupProps{ID: 29821, Bounds: NewRectangle(10, 10, 200, 150), Open: &parent}) {
+			t.Fatal("nested Escape closed the parent popup")
+		}
+		r.Button(ButtonProps{ID: 29822, Bounds: NewRectangle(20, 20, 80, 24), Label: "Parent"})
+		visible := r.PopupScope(PopupProps{ID: 29823, Bounds: NewRectangle(80, 60, 120, 80), Open: &child})
+		if visible != (frame == 0) {
+			t.Fatalf("child visibility=%v on frame %d", visible, frame)
+		}
+		if visible {
+			r.Button(ButtonProps{ID: 29824, Bounds: NewRectangle(90, 70, 80, 24), Label: "Child"})
+			r.PopupEndScope()
+		}
+		r.PopupEndScope()
+		r.EndFrame()
+	}
+	if !parent || child || r.Focus() != 29822 || len(r.popupInputScopes) != 0 {
+		t.Fatalf("nested close parent=%v child=%v focus=%d active=%v", parent, child, r.Focus(), r.popupInputScopes)
+	}
+}
+
+func TestComposedPopupConsumesOnlyDismissalTap(t *testing.T) {
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	open := true
+	r.QueueTap(200, 150)
+	r.QueueTap(210, 160)
+	r.BeginFrame()
+	if r.PopupScope(PopupProps{ID: 29830, Bounds: NewRectangle(10, 10, 100, 80), Open: &open}) {
+		t.Fatal("outside tap did not dismiss popup")
+	}
+	if open || !r.taps[0].consumed || r.taps[1].consumed {
+		t.Fatalf("dismissal consumed the wrong events: open=%v taps=%+v", open, r.taps)
+	}
+	r.EndFrame()
+}

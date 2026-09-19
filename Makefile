@@ -802,9 +802,12 @@ modal-policy-test: $(GENERATED_SRC_DIR)/runtime/modal.c $(GENERATED_SRC_DIR)/run
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/modal_policy_test.c $(GENERATED_SRC_DIR)/runtime/modal.c -lm -o $(MODAL_POLICY_TEST)
 	$(MODAL_POLICY_TEST)
 
-popup-policy-test: $(GENERATED_SRC_DIR)/runtime/popup_policy.c $(GENERATED_SRC_DIR)/runtime/popup_policy.h
+popup-policy-test: $(GENERATED_SRC_DIR)/runtime/popup_policy.c $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(K2CPP)
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/popup_policy_test.c $(GENERATED_SRC_DIR)/runtime/popup_policy.c -lm -o $(BUILD_DIR)/popup-policy-test
 	$(BUILD_DIR)/popup-policy-test
+	$(K2CPP) --strict --no-main --root . -o $(BUILD_DIR)/tests/popup-cpp runtime/popup_policy.kry runtime/drawing_props.kry
+	$(CXX) -std=c++11 -Wall -Werror -Iinclude -I$(BUILD_DIR)/tests/popup-cpp tests/popup_policy_test.c $(BUILD_DIR)/tests/popup-cpp/runtime/popup_policy.cpp -lm -o $(BUILD_DIR)/tests/popup-cpp/check
+	$(BUILD_DIR)/tests/popup-cpp/check
 
 menu-policy-test: $(GENERATED_SRC_DIR)/runtime/menu.c $(GENERATED_SRC_DIR)/runtime/menu.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/menu_policy_test.c $(GENERATED_SRC_DIR)/runtime/menu.c -lm -o $(MENU_POLICY_TEST)

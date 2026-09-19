@@ -5,7 +5,6 @@
 #include "ui_input_clip_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/popup_policy.h"
-#include <limits.h>
 #include <stdlib.h>
 
 typedef struct ComposedPopupScope {
@@ -16,7 +15,7 @@ typedef struct ComposedPopupScope {
     TreeLayoutScopeState layout;
     DisabledScopeState disabled;
     InputClipScopeState input_clip;
-    Rectangle popup;
+    PopupLifecycle state;
     int id, has_paint, has_input, has_clip;
     bool local_open;
     bool *open;
@@ -24,67 +23,74 @@ typedef struct ComposedPopupScope {
 
 static ComposedPopupScope *popup_scope;
 
-static int
-enter_popup_scope(int id, bool *open, Rectangle popup,
-                  PaintLayers *layers, PopupInputToken input,
-                  int capture_input, Rectangle input_bounds, int backdrop,
-                  int class_name)
+static void
+apply_popup_state(PopupLifecycle state, bool *open, PopupInput *context, int id)
 {
-    PopupInput *context = capture_input ?
+    if (state.eligible && !state.decision.tooltip && open) {
+        *open = state.open;
+    }
+    if (state.close_input && context) {
+        ui_popup_input_close(context, id);
+    }
+}
+
+static int
+enter_popup_scope(PopupProps popup, PopupLifecycle state, PaintLayers *layers)
+{
+    PopupInput *context = state.decision.captures_input ?
         (layers ? ui_paint_layers_input(layers) : ui_popup_input_bound()) : NULL;
-    PopupKeyboardInput keyboard_input;
-    PopupEscapeDecision escape_decision;
-    if(context && !input.context)
-        input = ui_popup_input_begin(context,id,input_bounds);
-    keyboard_input = PopupKeyboardInputFor(IsKeyPressed(KEY_ESCAPE) != 0);
-    escape_decision = PopupEscapeDecisionFor(
-        capture_input != 0, keyboard_input,
-        ui_popup_input_keyboard_captures() != 0);
-    if(escape_decision.close) {
-        PopupOpenResult open_result =
-            PopupOpenFor(open != NULL ? *open : false, false, true,
-                         open != NULL);
-        if(open) *open = open_result.open;
-        if(context) {
-            ui_popup_input_close(context,id);
-            if(escape_decision.end_input)
-                ui_popup_input_end(input);
+    PopupInputToken input = {0};
+    if (context) {
+        input = ui_popup_input_begin(context, popup.id, state.input_bounds);
+    }
+    state = PopupLifecycleKeyboard(state, IsKeyPressed(KEY_ESCAPE) != 0,
+                                   ui_popup_input_keyboard_captures() != 0);
+    apply_popup_state(state, popup.open, context, popup.id);
+    if (!state.visible) {
+        if (context) {
+            ui_popup_input_end(input);
         }
         return 0;
     }
 
-    ComposedPopupScope *scope = calloc(1,sizeof(*scope));
-    if(!scope) abort();
+    ComposedPopupScope *scope = calloc(1, sizeof(*scope));
+    if (!scope) {
+        abort();
+    }
     scope->previous = popup_scope;
     scope->layers = layers;
     scope->input = input;
     scope->has_input = context != NULL;
-    scope->popup = popup;
-    scope->id = id;
-    scope->local_open = true;
-    scope->open = open ? open : &scope->local_open;
-    if(layers) {
-        scope->paint = ui_paint_layer_begin(layers,id);
+    scope->state = state;
+    scope->id = popup.id;
+    scope->local_open = state.open;
+    scope->open = state.decision.tooltip ? &scope->local_open : popup.open;
+    if (layers) {
+        scope->paint = ui_paint_layer_begin(layers, popup.id);
         scope->has_paint = 1;
     } else {
         scope->layout = ui_tree_layout_suspend();
         scope->disabled = ui_disabled_suspend();
         scope->input_clip = ui_input_clip_suspend();
     }
-    if(backdrop) SetModalCapture(popup);
-    if(backdrop && IsWindowReady())
-        DrawRectangle(0,0,GetViewWidth(),GetViewHeight(),
-                      (Color){0,0,0,180});
-    PushInputClip(popup);
-    if(IsWindowReady()) {
-        BeginClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
+    if (state.backdrop_alpha > 0) {
+        SetModalCapture(popup.bounds);
+        if (IsWindowReady()) {
+            DrawRectangle(0, 0, GetViewWidth(), GetViewHeight(),
+                          (Color){0, 0, 0, (unsigned char)state.backdrop_alpha});
+        }
+    }
+    PushInputClip(popup.bounds);
+    if (IsWindowReady()) {
+        BeginClip((int)popup.bounds.x, (int)popup.bounds.y,
+                  (int)popup.bounds.width, (int)popup.bounds.height);
         Style panel = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){.tone = ButtonToneNeutral,
                           .emphasis = ButtonEmphasisSoft,
-                          .class_name = class_name},
+                          .class_name = popup.class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindPopup(), PopupPanelRole()).value);
-        ui_draw_material(popup, (Rectangle){0}, panel.background, panel.border,
+        ui_draw_material(popup.bounds, (Rectangle){0}, panel.background, panel.border,
                          panel.border, panel.radius, panel.border_width,
                          0, 0, 0, panel.focus, 0, panel.opacity,
                          ui_style_fill(panel), panel.material);
@@ -94,98 +100,88 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
     return 1;
 }
 
-static void close_popup_scope(ComposedPopupScope *scope)
+static void
+finish_popup_scope(ComposedPopupScope *scope, bool close_requested)
 {
-    PopupOpenResult open_result =
-        PopupOpenFor(scope->open ? *scope->open : false, false, true,
-                     scope->open != NULL);
-    if(scope->open) *scope->open = open_result.open;
-    if(scope->layers) ui_paint_layers_hide(scope->layers,scope->id);
-    else if(scope->has_input)
-        ui_popup_input_close(scope->input.context,scope->id);
+    scope->state = PopupLifecycleFinish(scope->state, *scope->open, close_requested);
+    *scope->open = scope->state.open;
+    if (!scope->state.visible && scope->layers) {
+        ui_paint_layers_hide(scope->layers, scope->id);
+    } else if (scope->state.close_input && scope->has_input) {
+        ui_popup_input_close(scope->input.context, scope->id);
+    }
 }
 
-static void end_popup_scope(void)
+static void
+end_popup_scope(void)
 {
     ComposedPopupScope *scope = popup_scope;
-    if(!scope) abort();
-    if(!*scope->open) close_popup_scope(scope);
-    if(scope->has_clip) EndClip();
+    if (!scope) {
+        abort();
+    }
+    finish_popup_scope(scope, false);
+    if (scope->has_clip) {
+        EndClip();
+    }
     PopInputClip();
-    if(scope->has_paint) ui_paint_layer_end(scope->paint);
-    else {
+    if (scope->has_paint) {
+        ui_paint_layer_end(scope->paint);
+    } else {
         ui_input_clip_resume(scope->input_clip);
         ui_disabled_resume(scope->disabled);
         ui_tree_layout_resume(scope->layout);
     }
-    if(scope->has_input) ui_popup_input_end(scope->input);
+    if (scope->has_input) {
+        ui_popup_input_end(scope->input);
+    }
     popup_scope = scope->previous;
     free(scope);
 }
 
 int PopupScope(PopupProps popup)
 {
-    PopupDecision decision = PopupDecisionFor(popup.flags, popup.disabled != 0);
-    Vector2 mouse = ui_mouse_world();
-    PopupDismissDecision dismiss;
-    if(!decision.valid) abort();
-    if(!PopupCanBegin(decision, popup.id, popup.bounds, popup.trigger,
-                      popup.open != NULL))
-        return 0;
     PaintLayers *layers = ui_frame_paint_layers();
-    PopupInput *input_context = layers ? ui_paint_layers_input(layers) :
-                                          ui_popup_input_bound();
-    PopupContextActivation context =
-        PopupContextActivationFor(decision, popup.trigger, mouse,
-                                  popup.disabled != 0,
-                                  InputCapturesClick(mouse),
-                                  IsMouseButtonReleased(MOUSE_BUTTON_RIGHT));
-    if(context.open) {
-        PopupOpenResult open_result =
-            PopupOpenFor(popup.open ? *popup.open : false, context.open,
-                         false, popup.open != NULL);
-        if(popup.open) *popup.open = open_result.open;
+    Vector2 mouse = ui_mouse_world();
+    PopupLifecycle state = PopupLifecycleBegin(popup.flags, (PopupFrameInput){
+        .id = popup.id,
+        .bounds = popup.bounds,
+        .trigger = popup.trigger,
+        .has_open = popup.open != NULL,
+        .open = popup.open ? *popup.open : false,
+        .disabled = popup.disabled != 0,
+        .trigger_blocked = InputCapturesClick(mouse) != 0,
+        .mouse = mouse,
+        .right_released = IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) != 0,
+        .view_width = GetViewWidth(),
+        .view_height = GetViewHeight(),
+    });
+    if (!state.decision.valid) {
+        abort();
     }
-    if(decision.tooltip) {
-        if(!PopupTooltipVisible(decision, popup.disabled != 0,
-                                CheckCollisionPointRec(mouse,
-                                    popup.trigger) != 0))
-            return 0;
-    } else {
-        *popup.open = PopupOpenAfterDisabled(decision, *popup.open,
-                                             popup.disabled != 0);
-        if(!*popup.open) {
-            if(input_context) ui_popup_input_close(input_context,popup.id);
-            return 0;
-        }
-    }
-    dismiss = PopupDismissDecisionFor(
-        decision, IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0,
-        ReleaseConsumed() != 0,
-        CheckCollisionPointRec(mouse,popup.bounds) != 0);
-    if(dismiss.close) {
-        if(dismiss.consume_release)
-            ConsumeRelease();
-        PopupOpenResult open_result =
-            PopupOpenFor(*popup.open, false, true, true);
-        *popup.open = open_result.open;
-        if(input_context) ui_popup_input_close(input_context,popup.id);
+    if (!state.eligible) {
         return 0;
     }
-    Rectangle input_bounds = PopupInputBounds(decision, popup.bounds,
-                                              GetViewWidth(),
-                                              GetViewHeight());
-    return enter_popup_scope(popup.id,decision.tooltip ? NULL : popup.open,popup.bounds,
-                             layers,
-                             (PopupInputToken){0},decision.captures_input,
-                             input_bounds,PopupBackdropAlpha(decision) > 0,
-                             popup.class_name);
+    PopupInput *context = layers ? ui_paint_layers_input(layers) :
+                                  ui_popup_input_bound();
+    state = PopupLifecycleRelease(state,
+        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) != 0, ReleaseConsumed() != 0,
+        CheckCollisionPointRec(mouse, popup.bounds) != 0);
+    if (state.consume_release) {
+        ConsumeRelease();
+    }
+    apply_popup_state(state, popup.open, context, popup.id);
+    if (!state.visible) {
+        return 0;
+    }
+    return enter_popup_scope(popup, state, layers);
 }
 
 void popup_close_scope(void)
 {
-    if(!popup_scope) abort();
-    close_popup_scope(popup_scope);
+    if (!popup_scope) {
+        abort();
+    }
+    finish_popup_scope(popup_scope, true);
 }
 
 void PopupEndScope(void)

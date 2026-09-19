@@ -217,6 +217,16 @@ Dropdown interaction and layout policy belongs in `runtime/dropdown.kry`. Native
 hosts own input collection, popup storage, clipping, and painting through shared
 Button frames and materials; they must not add independent dropdown theme paths.
 
+Composed popup transitions belong to `runtime/popup_policy.kry`.
+`PopupLifecycleBegin`, `PopupLifecycleRelease`, `PopupLifecycleKeyboard`, and
+`PopupLifecycleFinish` own admission, hover visibility, context activation,
+open state, dismissal, input bounds and backdrop policy. C `popup.c` and Go
+`popup.go` apply those results. Hosts retain paint/input tokens, event queues,
+open-pointer storage and scope restoration. Keyboard ownership is sampled
+**after** beginning the popup input scope; moving that query earlier changes
+nested Escape behavior. The input registry's ancestry, focus restoration and
+missing-owner retirement remain native work in the ownership inventory.
+
 ## Keyboard and release policy
 
 Read-only text tokenization and line assembly belong to `runtime/paragraph.kry`.

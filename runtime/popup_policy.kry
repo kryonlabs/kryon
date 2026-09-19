@@ -21,18 +21,9 @@ PopupOpenResult :: struct {
     changed: bool
 }
 
-PopupEscapeDecision :: struct {
-    close: bool
-    end_input: bool
-}
-
 PopupDismissDecision :: struct {
     close: bool
     consume_release: bool
-}
-
-PopupKeyboardInput :: struct {
-    escape: bool
 }
 
 PopupPanelRole :: () -> i32 #export {
@@ -70,7 +61,7 @@ PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
 }
 
 PopupCanBegin :: (decision: PopupDecision, id: i32, bounds: Rectangle,
-    trigger: Rectangle, has_open: bool) -> bool #export {
+trigger: Rectangle, has_open: bool) -> bool #export {
     if !decision.valid || id <= 0 || bounds.width <= 0.0 || bounds.height <= 0.0 {
         return false
     }
@@ -78,14 +69,14 @@ PopupCanBegin :: (decision: PopupDecision, id: i32, bounds: Rectangle,
         return false
     }
     if decision.requires_trigger &&
-       (trigger.width <= 0.0 || trigger.height <= 0.0) {
+    (trigger.width <= 0.0 || trigger.height <= 0.0) {
         return false
     }
     return true
 }
 
 PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
-    disabled: bool) -> bool #export {
+disabled: bool) -> bool #export {
     if disabled && !decision.tooltip {
         return false
     }
@@ -93,7 +84,7 @@ PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
 }
 
 PopupTooltipVisible :: (decision: PopupDecision, disabled: bool,
-    pointer_inside_trigger: bool) -> bool #export {
+pointer_inside_trigger: bool) -> bool #export {
     if !decision.tooltip {
         return false
     }
@@ -101,7 +92,7 @@ PopupTooltipVisible :: (decision: PopupDecision, disabled: bool,
 }
 
 PopupOpenFor :: (open: bool, open_requested: bool, close_requested: bool,
-    has_open: bool) -> PopupOpenResult #export {
+has_open: bool) -> PopupOpenResult #export {
     result: PopupOpenResult
     result.open = open
     if !has_open {
@@ -118,7 +109,7 @@ PopupOpenFor :: (open: bool, open_requested: bool, close_requested: bool,
 }
 
 PopupInputBounds :: (decision: PopupDecision, bounds: Rectangle,
-    view_width: float, view_height: float) -> Rectangle #export {
+view_width: float, view_height: float) -> Rectangle #export {
     input: Rectangle = bounds
     if decision.modal {
         input.x = 0.0
@@ -141,16 +132,16 @@ PopupContextOrigin :: (mouse: Vector2) -> Vector2 #export {
 }
 
 PopupContextActivationFor :: (decision: PopupDecision, trigger: Rectangle,
-    mouse: Vector2, disabled: bool, click_captured: bool,
-    right_released: bool) -> PopupContextActivation #export {
+mouse: Vector2, disabled: bool, click_captured: bool,
+right_released: bool) -> PopupContextActivation #export {
     activation: PopupContextActivation
     activation.origin = PopupContextOrigin(mouse)
     if !decision.context || disabled || click_captured || !right_released {
         return activation
     }
     if mouse.x < trigger.x || mouse.y < trigger.y ||
-       mouse.x > trigger.x + trigger.width ||
-       mouse.y > trigger.y + trigger.height {
+    mouse.x >= trigger.x + trigger.width ||
+    mouse.y >= trigger.y + trigger.height {
         return activation
     }
     activation.open = true
@@ -158,7 +149,7 @@ PopupContextActivationFor :: (decision: PopupDecision, trigger: Rectangle,
 }
 
 PopupDismissDecisionFor :: (decision: PopupDecision, left_released: bool,
-    release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision #export {
+release_consumed: bool, pointer_inside_popup: bool) -> PopupDismissDecision #export {
     dismiss: PopupDismissDecision
     if decision.tooltip || decision.modal {
         return dismiss
@@ -177,23 +168,102 @@ PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
     return 0
 }
 
-PopupEscapeFor :: (captures_input: bool, escape_pressed: bool,
-    keyboard_captured: bool) -> PopupEscapeDecision #export {
-    decision: PopupEscapeDecision
-    if captures_input && escape_pressed && !keyboard_captured {
-        decision.close = true
-        decision.end_input = true
+# Native hosts supply sampled input and apply these transitions to their
+# caller-owned open value, paint layers and input registry. Keyboard ownership
+# must be sampled after entering the input scope, including on the first frame.
+PopupFrameInput :: struct {
+    id: i32
+    bounds: Rectangle
+    trigger: Rectangle
+    has_open: bool
+    open: bool
+    disabled: bool
+    trigger_blocked: bool
+    mouse: Vector2
+    right_released: bool
+    view_width: float
+    view_height: float
+}
+
+PopupLifecycle :: struct {
+    decision: PopupDecision
+    eligible: bool
+    open: bool
+    visible: bool
+    close_input: bool
+    context_opened: bool
+    consume_release: bool
+    input_bounds: Rectangle
+    backdrop_alpha: i32
+}
+
+PopupLifecycleBegin :: (flags: u32, input: PopupFrameInput) -> PopupLifecycle #export {
+    state: PopupLifecycle
+    state.decision = PopupDecisionFor(flags, input.disabled)
+    state.open = input.open
+    state.eligible = PopupCanBegin(state.decision, input.id, input.bounds,
+    input.trigger, input.has_open)
+    if !state.eligible {
+        return state
     }
-    return decision
+    activation: PopupContextActivation = PopupContextActivationFor(
+    state.decision, input.trigger, input.mouse, input.disabled,
+    input.trigger_blocked, input.right_released)
+    state.context_opened = activation.open
+    if state.decision.tooltip {
+        inside: bool = input.mouse.x >= input.trigger.x &&
+        input.mouse.y >= input.trigger.y &&
+        input.mouse.x < input.trigger.x + input.trigger.width &&
+        input.mouse.y < input.trigger.y + input.trigger.height
+        state.open = PopupTooltipVisible(state.decision,
+        input.disabled || input.trigger_blocked, inside)
+    } else {
+        state.open = PopupOpenAfterDisabled(state.decision,
+        input.open || activation.open, input.disabled)
+        state.close_input = !state.open
+    }
+    state.visible = state.open
+    state.input_bounds = PopupInputBounds(state.decision, input.bounds,
+    input.view_width, input.view_height)
+    state.backdrop_alpha = PopupBackdropAlpha(state.decision)
+    return state
 }
 
-PopupKeyboardInputFor :: (escape_pressed: bool) -> PopupKeyboardInput #export {
-    input: PopupKeyboardInput
-    input.escape = escape_pressed
-    return input
+PopupLifecycleFinish :: (state: PopupLifecycle, open: bool,
+close_requested: bool) -> PopupLifecycle #export {
+    result: PopupLifecycle = state
+    if !state.eligible {
+        return result
+    }
+    result.open = open && !close_requested
+    result.visible = state.visible && result.open
+    result.close_input = !result.visible && !state.decision.tooltip
+    return result
 }
 
-PopupEscapeDecisionFor :: (captures_input: bool, input: PopupKeyboardInput,
-    keyboard_captured: bool) -> PopupEscapeDecision #export {
-    return PopupEscapeFor(captures_input, input.escape, keyboard_captured)
+# Consume exactly the release that dismisses an open popup. Hosts with queues
+# feed releases in order; an already closed popup cannot consume later taps.
+PopupLifecycleRelease :: (state: PopupLifecycle, released: bool,
+consumed: bool, inside: bool) -> PopupLifecycle #export {
+    result: PopupLifecycle = state
+    result.consume_release = false
+    if !state.visible {
+        return result
+    }
+    dismiss: PopupDismissDecision = PopupDismissDecisionFor(
+    state.decision, released, consumed, inside)
+    if dismiss.close {
+        result = PopupLifecycleFinish(result, false, true)
+        result.consume_release = dismiss.consume_release
+    }
+    return result
+}
+
+PopupLifecycleKeyboard :: (state: PopupLifecycle, escape: bool,
+keyboard_captured: bool) -> PopupLifecycle #export {
+    if state.visible && state.decision.captures_input && escape &&
+    !keyboard_captured {
+        return PopupLifecycleFinish(state, false, true)
+    }
+    return state
 }

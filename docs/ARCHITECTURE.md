@@ -515,7 +515,16 @@ reuses that paint/layout scope while intentionally skipping input ownership.
 `PopupModal` uses the same scope with a full-view input/backdrop policy, and
 `PopupContext` uses it with right-release activation over a retained trigger.
 Presentation variants remain flags on the one popup implementation rather than
-parallel widget trees.
+parallel widget trees. C and Go execute the same `PopupLifecycle` transitions
+from `runtime/popup_policy.kry`: begin validates props and resolves visibility;
+release processes each sampled pointer release; keyboard runs after the host
+claims input ownership; finish resolves caller closure and explicit dismissal.
+The hosts retain resource allocation, event queues, painting and balanced
+scope restoration. Tooltip triggers respect clipping, disabled scopes and
+popup capture; closing a tooltip drops its paint without changing an optional
+caller-owned open value. The former standalone Escape adapters are removed.
+`make popup-policy-test` runs generated C/C++ transitions; the native UI and Go
+popup suites exercise trigger blocking, nested Escape and focus restoration.
 Modal outside releases remain non-dismissing. The input registry saves focus
 when a top popup first opens, focuses its first eligible child, and restores the
 parent or background after nested close, root close, or missing-owner retirement.
