@@ -152,7 +152,7 @@ ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
     active_gap: float = ToggleMetric(active.value.fields, (u32)StyleGap,
         active.value.gap, 3.0, scale, true)
     label_pad: float = ToggleMetric(label.value.fields,
-        (u32)StylePaddingX, label.value.padding_x, 16.0, scale, true)
+        (u32)StylePaddingX, label.value.padding_x, 10.0, scale, true)
     widest: i32 = off_width
     if on_width > widest { widest = on_width }
     return (widest + (i32)label_pad) * 2 +
