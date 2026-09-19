@@ -49,7 +49,8 @@ SRC
 
 make -C "$root" KRYON_BACKEND=libdraw PLAN9PORT_DIR="$plan9" "$build/libkryon.a"
 PLAN9="$plan9" PATH="$plan9/bin:$PATH" "$plan9/bin/9c" \
-    -I"$root/include" -o "$work/main.o" "$work/main.c"
+    -I"$root/include" -I"$root/$build/generated/include" \
+    -I"$root/$build/generated/src" -o "$work/main.o" "$work/main.c"
 PLAN9="$plan9" PATH="$plan9/bin:$PATH" "$plan9/bin/9l" \
     -o "$work/libdraw_9c_smoke" "$work/main.o" "$root/$build/libkryon.a" \
     -L"$plan9/lib" -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -lm -ldl -lrt

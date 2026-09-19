@@ -2,7 +2,11 @@
 # Screenshot-exactness harness, stage 1: the SAME cartridge must render
 # byte-identically in every kryon renderer — kry_sw headless (krb-run),
 # the SDL software renderer (krb-sdl readback), and the wasm web engine
-# (node oneshot capture). Any pixel difference is a failure.
+# (node oneshot capture). Fixtures may include widgets outside the portable
+# cartridge vocabulary; k2b omits those intentionally with --allow-unsupported
+# so this gate continues to compare the shared KRB-renderable subset. RGB
+# differences in the produced cartridge are failures; alpha-only differences are
+# accepted only for fixtures listed in the conformance matrix alpha-gap ledger.
 #
 set -eu
 
@@ -39,7 +43,16 @@ for rel_kry in $fixtures; do
     kry="$root/$rel_kry"
     name=$(basename "$kry" .kry)
 
-    "$k2b" --no-main --root "$root/examples" -o "$work" "$kry" >/dev/null 2>&1
+    if ! "$k2b" --no-main --allow-unsupported --root "$root/examples" \
+            -o "$work" "$kry" >"$work/$name.k2b.out" 2>"$work/$name.k2b.err"; then
+        echo "exact: $name k2b failed" >&2
+        cat "$work/$name.k2b.err" >&2
+        fails=$((fails + 1))
+        continue
+    fi
+    if [ -s "$work/$name.k2b.err" ]; then
+        sed "s/^/exact: $name k2b: /" "$work/$name.k2b.err"
+    fi
 
     "$krbrun" --png "$work/$name.sw.png" --w 480 --h 640 \
         "$work/$name.krb" >/dev/null
@@ -47,13 +60,38 @@ for rel_kry in $fixtures; do
         "$krbsdl" --png "$work/$name.sdl.png" --w 480 --h 640 \
         "$work/$name.krb" >/dev/null
 
-    a=$(sha256sum "$work/$name.sw.png" | awk '{print $1}')
-    b=$(sha256sum "$work/$name.sdl.png" | awk '{print $1}')
-    if [ "$a" != "$b" ]; then
-        echo "exact: $name kry_sw vs SDL MISMATCH" >&2
-        fails=$((fails + 1))
+    if python3 - "$root" "$rel_kry" "$work/$name.sw.png" "$work/$name.sdl.png" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1]).resolve()
+rel = sys.argv[2]
+sw = Path(sys.argv[3])
+sdl = Path(sys.argv[4])
+spec = importlib.util.spec_from_file_location(
+    "kryon_conformance_matrix", root / "scripts" / "conformance-matrix.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+pixel_diff, rgb_diff, alpha_diff = module.rgba_diff(sw, sdl)
+if rgb_diff:
+    print(f"exact: {Path(rel).stem} kry_sw vs SDL RGB MISMATCH: "
+          f"{rgb_diff} RGB pixels differ ({pixel_diff} RGBA pixels differ)", file=sys.stderr)
+    raise SystemExit(1)
+if alpha_diff:
+    reason = module.KRB_ALPHA_BYTE_GAPS.get(rel)
+    if reason is None:
+        print(f"exact: {Path(rel).stem} kry_sw vs SDL alpha MISMATCH: "
+              f"{alpha_diff} alpha pixels differ and no alpha-gap ledger row exists", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"exact: {Path(rel).stem} kry_sw == SDL RGB; alpha differs ({alpha_diff} pixels): {reason}")
+else:
+    print(f"exact: {Path(rel).stem} kry_sw == SDL RGBA")
+PY
+    then
+        :
     else
-        echo "exact: $name kry_sw == SDL ($a)"
+        fails=$((fails + 1))
     fi
 done
 

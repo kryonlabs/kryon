@@ -92,6 +92,7 @@ main(int argc, char **argv)
         fprintf(stderr, "krb-sdl: texture: %s\n", SDL_GetError());
         return 1;
     }
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
 
     if(png_path != NULL) {
         /* single deterministic frame for the exactness comparator */

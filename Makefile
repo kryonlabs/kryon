@@ -58,6 +58,8 @@ KRB_LOGIC_TEST = $(BUILD_DIR)/tests/krb_logic_test
 KRB_ASSET_TEST = $(BUILD_DIR)/tests/krb_asset_test
 KRB_CAPS_TEST = $(BUILD_DIR)/tests/krb_caps_test
 EMCC ?= emcc
+EM_CACHE ?= $(abspath $(BUILD_DIR)/emscripten-cache)
+export EM_CACHE
 KRB_WEB_DIR = $(BUILD_DIR)/web/krb-web
 KRB_WEB = $(KRB_WEB_DIR)/index.html
 KRB_WEB_KRY ?= examples/02_buttons.kry
@@ -479,7 +481,7 @@ termi-test:
 
 libdraw-test:
 	sh tests/libdraw_backend_test.sh
-	sh tests/libdraw_9c_test.sh
+	BUILD_DIR=$(BUILD_DIR)-libdraw sh tests/libdraw_9c_test.sh
 
 raylib-matrix-check: $(K2C)
 	$(MAKE) --no-print-directory BUILD_DIR=$(BUILD_DIR)-raylib KRYON_BACKEND=raylib raylib-matrix-check-internal
@@ -1293,8 +1295,16 @@ $(K2B): $(K2B_SRCS) $(KIR_HDRS) | $(BUILD_DIR)/bin
 $(KT): cmd/kt/main.c | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) $(CPPFLAGS_BASE) -o $@ cmd/kt/main.c
 
-$(KRYON_PREVIEW): cmd/kryon-preview/main.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)/bin
-	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ cmd/kryon-preview/main.c \
+PREVIEW_SRCS := $(sort $(wildcard cmd/kryon-preview/*.c))
+PREVIEW_HDRS := $(sort $(wildcard cmd/kryon-preview/*.h))
+.PHONY: preview-session-test
+preview-session-test:
+	python3 tests/preview_session_test.py
+
+fast-test: preview-session-test
+
+$(KRYON_PREVIEW): $(PREVIEW_SRCS) $(PREVIEW_HDRS) $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)/bin
+	$(CC) $(CFLAGS) $(CPPFLAGS) -o $@ $(PREVIEW_SRCS) \
 		-Wl,-export-dynamic \
 		-Wl,--whole-archive $(LIB) -Wl,--no-whole-archive \
 		$(KRYON_BACKEND_LIBS) $(KRYON_PHYSICS_DEPS) $(KRYON_BACKEND_LDLIBS) $(KRYON_SYNC_LDLIBS) \

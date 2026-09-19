@@ -18,6 +18,56 @@
 #define KRY_LIBDRAW_KEY_CAP 512
 #define KRY_LIBDRAW_MAX_TEXT_DRAWS 2048
 
+int ColorToInt(Color color)
+{
+    return (int)(((unsigned int)color.r << 24) |
+                 ((unsigned int)color.g << 16) |
+                 ((unsigned int)color.b << 8) |
+                 (unsigned int)color.a);
+}
+
+Color GetColor(unsigned int hexValue)
+{
+    Color color;
+
+    color.r = (unsigned char)(hexValue >> 24) & 0xff;
+    color.g = (unsigned char)(hexValue >> 16) & 0xff;
+    color.b = (unsigned char)(hexValue >> 8) & 0xff;
+    color.a = (unsigned char)hexValue & 0xff;
+
+    return color;
+}
+
+Color ColorFromHSV(float hue, float saturation, float value)
+{
+    Color color = {0, 0, 0, 255};
+    float k;
+    float t;
+
+    k = fmodf((5.0f + hue / 60.0f), 6);
+    t = 4.0f - k;
+    k = (t < k) ? t : k;
+    k = (k < 1) ? k : 1;
+    k = (k > 0) ? k : 0;
+    color.r = (unsigned char)((value - value * saturation * k) * 255.0f);
+
+    k = fmodf((3.0f + hue / 60.0f), 6);
+    t = 4.0f - k;
+    k = (t < k) ? t : k;
+    k = (k < 1) ? k : 1;
+    k = (k > 0) ? k : 0;
+    color.g = (unsigned char)((value - value * saturation * k) * 255.0f);
+
+    k = fmodf((1.0f + hue / 60.0f), 6);
+    t = 4.0f - k;
+    k = (t < k) ? t : k;
+    k = (k < 1) ? k : 1;
+    k = (k > 0) ? k : 0;
+    color.b = (unsigned char)((value - value * saturation * k) * 255.0f);
+
+    return color;
+}
+
 Rectangle GetCollisionRec(Rectangle a, Rectangle b)
 {
     Rectangle result = {0};
@@ -1317,9 +1367,22 @@ void EndBlendMode(void)
     blend_mode = BLEND_ALPHA;
 }
 
-static void sw_clear(Color color) { g_sw_backend->clear(pack(color)); }
+static void
+present_queued_text_before_surface_draw(void)
+{
+    if(g_text_draw_count > 0)
+        present_sw();
+}
+
+static void sw_clear(Color color)
+{
+    present_queued_text_before_surface_draw();
+    g_sw_backend->clear(pack(color));
+}
+
 static void sw_rect(int x, int y, int w, int h, Color color)
 {
+    present_queued_text_before_surface_draw();
     if(blend_mode == BLEND_ALPHA) {
         g_sw_backend->rect(x, y, w, h, pack(color));
     } else if(g_active_sw != NULL && clip_rect_to_sw(g_active_sw, &x, &y, &w, &h)) {
@@ -2187,6 +2250,8 @@ void DrawTexturePro(Texture2D texture, Rectangle source, Rectangle dest,
                     Vector2 origin, float rotation, Color tint)
 {
     KryLibdrawTexture *t = kry_libdraw_texture(texture.id);
+
+    present_queued_text_before_surface_draw();
     unsigned char *region;
     Color draw_tint;
     int mask;

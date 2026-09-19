@@ -5,6 +5,9 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+: "${EM_CACHE:=$root/build/emscripten-cache}"
+export EM_CACHE
+mkdir -p "$EM_CACHE"
 work=${TMPDIR:-/tmp}/kryon-canvas-test.$$
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM
@@ -49,11 +52,22 @@ null_backend="$generated/kryon_null_backend.c"
 # Generated runtime C (widgets lowered from runtime/*.kry such as button and
 # dropdown) plus the generated icon sources. src/ui/*.c calls into these
 # (PaintButton, ReadButtonInput, ...), so the link needs them alongside src/.
-generated_srcs=$(find "$generated/src" -name '*.c' 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')
+# Derive runtime sources from checked-in runtime/*.kry so stale generated files
+# from deleted compatibility modules are not linked.
+generated_srcs=""
+for f in "$root"/runtime/*.kry; do
+    base=$(basename "$f" .kry)
+    c="$generated/src/runtime/$base.c"
+    [ -f "$c" ] && generated_srcs="$generated_srcs $c"
+done
+for c in "$generated/src/ui/ui_icon_assets.c" "$generated/src/ui/ui_icon_names.c"; do
+    [ -f "$c" ] && generated_srcs="$generated_srcs $c"
+done
 
 srcs=$(find "$root/src" -name '*.c' \
     ! -path '*/sync/*' \
     ! -path '*/platform/plan9/*' \
+    ! -path '*/kry_std/kry_archive.c' \
     ! -path '*/scene/physics_world.c' \
     ! -path '*/scene/node_body2d.c' \
     ! -path '*/scene/node_area2d.c' \

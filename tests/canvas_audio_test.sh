@@ -4,6 +4,9 @@
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)
+: "${EM_CACHE:=$root/build/emscripten-cache}"
+export EM_CACHE
+mkdir -p "$EM_CACHE"
 work=${TMPDIR:-/tmp}/kryon-canvas-audio-test.$$
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM

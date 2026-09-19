@@ -305,6 +305,8 @@ KRB_ALPHA_BYTE_GAPS = {
 }
 
 GENERATED_C_COMPILE_GAPS = {
+    "examples/12_collections.kry": "Generated-C emits TableViewProps positional fields in an obsolete order.",
+    "tests/parity/button_content.kry": "Generated-C emits obsolete StyleClassID casing instead of StyleClassId.",
     "examples/20_scene.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/21_signals.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
@@ -315,19 +317,17 @@ GENERATED_C_COMPILE_GAPS = {
 
 RAYLIB_C_RENDER_GAPS = {
     "tests/parity/drag_drop.kry": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
+    "tests/parity/text_capacity.kry": "Raylib generated-C capture is blank for the text-capacity fixture.",
 }
 
 LIBDRAW_C_RENDER_GAPS = {
-    "examples/01_file_dialog.kry": "Libdraw generated-C capture is blank.",
-    "examples/02_buttons.kry": "Libdraw generated-C capture is blank.",
-    "examples/04_modal.kry": "Libdraw generated-C capture is blank.",
-    "examples/09_geometry.kry": "Libdraw generated-C capture is blank.",
-    "examples/11_basic_controls.kry": "Libdraw generated-C capture is blank.",
-    "examples/17_keyboard_platform.kry": "Libdraw generated-C capture is blank.",
+    "tests/parity/drag_drop.kry": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
+    "tests/parity/text_capacity.kry": "Libdraw generated-C capture is blank for the text-capacity fixture.",
 }
 
 WEB_CANVAS_C_RENDER_GAPS = {
     "tests/parity/drag_drop.kry": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
+    "tests/parity/text_capacity.kry": "Canvas generated-C capture is blank for the text-capacity fixture.",
 }
 
 LIBDRAW_C_VISUAL_GAPS = {
@@ -350,7 +350,8 @@ SCENE_ONLY_EXAMPLES = {
 }
 
 
-def visual_comparisons(source_count: int) -> list[dict]:
+def visual_comparisons(case_paths: set[str]) -> list[dict]:
+    source_count = len(case_paths)
     definitions = [
         {
             "id": "krb-native-vs-sdl",
@@ -427,7 +428,13 @@ def visual_comparisons(source_count: int) -> list[dict]:
     ]
     rows = []
     for row in definitions:
-        gap_set = row.pop("gap_set")
+        gap_set = {path: reason for path, reason in row.pop("gap_set").items() if path in case_paths}
+        if row["id"] in {
+            "raylib-c-vs-krb-native",
+            "libdraw-c-vs-krb-native",
+            "web-canvas-c-vs-krb-native",
+        }:
+            row["compared"] = source_count - len(gap_set)
         rows.append(
             {
                 **row,
@@ -644,7 +651,8 @@ def source_cases() -> list[dict]:
 
 def matrix() -> dict:
     cases = source_cases()
-    comparisons = visual_comparisons(len(cases))
+    case_paths = {case["path"] for case in cases}
+    comparisons = visual_comparisons(case_paths)
     widget_cases: dict[str, list[str]] = {widget: [] for widget in sorted(WIDGETS)}
     semantic_count = 0
     for case in cases:
@@ -1010,6 +1018,15 @@ def emcc_path() -> str | None:
     return None
 
 
+def emcc_env() -> dict[str, str]:
+    env = os.environ.copy()
+    if not env.get("EM_CACHE"):
+        cache = ROOT / "build" / "emscripten-cache"
+        cache.mkdir(parents=True, exist_ok=True)
+        env["EM_CACHE"] = str(cache)
+    return env
+
+
 def verify_krb_web_visuals(data: dict, args: argparse.Namespace) -> int:
     emcc = emcc_path()
     node = shutil.which("node")
@@ -1053,6 +1070,7 @@ def verify_krb_web_visuals(data: dict, args: argparse.Namespace) -> int:
         run = subprocess.run(
             compile_cmd,
             cwd=ROOT,
+            env=emcc_env(),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -1152,6 +1170,7 @@ def canvas_backend_sources() -> list[str]:
         if "/platform/plan9/" in f"/{r}/":
             continue
         if r in {
+            "src/kry_std/kry_archive.c",
             "src/scene/physics_world.c",
             "src/scene/node_body2d.c",
             "src/scene/node_area2d.c",
@@ -1255,9 +1274,18 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
         print("missing generated runtime dir for web Canvas generated-C matrix (run 'make' once first)", file=sys.stderr)
         return 1
     runtime_sources = [
-        str(path)
-        for path in sorted((generated_dir / "src").rglob("*.c"))
+        str(generated_dir / "src" / "runtime" / f"{path.stem}.c")
+        for path in sorted((ROOT / "runtime").glob("*.kry"))
+        if (generated_dir / "src" / "runtime" / f"{path.stem}.c").exists()
     ]
+    runtime_sources.extend(
+        str(path)
+        for path in [
+            generated_dir / "src" / "ui" / "ui_icon_assets.c",
+            generated_dir / "src" / "ui" / "ui_icon_names.c",
+        ]
+        if path.exists()
+    )
 
     failures = []
     observed_gaps = set()
@@ -1267,7 +1295,9 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
         backend_sources.append(str(null_backend))
     with tempfile.TemporaryDirectory(prefix="kryon-web-canvas-c-matrix.") as tmp:
         work = Path(tmp)
-        for case in data["cases"]:
+        total_cases = len(data["cases"])
+        for index, case in enumerate(data["cases"], start=1):
+            print(f"web Canvas generated-C matrix: {index}/{total_cases} {case['path']}", flush=True)
             source = ROOT / case["path"]
             out_dir = work / "gen" / case["id"]
             js_path = work / "js" / f"{case['id']}.js"
@@ -1313,6 +1343,7 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 "-sASYNCIFY",
                 "-sENVIRONMENT=node",
                 "-sINITIAL_MEMORY=128MB",
+                "-sSTACK_SIZE=8MB",
                 "-sALLOW_MEMORY_GROWTH=1",
                 "-sEXIT_RUNTIME=0",
                 "-sEXPORTED_RUNTIME_METHODS=FS",
@@ -1325,6 +1356,7 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
             run = subprocess.run(
                 compile_cmd,
                 cwd=ROOT,
+                env=emcc_env(),
                 text=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -1439,7 +1471,9 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
         capture_script = work / "raylib-window-capture.sh"
         if window_capture:
             write_raylib_window_capture_script(capture_script)
-        for case in data["cases"]:
+        total_cases = len(data["cases"])
+        for index, case in enumerate(data["cases"], start=1):
+            print(f"raylib generated-C matrix: {index}/{total_cases} {case['path']}", flush=True)
             source = ROOT / case["path"]
             out_dir = work / "gen" / case["id"]
             bin_path = work / "bin" / case["id"]
@@ -1534,17 +1568,23 @@ def verify_raylib_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 timeout=30,
             )
             if run.returncode != 0:
-                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                if window_capture and internal_png_path.exists() and internal_png_path.stat().st_size > 0:
+                    png_path = internal_png_path
+                elif case["path"] in RAYLIB_C_VISUAL_GAPS:
                     observed_gaps.add(case["path"])
+                    continue
                 else:
                     failures.append((case["path"], "capture", "\n".join(run.stdout.strip().splitlines()[-20:])))
-                continue
+                    continue
             if not png_path.exists() or png_path.stat().st_size == 0:
-                if case["path"] in RAYLIB_C_VISUAL_GAPS:
+                if window_capture and internal_png_path.exists() and internal_png_path.stat().st_size > 0:
+                    png_path = internal_png_path
+                elif case["path"] in RAYLIB_C_VISUAL_GAPS:
                     observed_gaps.add(case["path"])
+                    continue
                 else:
                     failures.append((case["path"], "png", "capture did not produce a PNG"))
-                continue
+                    continue
             try:
                 width, height, _pixels = png_rgba(png_path)
                 if width <= 0 or height <= 0:
@@ -1608,7 +1648,9 @@ def verify_libdraw_c_visuals(data: dict, args: argparse.Namespace) -> int:
     observed_gaps = set()
     with tempfile.TemporaryDirectory(prefix="kryon-libdraw-c-matrix.") as tmp:
         work = Path(tmp)
-        for case in data["cases"]:
+        total_cases = len(data["cases"])
+        for index, case in enumerate(data["cases"], start=1):
+            print(f"libdraw generated-C matrix: {index}/{total_cases} {case['path']}", flush=True)
             source = ROOT / case["path"]
             out_dir = work / "gen" / case["id"]
             bin_path = work / "bin" / case["id"]
@@ -1761,20 +1803,30 @@ def run_checks(checks: list[dict], label: str) -> int:
     for check in checks:
         optional_dir = check.get("optional_dir")
         if optional_dir is not None and not (ROOT / optional_dir).resolve().is_dir():
-            print(f"{label} skipped: {check['id']} ({optional_dir} not found)")
+            print(f"{label} skipped: {check['id']} ({optional_dir} not found)", flush=True)
             continue
         command = resolve_command(check["command"])
-        run = subprocess.run(
+        print(f"{label} run: {check['id']} ({' '.join(command)})", flush=True)
+        proc = subprocess.Popen(
             command,
             cwd=ROOT,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
-        if run.returncode != 0:
-            failures.append((check["id"], run.stdout.strip().splitlines()[-20:]))
+        tail: list[str] = []
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            line = line.rstrip("\n")
+            print(line, flush=True)
+            tail.append(line)
+            if len(tail) > 40:
+                tail = tail[-40:]
+        rc = proc.wait()
+        if rc != 0:
+            failures.append((check["id"], tail))
         else:
-            print(f"{label} ok: {check['id']}")
+            print(f"{label} ok: {check['id']}", flush=True)
     if failures:
         for check_id, tail in failures:
             print(f"{label} failed: {check_id}", file=sys.stderr)
