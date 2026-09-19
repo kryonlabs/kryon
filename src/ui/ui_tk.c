@@ -526,8 +526,6 @@ ui_draw_menu_panel(Rectangle bounds, int class_name)
     StyleFrame frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
         StyleKindMenu(), MenuPopupRole());
-    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-    ui_default_elevation(bounds, style.radius, 2);
     ui_tk_draw_style_frame(bounds, (Rectangle){0}, frame, 0, 0, 0, 0);
 }
 
@@ -1943,119 +1941,108 @@ RenderRadio(RadioProps radio)
     if(!IsWindowReady())
         return RadioActivationFor(radio.id, activated != 0,
                                   radio.disabled != 0);
-    if(ui_default_style()) {
-        RadioAnimState *anim;
-        Rectangle state_bounds = {
-            paint.center.x - paint.touch / 2.0f,
-            paint.center.y - paint.touch / 2.0f,
-            paint.touch,
-            paint.touch
-        };
-        unsigned int key = 2166136261u;
-        float target = radio.checked ? 1.0f : 0.0f;
-        float dt;
-        float selected;
-        float press;
-        Color ring;
-        Color fill;
-        Color label;
-        int layer_alpha;
-        const char *text = radio.label != NULL ? radio.label : "";
+    RadioAnimState *anim;
+    Rectangle state_bounds = {
+        paint.center.x - paint.touch / 2.0f,
+        paint.center.y - paint.touch / 2.0f,
+        paint.touch,
+        paint.touch
+    };
+    unsigned int key = 2166136261u;
+    float target = radio.checked ? 1.0f : 0.0f;
+    float dt;
+    float selected;
+    float press;
+    Color ring;
+    Color fill;
+    Color label;
+    int layer_alpha;
+    const char *text = radio.label != NULL ? radio.label : "";
 
-        key = (key ^ (unsigned int)radio.id) * 16777619u;
-        key = (key ^ (unsigned int)(int)radio.bounds.x) * 16777619u;
-        key = (key ^ (unsigned int)(int)radio.bounds.y) * 16777619u;
-        key = (key ^ (unsigned int)(int)radio.bounds.width) * 16777619u;
-        key = (key ^ (unsigned int)(int)radio.bounds.height) * 16777619u;
-        while(*text != '\0')
-            key = (key ^ (unsigned char)*text++) * 16777619u;
-        anim = &toolkit->radio_anim[key % RADIO_ANIM_MAX];
-        if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
-            memset(anim, 0, sizeof(*anim));
-            anim->key = key;
-            anim->selected = target;
-        }
-        anim->frame_seen = g_ui_frame_serial;
-        dt = GetFrameTime();
-        if(dt <= 0.0f || dt > 0.1f)
-            dt = 1.0f / 60.0f;
-        {
-            float step = dt * 18.0f;
-            float press_step = dt * 20.0f;
-            if(step > 1.0f)
-                step = 1.0f;
-            if(press_step > 1.0f)
-                press_step = 1.0f;
-            anim->selected += (target - anim->selected) * step;
-            anim->press += ((down ? 1.0f : 0.0f) - anim->press) * press_step;
-        }
-        selected = anim->selected;
-        press = anim->press;
-        paint = RadioPaintFor((RadioSpec){
-            .bounds = radio.bounds,
-            .checked = radio.checked,
-            .disabled = radio.disabled,
-            .selected_amount = selected,
-            .scale = runtime_scale,
-            .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
-                                             ui_tk_checkbox_button_state(hot,
-                                                 down, focused,
-                                                 radio.disabled),
-                                             radio.disabled, radio.checked,
-                                             radio.class_name, RadioRingRole()),
-            .selected = ui_tk_radio_style_frame(ButtonToneAccent,
-                                                ui_tk_checkbox_button_state(hot,
-                                                    down, focused,
-                                                    radio.disabled),
-                                                radio.disabled, radio.checked,
-                                                radio.class_name, RadioMarkRole())
-        });
-        label_frame = ui_tk_radio_style_frame(ButtonToneNeutral,
-                                              ui_tk_checkbox_button_state(hot, down,
-                                                                         focused,
-                                                                         radio.disabled),
-                                              radio.disabled, radio.checked,
-                                              radio.class_name,
-                                              RadioLabelRole());
-        label_style = ui_unpack_style(ui_style_apply_effects_frame(
-            label_frame).value);
-        font = ResolveFont(0, StyleFontValue(label_style.fields,
-                                             label_style.font_size), font);
-        paint.label_color = ColorToInt(label_style.foreground);
-
-        ring = GetColor(paint.ring_color);
-        fill = GetColor(paint.fill_color);
-        label = Fade(GetColor(paint.label_color), label_style.opacity);
-        if(radio.disabled) {
-            press = 0.0f;
-        }
-        layer_alpha = RadioStateLayerAlpha(hot && HoverEffectsEnabled(),
-                                           down != 0, press);
-        if(layer_alpha > 0) {
-            Color layer = ring;
-            layer.a = (unsigned char)layer_alpha;
-            DrawCircleV(paint.center, paint.touch / 2.0f, layer);
-        }
-        ui_default_ripple(state_bounds, ring, (int)key, down);
-        if(paint.fill_radius > 0.2f)
-            DrawCircleV(paint.center, paint.fill_radius, fill);
-        if(paint.stroke_width > 0.0f)
-            DrawRing(paint.center, paint.outer_radius - paint.stroke_width,
-                     paint.outer_radius, 0.0f, 360.0f, 48, ring);
-        RenderText(radio.label != NULL ? radio.label : "",
-                   (int)paint.label_x,
-                   ui_row_text_y(radio.bounds, font), font, label);
-    } else {
-        if(paint.stroke_width > 0.0f)
-            DrawCircleLines((int)paint.center.x, (int)paint.center.y,
-                            paint.outer_radius, GetColor(paint.ring_color));
-        if(radio.checked)
-            DrawCircleV(paint.center, paint.fill_radius,
-                        GetColor(paint.fill_color));
-        RenderText(radio.label != NULL ? radio.label : "", (int)paint.label_x,
-                   ui_row_text_y(radio.bounds, font), font,
-                   Fade(GetColor(paint.label_color), label_style.opacity));
+    key = (key ^ (unsigned int)radio.id) * 16777619u;
+    key = (key ^ (unsigned int)(int)radio.bounds.x) * 16777619u;
+    key = (key ^ (unsigned int)(int)radio.bounds.y) * 16777619u;
+    key = (key ^ (unsigned int)(int)radio.bounds.width) * 16777619u;
+    key = (key ^ (unsigned int)(int)radio.bounds.height) * 16777619u;
+    while(*text != '\0')
+        key = (key ^ (unsigned char)*text++) * 16777619u;
+    anim = &toolkit->radio_anim[key % RADIO_ANIM_MAX];
+    if(anim->key != key || g_ui_frame_serial - anim->frame_seen > 12) {
+        memset(anim, 0, sizeof(*anim));
+        anim->key = key;
+        anim->selected = target;
     }
+    anim->frame_seen = g_ui_frame_serial;
+    dt = GetFrameTime();
+    if(dt <= 0.0f || dt > 0.1f)
+        dt = 1.0f / 60.0f;
+    {
+        float step = dt * 18.0f;
+        float press_step = dt * 20.0f;
+        if(step > 1.0f)
+            step = 1.0f;
+        if(press_step > 1.0f)
+            press_step = 1.0f;
+        anim->selected += (target - anim->selected) * step;
+        anim->press += ((down ? 1.0f : 0.0f) - anim->press) * press_step;
+    }
+    selected = anim->selected;
+    press = anim->press;
+    paint = RadioPaintFor((RadioSpec){
+        .bounds = radio.bounds,
+        .checked = radio.checked,
+        .disabled = radio.disabled,
+        .selected_amount = selected,
+        .scale = runtime_scale,
+        .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                         ui_tk_checkbox_button_state(hot,
+                                             down, focused,
+                                             radio.disabled),
+                                         radio.disabled, radio.checked,
+                                         radio.class_name, RadioRingRole()),
+        .selected = ui_tk_radio_style_frame(ButtonToneAccent,
+                                            ui_tk_checkbox_button_state(hot,
+                                                down, focused,
+                                                radio.disabled),
+                                            radio.disabled, radio.checked,
+                                            radio.class_name, RadioMarkRole())
+    });
+    label_frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                          ui_tk_checkbox_button_state(hot, down,
+                                                                     focused,
+                                                                     radio.disabled),
+                                          radio.disabled, radio.checked,
+                                          radio.class_name,
+                                          RadioLabelRole());
+    label_style = ui_unpack_style(ui_style_apply_effects_frame(
+        label_frame).value);
+    font = ResolveFont(0, StyleFontValue(label_style.fields,
+                                         label_style.font_size), font);
+    paint.label_color = ColorToInt(label_style.foreground);
+
+    ring = GetColor(paint.ring_color);
+    fill = GetColor(paint.fill_color);
+    label = Fade(GetColor(paint.label_color), label_style.opacity);
+    if(radio.disabled) {
+        press = 0.0f;
+    }
+    layer_alpha = RadioStateLayerAlpha(hot && HoverEffectsEnabled(),
+                                       down != 0, press);
+    if(layer_alpha > 0) {
+        Color layer = ring;
+        layer.a = (unsigned char)layer_alpha;
+        DrawCircleV(paint.center, paint.touch / 2.0f, layer);
+    }
+    ui_default_ripple(state_bounds, ring, (int)key, down);
+    if(paint.fill_radius > 0.2f)
+        DrawCircleV(paint.center, paint.fill_radius, fill);
+    if(paint.stroke_width > 0.0f)
+        DrawRing(paint.center, paint.outer_radius - paint.stroke_width,
+                 paint.outer_radius, 0.0f, 360.0f, 48, ring);
+    RenderText(radio.label != NULL ? radio.label : "",
+               (int)paint.label_x,
+               ui_row_text_y(radio.bounds, font), font, label);
+
     if(focused && IsWindowReady())
         RenderFocus(paint.hit_bounds);
     return RadioActivationFor(radio.id, activated != 0, radio.disabled != 0);
@@ -2090,24 +2077,17 @@ RenderProgress(ProgressProps progress)
     fill = paint.layout.fill_bounds;
     if(!IsWindowReady())
         return;
-    if(ui_modern_style() || ui_default_style()) {
-        float radius = ProgressDrawRadius(progress.bounds, paint.radius);
-        DrawRectangleRounded(progress.bounds, radius, 12,
-                             GetColor(paint.track_color));
-        if(fill.width > 0.0f)
-            DrawRectangleRounded(fill, radius, 12,
-                                 GetColor(paint.fill_color));
-        if(paint.border_width > 0.0f)
-            DrawRectangleRoundedLinesEx(progress.bounds, radius, 12,
-                                        paint.border_width,
-                                        GetColor(paint.border_color));
-    } else {
-        DrawRectangleRec(progress.bounds, GetColor(paint.track_color));
-        DrawRectangleRec(fill, GetColor(paint.fill_color));
-        if(paint.border_width > 0.0f)
-            DrawRectangleLinesEx(progress.bounds, paint.border_width,
-                                 GetColor(paint.border_color));
-    }
+    float radius = ProgressDrawRadius(progress.bounds, paint.radius);
+    DrawRectangleRounded(progress.bounds, radius, 12,
+                         GetColor(paint.track_color));
+    if(fill.width > 0.0f)
+        DrawRectangleRounded(fill, radius, 12,
+                             GetColor(paint.fill_color));
+    if(paint.border_width > 0.0f)
+        DrawRectangleRoundedLinesEx(progress.bounds, radius, 12,
+                                    paint.border_width,
+                                    GetColor(paint.border_color));
+
     if(label != NULL) {
         int text_x = (int)paint.layout.label_x;
         int text_y = (int)paint.layout.label_y;

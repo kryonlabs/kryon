@@ -267,7 +267,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     InteractionMotion motion = {0};
     Rectangle draw_bounds;
     int termi_button = ui_termi_backend();
-    int default_controls = ui_default_style() && !termi_button;
+    int default_controls = !termi_button;
 
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {

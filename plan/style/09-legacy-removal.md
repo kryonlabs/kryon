@@ -1,9 +1,10 @@
 # Styling debt: remaining removals
 
-- Remove the independent active C and Go KSS implementations identified in
-  `02-kss-language.md`, including the color-token variant logic added in
-  `16510c75`. Switch their consumers to generated `.kry` code before deletion;
-  do not preserve a second parser behind an alias, adapter, or fallback.
+- Complete: C and Go use the generated `.kry` KSS parser and cascade. The
+  independent parser removal is covered by `kss-host-ledger-check`.
+- Complete: remove the constant `ui_default_style` switch, unreachable legacy
+  radio/progress/text-input/tab branches, unused default surface/focus helpers,
+  and theme getter snippets from the recorder.
 
 - Inventory remaining theme-catalog/getter and import/export callers in core,
   examples, and apps. Move widget styling to KSS overlays after language and

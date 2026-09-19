@@ -897,3 +897,9 @@ storage; Unicode segmentation, hit measurement and clipboard storage stay in
 the host. Linux X11 releases end a drag without injecting a second press. IBus
 focus lifetime follows the eligible editor, and candidate geometry reuses the
 painted row layout, font and scroll offset.
+
+Editor and surface rasterization consumes resolved style presence bits. Native
+Go does not add debug widget fills or borders; explicit zero alpha and opacity
+remain transparent. C immediate text areas, avatar tiles, menu panels and
+navigation bars use resolved material painting. The constant default-style
+switch and its unreachable alternative renderers have been removed.

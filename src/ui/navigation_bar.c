@@ -146,7 +146,6 @@ RenderNavigationBar(NavigationBarProps nav)
 
     bar_frame = ui_style_apply_effects_frame(paint.bar);
     bar_style = ui_unpack_style(bar_frame.value);
-    ui_default_elevation(paint.bar_bounds, bar_style.radius, 2);
     ui_draw_material(paint.bar_bounds, (Rectangle){0},
                      bar_style.background, bar_style.border, bar_style.border,
                      bar_style.radius, bar_style.border_width,

@@ -4,6 +4,11 @@
 
 int main(void)
 {
+    assert(TextContentColorFor(0, StyleForeground, 0, 0x123456ff) == 0x123456ff);
+    assert(TextContentColorFor(StyleForeground, StyleForeground, 0xabcdef00, 0x123456ff) == 0xabcdef00);
+    assert(TextContentColorFor(0, StyleFocus, 0xabcdef80, 0x123456ff) == 0xabcdef80);
+    assert(TextSelectionColorFor(0x11223300) == 0x11223300);
+    assert(TextSelectionColorFor(0x112233ff) == (0x11223300 | TextSelectionDefaultAlpha()));
     TextAppearance inherited = ResolveTextStyle(0, 27, 16, 0, 0x11223380,
         0xffffffff, true, false, false, false, -2);
     assert(inherited.font == 27 && inherited.color == 0x11223380);

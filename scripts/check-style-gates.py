@@ -67,8 +67,8 @@ def style_facts_bridge_check():
 CHROME_GETTERS = re.compile(
     r"\bGetTheme(Button|ButtonHover|Surface|Background|Text|Border|Selection|Circle|Icon|Link)\s*\(")
 GETTER_ALLOWLIST = {
-    # Legacy theme catalog application (ApplyCurrentTheme and the recorder
-    # capture bridge). Kept until downstream apps migrate off the pre-KSS
+    # Legacy theme catalog application (ApplyCurrentTheme). Kept until
+    # downstream apps migrate off the pre-KSS
     # theme API; removal is tracked by plan/style/09-legacy-removal.md.
     # Classified: legacy bridge, not new-code product chrome.
     "src/ui/ui.c": 9,
@@ -76,8 +76,6 @@ GETTER_ALLOWLIST = {
     # falls back to the platform theme color. Classified: documented
     # degradation, not product decoration.
     "src/ui/ui_tree.c": 1,
-    # Emits example source strings for the recorder, not paint code.
-    "src/ui/ui_node_registry.c": 2,
 }
 
 

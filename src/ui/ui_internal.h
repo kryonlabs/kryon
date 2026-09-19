@@ -310,32 +310,20 @@ int *ui_tab_bar_owned_scroll(int id, int *fallback);
 void PushInputClip(Rectangle bounds);
 void PopInputClip(void);
 int ui_classic_style(void);
-int ui_modern_style(void);
 float ui_radius_px(Rectangle bounds, float radius_px);
 int ui_control_bevel_enabled(void);
 int ui_touch_target_min(void);
 Color ui_alpha(Color color, unsigned char alpha);
 Rectangle ui_centered_min_hit_rect(int x, int y, int w, int h,
                                    int min_w, int min_h);
-int ui_default_style(void);
 Color ui_default_on_color(Color color);
 ThemeScheme ui_default_scheme(void);
-Color ui_default_surface_container(void);
-Color ui_default_surface_variant(void);
-Color ui_default_outline(void);
-void ui_default_state_layer(Rectangle bounds, Color on_color,
-                             int hovered, int focused, int pressed);
-void ui_default_focus(Rectangle bounds);
 void ui_default_elevation(Rectangle bounds, float radius, int level);
 void ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed);
 void ui_draw_control_background(Rectangle bounds, Color background,
                                 Color border, float classic_radius);
 
-/* Draws a filled box with an outline: rounded when radius > 0, otherwise a
- * plain rectangle with a 1px line border. Used by text input, text area, and
- * read-only box backgrounds. */
-void ui_draw_box_background(Rectangle bounds, float radius, Color background,
-                            Color border);
+
 /* Blink phase of the text caret: on roughly every other half-second. */
 int ui_caret_blink_visible(void);
 /* Navigate to a URL: in-browser redirect on web, platform opener otherwise.

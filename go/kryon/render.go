@@ -102,7 +102,7 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
 		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGroup, FrameOpGrid, FrameOpPage, FrameOpSection:
-			strokeRect(img, op.Bounds, Color{220, 224, 229, 255})
+			// Layout scopes have no paint of their own.
 		case FrameOpScreen:
 			// A screen establishes a coordinate/layout scope, not a surface.
 			// Its appearance is provided explicitly by Surface or Background.
@@ -144,18 +144,11 @@ func frameMaterial(op FrameOp) MaterialPaint {
 }
 
 func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
-	if op.Material == MaterialFlat && op.Radius <= 0 && op.Opacity >= 1 {
-		fill := op.Color
-		if fill.A == 0 {
-			if op.Fields&uint32(StyleBackground) != 0 {
-				// Explicit transparent background: paint nothing.
-				fill = Color{0, 0, 0, 0}
-			} else {
-				// Unstyled debug fill.
-				fill = Color{255, 255, 255, 255}
-			}
-		}
-		fillRect(img, op.Bounds, fill)
+	if op.Material == MaterialFlat && op.Radius <= 0 && op.Opacity >= 1 &&
+		!op.HasBackgroundEnd && op.BorderWidth <= 1 &&
+		(op.BorderColor.A == 0 || op.BorderColor.A == 255) {
+		pixels := clipRect(img, op.Bounds)
+		fillRectPixels(img, pixels.Min.X, pixels.Min.Y, pixels.Dx(), pixels.Dy(), op.Color)
 		if op.BorderWidth > 0 && op.BorderColor.A != 0 {
 			strokeRect(img, op.Bounds, op.BorderColor)
 		}
@@ -387,12 +380,6 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 	if paintOp.Opacity == 0 && paintOp.Fields&uint32(StyleOpacity) == 0 {
 		paintOp.Opacity = 1
 	}
-	if paintOp.BorderWidth == 0 && paintOp.Fields&uint32(StyleBorderWidth) == 0 {
-		paintOp.BorderWidth = 1
-	}
-	if paintOp.FocusColor.A == 0 {
-		paintOp.FocusColor = paintOp.CursorColor
-	}
 	paintOp.Kind = FrameOpSurface
 	renderMaterial(img, paintOp)
 
@@ -415,25 +402,10 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 	wrapWidth := int(TextInput_TextAreaWrapWidthFor(op.Bounds.Width, int32(paddingX), op.Wrap, TextInput_TextAreaMinWrapWidth(1)))
 	contentClip := image.Rect(x, clipTop, int(round(op.Bounds.X+op.Bounds.Width))-paddingX, clipBottom)
 	img = img.SubImage(contentClip.Intersect(img.Bounds())).(*image.RGBA)
-	text := BLACK
-	if op.TextColor.A != 0 {
-		text = op.TextColor
-	}
-	selection := Color{58, 110, 190, 255}
-	if op.SelectionColor.A != 0 {
-		selection = op.SelectionColor
-	}
-	selected := text
-	if op.SelectedTextColor.A != 0 {
-		selected = op.SelectedTextColor
-	}
-	cursorColor := op.BorderColor
-	if cursorColor.A == 0 {
-		cursorColor = Color{144, 152, 164, 255}
-	}
-	if op.CursorColor.A != 0 {
-		cursorColor = op.CursorColor
-	}
+	text := op.TextColor
+	selection := op.SelectionColor
+	selected := op.SelectedTextColor
+	cursorColor := op.CursorColor
 	lines := renderTextAreaLines(op.Text, wrapWidth, op.FontSize, op.FontID, op.Wrap)
 	y := y0
 	for _, line := range lines {
@@ -488,77 +460,54 @@ func renderTextArea(img *image.RGBA, op FrameOp) {
 	}
 }
 
+// Colors are content fallbacks only. Shared policy preserves explicit KSS zero
+// alpha; decorative surfaces and borders are never synthesized here.
+func textInputContentColors(op FrameOp) FrameOp {
+	text := Text_TextContentColorFor(op.Fields, uint32(StyleForeground), packRGBA(op.TextColor), packRGBA(BLACK))
+	cursor := Text_TextContentColorFor(op.Fields, uint32(StyleFocus), packRGBA(op.CursorColor), text)
+	selection := Text_TextContentColorFor(op.Fields, uint32(StyleFocus), packRGBA(op.SelectionColor), Text_TextSelectionColorFor(cursor))
+	selected := Text_TextContentColorFor(op.Fields, uint32(StyleForeground), packRGBA(op.SelectedTextColor), text)
+	opacity := Style_StyleOpacityValue(op.Fields, op.Opacity)
+	op.TextColor = unpackRGBA(Surface_Opacity(text, opacity))
+	op.CursorColor = unpackRGBA(Surface_Opacity(cursor, opacity))
+	op.SelectionColor = unpackRGBA(Surface_Opacity(selection, opacity))
+	op.SelectedTextColor = unpackRGBA(Surface_Opacity(selected, opacity))
+	return op
+}
+
 func renderTextInput(img *image.RGBA, op FrameOp) {
+	op = textInputContentColors(op)
 	if op.Kind == FrameOpTextArea {
 		renderTextArea(img, op)
 		return
 	}
-	if op.Material == 0 && op.Opacity == 0 && op.Radius == 0 && op.BorderWidth == 0 {
-		fill := WHITE
-		if op.Color.A != 0 {
-			fill = op.Color
-		}
-		fillRect(img, op.Bounds, fill)
-		border := Color{144, 152, 164, 255}
-		if op.BorderColor.A != 0 {
-			border = op.BorderColor
-		}
-		if op.Focused {
-			if op.BorderColor.A == 0 {
-				border = Color{29, 96, 196, 255}
-			}
-		}
-		strokeRect(img, op.Bounds, border)
-	} else {
-		if op.Opacity == 0 && op.Fields&uint32(StyleOpacity) == 0 {
-			op.Opacity = 1
-		}
-		if op.BorderWidth == 0 && op.Fields&uint32(StyleBorderWidth) == 0 {
-			op.BorderWidth = 1
-		}
-		if op.FocusColor.A == 0 {
-			op.FocusColor = op.CursorColor
-		}
-		op.Kind = FrameOpSurface
-		renderMaterial(img, op)
+	if op.Opacity == 0 && op.Fields&uint32(StyleOpacity) == 0 {
+		op.Opacity = 1
 	}
+	op.Kind = FrameOpSurface
+	renderMaterial(img, op)
 	x := int(round(op.Bounds.X)) + 8
 	y := int(round(op.Bounds.Y)) + maxInt(3, (int(round(op.Bounds.Height))-int(textHeight(op.FontSize, op.FontID)))/2)
-	text := BLACK
-	if op.TextColor.A != 0 {
-		text = op.TextColor
-	}
+	text := op.TextColor
 	if op.SelectionStart != op.SelectionEnd {
 		start, end := orderedInt32(op.SelectionStart, op.SelectionEnd)
 		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
 		ex := x + textAdvance(op.Text, end, op.FontSize, op.FontID)
-		selection := Color{58, 110, 190, 255}
-		if op.SelectionColor.A != 0 {
-			selection = op.SelectionColor
-		}
+		selection := op.SelectionColor
 		fillRectPixels(img, sx, int(round(op.Bounds.Y))+3, maxInt(1, ex-sx), maxInt(1, int(round(op.Bounds.Height))-6), selection)
 	}
 	drawText(img, op.Text, x, y, op.FontSize, text, op.FontID)
 	if op.SelectionStart != op.SelectionEnd {
 		start, end := orderedInt32(op.SelectionStart, op.SelectionEnd)
 		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
-		selected := text
-		if op.SelectedTextColor.A != 0 {
-			selected = op.SelectedTextColor
-		}
+		selected := op.SelectedTextColor
 		drawText(img, sliceTextByByteCursor(op.Text, start, end), sx, y, op.FontSize, selected, op.FontID)
 	}
 	if op.CompositionStart != op.CompositionEnd {
 		start, end := orderedInt32(op.CompositionStart, op.CompositionEnd)
 		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
 		ex := x + textAdvance(op.Text, end, op.FontSize, op.FontID)
-		composition := op.BorderColor
-		if composition.A == 0 {
-			composition = Color{144, 152, 164, 255}
-		}
-		if op.CursorColor.A != 0 {
-			composition = op.CursorColor
-		}
+		composition := op.CursorColor
 		fillRectPixels(img, sx, y+int(textHeight(op.FontSize, op.FontID))-2,
 			maxInt(2, ex-sx), 2, composition)
 	}
@@ -566,13 +515,7 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5
-		cursor := op.BorderColor
-		if cursor.A == 0 {
-			cursor = Color{144, 152, 164, 255}
-		}
-		if op.CursorColor.A != 0 {
-			cursor = op.CursorColor
-		}
+		cursor := op.CursorColor
 		drawVertical(img, cursorX, top, bottom, cursor)
 	}
 }
@@ -740,7 +683,7 @@ func drawVertical(img *image.RGBA, x, y0, y1 int, c Color) {
 		y0, y1 = y1, y0
 	}
 	for y := y0; y <= y1; y++ {
-		setPixel(img, x, y, c)
+		blendPixel(img, x, y, c)
 	}
 }
 

@@ -12,21 +12,14 @@
   width/material near the frame-op dispatcher and zero-opacity/default-border
   handling in later paint paths. Preserve explicit zero; remove product chrome
   defaults or document a real backend degradation.
-  Status: FrameOp now carries the resolved style presence bits (`Fields`),
-  populated by the Surface, text-input, text-area, and shared
-  `styleFrameRectOp` frame recorders. The
-  rasterizer's unstyled-value fallbacks are gated on presence: a missing
-  border-width/opacity still gets the documented 1px/opaque fallback, an
-  explicit zero keeps its zero (covered by
-  `TestRenderPreservesExplicitZeroBorder`), and an explicit transparent
-  background no longer paints the white debug fill. The remaining hardcoded
-  colors in renderTextInput's fully-unstyled branch are now covered as no-style
-  debug affordances: text fields paint a white fill, gray unfocused border,
-  blue focused border, and gray fallback caret; text fields and text areas use
-  the blue fallback selection color unless an op supplies a selection color. A
-  fully unstyled text area leaves the frame background intact while still
-  painting fallback selection/caret affordances. Folding these into pack data is
-  part of the conformance-matrix work below.
+  Status: resolved presence bits survive rasterization. Unstyled editors and
+  layout scopes no longer synthesize white fills, gray/blue borders or debug
+  outlines. Border width is never invented. Explicit transparent content and
+  opacity zero paint nothing. Unset text/caret colors retain a content fallback;
+  selection derives a neutral highlight from that content color through shared
+  `runtime/text.kry` policy. Pixel tests cover both editors, transparent surfaces
+  and layout scopes. C immediate text areas now use the resolved material path;
+  menu/navigation elevation and avatar decoration are supplied by styles.
 - Carry sufficient resolved field-presence/provenance through frame operations
   to distinguish missing values from explicit zero and explain the painted result.
   Status: Go frame operations now retain field-presence masks, and the Go style

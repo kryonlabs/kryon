@@ -36,14 +36,13 @@ def require(condition, message, failures):
 def main():
     ledger = text(LEDGER)
     failures = []
-    required_ids = [f"B-{i:03d}" for i in range(1, 9)]
+    required_ids = [f"B-{i:03d}" for i in (1, 2, 4, 5, 6, 7, 8)]
     for bridge_id in required_ids:
         require(f"| {bridge_id} |" in ledger, f"missing ledger row {bridge_id}", failures)
 
     checks = {
         "B-001": line_hits(ROOT / "src/ui/ui.c", CHROME_GETTERS),
         "B-002": line_hits(ROOT / "src/ui/ui_tree.c", CHROME_GETTERS),
-        "B-003": line_hits(ROOT / "src/ui/ui_node_registry.c", CHROME_GETTERS),
         "B-004": line_hits(ROOT / "src/ui/ui_page.c", BASE_PAT),
         "B-005": line_hits(ROOT / "go/kryon/control_style_host.go", GO_BASE_PAT),
     }
@@ -67,7 +66,7 @@ def main():
         for failure in failures:
             print(f"bridge-ledger-check: {failure}", file=sys.stderr)
         return 1
-    print("bridge-ledger-check: ok (8 bridge rows, 10 visual props)")
+    print("bridge-ledger-check: ok (7 bridge rows, 10 visual props)")
     return 0
 
 

@@ -1,6 +1,7 @@
 package kryon
 
 import (
+	"bytes"
 	"image"
 	"testing"
 )
@@ -29,12 +30,18 @@ func TestRenderPreservesExplicitZeroBorder(t *testing.T) {
 	}
 
 	img, missing := newImg()
-	// Background resolved but border-width/opacity missing: the documented
-	// fallback adds a visible border.
+	// Background alone must not invent a border width.
 	missing.Fields = uint32(StyleBackground)
 	renderTextInput(img, missing)
+	if paintsBorder(img) {
+		t.Fatal("text field invented a border width")
+	}
+	img, requested := newImg()
+	requested.Fields = uint32(StyleBorderWidth | StyleBackground)
+	requested.BorderWidth = 1
+	renderTextInput(img, requested)
 	if !paintsBorder(img) {
-		t.Fatal("text field with missing border-width lost its fallback border")
+		t.Fatal("explicit border width was lost")
 	}
 
 	img, explicit := newImg()
@@ -70,116 +77,84 @@ func TestStyleFrameRectOpCarriesPresenceBits(t *testing.T) {
 	}
 }
 
-func TestRenderTextInputNoStyleDebugAffordance(t *testing.T) {
-	bounds := Rectangle{X: 2, Y: 2, Width: 48, Height: 24}
-
-	unfocused := RenderFrame(64, 36, []FrameOp{{
-		Kind:     FrameOpTextField,
-		Bounds:   bounds,
-		FontSize: Text14,
-	}})
-	if got, want := unfocused.RGBAAt(2, 2), rgba(Color{144, 152, 164, 255}); got != want {
-		t.Fatalf("unstyled text field border = %#v, want gray debug border %#v", got, want)
-	}
-	if got, want := unfocused.RGBAAt(8, 8), rgba(WHITE); got != want {
-		t.Fatalf("unstyled text field fill = %#v, want white debug fill %#v", got, want)
-	}
-
-	focused := RenderFrame(64, 36, []FrameOp{{
-		Kind:     FrameOpTextField,
-		Bounds:   bounds,
-		FontSize: Text14,
-		Focused:  true,
-	}})
-	if got, want := focused.RGBAAt(2, 2), rgba(Color{29, 96, 196, 255}); got != want {
-		t.Fatalf("focused unstyled text field border = %#v, want blue debug border %#v", got, want)
-	}
-	if got, want := focused.RGBAAt(10, 12), rgba(Color{144, 152, 164, 255}); got != want {
-		t.Fatalf("focused unstyled text field caret = %#v, want gray debug caret %#v", got, want)
+func TestRenderTextEditorsWithoutStyleDoNotInventChrome(t *testing.T) {
+	background := RenderFrame(96, 60, nil)
+	for _, kind := range []FrameOpKind{FrameOpTextField, FrameOpTextArea} {
+		op := FrameOp{Kind: kind, Bounds: NewRectangle(2, 2, 80, 42), FontSize: Text14}
+		img := RenderFrame(96, 60, []FrameOp{op})
+		if !bytes.Equal(img.Pix, background.Pix) {
+			t.Fatalf("%s invented a fill or border", kind)
+		}
+		op.Focused = true
+		img = RenderFrame(96, 60, []FrameOp{op})
+		if bytes.Equal(img.Pix, background.Pix) {
+			t.Fatalf("%s lost its insertion caret", kind)
+		}
+		if img.RGBAAt(2, 2) != background.RGBAAt(2, 2) {
+			t.Fatalf("%s focus invented a border", kind)
+		}
 	}
 }
 
-func TestRenderTextInputNoStyleSelectionFallback(t *testing.T) {
-	img := RenderFrame(96, 40, []FrameOp{{
-		Kind:           FrameOpTextField,
-		Bounds:         Rectangle{X: 2, Y: 2, Width: 80, Height: 28},
-		Text:           "abc",
-		FontSize:       Text14,
-		SelectionStart: 0,
-		SelectionEnd:   3,
-	}})
-	want := rgba(Color{58, 110, 190, 255})
-	found := false
-	for y := 5; y < 26 && !found; y++ {
-		for x := 10; x < 30; x++ {
-			if img.RGBAAt(x, y) == want {
-				found = true
-				break
-			}
+func TestRenderTextEditorsRespectTransparentContentAndOpacity(t *testing.T) {
+	background := RenderFrame(96, 60, nil)
+	for _, kind := range []FrameOpKind{FrameOpTextField, FrameOpTextArea} {
+		op := FrameOp{Kind: kind, Bounds: NewRectangle(2, 2, 80, 42), FontSize: Text14,
+			Text: "abc", Focused: true, Cursor: 3, SelectionEnd: 3, Fields: uint32(StyleForeground | StyleFocus)}
+		img := RenderFrame(96, 60, []FrameOp{op})
+		if !bytes.Equal(img.Pix, background.Pix) {
+			t.Fatalf("%s replaced explicit transparent content", kind)
 		}
-	}
-	if !found {
-		t.Fatal("unstyled text field selection did not use the blue debug selection color")
-	}
-
-	styledSelection := Color{210, 80, 20, 255}
-	img = RenderFrame(96, 40, []FrameOp{{
-		Kind:           FrameOpTextField,
-		Bounds:         Rectangle{X: 2, Y: 2, Width: 80, Height: 28},
-		Text:           "abc",
-		FontSize:       Text14,
-		SelectionStart: 0,
-		SelectionEnd:   3,
-		SelectionColor: styledSelection,
-	}})
-	want = rgba(styledSelection)
-	found = false
-	for y := 5; y < 26 && !found; y++ {
-		for x := 10; x < 30; x++ {
-			if img.RGBAAt(x, y) == want {
-				found = true
-				break
-			}
+		op.Fields |= uint32(StyleOpacity | StyleBackground | StyleBorderWidth)
+		op.TextColor, op.CursorColor, op.SelectionColor = BLACK, BLACK, BLACK
+		op.Color, op.BorderColor, op.BorderWidth = WHITE, BLACK, 1
+		img = RenderFrame(96, 60, []FrameOp{op})
+		if !bytes.Equal(img.Pix, background.Pix) {
+			t.Fatalf("%s ignored explicit opacity zero", kind)
 		}
-	}
-	if !found {
-		t.Fatal("styled text field selection did not override the debug selection color")
 	}
 }
 
-func TestRenderTextAreaNoStyleDebugAffordance(t *testing.T) {
-	img := RenderFrame(96, 60, []FrameOp{{
-		Kind:           FrameOpTextArea,
-		Bounds:         Rectangle{X: 2, Y: 2, Width: 80, Height: 42},
-		Text:           "abc",
-		FontSize:       Text14,
-		Cursor:         3,
-		Focused:        true,
-		SelectionStart: 0,
-		SelectionEnd:   3,
-	}})
-	if got, want := img.RGBAAt(8, 8), rgba(RAYWHITE); got != want {
-		t.Fatalf("fully unstyled text area fill = %#v, want untouched frame background %#v", got, want)
-	}
-	selection := rgba(Color{58, 110, 190, 255})
-	cursor := rgba(Color{144, 152, 164, 255})
-	foundSelection := false
-	foundCursor := false
-	for y := 5; y < 36; y++ {
-		for x := 8; x < 44; x++ {
-			pixel := img.RGBAAt(x, y)
-			if pixel == selection {
-				foundSelection = true
-			}
-			if pixel == cursor {
-				foundCursor = true
+func TestRenderTextInputSelectionUsesContentOrRequestedColor(t *testing.T) {
+	for _, kind := range []FrameOpKind{FrameOpTextField, FrameOpTextArea} {
+		op := FrameOp{Kind: kind, Bounds: NewRectangle(2, 2, 80, 42), FontSize: Text14,
+			Text: "abc", SelectionEnd: 3}
+		img := RenderFrame(96, 60, []FrameOp{op})
+		foundSelection := false
+		for y := 5; y < 36; y++ {
+			for x := 8; x < 44; x++ {
+				pixel := img.RGBAAt(x, y)
+				if pixel.R != pixel.G || pixel.G != pixel.B {
+					t.Fatalf("%s invented a colored selection: %+v", kind, pixel)
+				}
+				if pixel.R > 0 && pixel.R < 180 {
+					foundSelection = true
+				}
 			}
 		}
+		if !foundSelection {
+			t.Fatalf("%s lost its neutral selection highlight", kind)
+		}
+		op.SelectionColor = Color{210, 80, 20, 255}
+		img = RenderFrame(96, 60, []FrameOp{op})
+		foundSelection = false
+		for y := 5; y < 36; y++ {
+			for x := 8; x < 44; x++ {
+				foundSelection = foundSelection || img.RGBAAt(x, y) == rgba(op.SelectionColor)
+			}
+		}
+		if !foundSelection {
+			t.Fatalf("%s lost requested selection color", kind)
+		}
 	}
-	if !foundSelection {
-		t.Fatal("unstyled text area selection did not use the blue debug selection color")
-	}
-	if !foundCursor {
-		t.Fatal("unstyled text area caret did not use the gray debug cursor color")
+}
+
+func TestRenderLayoutScopesAndTransparentSurfaceDoNotPaint(t *testing.T) {
+	background := RenderFrame(96, 60, nil)
+	for _, kind := range []FrameOpKind{FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGroup, FrameOpGrid, FrameOpPage, FrameOpSection, FrameOpSurface} {
+		img := RenderFrame(96, 60, []FrameOp{{Kind: kind, Bounds: NewRectangle(2, 2, 80, 42), Opacity: 1}})
+		if !bytes.Equal(img.Pix, background.Pix) {
+			t.Fatalf("%s painted unrequested chrome", kind)
+		}
 	}
 }

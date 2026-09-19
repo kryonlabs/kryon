@@ -3,6 +3,19 @@
 
 # Typeface lookup, shaping and glyph measurement remain host services.
 # Inheritance and layout policy must not differ between renderers.
+TextContentColorFor :: (fields: u32, field: u32, color: u32,
+    fallback: u32) -> u32 #export {
+    if (fields & field) != (u32)0 || (color & (u32)255) != (u32)0 {
+        return color
+    }
+    return fallback
+}
+
+TextSelectionColorFor :: (color: u32) -> u32 #export {
+    alpha: u32 = (color & (u32)255) * (u32)TextSelectionDefaultAlpha() / (u32)255
+    return (color & ~(u32)255) | alpha
+}
+
 TextAppearance :: struct {
     font: i32
     color: u32

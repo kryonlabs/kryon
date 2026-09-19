@@ -1787,10 +1787,10 @@ RenderFocus(Rectangle bounds)
         FocusBoxRole());
     FocusPaint paint = FocusPaintFor(bounds, (float)GetScale(), frame);
     Style style = ui_unpack_style(frame.value);
-    Color focus = style.focus.a != 0 ? style.focus : style.border;
+    Color focus = (style.fields & StyleFocus) != 0 ? style.focus : style.border;
 
     DrawRectangleLinesEx(paint.bounds, (float)paint.stroke_width,
-                         focus.a != 0 ? focus : c_button_hover);
+                         Fade(focus, style.opacity));
 }
 
 int
@@ -1923,83 +1923,73 @@ ui_text_input_surface(Rectangle bounds, TextInputAppearance style, int focused,
     int hovered = 0;
     int style_kind = ui_text_input_style_kind(kind);
 
-    if(ui_default_style()) {
-        ThemeMetrics metrics = GetThemeMetrics();
-        ButtonProps props = {.bounds = bounds, .id = focus_id,
-                             .tone = ButtonToneNeutral,
-                             .emphasis = ButtonEmphasisSoft,
-                             .disabled = disabled,
-                             .class_name = class_name};
-        Style paint = ui_resolve_button_style_kind(
-            props, disabled ? ButtonStateDisabled
-                            : (focused ? ButtonStateFocus
-                                       : ButtonStateNormal),
-            style_kind);
-        FillStates fill_states;
-        Vector2 mouse = ui_mouse_world();
-        Color border = focused ? style.focus_border : style.border;
-        Activation sample;
-        ButtonInput input;
-        InteractionMotion motion;
+    ThemeMetrics metrics = GetThemeMetrics();
+    ButtonProps props = {.bounds = bounds, .id = focus_id,
+                         .tone = ButtonToneNeutral,
+                         .emphasis = ButtonEmphasisSoft,
+                         .disabled = disabled,
+                         .class_name = class_name};
+    Style paint = ui_resolve_button_style_kind(
+        props, disabled ? ButtonStateDisabled
+                        : (focused ? ButtonStateFocus
+                                   : ButtonStateNormal),
+        style_kind);
+    FillStates fill_states;
+    Vector2 mouse = ui_mouse_world();
+    Color border = focused ? style.focus_border : style.border;
+    Activation sample;
+    ButtonInput input;
+    InteractionMotion motion;
 
-        if(requested.background.a != 0)
-            paint.background = style.background;
-        if(requested.border.a != 0 ||
-           (focused && requested.focus_border.a != 0))
-            paint.border = border;
-        if(requested.focus_border.a != 0)
-            paint.focus = style.focus_border;
-        if(requested.text.a != 0)
-            paint.foreground = style.text;
-        paint.opacity = 1.0f;
+    if(requested.background.a != 0)
+        paint.background = style.background;
+    if(requested.border.a != 0 ||
+       (focused && requested.focus_border.a != 0))
+        paint.border = border;
+    if(requested.focus_border.a != 0)
+        paint.focus = style.focus_border;
+    if(requested.text.a != 0)
+        paint.foreground = style.text;
 
-        hovered = editable &&
-                  CheckCollisionPointRec(mouse, bounds) &&
-                  !InputCapturesClick(mouse) &&
-                  HoverEffectsEnabled();
-        sample.hovered = hovered;
-        sample.pressed = 0;
-        sample.focused = focused;
-        sample.activated = 0;
-        input = ResolveButtonInput((int)props.state, props.disabled,
-            props.loading, props.selected, sample);
-        motion = AdvanceButtonMotion(
-            ui_text_input_motion_key(bounds, focus_id, kind), (int)props.state, input,
-            TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
-            metrics.transition_normal_ms, metrics.transition_fast_ms);
-        if(motion.active)
-            InvalidateTree(INVALIDATE_PAINT);
-        paint = ui_style_transition(
-            paint,
-            ui_resolve_button_style_kind(props, ButtonStateNormal, style_kind),
-            ui_resolve_button_style_kind(props, ButtonStateHover, style_kind),
-            ui_resolve_button_style_kind(props, ButtonStatePressed, style_kind),
-            ui_resolve_button_style_kind(props, ButtonStateFocus, style_kind),
-            motion.hover.value, motion.press.value, motion.focus.value,
-            &fill_states);
-        if(requested.background.a != 0)
-            paint.background = style.background;
-        if(requested.border.a != 0 ||
-           (focused && requested.focus_border.a != 0))
-            paint.border = border;
-        if(requested.focus_border.a != 0)
-            paint.focus = style.focus_border;
-        if(requested.text.a != 0)
-            paint.foreground = style.text;
-        paint.opacity = 1.0f;
-        fill_states = ui_style_fill(paint);
-        return ui_draw_material(
-            bounds, (Rectangle){0}, paint.background, paint.border,
-            paint.border, paint.radius, paint.border_width,
-            motion.hover.value, motion.press.value, disabled, paint.focus,
-            motion.focus.value, paint.opacity, fill_states, paint.material);
-    }
-
-    ui_draw_box_background(bounds,
-                           StyleLegacyBoxRadius(style.radius),
-                           style.background,
-                           focused ? style.focus_border : style.border);
-    return bounds;
+    hovered = editable &&
+              CheckCollisionPointRec(mouse, bounds) &&
+              !InputCapturesClick(mouse) &&
+              HoverEffectsEnabled();
+    sample.hovered = hovered;
+    sample.pressed = 0;
+    sample.focused = focused;
+    sample.activated = 0;
+    input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, sample);
+    motion = AdvanceButtonMotion(
+        ui_text_input_motion_key(bounds, focus_id, kind), (int)props.state, input,
+        TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
+        metrics.transition_normal_ms, metrics.transition_fast_ms);
+    if(motion.active)
+        InvalidateTree(INVALIDATE_PAINT);
+    paint = ui_style_transition(
+        paint,
+        ui_resolve_button_style_kind(props, ButtonStateNormal, style_kind),
+        ui_resolve_button_style_kind(props, ButtonStateHover, style_kind),
+        ui_resolve_button_style_kind(props, ButtonStatePressed, style_kind),
+        ui_resolve_button_style_kind(props, ButtonStateFocus, style_kind),
+        motion.hover.value, motion.press.value, motion.focus.value,
+        &fill_states);
+    if(requested.background.a != 0)
+        paint.background = style.background;
+    if(requested.border.a != 0 ||
+       (focused && requested.focus_border.a != 0))
+        paint.border = border;
+    if(requested.focus_border.a != 0)
+        paint.focus = style.focus_border;
+    if(requested.text.a != 0)
+        paint.foreground = style.text;
+    fill_states = ui_style_fill(paint);
+    return ui_draw_material(
+        bounds, (Rectangle){0}, paint.background, paint.border,
+        paint.border, paint.radius, paint.border_width,
+        motion.hover.value, motion.press.value, disabled, paint.focus,
+        motion.focus.value, paint.opacity, fill_states, paint.material);
 }
 
 static int ui_text_width_before_cursor(const char *text, int font,
@@ -2035,8 +2025,10 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     int text_y = ControlTextBaselineY(value, y, h, font);
     int cursor_h = paint.cursor_height;
     int cursor_y = paint.cursor_y;
-    Color text_color = style.text.a != 0 ? style.text : c_text;
-    Color cursor_color = style.cursor.a != 0 ? style.cursor : c_circle;
+    Color text_color = GetColor(TextContentColorFor(style.fields,
+        StyleForeground, ColorToInt(style.text), ColorToInt(BLACK)));
+    Color cursor_color = GetColor(TextContentColorFor(style.fields,
+        StyleFocus, ColorToInt(style.cursor), ColorToInt(text_color)));
 
     if(focused && text_input_active)
         SetFocusTextInputActive(1);
@@ -2075,8 +2067,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                 sel_w = stroke_width;
             DrawRectangle(sel_x, text_y, sel_w,
                           TextLineHeight(font),
-                          ui_default_style() ? ui_alpha(c_circle, 82) :
-                                                (Color){78, 132, 196, 135});
+                          GetColor(TextSelectionColorFor(ColorToInt(cursor_color))));
         }
     }
     RenderText(value, text_x, text_y, font, text_color);
@@ -2116,7 +2107,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     if(focused && cursor_visible) {
         int cursor_x = text_x + ui_text_width_before_cursor(value, font, cursor_position);
         DrawRectangle(cursor_x, cursor_y, stroke_width, cursor_h,
-                      ui_default_style() ? c_circle : cursor_color);
+                      cursor_color);
     }
     EndClip();
 }
@@ -3038,6 +3029,10 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
     int clip_bottom = (int)(bounds.y + bounds.height) - padding_y;
     int stroke_width = TextInputStrokeWidth((float)Scale(1000) / 1000.0f);
 
+    style.text = GetColor(TextContentColorFor(style.fields, StyleForeground,
+        ColorToInt(style.text), ColorToInt(BLACK)));
+    style.cursor = GetColor(TextContentColorFor(style.fields, StyleFocus,
+        ColorToInt(style.cursor), ColorToInt(style.text)));
     TextRowCursor rows = ui_text_rows(text, font, line_gap, wrap_width, 1, 0);
     TextMeasuredRow row;
     text = rows.source.data;
@@ -3061,7 +3056,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
             line[line_len] = '\0';
             ui_draw_text_area_selection(text, chunk_start, chunk_end,
                                         text_x, draw_y, line_font,
-                                        (Color){0, 96, 192, 72},
+                                        GetColor(TextSelectionColorFor(ColorToInt(style.cursor))),
                                         selection_start, selection_end);
             if(syntax == SyntaxNone)
                 RenderText(line, text_x, draw_y, line_font, style.text);
@@ -3512,8 +3507,6 @@ ui_text_area_render(TextAreaProps area)
     int selection_end = 0;
     int has_selection = 0;
     int selection_key_handled = 0;
-    Color border;
-    float radius;
     int enter_requested;
     int drag_id;
     int double_clicked = 0;
@@ -4046,9 +4039,9 @@ ui_text_area_render(TextAreaProps area)
         EndWidget(&widget);
         return changed;
     }
-    border = focused ? style.focus_border : style.border;
-    radius = StyleLegacyBoxRadius(style.radius);
-    ui_draw_box_background(area.bounds, radius, style.background, border);
+    (void)ui_text_input_surface(area.bounds, style, focused, !area.read_only,
+                                area.focus_id, "TextArea",
+                                (TextInputAppearance){0}, area.class_name);
 
     ui_begin_world_clip((Rectangle){area.bounds.x + padding_x, area.bounds.y + padding_y,
                                     area.bounds.width - padding_x * 2 - scrollbar_w,

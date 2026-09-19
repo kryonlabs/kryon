@@ -171,12 +171,6 @@ ui_classic_style(void)
     return GetThemeMetrics().bevel_enabled != 0;
 }
 
-int
-ui_modern_style(void)
-{
-    return !ui_classic_style();
-}
-
 static StyleData
 pack_style(Style value)
 {
@@ -424,12 +418,6 @@ ui_alpha(Color color, unsigned char alpha)
     return color;
 }
 
-int
-ui_default_style(void)
-{
-    return 1;
-}
-
 static int
 ui_color_luminance(Color color)
 {
@@ -529,52 +517,6 @@ ThemeScheme
 GetThemeScheme(void)
 {
     return ui_default_scheme();
-}
-
-Color
-ui_default_surface_container(void)
-{
-    return ui_default_scheme().surface_container;
-}
-
-Color
-ui_default_surface_variant(void)
-{
-    return ui_default_scheme().surface_variant;
-}
-
-Color
-ui_default_outline(void)
-{
-    return ui_default_scheme().outline;
-}
-
-void
-ui_default_state_layer(Rectangle bounds, Color on_color,
-                        int hovered, int focused, int pressed)
-{
-    Color layer = on_color;
-    float radius = ui_radius_px(bounds, GetThemeMetrics().control_radius);
-    int alpha = StyleStateLayerAlpha(pressed != 0, focused != 0, hovered != 0);
-
-    if(alpha <= 0)
-        return;
-    layer.a = (unsigned char)alpha;
-    DrawRectangleRounded(bounds, radius, 12, layer);
-}
-
-void
-ui_default_focus(Rectangle bounds)
-{
-    Color outline = c_circle;
-    Rectangle focus_bounds;
-    float radius;
-
-    outline.a = StyleDefaultFocusOutlineAlpha();
-    focus_bounds = FocusDefaultOutlineBounds(
-        bounds, (float)Scale(1000) / 1000.0f);
-    radius = ui_radius_px(focus_bounds, GetThemeMetrics().control_radius + 2.0f);
-    DrawRectangleRoundedLines(focus_bounds, radius, 12, outline);
 }
 
 void
@@ -677,17 +619,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(classic_radius > 0.0f)
         radius = classic_radius;
 
-    if(ui_default_style()) {
-        ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
-    } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
-        Color shadow = DarkenColor(ui_app_style().background, 35);
-        shadow.a = tokens.shadow_alpha;
-        DrawRectangleRounded((Rectangle){bounds.x,
-                                         bounds.y + Scale(tokens.shadow_offset_y),
-                                         bounds.width, bounds.height},
-                             radius, 12, shadow);
-    }
-
+    ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
     if(tokens.control_alpha < background.a)
         background.a = tokens.control_alpha;
     if(tokens.border_alpha < border.a)
@@ -702,24 +634,5 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
         Color shine = WHITE;
         shine.a = tokens.shine_alpha;
         DrawRectangleRounded(shine_paint.bounds, radius, 8, shine);
-    }
-}
-
-void
-ui_draw_box_background(Rectangle bounds, float radius, Color background,
-                       Color border)
-{
-    if(ui_modern_style()) {
-        /* Text fields use the Default pixel radius. A normalized legacy
-         * radius scales with height and turns large text areas into pills. */
-        ui_draw_control_background(bounds, background, border, 0.0f);
-        return;
-    }
-    if(radius <= 0.0f) {
-        DrawRectangleRec(bounds, background);
-        DrawRectangleLinesEx(bounds, 1, border);
-    } else {
-        DrawRectangleRounded(bounds, radius, 8, background);
-        DrawRectangleRoundedLines(bounds, radius, 8, border);
     }
 }

@@ -23,6 +23,54 @@ type TextSelectionCopyDecision struct {
 	Copy bool
 }
 
+func Text_TextContentColorFor(fields uint32, field uint32, color uint32, fallback uint32) uint32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 != value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 uint32 = color
+		var value_8 int32 = 255
+		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 8))
+		var value_11 int32 = 0
+		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+		var value_13 bool = value_10 != value_12
+		value_6 = value_13
+	}
+	if value_6 {
+		var value_14 uint32 = color
+		return value_14
+	}
+	var value_15 uint32 = fallback
+	return value_15
+}
+
+func Text_TextSelectionColorFor(color uint32) uint32 {
+	var value_0 uint32 = color
+	var value_1 int32 = 255
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_4 uint8 = Text_TextSelectionDefaultAlpha()
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, false, 3))
+	var value_7 int32 = 255
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_8), 32, false, 4))
+	var alpha uint32 = value_9
+	var value_10 uint32 = color
+	var value_11 int32 = 255
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(^uint64(0)), 32, false, 10))
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_13), 32, false, 8))
+	var value_15 uint32 = alpha
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, false, 9))
+	return value_16
+}
+
 func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, fallback_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
 	var style TextAppearance = TextAppearance{}
 	var value_0 int32 = font

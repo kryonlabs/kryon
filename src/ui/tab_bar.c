@@ -542,15 +542,6 @@ RenderTabBar(TabBarProps bar)
                      bar_y + bar_h - 1, GetColor(paint.tab_border_color));
         }
 
-        if(can_draw && !ui_default_style() && owns_drag && drag_target == i) {
-            Rectangle marker = TabBarDragMarkerBounds(
-                tab_x, tab_w, bar_y, bar_h,
-                drag_target > tab_bar_store->press_index,
-                (float)Scale(1000) / 1000.0f);
-            DrawRectangleRec(marker,
-                          GetColor(paint.focus_color));
-        }
-
         // Draw tab text and icon
         int icon_size = paint.icon_size;
         int has_label = tab->label != NULL && tab->label[0] != '\0';

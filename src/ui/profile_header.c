@@ -179,9 +179,12 @@ ui_draw_pfp_texture_in_circle(Texture2D icon, int cx, int cy, int radius)
 }
 
 static void
-ui_draw_avatar_tile(Rectangle bounds, Color background, Color outline)
+ui_draw_avatar_tile(Rectangle bounds, Style style)
 {
-    ui_draw_control_background(bounds, background, outline, 0.22f);
+    ui_draw_material(bounds, (Rectangle){0}, style.background,
+                     style.border, style.border, style.radius,
+                     style.border_width, 0, 0, 0, style.focus, 0,
+                     style.opacity, ui_style_fill(style), style.material);
 }
 
 static int
@@ -260,8 +263,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
             ConsumeRelease();
         result.pfp_clicked = 1;
     }
-    ui_draw_avatar_tile(layout.avatar_tile_bounds,
-                        surface_style.background, surface_style.border);
+    ui_draw_avatar_tile(layout.avatar_tile_bounds, surface_style);
     if(header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT) {
         DrawProfileImageIcon(header.pfp_icon_type, layout.icon_bounds,
@@ -391,8 +393,7 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                                         ButtonStateNormal,
                                                         StyleKindText());
 
-        ui_draw_avatar_tile(cell.bounds,
-                            cell_style.background, cell_style.border);
+        ui_draw_avatar_tile(cell.bounds, cell_style);
         if(active)
             DrawRectangleLinesEx(cell.bounds,
                                  ProfilePickerSelectedStrokeWidth(runtime_scale),

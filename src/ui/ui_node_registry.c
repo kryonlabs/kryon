@@ -183,7 +183,7 @@ NodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     id = (x * 31 + y * 17 + index * 101) & 0x7fffffff;
     if(strcmp(type->name, "Background") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Surface((SurfaceProps){.bounds = {0, 0, (float)GetViewWidth(), (float)GetViewHeight()}})\n");
+                 "\n    Surface((Rectangle){0, 0, (float)GetViewWidth(), (float)GetViewHeight()}, (Style){0})\n");
     } else if(strcmp(type->name, "Text") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Text((TextProps){\n"
@@ -194,7 +194,7 @@ NodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  x, y);
     } else if(strcmp(type->name, "Box") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Box((Rectangle){Scale(%d), Scale(%d), Scale(160), Scale(90)}, GetThemeSurface(), GetThemeBorder())\n",
+                 "\n    Surface((Rectangle){Scale(%d), Scale(%d), Scale(160), Scale(90)}, (Style){0})\n",
                  x, y);
     } else if(strcmp(type->name, "Line") == 0) {
         snprintf(dst, (size_t)cap,
@@ -267,7 +267,7 @@ NodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Group((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"
-                 "    Surface((SurfaceProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}})\n"
+                 "    Surface((Rectangle){Scale(%d), Scale(%d), Scale(180), Scale(110)}, (Style){0})\n"
                  "    End()\n",
                  x, y, 10200 + (id % 1000), x, y);
     } else {

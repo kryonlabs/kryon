@@ -316,3 +316,8 @@ Editable row caches and decoded image caches are bounded native host resources.
 They do not own wrapping, fit, selection or style policy: row and fit decisions
 come from shared `.kry` modules. Font measurement, Unicode iteration, file
 decoding, pixel sampling and cache synchronization remain native services.
+
+Text content fallback and selection-alpha decisions belong to `runtime/text.kry`.
+Native rasterizers preserve explicit foreground/focus transparency and opacity.
+Unstyled editors retain text/caret content; they do not add widget fills, borders,
+colored selection decoration or outlines around layout scopes.
