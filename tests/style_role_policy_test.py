@@ -23,7 +23,7 @@ PATHS = [
     ROOT / "src/ui",
     ROOT / "go/kryon/runtime.go",
     ROOT / "go/kryon/popup.go",
-]
+] + sorted((ROOT / "go/kryon").glob("*_host.go"))
 
 
 def source_files() -> list[Path]:

@@ -342,14 +342,14 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/spinbox.kry|go/kryon/spinbox.go|go/kryon/runtime.go|src/ui/ui_tk.c|tests/spinbox_policy_test.c)
+        runtime/spinbox.kry|go/kryon/spinbox.go|go/kryon/runtime.go|go/kryon/toolkit_host.go|src/ui/ui_tk.c|tests/spinbox_policy_test.c)
             needs_spinbox=1
             interesting=1
             ;;
     esac
 
     case "$path" in
-        runtime/tab_bar.kry|src/ui/tab_bar.c|go/kryon/tab_bar.go|go/kryon/runtime.go|tests/tab_bar_policy_test.c)
+        runtime/tab_bar.kry|src/ui/tab_bar.c|go/kryon/tab_bar.go|go/kryon/runtime.go|go/kryon/choice_host.go|tests/tab_bar_policy_test.c)
             needs_tab_bar=1
             interesting=1
             ;;
@@ -377,7 +377,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        go/kryon/runtime.go|go/kryon/*_test.go|tests/generated_runtime_parity_test.sh|tests/parity/*.kry)
+        go/kryon/*.go|tests/generated_runtime_parity_test.sh|tests/parity/*.kry)
             needs_go_runtime=1
             interesting=1
             ;;

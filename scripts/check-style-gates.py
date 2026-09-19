@@ -100,7 +100,7 @@ GO_BASE_ALLOWLIST = {
     # Caller-supplied font size/opacity and gap/padding metrics used as style
     # bases. Classified: content metrics per the documented metrics contract,
     # not product decoration; shrink only if the props move into KSS.
-    "go/kryon/runtime.go": 4,
+    "go/kryon/control_style_host.go": 4,
 }
 
 

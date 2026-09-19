@@ -331,7 +331,9 @@ import re
 root = Path('.')
 parser = (root / 'cmd/kir/kir_parse.c').read_text(encoding='utf-8')
 api = (root / 'go/kryon/api.go').read_text(encoding='utf-8')
-runtime = (root / 'go/kryon/runtime.go').read_text(encoding='utf-8')
+runtime = '\n'.join(path.read_text(encoding='utf-8')
+                    for path in (root / 'go/kryon').glob('*.go')
+                    if not path.name.endswith('_test.go'))
 pm = re.search(r'static const char \*const widgets\[\]\s*=\s*\{(?P<body>.*?)\};', parser, re.S)
 parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
@@ -579,6 +581,7 @@ manual_widget_props_matches="$(
         include/ui_tree.h \
         include/ui_tk.h \
         go/kryon/runtime.go \
+        go/kryon/*_host.go \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -848,7 +851,7 @@ split_text_widget_matches="$(
     rg -n '\b(TextInRect|TextColored|TextDisabled|TextWrapped)\s*\(' \
         include/ui_tree.h \
         go/kryon/api.go \
-        go/kryon/runtime.go || true
+        go/kryon/runtime.go go/kryon/*_host.go || true
 )"
 
 if [ -n "$split_text_widget_matches" ]; then

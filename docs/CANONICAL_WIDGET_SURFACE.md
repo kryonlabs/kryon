@@ -36,6 +36,8 @@ surface review:
 | Module | Current role | Decision |
 |---|---|---|
 | `runtime/bevel.kry` | Bevel line geometry policy | `.kry canonical` |
+| `runtime/accessibility_policy.kry` | Accessibility focus and activation eligibility | `.kry canonical` |
+| `runtime/accessibility_props.kry` | Accessibility action contract | `.kry canonical` |
 | `runtime/button.kry` | Button composition, input, metrics, content, and fallback paint policy | `.kry canonical` |
 | `runtime/button_props.kry` | Button props | `.kry canonical` |
 | `runtime/canvas.kry` | Canvas transform and hit-test policy | `.kry canonical` |

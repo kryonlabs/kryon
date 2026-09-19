@@ -874,3 +874,9 @@ preserve source rectangles, fit, origin and rotation rather than discarding
 them before rasterization. `text_rows_cache.go` shares immutable measured row
 snapshots between editor painting and hit testing, invalidated by text, width,
 font identity/size and the font registry generation.
+
+The native Go runtime keeps configuration, instance storage, frame lifecycle and
+input queues in `runtime.go`. Focused `*_host.go` modules adapt button, numeric,
+menu, table, text, layout and other widgets to their generated `.kry` policy.
+Generated policy files retain their module names. This split changes host code
+organization without adding public widget entry points or another policy layer.

@@ -45,7 +45,7 @@ def main():
         "B-002": line_hits(ROOT / "src/ui/ui_tree.c", CHROME_GETTERS),
         "B-003": line_hits(ROOT / "src/ui/ui_node_registry.c", CHROME_GETTERS),
         "B-004": line_hits(ROOT / "src/ui/ui_page.c", BASE_PAT),
-        "B-005": line_hits(ROOT / "go/kryon/runtime.go", GO_BASE_PAT),
+        "B-005": line_hits(ROOT / "go/kryon/control_style_host.go", GO_BASE_PAT),
     }
     for bridge_id, hits in checks.items():
         require(hits, f"{bridge_id} has no matching source hits; update/delete row", failures)
