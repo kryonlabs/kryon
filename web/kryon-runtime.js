@@ -348,6 +348,7 @@ export function createRuntime(options = {}) {
       scrollBounds: new Map(),
       scrollOffsets: new Map(),
       dragDrop: null,
+      numericDrag: null,
       tableResize: null,
       menus: new Map(),
       layoutBounds: new Map(),
@@ -1637,6 +1638,44 @@ function handleSlider(rt, state, args) {
   return true;
 }
 
+
+function handleDrag(rt, state, args, meta = null) {
+  if (!String(args || "").includes("DragProps"))
+    return false;
+  const bounds = resolveLayoutBounds(rt, args, meta);
+  const id = propNumber(args, "id", 0);
+  const target = propStateArray(args, "float_values") || propStateArray(args, "int_values") || propRef(args, "float_value") || propRef(args, "int_value");
+  if (!state || !target)
+    return false;
+  const path = String(meta?.path || id || "");
+  const speed = propNumber(args, "speed", 1);
+  const min = propNumber(args, "min", -Infinity);
+  const max = propNumber(args, "max", Infinity);
+  const isInt = !!propStateArray(args, "int_values") || !!propRef(args, "int_value");
+  const current = Array.isArray(state[target]) ? numberValue(state[target][0], 0) : numberValue(state[target], 0);
+  const active = rt.input.numericDrag;
+  if (active && active.id === id) {
+    if (rt.input.mouse.released[MouseButtonLeft] || !rt.input.mouse.down[MouseButtonLeft]) {
+      rt.input.numericDrag = null;
+      return false;
+    }
+    if (active.path !== path)
+      return false;
+    const raw = active.startValue + (rt.input.mouse.x - active.startX) * active.speed;
+    const next = Math.max(active.min, Math.min(active.max, active.isInt ? Math.round(raw) : raw));
+    if (Array.isArray(state[active.target]))
+      state[active.target][0] = next;
+    else
+      state[active.target] = next;
+    return true;
+  }
+  if (rt.input.mouse.pressed[MouseButtonLeft] && hit(bounds, rt.input.mouse.x, rt.input.mouse.y)) {
+    rt.input.numericDrag = { id, path, target, startX: rt.input.mouse.x, startValue: current, speed, min, max, isInt };
+    return true;
+  }
+  return false;
+}
+
 function handleToggle(rt, state, args, meta = null) {
   if (String(args || "").includes("ToggleProps")) {
     const ref = propRef(args, "value");
@@ -2274,6 +2313,8 @@ function handleWidget(rt, name, args, state, meta = null) {
     return handleTextInput(rt, state, args, name === "TextArea", meta);
   case "Slider":
     return handleSlider(rt, state, args);
+  case "Drag":
+    return handleDrag(rt, state, args, meta);
   case "Toggle":
     return handleToggle(rt, state, args, meta);
   case "Checkbox":
