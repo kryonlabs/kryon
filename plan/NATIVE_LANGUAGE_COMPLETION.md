@@ -89,6 +89,11 @@ to restart completed parser, editor, image or naming work.
 
 ## Milestone 2 — Direct fixed-array parameters and returns
 
+Implementation contract and source audit:
+[`ARRAY_CALL_ABI.md`](ARRAY_CALL_ABI.md). Six strict compiler probes on
+2026-09-19 confirmed that both direct parameters and returns still reject on
+C, C++ and Go; existing local-array tests do not establish this milestone.
+
 - [ ] Specify value-copy behavior for direct array arguments and results,
   mutation isolation, evaluation order, type identity and imported signatures.
 - [ ] Define the C/C++ representation and calling convention in KIR/shared
@@ -166,6 +171,26 @@ for every form beyond today's borrowed slots.
 Done when no maintained caller needs the removed theme contract, style changes
 work on affected native paths, and no duplicate appearance policy replaces it.
 OS integration, storage, font measurement and rasterization remain native.
+
+### Confirmed downstream migration size (2026-09-19)
+
+A fresh scan of `src/` C/header/`.kry` sources found the following matching lines
+for `ApplyCurrentTheme` and retained or historical palette getters. These are
+source matches, including generated-source snippets and evaluator dispatch;
+they are not a count of distinct APIs or proof of a successful app build.
+
+| Consumer revision | Matching lines | Files | Main migration surfaces |
+|---|---:|---:|---|
+| Uku `0f7f0d64396c` | 219 | 3 | `src/main.c`, `src/dashboard_empty.kry`, `src/app_chrome.kry` |
+| Krait `16a80cc3a4dc` | 134 | 11 | Native engine/level/live UI, live evaluator and scaffold templates |
+| Rill `5a1494d29f66` | 69 | 2 | `src/main.c`, `src/rill_x11.c` |
+
+This disproves treating theme removal as deleting a few startup calls. Krait's
+emitted scaffolds and evaluator must migrate along with its visible UI. Some
+apps still mention already-removed getters such as hover/icon/link; updating a
+submodule pointer alone cannot establish compatibility. Scan other maintained
+consumers before closing the full inventory. No downstream source was modified
+by this audit.
 
 ## Milestone 6 — Close native tooling and integration gaps found by the audit
 
