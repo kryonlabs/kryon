@@ -943,6 +943,87 @@ sizeof_expression(const KirModule *m, const char *operand,
     return 1;
 }
 
+static void tx_expr(const KirModule *m, const char *src, char *dst,
+                    size_t dst_size);
+
+static int
+accelerator_initializer_expression(const KirModule *m, const char *raw,
+                                   char *dst, size_t dst_size)
+{
+    const char *p = kir_skip_ws(raw);
+    const char *type_begin;
+    const char *type_end;
+    char fields[K2JS_PARAM_MAX][K2JS_TEXT_MAX];
+    char values[5][K2JS_TEXT_MAX];
+    char body[K2JS_TEXT_MAX];
+    int n;
+
+    if(*p != '(')
+        return 0;
+    type_begin = kir_skip_ws(p + 1);
+    type_end = type_begin;
+    while(kir_is_ident_char((unsigned char)*type_end))
+        type_end++;
+    if((size_t)(type_end - type_begin) != strlen("Accelerator") ||
+       strncmp(type_begin, "Accelerator", strlen("Accelerator")) != 0)
+        return 0;
+    type_end = kir_skip_ws(type_end);
+    if(*type_end != ')')
+        return 0;
+    p = kir_skip_ws(type_end + 1);
+    if(*p != '{')
+        return 0;
+    p = consume_group(p + 1, body, sizeof(body));
+    if(*kir_skip_ws(p) != '\0')
+        return 0;
+    n = kir_split_top(body, fields[0], 5, sizeof(fields[0]));
+    if(n != 5)
+        return 0;
+    for(int i = 0; i < 5; i++)
+        tx_expr(m, fields[i], values[i], sizeof(values[i]));
+    snprintf(dst, dst_size,
+             "kryon.AcceleratorPressed($rt, [%s, %s, %s, %s, %s])",
+             values[0], values[1], values[2], values[3], values[4]);
+    return 1;
+}
+
+static int
+rewrite_accelerator_calls(const KirModule *m, const char *src,
+                          char *dst, size_t dst_size)
+{
+    const char *p = src;
+    size_t dn = 0;
+    int changed = 0;
+    const char *name = "AcceleratorPressed";
+    size_t name_len = strlen(name);
+
+    dst[0] = '\0';
+    while(*p != '\0' && dn + 1 < dst_size) {
+        if(strncmp(p, name, name_len) == 0 &&
+           (p == src || !kir_is_ident_char((unsigned char)p[-1])) &&
+           !kir_is_ident_char((unsigned char)p[name_len])) {
+            const char *after = kir_skip_ws(p + name_len);
+            if(*after == '(') {
+                char raw[K2JS_TEXT_MAX];
+                char call[K2JS_TEXT_MAX];
+                const char *end = consume_group(after + 1, raw, sizeof(raw));
+
+                if(accelerator_initializer_expression(m, raw, call,
+                                                      sizeof(call))) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                                           "%s", call);
+                    p = end;
+                    changed = 1;
+                    continue;
+                }
+            }
+        }
+        dst[dn++] = *p++;
+        dst[dn] = '\0';
+    }
+    return changed;
+}
+
 /* Find where the indexed primary begins in already-emitted translated text,
  * so 'base[index]' can be rewritten as a byte-aware runtime index. */
 static size_t
@@ -1019,10 +1100,15 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 {
     size_t dn = 0;
     const char *p = src;
+    char rewritten[K2JS_TEXT_MAX];
 
     dst[0] = '\0';
     if(try_imported_numeric_cast(m, src, dst, dst_size))
         return;
+    if(rewrite_accelerator_calls(m, src, rewritten, sizeof(rewritten))) {
+        snprintf(dst, dst_size, "%s", rewritten);
+        return;
+    }
     if(*kir_skip_ws(src) == '(') {
         KirFunction parsed = {0};
         int root = KirParseExpr(&parsed, m, src, (KirSourceSpan){0});

@@ -52,9 +52,12 @@ coverage. The unresolved-expression web placeholder is removed: unsupported
 executable lowering now exits with an actionable diagnostic, the JS runtime no
 longer exports `kryon.expr`, and `tests/k2js_syntax_test.sh` rejects generated
 placeholder calls. Fixed-capacity module state/global/local `sizeof(...)` now
-lowers to the declared capacity in executable JS, and fixed-array element-size
-operands support the common `sizeof(array) / sizeof(array[0])` count idiom.
-Both paths have focused syntax-runner coverage; broader computed capacities remain open.
+lowers to the declared capacity in executable JS, fixed-array element-size
+operands support the common `sizeof(array) / sizeof(array[0])` count idiom,
+and `AcceleratorPressed((Accelerator){key,ctrl,shift,alt,id})` lowers to the
+web runtime accelerator helper for generated fixture execution. These paths have
+focused generated-runtime or syntax-runner coverage; broader computed capacities
+remain open.
 Broader shorthand/longhand side precedence remains open. Remaining compound matching,
 specificity conformance, and CSS export migration stay open (see the evidence
 ledger). Generated C, Go,

@@ -16,8 +16,9 @@ Remaining:
   placeholder, executable fixture generation rejects any placeholder calls, and
   fixed-capacity module state/global/local `sizeof(...)` lowers to the
   declared capacity, and fixed-array element-size operands support
-  `sizeof(array) / sizeof(array[0])`. Broader computed capacities remain
-  open.
+  `sizeof(array) / sizeof(array[0])`; accelerator compound literals lower
+  through the web runtime shortcut helper for generated fixture execution.
+  Broader computed capacities remain open.
 - Report coverage per backend and fixture; distinguish generating, executing,
   comparing state, and checking rendered output.
 - Verify every policy change in C, Go, and JS; syntax and snapshots are useful

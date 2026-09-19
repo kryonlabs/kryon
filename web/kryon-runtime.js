@@ -43,20 +43,52 @@ export const DARKBROWN = Color(76, 63, 47, 255);
 export const MAGENTA = Color(255, 0, 255, 255);
 
 export * from "./control_props.js";
+export const KeyEscape = 256;
+export const KeySpace = 32;
+export const KeyEnter = 257;
 export const KeyTab = 258;
 export const KeyBackspace = 259;
+export const KeyDelete = 261;
 export const KeyRight = 262;
 export const KeyLeft = 263;
+export const KeyDown = 264;
+export const KeyUp = 265;
+export const KeyPageUp = 266;
+export const KeyPageDown = 267;
+export const KeyHome = 268;
+export const KeyEnd = 269;
+export const KeyLeftShift = 340;
+export const KeyLeftControl = 341;
+export const KeyLeftAlt = 342;
+export const KeyRightShift = 344;
+export const KeyRightControl = 345;
+export const KeyRightAlt = 346;
+export const KeyA = 65;
 export const KeyC = 67;
+export const KeyV = 86;
+export const KeyX = 88;
 export const MouseButtonLeft = 0;
-export const KEY_SPACE = 32;
+export const KEY_SPACE = KeySpace;
+export const KEY_ESCAPE = KeyEscape;
+export const KEY_ENTER = KeyEnter;
 export const KEY_C = KeyC;
 export const KEY_TAB = KeyTab;
 export const KEY_BACKSPACE = KeyBackspace;
+export const KEY_DELETE = KeyDelete;
 export const KEY_RIGHT = KeyRight;
 export const KEY_LEFT = KeyLeft;
-export const KEY_DOWN = 264;
-export const KEY_UP = 265;
+export const KEY_DOWN = KeyDown;
+export const KEY_UP = KeyUp;
+export const KEY_PAGE_UP = KeyPageUp;
+export const KEY_PAGE_DOWN = KeyPageDown;
+export const KEY_HOME = KeyHome;
+export const KEY_END = KeyEnd;
+export const KEY_LEFT_SHIFT = KeyLeftShift;
+export const KEY_LEFT_CONTROL = KeyLeftControl;
+export const KEY_LEFT_ALT = KeyLeftAlt;
+export const KEY_RIGHT_SHIFT = KeyRightShift;
+export const KEY_RIGHT_CONTROL = KeyRightControl;
+export const KEY_RIGHT_ALT = KeyRightAlt;
 export const MOUSE_BUTTON_LEFT = MouseButtonLeft;
 
 let activeTheme = null;
@@ -10915,6 +10947,39 @@ export function TextFormat(format, ...values) {
 export function GetUIClipboardTextValue() { return ""; }
 
 export function UpdateFileDialog() { return 0; }
+
+
+export function AcceleratorPressed(rt, accelerator) {
+  const input = rt?.input;
+  if (!input || !accelerator)
+    return 0;
+  const values = Array.isArray(accelerator) ? accelerator : accelerator.value || accelerator;
+  const key = Number(values.key ?? values.Key ?? values[0] ?? 0);
+  const ctrlRequired = Number(values.ctrl ?? values.Ctrl ?? values[1] ?? 0) !== 0;
+  const shiftRequired = Number(values.shift ?? values.Shift ?? values[2] ?? 0) !== 0;
+  const altRequired = Number(values.alt ?? values.Alt ?? values[3] ?? 0) !== 0;
+  const id = Number(values.id ?? values.ID ?? values[4] ?? 0);
+  const events = input.events || [];
+  const hasKey = (wanted) => events.some((ev) =>
+    ev.type === "key" && Number(ev.key) === Number(wanted));
+  const keyPressed = hasKey(key) || events.some((ev) =>
+    ev.type === "shortcut" && Number(ev.key) === key);
+  if (!keyPressed)
+    return 0;
+  const ctrlDown = hasKey(KeyLeftControl) || hasKey(KeyRightControl) ||
+    events.some((ev) => ev.type === "shortcut" && Number(ev.key) === key);
+  const shiftDown = hasKey(KeyLeftShift) || hasKey(KeyRightShift) ||
+    events.some((ev) => ev.type === "key" && !!ev.shift && Number(ev.key) === key);
+  const altDown = hasKey(KeyLeftAlt) || hasKey(KeyRightAlt) ||
+    events.some((ev) => ev.type === "key" && !!ev.alt && Number(ev.key) === key);
+  if (ctrlRequired && !ctrlDown)
+    return 0;
+  if (shiftRequired && !shiftDown)
+    return 0;
+  if (altRequired && !altDown)
+    return 0;
+  return id;
+}
 
 export function IsKeyPressed(_key) { return false; }
 
