@@ -1810,6 +1810,54 @@ test_input_value_policy(void)
 }
 
 static void
+test_pointer_click_clears_focus_outside_widgets(void)
+{
+    Rectangle first = {10, 10, 80, 30};
+    Rectangle second = {10, 60, 80, 30};
+
+    InjectReset();
+    SetFocus(31001);
+    InjectMousePosition(160, 160);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginInterfaceFrame(240, 240, 1.0f);
+    RegisterFocus(31001, first);
+    RegisterFocus(31002, second);
+    EndInterfaceFrame();
+    check_int("empty click clears widget focus", GetFocus(), 0);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+    InjectMousePosition(30, 25);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginInterfaceFrame(240, 240, 1.0f);
+    RegisterFocus(31001, first);
+    RegisterFocus(31002, second);
+    EndInterfaceFrame();
+    check_int("click on widget acquires focus", GetFocus(), 31001);
+
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+    InjectMousePosition(30, 75);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
+    InjectPump();
+    BeginInterfaceFrame(240, 240, 1.0f);
+    RegisterFocus(31001, first);
+    RegisterFocus(31002, second);
+    EndInterfaceFrame();
+    check_int("click on another widget moves focus", GetFocus(), 31002);
+    InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
+    InjectPump();
+    BeginInterfaceFrame(240, 240, 1.0f);
+    RegisterFocus(31001, first);
+    RegisterFocus(31002, second);
+    EndInterfaceFrame();
+    InjectReset();
+    ClearFocus();
+}
+
+static void
 test_slider_keyboard_navigation(void)
 {
     float floats[2] = {0.25f,0.75f};
@@ -6109,8 +6157,12 @@ test_accessibility_text_popup_capture(void)
 }
 
 int
-main(void)
+main(int argc, char **argv)
 {
+    if(argc == 2 && strcmp(argv[1], "--focus-outside") == 0) {
+        test_pointer_click_clears_focus_outside_widgets();
+        return 0;
+    }
     test_grapheme_cursor_placement();
     test_accessibility_snapshot();
     test_accessibility_actions();
@@ -6467,5 +6519,6 @@ main(void)
     test_composed_tab_bar_scope();
     test_popup_tab_bar_keyboard_ownership();
     test_step_button_keyboard_navigation();
+    test_pointer_click_clears_focus_outside_widgets();
     return 0;
 }

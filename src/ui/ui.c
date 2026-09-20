@@ -122,6 +122,7 @@ static int g_ui_focus_ids[FOCUS_MAX_ITEMS];
 static int g_ui_focus_count = 0;
 static int g_ui_focus_tab_dir = 0;
 static int g_ui_focus_frame_open = 0;
+static int g_ui_focus_pointer_claimed = 0;
 static int g_ui_focus_text_input_active = 0;
 static unsigned long g_ui_overlays_drawn_frame = 0;
 static int g_ui_platform_text_input_active = 0;
@@ -1710,6 +1711,7 @@ void
 BeginFocusScope(void)
 {
     g_ui_focus_count = 0;
+    g_ui_focus_pointer_claimed = 0;
     g_ui_focus_tab_dir = 0;
     g_ui_focus_frame_open = 1;
     /* Advance the frame counter and release ownership if the current owner did
@@ -1756,6 +1758,12 @@ EndFocusScope(void)
     }
     g_ui_focus_count = eligible;
 
+    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
+       !g_ui_focus_pointer_claimed) {
+        ClearFocus();
+        ClearTextInputFocus();
+    }
+
     for (int i = 0; i < g_ui_focus_count; i++) {
         if (g_ui_focus_ids[i] == g_ui_focus_active_id) {
             current_index = i;
@@ -1800,8 +1808,10 @@ ui_register_focus_snapshot(int id, Rectangle bounds, PopupInputToken snapshot)
     mouse_world = ui_mouse_world();
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
        CheckCollisionPointRec(mouse_world, bounds) &&
-       !ui_input_captures_snapshot(mouse_world,snapshot))
+       !ui_input_captures_snapshot(mouse_world,snapshot)) {
+        g_ui_focus_pointer_claimed = 1;
         g_ui_focus_active_id = id;
+    }
 
     return g_ui_focus_active_id == id;
 }
@@ -1962,6 +1972,8 @@ void
 SetFocus(int id)
 {
     g_ui_focus_active_id = id;
+    if(id > 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        g_ui_focus_pointer_claimed = 1;
 }
 
 int
@@ -3832,6 +3844,7 @@ ui_text_area_render(TextAreaProps area)
             int double_click_slop = TextInputDoubleClickSlopFor(scale);
             TextInputDoubleClickDecision click_decision;
 
+            g_ui_focus_pointer_claimed = 1;
             focused = 1;
             ClaimTextAreaFocus(area.focused);
             g_ui_text_input_show_requested = 1;
@@ -4516,6 +4529,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                     g_ui_text_field_last_click_id == field.focus_id,
                     (float)(now - g_ui_text_field_last_click_time),
                     click_dx, click_dy, double_click_slop);
+            g_ui_focus_pointer_claimed = 1;
             focused = 1;
             ClaimTextFieldFocus(field.focused);
             g_ui_text_input_show_requested = 1;
