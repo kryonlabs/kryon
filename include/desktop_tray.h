@@ -30,6 +30,7 @@ typedef struct DesktopTraySpec {
 } DesktopTraySpec;
 
 int InitDesktopTray(const DesktopTraySpec *spec);
+int IsDesktopTrayVisible(void);
 void ShutdownDesktopTray(void);
 int PollDesktopTrayAction(void);
 void SetDesktopTrayStatus(const char *text);

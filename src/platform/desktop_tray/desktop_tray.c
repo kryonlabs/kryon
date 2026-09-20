@@ -3,6 +3,7 @@
 #if defined(KRYON_BACKEND_TERMI)
 
 int InitDesktopTray(const DesktopTraySpec *spec) { (void)spec; return 0; }
+int IsDesktopTrayVisible(void) { return 0; }
 void ShutdownDesktopTray(void) {}
 int PollDesktopTrayAction(void) { return 0; }
 void SetDesktopTrayStatus(const char *text) { (void)text; }
@@ -189,6 +190,19 @@ void ShutdownDesktopTray(void)
     TrayWindow = NULL;
 }
 
+int IsDesktopTrayVisible(void)
+{
+    NOTIFYICONIDENTIFIER icon;
+    RECT bounds;
+
+    if(TrayWindow == NULL) return 0;
+    memset(&icon, 0, sizeof(icon));
+    icon.cbSize = sizeof(icon);
+    icon.hWnd = TrayWindow;
+    icon.uID = TRAY_ICON_ID;
+    return SUCCEEDED(Shell_NotifyIconGetRect(&icon, &bounds));
+}
+
 int PollDesktopTrayAction(void)
 {
     MSG message;
@@ -260,6 +274,7 @@ static pthread_cond_t TrayStateCond = PTHREAD_COND_INITIALIZER;
 static int PendingAction;
 static int TrayStarted;
 static int TrayState;
+static int TrayIconEmbedded;
 static int TrayCloseAction;
 static int TrayActivateAction;
 static int TrayMenuUpdatePending;
@@ -754,6 +769,17 @@ GetDesktopTrayIconPath(void)
 static Uint32 TrayReadyTicks; /* SDL_GetTicks() when the icon became ready */
 
 static void
+DesktopTrayStatusIconEmbeddedChanged(GtkStatusIcon *status_icon,
+                                     GParamSpec *property, gpointer user_data)
+{
+    (void)property;
+    (void)user_data;
+    pthread_mutex_lock(&TrayStateLock);
+    TrayIconEmbedded = gtk_status_icon_is_embedded(status_icon);
+    pthread_mutex_unlock(&TrayStateLock);
+}
+
+static void
 DesktopTrayStatusIconActivate(GtkStatusIcon *status_icon, gpointer user_data)
 {
     (void)status_icon;
@@ -851,6 +877,9 @@ DesktopTrayThreadMain(void *arg)
                      G_CALLBACK(DesktopTrayStatusIconActivate), NULL);
     g_signal_connect(TrayStatusIcon, "popup-menu",
                      G_CALLBACK(DesktopTrayStatusIconPopup), NULL);
+    g_signal_connect(TrayStatusIcon, "notify::embedded",
+                     G_CALLBACK(DesktopTrayStatusIconEmbeddedChanged), NULL);
+    DesktopTrayStatusIconEmbeddedChanged(TrayStatusIcon, NULL, NULL);
 #else
     SetDesktopTrayState(DESKTOP_TRAY_STATE_FAILED);
     return NULL;
@@ -890,6 +919,7 @@ InitDesktopTray(const DesktopTraySpec *spec)
 
     pthread_mutex_lock(&TrayStateLock);
     TrayState = DESKTOP_TRAY_STATE_STARTING;
+    TrayIconEmbedded = 0;
     pthread_mutex_unlock(&TrayStateLock);
     if(pthread_create(&TrayThread, NULL, DesktopTrayThreadMain, NULL) != 0)
         return 0;
@@ -909,6 +939,22 @@ InitDesktopTray(const DesktopTraySpec *spec)
 
     SDL_SetEventFilter(DesktopTraySdlEventFilter, NULL);
     return ready;
+}
+
+int
+IsDesktopTrayVisible(void)
+{
+    int visible;
+
+    pthread_mutex_lock(&TrayStateLock);
+#if defined(KRYON_DESKTOP_TRAY_GTK_STATUS_ICON)
+    visible = TrayState == DESKTOP_TRAY_STATE_READY && TrayIconEmbedded;
+#else
+    /* AppIndicator does not confirm that a host is displaying the icon. */
+    visible = 0;
+#endif
+    pthread_mutex_unlock(&TrayStateLock);
+    return visible;
 }
 
 void
@@ -932,6 +978,7 @@ ShutdownDesktopTray(void)
 #else
 
 int InitDesktopTray(const DesktopTraySpec *spec) { (void)spec; return 0; }
+int IsDesktopTrayVisible(void) { return 0; }
 void ShutdownDesktopTray(void) {}
 int PollDesktopTrayAction(void) { return 0; }
 void SetDesktopTrayStatus(const char *text) { (void)text; }
