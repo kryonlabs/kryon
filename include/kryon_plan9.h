@@ -7,6 +7,11 @@
 
 #include "kryon_plan9_libc.h"
 
+/* The shim <math.h> maps the C99 float spellings (fmodf, atan2f, ...)
+   onto native libc's double math; sources skip their hosted include
+   block under KRYON_NATIVE_PLAN9, so pull the surface in here. */
+#include <math.h>
+
 #ifndef NULL
 #define NULL nil
 #endif
