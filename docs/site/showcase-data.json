@@ -54,7 +54,7 @@
     {
       "slug": "taiji",
       "name": "Taiji",
-      "summary": "Kryon-native Plan 9 desktop distribution integrating Rill, Shelf, ktrem, and Taiji system tools.",
+      "summary": "Kryon-native Plan 9 desktop distribution integrating Rill, Shelf, t9, and Taiji system tools.",
       "author": {
         "name": "kryonlabs",
         "url": "https://kryonlabs.com"
@@ -104,7 +104,7 @@
       },
       "repository": "https://github.com/kryonlabs/t9",
       "homepage": "https://ktrem.kryonlabs.com",
-      "banner": "showcase/ktrem-faac79134e7e.png",
+      "banner": "showcase/t9-faac79134e7e.png",
       "bannerAlt": "t9 terminal showcase banner",
       "tags": [
         "terminal",
