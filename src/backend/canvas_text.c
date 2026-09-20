@@ -142,6 +142,7 @@ static int canvas_font_build(Font *out, int face_id, int baseSize,
             y += row_h + 1;
             row_h = 0;
         }
+        int previous_h = atlas_h;
         while(y + gh + 1 > atlas_h && atlas_h < 4096)
             atlas_h *= 2;
         if(y + gh + 1 > atlas_h)
@@ -150,9 +151,14 @@ static int canvas_font_build(Font *out, int face_id, int baseSize,
             unsigned char *grown = realloc(pixels,
                                            (size_t)atlas_w * atlas_h * 4);
 
-            if(grown == NULL)
+            if(grown == NULL) {
+                atlas_h = previous_h;
                 continue;
+            }
             pixels = grown;
+            if(atlas_h > previous_h)
+                memset(pixels + (size_t)atlas_w * previous_h * 4, 0,
+                       (size_t)atlas_w * (atlas_h - previous_h) * 4);
         }
         {
             int gy;
