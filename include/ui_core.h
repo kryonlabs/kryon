@@ -89,8 +89,14 @@ int FocusFrameOpen(void);
 int RegisterFocus(int id, Rectangle bounds);
 int IsFocusActive(int id);
 int IsFocusActivatePressed(int id);
+#if defined(_WIN32) && defined(__GNUC__)
+/* Keep the public C API while avoiding Win32 user32's SetFocus/GetFocus symbols. */
+void SetFocus(int id) __asm__("KryonSetFocus");
+int GetFocus(void) __asm__("KryonGetFocus");
+#else
 void SetFocus(int id);
 int GetFocus(void);
+#endif
 void ClearFocus(void);
 void SetFocusTextInputActive(int active);
 int TextInputActive(void);
