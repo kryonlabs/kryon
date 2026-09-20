@@ -179,7 +179,7 @@ font_entry_alloc(const char *name)
 static int
 font_physical_size(int font_size)
 {
-    int size = Scale(font_size);
+    int size = font_size;
 
     if(size <= 0)
         size = font_size > 0 ? font_size : TextBaseSize;
@@ -1033,20 +1033,10 @@ TextFontMemoryReport(const char *tag)
 static int
 ui_text_normalize_token_size(int font_size)
 {
-    switch(font_size) {
-    case Text8:
-    case Text12:
-    case Text14:
-    case Text16:
-    case Text18:
-    case Text20:
-    case Text24:
-    case Text32:
-    case Text48:
-        return Scale(font_size);
-    default:
-        return font_size;
-    }
+    /* Text sizes reaching this layer are already physical pixels. A value
+     * such as 24 may be Scale(Text16), so treating it as the Text24 token
+     * applies scaling again and clips text inside scaled controls. */
+    return font_size;
 }
 
 static int g_ui_text_letter_spacing;
