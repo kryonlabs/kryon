@@ -1,9 +1,10 @@
-#include "ui_text_rows.h"
+#include "ui/text_rows.h"
+#include "ui/selectable_text.h"
+#include "ui/text.h"
 #include "ui_text.h"
 #include "ui_text_backend.h"
 #include "ui_clip.h"
 #include "ui_internal.h"
-#include "ui_tk.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
 #include "ui_style_internal.h"
@@ -78,50 +79,6 @@ ui_text_trace_enabled(void)
     if(g_ui_text_trace < 0)
         g_ui_text_trace = getenv("KRYON_TEXT_TRACE") != NULL;
     return g_ui_text_trace;
-}
-
-static int g_ui_text_selectable_stack[16];
-static int g_ui_text_selectable_stack_count = 0;
-static int g_ui_text_selectable = 1;
-
-typedef struct TextSelectionRuntimeState {
-    int id;
-    int anchor;
-    int cursor;
-    int dragging;
-} TextSelectionRuntimeState;
-
-static TextSelectionRuntimeState g_ui_text_selection = {0};
-static TextSelectionRuntimeState g_ui_text_block_selection = {0};
-static int g_ui_text_block_last_click_id = 0;
-static int g_ui_text_block_last_click_line = -1;
-static Vector2 g_ui_text_block_last_click_position = {0};
-static double g_ui_text_block_last_click_time = -1.0;
-
-typedef struct TextBlockLine {
-    int start;
-    int end;
-} TextBlockLine;
-
-static Rectangle
-text_world_rect_to_screen(Rectangle rect)
-{
-    return (Rectangle){
-        g_ui_camera.offset.x + rect.x * g_ui_camera.zoom,
-        g_ui_camera.offset.y + rect.y * g_ui_camera.zoom,
-        rect.width * g_ui_camera.zoom,
-        rect.height * g_ui_camera.zoom
-    };
-}
-
-static int text_strikethrough;
-
-int
-ui_set_text_strikethrough(int enabled)
-{
-    int previous = text_strikethrough;
-    text_strikethrough = enabled;
-    return previous;
 }
 
 static void
@@ -1039,22 +996,6 @@ ui_text_normalize_token_size(int font_size)
     return font_size;
 }
 
-static int g_ui_text_letter_spacing;
-
-int
-ui_get_text_letter_spacing(void)
-{
-    return g_ui_text_letter_spacing;
-}
-
-int
-ui_set_text_letter_spacing(int spacing)
-{
-    int previous = g_ui_text_letter_spacing;
-    g_ui_text_letter_spacing = spacing > 0 ? spacing : 0;
-    return previous;
-}
-
 int
 MeasureTextWidth(const char *text, int font_size, const char *typeface)
 {
@@ -1106,33 +1047,6 @@ TextWidth(const char *text, int font_size)
         i += codepoint_byte_count;
     }
     return width;
-}
-
-static int
-ui_text_hash_int(int hash, int value)
-{
-    unsigned int h = (unsigned int)hash;
-
-    h ^= (unsigned int)value + 0x9e3779b9u + (h << 6) + (h >> 2);
-    return (int)(h & 0x7fffffff);
-}
-
-static int
-ui_text_id(const char *text, int x, int y, int font_size)
-{
-    /* Retained trees copy text between frames. Allocation addresses therefore
-     * cannot identify a selection spanning a press, drag, and copy sequence. */
-    unsigned content = 2166136261u;
-    for(const unsigned char *p = (const unsigned char *)text; p != NULL && *p; p++)
-        content = (content ^ *p) * 16777619u;
-    int hash = (int)content;
-
-    hash = ui_text_hash_int(hash, x);
-    hash = ui_text_hash_int(hash, y);
-    hash = ui_text_hash_int(hash, font_size);
-    if(hash == 0)
-        hash = 1;
-    return hash;
 }
 
 static int
@@ -1191,7 +1105,7 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
     return width;
 }
 
-static int
+int
 ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
 {
     int normalized_font_size = ui_text_normalize_token_size(font_size);
@@ -1233,38 +1147,7 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
     return byte_len;
 }
 
-static Color
-ui_text_default_selection_color(Color text_color)
-{
-    Style link = ui_resolve_button_style_kind((ButtonProps){0},
-                                              ButtonStateNormal,
-                                              StyleKindLink());
-    Color color = link.foreground.a != 0 ? link.foreground : text_color;
-
-    color.a = TextSelectionDefaultAlpha();
-    return color;
-}
-
-static void
-ui_text_copy_selection(const char *text, int start, int end)
-{
-    char *copy;
-    int len;
-
-    if(text == NULL || end <= start)
-        return;
-
-    len = end - start;
-    copy = (char *)malloc((size_t)len + 1);
-    if(copy == NULL)
-        return;
-    memcpy(copy, text + start, (size_t)len);
-    copy[len] = '\0';
-    SetClipboardTextValue(copy);
-    free(copy);
-}
-
-static void
+void
 ui_text_draw_selection(const char *text, int x, int y, int font_size,
                        Color color, int start, int end)
 {
@@ -1286,13 +1169,6 @@ ui_text_draw_selection(const char *text, int x, int y, int font_size,
         return;
 
     DrawRectangle(start_x, y, end_x - start_x, line_h, color);
-}
-
-static int
-ui_text_mod_key_down(void)
-{
-    return IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL) ||
-           IsKeyDown(KEY_LEFT_SUPER) || IsKeyDown(KEY_RIGHT_SUPER);
 }
 
 int
@@ -1372,6 +1248,40 @@ GetTextFontForCodepoint(int codepoint, int font_size)
     return font_for_codepoint(codepoint, ui_text_normalize_token_size(font_size));
 }
 
+int
+RenderTextGlyph(unsigned int codepoint, int x, int y, int font_size,
+                Color color)
+{
+    int size = ui_text_normalize_token_size(font_size);
+    Font glyph_font;
+    float scale;
+    GlyphInfo glyph;
+    Rectangle src;
+
+    if(codepoint == 0 || codepoint == ' ' || codepoint == '\t')
+        return 0;
+    glyph_font = font_for_codepoint((int)codepoint, size);
+    if(!TextFontReady(glyph_font))
+        return 0;
+    scale = font_size_scale(glyph_font, size);
+    glyph = TextFontGlyph(glyph_font, (int)codepoint);
+    src = TextFontAtlasRec(glyph_font, (int)codepoint);
+    if(src.width <= 0.0f || src.height <= 0.0f)
+        return 0;
+    {
+        Rectangle dst = {
+            .x = (float)x + (float)glyph.offsetX * scale,
+            .y = (float)y + (float)glyph.offsetY * scale,
+            .width = src.width * scale,
+            .height = src.height * scale
+        };
+
+        DrawTexturePro(TextFontAtlasTexture(glyph_font), src, dst,
+                       (Vector2){0.0f, 0.0f}, 0.0f, color);
+    }
+    return 1;
+}
+
 float
 GetTextFontScale(Font font, int font_size)
 {
@@ -1411,9 +1321,7 @@ ui_text_fits_bounds(const char *text, int x, int y, int font_size,
         (int)(bounds.width * g_ui_camera.zoom),
         (int)(bounds.height * g_ui_camera.zoom)
     };
-    if(g_ui_text_selectable &&
-       (g_ui_text_selection.id == ui_text_id(text, x, y, size) ||
-        IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+    if(ui_inline_text_selection_active(text, x, y, size)) {
         Rectangle selection = {(float)x, (float)y,
             (float)TextWidth(text, size), (float)TextLineHeight(size)};
         if(!text_quad_inside_clip(selection, clip))
@@ -1448,89 +1356,20 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
     int normalized_font_size = ui_text_normalize_token_size(font_size);
     Font font = active_font_for_size(normalized_font_size);
     int cursor_x = x;
-    int selectable;
-    int id;
     int byte_len;
     int text_w;
     int line_h;
-    int selected_start = 0;
-    int selected_end = 0;
 
     if(text == NULL || !TextFontReady(font))
         return;
 
     font_size = normalized_font_size;
-    selectable = selectable_arg && g_ui_text_selectable && text[0] != '\0';
     byte_len = ui_text_line_byte_len(text);
     text_w = TextWidth(text, font_size);
     line_h = TextLineHeight(font_size);
-    id = selectable ? ui_text_id(text, x, y, font_size) : 0;
 
-    if(text[0] != '\0' && text_w > 0 && line_h > 0) {
-        char inspect_id[96];
-        Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
-        int inspect_hash = ui_text_id(text, x, y, font_size);
-        Widget widget;
-
-        snprintf(inspect_id, sizeof(inspect_id), "tmp:Text:%d", inspect_hash);
-        widget = BeginWidget("Text", inspect_id, bounds, WidgetFlagReadOnly);
-        WidgetSetAction(&widget, text);
-        EndWidget(&widget);
-    }
-
-    if(selectable) {
-        Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
-        Vector2 mouse = ui_mouse_world();
-        int inside = CheckCollisionPointRec(mouse, bounds);
-        int captured = InputCapturesClick(mouse);
-        TextSelectionPointerDecision pointer = TextSelectionPointerDecisionFor(
-            inside != 0, captured != 0,
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
-        TextSelectionDragDecision drag;
-        TextSelectionCopyDecision copy;
-
-        if(pointer.hover)
-            MarkCursor(MOUSE_CURSOR_IBEAM);
-
-        if(pointer.begin) {
-            int offset = ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
-
-            g_ui_text_selection.id = id;
-            g_ui_text_selection.anchor = offset;
-            g_ui_text_selection.cursor = offset;
-            g_ui_text_selection.dragging = 1;
-            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
-        }
-        drag = TextSelectionDragDecisionFor(g_ui_text_selection.id == id,
-                                            g_ui_text_selection.dragging != 0,
-                                            IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
-        if(drag.update) {
-            g_ui_text_selection.cursor =
-                ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
-        } else if(drag.finish) {
-            g_ui_text_selection.dragging = 0;
-        }
-        copy = TextSelectionCopyDecisionFor(g_ui_text_selection.id == id,
-                                            IsKeyboardInputEnabled() != 0,
-                                            ui_text_mod_key_down() != 0,
-                                            IsKeyPressed(KEY_C) != 0);
-        if(copy.copy) {
-            TextSelectionRange range = TextSelectionRangeForLength(
-                g_ui_text_selection.anchor, g_ui_text_selection.cursor,
-                byte_len);
-            ui_text_copy_selection(text, range.start, range.end);
-        }
-        if(TextSelectionRangeShouldShow(g_ui_text_selection.id == id)) {
-            TextSelectionRange range = TextSelectionRangeForLength(
-                g_ui_text_selection.anchor, g_ui_text_selection.cursor,
-                byte_len);
-            selected_start = range.start;
-            selected_end = range.end;
-            ui_text_draw_selection(text, x, y, font_size,
-                                   ui_text_default_selection_color(color),
-                                   selected_start, selected_end);
-        }
-    }
+    ui_inline_text_before_render(text, x, y, font_size, color,
+                                 selectable_arg, byte_len, text_w, line_h);
 
     if(TextFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
         (void)TextFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
@@ -1590,205 +1429,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
     ui_draw_text_strikethrough(x, y, text_w, line_h, color);
 }
 
-static char *
-ui_text_slice(const char *text, int start, int end)
-{
-    char *slice;
-    int len = end - start;
-
-    if(text == NULL || len < 0)
-        return NULL;
-    slice = (char *)malloc((size_t)len + 1);
-    if(slice == NULL)
-        return NULL;
-    memcpy(slice, text + start, (size_t)len);
-    slice[len] = '\0';
-    return slice;
-}
-
-static int
-ui_text_block_lines(const char *text, int width, int font_size,
-                    TextBlockLine **out_lines)
-{
-    TextBlockLine *lines;
-    int count = 0;
-    int cap = 8;
-    if(out_lines == NULL) return 0;
-    *out_lines = NULL;
-    if(text == NULL) return 0;
-    lines = malloc((size_t)cap * sizeof(*lines));
-    if(lines == NULL) return 0;
-    TextRowCursor rows = ui_text_rows(text, font_size, 0, width, 0, 1);
-    TextMeasuredRow row;
-    while(ui_text_row_next(&rows, &row)) {
-        if(count == cap) {
-            cap *= 2;
-            TextBlockLine *grown = realloc(lines, (size_t)cap * sizeof(*lines));
-            if(grown == NULL) {
-                free(lines);
-                return 0;
-            }
-            lines = grown;
-        }
-        lines[count++] = (TextBlockLine){row.start, row.end};
-    }
-    *out_lines = lines;
-    return count;
-}
-
-int
-MeasureSelectableTextBlock(const char *text, int width, int font_size,
-                             int line_gap)
-{
-    TextBlockLine *lines = NULL;
-    int count = ui_text_block_lines(text, width, font_size, &lines);
-    int line_h = TextLineHeight(font_size);
-    int height = ParagraphLayoutTotalHeight(count, line_h, line_gap);
-
-    free(lines);
-    return height;
-}
-
-int
-RenderSelectableTextBlock(SelectableTextBlock block)
-{
-    TextBlockLine *lines = NULL;
-    Vector2 mouse = ui_mouse_world();
-    int count;
-    int line_h;
-    int line_stride;
-    int height;
-    int captured;
-    int selected_start = 0;
-    int selected_end = 0;
-
-    if(block.text == NULL || block.id <= 0 || block.font_size <= 0)
-        return 0;
-    count = ui_text_block_lines(block.text, (int)block.bounds.width,
-                                block.font_size, &lines);
-    line_h = TextLineHeight(block.font_size);
-    line_stride = ParagraphLineStride(line_h, block.line_gap);
-    height = ParagraphLayoutTotalHeight(count, line_h, block.line_gap);
-    captured = InputCapturesClick(mouse);
-
-    for(int i = 0, y = (int)block.bounds.y; i < count;
-        i++, y = ParagraphNextLineY(y, line_h, block.line_gap, true)) {
-        char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
-        int line_w = line != NULL ? TextWidth(line, block.font_size) : 0;
-        Rectangle hit = {block.bounds.x, (float)y, (float)line_w, (float)line_h};
-        int inside = CheckCollisionPointRec(mouse, hit);
-        TextSelectionPointerDecision pointer = TextSelectionPointerDecisionFor(
-            inside != 0, captured != 0,
-            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) != 0);
-
-        if(pointer.hover)
-            MarkCursor(MOUSE_CURSOR_IBEAM);
-        if(pointer.begin) {
-            int local = ui_text_byte_offset_at_x(line, block.font_size,
-                                                 (int)(mouse.x - block.bounds.x));
-            double now = GetTime();
-            float dx = mouse.x - g_ui_text_block_last_click_position.x;
-            float dy = mouse.y - g_ui_text_block_last_click_position.y;
-            float scale = (float)Scale(1000) / 1000.0f;
-            int double_click = TextDoubleClickShouldSelectLine(
-                g_ui_text_block_last_click_id == block.id,
-                g_ui_text_block_last_click_line == i,
-                (float)g_ui_text_block_last_click_time, (float)now,
-                dx, dy, scale);
-
-            if(double_click) {
-                /* A wrapped visual line is the useful unit here. Keep the
-                 * completed range stable after the second button release. */
-                g_ui_text_block_selection = (TextSelectionRuntimeState){
-                    block.id, lines[i].start, lines[i].end, 0
-                };
-                g_ui_text_block_last_click_id = 0;
-                g_ui_text_block_last_click_line = -1;
-                g_ui_text_block_last_click_time = -1.0;
-            } else {
-                g_ui_text_block_selection = (TextSelectionRuntimeState){
-                    block.id, lines[i].start + local,
-                    lines[i].start + local, 1
-                };
-                g_ui_text_block_last_click_id = block.id;
-                g_ui_text_block_last_click_line = i;
-                g_ui_text_block_last_click_position = mouse;
-                g_ui_text_block_last_click_time = now;
-            }
-            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
-        }
-        free(line);
-    }
-
-    TextSelectionDragDecision drag = TextSelectionDragDecisionFor(
-        g_ui_text_block_selection.id == block.id,
-        g_ui_text_block_selection.dragging != 0,
-        IsMouseButtonDown(MOUSE_BUTTON_LEFT) != 0);
-    if(drag.update) {
-        int line_index;
-        char *line;
-        int local;
-
-        line_index = ParagraphLineIndexFor(mouse.y, block.bounds.y,
-                                           line_stride, count);
-        line = ui_text_slice(block.text, lines[line_index].start,
-                             lines[line_index].end);
-        local = ParagraphSelectionLocalOffsetFor(
-            mouse.y, block.bounds.y, height,
-            lines[line_index].end - lines[line_index].start,
-            ui_text_byte_offset_at_x(line, block.font_size,
-                                     (int)(mouse.x - block.bounds.x)));
-        free(line);
-        g_ui_text_block_selection.cursor = lines[line_index].start + local;
-        g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
-    } else if(drag.finish) {
-        g_ui_text_block_selection.dragging = 0;
-    }
-
-    if(TextSelectionRangeShouldShow(g_ui_text_block_selection.id == block.id)) {
-        TextSelectionRange range = TextSelectionRangeForLength(
-            g_ui_text_block_selection.anchor,
-            g_ui_text_block_selection.cursor, (int)strlen(block.text));
-        TextSelectionCopyDecision copy;
-
-        selected_start = range.start;
-        selected_end = range.end;
-        copy = TextSelectionCopyDecisionFor(g_ui_text_block_selection.id == block.id,
-                                            IsKeyboardInputEnabled() != 0,
-                                            ui_text_mod_key_down() != 0,
-                                            IsKeyPressed(KEY_C) != 0);
-        if(copy.copy)
-            ui_text_copy_selection(block.text, selected_start, selected_end);
-    }
-
-    for(int i = 0, y = (int)block.bounds.y; i < count;
-        i++, y = ParagraphNextLineY(y, line_h, block.line_gap, true)) {
-        TextSelectionPaintSpan span = TextSelectionPaintSpanForLine(
-            selected_start, selected_end, lines[i].start, lines[i].end);
-        int start = span.start;
-        int end = span.end;
-        char *line = ui_text_slice(block.text, lines[i].start, lines[i].end);
-
-        if(end > start && line != NULL)
-            ui_text_draw_selection(line, (int)block.bounds.x, y, block.font_size,
-                                   ui_text_default_selection_color(block.color),
-                                   start - lines[i].start, end - lines[i].start);
-        if(line != NULL)
-            RenderTextEx(line, (int)block.bounds.x, y, block.font_size,
-                         block.color, 0);
-        free(line);
-    }
-    free(lines);
-    return height;
-}
-
 void
-RenderText(const char *text, int x, int y, int font_size, Color color)
-{
-    RenderTextEx(text, x, y, font_size, color, 1);
-}
-
-static void
 ui_render_italic_text(const char *text, int x, int y, int font_size, Color color)
 {
     int cursor_x = x;
@@ -1842,52 +1483,6 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
 }
 
 void
-RenderTextStyled(const char *text, int x, int y, TextStyle style)
-{
-    int font_size = style.font_size > 0 ? style.font_size : TextBaseSize;
-
-    if(!style.italic) {
-        RenderTextEx(text, x, y, font_size, style.color, style.selectable);
-        return;
-    }
-
-    ui_render_italic_text(text, x, y, font_size, style.color);
-}
-
-void
-RenderTextItalic(const char *text, int x, int y, int font_size, Color color)
-{
-    RenderTextStyled(text, x, y, (TextStyle){font_size, color, 1, 1});
-}
-
-void
-RenderNonSelectableText(const char *text, int x, int y, int font_size, Color color)
-{
-    RenderTextEx(text, x, y, font_size, color, 0);
-}
-
-int
-PushTextSelectable(int selectable)
-{
-    int token = g_ui_text_selectable;
-
-    if(g_ui_text_selectable_stack_count <
-       (int)(sizeof(g_ui_text_selectable_stack) / sizeof(g_ui_text_selectable_stack[0])))
-        g_ui_text_selectable_stack[g_ui_text_selectable_stack_count++] = token;
-    g_ui_text_selectable = selectable != 0;
-    return token;
-}
-
-void
-PopTextSelectable(int token)
-{
-    if(g_ui_text_selectable_stack_count > 0)
-        g_ui_text_selectable = g_ui_text_selectable_stack[--g_ui_text_selectable_stack_count];
-    else
-        g_ui_text_selectable = token != 0;
-}
-
-void
 DrawScaledText(const char *text, int x, int y, int scale, Color color)
 {
     Font font = active_font();
@@ -1922,17 +1517,6 @@ DrawScaledText(const char *text, int x, int y, int scale, Color color)
         cursor_x += glyph.advanceX * scale;
         i += codepoint_byte_count;
     }
-}
-
-void
-DrawCenteredText(const char *text, int center_x, int center_y, int font_size, Color color)
-{
-    int text_w = TextWidth(text, font_size);
-    int line_h = TextLineHeight(font_size);
-    int y = TextBaselineY(TextControlBaselineSample(), center_y - line_h / 2,
-                          line_h, font_size);
-
-    RenderText(text, center_x - text_w / 2, y, font_size, color);
 }
 
 int
