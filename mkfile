@@ -7,22 +7,31 @@
 # Kryon's portable sources include; KRYON_PLATFORM_PLAN9 selects the native
 # branches in the few files that touch OS services.
 #
-# Sources: the portable core, the libdraw backend, the full UI toolkit, the
-# kry_std modules that do not need hosted OS services.
+# Sources: the portable core, the libdraw backend, the full UI toolkit,
+# the kry_std modules that do not need hosted OS services, and the
+# generated runtime modules (widget policy, style sheets) that k2c emits
+# as 8c-safe C.
 # Excluded on purpose: canvas/KRB backends, raylib audio, dylib/process/http
 # surfaces, sync, notifications, desktop integration, file dialogs, preview
 # hosts, and runtime asset downloads.
 #
+# build/plan9 must be prepared on the host first (make kry-c-plan9):
+# the generated runtime sources, the embedded asset table, and the
+# generated-c-files.txt list the rules below consume.
+#
 # After `mk install`, link with -lkryon (or /$objtype/lib/libkryon.a) and
-# compile app sources with the same include flags shown below.
+# compile app sources with the same include flags shown below (mk/plan9-app.mk
+# carries them for applications).
 
 LIB=/$objtype/lib/libkryon.a
 
 ROOT=/sys/src/kryon
 SHIM=$ROOT/src/platform/plan9/include
 RAYEXT=$ROOT/vendor/raylib/src/external
+GEN=$ROOT/build/plan9
+genlist=$GEN/generated-c-files.txt
 
-CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$RAYEXT \
+CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN/generated -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
 	-DKRYON_EMBEDDED_ONLY=0
 
@@ -46,30 +55,44 @@ OFILES=\
 	src/core/app_runtime.$O\
 	src/core/app_shell.$O\
 	src/core/app_storage.$O\
+	src/core/automation.$O\
 	src/core/device_preferences.$O\
 	src/core/embedded_assets.$O\
+	src/core/kry_capabilities.$O\
 	src/core/kryon_abi.$O\
 	src/core/kryon_frame.$O\
+	src/core/kryon_frame_pacing.$O\
 	src/core/kryon_mem.$O\
 	src/core/kryon_node.$O\
+	src/core/kry_settings.$O\
 	src/core/locale.$O\
 	src/core/theme.$O\
 	src/core/theme_meta.$O\
 	src/kry_std/audio_library.$O\
+	src/kry_std/kry_xml.$O\
 	src/sync/sync_crypto.$O\
-	src/ui/bottom_nav.$O\
 	src/ui/button.$O\
 	src/ui/dropdown.$O\
 	src/ui/guide.$O\
 	src/ui/icon_controls.$O\
+	src/ui/kss_parser.$O\
 	src/ui/modal.$O\
+	src/ui/navigation_bar.$O\
 	src/ui/overlay.$O\
+	src/ui/pager.$O\
+	src/ui/popup.$O\
 	src/ui/profile_header.$O\
 	src/ui/reorder.$O\
 	src/ui/rows.$O\
 	src/ui/scroll.$O\
 	src/ui/spritesheet.$O\
+	src/ui/style_builtin_packs.$O\
+	src/ui/style_pack_source.$O\
+	src/ui/style_picker.$O\
+	src/ui/style_sheet.$O\
+	src/ui/swipe.$O\
 	src/ui/tab_bar.$O\
+	src/ui/tab_scope.$O\
 	src/ui/terminal_pane.$O\
 	src/ui/terminal_pane_clipboard.$O\
 	src/ui/terminal_pane_csi.$O\
@@ -94,6 +117,7 @@ OFILES=\
 	src/ui/ui_clipboard.$O\
 	src/ui/ui_color.$O\
 	src/ui/ui_dpi.$O\
+	src/ui/ui_grapheme.$O\
 	src/ui/ui_icon_assets.$O\
 	src/ui/ui_icon_names.$O\
 	src/ui/ui_icons.$O\
@@ -102,13 +126,19 @@ OFILES=\
 	src/ui/ui_page.$O\
 	src/ui/ui_node_registry.$O\
 	src/ui/ui_image_cache.$O\
+	src/ui/ui_paint.$O\
+	src/ui/ui_paint_layers.$O\
+	src/ui/ui_popup_input.$O\
 	src/ui/ui_scaling.$O\
 	src/ui/ui_slider.$O\
 	src/ui/ui_style.$O\
+	src/ui/ui_surface_cache.$O\
 	src/ui/ui_text.$O\
 	src/ui/ui_text_backend.$O\
+	src/ui/ui_text_composition.$O\
 	src/ui/ui_text_edit.$O\
 	src/ui/ui_text_layout.$O\
+	src/ui/ui_text_rows.$O\
 	src/ui/ui_titlebar.$O\
 	src/ui/ui_tk.$O\
 	src/ui/ui_transition.$O\
@@ -126,13 +156,26 @@ OFILES=\
 	src/platform/plan9/plan9_runtime_stubs.$O\
 	src/platform/plan9/plan9_ui_globals.$O\
 	src/platform/system_theme/system_theme.$O\
+	$embedobj\
+	$genobj
+
+gensrc=`{cat $genlist}
+genobj=${gensrc:%.c=%.$O}
+embedobj=$GEN/embedded_asset_data.$O
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/sync/*.$O src/platform/*/*.$O \
-	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i
+	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i \
+	$GEN/generated/runtime/*.$O $GEN/*.$O
 
-all:V: $LIB
+all:V: check $LIB
 
-install:V: $LIB
+check:V:
+	if(! test -f $genlist){
+		echo 'missing '^$genlist^'; run make kry-c-plan9 on the host first' >[1=2]
+		exit missing
+	}
+
+install:V: check $LIB
 
 $LIB:V: $OFILES
 	ar vu $LIB $newprereq
@@ -176,6 +219,12 @@ src/ui/%.$O: src/ui/%.c
 
 src/markdown.$O: src/markdown.c
 	cd src && cpp -+ $CPPFLAGS markdown.c > markdown.i && $CC $CFLAGS -c markdown.i && mv markdown.i.$O markdown.$O && rm -f markdown.i
+
+$GEN/generated/runtime/%.$O: $GEN/generated/runtime/%.c
+	cd $GEN/generated/runtime && cpp -+ $CPPFLAGS $stem.c > $stem.i && $CC $CFLAGS -c $stem.i && mv $stem.i.$O $stem.$O && rm -f $stem.i
+
+$GEN/embedded_asset_data.$O: $GEN/embedded_asset_data.c
+	cd $GEN && cpp -+ $CPPFLAGS embedded_asset_data.c > embedded_asset_data.i && $CC $CFLAGS -c embedded_asset_data.i && mv embedded_asset_data.i.$O embedded_asset_data.$O && rm -f embedded_asset_data.i
 
 src/platform/kry_activity_monitor.$O: src/platform/kry_activity_monitor.c
 	cd src/platform && cpp -+ $CPPFLAGS kry_activity_monitor.c > kry_activity_monitor.i && $CC $CFLAGS -c kry_activity_monitor.i && mv kry_activity_monitor.i.$O kry_activity_monitor.$O && rm -f kry_activity_monitor.i

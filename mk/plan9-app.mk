@@ -12,7 +12,8 @@
 #	LDLIBS		extra libraries beyond -lkryon -ldraw -lmemdraw -lthread
 #
 # build/plan9 must be prepared on the host first (k2c --plan9 plus the
-# embedded asset table and generated-c-files.txt).
+# embedded asset table and generated-c-files.txt), and so must the Kryon
+# library's own build/plan9 (make kry-c-plan9 in the kryon checkout).
 
 KRYON=/sys/src/kryon
 BIN=/$objtype/bin
@@ -21,7 +22,8 @@ OUT=$O.out
 obj=$ROOT/build/plan9/obj
 list=$ROOT/build/plan9/generated-c-files.txt
 
-CPPFLAGS=-I$KRYON/src/platform/plan9/include -I$KRYON/include -I$KRYON/src -I$KRYON/src/ui $APPCPPFLAGS \
+CPPFLAGS=-I$KRYON/src/platform/plan9/include -I$KRYON/include -I$KRYON/src -I$KRYON/src/ui \
+	-I$KRYON/build/plan9/generated $APPCPPFLAGS \
 	-DKRYON_BACKEND_LIBDRAW=1 -DKRYON_PLATFORM_PLAN9=1 -DKRYON_NATIVE_PLAN9=1 -DKRYON_EMBEDDED_ONLY=1
 
 CFLAGS=-FTVw
