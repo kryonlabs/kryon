@@ -22,7 +22,8 @@ EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
         canvas: null, ctx: null,
         textures: {}, nextTex: 1,
         target: [],               /* render-target stack: {canvas,ctx} */
-        saved: 0,                 /* outstanding ctx.save() pairs */
+        saved: 0,                 /* active screen-space scissor save */
+        mode2D: null,
         keysDown: {}, keysPressed: [], keysReleased: [], keysRepeated: [],
         chars: [],
         mouseX: 0, mouseY: 0, mouseDeltaX: 0, mouseDeltaY: 0,
@@ -38,6 +39,15 @@ EM_JS(void, js_canvas_boot, (int w, int h, const char *title), {
     K.ctxNow = function () {
         return K.target.length ? K.target[K.target.length - 1].ctx
                                : K.ctx;
+    };
+    K.applyMode2D = function (ctx) {
+        if (!K.mode2D) return;
+        var m = K.mode2D;
+        ctx.save();
+        ctx.translate(m.offsetX, m.offsetY);
+        ctx.rotate(-m.rotation * Math.PI / 180.0);
+        ctx.scale(m.zoomX, m.zoomY);
+        ctx.translate(-m.targetX, -m.targetY);
     };
     K.col = function (r, g, b, a) {
         return 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255.0) + ')';
@@ -488,25 +498,36 @@ EM_JS(void, js_ctx_call, (int op, double a, double b, double c, double d,
     case 7: /* triangle */ ctx.fillStyle = col; ctx.beginPath();
             ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.lineTo(e, f);
             ctx.closePath(); ctx.fill(); break;
-    case 9: /* scissor begin: raylib replaces the active scissor */
-            while (K.saved > 0) { ctx.restore(); K.saved--; }
-            ctx.save(); ctx.beginPath();
-            ctx.rect(a, b, c, d); ctx.clip(); K.saved = 1; break;
-    case 10: /* scissor end */ if (K.saved > 0) { ctx.restore(); K.saved = 0; }
-             break;
-    case 11: /* mode2d push: raylib camera transform */
+    case 9: /* scissor begin: replace the screen-space clip below the camera */
+             if (K.mode2D) ctx.restore();
+             if (K.saved > 0) { ctx.restore(); K.saved = 0; }
              ctx.save();
-             ctx.translate(c, d);          /* offset */
-             ctx.rotate(-g2 * Math.PI / 180.0);
-             ctx.scale(a, b);              /* zoom */
-             ctx.translate(-e, -f);        /* -target */
-             break;
-    case 12: /* mode2d pop */ ctx.restore(); break;
-    case 13: /* frame reset: logical screen coords over HiDPI backing */
-             while (K.saved > 0) { ctx.restore(); K.saved--; }
              ctx.setTransform(K.target.length ? 1 : K.dpi, 0, 0,
                               K.target.length ? 1 : K.dpi, 0, 0);
-             K.saved = 0;
+             ctx.beginPath(); ctx.rect(a, b, c, d); ctx.clip();
+             K.saved = 1;
+             K.applyMode2D(ctx);
+             break;
+    case 10: /* scissor end */
+             if (K.saved > 0) {
+                 if (K.mode2D) ctx.restore();
+                 ctx.restore(); K.saved = 0;
+                 K.applyMode2D(ctx);
+             }
+             break;
+    case 11: /* mode2d push: raylib camera transform */
+             K.mode2D = { zoomX: a, zoomY: b, offsetX: c, offsetY: d,
+                          targetX: e, targetY: f, rotation: g2 };
+             K.applyMode2D(ctx);
+             break;
+    case 12: /* mode2d pop */
+             if (K.mode2D) { ctx.restore(); K.mode2D = null; }
+             break;
+    case 13: /* frame reset: logical screen coords over HiDPI backing */
+             if (K.mode2D) { ctx.restore(); K.mode2D = null; }
+             if (K.saved > 0) { ctx.restore(); K.saved = 0; }
+             ctx.setTransform(K.target.length ? 1 : K.dpi, 0, 0,
+                              K.target.length ? 1 : K.dpi, 0, 0);
              break;
     }
 });
