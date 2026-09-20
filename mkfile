@@ -174,6 +174,7 @@ check:V:
 		echo 'missing '^$genlist^'; run make kry-c-plan9 on the host first' >[1=2]
 		exit missing
 	}
+	exit 0
 
 install:V: check $LIB
 
