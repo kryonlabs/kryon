@@ -31,7 +31,7 @@ RAYEXT=$ROOT/vendor/raylib/src/external
 GEN=$ROOT/build/plan9
 genlist=$GEN/generated-c-files.txt
 
-CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN/generated -I$RAYEXT \
+CPPFLAGS=-I$SHIM -I$ROOT/include -I$ROOT/src -I$ROOT/src/ui -I$GEN -I$GEN/generated -I$RAYEXT \
 	-DKRYON_BACKEND_LIBDRAW -DKRYON_PLATFORM_PLAN9 -DKRYON_NATIVE_PLAN9 \
 	-DKRYON_EMBEDDED_ONLY=0
 
@@ -118,8 +118,6 @@ OFILES=\
 	src/ui/ui_color.$O\
 	src/ui/ui_dpi.$O\
 	src/ui/ui_grapheme.$O\
-	src/ui/ui_icon_assets.$O\
-	src/ui/ui_icon_names.$O\
 	src/ui/ui_icons.$O\
 	src/ui/ui_inspect.$O\
 	src/ui/ui_layout.$O\
@@ -157,11 +155,13 @@ OFILES=\
 	src/platform/plan9/plan9_ui_globals.$O\
 	src/platform/system_theme/system_theme.$O\
 	$embedobj\
+	$iconobj\
 	$genobj
 
 gensrc=`{cat $genlist}
 genobj=${gensrc:%.c=%.$O}
 embedobj=$GEN/embedded_asset_data.$O
+iconobj=$GEN/ui_icon_assets.$O $GEN/ui_icon_names.$O
 
 CLEANFILES=src/backend/*.$O src/core/*.$O src/kry_std/*.$O src/sync/*.$O src/platform/*/*.$O \
 	src/platform/*.$O src/ui/*.$O *.$O src/*/*.i src/*.i \
@@ -225,6 +225,12 @@ $GEN/generated/runtime/%.$O: $GEN/generated/runtime/%.c
 
 $GEN/embedded_asset_data.$O: $GEN/embedded_asset_data.c
 	cd $GEN && cpp -+ $CPPFLAGS embedded_asset_data.c > embedded_asset_data.i && $CC $CFLAGS -c embedded_asset_data.i && mv embedded_asset_data.i.$O embedded_asset_data.$O && rm -f embedded_asset_data.i
+
+$GEN/ui_icon_assets.$O: $GEN/ui_icon_assets.c
+	cd $GEN && cpp -+ $CPPFLAGS ui_icon_assets.c > ui_icon_assets.i && $CC $CFLAGS -c ui_icon_assets.i && mv ui_icon_assets.i.$O ui_icon_assets.$O && rm -f ui_icon_assets.i
+
+$GEN/ui_icon_names.$O: $GEN/ui_icon_names.c
+	cd $GEN && cpp -+ $CPPFLAGS ui_icon_names.c > ui_icon_names.i && $CC $CFLAGS -c ui_icon_names.i && mv ui_icon_names.i.$O ui_icon_names.$O && rm -f ui_icon_names.i
 
 src/platform/kry_activity_monitor.$O: src/platform/kry_activity_monitor.c
 	cd src/platform && cpp -+ $CPPFLAGS kry_activity_monitor.c > kry_activity_monitor.i && $CC $CFLAGS -c kry_activity_monitor.i && mv kry_activity_monitor.i.$O kry_activity_monitor.$O && rm -f kry_activity_monitor.i

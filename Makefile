@@ -1375,13 +1375,17 @@ include/ui_%.generated.h: $(GENERATED_SRC_DIR)/runtime/%.h
 # Native Plan 9 (8c) library preparation. The guest compiler cannot run
 # k2c, so the runtime modules are emitted ahead of time as 8c-safe C
 # into build/plan9/generated, the embedded asset table (style packs,
-# themes, Noto fonts) is generated beside them, and the file list feeds
-# the mkfile. build/ is gitignored; run this on the host whenever
-# runtime/*.kry or the embedded assets change before a native build.
+# themes, Noto fonts) and the icon sheet tables are generated beside
+# them, and the file list feeds the mkfile. build/ is gitignored; run
+# this on the host whenever runtime/*.kry, the embedded assets, or the
+# icon sheets change before a native build.
 PLAN9_PREP_DIR = build/plan9
 PLAN9_GENERATED = $(PLAN9_PREP_DIR)/generated
 PLAN9_FILE_LIST = $(PLAN9_PREP_DIR)/generated-c-files.txt
 PLAN9_EMBEDDED_ASSETS_C = $(PLAN9_PREP_DIR)/embedded_asset_data.c
+PLAN9_ICON_ASSETS_C = $(PLAN9_PREP_DIR)/ui_icon_assets.c
+PLAN9_ICON_NAMES_C = $(PLAN9_PREP_DIR)/ui_icon_names.c
+PLAN9_ICON_TYPES_H = $(PLAN9_PREP_DIR)/ui_icon_types.h
 
 .PHONY: kry-c-plan9
 kry-c-plan9: $(K2C)
@@ -1390,6 +1394,9 @@ kry-c-plan9: $(K2C)
 	$(K2C) --plan9 --root $(abspath .) -o $(PLAN9_GENERATED) $(RUNTIME_KRY)
 	find $(PLAN9_GENERATED) -type f -name '*.c' | LC_ALL=C sort > $(PLAN9_FILE_LIST)
 	sh scripts/embed-assets.sh $(PLAN9_EMBEDDED_ASSETS_C) $(EMBED_ASSETS)
+	python3 scripts/embed-icon-sheets.py "$(ICON_DIR)" "$(PLAN9_ICON_ASSETS_C)" \
+		--types-output "$(PLAN9_ICON_TYPES_H)" \
+		--names-output "$(PLAN9_ICON_NAMES_C)"
 
 WEB_TEXT_RUNTIME = text_input control_props drawing_props style_sheet style surface
 web/text_input.js web/style_sheet.js web/kss_parser.js web/kss_formatter.js web/style.js web/surface.js web/control_props.js web/drawing_props.js &: $(addprefix runtime/,$(addsuffix .kry,$(WEB_TEXT_RUNTIME))) runtime/kss_parser.kry runtime/kss_formatter.kry $(K2JS)
