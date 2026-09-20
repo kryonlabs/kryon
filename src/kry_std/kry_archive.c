@@ -8,6 +8,9 @@
 #include <string.h>
 #if defined(_WIN32)
 #include "kry_gzip.h"
+#if defined(_M_IX86) || defined(__i386__)
+#define SINFL_NO_SIMD
+#endif
 #define SINFL_IMPLEMENTATION
 #define SDEFL_IMPLEMENTATION
 #include "../../vendor/raylib/src/external/sinfl.h"
