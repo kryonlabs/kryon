@@ -1307,8 +1307,14 @@ void SetWindowIcons(Image *images, int count)
 }
 void SetWindowTitle(const char *title)
 {
+#if defined(KRYON_PLATFORM_PLAN9)
+    /* native 9legacy libdraw has no drawsetlabel; windows are labeled
+       through wctl by the platform layer */
+    (void)title;
+#else
     if(kry_libdraw_ready && title != NULL)
         drawsetlabel((char *)title);
+#endif
 }
 void SetWindowPosition(int x, int y)
 {
