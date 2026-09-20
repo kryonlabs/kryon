@@ -424,16 +424,8 @@ func Dropdown_DropdownTriggerContentFor(bounds Rectangle, content ContentMetrics
 	}
 	var value_47 Rectangle = layout.ClipBounds
 	layout.TextBounds = value_47
-	var value_48 float32 = bounds.Y
-	var value_49 float32 = bounds.Height
-	var value_50 float32 = content.Font
-	var value_51 float32 = value_49 - value_50
-	var value_52 float32 = 2.0
-	var value_53 float32 = value_51 / value_52
-	var value_54 float32 = value_48 + value_53
-	layout.TextBounds.Y = value_54
-	var value_55 DropdownTriggerContent = layout
-	return value_55
+	var value_48 DropdownTriggerContent = layout
+	return value_48
 }
 
 func Dropdown_ClampIndex(value int32, count int32) int32 {
@@ -1343,37 +1335,31 @@ func Dropdown_DropdownOptionContentFor(row Rectangle, visible Rectangle, content
 	var value_56 Rectangle = layout.ClipBounds
 	layout.TextBounds = value_56
 	var value_57 float32 = row.Y
+	layout.TextBounds.Y = value_57
 	var value_58 float32 = row.Height
-	var value_59 float32 = content.Font
-	var value_60 float32 = value_58 - value_59
-	var value_61 float32 = 2.0
-	var value_62 float32 = value_60 / value_61
-	var value_63 float32 = value_57 + value_62
-	layout.TextBounds.Y = value_63
-	var value_64 float32 = row.Height
-	layout.TextBounds.Height = value_64
-	var value_65 float32 = row.X
-	var value_66 float32 = row.Width
-	var value_67 float32 = value_65 + value_66
-	var value_68 float32 = content.Padding
+	layout.TextBounds.Height = value_58
+	var value_59 float32 = row.X
+	var value_60 float32 = row.Width
+	var value_61 float32 = value_59 + value_60
+	var value_62 float32 = content.Padding
+	var value_63 float32 = value_61 - value_62
+	var value_64 float32 = content.Icon
+	var value_65 float32 = value_63 - value_64
+	layout.CheckBounds.X = value_65
+	var value_66 float32 = row.Y
+	var value_67 float32 = row.Height
+	var value_68 float32 = content.Icon
 	var value_69 float32 = value_67 - value_68
-	var value_70 float32 = content.Icon
-	var value_71 float32 = value_69 - value_70
-	layout.CheckBounds.X = value_71
-	var value_72 float32 = row.Y
-	var value_73 float32 = row.Height
+	var value_70 float32 = 2.0
+	var value_71 float32 = value_69 / value_70
+	var value_72 float32 = value_66 + value_71
+	layout.CheckBounds.Y = value_72
+	var value_73 float32 = content.Icon
+	layout.CheckBounds.Width = value_73
 	var value_74 float32 = content.Icon
-	var value_75 float32 = value_73 - value_74
-	var value_76 float32 = 2.0
-	var value_77 float32 = value_75 / value_76
-	var value_78 float32 = value_72 + value_77
-	layout.CheckBounds.Y = value_78
-	var value_79 float32 = content.Icon
-	layout.CheckBounds.Width = value_79
-	var value_80 float32 = content.Icon
-	layout.CheckBounds.Height = value_80
-	var value_81 DropdownOptionContent = layout
-	return value_81
+	layout.CheckBounds.Height = value_74
+	var value_75 DropdownOptionContent = layout
+	return value_75
 }
 
 func Dropdown_PopupBounds(button Rectangle, view Rectangle, count int32, scale float32, panel StyleFrame) Rectangle {

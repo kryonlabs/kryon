@@ -2950,8 +2950,11 @@ ui_slider_layout(SliderProps slider)
     float label_width = slider.value_count > 1 ? slider.bounds.width :
         fmaxf(1, slider.bounds.width - value_width - Scale(12));
     float label_height = 0;
-    if(slider.label != NULL && slider.label[0] != '\0')
-        label_height = MeasureSelectableTextBlock(slider.label, (int)label_width, font, 0);
+    if(slider.label != NULL && slider.label[0] != '\0') {
+        label_height = MeasureSelectableTextBlock(slider.label,
+            (int)label_width, font, 0);
+        label_height = fmaxf(label_height, TextHeight(slider.label, font));
+    }
     return SliderLayoutFor(slider.bounds, line_height, label_height, value_width,
         scale, slider.value_count > 1, slider.vertical,
         slider.step_buttons && slider.value_count == 1, slider.show_limits);

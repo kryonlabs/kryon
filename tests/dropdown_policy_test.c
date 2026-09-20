@@ -109,13 +109,13 @@ test_indicator(void)
     assert(layout.indicator_center_x == 106);
     assert(layout.indicator_center_y == 35);
     check_rect(layout.clip_bounds, 18, 20, 70, 30);
-    check_rect(layout.text_bounds, 18, 28, 70, 30);
+    check_rect(layout.text_bounds, 18, 20, 70, 30);
 
     layout = DropdownTriggerContentFor((Rectangle){10, 20, 120, 30},
                                        content, metrics, true);
     check_rect(layout.icon_bounds, 18, 27, 16, 16);
     check_rect(layout.clip_bounds, 38, 20, 50, 30);
-    check_rect(layout.text_bounds, 38, 28, 50, 30);
+    check_rect(layout.text_bounds, 38, 20, 50, 30);
 }
 
 static void
@@ -221,14 +221,14 @@ test_existing_policy(void)
         metrics, false);
     check_rect(option_content.separator_bounds, 26, 46, 58, 0);
     check_rect(option_content.clip_bounds, 18, 46, 54, 20);
-    check_rect(option_content.text_bounds, 18, 49, 54, 20);
+    check_rect(option_content.text_bounds, 18, 46, 54, 20);
     check_rect(option_content.check_bounds, 76, 48, 16, 16);
     option_content = DropdownOptionContentFor(
         (Rectangle){10, 46, 90, 20}, option.visible_bounds, content,
         metrics, true);
     check_rect(option_content.icon_bounds, 18, 48, 16, 16);
     check_rect(option_content.clip_bounds, 38, 46, 34, 20);
-    check_rect(option_content.text_bounds, 38, 49, 34, 20);
+    check_rect(option_content.text_bounds, 38, 46, 34, 20);
     frame.value.padding_y = 10.0f;
     frame.value.gap = 6.0f;
     frame.value.offset_y = 20.0f;

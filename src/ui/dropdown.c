@@ -491,8 +491,8 @@ ui_dropdown(DropdownProps props)
             font, trigger_content.clip_bounds);
         if(needs_clip)
             ui_begin_world_clip(trigger_content.clip_bounds);
-        RenderText(current_name, (int)trigger_content.text_bounds.x,
-                   (int)trigger_content.text_bounds.y, font, button_text);
+        ui_paint_text_box(current_name, trigger_content.text_bounds, font,
+            button_text, TextWrapNone, TextAlignStart, TextAlignCenter, 0, 0);
         if(needs_clip)
             EndClip();
     }
@@ -748,9 +748,9 @@ dropdown_paint_menu(int id)
                       option_content.clip_bounds.y * g_ui_camera.zoom),
                 (int)(option_content.clip_bounds.width * g_ui_camera.zoom),
                 (int)(option_content.clip_bounds.height * g_ui_camera.zoom));
-            RenderText(options[i].label, (int)option_content.text_bounds.x,
-                       (int)option_content.text_bounds.y,
-                       font, row_text);
+            ui_paint_text_box(options[i].label, option_content.text_bounds,
+                font, row_text, TextWrapNone, TextAlignStart,
+                TextAlignCenter, 0, 0);
             EndClip();
             if(state->selected_index == i) {
                 DrawIcon(ICON_CHECK, option_content.check_bounds, row_text);

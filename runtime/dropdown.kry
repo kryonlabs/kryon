@@ -162,7 +162,6 @@ DropdownTriggerContentFor :: (bounds: Rectangle, content: ContentMetrics,
         layout.clip_bounds.width = 0.0
     }
     layout.text_bounds = layout.clip_bounds
-    layout.text_bounds.y = bounds.y + (bounds.height - content.font) / 2.0
     return layout
 }
 
@@ -504,7 +503,7 @@ DropdownOptionContentFor :: (row: Rectangle, visible: Rectangle,
     }
 
     layout.text_bounds = layout.clip_bounds
-    layout.text_bounds.y = row.y + (row.height - content.font) / 2.0
+    layout.text_bounds.y = row.y
     layout.text_bounds.height = row.height
 
     layout.check_bounds.x = row.x + row.width - content.padding - content.icon
