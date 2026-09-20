@@ -173,11 +173,39 @@ test_diagnostics(void)
         "missing import: missing", "1:19");
 }
 
+static void
+test_color_override_after_sixteen(void)
+{
+    const char *source =
+        "@pack override_capacity;\n"
+        "tokens { color { row: #171c25; } }\n"
+        "Dropdown { background: row; }\n";
+    StyleColorToken colors[20] = {0};
+    char names[19][12];
+    StyleRule rules[4] = {0};
+    KssParseResult result = {0};
+    char diagnostic[256];
+
+    for(int i = 0; i < 19; i++) {
+        snprintf(names[i], sizeof(names[i]), "unused%d", i);
+        colors[i].name = names[i];
+        colors[i].color = 0x111111ffu;
+    }
+    colors[19].name = "row";
+    colors[19].color = 0xe2eefcffu;
+
+    assert(kss_parse_variant(source, colors, 20, rules, 4, &result,
+                             diagnostic, sizeof(diagnostic)));
+    assert(result.rule_count == 1);
+    assert(rules[0].style.background == colors[19].color);
+}
+
 int
 main(void)
 {
     test_diagnostics();
     test_trace_sources();
+    test_color_override_after_sixteen();
     const char *source =
         "@pack sample;\n"
         "tokens {\n"

@@ -235,7 +235,7 @@ KssParser :: struct {
     import_depth: i32
     tokens: [128]KssToken
     token_count: i32
-    overrides: [16]KssColorOverride
+    overrides: [64]KssColorOverride
     override_count: i32
     layer: i32
     layer_names: [12]KssName
@@ -313,7 +313,7 @@ KssBeginDeclarative :: (source: string, path: string, env: KssEnvironment) -> Ks
 }
 
 KssAddColorOverride :: (p: KssParser, name: string, color: u32) -> KssParser #export {
-    if p.override_count < 16 {
+    if p.override_count < 64 {
         p.overrides[p.override_count].name = name
         p.overrides[p.override_count].color = color
         p.override_count = p.override_count + 1
