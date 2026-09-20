@@ -2943,6 +2943,9 @@ ui_slider_layout(SliderProps slider)
         double value = i == -2 ? slider.min : i == -1 ? slider.max : ui_slider_value(slider, i);
         ui_slider_format(slider, value, text, sizeof(text));
         value_width = fmaxf(value_width, TextWidth(text, font));
+        /* Atlas glyphs can extend below the font's nominal line height.
+         * Reserve their painted height before clipping the value and limits. */
+        line_height = fmaxf(line_height, TextHeight(text, font));
     }
     float label_width = slider.value_count > 1 ? slider.bounds.width :
         fmaxf(1, slider.bounds.width - value_width - Scale(12));
